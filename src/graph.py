@@ -1,6 +1,6 @@
 from collections import deque
 from Queue import Queue, LifoQueue, Empty
-from threading import Thread, Lock
+from threading import Thread, Event
 
 class InputSlot(object):
     def __init__(self,name, operator = None):
@@ -56,11 +56,11 @@ class InputSlot(object):
         if type(key) is not tuple:
             key = (key,)
         
-        lock = self.graph.putTask(self.partner.__getitem__, key,result)
+        event = self.graph.putTask(self.partner.__getitem__, key,result)
         
         def lambdaGetter():
             #process any unprocessed tasks
-            while not tasks.empty():
+            while not event.isSet():
                 task = None
                 try:
                     task = tasks.get()
@@ -70,12 +70,12 @@ class InputSlot(object):
                     #calculate and store result
                     task[2][0] = task[0](*task[1]) 
                     # release lock, thus indicating result is ready
-                    task[3].release()
+                    task[3].set()
             
             # wait until whatever Worker has
             # calculated the desired result 
             # that was requested
-            lock.acquire()
+            event.wait()
             # finally return the result
             return result[0]
         
@@ -236,7 +236,7 @@ class Worker(Thread):
             if str(task) != "Exit":
                 #execute the function
                 task[2][0] = task[0](*task[1])
-                task[3].release() #this is the lock object
+                task[3].set() #this is the lock object
             else:
                 break
         print "Finalized Worker"
@@ -256,10 +256,9 @@ class Graph(object):
             w.start()
     
     def putTask(self, func, key, result):
-        lock = Lock()
-        lock.acquire()
-        self.tasks.put([func, key,result, lock])
-        return lock
+        event = Event()
+        self.tasks.put([func, key,result, event])
+        return event
     
     def finalize(self):
         print "Finalizing Graph..."
