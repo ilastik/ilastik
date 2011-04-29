@@ -232,7 +232,12 @@ class Worker(Thread):
         print "Initializing Worker%d" % len(self.graph.workers)
         while self.graph.running:
             #blocking call
-            task = self.graph.tasks.get()
+            try:
+                # use a timeout so that
+                # we do not miss the quit event of the graph
+                task = self.graph.tasks.get(timeout = 1)
+            except Empty:
+                continue
             if str(task) != "Exit":
                 #execute the function
                 task[2][0] = task[0](*task[1])
@@ -265,6 +270,9 @@ class Graph(object):
         self.running = False
         for i in xrange(len(self.workers)):
             self.tasks.put("Exit")
+        for w in self.workers:
+            w.join()
+            
     
     def registerOperator(self, op):
         self.operators.append(op)

@@ -1,5 +1,6 @@
 from graph import *
 
+__testing__ = False
 
 class OpA(Operator):
     inputSlots = []
