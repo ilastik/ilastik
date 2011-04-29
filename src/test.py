@@ -1,22 +1,42 @@
 from graph import *
 
 
-class Op1(Operator):
+class OpA(Operator):
     inputSlots = []
     outputSlots = [OutputSlot("Output")]
     
     def getOutSlot(self,slot,key):
-        return "simple test"
+        return "A"
+
+class OpB(Operator):
+    inputSlots = []
+    outputSlots = [OutputSlot("Output")]
     
-class Op2(Operator):
+    def getOutSlot(self,slot,key):
+        return "B"
+
+
+class OpStringAdder(Operator):
+    inputSlots = [InputSlot("Input1"),InputSlot("Input2")]
+    outputSlots = [OutputSlot("Output")]
+
+
+    def getOutSlot(self,slot,key):
+        a = self.inputs["Input1"][key]
+        b = self.inputs["Input2"][key]
+        
+        return a() + b()
+    
+class OpForwarder(Operator):
     inputSlots = [InputSlot("Input")]
     outputSlots = [OutputSlot("Output")]
     
     def getOutSlot(self,slot,key):
-        return self.inputs["Input"][key]
+        query = self.inputs["Input"][key]
+        return query()
     
     
-class Op3(Operator):
+class OpCachingForwarder(Operator):
     inputSlots = [InputSlot("Input")]
     outputSlots = [OutputSlot("Output")]
     
@@ -26,35 +46,53 @@ class Op3(Operator):
     
     def getOutSlot(self,slot,key):
         if self.cache is None:
-            self.cache = self.inputs["Input"][key]
-        
+            query = self.inputs["Input"][key]
+            self.cache = query()
+                    
         return self.cache
     
     def setDirty(self, inputSlot):
         self.cache = None
         Operator.setDirty(self, inputSlot)
     
+print "Constructing Graph and Waiting for thread creation..."
 
-g = Graph()
-
-o1 = Op1(g)
-o2 = Op2(g)
-o3 = Op3(g)
-o4 = Op2(g)
-
-o2.inputs["Input"].connect(o1.outputs["Output"])
-o3.inputs["Input"].connect(o2.outputs["Output"])
-o4.inputs["Input"].connect(o3.outputs["Output"])
-
-#o2.disconnect()
-
-print o4.outputs["Output"][:]
-
-print o4.outputs["Output"][:]
-
-o2.setDirty()
-
-print o4.outputs["Output"][:]
+for t in xrange(3):
+    print
+    print
+    print "Beginning tests with %d threads..." % t
+    g = Graph(numThreads=t)
+    #import time
+    #time.sleep(2)
+    #print "Beginning tests...."
+    
+    oA = OpA(g)
+    oB = OpB(g)
+    oAdder1 = OpStringAdder(g)
+    oAdder2 = OpStringAdder(g)
+    oForwarder1 = OpForwarder(g)
+    oCachingForwarder1 = OpCachingForwarder(g)
+    
+    oAdder1.inputs["Input1"].connect(oA.outputs["Output"])
+    oAdder1.inputs["Input2"].connect(oB.outputs["Output"])
+    
+    oForwarder1.inputs["Input"].connect(oAdder1.outputs["Output"])
+    oAdder2.inputs["Input1"].connect(oForwarder1.outputs["Output"])
+    oAdder2.inputs["Input2"].connect(oA.outputs["Output"])
+    
+    oCachingForwarder1.inputs["Input"].connect(oAdder2.outputs["Output"])
+    
+    #o2.disconnect()
+    
+    print "Result 1:", oCachingForwarder1.outputs["Output"][7]
+    
+    print "Result 2:", oCachingForwarder1.outputs["Output"][3]
+    
+    oB.setDirty()
+    
+    print "Result 3:", oCachingForwarder1.outputs["Output"][1]
+    
+    g.finalize()
 
 
 

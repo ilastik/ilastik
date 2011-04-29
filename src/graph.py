@@ -1,3 +1,7 @@
+from collections import deque
+from Queue import Queue, LifoQueue, Empty
+from threading import Thread, Lock
+
 class InputSlot(object):
     def __init__(self,name, operator = None):
         self.name = name
@@ -41,14 +45,50 @@ class InputSlot(object):
         # type checking
         return True
     
+    
     def __getitem__(self, key):
         assert self.partner is not None,  "cannot do __getitem__ on Slot %s, of %r Not Connected !" % (self.name,self.operator)
-        print "getItem on Slot %s of Operator %s" % (self.name, self.operator.name)
-        return self.partner[key]
+        #print "getItem on Slot %s of Operator %s" % (self.name, self.operator.name)
+        
+        result = [None]
+        tasks = self.graph.tasks
+        
+        if type(key) is not tuple:
+            key = (key,)
+        
+        lock = self.graph.putTask(self.partner.__getitem__, key,result)
+        
+        def lambdaGetter():
+            #process any unprocessed tasks
+            while not tasks.empty():
+                task = None
+                try:
+                    task = tasks.get()
+                except Empty:
+                    pass
+                if task is not None:
+                    #calculate and store result
+                    task[2][0] = task[0](*task[1]) 
+                    # release lock, thus indicating result is ready
+                    task[3].release()
+            
+            # wait until whatever Worker has
+            # calculated the desired result 
+            # that was requested
+            lock.acquire()
+            # finally return the result
+            return result[0]
+        
+        return lambdaGetter
+            
 
     def __setitem_(self, key, value):
         assert self.operator is not None, "cann do __setitem__ on Slot %s -> no operator !!"
         self.operator.setInSlot(self,key,value)
+        
+    @property
+    def graph(self):
+        return self.operator.graph
         
     @property
     def shape(self):
@@ -99,7 +139,10 @@ class OutputSlot(object):
         for p in self.partners:
             p[key] = value
 
-    
+    @property
+    def graph(self):
+        return self.operator.graph
+        
     @property
     def shape(self):
         assert self.shape is not None,  "cannot acess shape on Slot %s, of %r - operator did not provide the info !" % (self.name,self.operator)
@@ -146,6 +189,9 @@ class Operator(object):
         
         self.graph.registerOperator(self)
         
+        
+        
+        
     def disconnect(self):
         for s in self.outputs.values():
             s.disconnect()
@@ -174,11 +220,52 @@ class Operator(object):
     def setInSlot(self, slot, key, value):
         pass
 
+
+
+class Worker(Thread):
+    def __init__(self, graph):
+        Thread.__init__(self)
+        self.graph = graph
+        pass
+    
+    def run(self):
+        print "Initializing Worker%d" % len(self.graph.workers)
+        while self.graph.running:
+            #blocking call
+            task = self.graph.tasks.get()
+            if str(task) != "Exit":
+                #execute the function
+                task[2][0] = task[0](*task[1])
+                task[3].release() #this is the lock object
+            else:
+                break
+        print "Finalized Worker"
+                
 class Graph(object):
     
-    def __init__(self):
+    def __init__(self, numThreads = 2):
         self.operators = []
-        pass
+        self.tasks = LifoQueue() #Lifo <-> depth first, fifo <-> breath first
+        self.workers = []
+        self.running = True
+        self.numThreads = numThreads
+        
+        for i in xrange(self.numThreads):
+            w = Worker(self)
+            self.workers.append(w)
+            w.start()
+    
+    def putTask(self, func, key, result):
+        lock = Lock()
+        lock.acquire()
+        self.tasks.put([func, key,result, lock])
+        return lock
+    
+    def finalize(self):
+        print "Finalizing Graph..."
+        self.running = False
+        for i in xrange(len(self.workers)):
+            self.tasks.put("Exit")
     
     def registerOperator(self, op):
         self.operators.append(op)
