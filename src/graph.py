@@ -273,6 +273,7 @@ class Worker(Thread):
         Thread.__init__(self)
         self.graph = graph
         self.working = False
+        self.daemon = True # kill automatically on application exit !
         pass
     
     def run(self):
@@ -282,7 +283,7 @@ class Worker(Thread):
             try:
                 # use a timeout so that
                 # we do not miss the quit event of the graph
-                task = self.graph.tasks.get(False)#timeout = 1.0)
+                task = self.graph.tasks.get(timeout = 5)#timeout = 1.0)
             except Empty:
                 continue
             if self.graph.running:
@@ -297,7 +298,7 @@ class Graph(object):
     
     def __init__(self, numThreads = 2):
         self.operators = []
-        self.tasks = Queue() #Lifo <-> depth first, fifo <-> breath first
+        self.tasks = LifoQueue() #Lifo <-> depth first, fifo <-> breath first
         self.workers = []
         self.running = True
         self.numThreads = numThreads
@@ -315,9 +316,9 @@ class Graph(object):
     def finalize(self):
         print "Finalizing Graph..."
         self.running = False
-        if len(self.workers) > 0:
-            for w in self.workers:
-                w.join()
+#        if len(self.workers) > 0:
+#            for w in self.workers:
+#                w.join()
             
     
     def registerOperator(self, op):
