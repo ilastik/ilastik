@@ -1,42 +1,61 @@
 from graph import *
 
+class StringOut(OutputSlot):
+    def __init__(self,name):
+        self._dtype = object
+        self._shape = (1,)
+        self._axistags = "something"
+        OutputSlot.__init__(self,name)
+
+class OpPropagator(Operator):  
+    
+    def notifyConnect(self, inputSlot):
+        self.outputs["Output"]._dtype = inputSlot.dtype
+        self.outputs["Output"]._shape = inputSlot.shape
+        self.outputs["Output"]._axistags = inputSlot.axistags
+
 
 class OpA(Operator):
     inputSlots = []
-    outputSlots = [OutputSlot("Output")]
+    outputSlots = [StringOut("Output")]
     
-    def getOutSlot(self,slot,key):
-        return "A"
+    def getOutSlot(self,slot,key,destination):
+        destination[:] = "A"
 
 class OpB(Operator):
     inputSlots = []
-    outputSlots = [OutputSlot("Output")]
+    outputSlots = [StringOut("Output")]
     
-    def getOutSlot(self,slot,key):
-        return "B"
+    def getOutSlot(self,slot,key,destination):
+        destination[:] = "B"
 
 
-class OpStringAdder(Operator):
+class OpStringAdder(OpPropagator):
     inputSlots = [InputSlot("Input1"),InputSlot("Input2")]
     outputSlots = [OutputSlot("Output")]
 
 
-    def getOutSlot(self,slot,key):
-        a = self.inputs["Input1"][key]
-        b = self.inputs["Input2"][key]
+    def getOutSlot(self,slot,key,destination):
+        temp = (1,2,3)
+        t = numpy.ndarray((1,), dtype = object)
+        a = self.inputs["Input1"][key,destination]
+        b = self.inputs["Input2"][key,t]
         
-        return a() + b()
+        a()
+        b()
+
+        destination[:] += t
     
-class OpForwarder(Operator):
+class OpForwarder(OpPropagator):
     inputSlots = [InputSlot("Input")]
     outputSlots = [OutputSlot("Output")]
     
-    def getOutSlot(self,slot,key):
-        query = self.inputs["Input"][key]
-        return query()
+    def getOutSlot(self,slot,key,destination):
+        query = self.inputs["Input"][key,destination]
+        query()
     
     
-class OpCachingForwarder(Operator):
+class OpCachingForwarder(OpPropagator):
     inputSlots = [InputSlot("Input")]
     outputSlots = [OutputSlot("Output")]
     
@@ -44,12 +63,15 @@ class OpCachingForwarder(Operator):
         Operator.__init__(self,args)
         self.cache = None
     
-    def getOutSlot(self,slot,key):
-        if self.cache is None:
-            query = self.inputs["Input"][key]
-            self.cache = query()
-                    
-        return self.cache
+    def getOutSlot(self,slot,key,destination):
+#        if self.cache is None:
+#            query = self.inputs["Input"][key,destination]
+#            query()
+#            self.cache = destination.copy()
+#        else:
+#            destination[:] = self.cache[key]         
+        query = self.inputs["Input"][key,destination]
+        query()
     
     def setDirty(self, inputSlot):
         self.cache = None
@@ -87,16 +109,14 @@ class TestSimple(object):
             
             #o2.disconnect()
             
-            res1 = oCachingForwarder1.outputs["Output"][7]
-            
-            res2 = oCachingForwarder1.outputs["Output"][3]
+            res1 = oCachingForwarder1.outputs["Output"][0]
+            res2 = oCachingForwarder1.outputs["Output"][0]
             
             oB.setDirty()
             
-            res3 = oCachingForwarder1.outputs["Output"][1]
+            res3 = oCachingForwarder1.outputs["Output"][0]
             
             g.finalize()        
             
-            
-            assert res1 == res2
-            assert res2 == res3
+            print res1,res2,res3
+            assert res1 == res2 == res3 == "ABA"
