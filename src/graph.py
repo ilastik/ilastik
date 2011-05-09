@@ -5,15 +5,14 @@ from roi import sliceToRoi
 
 from collections import deque
 from Queue import Queue, LifoQueue, Empty
-from threading import Thread, Event
-
+from threading import Thread, Event, current_thread
 import greenlet
 
 
 sys.setrecursionlimit(30000)
 
 def getStackDepth():
-    '''Return the current call stack depth.'''
+    '''Debugging helper function: Return the current call stack depth.'''
     n = 1
     while True:
         try:
@@ -21,8 +20,6 @@ def getStackDepth():
         except ValueError:
             return n - 1
         n += 1
-
-hamster = [None]
 
 class InputSlot(object):
     def __init__(self,name, operator = None):
@@ -93,11 +90,12 @@ class InputSlot(object):
         event = self.graph.putTask(self.partner.__getitem__, origkey,temp)
                         
         def closureGetter():
+            temp[0] = greenlet.getcurrent()
             if not event.isSet():
-                temp[0] = greenlet.getcurrent()
-                assert greenlet.getcurrent().parent == hamster[0]
                 # --> wait until results are ready
                 greenlet.getcurrent().parent.switch(None)
+            else:
+                temp[0] = None
             return result
             
         return closureGetter
@@ -194,10 +192,12 @@ class OutputSlot(object):
         gr = greenlet.getcurrent()
         
         if gr.parent is None:
-            hamster[0] = gr
-            gr = greenlet.greenlet(self.operator.getOutSlot)
-            gr.switch(self,key,result)
-            WorkerInnerLoop(self.graph)
+            temp = numpy.ndarray((1,), dtype = object)
+            event = self.graph.putTask(self.__getitem__, (key,result),temp)
+            # loop to allow ctrl-c
+            while not event.isSet():
+                event.wait(timeout = 1.0)
+            print "Request finished"
         else:
             self.operator.getOutSlot(self,key,result)
         
@@ -279,39 +279,37 @@ class Operator(object):
     def setInSlot(self, slot, key, value):
         pass
 
-def WorkerInnerLoop(graph):
-    task = None
-    while not graph.tasks.empty() or task is not None:
-        if task is None:
-            try:
-                task = graph.tasks.get(timeout = 1.0)#timeout = 1.0)
-            except Empty:
-                return
-            gr = greenlet.greenlet(task[0])
-            gr.parent = greenlet.getcurrent()
-            task = gr.switch()
-        
-        if task is not None:
-            if task[2].isSet():
-                if task[1][0] is not None:
-                    task = task[1][0].switch()
-                else:
-                    task = None
-            else:
-                task = None
-
 class Worker(Thread):
     def __init__(self, graph):
         Thread.__init__(self)
         self.graph = graph
         self.working = False
         self.daemon = True # kill automatically on application exit !
+        self.pendingGreenlets = deque()
         pass
     
     def run(self):
         print "Initializing Worker%d" % len(self.graph.workers)
         while self.graph.running:
-            WorkerInnerLoop(self.graph)
+            while not self.graph.tasks.empty() or len(self.pendingGreenlets)>0:
+                task = None
+                if len(self.pendingGreenlets) > 0:
+                    task = self.pendingGreenlets.popleft()
+                    if task[1][0] is not None:
+                        task = task[1][0].switch()
+                    
+                if task is None:
+                    try:
+                        task = self.graph.tasks.get(False)#timeout = 1.0)
+                    except Empty:
+                        continue
+                    gr = greenlet.greenlet(task[0])
+                    task = gr.switch()
+                
+                if task is not None:
+                        if task[2].isSet():
+                            if task[1][0] is not None:
+                                task[3].pendingGreenlets.append(task)
         print "Finalized Worker"
                 
                 
@@ -333,23 +331,21 @@ class Graph(object):
     
     def putTask(self, func, key, gr):
         event = Event()
+        thread = current_thread()
         
         def runnerClosure():
             func(key)
             event.set()
             # return something that can be handeled by the innnerWork function
-            return [None, gr,event]
-
-        self.tasks.put([runnerClosure, gr,event])
+            ret = [None, gr,event,thread]
+            return ret
+        task = [runnerClosure, gr,event,thread]
+        self.tasks.put(task)
         return event
     
     def finalize(self):
         print "Finalizing Graph..."
         self.running = False
-#        if len(self.workers) > 0:
-#            for w in self.workers:
-#                w.join()
-            
     
     def registerOperator(self, op):
         self.operators.append(op)

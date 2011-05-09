@@ -46,7 +46,7 @@ class OpB(OpArrayPiper):
         result[:] = t[:] + 1
     
     
-g = Graph(numThreads = 0)
+g = Graph(numThreads = 2)
 
 provider = ArrayProvider( "Zeros", shape = (200,200,200), dtype=numpy.uint8)
 provider.setData(numpy.zeros(provider.shape,dtype = provider.dtype))
