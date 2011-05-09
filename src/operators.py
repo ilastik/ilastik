@@ -3,6 +3,7 @@ import numpy
 from graph import Operator, InputSlot, OutputSlot
 from roi import sliceToRoi, roiToSlice, block_view
 from Queue import Empty
+from collections import deque
 
 class OpArrayPiper(Operator):
     inputSlots = [InputSlot("Input")]
@@ -80,9 +81,9 @@ def cachingBlockQuery(input, result, start, stop, shape, blockShape, dirtyIndice
 
 """
 distributed blocks
-request all touched blocks in full
+request complete blocks
 """
-def cachingFullBlockQuery(graph, input, result, start, stop, shape, blockShape, dirtyIndices, dirtyArray, dirtyState, cache):
+def cachingBlockQuery2(input, result, start, stop, shape, blockShape, dirtyIndices, dirtyArray, dirtyState, cache):
     dirtyStart = numpy.floor(1.0 * start / blockShape)
     dirtyStop = numpy.ceil(1.0 * stop / blockShape)
     dirtyKey = roiToSlice(dirtyStart,dirtyStop)
@@ -92,10 +93,9 @@ def cachingFullBlockQuery(graph, input, result, start, stop, shape, blockShape, 
 
     #start the queries for the parts
     queries = []
-    inWorkQueries =  []
     for p in blockInd:
         acc = tuple(p)
-        if dirtyArray[acc] != dirtyState and dirtyArray[acc] != 0 :
+        if dirtyArray[acc] != dirtyState:
             globStart = p * blockShape
             globStop = (p+1) * blockShape
 
@@ -107,13 +107,9 @@ def cachingFullBlockQuery(graph, input, result, start, stop, shape, blockShape, 
             
             view = cache[tuple(p)][roiToSlice(locStart, locStop)]
             #assert (locStop - locStart == globStop -globStart).all(), "%r, %r, %r, %r " % (locStart, locStop, globStart, globStop)
-            
-            #indicate the work in progress
             v = input[roiToSlice(globStart,globStop),view]
-            queries.append((v,view,globStart,globStop,p))
-            dirtyArray[acc] = 0
-            
-        elif dirtyArray[acc] != 0:
+            queries.append((v,view,globStart,globStop, acc))
+        else:
             globStart = p * blockShape
             globStop = (p+1) * blockShape
             
@@ -124,59 +120,134 @@ def cachingFullBlockQuery(graph, input, result, start, stop, shape, blockShape, 
             locStop = numpy.mod(globStop - 1, blockShape) + 1
             
             result[roiToSlice(globStart-start,globStop-start)] = cache[tuple(p)][roiToSlice(locStart, locStop)]
-        else:
-            globStart = p * blockShape
-            globStop = (p+1) * blockShape
-            
-            #globStart = numpy.maximum(globStart,start)
-            globStop = numpy.minimum(globStop,shape)
-            
-            inWorkQueries.insert(0,(globStart,globStop,p))
-                                
-    for q in queries:        
-        v, view, globStart, globStop,p = q
-        v()
-        dirtyArray[tuple(p)] = dirtyState
 
+    for q in queries:
+        v, view,globStart, globStop, acc = q
+        v()
+        dirtyArray[acc] = dirtyState
         globStart = numpy.maximum(globStart,start)
         globStop = numpy.minimum(globStop,stop)
-        
-        locStart = numpy.mod(globStart, blockShape)
-        locStop = numpy.mod(globStop - 1, blockShape) + 1
-        
         resStart = globStart - start
         resStop = globStop - start
-                
-        result[roiToSlice(resStart,resStop)] = view[roiToSlice(locStart, locStop)]
-    
-    tasks = graph.tasks
-    for q in inWorkQueries:
-        globStart, globStop,p = q
-
-        globStart = numpy.maximum(globStart,start)
-        globStop = numpy.minimum(globStop,stop)
-        
         locStart = numpy.mod(globStart, blockShape)
         locStop = numpy.mod(globStop - 1, blockShape) + 1
+        result[roiToSlice(resStart,resStop)] = cache[acc][roiToSlice(locStart, locStop)]
 
-        acc = tuple(p)
-        while dirtyArray[acc] != dirtyState:
-            try:
-                task = tasks.get(False)
-            except Empty:
-                # task queue empty, e.g. our
-                # result is being calculated by some worker
-                # -> just wait for the result after loop
-                continue
-            #            try:
-            # doe something useful while waiting for result, e.g.
-            # calculate an store result of some task
-            task[0](task[1]) 
-            # set event, thus indicating result is ready
-            task[3].set()
-        
-        result[roiToSlice(globStart - start, globStop - start)] = cache[tuple(p)][roiToSlice(locStart, locStop)]
-            
+
+
+
+#"""
+#distributed blocks
+#request all touched blocks in full
+#"""
+#def cachingFullBlockQuery(graph, input, result, start, stop, shape, blockShape, dirtyIndices, dirtyArray, dirtyState, cache):
+#    dirtyStart = numpy.floor(1.0 * start / blockShape)
+#    dirtyStop = numpy.ceil(1.0 * stop / blockShape)
+#    dirtyKey = roiToSlice(dirtyStart,dirtyStop)
+#            
+#    blockInd =  dirtyIndices[dirtyKey]
+#    blockInd = blockInd.reshape(blockInd.size/blockInd.shape[-1],blockInd.shape[-1],)
+#
+#    #start the queries for the parts
+#    queries = []
+#    inWorkQueries =  deque()
+#    print "in the beginning", len(inWorkQueries)
+#    for p in blockInd:
+#        acc = tuple(p)
+#        dirtyness = dirtyArray[acc]
+#        if  dirtyness!= dirtyState and dirtyness != 0:
+#            #indicate the work in progress
+#            print "working on", input.operator.name, p, dirtyness            
+#            globStart = p * blockShape
+#            globStop = (p+1) * blockShape
+#
+#            #globStart = numpy.maximum(globStart,start)
+#            globStop = numpy.minimum(globStop,numpy.array(shape))
+#                            
+#            locStart = numpy.mod(globStart, blockShape)
+#            locStop = numpy.mod(globStop - 1, blockShape) + 1
+#            
+#            view = cache[acc][roiToSlice(locStart, locStop)]
+#            #assert (locStop - locStart == globStop -globStart).all(), "%r, %r, %r, %r " % (locStart, locStop, globStart, globStop)
+#            
+#            queries.append((view,globStart,globStop,p))
+#        elif dirtyness == dirtyState:
+#            globStart = p * blockShape
+#            globStop = (p+1) * blockShape
+#            
+#            globStart = numpy.maximum(globStart,start)
+#            globStop = numpy.minimum(globStop,stop)
+#            
+#            locStart = numpy.mod(globStart, blockShape)
+#            locStop = numpy.mod(globStop - 1, blockShape) + 1
+#            
+#            result[roiToSlice(globStart-start,globStop-start)] = cache[acc][roiToSlice(locStart, locStop)]
+#        elif dirtyness == 0: #e.g. the block is in work
+#            print "already in work?", input.operator.name, p, dirtyness
+#            globStart = p * blockShape
+#            globStop = (p+1) * blockShape
+#            
+#            #globStart = numpy.maximum(globStart,start)
+#            globStop = numpy.minimum(globStop,numpy.array(shape))
+#            
+#            inWorkQueries.append((globStart,globStop,p))
+#
+#            
+#    tasks = graph.tasks
+#    while len(inWorkQueries) > 0:
+#        q = inWorkQueries.popleft()
+#        
+#        globStart, globStop,p = q
+#
+#        globStart = numpy.maximum(globStart,start)
+#        globStop = numpy.minimum(globStop,stop)
+#        
+#        locStart = numpy.mod(globStart, blockShape)
+#        locStop = numpy.mod(globStop - 1, blockShape) + 1
+#
+#        acc = tuple(p)
+#        while dirtyArray[acc] != dirtyState:
+#            try:
+#                task = tasks.get(False)
+#            except Empty:
+#                # task queue empty, e.g. our
+#                # result is being calculated by some worker
+#                # -> just wait for the result after loop
+#                break
+#            #            try:
+#            # doe something useful while waiting for result, e.g.
+#            # calculate an store result of some task
+#            task[0](task[1]) 
+#            # set event, thus indicating result is ready
+#            task[3].set()
+#        if dirtyArray[acc] == dirtyState:
+#            "yeah, finished one",p
+#            result[roiToSlice(globStart - start, globStop - start)] = cache[acc][roiToSlice(locStart, locStop)]
+#        else:
+#            print "Tasks: ", tasks.qsize(), "len(inWorkQueries)",len(inWorkQueries)
+#            inWorkQueries.append(q)
+#
+#    queries2 = []
+#    for q in queries:
+#        view, globStart, globStop,p = q
+#        dirtyArray[tuple(p)] = 0
+#        v = input[roiToSlice(globStart,globStop),view]
+#        queries2.append((v,view, globStart, globStop,p))
+#    for q in queries2:
+#        v, view, globStart, globStop,p = q
+#        v()
+#        dirtyArray[tuple(p)] = dirtyState
+#        
+#        globStart = numpy.maximum(globStart,start)
+#        globStop = numpy.minimum(globStop,stop)
+#        
+#        locStart = numpy.mod(globStart, blockShape)
+#        locStop = numpy.mod(globStop - 1, blockShape) + 1
+#        
+#        resStart = globStart - start
+#        resStop = globStop - start
+#                
+#        result[roiToSlice(resStart,resStop)] = view[roiToSlice(locStart, locStop)]
 
 """
 shared memory
@@ -304,16 +375,15 @@ class OpArrayBlockCache(OpArrayPiper):
     def allocateBlocks(self, blockIndices):
         for p in blockIndices:
             acc = tuple(p)
-            if self._dirtyArray[acc] != self._dirtyState:
-                if self._cache[acc] is None:
-                    self._cache[acc] = numpy.ndarray(tuple(self._blockShape), dtype=self.dtype)
+            if self._cache[acc] is None:
+                self._cache[acc] = numpy.zeros(tuple(self._blockShape), dtype=self.dtype)
                     
     
     def getOutSlot(self,slot,key,result):
         start, stop = sliceToRoi(key, self.shape)
         
-        #cachingBlockQuery(self.inputs["Input"], result, start, stop, self.shape, self._blockShape, self._dirtyIndices, self._dirtyArray, self._dirtyState, self._cache)
-        cachingFullBlockQuery(self.graph, self.inputs["Input"], result, start, stop, self.shape, self._blockShape, self._dirtyIndices, self._dirtyArray, self._dirtyState, self._cache)
+        cachingBlockQuery2(self.inputs["Input"], result, start, stop, self.shape, self._blockShape, self._dirtyIndices, self._dirtyArray, self._dirtyState, self._cache)
+        #cachingFullBlockQuery(self.graph, self.inputs["Input"], result, start, stop, self.shape, self._blockShape, self._dirtyIndices, self._dirtyArray, self._dirtyState, self._cache)
     
 
     

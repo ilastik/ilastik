@@ -27,8 +27,9 @@ class ArrayProvider(OutputSlot):
 
     def __getitem__(self, key):
         assert self._data is not None, "cannot do __getitem__ on Slot %s,  data was not set !!" % (self.name,self,)
-        key[-1][:] = self._data.__getitem__(*key[:-1])
-
+        result = key[-1]
+        key= key[:-1]
+        result[:] = self._data.__getitem__(*key)
 
 
         
@@ -39,9 +40,10 @@ class OpA(OpArrayPiper):
 
 class OpB(OpArrayPiper):    
     def getOutSlot(self,slot,key,result):
-        v = self.inputs["Input"][key,result]
+        t = numpy.ndarray(result.shape, result.dtype)
+        v = self.inputs["Input"][key,t]
         v()
-        result[:] += 1
+        result[:] = t[:] + 1
     
     
 g = Graph(numThreads = 0)
@@ -77,18 +79,20 @@ t1 = time.time()
 res1 = opc4.outputs["Output"][:,:,:]
 t2 = time.time()
 
-t3 = time.time()
-res2 = opd.outputs["Output"][4,:,:]
-t4 = time.time()
+#t3 = time.time()
+#res2 = opd.outputs["Output"][4,:,:]
+#t4 = time.time()
+#
+#t5 = time.time()
+#res3 = ope.outputs["Output"][5,:,:]
+#t6 = time.time()
+#
+print "Result runtime:", t2-t1
 
-t5 = time.time()
-res3 = ope.outputs["Output"][5,:,:]
-t6 = time.time()
-
-print "Result runtime:", t2-t1, t4 - t3, t6 - t5
-print "Result average:", numpy.average(res1)
-print "Answer shape and Dtype : ",res1.shape, res1.dtype
-print "Total Shape and Dtype : ", opb.outputs["Output"].shape,opb.outputs["Output"].dtype
+#print "Result runtime:", t2-t1, t4 - t3, t6 - t5
+#print "Result average:", numpy.average(res1)
+#print "Answer shape and Dtype : ",res1.shape, res1.dtype
+#print "Total Shape and Dtype : ", opb.outputs["Output"].shape,opb.outputs["Output"].dtype
 
 #for i in xrange(2):
 #    t1 = time.clock()
@@ -102,6 +106,6 @@ print "Total Shape and Dtype : ", opb.outputs["Output"].shape,opb.outputs["Outpu
 
 g.finalize()
 
-assert (res1 == 1).all()
-assert (res2 == 1).all()
-assert (res3 == 1).all()
+assert (res1 == 1).all(), res1
+#assert (res2 == 1).all()
+#assert (res3 == 1).all()
