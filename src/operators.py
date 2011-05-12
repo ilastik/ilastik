@@ -610,8 +610,8 @@ class OpArrayCache(OpArrayPiper):
         # allocate queryArray object
         self._flatBlockIndices =  self._blockIndices[:]
         self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
-        for p in self._flatBlockIndices:
-            self._blockQuery[p] = BlockQueue()
+#        for p in self._flatBlockIndices:
+#            self._blockQuery[p] = BlockQueue()
             
 
     def setDirty(self, inputSlot=None):
@@ -623,7 +623,7 @@ class OpArrayCache(OpArrayPiper):
     def getOutSlot(self,slot,key,result):
         start, stop = sliceToRoi(key, self.shape)
         
-        print "Request::::: ", key 
+#        print "Request::::: ", key 
         self._lock.acquire()
         blockStart = numpy.floor(1.0 * start / self._blockShape)
         blockStop = numpy.ceil(1.0 * stop / self._blockShape)
@@ -641,16 +641,21 @@ class OpArrayCache(OpArrayPiper):
         cond = (self._blockState[blockKey] != self._dirtyState) * (self._blockState[blockKey] != 0)
         #dirtyBlockNums = numpy.extract(cond.ravel(), self._blockNumbers[blockKey].ravel())
         #dirtyBlockInd = self._flatBlockIndices[dirtyBlockNums,:]
-        tileWeights = numpy.where(cond, 1, 100)       
+        tileWeights = numpy.where(cond, 0, 256**3)       
         trueDirtyIndices = numpy.nonzero(numpy.where(cond, 1,0))
         
-        tileArray = drtile.test_DRTILE(tileWeights.astype(numpy.uint8).view(vigra.VigraArray), 100)
+#        print "calling drtile..."
+        tileArray = drtile.test_DRTILE(tileWeights.astype(numpy.uint32).view(vigra.VigraArray), 256**3)
+#        print "finished calling drtile."
         dirtyRois = []
         half = tileArray.shape[0]/2
         dirtyRequests = []
+#        print "Original Key %r, split into %d requests" % (key, tileArray.shape[1])
         for i in range(tileArray.shape[1]):
-            drStart = (tileArray[half:0:-1,i] + blockStart)*self._blockShape
-            drStop = (tileArray[half*2:half:-1,i] + blockStart)*self._blockShape
+            drStart2 = (tileArray[half-1::-1,i] + blockStart)
+            drStop2 = (tileArray[half*2:half-1:-1,i] + blockStart)
+            drStart = drStart2*self._blockShape
+            drStop = drStop2*self._blockShape
             drStop = numpy.minimum(drStop, self.shape)
             dirtyRois.append([drStart,drStop])
         
@@ -658,18 +663,17 @@ class OpArrayCache(OpArrayPiper):
             bq = BlockQueue()
             bq.queue = deque()
             key = roiToSlice(drStart,drStop)
+            key2 = roiToSlice(drStart2,drStop2)
+#            print "Request %d: %r" %(i,key)
             
-            print "Request %d: %r" %(i,key)
-            
-            self._blockQuery[key] = bq
-            
+            self._blockQuery[key2] = bq
+            self._blockState[key2] = 0
             dirtyRequests.append((bq,key,drStart,drStop))
             
-        # indicate the inprocessing state, by setting array to 0        
-        self._blockState[blockKey] = numpy.where(self._blockState[blockKey] != self._dirtyState, 0, self._blockState[blockKey])
+#        # indicate the inprocessing state, by setting array to 0        
+#        self._blockState[blockKey] = numpy.where(self._blockState[blockKey] != self._dirtyState, 0, self._blockState[blockKey])
                 
         self._lock.release()
-
         
         requests = []
         #fire off requests
@@ -679,6 +683,7 @@ class OpArrayCache(OpArrayPiper):
             req = self.inputs["Input"][key, self._cache[key]]
             requests.append(req)
             
+        #print "requests fired"
         
         
 #        if len(requests)>0:
@@ -686,6 +691,8 @@ class OpArrayCache(OpArrayPiper):
         #wait for all requests to finish
         for req in requests:
             req()
+
+        #print "requests finished"
 
         # indicate the finished inprocess state        
         self._lock.acquire()
