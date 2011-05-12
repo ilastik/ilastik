@@ -5,6 +5,7 @@ from roi import sliceToRoi, roiToSlice, block_view
 from Queue import Empty
 from collections import deque
 import greenlet, threading
+import vigra
 
 class OpArrayPiper(Operator):
     inputSlots = [InputSlot("Input")]
@@ -567,7 +568,8 @@ class OpArraySliceCacheBounding(OpArraySliceCache):
             print "SliceCache: queriying graph..."
             dirtyBoundingBoxQuery(self.inputs["Input"], result, start, stop, self.shape, self._blockShapes[dim], self._dirtyIndices[dim], self._dirtyArrays[dim], self._dirtyState, self._cache)
       
-      
+import drtile
+
       
 class OpArrayCache(OpArrayPiper):
     def __init__(self, graph, blockShape = None, immediateAlloc = True):
@@ -621,6 +623,7 @@ class OpArrayCache(OpArrayPiper):
     def getOutSlot(self,slot,key,result):
         start, stop = sliceToRoi(key, self.shape)
         
+        print "Request::::: ", key 
         self._lock.acquire()
         blockStart = numpy.floor(1.0 * start / self._blockShape)
         blockStop = numpy.ceil(1.0 * stop / self._blockShape)
@@ -636,17 +639,32 @@ class OpArrayCache(OpArrayPiper):
 
         # calculate the blockIndices of dirty elements
         cond = (self._blockState[blockKey] != self._dirtyState) * (self._blockState[blockKey] != 0)
-        dirtyBlockNums = numpy.extract(cond.ravel(), self._blockNumbers[blockKey].ravel())
-        dirtyBlockInd = self._flatBlockIndices[dirtyBlockNums,:]
-                
+        #dirtyBlockNums = numpy.extract(cond.ravel(), self._blockNumbers[blockKey].ravel())
+        #dirtyBlockInd = self._flatBlockIndices[dirtyBlockNums,:]
+        tileWeights = numpy.where(cond, 1, 100)       
         trueDirtyIndices = numpy.nonzero(numpy.where(cond, 1,0))
         
-        #set up a new block query object
-        bq = BlockQueue()
-        bq.queue = deque()
-        self._blockQuery[blockKey] = numpy.where((self._blockState[blockKey] != self._dirtyState) * (self._blockState[blockKey] != 0), bq, self._blockQuery[blockKey])
+        tileArray = drtile.test_DRTILE(tileWeights.astype(numpy.uint8).view(vigra.VigraArray), 100)
+        dirtyRois = []
+        half = tileArray.shape[0]/2
+        dirtyRequests = []
+        for i in range(tileArray.shape[1]):
+            drStart = (tileArray[half:0:-1,i] + blockStart)*self._blockShape
+            drStop = (tileArray[half*2:half:-1,i] + blockStart)*self._blockShape
+            drStop = numpy.minimum(drStop, self.shape)
+            dirtyRois.append([drStart,drStop])
         
-        
+            #set up a new block query object
+            bq = BlockQueue()
+            bq.queue = deque()
+            key = roiToSlice(drStart,drStop)
+            
+            print "Request %d: %r" %(i,key)
+            
+            self._blockQuery[key] = bq
+            
+            dirtyRequests.append((bq,key,drStart,drStop))
+            
         # indicate the inprocessing state, by setting array to 0        
         self._blockState[blockKey] = numpy.where(self._blockState[blockKey] != self._dirtyState, 0, self._blockState[blockKey])
                 
@@ -655,13 +673,8 @@ class OpArrayCache(OpArrayPiper):
         
         requests = []
         #fire off requests
-        for bi in dirtyBlockInd:
-            blockStart = bi*self._blockShape
-            blockStop = (bi+1)*self._blockShape
-
-            globStop = numpy.minimum(blockStop, self.shape)
-            
-            key = roiToSlice(blockStart,blockStop)
+        for r in dirtyRequests:
+            bq, key, reqStart, reqStop = r
             
             req = self.inputs["Input"][key, self._cache[key]]
             requests.append(req)
@@ -681,14 +694,14 @@ class OpArrayCache(OpArrayPiper):
 
         
         #notify eventual waiters
-        bq.lock.acquire()
-        
-        for w in bq.queue:
-#            #[None, gr,event,thread]
-            w[3].pendingGreenlets.append(w)
-        
-        bq.queue = None
-        bq.lock.release()
+        for r in dirtyRequests:
+            bq, key, reqStart, reqStop = r
+            bq.lock.acquire()
+            for w in bq.queue:
+                #[None, gr,event,thread]
+                w[3].pendingGreenlets.append(w)
+            bq.queue = None
+            bq.lock.release()
         
         
         #wait for all in process queries
