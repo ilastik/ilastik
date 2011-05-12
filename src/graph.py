@@ -69,9 +69,16 @@ class InputSlot(object):
         
     def realGetItem(self, key):
         assert self.partner is not None,  "cannot do __getitem__ on Slot %s, of %r Not Connected !" % (self.name,self.operator)
-        assert issubclass(type(key[-1]),numpy.ndarray), "This Inputslot %s of operator %s \
+        assert issubclass(type(key[-1]),numpy.ndarray) or callable(key[-1]), "This Inputslot %s of operator %s \
             requires a result variable of type numpy.ndarray as last \
             argument to __getitem__ in whself.realGetItem(key)ich results will be stored" %(self.name,self.operator.name)
+        
+        if callable(key[-1]):
+            customClosure = key[-1]
+            key = key[:-1]
+        else:
+            customClosure = None
+
         origkey = key
             
         result = key[-1]
@@ -87,7 +94,7 @@ class InputSlot(object):
             key = key[:-1]
                 
         temp = numpy.ndarray((1,), dtype = object)
-        event = self.graph.putTask(self.partner.__getitem__, origkey,temp)
+        event = self.graph.putTask(self.partner.__getitem__, origkey,temp, customClosure)
                         
         def closureGetter():
             temp[0] = greenlet.getcurrent()
@@ -316,7 +323,6 @@ class Worker(Thread):
  
     
 class Graph(object):
-    
     def __init__(self, numThreads = 2):
         self.operators = []
         self.tasks = LifoQueue() #Lifo <-> depth first, fifo <-> breath first
@@ -329,13 +335,15 @@ class Graph(object):
             self.workers.append(w)
             w.start()
     
-    def putTask(self, func, key, gr):
+    def putTask(self, func, key, gr, customClosure = None):
         event = Event()
         thread = current_thread()
         
         def runnerClosure():
             func(key)
             event.set()
+            if customClosure is not None:
+                customClosure()
             # return something that can be handeled by the innnerWork function
             ret = [None, gr,event,thread]
             return ret

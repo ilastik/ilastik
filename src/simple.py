@@ -1,14 +1,14 @@
 import numpy, vigra
 import time
 from graph import *
+import gc
+import roi
 
-from operators import OpArrayPiper, OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
+from operators import OpArrayCache, OpArrayPiper, OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
 
 __testing__ = False
 
 import sys
-
-sys.setrecursionlimit(20000)
 
 class ArrayProvider(OutputSlot):
     
@@ -46,66 +46,55 @@ class OpB(OpArrayPiper):
         result[:] = t[:] + 1
     
     
-g = Graph(numThreads = 2)
-
-provider = ArrayProvider( "Zeros", shape = (200,200,200), dtype=numpy.uint8)
-provider.setData(numpy.zeros(provider.shape,dtype = provider.dtype))
-
-opa = OpA(g)
-opb = OpB(g)
-opc1 = OpArrayBlockCache(g,5)
-opc2 = OpArrayBlockCache(g,11)
-opc3 = OpArrayBlockCache(g,7)
-opc4 = OpArrayBlockCache(g,11)
-#opc1 = OpArraySliceCacheBounding(g,5)
-#opc2 = OpArraySliceCacheBounding(g,11)
-#opc3 = OpArraySliceCacheBounding(g,7)
-#opc4 = OpArraySliceCacheBounding(g,11)
 
 
-opd = OpArraySliceCache(g)
-ope = OpArraySliceCacheBounding(g)
+def runBenchmark(numThreads, cacheClass, shape, requests):    
+    g = Graph(numThreads = numThreads)
+    provider = ArrayProvider( "Zeros", shape = shape, dtype=numpy.uint8)
+    provider.setData(numpy.zeros(provider.shape,dtype = provider.dtype))
+    opa = OpA(g)
+    opb = OpB(g)
+    opc1 = cacheClass(g,5)
+    opc2 = cacheClass(g,11)
+    opc3 = cacheClass(g,7)
+    opc4 = cacheClass(g,11)
+    opf = OpArrayCache(g)
+    
+    opa.inputs["Input"].connect(provider)
+    opb.inputs["Input"].connect(opa.outputs["Output"])
+    opc1.inputs["Input"].connect(opb.outputs["Output"])
+    opc2.inputs["Input"].connect(opc1.outputs["Output"])
+    opc3.inputs["Input"].connect(opc2.outputs["Output"])
+    opc4.inputs["Input"].connect(opc3.outputs["Output"])
+    opf.inputs["Input"].connect(opc1.outputs["Output"])
+    
+    tg1 = time.time()
+    
+    for r in requests:
+        if r == "setDirty":
+            provider.setData(numpy.zeros(provider.shape,dtype = provider.dtype))
+            continue
+        key = roi.roiToSlice(numpy.array(r[0]), numpy.array(r[1]))
+        t1 = time.time()
+        res1 = opc4.outputs["Output"][key]
+        t2 = time.time()
+        print "%s request %r runtime:" % (cacheClass.__name__,key) , t2-t1
+        assert (res1 == 1).all(), res1
+    tg2 = time.time()
+    g.finalize()
+    print "%s Total runtime:" % cacheClass.__name__, tg2-tg1    
 
-opa.inputs["Input"].connect(provider)
-opb.inputs["Input"].connect(opa.outputs["Output"])
-opc1.inputs["Input"].connect(opb.outputs["Output"])
-opc2.inputs["Input"].connect(opc1.outputs["Output"])
-opc3.inputs["Input"].connect(opc2.outputs["Output"])
-opc4.inputs["Input"].connect(opc3.outputs["Output"])
-opd.inputs["Input"].connect(opc1.outputs["Output"])
-ope.inputs["Input"].connect(opc1.outputs["Output"])
-
-t1 = time.time()
-res1 = opc4.outputs["Output"][:,:,:]
-t2 = time.time()
-
-#t3 = time.time()
-#res2 = opd.outputs["Output"][4,:,:]
-#t4 = time.time()
-#
-#t5 = time.time()
-#res3 = ope.outputs["Output"][5,:,:]
-#t6 = time.time()
-#
-print "Result runtime:", t2-t1
-
-#print "Result runtime:", t2-t1, t4 - t3, t6 - t5
-#print "Result average:", numpy.average(res1)
-#print "Answer shape and Dtype : ",res1.shape, res1.dtype
-#print "Total Shape and Dtype : ", opb.outputs["Output"].shape,opb.outputs["Output"].dtype
-
-#for i in xrange(2):
-#    t1 = time.clock()
-#    res = opd.outputs["Output"][:,:,:]
-#    t2 = time.clock()
-#    print "Result runtime:", t2-t1
-#    print "Result average:", numpy.average(res)
-#    print "Answer shape and Dtype : ",res.shape, res.dtype
-#    print "Total Shape and Dtype : ", opb.outputs["Output"].shape,opb.outputs["Output"].dtype
+    gc.collect()
 
 
-g.finalize()
+shape = (200,200,200)
+requests = [[[0,0,0],[100,100,1]],
+            [[50,50,50],[150,150,150]],
+            [[0,0,0],[200,200,200]],
+            "setDirty",
+            [[0,0,0],[200,200,200]]
+            ]
+numThreads = 2
 
-assert (res1 == 1).all(), res1
-#assert (res2 == 1).all()
-#assert (res3 == 1).all()
+#runBenchmark(numThreads,OpArrayBlockCache, shape, requests)
+runBenchmark(numThreads,OpArrayCache, shape, requests)

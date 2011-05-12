@@ -4,6 +4,7 @@ from graph import Operator, InputSlot, OutputSlot
 from roi import sliceToRoi, roiToSlice, block_view
 from Queue import Empty
 from collections import deque
+import greenlet, threading
 
 class OpArrayPiper(Operator):
     inputSlots = [InputSlot("Input")]
@@ -133,6 +134,107 @@ def cachingBlockQuery2(input, result, start, stop, shape, blockShape, dirtyIndic
         locStop = numpy.mod(globStop - 1, blockShape) + 1
         result[roiToSlice(resStart,resStop)] = cache[acc][roiToSlice(locStart, locStop)]
 
+
+class BlockQueue(object):
+    __slots__ = ["queue","lock"]
+    
+    def __init__(self):
+        self.queue = None
+        self.lock = threading.Lock()
+
+"""
+distributed blocks
+request complete blocks + wait for in processing
+"""
+def cachingBlockQuery3(input, result, start, stop, shape, blockShape, dirtyIndices, dirtyArray, dirtyState, cache, queryQueue):
+    dirtyStart = numpy.floor(1.0 * start / blockShape)
+    dirtyStop = numpy.ceil(1.0 * stop / blockShape)
+    dirtyKey = roiToSlice(dirtyStart,dirtyStop)
+            
+    blockInd =  dirtyIndices[dirtyKey]
+    blockInd = blockInd.reshape(blockInd.size/blockInd.shape[-1],blockInd.shape[-1],)
+
+    #start the queries for the parts
+    queries = []
+    inprocess = []
+    
+    for p in blockInd:
+        acc = tuple(p)
+        queryDeque = queryQueue[acc]
+        queryDeque.lock.acquire()
+            
+        if queryDeque.queue is None and dirtyArray[acc] != dirtyState:
+            queryDeque.queue = deque()
+            queryDeque.lock.release()
+            globStart = p * blockShape
+            globStop = (p+1) * blockShape
+
+            #globStart = numpy.maximum(globStart,start)
+            globStop = numpy.minimum(globStop,shape)
+                            
+            locStart = numpy.mod(globStart, blockShape)
+            locStop = numpy.mod(globStop - 1, blockShape) + 1
+            
+            view = cache[tuple(p)][roiToSlice(locStart, locStop)]
+            #assert (locStop - locStart == globStop -globStart).all(), "%r, %r, %r, %r " % (locStart, locStop, globStart, globStop)
+
+            def customClosure():
+                #dirtyArray[acc] = dirtyState
+                #queryQueue[acc] = None
+                pass
+                        
+            v = input[roiToSlice(globStart,globStop),view]
+            queries.append((v,view,globStart,globStop, acc))
+        else:
+            queryDeque.lock.release()
+            globStart = p * blockShape
+            globStop = (p+1) * blockShape
+            
+            globStart = numpy.maximum(globStart,start)
+            globStop = numpy.minimum(globStop,stop)
+            
+            locStart = numpy.mod(globStart, blockShape)
+            locStop = numpy.mod(globStop - 1, blockShape) + 1
+            inprocess.append((p,acc,globStart,globStop,locStart,locStop))
+            #result[roiToSlice(globStart-start,globStop-start)] = cache[tuple(p)][roiToSlice(locStart, locStop)]
+        
+    for q in queries:
+        v, view,globStart, globStop, acc= q
+        v()
+        dirtyArray[acc] = dirtyState
+        queryDeque = queryQueue[acc]
+        globStart = numpy.maximum(globStart,start)
+        globStop = numpy.minimum(globStop,stop)
+        resStart = globStart - start
+        resStop = globStop - start
+        locStart = numpy.mod(globStart, blockShape)
+        locStop = numpy.mod(globStop - 1, blockShape) + 1
+        result[roiToSlice(resStart,resStop)] = cache[acc][roiToSlice(locStart, locStop)]
+        queryDeque.lock.acquire()
+        queue = queryDeque.queue
+        for w in queue:
+            #[None, gr,event,thread]
+            w[3].pendingGreenlets.append(w)
+        queryDeque.queue = None
+        queryDeque.lock.release()
+
+    while len(inprocess)>0:
+        q = inprocess.pop()
+        p,acc,globStart,globStop,locStart,locStop= q
+        temp = numpy.ndarray((1,), dtype = object)
+        temp[0] = greenlet.getcurrent()
+        task = [None, temp, threading.Event(),threading.current_thread()]
+        if dirtyArray[acc] != dirtyState:
+            queryDeque = queryQueue[acc]
+            queryDeque.lock.acquire()
+            queue = queryDeque.queue
+            if queue is not None:
+                queue.append(task)
+                queryDeque.lock.release()
+                greenlet.getcurrent().parent.switch(None)
+            else:
+                queryDeque.lock.release()
+        result[roiToSlice(globStart-start,globStop-start)] = cache[acc][roiToSlice(locStart, locStop)]
 
 
 
@@ -308,6 +410,7 @@ def dirtyBoundingBoxQuery(input, result, start, stop, shape, blockShape, dirtyIn
     #calculate bounding box        
     dirtyInd = numpy.nonzero(numpy.where(dirtyArray[dirtyKey] != dirtyState, 1, 0))
     for i in xrange(len(dirtyStart)):
+        
         dirtyStop[i] = dirtyStart[i] + numpy.max(dirtyInd[i])
         dirtyStart[i] += numpy.min(dirtyInd[i])
 
@@ -353,6 +456,7 @@ class OpArrayBlockCache(OpArrayPiper):
         self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
         # if the entry in _dirtyArray differs from _dirtyState
         # the entry is considered dirty
+        self._queryQueue = numpy.ndarray(self._dirtyShape, dtype=object)
         self._dirtyArray = numpy.ones(self._dirtyShape, numpy.uint8)
         _dirtyIndices = numpy.dstack(numpy.nonzero(self._dirtyArray))
         _dirtyIndices.shape = self._dirtyArray.shape + (_dirtyIndices.shape[-1],)
@@ -377,12 +481,13 @@ class OpArrayBlockCache(OpArrayPiper):
             acc = tuple(p)
             if self._cache[acc] is None:
                 self._cache[acc] = numpy.zeros(tuple(self._blockShape), dtype=self.dtype)
-                    
+                self._queryQueue[acc] = BlockQueue()
     
     def getOutSlot(self,slot,key,result):
         start, stop = sliceToRoi(key, self.shape)
         
-        cachingBlockQuery2(self.inputs["Input"], result, start, stop, self.shape, self._blockShape, self._dirtyIndices, self._dirtyArray, self._dirtyState, self._cache)
+        cachingBlockQuery3(self.inputs["Input"], result, start, stop, self.shape, self._blockShape, self._dirtyIndices, self._dirtyArray, self._dirtyState, self._cache, self._queryQueue)
+        #cachingBlockQuery2(self.inputs["Input"], result, start, stop, self.shape, self._blockShape, self._dirtyIndices, self._dirtyArray, self._dirtyState, self._cache)
         #cachingFullBlockQuery(self.graph, self.inputs["Input"], result, start, stop, self.shape, self._blockShape, self._dirtyIndices, self._dirtyArray, self._dirtyState, self._cache)
     
 
@@ -448,7 +553,6 @@ class OpArraySliceCache(OpArrayPiper):
 
 
 class OpArraySliceCacheBounding(OpArraySliceCache):
-
     def getOutSlot(self,slot,key,result):
         start, stop = sliceToRoi(key, self.shape)
         dim = (stop - start).argmin()
@@ -462,5 +566,238 @@ class OpArraySliceCacheBounding(OpArraySliceCache):
         else:
             print "SliceCache: queriying graph..."
             dirtyBoundingBoxQuery(self.inputs["Input"], result, start, stop, self.shape, self._blockShapes[dim], self._dirtyIndices[dim], self._dirtyArrays[dim], self._dirtyState, self._cache)
-           
+      
+      
+      
+class OpArrayCache(OpArrayPiper):
+    def __init__(self, graph, blockShape = None, immediateAlloc = True):
+        OpArrayPiper.__init__(self, graph)
+        if blockShape == None:
+            blockShape = 128
+        self._blockShape = blockShape
+        self._immediateAlloc = immediateAlloc
+
+    def notifyConnect(self, inputSlot):
+        OpArrayPiper.notifyConnect(self, inputSlot)
+        self._cache = numpy.ndarray(self.shape, dtype = self.dtype)
+        
+        if type(self._blockShape) != tuple:
+            self._blockShape = (self._blockShape,)*len(self.shape)
+            
+        self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+        # if the entry in _dirtyArray differs from _dirtyState
+        # the entry is considered dirty
+        self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
+        self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+
+        _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
+        _blockNumbers.shape = self._dirtyShape
+
+        _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
+        _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
+
+         
+        self._blockNumbers = _blockNumbers
+        self._blockIndices = _blockIndices
+        
+        self._blockState[:]= 1
+        self._dirtyState = 2
+        
+        self._lock = threading.Lock()
+        
+        # allocate queryArray object
+        self._flatBlockIndices =  self._blockIndices[:]
+        self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+        for p in self._flatBlockIndices:
+            self._blockQuery[p] = BlockQueue()
+            
+
+    def setDirty(self, inputSlot=None):
+        OpArrayPiper.setDirty(self, inputSlot=inputSlot)
+        self._lock.acquire()
+        self._dirtyState += 1
+        self._lock.release()
+        
+    def getOutSlot(self,slot,key,result):
+        start, stop = sliceToRoi(key, self.shape)
+        
+        self._lock.acquire()
+        blockStart = numpy.floor(1.0 * start / self._blockShape)
+        blockStop = numpy.ceil(1.0 * stop / self._blockShape)
+        blockKey = roiToSlice(blockStart,blockStop)
+                
+        #blockInd =  self._blockNumbers[blockKey].ravel()
+        #blockInd = blockInd.reshape(blockInd.size/blockInd.shape[-1],blockInd.shape[-1],)
+        #dirtyBlockIndicator = numpy.where(self._blockState[blockKey] != self._dirtyState and self._blockState[blockKey] != 0, 0, 1)        
+        
+        inProcessIndicator = numpy.where(self._blockState[blockKey] == 0, 0, 1)
+        
+        inProcessQueries = numpy.unique(numpy.extract(inProcessIndicator == 0, self._blockQuery[blockKey]))
+
+        # calculate the blockIndices of dirty elements
+        cond = (self._blockState[blockKey] != self._dirtyState) * (self._blockState[blockKey] != 0)
+        dirtyBlockNums = numpy.extract(cond.ravel(), self._blockNumbers[blockKey].ravel())
+        dirtyBlockInd = self._flatBlockIndices[dirtyBlockNums,:]
+                
+        trueDirtyIndices = numpy.nonzero(numpy.where(cond, 1,0))
+        
+        #set up a new block query object
+        bq = BlockQueue()
+        bq.queue = deque()
+        self._blockQuery[blockKey] = numpy.where((self._blockState[blockKey] != self._dirtyState) * (self._blockState[blockKey] != 0), bq, self._blockQuery[blockKey])
+        
+        
+        # indicate the inprocessing state, by setting array to 0        
+        self._blockState[blockKey] = numpy.where(self._blockState[blockKey] != self._dirtyState, 0, self._blockState[blockKey])
+                
+        self._lock.release()
+
+        
+        requests = []
+        #fire off requests
+        for bi in dirtyBlockInd:
+            blockStart = bi*self._blockShape
+            blockStop = (bi+1)*self._blockShape
+
+            globStop = numpy.minimum(blockStop, self.shape)
+            
+            key = roiToSlice(blockStart,blockStop)
+            
+            req = self.inputs["Input"][key, self._cache[key]]
+            requests.append(req)
+            
+        
+        
+#        if len(requests)>0:
+#            print "number of fired requests:", len(requests)
+        #wait for all requests to finish
+        for req in requests:
+            req()
+
+        # indicate the finished inprocess state        
+        self._lock.acquire()
+        self._blockState[blockKey][trueDirtyIndices] = self._dirtyState
+        self._lock.release()
+
+        
+        #notify eventual waiters
+        bq.lock.acquire()
+        
+        for w in bq.queue:
+#            #[None, gr,event,thread]
+            w[3].pendingGreenlets.append(w)
+        
+        bq.queue = None
+        bq.lock.release()
+        
+        
+        #wait for all in process queries
+        for q in inProcessQueries:
+            q.lock.acquire()
+            if q.queue is not None:
+                temp = numpy.ndarray((1,), dtype = object)
+                temp[0] = greenlet.getcurrent()
+                task = [None, temp, threading.Event(),threading.current_thread()]
+                q.queue.append(task)
+                q.lock.release()
+                greenlet.getcurrent().parent.switch(None)
+            else:
+                q.lock.release()
+        
+        
+        # finally, store results in result area
+        result[:] = self._cache[roiToSlice(start, stop)]
+
+
+
+#def cachingBlockQuery3(input, result, start, stop, shape, blockShape, dirtyIndices, dirtyArray, dirtyState, cache, queryQueue):
+#    dirtyStart = numpy.floor(1.0 * start / blockShape)
+#    dirtyStop = numpy.ceil(1.0 * stop / blockShape)
+#    dirtyKey = roiToSlice(dirtyStart,dirtyStop)
+#            
+#    blockInd =  dirtyIndices[dirtyKey]
+#    blockInd = blockInd.reshape(blockInd.size/blockInd.shape[-1],blockInd.shape[-1],)
+#
+#    #start the queries for the parts
+#    queries = []
+#    inprocess = []
+#    
+#    for p in blockInd:
+#        acc = tuple(p)
+#        queryDeque = queryQueue[acc]
+#        queryDeque.lock.acquire()
+#            
+#        if queryDeque.queue is None and dirtyArray[acc] != dirtyState:
+#            queryDeque.queue = deque()
+#            queryDeque.lock.release()
+#            globStart = p * blockShape
+#            globStop = (p+1) * blockShape
+#
+#            #globStart = numpy.maximum(globStart,start)
+#            globStop = numpy.minimum(globStop,shape)
+#                            
+#            locStart = numpy.mod(globStart, blockShape)
+#            locStop = numpy.mod(globStop - 1, blockShape) + 1
+#            
+#            view = cache[tuple(p)][roiToSlice(locStart, locStop)]
+#            #assert (locStop - locStart == globStop -globStart).all(), "%r, %r, %r, %r " % (locStart, locStop, globStart, globStop)
+#
+#            def customClosure():
+#                #dirtyArray[acc] = dirtyState
+#                #queryQueue[acc] = None
+#                pass
+#                        
+#            v = input[roiToSlice(globStart,globStop),view]
+#            queries.append((v,view,globStart,globStop, acc))
+#        else:
+#            queryDeque.lock.release()
+#            globStart = p * blockShape
+#            globStop = (p+1) * blockShape
+#            
+#            globStart = numpy.maximum(globStart,start)
+#            globStop = numpy.minimum(globStop,stop)
+#            
+#            locStart = numpy.mod(globStart, blockShape)
+#            locStop = numpy.mod(globStop - 1, blockShape) + 1
+#            inprocess.append((p,acc,globStart,globStop,locStart,locStop))
+#            #result[roiToSlice(globStart-start,globStop-start)] = cache[tuple(p)][roiToSlice(locStart, locStop)]
+#        
+#    for q in queries:
+#        v, view,globStart, globStop, acc= q
+#        v()
+#        dirtyArray[acc] = dirtyState
+#        queryDeque = queryQueue[acc]
+#        globStart = numpy.maximum(globStart,start)
+#        globStop = numpy.minimum(globStop,stop)
+#        resStart = globStart - start
+#        resStop = globStop - start
+#        locStart = numpy.mod(globStart, blockShape)
+#        locStop = numpy.mod(globStop - 1, blockShape) + 1
+#        result[roiToSlice(resStart,resStop)] = cache[acc][roiToSlice(locStart, locStop)]
+#        queryDeque.lock.acquire()
+#        queue = queryDeque.queue
+#        for w in queue:
+#            #[None, gr,event,thread]
+#            w[3].pendingGreenlets.append(w)
+#        queryDeque.queue = None
+#        queryDeque.lock.release()
+#
+#    while len(inprocess)>0:
+#        q = inprocess.pop()
+#        p,acc,globStart,globStop,locStart,locStop= q
+#        temp = numpy.ndarray((1,), dtype = object)
+#        temp[0] = greenlet.getcurrent()
+#        task = [None, temp, threading.Event(),threading.current_thread()]
+#        if dirtyArray[acc] != dirtyState:
+#            queryDeque = queryQueue[acc]
+#            queryDeque.lock.acquire()
+#            queue = queryDeque.queue
+#            if queue is not None:
+#                queue.append(task)
+#                queryDeque.lock.release()
+#                greenlet.getcurrent().parent.switch(None)
+#            else:
+#                queryDeque.lock.release()
+#        result[roiToSlice(globStart-start,globStop-start)] = cache[acc][roiToSlice(locStart, locStop)]
+
         
