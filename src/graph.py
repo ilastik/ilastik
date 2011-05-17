@@ -5,8 +5,11 @@ from roi import sliceToRoi
 
 from collections import deque
 from Queue import Queue, LifoQueue, Empty
-from threading import Thread, Event, current_thread
+from threading import Thread, Event, current_thread, Lock
 import greenlet
+
+requestCounterLock = Lock()
+requestCounter = 0
 
 class InputSlot(object):
     def __init__(self, name, operator = None):
@@ -186,13 +189,23 @@ class OutputSlot(object):
         
         gr = greenlet.getcurrent()
         
+        global requestCounter
+        requestCounterLock.acquire()
+        requestCounter += 1
+        requestCounterLock.release()
+        
         if gr.parent is None:
             temp = numpy.ndarray((1,), dtype = object)
             event = self.graph.putTask(self.__getitem__, (key, result), temp)
             # loop to allow ctrl-c
             while not event.isSet():
                 event.wait(timeout = 0.25) #in seconds
-            print "Request finished"
+            print "Request finished (needed %d requests to sastisfy me)" % (requestCounter)
+            
+            requestCounterLock.acquire()
+            requestCounter = 0
+            requestCounterLock.release()
+            
         else:
             self.operator.getOutSlot(self, key, result)
         
