@@ -8,26 +8,15 @@ from Queue import Queue, LifoQueue, Empty
 from threading import Thread, Event, current_thread
 import greenlet
 
-
-sys.setrecursionlimit(30000)
-
-def getStackDepth():
-    '''Debugging helper function: Return the current call stack depth.'''
-    n = 1
-    while True:
-        try:
-            sys._getframe(n)
-        except ValueError:
-            return n - 1
-        n += 1
-
 class InputSlot(object):
-    def __init__(self,name, operator = None):
+    def __init__(self, name, operator = None):
         self.name = name
         self.operator = operator
         self.partner = None
     
     def connect(self,partner):
+        #assert isinstance(partner, OutputSlot), "partner has type %r" % type(partner)
+        
         if self.partner == partner:
             return
         self.disconnect()
@@ -47,12 +36,14 @@ class InputSlot(object):
             self.partner.disconnectSlot(self)
         self.partner = None
     
+    #TODO RENAME? createInstance
+    # def __copy__ ?
     def getInstance(self, operator):
         s = InputSlot(self.name, operator)
         return s
             
     def setDirty(self):
-        assert self.operator is not None, "Slot %s Cannot be set dirty, slot not belonging to any actual operator instance" % self.name
+        assert self.operator is not None, "Slot %s cannot be set dirty, slot not belonging to any actual operator instance" % self.name
         self.operator.setDirty(self)
     
     def connectOk(self, partner):
@@ -60,18 +51,13 @@ class InputSlot(object):
         # if you want a more involved
         # type checking
         return True
-    
 
     def __getitem__(self, key):
-#        gr = greenlet.greenlet(self.realGetItem)
-#        gr.parent = greenlet.getcurrent().parent
-        return self.realGetItem(key)
-        
-    def realGetItem(self, key):
-        assert self.partner is not None,  "cannot do __getitem__ on Slot %s, of %r Not Connected !" % (self.name,self.operator)
+        assert self.partner is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name,self.operator)
         assert issubclass(type(key[-1]),numpy.ndarray) or callable(key[-1]), "This Inputslot %s of operator %s \
             requires a result variable of type numpy.ndarray as last \
-            argument to __getitem__ in whself.realGetItem(key)ich results will be stored" %(self.name,self.operator.name)
+            argument to __getitem__ in which \
+            self.realGetItem(key) results will be stored" %(self.name,self.operator.name)
         
         if callable(key[-1]):
             customClosure = key[-1]
@@ -92,24 +78,23 @@ class InputSlot(object):
             # the user provided a real __getitem__ call
             # don't expand
             key = key[:-1]
-                
-        temp = numpy.ndarray((1,), dtype = object)
-        event = self.graph.putTask(self.partner.__getitem__, origkey,temp, customClosure)
+        
+        #FIXME: I use ndarray here, because?? -> thread safe
+        greenletContainer = numpy.ndarray((1,), dtype = object) #FIXME dangerous? garbage collection
+        event = self.graph.putTask(self.partner.__getitem__, origkey, greenletContainer, customClosure)
                         
         def closureGetter():
-            temp[0] = greenlet.getcurrent()
+            greenletContainer[0] = greenlet.getcurrent()
             if not event.isSet():
                 # --> wait until results are ready
                 greenlet.getcurrent().parent.switch(None)
-            else:
-                temp[0] = None
+            greenletContainer[0] = None
             return result
             
         return closureGetter
             
-
-    def __setitem_(self, key, value):
-        assert self.operator is not None, "cann do __setitem__ on Slot %s -> no operator !!"
+    def __setitem__(self, key, value):
+        assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"
         self.operator.setInSlot(self,key,value)
         
     @property
@@ -122,30 +107,32 @@ class InputSlot(object):
             
     @property
     def shape(self):
-        assert self.partner is not None,  "cannot acess shape on Slot %s, of %r Not Connected !" % (self.name,self.operator)
+        assert self.partner is not None, "cannot acess shape on Slot '%s', of %r Not Connected !" % (self.name,self.operator)
         return self.partner.shape
 
     @property
     def axistags(self):
-        assert self.partner is not None,  "cannot acess shape on Slot %s, of %r Not Connected !" % (self.name,self.operator)
+        assert self.partner is not None, "cannot acess shape on Slot '%s', of %r Not Connected !" % (self.name,self.operator)
         return self.partner.axistags
 
     
 class OutputSlot(object):
-    def __init__(self,name,operator = None):
+    def __init__(self, name, operator = None):
         self.name = name
-        self.provider = None
         self.operator = operator
-        if not hasattr(self,"_dtype"):
+        if not hasattr(self, "_dtype"):
             self._dtype = None
-        if not hasattr(self,"_shape"):
+        if not hasattr(self, "_shape"):
             self._shape = None
-        if not hasattr(self,"_axistags"):
+        if not hasattr(self, "_axistags"):
             self._axistags = None
         self.partners = []
     
-    def connect(self,partner):
-        self.partners.append(partner)
+    def connect(self, partner):
+        if partner not in self.partners:
+            self.partners.append(partner)
+        #Re-run the connect anyway, because we might want to
+        #propagate information like this
         partner.connect(self)
         
     def disconnect(self):
@@ -161,6 +148,7 @@ class OutputSlot(object):
         for p in self.partners:
             p.setDirty()
 
+    #FIXME __copy__ ?
     def getInstance(self, operator):
         s = OutputSlot(self.name, operator)
         s._shape = self._shape
@@ -168,7 +156,7 @@ class OutputSlot(object):
         s._axistags = self._axistags
         return s
 
-    def allocateStorage(self,key):
+    def allocateStorage(self, key):
         start, stop = sliceToRoi(key, self.shape)
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
         return storage
@@ -200,15 +188,14 @@ class OutputSlot(object):
         
         if gr.parent is None:
             temp = numpy.ndarray((1,), dtype = object)
-            event = self.graph.putTask(self.__getitem__, (key,result),temp)
+            event = self.graph.putTask(self.__getitem__, (key, result), temp)
             # loop to allow ctrl-c
             while not event.isSet():
-                event.wait(timeout = 1.0)
+                event.wait(timeout = 0.25) #in seconds
             print "Request finished"
         else:
-            self.operator.getOutSlot(self,key,result)
+            self.operator.getOutSlot(self, key, result)
         
-          
         return result
 
     def __setitem__(self, key, value):
@@ -225,18 +212,17 @@ class OutputSlot(object):
         
     @property
     def shape(self):
-        assert self._shape is not None,  "cannot acess shape on Slot %s, of %r - operator did not provide the info !" % (self.name,self.operator)
+        assert self._shape is not None, "cannot acess shape on Slot %s, of %r - operator did not provide the info !" % (self.name,self.operator)
         return self._shape
 
     @property
     def axistags(self):
-        assert self._axistags is not None,  "cannot acess shape on Slot %s, of %r Not Connected !" % (self.name,self.operator)
+        assert self._axistags is not None, "cannot acess shape on Slot %s, of %r Not Connected !" % (self.name,self.operator)
         return self._axistags
 
 
-
 class Operator(object):
-    inputSlots = []
+    inputSlots  = []
     outputSlots = []
     name = ""
     
@@ -247,7 +233,7 @@ class Operator(object):
         #provide simple default name for lazy users
         if self.name == "": 
             self.name = type(self).__name__
-        assert self.graph is not None, "Operators must be given a graph, they cannot exist alone !" 
+        assert self.graph is not None, "Operators must be given a graph, they cannot exist alone!" 
         # replicate input slot connections
         # defined for the operator for the instance
         for i in self.inputSlots:
@@ -280,25 +266,26 @@ class Operator(object):
     def notifyConnect(self, inputSlot):
         pass
     
-    def getOutSlot(self, slot, key):
+    def getOutSlot(self, slot, key, result):
         return None
     
     def setInSlot(self, slot, key, value):
         pass
+
 
 class Worker(Thread):
     def __init__(self, graph):
         Thread.__init__(self)
         self.graph = graph
         self.working = False
-        self.daemon = True # kill automatically on application exit !
+        self.daemon = True # kill automatically on application exit!
         self.pendingGreenlets = deque()
+        print "Initializing Worker #%d" % len(self.graph.workers)
         pass
     
     def run(self):
-        print "Initializing Worker%d" % len(self.graph.workers)
         while self.graph.running:
-            while not self.graph.tasks.empty() or len(self.pendingGreenlets)>0:
+            while not self.graph.tasks.empty() or len(self.pendingGreenlets) > 0:
                 task = None
                 if len(self.pendingGreenlets) > 0:
                     task = self.pendingGreenlets.popleft()
@@ -312,15 +299,13 @@ class Worker(Thread):
                         continue
                     gr = greenlet.greenlet(task[0])
                     task = gr.switch()
-                
+                    
                 if task is not None:
-                        if task[2].isSet():
-                            if task[1][0] is not None:
-                                task[3].pendingGreenlets.append(task)
+                    if task[2].isSet():
+                        if task[1][0] is not None:
+                            task[3].pendingGreenlets.append(task)
         print "Finalized Worker"
                 
-                
- 
     
 class Graph(object):
     def __init__(self, numThreads = 2):
@@ -345,9 +330,9 @@ class Graph(object):
             if customClosure is not None:
                 customClosure()
             # return something that can be handeled by the innnerWork function
-            ret = [None, gr,event,thread]
+            ret = [None, gr, event, thread]
             return ret
-        task = [runnerClosure, gr,event,thread]
+        task = [runnerClosure, gr, event, thread]
         self.tasks.put(task)
         return event
     
@@ -357,7 +342,6 @@ class Graph(object):
     
     def registerOperator(self, op):
         self.operators.append(op)
-        pass
     
     def removeOperator(self, op):
         assert op in self.operators, "Operator %r not a registered Operator" %op
