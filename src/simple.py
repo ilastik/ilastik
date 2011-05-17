@@ -90,11 +90,12 @@ def runBenchmark(numThreads, cacheClass, shape, requests):
 shape = (200,200,200)
 requests = [[[0,0,0],[100,100,1]],
             [[50,50,50],[150,150,150]],
+            [[50,50,50],[150,150,150]],
             [[0,0,0],[200,200,200]],
             "setDirty",
             [[0,0,0],[200,200,200]]
             ]
-numThreads = 2
+numThreads = 1
 
 #runBenchmark(numThreads,OpArrayBlockCache, shape, requests)
 runBenchmark(numThreads,OpArrayCache, shape, requests)

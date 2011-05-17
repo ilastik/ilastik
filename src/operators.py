@@ -615,10 +615,13 @@ class OpArrayCache(OpArrayPiper):
             
 
     def setDirty(self, inputSlot=None):
-        OpArrayPiper.setDirty(self, inputSlot=inputSlot)
         self._lock.acquire()
+#        self._dirtyState = 2
+#        self._blockState[:] = 1
         self._dirtyState += 1
         self._lock.release()
+        OpArrayPiper.setDirty(self, inputSlot=inputSlot)
+        print "OpArrayCache setDirty"
         
     def getOutSlot(self,slot,key,result):
         start, stop = sliceToRoi(key, self.shape)
@@ -633,27 +636,35 @@ class OpArrayCache(OpArrayPiper):
         #blockInd = blockInd.reshape(blockInd.size/blockInd.shape[-1],blockInd.shape[-1],)
         #dirtyBlockIndicator = numpy.where(self._blockState[blockKey] != self._dirtyState and self._blockState[blockKey] != 0, 0, 1)        
         
-        inProcessIndicator = numpy.where(self._blockState[blockKey] == 0, 0, 1)
+        inProcessIndicator = numpy.where(self._blockState[blockKey] == 0, 1, 0)
         
-        inProcessQueries = numpy.unique(numpy.extract(inProcessIndicator == 0, self._blockQuery[blockKey]))
+        inProcessQueries = numpy.unique(numpy.extract(inProcessIndicator == 1, self._blockQuery[blockKey]))
 
         # calculate the blockIndices of dirty elements
         cond = (self._blockState[blockKey] != self._dirtyState) * (self._blockState[blockKey] != 0)
         #dirtyBlockNums = numpy.extract(cond.ravel(), self._blockNumbers[blockKey].ravel())
         #dirtyBlockInd = self._flatBlockIndices[dirtyBlockNums,:]
-        tileWeights = numpy.where(cond, 0, 256**3)       
+        tileWeights = numpy.where(cond, 1, 256**3+1)       
         trueDirtyIndices = numpy.nonzero(numpy.where(cond, 1,0))
         
+        tileWeights = vigra.ScalarVolume(tileWeights, dtype = numpy.uint32)
+        
 #        print "calling drtile..."
-        tileArray = drtile.test_DRTILE(tileWeights.astype(numpy.uint32).view(vigra.VigraArray), 256**3)
+        tileArray = drtile.test_DRTILE(tileWeights, 256**3 + 1)
 #        print "finished calling drtile."
         dirtyRois = []
         half = tileArray.shape[0]/2
         dirtyRequests = []
 #        print "Original Key %r, split into %d requests" % (key, tileArray.shape[1])
+#        print self._blockState[blockKey][trueDirtyIndices]
+#        print "Ranges:"
+#        print "TileArray:", tileArray
         for i in range(tileArray.shape[1]):
-            drStart2 = (tileArray[half-1::-1,i] + blockStart)
-            drStop2 = (tileArray[half*2:half-1:-1,i] + blockStart)
+
+            #drStart2 = (tileArray[half-1::-1,i] + blockStart)
+            #drStop2 = (tileArray[half*2:half-1:-1,i] + blockStart)
+            drStart2 = (tileArray[:half,i] + blockStart)
+            drStop2 = (tileArray[half:,i] + blockStart)
             drStart = drStart2*self._blockShape
             drStop = drStop2*self._blockShape
             drStop = numpy.minimum(drStop, self.shape)
@@ -665,13 +676,21 @@ class OpArrayCache(OpArrayPiper):
             key = roiToSlice(drStart,drStop)
             key2 = roiToSlice(drStart2,drStop2)
 #            print "Request %d: %r" %(i,key)
+
             
             self._blockQuery[key2] = bq
-            self._blockState[key2] = 0
+            if (self._blockState[key2] == self._dirtyState).any() or (self._blockState[key2] == 0).any():
+                import h5py
+                f = h5py.File("test.h5", "w")
+                f.create_dataset("data",data = tileWeights)
+                print "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights)
+                assert 1 == 2
+            
+#            assert(self._blockState[key2] != 0).all(), "%r, %r, %r, %r, %r,%r" % (key2, blockKey, self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey], tileWeights)
             dirtyRequests.append((bq,key,drStart,drStop))
             
 #        # indicate the inprocessing state, by setting array to 0        
-#        self._blockState[blockKey] = numpy.where(self._blockState[blockKey] != self._dirtyState, 0, self._blockState[blockKey])
+        self._blockState[blockKey] = numpy.where(cond, 0, self._blockState[blockKey])
                 
         self._lock.release()
         
@@ -696,7 +715,7 @@ class OpArrayCache(OpArrayPiper):
 
         # indicate the finished inprocess state        
         self._lock.acquire()
-        self._blockState[blockKey][trueDirtyIndices] = self._dirtyState
+        self._blockState[blockKey] = numpy.where(cond, self._dirtyState, self._blockState[blockKey])
         self._lock.release()
 
         
