@@ -35,14 +35,15 @@ class ArrayProvider(OutputSlot):
         
 class OpA(OpArrayPiper):
     def getOutSlot(self,slot,key,result):
-        v = self.inputs["Input"][key,result]
+        v = self.inputs["Input"][key].writeInto(result)
         v()
 
 class OpB(OpArrayPiper):    
     def getOutSlot(self,slot,key,result):
         t = numpy.ndarray(result.shape, result.dtype)
-        v = self.inputs["Input"][key,t]
-        v()
+        v = self.inputs["Input"][key].writeInto(t)
+        test = v()
+        
         result[:] = t[:] + 1
     
     
@@ -96,6 +97,6 @@ requests = [[[0,0,0],[100,100,1]],
             [[0,0,0],[200,200,200]]
             ]
 numThreads = 1
-
 #runBenchmark(numThreads,OpArrayBlockCache, shape, requests)
+#runBenchmark(1,OpArrayBlockCache, shape, requests)
 runBenchmark(numThreads,OpArrayCache, shape, requests)

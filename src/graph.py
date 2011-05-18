@@ -12,6 +12,26 @@ requestCounterLock = Lock()
 requestCounter = 0
 
 class InputSlot(object):
+    
+    class GetItemRequestObject(object):
+        __slots__ = ["_key", "_slot"]
+        
+        def __init__(self, slot, key):
+            self._key = key
+            self._slot = slot
+        
+        def writeInto(self, destination):
+            if destination is None:
+                destination = self._slot.allocateStorage(self._key)
+            
+            return self._slot.fireRequest(self._key,destination)
+                
+                
+        def __call__(self):
+            #TODO: remove this convenience function when
+            #      everything is ported ?
+            return self.writeInto(None)
+            
     def __init__(self, name, operator = None):
         self.name = name
         self.operator = operator
@@ -56,35 +76,17 @@ class InputSlot(object):
         return True
 
     def __getitem__(self, key):
-        assert self.partner is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name,self.operator)
-        assert issubclass(type(key[-1]),numpy.ndarray) or callable(key[-1]), "This Inputslot %s of operator %s \
-            requires a result variable of type numpy.ndarray as last \
-            argument to __getitem__ in which \
-            self.realGetItem(key) results will be stored" %(self.name,self.operator.name)
-        
-        if callable(key[-1]):
-            customClosure = key[-1]
-            key = key[:-1]
-        else:
-            customClosure = None
+        return InputSlot.GetItemRequestObject(self,key)
 
-        origkey = key
-            
-        result = key[-1]
         
-        if type(key[0]) is tuple:
-            # for convenience in calling
-            # the user may reuse the packed tuple
-            # we expand here
-            key = key[0][:]
-        else:
-            # the user provided a real __getitem__ call
-            # don't expand
-            key = key[:-1]
+    def fireRequest(self, key, destination):
+        assert self.partner is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name,self.operator)
+        
+        customClosure = None
         
         #FIXME: I use ndarray here, because?? -> thread safe
         greenletContainer = numpy.ndarray((1,), dtype = object) #FIXME dangerous? garbage collection
-        event = self.graph.putTask(self.partner.__getitem__, origkey, greenletContainer, customClosure)
+        event = self.graph.putTask(self.partner.__getitem__, (key,destination,), greenletContainer, customClosure)
                         
         def closureGetter():
             greenletContainer[0] = greenlet.getcurrent()
@@ -92,9 +94,14 @@ class InputSlot(object):
                 # --> wait until results are ready
                 greenlet.getcurrent().parent.switch(None)
             greenletContainer[0] = None
-            return result
+            return destination
             
         return closureGetter
+
+    def allocateStorage(self, key):
+        start, stop = sliceToRoi(key, self.shape)
+        storage = numpy.ndarray(stop - start, dtype=self.dtype)
+        return storage
             
     def __setitem__(self, key, value):
         assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"
