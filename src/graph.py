@@ -12,6 +12,10 @@ requestCounterLock = Lock()
 requestCounter = 0
 
 class GetItemRequestObject(object):
+    """ Enables the syntax:
+        InputSlot[:,:].writeInto(array)
+        for loading input data"""
+    
     __slots__ = ["_key", "_slot"]
     
     def __init__(self, slot, key):
@@ -19,8 +23,7 @@ class GetItemRequestObject(object):
         self._slot = slot
     
     def writeInto(self, destination):
-        return self._slot.fireRequest(self._key,destination)
-            
+        return self._slot.fireRequest(self._key, destination)     
     
     def allocate(self):
         destination = self._slot.allocateStorage(self._key)
@@ -38,8 +41,10 @@ class InputSlot(object):
         self.operator = operator
         self.partner = None
     
-    def connect(self,partner):
-        #assert isinstance(partner, OutputSlot), "partner has type %r" % type(partner)
+    def connect(self, partner):
+        assert partner is None or isinstance(partner, OutputSlot), \
+               "InputSlot(name=%s, operator=%s).connect: partner has type %r" \
+               % (self.name, self.operator, type(partner))
         
         if self.partner == partner:
             return
@@ -67,7 +72,8 @@ class InputSlot(object):
         return s
             
     def setDirty(self):
-        assert self.operator is not None, "Slot %s cannot be set dirty, slot not belonging to any actual operator instance" % self.name
+        assert self.operator is not None, \
+               "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
         self.operator.setDirty(self)
     
     def connectOk(self, partner):
@@ -77,17 +83,16 @@ class InputSlot(object):
         return True
 
     def __getitem__(self, key):
-        return GetItemRequestObject(self,key)
-
+        return GetItemRequestObject(self, key)
         
     def fireRequest(self, key, destination):
-        assert self.partner is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name,self.operator)
+        assert self.partner is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
         
         customClosure = None
         
         #FIXME: I use ndarray here, because?? -> thread safe
         greenletContainer = numpy.ndarray((1,), dtype = object) #FIXME dangerous? garbage collection
-        event = self.graph.putTask(self.partner.fireRequest, (key,destination,), greenletContainer, customClosure)
+        event = self.graph.putTask(self.partner.fireRequest, (key,destination), greenletContainer, customClosure)
                         
         def closureGetter():
             greenletContainer[0] = greenlet.getcurrent()
@@ -191,7 +196,7 @@ class OutputSlot(object):
             # loop to allow ctrl-c
             while not event.isSet():
                 event.wait(timeout = 0.25) #in seconds
-            print "Request finished (needed %d requests to sastisfy me)" % (requestCounter)
+            print "Request finished (needed %d requests to satisfy me)" % (requestCounter)
             
             requestCounterLock.acquire()
             requestCounter = 0
@@ -216,12 +221,12 @@ class OutputSlot(object):
         
     @property
     def shape(self):
-        assert self._shape is not None, "cannot acess shape on Slot %s, of %r - operator did not provide the info !" % (self.name,self.operator)
+        assert self._shape is not None, "cannot access shape on Slot %s, of %r - operator did not provide the info !" % (self.name,self.operator)
         return self._shape
 
     @property
     def axistags(self):
-        assert self._axistags is not None, "cannot acess shape on Slot %s, of %r Not Connected !" % (self.name,self.operator)
+        assert self._axistags is not None, "cannot access shape on Slot %s, of %r Not Connected !" % (self.name,self.operator)
         return self._axistags
 
 
@@ -348,6 +353,6 @@ class Graph(object):
         self.operators.append(op)
     
     def removeOperator(self, op):
-        assert op in self.operators, "Operator %r not a registered Operator" %op
+        assert op in self.operators, "Operator %r not a registered Operator" % op
         self.operators.remove(op)
         op.disconnect()
