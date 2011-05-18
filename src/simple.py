@@ -45,6 +45,12 @@ class OpB(OpArrayPiper):
         result[:] = t[:] + 1
     
     
+class OpC(OpArrayPiper):
+    def getOutSlot(self,slot,key,result):
+        v = self.inputs["Input"][:].allocate()
+        t = v()
+        result[:] = t[key]
+        self.outputs["Output"][:] = t
 
 
 def runBenchmark(numThreads, cacheClass, shape, requests):    
@@ -55,6 +61,7 @@ def runBenchmark(numThreads, cacheClass, shape, requests):
     opb = OpB(g)
     opc1 = cacheClass(g,5)
     opc2 = cacheClass(g,11)
+    opfull = OpC(g)
     opc3 = cacheClass(g,7)
     opc4 = cacheClass(g,11)
     opf = OpArrayCache(g)
@@ -63,7 +70,8 @@ def runBenchmark(numThreads, cacheClass, shape, requests):
     opb.inputs["Input"].connect(opa.outputs["Output"])
     opc1.inputs["Input"].connect(opb.outputs["Output"])
     opc2.inputs["Input"].connect(opc1.outputs["Output"])
-    opc3.inputs["Input"].connect(opc2.outputs["Output"])
+    opfull.inputs["Input"].connect(opc2.outputs["Output"])
+    opc3.inputs["Input"].connect(opfull.outputs["Output"])
     opc4.inputs["Input"].connect(opc3.outputs["Output"])
     opf.inputs["Input"].connect(opc1.outputs["Output"])
     

@@ -630,3 +630,25 @@ class OpArrayCache(OpArrayPiper):
         # finally, store results in result area
         result[:] = self._cache[roiToSlice(start, stop)]
         
+        
+        
+    def setInSlot(self, slot, key, value):
+        start, stop = sliceToRoi(key, self.shape)
+        blockStart = numpy.ceil(1.0 * start / self._blockShape)
+        blockStop = numpy.floor(1.0 * stop / self._blockShape)
+        blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
+        blockKey = roiToSlice(blockStart,blockStop)
+
+        if (blockStop >= blockStart).all():
+            start2 = blockStart * self._blockShape
+            stop2 = blockStop * self._blockShape
+            stop2 = numpy.minimum(stop2, self.shape)
+            key2 = roiToSlice(start2,stop2)
+            self._lock.acquire()
+            self._cache[key2] = value[roiToSlice(start2-start,stop2-start)]
+            self._blockState[blockKey] = self._dirtyState
+            self._lock.release()
+        
+        #pass request on
+        self.outputs["Output"][key] = value
+        
