@@ -10,7 +10,14 @@ def sliceToRoi(s, shape=None):
     assert type(s) == list or type(s) == slice or type(s) == tuple
     
     if not isinstance(s, (list,tuple)):
-        s = [s]
+        #special case for the [:] getall access
+        if s == slice(None,None,None):
+            s2 = []
+            for i in range(len(shape)):
+                s2.append(s)    
+            s = s2 
+        else:
+            s = [s]
     s = list(s)    
     for i,k in enumerate(s):
         if type(k) is not slice:
