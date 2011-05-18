@@ -25,11 +25,9 @@ class ArrayProvider(OutputSlot):
         self._data = d
         self.setDirty()
 
-    def __getitem__(self, key):
+    def fireRequest(self, key, destination):
         assert self._data is not None, "cannot do __getitem__ on Slot %s,  data was not set !!" % (self.name,self,)
-        result = key[-1]
-        key= key[:-1]
-        result[:] = self._data.__getitem__(*key)
+        destination[:] = self._data.__getitem__(key)
 
 
         
@@ -77,7 +75,7 @@ def runBenchmark(numThreads, cacheClass, shape, requests):
             continue
         key = roi.roiToSlice(numpy.array(r[0]), numpy.array(r[1]))
         t1 = time.time()
-        res1 = opc4.outputs["Output"][key]
+        res1 = opc4.outputs["Output"][key].allocate()
         t2 = time.time()
         print "%s request %r runtime:" % (cacheClass.__name__,key) , t2-t1
         assert (res1 == 1).all(), res1

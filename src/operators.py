@@ -582,7 +582,6 @@ class OpArrayCache(OpArrayPiper):
         #fire off requests
         for r in dirtyRequests:
             bq, key, reqStart, reqStop = r
-            
             req = self.inputs["Input"][key].writeInto(self._cache[key])
             requests.append(req)
             

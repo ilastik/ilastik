@@ -11,27 +11,28 @@ import greenlet
 requestCounterLock = Lock()
 requestCounter = 0
 
-class InputSlot(object):
+class GetItemRequestObject(object):
+    __slots__ = ["_key", "_slot"]
     
-    class GetItemRequestObject(object):
-        __slots__ = ["_key", "_slot"]
-        
-        def __init__(self, slot, key):
-            self._key = key
-            self._slot = slot
-        
-        def writeInto(self, destination):
-            if destination is None:
-                destination = self._slot.allocateStorage(self._key)
+    def __init__(self, slot, key):
+        self._key = key
+        self._slot = slot
+    
+    def writeInto(self, destination):
+        return self._slot.fireRequest(self._key,destination)
             
-            return self._slot.fireRequest(self._key,destination)
-                
-                
-        def __call__(self):
-            #TODO: remove this convenience function when
-            #      everything is ported ?
-            return self.writeInto(None)
-            
+    
+    def allocate(self):
+        destination = self._slot.allocateStorage(self._key)
+        return self.writeInto(destination)
+    
+    def __call__(self):
+        #TODO: remove this convenience function when
+        #      everything is ported ?
+        return self.allocate()
+
+
+class InputSlot(object):
     def __init__(self, name, operator = None):
         self.name = name
         self.operator = operator
@@ -76,7 +77,7 @@ class InputSlot(object):
         return True
 
     def __getitem__(self, key):
-        return InputSlot.GetItemRequestObject(self,key)
+        return GetItemRequestObject(self,key)
 
         
     def fireRequest(self, key, destination):
@@ -86,7 +87,7 @@ class InputSlot(object):
         
         #FIXME: I use ndarray here, because?? -> thread safe
         greenletContainer = numpy.ndarray((1,), dtype = object) #FIXME dangerous? garbage collection
-        event = self.graph.putTask(self.partner.__getitem__, (key,destination,), greenletContainer, customClosure)
+        event = self.graph.putTask(self.partner.fireRequest, (key,destination,), greenletContainer, customClosure)
                         
         def closureGetter():
             greenletContainer[0] = greenlet.getcurrent()
@@ -172,28 +173,11 @@ class OutputSlot(object):
         return storage
 
     def __getitem__(self, key):
+        return GetItemRequestObject(self,key)
+
+    def fireRequest(self, key, destination):
         assert self.operator is not None, "cannot do __getitem__ on Slot %s, of %r -> now operator !!" % (self.name,self.operator) 
-        # check wether last key element is
-        # is a output storage object (always ndarray)
-        # or wether we have to allocate storage...
-        if type(key) is tuple and issubclass(type(key[-1]),numpy.ndarray):
-            result = key[-1]
-            if type(key[0]) is tuple:
-                # for convenience in calling
-                # the user may reuse the packed tuple
-                # we expand here
-                key = key[0][:]
-        else:
-            if type(key) is tuple and type(key[0]) is tuple:
-                # for convenience in calling
-                # the user may reuse the packed tuple
-                # we expand here
-                key = key[0][:]
-            tk = key
-            if type(key) is not tuple:
-                tk = (key,)
-            result = self.allocateStorage(tk)            
-        
+                
         gr = greenlet.getcurrent()
         
         global requestCounter
@@ -203,7 +187,7 @@ class OutputSlot(object):
         
         if gr.parent is None:
             temp = numpy.ndarray((1,), dtype = object)
-            event = self.graph.putTask(self.__getitem__, (key, result), temp)
+            event = self.graph.putTask(self.fireRequest, (key, destination), temp)
             # loop to allow ctrl-c
             while not event.isSet():
                 event.wait(timeout = 0.25) #in seconds
@@ -214,9 +198,9 @@ class OutputSlot(object):
             requestCounterLock.release()
             
         else:
-            self.operator.getOutSlot(self, key, result)
+            self.operator.getOutSlot(self, key, destination)
         
-        return result
+        return destination
 
     def __setitem__(self, key, value):
         for p in self.partners:
@@ -345,7 +329,7 @@ class Graph(object):
         thread = current_thread()
         
         def runnerClosure():
-            func(key)
+            func(*key)
             event.set()
             if customClosure is not None:
                 customClosure()
