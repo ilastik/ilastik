@@ -318,12 +318,14 @@ class MultiInputSlot(object):
             self.operator.notifyConnect(self)
             
         elif isinstance(partner, OutputSlot):
+            print self.name, " Connecting to ", partner.name
             for i, slot in enumerate(self):
                 if slot.partner == partner:
                     raise RuntimeError("MultiInputSlot: connect is already connect to this partner %r" % partner)
             slot = self._appendNew()
             slot.connect(partner)
             self.notifyPartialConnect(slot)
+            print "selflenbg", len(self)
 
     def notifyPartialConnect(self, slot):
         # notify operator of connection
@@ -377,7 +379,6 @@ class MultiOutputSlot(object):
         self.outputSlots = []
     
     def __getitem__(self, key):
-        print key
         return self.outputSlots[key]
     
     def __setitem__(self, key, value):

@@ -5,8 +5,8 @@ import gc
 import roi
 import threading
 
-from operators import OpArrayCache, OpArrayPiper
-from obsoleteOperators import OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
+from operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
+from operators.obsoleteOperators import OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
 
 __testing__ = False
 
@@ -46,7 +46,7 @@ class OpB(OpArrayPiper):
     def getOutSlot(self,slot,key,result):
         t = numpy.ndarray(result.shape, result.dtype)
         v = self.inputs["Input"][key].writeInto(t)
-        test = v()
+        v()
         
         result[:] = t[:] + 1
     
@@ -58,44 +58,6 @@ class OpC(OpArrayPiper):
         result[:] = t[key]
         self.outputs["Output"][:] = t
 
-
-
-
-
-class OpMultiArrayPiper(Operator):
-    inputSlots = [MultiInputSlot("MultiInput")]
-    outputSlots = [MultiOutputSlot("MultiOutput")]
-    
-    def notifyConnect(self, inputSlot):
-        self.outputs["MultiOutput"].clearAllSlots()
-        for i,islot in enumerate(self.inputs["MultiInput"]):
-            slot = PartialMultiOutputSlot("Out3%d" % i, self, self.outputs["MultiOutput"])
-            slot._dtype = islot.dtype
-            slot._shape = islot.shape
-            slot._axistags = islot.axistags
-            self.outputs["MultiOutput"].append(slot)
-    
-    def notifyPartialMultiConnect(self, multislot, slot, index):
-        s = PartialMultiOutputSlot("Out%3d" % index, self, self.outputs["MultiOutput"])
-        s._dtype = slot.dtype
-        s._shape = slot.shape
-        s._axistags = slot.axistags
-        self.outputs["MultiOutput"].insert(index, s)
-
-    
-    def getOutSlot(self, slot, key, result):
-        raise RuntimeError("OpMultiPipler does not support getOutSlot")
-
-    def getPartialMultiOutSlot(self, multislot, slot, index, key, result):
-        req = self.inputs["MultiInput"][index][key].writeInto(result)
-        res = req()
-        return res
-     
-    def setInSlot(self, slot, key, value):
-        raise RuntimeError("OpMultiPipler does not support setInSlot")
-
-    def setPartialMultiInSlot(self,multislot,slot,index, key,value):
-        pass
 
 
 
@@ -112,12 +74,16 @@ opa = OpMultiArrayPiper(g)
 opb = OpMultiArrayPiper(g)
 opc = OpMultiArrayPiper(g)
 
-opd = OpArrayPiper(g)
+opd = OpA(g)
 ope = OpB(g)
 ope2 = OpB(g)
 
+
 opa.inputs["MultiInput"].connect(source0)
 opa.inputs["MultiInput"].connect(source1)
+print "Lenght of MultiOut:", len(opa.outputs["MultiOutput"])
+print "Lenght of MultiIn:", len(opa.inputs["MultiInput"])
+
 
 opb.inputs["MultiInput"].connect(opa.outputs["MultiOutput"])
 
@@ -125,12 +91,23 @@ opd.inputs["Input"].connect(opb.outputs["MultiOutput"][0])
 ope.inputs["Input"].connect(opb.outputs["MultiOutput"][1])
 ope2.inputs["Input"].connect(ope.outputs["Output"])
 
+assert (opa.outputs["MultiOutput"][0][:,:].allocate() == 0).all()
+assert (opa.outputs["MultiOutput"][1][:,:].allocate() == 0).all()
+
+assert (opb.outputs["MultiOutput"][0][:,:].allocate() == 0).all()
+assert (opb.outputs["MultiOutput"][0][:,:].allocate() == 0).all()
+
+assert (opd.outputs["Output"][:,:].allocate() == 0).all()
+assert (ope.outputs["Output"][:,:].allocate() == 1).all()
+
+
 opc.inputs["MultiInput"].connect(opd.outputs["Output"])
 opc.inputs["MultiInput"].connect(ope2.outputs["Output"])
 
-print opc.outputs["MultiOutput"][0][:,:].allocate()
-print opc.outputs["MultiOutput"][1][:,:].allocate()
 
+
+assert (opc.outputs["MultiOutput"][0][:,:].allocate() == 0).all(), numpy.nonzero(opc.outputs["MultiOutput"][0][:,:].allocate())
+assert (opc.outputs["MultiOutput"][1][:,:].allocate() == 2).all(), numpy.nonzero(opc.outputs["MultiOutput"][0][:,:].allocate() - 2)
 
 
 

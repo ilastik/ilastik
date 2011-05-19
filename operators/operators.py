@@ -1,6 +1,6 @@
 import numpy
 
-from graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, PartialMultiOutputSlot
 from roi import sliceToRoi, roiToSlice, block_view
 from Queue import Empty
 from collections import deque
@@ -23,6 +23,38 @@ class OpArrayPiper(Operator):
     @property
     def dtype(self):
         return self.outputs["Output"]._dtype        
+
+
+class OpMultiArrayPiper(Operator):
+    inputSlots = [MultiInputSlot("MultiInput")]
+    outputSlots = [MultiOutputSlot("MultiOutput")]
+    
+    def notifyConnect(self, inputSlot):
+        self.outputs["MultiOutput"].clearAllSlots()
+        for i,islot in enumerate(self.inputs["MultiInput"]):
+            slot = PartialMultiOutputSlot("Out3%d" % i, self, self.outputs["MultiOutput"])
+            slot._dtype = islot.dtype
+            slot._shape = islot.shape
+            slot._axistags = islot.axistags
+            self.outputs["MultiOutput"].append(slot)
+    
+    def notifyPartialMultiConnect(self, multislot, slot, index):
+        self.notifyConnect(multislot)
+
+    
+    def getOutSlot(self, slot, key, result):
+        raise RuntimeError("OpMultiPipler does not support getOutSlot")
+
+    def getPartialMultiOutSlot(self, multislot, slot, index, key, result):
+        req = self.inputs["MultiInput"][index][key].writeInto(result)
+        res = req()
+        return res
+     
+    def setInSlot(self, slot, key, value):
+        raise RuntimeError("OpMultiPipler does not support setInSlot")
+
+    def setPartialMultiInSlot(self,multislot,slot,index, key,value):
+        pass
 
 
 import drtile
