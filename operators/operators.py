@@ -1,6 +1,6 @@
 import numpy
 
-from graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, PartialMultiOutputSlot
+from graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 from roi import sliceToRoi, roiToSlice, block_view
 from Queue import Empty
 from collections import deque
@@ -30,23 +30,23 @@ class OpMultiArrayPiper(Operator):
     outputSlots = [MultiOutputSlot("MultiOutput")]
     
     def notifyConnect(self, inputSlot):
-        self.outputs["MultiOutput"].clearAllSlots()
+        self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
         for i,islot in enumerate(self.inputs["MultiInput"]):
-            slot = PartialMultiOutputSlot("Out3%d" % i, self, self.outputs["MultiOutput"])
-            slot._dtype = islot.dtype
-            slot._shape = islot.shape
-            slot._axistags = islot.axistags
-            self.outputs["MultiOutput"].append(slot)
+            oslot = self.outputs["MultiOutput"][i]
+            if islot.partner is not None:
+                oslot._dtype = islot.dtype
+                oslot._shape = islot.shape
+                oslot._axistags = islot.axistags
     
-    def notifyPartialMultiConnect(self, multislot, slot, index):
-        self.notifyConnect(multislot)
+    def notifyPartialMultiConnect(self, slots, indexes):
+        self.notifyConnect(slots[0])
 
     
     def getOutSlot(self, slot, key, result):
         raise RuntimeError("OpMultiPipler does not support getOutSlot")
 
-    def getPartialMultiOutSlot(self, multislot, slot, index, key, result):
-        req = self.inputs["MultiInput"][index][key].writeInto(result)
+    def getPartialMultiOutSlot(self, slots, indexes, key, result):
+        req = self.inputs["MultiInput"][indexes[0]][key].writeInto(result)
         res = req()
         return res
      
@@ -71,17 +71,22 @@ class OpArrayCache(OpArrayPiper):
         OpArrayPiper.__init__(self, graph)
         if blockShape == None:
             blockShape = 128
-        self._blockShape = blockShape
+        self._origBlockShape = blockShape
         self._immediateAlloc = immediateAlloc
 
     def notifyConnect(self, inputSlot):
         OpArrayPiper.notifyConnect(self, inputSlot)
         self._cache = numpy.ndarray(self.shape, dtype = self.dtype)
         
-        if type(self._blockShape) != tuple:
-            self._blockShape = (self._blockShape,)*len(self.shape)
-            
+        if type(self._origBlockShape) != tuple:
+            self._blockShape = (self._origBlockShape,)*len(self.shape)
+        
+        self._blockShape = numpy.minimum(self._blockShape, self.shape)
+
         self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+        
+        print "Reconfigured OpArrayCache with ", self._blockShape, self._dirtyShape
+
         # if the entry in _dirtyArray differs from _dirtyState
         # the entry is considered dirty
         self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
@@ -142,8 +147,13 @@ class OpArrayCache(OpArrayPiper):
         tileWeights = numpy.where(cond, 1, 256**3+1)       
         trueDirtyIndices = numpy.nonzero(numpy.where(cond, 1,0))
         
-        tileWeights = vigra.ScalarVolume(tileWeights, dtype = numpy.uint32)
-        
+        if tileWeights.ndim == 2:
+            tileWeights = vigra.ScalarImage(tileWeights, dtype = numpy.uint32)
+        elif tileWeights.ndim == 3:
+            tileWeights = vigra.ScalarVolume(tileWeights, dtype = numpy.uint32)
+        else:
+            raise RuntimeError("OpArrayCache supports only 2 and three dimensions caches for now. FIXME.")
+            
 #        print "calling drtile..."
         tileArray = drtile.test_DRTILE(tileWeights, 256**3 + 1)
 #        print "finished calling drtile."

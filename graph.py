@@ -1,6 +1,6 @@
 import numpy
 import sys
-
+import copy
 from roi import sliceToRoi
 
 from collections import deque
@@ -40,20 +40,27 @@ class InputSlot(object):
         self.name = name
         self.operator = operator
         self.partner = None
+        self.level = 0
     
     def connect(self, partner):
-        assert partner is None or isinstance(partner, OutputSlot), \
+        assert partner is None or isinstance(partner, (OutputSlot, MultiOutputSlot)), \
                "InputSlot(name=%s, operator=%s).connect: partner has type %r" \
                % (self.name, self.operator, type(partner))
         
         if self.partner == partner:
             return
         self.disconnect()
-        self.partner = partner
-        partner.connect(self)
-        # do a type check
-        self.connectOk(self.partner)
-        self.notifyConnect()
+        if partner.level > 0:
+            partner.disconnectSlot(self)
+            newop = OperatorWrapper(self.operator)
+            partner._connect(newop.inputs[self.name])
+        else:
+            self.partner = partner
+            partner._connect(self)
+            # do a type check
+            self.connectOk(self.partner)
+            if self.shape is not None:
+                self.notifyConnect()
         
     def notifyConnect(self):
         # notify operator of connection
@@ -140,6 +147,7 @@ class InputSlot(object):
 class OutputSlot(object):
     def __init__(self, name, operator = None):
         self.name = name
+        self.level = 0
         self.operator = operator
         if not hasattr(self, "_dtype"):
             self._dtype = None
@@ -149,7 +157,7 @@ class OutputSlot(object):
             self._axistags = None
         self.partners = []
     
-    def connect(self, partner):
+    def _connect(self, partner):
         if partner not in self.partners:
             self.partners.append(partner)
         #Re-run the connect anyway, because we might want to
@@ -226,59 +234,28 @@ class OutputSlot(object):
     
     @property
     def dtype(self):
+        #assert self._dtype is not None, "cannot access dtype on Slot %s, of %r - operator did not provide the info !" % (self.name,self.operator)
         return self._dtype
         
     @property
     def shape(self):
-        assert self._shape is not None, "cannot access shape on Slot %s, of %r - operator did not provide the info !" % (self.name,self.operator)
+        #assert self._shape is not None, "cannot access shape on Slot %s, of %r - operator did not provide the info !" % (self.name,self.operator)
         return self._shape
 
     @property
     def axistags(self):
-        assert self._axistags is not None, "cannot access shape on Slot %s, of %r Not Connected !" % (self.name,self.operator)
+        #assert self._axistags is not None, "cannot access axistags on Slot %s, of %r Not Connected !" % (self.name,self.operator)
         return self._axistags
 
 
-class PartialMultiInputSlot(InputSlot):
-    
-    def __init__(self, name, operator, parent):
-        InputSlot.__init__(self,name, operator)
-        self.operator = operator
-        self.name = name
-        self.parent = parent
-    
-    def disconnect(self):
-        if self.partner is not None:
-            InputSlot.disconnect(self)
-            self.parent.removeInputSlot(self)
-            
-    def notifyConnect(self):
-        if self.parent is not None:
-            self.parent.notifyPartialConnect(self)
-            
-    def __setitem__(self, key, value):
-        if self.parent is not None:
-            self.parent._partialSetItem(self, key, value)
-
-
-class PartialMultiOutputSlot(OutputSlot):
-    
-    def __init__(self, name, operator, parent):
-        OutputSlot.__init__(self,name, operator)
-        self.operator = operator
-        self.name = name
-        self.parent = parent
-    
-    def getOutSlotFromOp(self, key, destination):
-        self.parent.getOutSlotFromOp(self, key, destination)
-
 
 class MultiInputSlot(object):
-    def __init__(self, name, operator = None):
+    def __init__(self, name, operator = None, level = 1):
         self.name = name
         self.operator = operator
         self.partner = None
         self.inputSlots = []
+        self.level = level
     
     def __getitem__(self, key):
         return self.inputSlots[key]
@@ -286,71 +263,103 @@ class MultiInputSlot(object):
     def __len__(self):
         return len(self.inputSlots)
         
+    def resize(self, size):
+        while size > len(self):
+            self._appendNew()
+            
+        while size < len(self):
+            self._removeInputSlot(self[-1])
+                    
     def _appendNew(self):
-        islot = PartialMultiInputSlot(self.name+"3%d" % len(self), self.operator, self)
+        islot = InputSlot(self.name+"3%d" % len(self), self)
+        index = len(self) - 1
         self.inputSlots.append(islot)
+        if self.partner is not None:
+            if len(self.partner) >= len(self):
+                islot.connect(self.partner[index])            
         return islot
     
     def _insertNew(self, index):
-        islot = PartialMultiInputSlot(self.name+"3%d" % index, self.operator)
+        islot = InputSlot(self.name+"3%d" % index, self.operator)
         self.inputSlots.insert(index,islot)
         for i, isl in enumerate(self.inputSlots[index+1:]):
             isl.name = self.name+"3%d" % index + i + 1
+        if self.partner is not None:
+            if len(self.partner) > index:
+                islot.connect(self.partner[index])                    
         return islot
     
+    def connectAdd(self, partner):
+        slot = self._appendNew()
+        partner._connect(slot)
+        
     def connect(self,partner):
-        if isinstance(partner, MultiOutputSlot):
-            if self.partner == partner:
-                return
-            self.disconnect()
-            self.partner = partner
-            partner.connect(self)
-            # do a type check
-            self.connectOk(self.partner)
-            
-            # create new self.inputSlots for each outputSlot 
-            # of our partner    
-            for i,p in enumerate(self.partner):
-                islot = self._appendNew()
-                self.inputSlots.append(islot)
-                self.partner[i].connect(islot)
+        if self.partner == partner:
+            return
+        if partner is not None:
+            if partner.level == self.level:
+                self.disconnect()
+                self.partner = partner
+                partner._connect(self)
+                # do a type check
+                self.connectOk(self.partner)
+                
+                # create new self.inputSlots for each outputSlot 
+                # of our partner    
+                for i,p in enumerate(self.partner):
+                    islot = self._appendNew()
+                    self.partner[i]._connect(islot)
+    
+                self.operator.notifyConnect(self)
+                
+            elif partner.level == self.level - 1:
+                for i, slot in enumerate(self):                
+                    slot.connect(partner)
+                    if self.operator is not None:
+                        self.operator.notifyPartialMultiConnect((self,slot), (i,))
+            elif partner.level > self.level:
+                #TODO: wrap operator !
+                pass
+        self.partner = partner
 
-            self.operator.notifyConnect(self)
-            
-        elif isinstance(partner, OutputSlot):
-            print self.name, " Connecting to ", partner.name
-            for i, slot in enumerate(self):
-                if slot.partner == partner:
-                    raise RuntimeError("MultiInputSlot: connect is already connect to this partner %r" % partner)
-            slot = self._appendNew()
-            slot.connect(partner)
-            self.notifyPartialConnect(slot)
-            print "selflenbg", len(self)
+    def notifyConnect(self, slot):
+        index = self.inputSlots.index(slot)
+        self.operator.notifyPartialMultiConnect((self,slot), (index,))
+    
+    def notifyPartialMultiConnect(self, slots, indexes):        
+        index = self.inputSlots.index(slots[0])
+        self.operator.notifyPartialMultiConnect( (self,) + slots, (index,) +indexes)
 
-    def notifyPartialConnect(self, slot):
-        # notify operator of connection
-        # the operator may do a compatibility
-        # check that involves
-        # more then one slot
-        if self.operator is not None:
-            index = self.inputSlots.index(slot)
-            self.operator.notifyPartialMultiConnect(self, slot, index)
+    def notifyDisconnect(self, slot):
+        index = self.inputSlots.index(slot)
+        self.operator.notifyPartialMultiDisconnect((self, slot), (index,))
+    
+    def notifyPartialMultiDisconnect(self, slots, indexes):
+        index = self.inputSlots.index(slots[0])
+        self.operator.notifyPartialMultiDisconnect((self,) + slots, (index,) + indexes)
         
     def disconnect(self):
         if self.partner is not None:
             self.partner.disconnectSlot(self)
-        self.inputSlots = []
-        self.partner = None
+            self.inputSlots = []
+            self.partner = None
+            self.operator.notifyDisconnect(self)
     
-    def removeInputSlot(self, inputSlot):
-        inputSlot.disconnect()
+    def removeSlot(self, index):
+        slot = index
+        if type(index) is int:
+            slot = self[index]
+        self._removeInputSlot(slot)
+    
+    def _removeInputSlot(self, inputSlot):
         index = self.inputSlots.index(inputSlot)
         self.inputSlots.remove(inputSlot)
+        inputSlot.disconnect()
         for i, slot in enumerate(self[index:]):
-            slot.name = self.name+"3%d" % index + i
-        # reconfigure operator
-        self.notifyConnect()
- 
+            slot.name = self.name+"3%d" % (index + i)
+        #self.operator.notifyPartialMultiDisconnect((self, inputSlot), (index,))
+        self.operator.notifyConnect(self)
+
     def _partialSetItem(self, slot, key, value):
         index = self.inputSlots.index(slot)
         self.operator.multiSlotSetItem(self,slot,index, key,value)   
@@ -371,43 +380,49 @@ class MultiInputSlot(object):
         # type checking
         return True
 
+    @property
+    def graph(self):
+        return self.operator.graph
+
+
 class MultiOutputSlot(object):
-    def __init__(self, name, operator = None):
+    def __init__(self, name, operator = None, level = 1):
         self.name = name
         self.operator = operator
         self.partners = []
         self.outputSlots = []
+        self.level = level
     
     def __getitem__(self, key):
         return self.outputSlots[key]
     
     def __setitem__(self, key, value):
-        slots = self.outputSlots[key]
-        for s in slots:
-            s.disconnect()
-        
-        self.outputSlots[key] = value
-
-        slots = self.outputSlots[key]
-        for s in slots:
-            index = self.outputSlots.index(s)
-            for p in self.partners:
-                s.connect(p[index])
+        slot = self.outputSlots[key]
+        if slot != value:
+            slot.disconnect()
+            self.outputSlots[key] = value
+    
+            oldslot = slot        
+            slot = value
+            index = self.outputSlots.index(slot)
+            for p in oldslot.partners:
+                slot._connect(p)
         
     def __len__(self):
         return len(self.outputSlots)
     
     def append(self, outputSlot):
         self.outputSlots.append(outputSlot)
+        index = len(self.outputSlots) - 1
         for p in self.partners:
-            pslot = p._appendNew()
-            outputSlot.connect(pslot)
+            p.resize(len(self))
+            outputSlot._connect(p.inputSlots[index])
     
     def insert(self, index, outputSlot):
         self.outputSlots.append(outputSlot)
         for p in self.partners:
             pslot = p._insertNew(index)
-            outputSlot.connect(pslot)
+            outputSlot._connect(pslot)
         
     def remove(self, outputSlot):
         index = self.outputSlots.index(outputSlot)
@@ -415,9 +430,12 @@ class MultiOutputSlot(object):
     
     def pop(self, index = -1):
         oslot = self.outputSlots.pop(index)
+        for p in oslot.partners:
+            if isinstance(p.operator, MultiInputSlot):
+                p.operator._removeInputSlot(p)
         oslot.disconnect()
         
-    def connect(self, partner):
+    def _connect(self, partner):
         if partner not in self.partners:
             self.partners.append(partner)
         #Re-run the connect anyway, because we might want to
@@ -425,13 +443,45 @@ class MultiOutputSlot(object):
         partner.connect(self)
         
     def disconnect(self):
-        for p in self.partners:
-            p.disconnect()
+        slots = self[:]
+        for s in slots:
+            s.disconnect()
+
+    def disconnectSlot(self, partner):
+        print "kkkkkkkkkkkkkkkkkkkkasdlkasjdlkasjdlkajsdlkasjdlkjasdlkjasldkjas"
+        if partner in self.partners:
+            self.partners.remove(partner)
 
     def clearAllSlots(self):
         slots = self[:]
         for s in slots:
             self.remove(s)
+            
+    def resize(self, size):
+        while len(self) < size:
+            slot = OutputSlot(self.name,self)
+            index = len(self)
+            self.outputSlots.append(slot)
+            for p in self.partners:
+                p.resize(size)
+                slot._connect(p[index])
+        
+        while len(self) > size:
+            self.pop()
+
+        for p in self.partners:
+            p.resize(size)
+            assert len(p) == len(self)
+            
+    def getOutSlot(self, slot, key, result):
+        index = self.outputSlots.index(slot)
+        return self.operator.getPartialMultiOutSlot((slot,),(index,),key, result)
+
+    def getPartialMultiOutSlot(self, slots, indexes, key, result):
+        index = self.outputSlots.index(slots[0])
+        return self.operator.getPartialMultiOutSlot((self,) + slots, (index,) + indexes, key, result)
+
+
     
     #TODO RENAME? createInstance
     # def __copy__ ?
@@ -453,6 +503,9 @@ class MultiOutputSlot(object):
         index = self.outputSlots.index(slot)
         self.operator.getPartialMultiOutSlot(self, slot, index, key, destination)
 
+    @property
+    def graph(self):
+        return self.operator.graph
 
 class Operator(object):
     inputSlots  = []
@@ -488,7 +541,6 @@ class Operator(object):
             s.disconnect()
         for s in self.inputs.values():
             s.disconnect()
-        self.graph = None
 
     def setDirty(self, inputSlot = None):
         # simple default implementation
@@ -499,7 +551,7 @@ class Operator(object):
     def notifyConnect(self, inputSlot):
         pass
     
-    def notifyPartialMultiConnect(self, multislot, slot, index):
+    def notifyPartialMultiConnect(self, slots, indexes):
         pass
     
     def getOutSlot(self, slot, key, result):
@@ -511,8 +563,214 @@ class Operator(object):
     def setInSlot(self, slot, key, value):
         pass
 
+    def setPartialMultiInSlot(self,slots,indexes, key,value):
+        pass
+
+    def notifyDisconnect(self, slot):
+        pass
+    
+    def notifyPartialMultiDisconnect(self, slots, indexes):
+        pass
+
+class OperatorWrapper(Operator):
+    inputSlots  = []
+    outputSlots = []
+    name = ""
+    
+    def __init__(self, operator):
+        self.inputs = {}
+        self.outputs = {}
+        self.operator = operator
+        self.graph = operator.graph
+        self.name == operator.name
+        self.comprehensionSlots = 1
+        self.innerOperators = []
+        self.comprehensionCount = 0
+        self.origInputs = self.operator.inputs.copy()
+        self.origOutputs = self.operator.outputs.copy()
+        
+        # replicate inputslot definitions
+        for islot in self.operator.inputSlots:
+            level = islot.level + 1
+            self.inputSlots.append(MultiInputSlot(islot.name, level = level))
+
+        # replicate outputslot definitions
+        for oslot in self.operator.outputSlots:
+            level = oslot.level + 1
+            self.outputSlots.append(MultiOutputSlot(oslot.name, level = level))
+
+                
+        # replicate input slots for the instance
+        for islot in self.operator.inputs.values():
+            level = islot.level + 1
+            ii = MultiInputSlot(islot.name, self, level = level)
+            self.inputs[islot.name] = ii
+            self.operator.inputs[islot.name] = ii
+        
+        # replicate output slots for the instance
+        for oslot in self.operator.outputs.values():
+            level = oslot.level + 1
+            oo = MultiOutputSlot(oslot.name, self, level = level)
+            self.outputs[oslot.name] = oo
+            self.operator.outputs[oslot.name] = oo
+
+        #connnect input slots
+        for islot in self.origInputs.values():
+            ii = self.inputs[islot.name]
+            partner = islot.partner
+            islot.disconnect()
+            self.operator.inputs[islot.name] = ii
+            if partner is not None:
+                partner._connect(ii)
+
+        #connect output slots
+        for oslot in self.origOutputs.values():
+            oo = self.outputs[oslot.name]            
+            partners = copy.copy(oslot.partners)
+            oslot.disconnect()
+            for p in partners:         
+                oo._connect(p)
+
+                    
+    def restoreOriginalOperator(self):
+        print "Restoring original operator"
+        self.operator.inputs = self.origInputs
+        self.operator.outputs = self.origOutputs
+        
+        for k, islot in self.inputs.items():
+            if islot.partner is not None:
+                self.operator.inputs[k].connect(islot.partner)
+
+        for k, oslot in self.outputs.items():
+            for p in oslot.partners:
+                self.operator.outputs[k]._connect(p)
+                
+        self.disconnect()
+
+    
+    def disconnect(self):
+        for s in self.outputs.values():
+            s.disconnect()
+        for s in self.inputs.values():
+            s.disconnect()
+
+    def setDirty(self, inputSlot = None):
+        # simple default implementation
+        # -> set all outputs dirty    
+        for os in self.outputs.values():
+            os.setDirty()
+
+    def addInnerOperator(self):
+        opcopy = self.operator.__class__(self.graph)
+        self.innerOperators.append(opcopy)
+        return opcopy
+    
+    def removeInnerOperator(self, op):
+        index = self.innerOperators.index(op)
+        op.disconnect()
+        self.innerOperators.remove(op)
+        for name, oslot in self.outputs.items():
+            oslot.pop(index)
+            
+    def connectInnerOutputs(self):
+        for k,mslot in self.outputs.items():
+            assert isinstance(mslot,MultiOutputSlot)
+                        
+            while len(mslot) > len(self.innerOperators):
+                mslot.pop()
+                
+            while len(mslot) < len(self.innerOperators):
+                mslot.append(self.innerOperators[len(mslot)-1].outputs[mslot.name])
+
+            mslot.resize(len(self.innerOperators))
+
+        for index, innerOp in enumerate(self.innerOperators):
+            for mslot in self.outputs.values():
+                mslot[index] = innerOp.outputs[mslot.name]
+
+
+    def notifyConnect(self, inputSlot):
+        newInnerOps = []
+        
+        maxLen = 0
+        for name, islot in self.inputs.items():
+            maxLen = max(len(islot), maxLen)
+                
+        while maxLen > len(self.innerOperators):
+            newop = self.addInnerOperator()
+            newInnerOps.append(newop)
+
+        while maxLen < len(self.innerOperators):
+            op = self.innerOperators[-1]
+            self.removeInnerOperator(op)
+
+        
+        for k,mslot in self.inputs.items():
+            mslot.resize(maxLen)
+            for i, slot in enumerate(mslot):
+                if slot.partner is not None:
+                    slot.partner._connect(self.innerOperators[i].inputs[mslot.name])
+        
+        self.connectInnerOutputs()
+        
+        for k,mslot in self.outputs.items():
+            assert len(mslot) == len(self.innerOperators) == maxLen, "%d, %d" % (len(mslot), len(self.innerOperators))        
+
+    
+    def notifyPartialMultiConnect(self, slots, indexes):
+        self.notifyConnect(slots[0])
+        return
+        #return
+        newInnerOps = []
+        multislot = slots[0]
+        slot = slots[1]
+        index = indexes[0]
+        
+        if len(multislot) > len(self.innerOperators):
+            newInnerOps.append(self.addInnerOperator())
+            
+        slot.partner._connect(self.innerOperators[index].inputs[multislot.name])
+        
+        self.connectInnerOutputs()
+        return
+        
+        for k,mslot in self.outputs.items():
+            while len(mslot) < len(self.innerOperators):
+                mslot.append(self.innerOperators[len(mslot)-1].outputs[mslot.name])
+
+            mslot[index] = self.innerOperators[index].outputs[mslot.name]
+
+
+    def notifyDisconnect(self, slot):
+        needWrapping = False
+        for iname, islot in self.inputs.items():
+            if islot is not slot and islot.partner is not None:
+                if islot.partner.level > self.origInputs[iname].level:
+                    needWrapping = True
+                    
+        if needWrapping is False:
+            self.restoreOriginalOperator()
+        
+    def notifyPartialMultiDisconnect(self, slots, indexes):
+        return
+        maxLen = 0
+        for name, islot in self.inputs.items():
+            maxLen = max(len(islot), maxLen)
+        
+        while len(self.innerOperators) > maxLen:
+            op = self.innerOperators[-1]
+            self.removeInnerOperator(op)
+    
+    def getPartialMultiOutSlot(self, multislot, slot, index, key, result):
+        self.innerOperators[index].outputs[multislot.name][key].writeInto(result)
+    
+    def setInSlot(self, slot, key, value):
+        pass
+
     def setPartialMultiInSlot(self,multislot,slot,index, key,value):
         pass
+
+
 
 
 class Worker(Thread):
@@ -581,6 +839,8 @@ class Graph(object):
     def finalize(self):
         print "Finalizing Graph..."
         self.running = False
+        for w in self.workers:
+            w.join()
     
     def registerOperator(self, op):
         self.operators.append(op)
