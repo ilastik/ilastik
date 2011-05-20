@@ -11,6 +11,9 @@ import greenlet
 requestCounterLock = Lock()
 requestCounter = 0
 
+#sys.setrecursionlimit(1000)
+
+
 class GetItemRequestObject(object):
     """ Enables the syntax:
         InputSlot[:,:].writeInto(array)
@@ -52,6 +55,8 @@ class InputSlot(object):
         self.disconnect()
         if partner.level > 0:
             partner.disconnectSlot(self)
+            print "InputSlot", self.name, "of op", self.operator.name, self.operator
+            print "-> Wrapping operator..."
             newop = OperatorWrapper(self.operator)
             partner._connect(newop.inputs[self.name])
         else:
@@ -271,16 +276,22 @@ class MultiInputSlot(object):
             self._removeInputSlot(self[-1])
                     
     def _appendNew(self):
-        islot = InputSlot(self.name+"3%d" % len(self), self)
+        if self.level <= 1:
+            islot = InputSlot(self.name +"3%d" % len(self),self)
+        else:
+            islot = MultiInputSlot(self.name +"3%d" % len(self),self, level = self.level - 1)
         index = len(self) - 1
         self.inputSlots.append(islot)
         if self.partner is not None:
             if len(self.partner) >= len(self):
-                islot.connect(self.partner[index])            
+                self.partner[index]._connect(islot)            
         return islot
     
     def _insertNew(self, index):
-        islot = InputSlot(self.name+"3%d" % index, self.operator)
+        if self.level == 1:
+            islot = InputSlot(self.name +"3%d" % index,self)
+        else:
+            islot = MultiInputSlot(self.name +"3%d" % index,self, level = self.level - 1)
         self.inputSlots.insert(index,islot)
         for i, isl in enumerate(self.inputSlots[index+1:]):
             isl.name = self.name+"3%d" % index + i + 1
@@ -308,6 +319,7 @@ class MultiInputSlot(object):
                 # of our partner    
                 for i,p in enumerate(self.partner):
                     islot = self._appendNew()
+                    print "Dtype", islot
                     self.partner[i]._connect(islot)
     
                 self.operator.notifyConnect(self)
@@ -318,7 +330,13 @@ class MultiInputSlot(object):
                     if self.operator is not None:
                         self.operator.notifyPartialMultiConnect((self,slot), (i,))
             elif partner.level > self.level:
-                #TODO: wrap operator !
+                partner.disconnectSlot(self)
+                print "MultiInputSlot", self.name, "of op", self.operator.name, self.operator
+                print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
+
+                newop = OperatorWrapper(self.operator)
+                partner._connect(newop.inputs[self.name])
+            else:
                 pass
         self.partner = partner
 
@@ -357,7 +375,7 @@ class MultiInputSlot(object):
         inputSlot.disconnect()
         for i, slot in enumerate(self[index:]):
             slot.name = self.name+"3%d" % (index + i)
-        #self.operator.notifyPartialMultiDisconnect((self, inputSlot), (index,))
+        #TODO: should we introduce a removeEvent ?
         self.operator.notifyConnect(self)
 
     def _partialSetItem(self, slot, key, value):
@@ -367,7 +385,7 @@ class MultiInputSlot(object):
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
-        s = MultiInputSlot(self.name, operator)
+        s = MultiInputSlot(self.name, operator, level = self.level)
         return s
             
     def setDirty(self):
@@ -412,6 +430,7 @@ class MultiOutputSlot(object):
         return len(self.outputSlots)
     
     def append(self, outputSlot):
+        outputSlot.operator = self
         self.outputSlots.append(outputSlot)
         index = len(self.outputSlots) - 1
         for p in self.partners:
@@ -419,6 +438,7 @@ class MultiOutputSlot(object):
             outputSlot._connect(p.inputSlots[index])
     
     def insert(self, index, outputSlot):
+        outputSlot.operator = self
         self.outputSlots.append(outputSlot)
         for p in self.partners:
             pslot = p._insertNew(index)
@@ -448,7 +468,6 @@ class MultiOutputSlot(object):
             s.disconnect()
 
     def disconnectSlot(self, partner):
-        print "kkkkkkkkkkkkkkkkkkkkasdlkasjdlkasjdlkajsdlkasjdlkjasdlkjasldkjas"
         if partner in self.partners:
             self.partners.remove(partner)
 
@@ -459,7 +478,10 @@ class MultiOutputSlot(object):
             
     def resize(self, size):
         while len(self) < size:
-            slot = OutputSlot(self.name,self)
+            if self.level == 1:
+                slot = OutputSlot(self.name,self)
+            else:
+                slot = MultiOutputSlot(self.name,self, level = self.level - 1)
             index = len(self)
             self.outputSlots.append(slot)
             for p in self.partners:
@@ -475,10 +497,14 @@ class MultiOutputSlot(object):
             
     def getOutSlot(self, slot, key, result):
         index = self.outputSlots.index(slot)
-        return self.operator.getPartialMultiOutSlot((slot,),(index,),key, result)
+        return self.operator.getPartialMultiOutSlot((self, slot,),(index,),key, result)
 
     def getPartialMultiOutSlot(self, slots, indexes, key, result):
-        index = self.outputSlots.index(slots[0])
+        try:
+            index = self.outputSlots.index(slots[0])
+        except:
+            print self.name, self.operator.name, self.operator, slots
+            raise
         return self.operator.getPartialMultiOutSlot((self,) + slots, (index,) + indexes, key, result)
 
 
@@ -486,7 +512,7 @@ class MultiOutputSlot(object):
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
-        s = MultiOutputSlot(self.name, operator)
+        s = MultiOutputSlot(self.name, operator, level = self.level)
         return s
             
     def setDirty(self):
@@ -513,6 +539,7 @@ class Operator(object):
     name = ""
     
     def __init__(self, graph):
+        self.operator = None
         self.inputs = {}
         self.outputs = {}
         self.graph = graph
@@ -557,7 +584,7 @@ class Operator(object):
     def getOutSlot(self, slot, key, result):
         return None
 
-    def getPartialMultiOutSlot(self, multislot, slot, index, key, result):
+    def getPartialMultiOutSlot(self, slots, indexes, key, result):
         return None
     
     def setInSlot(self, slot, key, value):
@@ -573,31 +600,42 @@ class Operator(object):
         pass
 
 class OperatorWrapper(Operator):
-    inputSlots  = []
-    outputSlots = []
     name = ""
+    
+    @property
+    def inputSlots(self):
+        return self._inputSlots
+    
+    @property
+    def outputSlots(self):
+        return self._outputSlots
     
     def __init__(self, operator):
         self.inputs = {}
         self.outputs = {}
         self.operator = operator
         self.graph = operator.graph
-        self.name == operator.name
+        self.name = operator.name
         self.comprehensionSlots = 1
         self.innerOperators = []
         self.comprehensionCount = 0
         self.origInputs = self.operator.inputs.copy()
         self.origOutputs = self.operator.outputs.copy()
+        print "wrapping ", operator.name, operator
+        
+        self._inputSlots = []
+        self._outputSlots = []
         
         # replicate inputslot definitions
         for islot in self.operator.inputSlots:
             level = islot.level + 1
-            self.inputSlots.append(MultiInputSlot(islot.name, level = level))
+            print "new level", level, "for slot", islot.name
+            self._inputSlots.append(MultiInputSlot(islot.name, level = level))
 
         # replicate outputslot definitions
         for oslot in self.operator.outputSlots:
             level = oslot.level + 1
-            self.outputSlots.append(MultiOutputSlot(oslot.name, level = level))
+            self._outputSlots.append(MultiOutputSlot(oslot.name, level = level))
 
                 
         # replicate input slots for the instance
@@ -605,14 +643,20 @@ class OperatorWrapper(Operator):
             level = islot.level + 1
             ii = MultiInputSlot(islot.name, self, level = level)
             self.inputs[islot.name] = ii
-            self.operator.inputs[islot.name] = ii
+            op = self.operator
+            while isinstance(op.operator, (Operator, MultiInputSlot)):
+                op = op.operator
+            op.inputs[islot.name] = ii
         
         # replicate output slots for the instance
         for oslot in self.operator.outputs.values():
             level = oslot.level + 1
             oo = MultiOutputSlot(oslot.name, self, level = level)
             self.outputs[oslot.name] = oo
-            self.operator.outputs[oslot.name] = oo
+            op = self.operator
+            while isinstance(op.operator, (Operator, MultiInputSlot)):
+                op = op.operator
+            op.outputs[oslot.name] = oo
 
         #connnect input slots
         for islot in self.origInputs.values():
@@ -660,9 +704,11 @@ class OperatorWrapper(Operator):
         for os in self.outputs.values():
             os.setDirty()
 
-    def addInnerOperator(self):
-        opcopy = self.operator.__class__(self.graph)
-        self.innerOperators.append(opcopy)
+    def createInnerOperator(self):
+        if self.operator.__class__ is not OperatorWrapper:
+            opcopy = self.operator.__class__(self.graph)
+        else:
+            opcopy = OperatorWrapper(self.operator.createInnerOperator())
         return opcopy
     
     def removeInnerOperator(self, op):
@@ -697,7 +743,8 @@ class OperatorWrapper(Operator):
             maxLen = max(len(islot), maxLen)
                 
         while maxLen > len(self.innerOperators):
-            newop = self.addInnerOperator()
+            newop = self.createInnerOperator()
+            self.innerOperators.append(newop)
             newInnerOps.append(newop)
 
         while maxLen < len(self.innerOperators):
@@ -727,7 +774,9 @@ class OperatorWrapper(Operator):
         index = indexes[0]
         
         if len(multislot) > len(self.innerOperators):
-            newInnerOps.append(self.addInnerOperator())
+            newop = self.createInnerOperator()
+            self.innerOperators.apend(newop)
+            newInnerOps.append(newop)
             
         slot.partner._connect(self.innerOperators[index].inputs[multislot.name])
         
@@ -761,8 +810,11 @@ class OperatorWrapper(Operator):
             op = self.innerOperators[-1]
             self.removeInnerOperator(op)
     
-    def getPartialMultiOutSlot(self, multislot, slot, index, key, result):
-        self.innerOperators[index].outputs[multislot.name][key].writeInto(result)
+    def getPartialMultiOutSlot(self, slots, indexes, key, result):
+        if len(indexes) == 1:
+            return self.innerOperators[indexes[0]].getOutSlot(slots[1], key, result)
+        else:
+            self.innerOperators[indexes[0]].getPartialMultiOutSlot(slots[1:], indexes[1:], key, result)
     
     def setInSlot(self, slot, key, value):
         pass
