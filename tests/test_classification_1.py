@@ -5,7 +5,7 @@ import gc
 import roi
 import copy
 
-from operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
+from operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
 from mockOperators import ArrayProvider, SingleValueProvider
 from graph import MultiInputSlot
 
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     multislot = OpMultiArrayPiper(g)
     
     
-    for i in range(8):
+    for i in range(3):
         provider = ArrayProvider("Random input", shape=shape, dtype=numpy.float32, axistags=axistags)
         provider.setData(numpy.random.rand(*provider.shape).astype(provider.dtype).view(vigra.VigraArray))
         multislot.inputs["MultiInput"].connectAdd(provider)
@@ -152,7 +152,9 @@ if __name__ == "__main__":
     opb.inputs["Sigma"].connect(sigmaProvider2)
     
     
-    featuresOutput = OpMultiArrayPiper(g)
+    print "zzzzzzzzzzzasidjhaksjdhkajsdhkjasdhk", opa.outputs["Output"].level, len( opa.outputs["Output"])
+    
+    featuresOutput = OpMultiMultiArrayPiper(g)
     featuresOutput.inputs["MultiInput"].connectAdd(opa.outputs["Output"])
     featuresOutput.inputs["MultiInput"].connectAdd(opb.outputs["Output"])
     
@@ -162,16 +164,16 @@ if __name__ == "__main__":
 
     print "LLLLLLLLLEVEL",cacher.outputs["Output"].level, len(cacher.outputs["Output"])
 
-#
-#    opc = OpMultiArrayStacker(g)
-#    opc.inputs['MultiInput'].connect(cacher.outputs["Output"])
-#
-#    print "LLLLLLLLLEVEL",cacher.outputs["Output"].level, len(cacher.outputs["Output"])
-#
-#    key = roi.roiToSlice(numpy.array(key[0]), numpy.array(key[1]))
-#
-#    for i in range(8):
-#        res1 = opc.outputs["SingleOutput"][i][key].allocate()
+
+    opc = OpMultiArrayStacker(g)
+    opc.inputs['MultiInput'].connect(cacher.outputs["Output"])
+
+    print "LLLLLLLLLEVEL",cacher.outputs["Output"].level, len(cacher.outputs["Output"])
+
+    key = roi.roiToSlice(numpy.array(key[0]), numpy.array(key[1]))
+
+    for i in range(3):
+        res1 = opc.outputs["SingleOutput"][i][key].allocate()
         
     g.finalize()
 

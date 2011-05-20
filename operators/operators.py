@@ -189,6 +189,8 @@ class OpArrayCache(OpArrayPiper):
         elif tileWeights.ndim == 3:
             tileWeights = vigra.ScalarVolume(tileWeights, dtype = numpy.uint32)
         else:
+            #axistags = vigra.VigraArray.defaultAxistags(tileWeights.ndim)
+            #tileWeights = vigra.VigraArray(tileWeights, dtype = numpy.uint32, axistags = axistags)
             raise RuntimeError("OpArrayCache supports only 2 and three dimensions caches for now. FIXME.")
             
 #        print "calling drtile..."
