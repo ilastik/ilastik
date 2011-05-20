@@ -5,7 +5,7 @@ import gc
 import roi
 import copy
 
-from operators.operators import OpArrayCache, OpArrayPiper
+from operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
 from mockOperators import ArrayProvider, SingleValueProvider
 from graph import MultiInputSlot
 
@@ -105,7 +105,7 @@ class OpMultiArrayStacker(Operator):
                 cnt += 1
             else:
                 channels = inSlot.shape[inSlot.axistags.channelIndex]
-                print " 555555555 55555555555555 adding end slicer", result.shape
+                #print " 555555555 55555555555555 adding end slicer", result.shape
                 key_ = key + (slice(None,None,None),)
                 v = inSlot[key_].writeInto(result[...,cnt:cnt+channels+1])
                 cnt += channels
@@ -121,9 +121,17 @@ if __name__ == "__main__":
     key = [[50,50,50,0],[100,100,100,4]]
     
     g = Graph(numThreads = numThreads)
-    provider = ArrayProvider("Random input", shape=shape, dtype=numpy.float32, axistags=axistags)
-    provider.setData(numpy.random.rand(*provider.shape).astype(provider.dtype).view(vigra.VigraArray))
     
+    multislot = OpMultiArrayPiper(g)
+    
+    
+    for i in range(8):
+        provider = ArrayProvider("Random input", shape=shape, dtype=numpy.float32, axistags=axistags)
+        provider.setData(numpy.random.rand(*provider.shape).astype(provider.dtype).view(vigra.VigraArray))
+        multislot.inputs["MultiInput"].connectAdd(provider)
+    
+    featuresInput = OpArrayPiper(g)
+    featuresInput.inputs["Input"].connect(multislot.outputs["MultiOutput"])
     sigmaProvider1 = SingleValueProvider("Sigma", float)
     sigmaProvider2 = SingleValueProvider("Sigma", float)
     sigmaProvider1.setValue(1.2)
@@ -132,21 +140,39 @@ if __name__ == "__main__":
     
     opa = OpGaussianSmooting(g)
     opb = OpHessianOfGaussianEigenvalues(g)
-    
-    opc = OpMultiArrayStacker(g)
-    
-    opa.inputs["Input"].connect(provider)
-    opb.inputs["Input"].connect(provider)
+        
+    print "LLLLLLLLLEVEL",featuresInput.outputs["Output"].level, len(featuresInput.outputs["Output"])
+        
+        
+        
+    opa.inputs["Input"].connect(featuresInput.outputs["Output"])
+    opb.inputs["Input"].connect(featuresInput.outputs["Output"])
     
     opa.inputs["Sigma"].connect(sigmaProvider1)
     opb.inputs["Sigma"].connect(sigmaProvider2)
     
-    opc.inputs['MultiInput'].connectAdd(opa.outputs["Output"])
-    opc.inputs['MultiInput'].connectAdd(opb.outputs["Output"])
+    
+    featuresOutput = OpMultiArrayPiper(g)
+    featuresOutput.inputs["MultiInput"].connectAdd(opa.outputs["Output"])
+    featuresOutput.inputs["MultiInput"].connectAdd(opb.outputs["Output"])
+    
+    
+    cacher = OpArrayCache(g)
+    cacher.inputs["Input"].connect(featuresOutput.outputs["MultiOutput"])
 
-    key = roi.roiToSlice(numpy.array(key[0]), numpy.array(key[1]))
+    print "LLLLLLLLLEVEL",cacher.outputs["Output"].level, len(cacher.outputs["Output"])
 
-    res1 = opc.outputs["SingleOutput"][key].allocate()
+#
+#    opc = OpMultiArrayStacker(g)
+#    opc.inputs['MultiInput'].connect(cacher.outputs["Output"])
+#
+#    print "LLLLLLLLLEVEL",cacher.outputs["Output"].level, len(cacher.outputs["Output"])
+#
+#    key = roi.roiToSlice(numpy.array(key[0]), numpy.array(key[1]))
+#
+#    for i in range(8):
+#        res1 = opc.outputs["SingleOutput"][i][key].allocate()
+        
     g.finalize()
 
 
