@@ -599,6 +599,8 @@ class Operator(object):
     def notifyPartialMultiDisconnect(self, slots, indexes):
         pass
 
+
+
 class OperatorWrapper(Operator):
     name = ""
     
@@ -676,10 +678,23 @@ class OperatorWrapper(Operator):
                 oo._connect(p)
 
                     
-    def restoreOriginalOperator(self):
+    def testRestoreOriginalOperator(self):
+        needWrapping = False
+        for iname, islot in self.inputs.items():
+            if islot is not slot and islot.partner is not None:
+                if islot.partner.level > self.origInputs[iname].level:
+                    needWrapping = True
+                    
+        if needWrapping is False:
+            self.restoreOriginalOperator()
+        
         print "Restoring original operator"
-        self.operator.inputs = self.origInputs
-        self.operator.outputs = self.origOutputs
+
+        op = self.operator
+        while isinstance(op.operator, (Operator, MultiInputSlot)):
+            op = op.operator
+        op.outputs = self.origOutputs
+        op.inputs = self.origInputs
         
         for k, islot in self.inputs.items():
             if islot.partner is not None:
@@ -689,7 +704,8 @@ class OperatorWrapper(Operator):
             for p in oslot.partners:
                 self.operator.outputs[k]._connect(p)
                 
-        self.disconnect()
+        if isinstance(self.operator, OperatorWrapper):
+            self.operator.restoreOriginalOperator()
 
     
     def disconnect(self):
@@ -791,14 +807,7 @@ class OperatorWrapper(Operator):
 
 
     def notifyDisconnect(self, slot):
-        needWrapping = False
-        for iname, islot in self.inputs.items():
-            if islot is not slot and islot.partner is not None:
-                if islot.partner.level > self.origInputs[iname].level:
-                    needWrapping = True
-                    
-        if needWrapping is False:
-            self.restoreOriginalOperator()
+        self.testRestoreOriginalOperator()
         
     def notifyPartialMultiDisconnect(self, slots, indexes):
         return

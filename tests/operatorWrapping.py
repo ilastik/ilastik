@@ -126,15 +126,16 @@ source0.setData(numpy.zeros(source0.shape,dtype = source0.dtype))
 opb = OpMultiMultiArrayPiper(g)
 
 for i in range(7):
-    opa1 = OpA(g)
-    opa2 = OpB(g)
+    opas = []
+    opas.append(OpA(g))
+    opas.append(OpB(g))
     opb0 = OpMultiArrayPiper(g)
     
-    opa1.inputs["Input"].connect(source0)
-    opa2.inputs["Input"].connect(source0)
-    
-    opb0.inputs["MultiInput"].connectAdd(opa1.outputs["Output"])
-    opb0.inputs["MultiInput"].connectAdd(opa2.outputs["Output"])
+    opas[0].inputs["Input"].connect(source0)
+    opas[1].inputs["Input"].connect(source0)
+    0
+    opb0.inputs["MultiInput"].connectAdd(opas[i % 2].outputs["Output"])
+    opb0.inputs["MultiInput"].connectAdd(opas[(i + 1) % 2].outputs["Output"])
     
     opb.inputs["MultiInput"].connectAdd(opb0.outputs["MultiOutput"])
 
@@ -171,14 +172,23 @@ print "EOut: ", ope.outputs["MultiOutput"].level, len(ope.outputs["MultiOutput"]
 
 for i in range(7):
     print "Checking b2, ", i
-    assert (opb2.outputs["MultiOutput"][i][0][:].allocate() == 0).all()
-    assert (opb2.outputs["MultiOutput"][i][1][:].allocate() == 1).all()
+    assert (opb2.outputs["MultiOutput"][i][i % 2][:].allocate() == 0).all()
+    assert (opb2.outputs["MultiOutput"][i][(i + 1) % 2][:].allocate() == 1).all()
     #assert (ope.outputs["MultiOutput"][i][0][:,:] == 1).all()
     #assert (ope.outputs["MultiOutput"][i][0][:,:] == 2).all()    
 
 for i in range(7):
     print "Checking", i
-    assert (ope.outputs["MultiOutput"][i][0][:].allocate() == 1).all()
-    assert (ope.outputs["MultiOutput"][i][1][:].allocate() == 2).all()
-    #assert (ope.outputs["MultiOutput"][i][0][:,:] == 1).all()
-    #assert (ope.outputs["MultiOutput"][i][0][:,:] == 2).all()    
+    assert (ope.outputs["MultiOutput"][i][i % 2][:].allocate() == 1).all()
+    assert (ope.outputs["MultiOutput"][i][(i + 1) % 2][:].allocate() == 2).all()
+
+for i in range(7):
+    print "Checking", i
+    assert (ope.outputs["MultiOutput"][i][i % 2][:].allocate() == 1).all()
+    assert (ope.outputs["MultiOutput"][i][(i + 1) % 2][:].allocate() == 2).all()
+
+
+opd.inputs["Input"].disconnect()
+
+assert not isinstance(opd.inputs["Input"], MultiInputSlot), opd.inputs["Input"].level
+assert not isinstance(opd.inputs["Output"], MultiInputSlot), opd.outputs["Output"].level
