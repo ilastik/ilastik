@@ -6,6 +6,7 @@ from Queue import Empty
 from collections import deque
 import greenlet, threading
 import vigra
+import copy
 
 class OpArrayPiper(Operator):
     inputSlots = [InputSlot("Input")]
@@ -14,7 +15,7 @@ class OpArrayPiper(Operator):
     def notifyConnect(self, inputSlot):
         self.outputs["Output"]._dtype = inputSlot.dtype
         self.outputs["Output"]._shape = inputSlot.shape
-        self.outputs["Output"]._axistags = inputSlot.axistags
+        self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
 
     @property
     def shape(self):
@@ -188,6 +189,8 @@ class OpArrayCache(OpArrayPiper):
         elif tileWeights.ndim == 3:
             tileWeights = vigra.ScalarVolume(tileWeights, dtype = numpy.uint32)
         else:
+            #axistags = vigra.VigraArray.defaultAxistags(tileWeights.ndim)
+            #tileWeights = vigra.VigraArray(tileWeights, dtype = numpy.uint32, axistags = axistags)
             raise RuntimeError("OpArrayCache supports only 2 and three dimensions caches for now. FIXME.")
             
 #        print "calling drtile..."

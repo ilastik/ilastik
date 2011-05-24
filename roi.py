@@ -7,7 +7,7 @@ def sliceToRoi(s, shape=None):
        Returns:
             ROI instance corresponding to slice
     """
-    assert type(s) == list or type(s) == slice or type(s) == tuple
+    assert type(s) == list or type(s) == slice or type(s) == tuple or type(s) == int
     
     if not isinstance(s, (list,tuple)):
         #special case for the [:] getall access

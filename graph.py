@@ -146,6 +146,9 @@ class InputSlot(object):
     @property
     def axistags(self):
         assert self.partner is not None, "cannot acess shape on Slot '%s', of %r Not Connected !" % (self.name,self.operator)
+        if self.partner.name is not "Sigma":
+            assert self.partner.axistags is not None, "%s, %s" % (self.name, self.partner.name)
+            print "askljdhkasjdhkasjdhkjasdhkajsdh", self.partner.axistags, len(self.partner.axistags)
         return self.partner.axistags
 
     
