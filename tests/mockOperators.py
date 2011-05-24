@@ -56,7 +56,6 @@ class ArrayProvider(OutputSlot):
     def fireRequest(self, key, destination):
         assert self._data is not None, "cannot do __getitem__ on Slot %s,  data was not set !!" % (self.name,self,)
         self._lock.acquire()
-        print "222lllllllllllll %r, %r" % (destination.shape, self._data.__getitem__(key).shape)
         destination[:] = self._data.__getitem__(key)
         self._lock.release()
 

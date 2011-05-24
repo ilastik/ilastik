@@ -90,8 +90,11 @@ class OpMultiArrayStacker(Operator):
         
         c = 0
         for inSlot in self.inputs["MultiInput"]:
-            c += inSlot.shape[-1]
-        self.outputs["SingleOutput"]._shape = (200,200,200,4)     
+            if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
+                c += 1
+            else:
+                c += inSlot.shape[inSlot.axistags.channelIndex]
+        self.outputs["SingleOutput"]._shape = inSlot.shape[:-1] + (c,)    
 
     
     def getOutSlot(self, slot, key, result):
@@ -100,14 +103,14 @@ class OpMultiArrayStacker(Operator):
         for i, inSlot in enumerate(self.inputs['MultiInput']):
             #print "a sadf sadf sadf asdf ", key
             if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                
+                 
                 v = inSlot[key].writeInto(result[..., cnt])
                 cnt += 1
             else:
                 channels = inSlot.shape[inSlot.axistags.channelIndex]
                 #print " 555555555 55555555555555 adding end slicer", result.shape
                 key_ = key + (slice(None,None,None),)
-                v = inSlot[key_].writeInto(result[...,cnt:cnt+channels+1])
+                v = inSlot[key_].writeInto(result[...,cnt:cnt+channels])
                 cnt += channels
             v()
                  
@@ -118,16 +121,25 @@ if __name__ == "__main__":
     axistags = vigra.VigraArray.defaultAxistags(len(shape)+1)
     axistags.dropChannelAxis()
     
-    key = [[50,50,50,0],[100,100,100,4]]
+    key = [[50,50,50,0],[100,100,100,5]]
     
     g = Graph(numThreads = numThreads)
     
     multislot = OpMultiArrayPiper(g)
     
+    numImages = 2
     
-    for i in range(3):
+    
+    for i in range(numImages):
+        shape = list(shape)
+        shape[1] += i
+        shape = tuple(shape)
         provider = ArrayProvider("Random input", shape=shape, dtype=numpy.float32, axistags=axistags)
-        provider.setData(numpy.random.rand(*provider.shape).astype(provider.dtype).view(vigra.VigraArray))
+        #data = numpy.random.rand(*provider.shape)
+        data = numpy.zeros(provider.shape)
+        data[:] = i
+        data = data.astype(provider.dtype).view(vigra.VigraArray)
+        provider.setData(data)
         multislot.inputs["MultiInput"].connectAdd(provider)
     
     featuresInput = OpArrayPiper(g)
@@ -137,16 +149,35 @@ if __name__ == "__main__":
     sigmaProvider1.setValue(1.2)
     sigmaProvider2.setValue(2.2)
 
+    for i in range(numImages):
+        print multislot.outputs["MultiOutput"][i][7,7,:].allocate()
     
+    islot = featuresInput.inputs["Input"]
+    oslot = featuresInput.outputs["Output"]
+    for i in range(numImages):
+        print "--------"
+        print i
+        print "--------"
+        #p = islot[i].partner
+        #print p.name, p.operator, p.shape, p.dtype, p
+        #print islot, islot[i]
+        #print islot.operator, islot[i].operator
+        print featuresInput.outputs["Output"][i][7,7,30:40].allocate()
+        #print p[7,7,:].allocate()
+        print oslot, oslot.operator, oslot[i], oslot[i].operator
+
+
     opa = OpGaussianSmooting(g)
     opb = OpHessianOfGaussianEigenvalues(g)
-        
+    opc = OpArrayPiper(g)
+    
     print "LLLLLLLLLEVEL",featuresInput.outputs["Output"].level, len(featuresInput.outputs["Output"])
         
         
         
     opa.inputs["Input"].connect(featuresInput.outputs["Output"])
     opb.inputs["Input"].connect(featuresInput.outputs["Output"])
+    opc.inputs["Input"].connect(featuresInput.outputs["Output"])
     
     opa.inputs["Sigma"].connect(sigmaProvider1)
     opb.inputs["Sigma"].connect(sigmaProvider2)
@@ -154,10 +185,12 @@ if __name__ == "__main__":
     
     print "zzzzzzzzzzzasidjhaksjdhkajsdhkjasdhk", opa.outputs["Output"].level, len( opa.outputs["Output"])
     
-    featuresOutput = OpMultiMultiArrayPiper(g)
+    featuresOutput = OpMultiArrayPiper(g)
     featuresOutput.inputs["MultiInput"].connectAdd(opa.outputs["Output"])
     featuresOutput.inputs["MultiInput"].connectAdd(opb.outputs["Output"])
+    featuresOutput.inputs["MultiInput"].connectAdd(opc.outputs["Output"])
     
+    print "llllllllllll", len(featuresOutput.outputs["MultiOutput"])
     
     cacher = OpArrayCache(g)
     cacher.inputs["Input"].connect(featuresOutput.outputs["MultiOutput"])
@@ -170,11 +203,53 @@ if __name__ == "__main__":
 
     print "LLLLLLLLLEVEL",cacher.outputs["Output"].level, len(cacher.outputs["Output"])
 
-    key = roi.roiToSlice(numpy.array(key[0]), numpy.array(key[1]))
 
-    for i in range(3):
-        res1 = opc.outputs["SingleOutput"][i][key].allocate()
+    for i in range(numImages):
+        print "##########################################"
+        print " image ", i
+        print "##########################################"
+
+        iinput = featuresInput.inputs["Input"][i]
+        print "featuresInput", iinput.__class__
+        print "Input", iinput.shape
+        oo = featuresInput.outputs["Output"][i]
+        print "Output",oo.shape
+        print "---"
+
+        iinput = opa.inputs["Input"][i]
+        print "opa", iinput.__class__
+        print "Input", iinput.shape
+        oo = opa.outputs["Output"][i]
+        print "Output",oo.shape
+        print "---"
         
+        iinput = featuresOutput.inputs["MultiInput"][i]
+        print "featuresOutput", iinput.__class__, len(featuresOutput.inputs["MultiInput"][i]),len(featuresOutput.outputs["MultiOutput"][i])
+        for ii, iiinput in enumerate(iinput):
+            print "Input", iiinput.shape
+            oo = featuresOutput.outputs["MultiOutput"][i][ii]
+            print "Output",oo.shape
+            print "--"
+        print "---"
+        
+
+        iinput = cacher.inputs["Input"][i]
+        print "cacher", iinput.__class__
+        for ii, iiinput in enumerate(iinput):
+            print "Input", iiinput.shape
+            oo = cacher.outputs["Output"][i][ii]
+            print "Output",oo.shape
+            print "--"
+        print "---"
+
+        key_ = roi.roiToSlice(numpy.array(key[0]), numpy.array(key[1]))
+        res1 = opc.outputs["SingleOutput"][i][key_].allocate()
+        
+        print res1.shape
+        
+        print res1[7,7,:,4]
+        #assert (res1[...,0] == i).all()
+    
     g.finalize()
 
 

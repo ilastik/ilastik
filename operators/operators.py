@@ -17,6 +17,11 @@ class OpArrayPiper(Operator):
         self.outputs["Output"]._shape = inputSlot.shape
         self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
 
+    def getOutSlot(self, slot, key, result):
+        req = self.inputs["Input"][key].writeInto(result)
+        res = req()
+        return res
+
     @property
     def shape(self):
         return self.outputs["Output"]._shape
@@ -63,6 +68,7 @@ class OpMultiMultiArrayPiper(Operator):
     outputSlots = [MultiOutputSlot("MultiOutput", level = 2)]
     
     def notifyConnect(self, inputSlot):
+        print "OpMultiArrayPiper notifyConnect", inputSlot
         self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
         for i,mislot in enumerate(self.inputs["MultiInput"]):
             self.outputs["MultiOutput"][i].resize(len(mislot))
@@ -74,6 +80,7 @@ class OpMultiMultiArrayPiper(Operator):
                     oslot._axistags = islot.axistags
             
     def notifyPartialMultiConnect(self, slots, indexes):
+        print "OpMultiArrayPiper notifyPartialMultiConnect", slots, indexes
         self.notifyConnect(self.inputs["MultiInput"])
         
 
@@ -189,9 +196,9 @@ class OpArrayCache(OpArrayPiper):
         elif tileWeights.ndim == 3:
             tileWeights = vigra.ScalarVolume(tileWeights, dtype = numpy.uint32)
         else:
-            #axistags = vigra.VigraArray.defaultAxistags(tileWeights.ndim)
-            #tileWeights = vigra.VigraArray(tileWeights, dtype = numpy.uint32, axistags = axistags)
-            raise RuntimeError("OpArrayCache supports only 2 and three dimensions caches for now. FIXME.")
+            axistags = vigra.VigraArray.defaultAxistags(tileWeights.ndim)
+            tileWeights = vigra.VigraArray(tileWeights, dtype = numpy.uint32, axistags = axistags)
+            #raise RuntimeError("OpArrayCache supports only 2 and three dimensions caches for now. FIXME.")
             
 #        print "calling drtile..."
         tileArray = drtile.test_DRTILE(tileWeights, 256**3 + 1)
@@ -288,6 +295,7 @@ class OpArrayCache(OpArrayPiper):
         
         
         # finally, store results in result area
+        print "Oparraycache debug",result.shape,self._cache[roiToSlice(start, stop)].shape
         result[:] = self._cache[roiToSlice(start, stop)]
         
         
