@@ -82,11 +82,18 @@ class OpGaussianSmooting(OpBaseVigraFilter):
         for i,k in enumerate(keys):
             v = self.inputs["Input"][k].allocate()
             t = v()
-            temp = self.vigraFilter(numpy.require(t.squeeze(), dtype=numpy.float32), sigma)
+            t = numpy.require(t, dtype=numpy.float32)
+            t = t.view(vigra.VigraArray)
+            t.axistags = self.inputs["Input"].axistags
+            
+            temp = self.vigraFilter(t, sigma)
             if numChannels == 0:
                 result[:] = temp
             else:
-                result[...,i] = temp
+                cI = self.inputs["Input"].axistags.channelIndex
+                s = [slice(None,None,None) if j != cI else slice(i,i+1,None) for j in range(result.ndim)]
+                print s
+                result[s] = temp
 
     def resultingChannels(self):
         return self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels)

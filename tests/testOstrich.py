@@ -16,8 +16,6 @@ img = vigra.impex.readImage("ostrich.jpg")
 
 ostrichProvider = ArrayProvider("Ostrich_Input", shape=img.shape, dtype=img.dtype, axistags=img.axistags)
 ostrichProvider.setData(img)
-print "dfkdajfkajkfa", img.axistags.axisTypeCount(vigra.AxisType.Channels)
-print img.shape[img.axistags.channelIndex]
 
 graph = graph.Graph(numThreads=2)
 
@@ -30,7 +28,9 @@ gaussianSmoother.inputs["Input"].connect(ostrichProvider)
 gaussianSmoother.inputs["Sigma"].connect(sigmaProvider)
 
 smoothedOstrich = gaussianSmoother.outputs["Output"][:,:,:].allocate()
-
+a = gaussianSmoother.outputs["Output"].axistags
+smoothedOstrich = smoothedOstrich.view(vigra.VigraArray)
+smoothedOstrich.axistags=a
 vigra.impex.writeImage(smoothedOstrich, "smoothed_ostrich.png")
 
 graph.finalize()
