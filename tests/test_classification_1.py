@@ -62,6 +62,13 @@ class OpGaussianSmooting(OpBaseVigraFilter):
     name = "GaussianSmooting"
     vigraFilter = staticmethod(vigra.filters.gaussianSmoothing)
     
+    def notifyConnect(self, inputSlot):
+        if inputSlot == self.inputs["Input"]:
+            self.numChannels  = inputSlot.axistags.axisTypeCount(vigra.AxisType.Channels)
+            self.channelIndex = self.inputs["Input"].axistags.channelIndex
+        
+        OpBaseVigraFilter.notifyConnect(self, inputSlot)
+    
     def getOutSlot(self, slot, key, result):
         numChannels = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels)
         assert numChannels in [0,1]
@@ -70,7 +77,7 @@ class OpGaussianSmooting(OpBaseVigraFilter):
         if numChannels == 0:
             keys.append(key)
         else:
-            for i in range(self.inputs["Input"].shape[self.inputs["Input"].axistags.channelIndex]):
+            for i in range(self.inputs["Input"].shape[self.channelIndex]):
                 k = list(copy.copy(key))
                 k[-1] = slice(i,i+1,None)
                 keys.append(tuple(k))
@@ -90,9 +97,7 @@ class OpGaussianSmooting(OpBaseVigraFilter):
             if numChannels == 0:
                 result[:] = temp
             else:
-                cI = self.inputs["Input"].axistags.channelIndex
-                s = [slice(None,None,None) if j != cI else slice(i,i+1,None) for j in range(result.ndim)]
-                print s
+                s = [slice(None,None,None) if j != self.channelIndex else slice(i,i+1,None) for j in range(result.ndim)]
                 result[s] = temp
 
     def resultingChannels(self):
