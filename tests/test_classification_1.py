@@ -62,8 +62,34 @@ class OpGaussianSmooting(OpBaseVigraFilter):
     name = "GaussianSmooting"
     vigraFilter = staticmethod(vigra.filters.gaussianSmoothing)
     
+    def getOutSlot(self, slot, key, result):
+        numChannels = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels)
+        assert numChannels in [0,1]
+        
+        keys = []
+        if numChannels == 0:
+            keys.append(key)
+        else:
+            for i in range(self.inputs["Input"].shape[self.inputs["Input"].axistags.channelIndex]):
+                k = list(copy.copy(key))
+                k[-1] = slice(i,i+1,None)
+                keys.append(tuple(k))
+       
+        req = self.inputs["Sigma"][:].allocate()
+        sigma = req()
+        sigma = float(sigma[0])
+        
+        for i,k in enumerate(keys):
+            v = self.inputs["Input"][k].allocate()
+            t = v()
+            temp = self.vigraFilter(numpy.require(t.squeeze(), dtype=numpy.float32), sigma)
+            if numChannels == 0:
+                result[:] = temp
+            else:
+                result[...,i] = temp
+
     def resultingChannels(self):
-        return 1
+        return self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels)
     
     
 class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
