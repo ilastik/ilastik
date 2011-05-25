@@ -4,14 +4,11 @@ from graph import *
 import gc
 import roi
 import copy
+import sys
 
 from operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
 from mockOperators import ArrayProvider, SingleValueProvider
 from graph import MultiInputSlot
-
-import sys, vigra
-import copy
-
         
 class OpBaseVigraFilter(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma")]
@@ -115,7 +112,6 @@ class OpMultiArrayStacker(Operator):
             v()
                  
 if __name__ == "__main__":
-
     shape = (200,200,200)
     numThreads = 1
     axistags = vigra.VigraArray.defaultAxistags(len(shape)+1)
@@ -128,7 +124,6 @@ if __name__ == "__main__":
     multislot = OpMultiArrayPiper(g)
     
     numImages = 2
-    
     
     for i in range(numImages):
         shape = list(shape)
