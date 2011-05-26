@@ -4,14 +4,11 @@ from graph import *
 import gc
 import roi
 import copy
+import sys
 
 from operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
 from mockOperators import ArrayProvider, SingleValueProvider
 from graph import MultiInputSlot
-
-import sys, vigra
-import copy
-
         
 class OpBaseVigraFilter(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma")]
@@ -65,8 +62,46 @@ class OpGaussianSmooting(OpBaseVigraFilter):
     name = "GaussianSmooting"
     vigraFilter = staticmethod(vigra.filters.gaussianSmoothing)
     
+    def notifyConnect(self, inputSlot):
+        if inputSlot == self.inputs["Input"]:
+            self.numChannels  = inputSlot.axistags.axisTypeCount(vigra.AxisType.Channels)
+            self.channelIndex = self.inputs["Input"].axistags.channelIndex
+        
+        OpBaseVigraFilter.notifyConnect(self, inputSlot)
+    
+    def getOutSlot(self, slot, key, result):
+        numChannels = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels)
+        assert numChannels in [0,1]
+        
+        keys = []
+        if numChannels == 0:
+            keys.append(key)
+        else:
+            for i in range(self.inputs["Input"].shape[self.channelIndex]):
+                k = list(copy.copy(key))
+                k[-1] = slice(i,i+1,None)
+                keys.append(tuple(k))
+       
+        req = self.inputs["Sigma"][:].allocate()
+        sigma = req()
+        sigma = float(sigma[0])
+        
+        for i,k in enumerate(keys):
+            v = self.inputs["Input"][k].allocate()
+            t = v()
+            t = numpy.require(t, dtype=numpy.float32)
+            t = t.view(vigra.VigraArray)
+            t.axistags = self.inputs["Input"].axistags
+            
+            temp = self.vigraFilter(t, sigma)
+            if numChannels == 0:
+                result[:] = temp
+            else:
+                s = [slice(None,None,None) if j != self.channelIndex else slice(i,i+1,None) for j in range(result.ndim)]
+                result[s] = temp
+
     def resultingChannels(self):
-        return 1
+        return self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels)
     
     
 class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
@@ -115,7 +150,6 @@ class OpMultiArrayStacker(Operator):
             v()
                  
 if __name__ == "__main__":
-
     shape = (200,200,200)
     numThreads = 1
     axistags = vigra.VigraArray.defaultAxistags(len(shape)+1)
@@ -128,7 +162,6 @@ if __name__ == "__main__":
     multislot = OpMultiArrayPiper(g)
     
     numImages = 2
-    
     
     for i in range(numImages):
         shape = list(shape)

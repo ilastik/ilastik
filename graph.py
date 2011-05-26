@@ -617,7 +617,7 @@ class Operator(object):
             oo = o.getInstance(self)
             self.outputs[o.name] = oo         
             # output slots are connected
-            # when the correspondign input slots
+            # when the corresponding input slots
             # of the partner operators are created       
         self.graph.registerOperator(self)
          
@@ -686,12 +686,12 @@ class OperatorWrapper(Operator):
         self._inputSlots = []
         self._outputSlots = []
         
-        # replicate inputslot definitions
+        # replicate input slot definitions
         for islot in self.operator.inputSlots:
             level = islot.level + 1
             self._inputSlots.append(MultiInputSlot(islot.name, level = level))
 
-        # replicate outputslot definitions
+        # replicate output slot definitions
         for oslot in self.outputSlots:
             level = oslot.level + 1
             self._outputSlots.append(MultiOutputSlot(oslot.name, level = level))
@@ -717,7 +717,7 @@ class OperatorWrapper(Operator):
                 op = op.operator
             op.outputs[oslot.name] = oo
 
-        #connnect input slots
+        #connect input slots
         for islot in self.origInputs.values():
             ii = self.inputs[islot.name]
             partner = islot.partner
@@ -973,7 +973,7 @@ class Graph(object):
             event.set()
             if customClosure is not None:
                 customClosure()
-            # return something that can be handeled by the innnerWork function
+            # return something that can be handled by the innnerWork function
             ret = [None, gr, event, thread]
             return ret
         task = [runnerClosure, gr, event, thread]
