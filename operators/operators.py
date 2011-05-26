@@ -36,6 +36,7 @@ class OpMultiArrayPiper(Operator):
     outputSlots = [MultiOutputSlot("MultiOutput")]
     
     def notifyConnect(self, inputSlot):
+        print "OpMultiArrayPiper notifyConnect"
         self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
         for i,islot in enumerate(self.inputs["MultiInput"]):
             oslot = self.outputs["MultiOutput"][i]
@@ -45,6 +46,7 @@ class OpMultiArrayPiper(Operator):
                 oslot._axistags = islot.axistags
     
     def notifyPartialMultiConnect(self, slots, indexes):
+        print "OpMultiArrayPiper notifyPartialMultiConnect"
         self.notifyConnect(slots[0])
 
     
@@ -68,7 +70,7 @@ class OpMultiMultiArrayPiper(Operator):
     outputSlots = [MultiOutputSlot("MultiOutput", level = 2)]
     
     def notifyConnect(self, inputSlot):
-        print "OpMultiArrayPiper notifyConnect", inputSlot
+        #print "OpMultiArrayPiper notifyConnect", inputSlot
         self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
         for i,mislot in enumerate(self.inputs["MultiInput"]):
             self.outputs["MultiOutput"][i].resize(len(mislot))
@@ -80,7 +82,7 @@ class OpMultiMultiArrayPiper(Operator):
                     oslot._axistags = islot.axistags
             
     def notifyPartialMultiConnect(self, slots, indexes):
-        print "OpMultiArrayPiper notifyPartialMultiConnect", slots, indexes
+        #print "OpMultiArrayPiper notifyPartialMultiConnect", slots, indexes
         self.notifyConnect(self.inputs["MultiInput"])
         
 

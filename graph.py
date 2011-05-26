@@ -63,7 +63,7 @@ class InputSlot(object):
         if partner.level > 0:
             partner.disconnectSlot(self)
             print "InputSlot", self.name, "of op", self.operator.name, self.operator
-            print "-> Wrapping operator..."
+            print "-> Wrapping operator because own level is 0 and partner is", partner.level
             newop = OperatorWrapper(self.operator)
             partner._connect(newop.inputs[self.name])
         else:
@@ -288,9 +288,9 @@ class MultiInputSlot(object):
                     
     def _appendNew(self):
         if self.level <= 1:
-            islot = InputSlot(self.name +"3%d" % len(self),self)
+            islot = InputSlot(self.name ,self)
         else:
-            islot = MultiInputSlot(self.name +"3%d" % len(self),self, level = self.level - 1)
+            islot = MultiInputSlot(self.name,self, level = self.level - 1)
         index = len(self) - 1
         self.inputSlots.append(islot)
         if self.partner is not None:
@@ -300,35 +300,65 @@ class MultiInputSlot(object):
     
     def _insertNew(self, index):
         if self.level == 1:
-            islot = InputSlot(self.name +"3%d" % index,self)
+            islot = InputSlot(self.name,self)
         else:
-            islot = MultiInputSlot(self.name +"3%d" % index,self, level = self.level - 1)
+            islot = MultiInputSlot(self.name,self, level = self.level - 1)
         self.inputSlots.insert(index,islot)
         for i, isl in enumerate(self.inputSlots[index+1:]):
-            isl.name = self.name+"3%d" % index + i + 1
+            isl.name = self.name
         if self.partner is not None:
             if len(self.partner) > index:
                 islot.connect(self.partner[index])                    
         return islot
     
+    def cloneConnectionsFrom(self, otherInputSlot):
+        self.resize(len(otherInputSlot))
+        for i, slot in enumerate(otherInputSlot):
+            if slot.level == 0:
+                self[i].connect(slot.partner)
+            else:
+                self[i].cloneConnectionsFrom(slot)
+    
+    
     def connectAdd(self, partner):
+        self.partner = None
         if partner.level == self.level - 1 and not isinstance(self.operator, OperatorWrapper):
             slot = self._appendNew()
             partner._connect(slot)
         elif partner.level == self.level - 1 and isinstance(self.operator, OperatorWrapper):
+                print "ZZZZZZZZZZ", self.level, self.operator.name, self.operator
                 if len(partner)> len(self):
                     self.resize(len(partner))
                 for i, pslot in enumerate(partner):
-                    self[i].connectAdd(pslot)            
+                    self.operator._ensureInputSize(len(partner))
+                    innerOpSlot = self.operator.innerOperators[i].inputs[self.name]
+                    if innerOpSlot.level > 0:
+                        innerOpSlot.connectAdd(pslot)
+                    else:
+                        innerOpSlot.connect(pslot)
+                    self[i].cloneConnectionsFrom(innerOpSlot)
+                    
         elif partner.level > self.level - 1:
             if isinstance(self.operator,(OperatorWrapper, Operator)):
-                newop = OperatorWrapper(self.operator)
-                newop.inputs[self.name].resize(len(partner))
-                for i, pslot in enumerate(partner):
-                    newop.inputs[self.name][i].connectAdd(pslot)
+                newop = self.operator
+#                print "partner.level", partner.level, len(partner)
+#                for i,p in enumerate(partner):
+#                    print p.level, len(p)
+                while partner.level >= newop.inputs[self.name].level:
+                    #print "QQQQQ Wrapping", newop
+                    newop = OperatorWrapper(newop)
+                newop.inputs[self.name].connectAdd(partner)
+                
+#                newop = self.operator
+#                for l in range(partner.level - self.level + 1):
+#                    newop = OperatorWrapper(newop)
+#                newop.inputs[self.name].resize(len(partner))
+#                for i, pslot in enumerate(partner):
+#                    newop.inputs[self.name][i].connectAdd(pslot)
             else:
                 raise RuntimeError("trying to add a connection to a inner slot - NOT ALLOWED")
-            
+        else:
+            raise RuntimeError("MultiInputSlot: undhandeled connectAdd case! ")
         
     def connect(self,partner):
         if self.partner == partner:
@@ -342,30 +372,32 @@ class MultiInputSlot(object):
                 self.connectOk(self.partner)
                 
                 # create new self.inputSlots for each outputSlot 
-                # of our partner    
+                # of our partner   /home/cstraehl/Projects/PHD/gorgonzola/tkroeger/repos/drtile 
+                if len(self) != len(partner):
+                    self.resize(len(partner))
                 for i,p in enumerate(self.partner):
-                    islot = self._appendNew()
-                    self.partner[i]._connect(islot)
-    
+                    self.partner[i]._connect(self[i])
+
                 self.operator.notifyConnect(self)
                 
-            elif partner.level == self.level - 1:
+            elif partner.level < self.level:
+                self.partner = partner
                 for i, slot in enumerate(self):                
                     slot.connect(partner)
                     if self.operator is not None:
                         self.operator.notifyPartialMultiConnect((self,slot), (i,))
             elif partner.level > self.level:
                 partner.disconnectSlot(self)
-                print "MultiInputSlot", self.name, "of op", self.operator.name, self.operator
+                #print "MultiInputSlot", self.name, "of op", self.operator.name, self.operator
                 print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
                 if isinstance(self.operator,(OperatorWrapper, Operator)):
                     newop = OperatorWrapper(self.operator)
                     partner._connect(newop.inputs[self.name])
+                    #assert newop.inputs[self.name].level == self.level + 1, "%r, %s, %s, %d, %d" % (self.operator, self.operator.name, self.name, newop.inputs[self.name].level, self.level) 
                 else:
                     raise RuntimeError("Trying to connect a higher order slot to a subslot - NOT ALLOWED")
             else:
                 pass
-        self.partner = partner
 
     def notifyConnect(self, slot):
         index = self.inputSlots.index(slot)
@@ -403,7 +435,7 @@ class MultiInputSlot(object):
         for i, slot in enumerate(self[index:]):
             slot.name = self.name+"3%d" % (index + i)
         #TODO: should we introduce a removeEvent ?
-        self.operator.notifyConnect(self)
+        #self.operator.notifyConnect(self)
 
     def _partialSetItem(self, slot, key, value):
         index = self.inputSlots.index(slot)
@@ -657,7 +689,6 @@ class OperatorWrapper(Operator):
         # replicate inputslot definitions
         for islot in self.operator.inputSlots:
             level = islot.level + 1
-            print "new level", level, "for slot", islot.name
             self._inputSlots.append(MultiInputSlot(islot.name, level = level))
 
         # replicate outputslot definitions
@@ -717,7 +748,6 @@ class OperatorWrapper(Operator):
         if needWrapping is False:
             
             if isinstance(self.operator, OperatorWrapper):
-                self.operator.restoreOriginalOperator()        
                 print "Restoring original operator"
         
                 op = self.operator
@@ -752,6 +782,7 @@ class OperatorWrapper(Operator):
         if self.operator.__class__ is not OperatorWrapper:
             opcopy = self.operator.__class__(self.graph)
         else:
+            print "creatInnerOperator OperatorWrapper"
             opcopy = OperatorWrapper(self.operator.createInnerOperator())
         return opcopy
     
@@ -784,10 +815,10 @@ class OperatorWrapper(Operator):
 #                print index, ii, len(mslot)
 #        print "finish _connectInnerOutputs"
 
-    def _ensureInputSize(self):
+    def _ensureInputSize(self, numMax = 0):
         
         newInnerOps = []
-        maxLen = 0
+        maxLen = numMax
         for name, islot in self.inputs.items():
             assert isinstance(islot, MultiInputSlot)
             maxLen = max(len(islot), maxLen)
@@ -803,6 +834,7 @@ class OperatorWrapper(Operator):
 
         for k,mslot in self.inputs.items():
             mslot.resize(maxLen)
+            assert len(mslot) == maxLen
 #            for i, slot in enumerate(mslot):
 #                if slot.partner is not None:
 #                    slot.partner._connect(self.innerOperators[i].inputs[mslot.name])
@@ -810,8 +842,8 @@ class OperatorWrapper(Operator):
 
     def notifyConnect(self, inputSlot):
         
-        maxLen = self._ensureInputSize()
-        
+        maxLen = self._ensureInputSize(len(inputSlot))
+        #print "gagagagaga", maxLen, len(inputSlot),len(self.innerOperators)
         for i,islot in enumerate(inputSlot):
             if islot.partner is not None:
                 self.innerOperators[i].inputs[inputSlot.name].connect(islot.partner)
@@ -823,24 +855,35 @@ class OperatorWrapper(Operator):
 
     
     def notifyPartialMultiConnect(self, slots, indexes):
-        print "OperatorWrapper notifyPartialMultiConnect", self.name, slots, indexes
-        self._ensureInputSize()
+        #print "OperatorWrapper notifyPartialMultiConnect", self.name, slots, indexes
+        numMax = self._ensureInputSize(len(slots[0]))
         
         if slots[1].partner is not None:
-            self.innerOperators[indexes[0]].inputs[slots[0].name].connect(slots[1].partner)
+            #
+            # we have to connect the sub operator only
+            # if it is a true inner operator, but not
+            # if it is an OperatorWrapper. 
+            #
+            # why, is unclear.
+            #
+            if not isinstance(self.innerOperators[indexes[0]], OperatorWrapper):
+                self.innerOperators[indexes[0]].inputs[slots[0].name].connect(slots[1].partner)
         else:            
-            self.innerOperators[indexes[0]].inputs[slots[0].name].resize(len(slots[1]))
-            
-            for i, islot in enumerate(slots[1]):
-                if islot.partner is not None:
-                    self.innerOperators[indexes[0]].inputs[slots[0].name][i].connect(islot.partner)
-#            if len(indexes) == 1:
-#                self.innerOperators[indexes[0]].notifyConnect(slots[1])
-#            else:
-#                self.innerOperators[indexes[0]].notifyPartialMultiConnect(slots[1:],indexes[1:])
-
+            if isinstance(self.innerOperators[indexes[0]], OperatorWrapper):
+                
+                if len(indexes)>1:
+                    self.innerOperators[indexes[0]].notifyPartialMultiConnect(slots[1:],indexes[1:])
+                else:
+                    self.innerOperators[indexes[0]].notifyConnect(slots[1],indexes[0])
+            else:
+                if len(indexes)>1:
+                    self.innerOperators[indexes[0]].inputs[slots[0].name].resize(len(slots[1]))
+                    for i, islot in enumerate(slots[1]):
+                        if islot.partner is not None:
+                            self.innerOperators[indexes[0]].inputs[slots[0].name][i].connect(islot.partner)
+                else:
+                    self.innerOperators[indexes[0]].inputs[slots[0].name].connect(slots[1].partner)
         self._connectInnerOutputs()
-
         return
 
 
@@ -859,7 +902,7 @@ class OperatorWrapper(Operator):
     
     def getPartialMultiOutSlot(self, slots, indexes, key, result):
         if len(indexes) == 1:
-            print "getPartialMultiOutSlot", indexes, slots
+            #print "getPartialMultiOutSlot", indexes, slots
             return self.innerOperators[indexes[0]].getOutSlot(self.innerOperators[indexes[0]].outputs[slots[0].name], key, result)
         else:
             print "???????????????????????????????????????????????????"
