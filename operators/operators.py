@@ -49,6 +49,8 @@ class OpMultiArrayPiper(Operator):
         print "OpMultiArrayPiper notifyPartialMultiConnect"
         self.notifyConnect(slots[0])
 
+    def notifyPartialMultiSlotRemove(self, slots, indexes):
+        self.outputs["MultiOutput"].pop(indexes[0])
     
     def getOutSlot(self, slot, key, result):
         raise RuntimeError("OpMultiPipler does not support getOutSlot")

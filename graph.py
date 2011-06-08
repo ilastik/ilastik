@@ -326,7 +326,6 @@ class MultiInputSlot(object):
             slot = self._appendNew()
             partner._connect(slot)
         elif partner.level == self.level - 1 and isinstance(self.operator, OperatorWrapper):
-                print "ZZZZZZZZZZ", self.level, self.operator.name, self.operator
                 if len(partner)> len(self):
                     self.resize(len(partner))
                 for i, pslot in enumerate(partner):
@@ -341,20 +340,9 @@ class MultiInputSlot(object):
         elif partner.level > self.level - 1:
             if isinstance(self.operator,(OperatorWrapper, Operator)):
                 newop = self.operator
-#                print "partner.level", partner.level, len(partner)
-#                for i,p in enumerate(partner):
-#                    print p.level, len(p)
                 while partner.level >= newop.inputs[self.name].level:
-                    #print "QQQQQ Wrapping", newop
                     newop = OperatorWrapper(newop)
                 newop.inputs[self.name].connectAdd(partner)
-                
-#                newop = self.operator
-#                for l in range(partner.level - self.level + 1):
-#                    newop = OperatorWrapper(newop)
-#                newop.inputs[self.name].resize(len(partner))
-#                for i, pslot in enumerate(partner):
-#                    newop.inputs[self.name][i].connectAdd(pslot)
             else:
                 raise RuntimeError("trying to add a connection to a inner slot - NOT ALLOWED")
         else:
@@ -372,7 +360,7 @@ class MultiInputSlot(object):
                 self.connectOk(self.partner)
                 
                 # create new self.inputSlots for each outputSlot 
-                # of our partner   /home/cstraehl/Projects/PHD/gorgonzola/tkroeger/repos/drtile 
+                # of our partner   
                 if len(self) != len(partner):
                     self.resize(len(partner))
                 for i,p in enumerate(self.partner):
@@ -415,6 +403,12 @@ class MultiInputSlot(object):
         index = self.inputSlots.index(slots[0])
         self.operator.notifyPartialMultiDisconnect((self,) + slots, (index,) + indexes)
         
+    def notifyPartialMultiSlotRemove(self, slots, indexes):
+        if len(slots)>0:
+            index = self.inputSlots.index(slots[0])
+            indexes = (index,) + indexes
+        self.operator.notifyPartialMultiSlotRemove((self,) + slots, indexes)
+        
     def disconnect(self):
         if self.partner is not None:
             self.partner.disconnectSlot(self)
@@ -422,20 +416,24 @@ class MultiInputSlot(object):
             self.partner = None
             self.operator.notifyDisconnect(self)
     
-    def removeSlot(self, index):
+    def removeSlot(self, index, notify = True):
         slot = index
         if type(index) is int:
             slot = self[index]
-        self._removeInputSlot(slot)
+        self._removeInputSlot(slot, notify)
     
-    def _removeInputSlot(self, inputSlot):
+    def _removeInputSlot(self, inputSlot, notify = True):
         index = self.inputSlots.index(inputSlot)
         self.inputSlots.remove(inputSlot)
         inputSlot.disconnect()
         for i, slot in enumerate(self[index:]):
             slot.name = self.name+"3%d" % (index + i)
-        #TODO: should we introduce a removeEvent ?
-        #self.operator.notifyConnect(self)
+        
+        # notify parent operator of slot removal
+        # index is the number of the slots while it
+        # was still there
+        if notify:
+            self.notifyPartialMultiSlotRemove((),(index,))
 
     def _partialSetItem(self, slot, key, value):
         index = self.inputSlots.index(slot)
@@ -564,8 +562,6 @@ class MultiOutputSlot(object):
             #print self.name, self.operator.name, self.operator, slots
             raise
         return self.operator.getPartialMultiOutSlot((self,) + slots, (index,) + indexes, key, result)
-
-
     
     #TODO RENAME? createInstance
     # def __copy__ ?
@@ -638,7 +634,10 @@ class Operator(object):
     
     def notifyPartialMultiConnect(self, slots, indexes):
         pass
-    
+   
+    def notifyPartialMultiSlotRemove(self, slots, indexes):
+        pass
+         
     def getOutSlot(self, slot, key, result):
         return None
 
@@ -739,6 +738,7 @@ class OperatorWrapper(Operator):
 
                     
     def testRestoreOriginalOperator(self):
+        #print "OperatorWrapper testRestoreOriginalOperator", self.name
         needWrapping = False
         for iname, islot in self.inputs.items():
             if islot.partner is not None:
@@ -748,21 +748,22 @@ class OperatorWrapper(Operator):
         if needWrapping is False:
             
             if isinstance(self.operator, OperatorWrapper):
-                print "Restoring original operator"
-        
-                op = self.operator
-                while isinstance(op.operator, (Operator, MultiInputSlot)):
+                print "Restoring original operator of ", self, self.name
+                #print self, self.name
+                op = self
+                while isinstance(op.operator, (OperatorWrapper)):
                     op = op.operator
-                op.outputs = self.origOutputs
-                op.inputs = self.origInputs
+                    #print op, op.name
+                op.operator.outputs = op.origOutputs
+                op.operator.inputs = op.origInputs
                 
                 for k, islot in self.inputs.items():
                     if islot.partner is not None:
-                        self.operator.inputs[k].connect(islot.partner)
+                        op.inputs[k].connect(islot.partner)
         
                 for k, oslot in self.outputs.items():
                     for p in oslot.partners:
-                        self.operator.outputs[k]._connect(p)
+                        op.outputs[k]._connect(p)
                     
 
     
@@ -771,6 +772,7 @@ class OperatorWrapper(Operator):
             s.disconnect()
         for s in self.inputs.values():
             s.disconnect()
+        self.testRestoreOriginalOperator()
 
     def setDirty(self, inputSlot = None):
         # simple default implementation
@@ -788,10 +790,10 @@ class OperatorWrapper(Operator):
     
     def removeInnerOperator(self, op):
         index = self.innerOperators.index(op)
-        op.disconnect()
         self.innerOperators.remove(op)
         for name, oslot in self.outputs.items():
             oslot.pop(index)
+        op.disconnect()
             
     def _connectInnerOutputs(self):
         for k,mslot in self.outputs.items():
@@ -899,6 +901,14 @@ class OperatorWrapper(Operator):
         while len(self.innerOperators) > maxLen:
             op = self.innerOperators[-1]
             self.removeInnerOperator(op)
+
+    def notifyPartialMultiSlotRemove(self, slots, indexes):
+        print "OperatorWrapper notifyPartialMultiSlotRemove", slots, indexes, self.name
+        if len(indexes) == 1:
+            op = self.innerOperators[indexes[0]]
+            self.removeInnerOperator(op)
+        else:
+            self.innerOperators[indexes[0]].notifyPartialMultiSlotRemove(slots[1:], indexes[1:])
     
     def getPartialMultiOutSlot(self, slots, indexes, key, result):
         if len(indexes) == 1:
