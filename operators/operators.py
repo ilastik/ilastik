@@ -1,6 +1,6 @@
 import numpy
 
-from graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from graph import Operators, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 from roi import sliceToRoi, roiToSlice, block_view
 from Queue import Empty
 from collections import deque
@@ -9,6 +9,9 @@ import vigra
 import copy
 
 class OpArrayPiper(Operator):
+    name = "ArrayPiper"
+    description = "simple piping operator"
+       
     inputSlots = [InputSlot("Input")]
     outputSlots = [OutputSlot("Output")]    
     
@@ -28,10 +31,14 @@ class OpArrayPiper(Operator):
     
     @property
     def dtype(self):
-        return self.outputs["Output"]._dtype        
+        return self.outputs["Output"]._dtype
+
 
 
 class OpMultiArrayPiper(Operator):
+    name = "MultiArrayPiper"
+    description = "simple piping operator"
+    
     inputSlots = [MultiInputSlot("MultiInput")]
     outputSlots = [MultiOutputSlot("MultiOutput")]
     
@@ -66,8 +73,10 @@ class OpMultiArrayPiper(Operator):
     def setPartialMultiInSlot(self,multislot,slot,index, key,value):
         pass
 
-
 class OpMultiMultiArrayPiper(Operator):
+    name = "MultiMultiArrayPiper"
+    description = "simple piping operator"
+        
     inputSlots = [MultiInputSlot("MultiInput", level = 2)]
     outputSlots = [MultiOutputSlot("MultiOutput", level = 2)]
     
@@ -115,6 +124,9 @@ class BlockQueue(object):
         self.lock = threading.Lock()
               
 class OpArrayCache(OpArrayPiper):
+    name = "ArrayCache"
+    description = "numpy.ndarray caching class"
+        
     def __init__(self, graph, blockShape = None, immediateAlloc = True):
         OpArrayPiper.__init__(self, graph)
         if blockShape == None:

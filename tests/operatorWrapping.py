@@ -12,6 +12,8 @@ __testing__ = False
 
 from tests.mockOperators import OpA, OpB, OpC, ArrayProvider
 
+Operators.registerOperatorSubclasses()
+
 g = Graph(numThreads = 2)
 
 source0 = ArrayProvider( "Zeros", shape = (200,100), dtype=numpy.uint8)

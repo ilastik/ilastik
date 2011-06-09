@@ -13,6 +13,61 @@ requestCounter = 0
 
 #sys.setrecursionlimit(1000)
 
+def itersubclasses(cls, _seen=None):
+    """
+    itersubclasses(cls)
+
+    Generator over all subclasses of a given class, in depth first order.
+
+    >>> list(itersubclasses(int)) == [bool]
+    True
+    >>> class A(object): pass
+    >>> class B(A): pass
+    >>> class C(A): pass
+    >>> class D(B,C): pass
+    >>> class E(D): pass
+    >>> 
+    >>> for cls in itersubclasses(A):
+    ...     print(cls.__name__)
+    B
+    D
+    E
+    C
+    >>> # get ALL (new-style) classes currently defined
+    >>> [cls.__name__ for cls in itersubclasses(object)] #doctest: +ELLIPSIS
+    ['type', ...'tuple', ...]
+    """
+    
+    if not isinstance(cls, type):
+        raise TypeError('itersubclasses must be called with '
+                        'new-style classes, not %.100r' % cls)
+    if _seen is None: _seen = set()
+    try:
+        subs = cls.__subclasses__()
+    except TypeError: # fails only when cls is type
+        subs = cls.__subclasses__(cls)
+    for sub in subs:
+        if sub not in _seen:
+            _seen.add(sub)
+            yield sub
+            for sub in itersubclasses(sub, _seen):
+                yield sub
+
+
+class Operators(object):
+    
+    operators = {}
+    
+    @classmethod
+    def register(cls, opcls):
+        cls.operators[opcls.__name__] = opcls
+        print "registered operator %s (%s)", (opcls.name, opcls.__name__)
+
+    @classmethod
+    def registerOperatorSubclasses(cls):
+        for o in itersubclasses(Operator):
+            cls.register(o)
+
 
 class GetItemRequestObject(object):
     """ Enables the syntax:
@@ -738,6 +793,8 @@ class OperatorWrapper(Operator):
 
                     
     def testRestoreOriginalOperator(self):
+        #TODO: only restore to the level that is needed, not to the most upper one !
+        
         #print "OperatorWrapper testRestoreOriginalOperator", self.name
         needWrapping = False
         for iname, islot in self.inputs.items():
@@ -919,10 +976,89 @@ class OperatorWrapper(Operator):
             self.innerOperators[indexes[0]].getPartialMultiOutSlot(slots[1:], indexes[1:], key, result)
         
     def setInSlot(self, slot, key, value):
+        #TODO: code this
         pass
 
     def setPartialMultiInSlot(self,multislot,slot,index, key,value):
+        #TODO: code this
         pass
+
+
+
+
+class OperatorGroup(Operator):
+    def __init__(self, operator):
+        Operator.__init__(self,operator)
+        self.createInnerOperators()
+        self._connectInnerOutputs()
+    
+    def createInnerOperators(self):
+        # this method must setup the
+        # inner operators and connect them (internally)
+        pass
+        
+    def getInnerInputSlots(self):
+        # this method must return a hash that
+        # contains the inner slots corresponding
+        # to the slotname
+        pass
+    
+    def getInnerOutputSlots(self):
+        # this method must return a hash that
+        # contains the inner slots corresponding
+        # to the slotname
+        pass
+    
+    def _connectInnerOutputs(self):
+        innerOuts = self.getInnerOutputSlots()
+        
+        for key, value in innerOuts.iterItems():
+            self.outputs[key] = value
+    
+    def notifyConnect(self, inputSlot):
+        innerIns = self.getInnerInputSlots()
+        innerIns[inputSlot.name].connect(inputSlot.partner)
+
+    
+    def notifyPartialMultiConnect(self, slots, indexes):
+        
+        innerIns = self.getInnerInputSlots()
+        
+        innerSlot = innerIns[indexes[0]]
+
+        for i in range(len(slots)):
+            innerIns[indexes[i]].resize(len( slots[i] ) )
+
+
+    def notifyDisconnect(self, slot):
+        self.testRestoreOriginalOperator()
+        
+    def notifyPartialMultiDisconnect(self, slots, indexes):
+        return
+        maxLen = 0
+        for name, islot in self.inputs.items():
+            maxLen = max(len(islot), maxLen)
+        
+        while len(self.innerOperators) > maxLen:
+            op = self.innerOperators[-1]
+            self.removeInnerOperator(op)
+
+    def notifyPartialMultiSlotRemove(self, slots, indexes):
+        print "OperatorWrapper notifyPartialMultiSlotRemove", slots, indexes, self.name
+        if len(indexes) == 1:
+            op = self.innerOperators[indexes[0]]
+            self.removeInnerOperator(op)
+        else:
+            self.innerOperators[indexes[0]].notifyPartialMultiSlotRemove(slots[1:], indexes[1:])
+    
+    def getPartialMultiOutSlot(self, slots, indexes, key, result):
+        if len(indexes) == 1:
+            #print "getPartialMultiOutSlot", indexes, slots
+            return self.innerOperators[indexes[0]].getOutSlot(self.innerOperators[indexes[0]].outputs[slots[0].name], key, result)
+        else:
+            print "???????????????????????????????????????????????????"
+            self.innerOperators[indexes[0]].getPartialMultiOutSlot(slots[1:], indexes[1:], key, result)
+
 
 
 
