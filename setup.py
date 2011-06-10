@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 setup(
     name = "lazyflow",
 #    version = "0.1",
-    packages = find_packages('lazyflow'),
+    packages = find_packages(),
     scripts = [],
 
     # Project uses reStructuredText, so ensure that the docutils get
