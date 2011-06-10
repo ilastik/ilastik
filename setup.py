@@ -10,7 +10,7 @@ setup(
     install_requires = ['greenlet'],
 
     package_data = {
-        '': ['*.txt', '*.py'],
+        'lazyflow': ['*.txt', '*.py'],
     },
 
     include_package_data = True,    # include everything in source control
