@@ -416,6 +416,7 @@ class MultiInputSlot(object):
                 
                 # create new self.inputSlots for each outputSlot 
                 # of our partner   
+                print "MultiInputSlot connecdt", self.operator, self.operator.name, len(self), partner.operator, partner.operator.name, len(partner)
                 if len(self) != len(partner):
                     self.resize(len(partner))
                 for i,p in enumerate(self.partner):
@@ -987,8 +988,8 @@ class OperatorWrapper(Operator):
 
 
 class OperatorGroup(Operator):
-    def __init__(self, operator):
-        Operator.__init__(self,operator)
+    def __init__(self, graph):
+        Operator.__init__(self,graph)
         self.createInnerOperators()
         self._connectInnerOutputs()
     
@@ -1012,7 +1013,7 @@ class OperatorGroup(Operator):
     def _connectInnerOutputs(self):
         innerOuts = self.getInnerOutputSlots()
         
-        for key, value in innerOuts.iterItems():
+        for key, value in innerOuts.items():
             self.outputs[key] = value
     
     def notifyConnect(self, inputSlot):
@@ -1024,45 +1025,29 @@ class OperatorGroup(Operator):
         
         innerIns = self.getInnerInputSlots()
         
-        innerSlot = innerIns[indexes[0]]
+        innerSlot = innerIns[indexes[0].name]
 
         for i in range(len(slots)):
-            innerIns[indexes[i]].resize(len( slots[i] ) )
-
-
+            if slots[i].partner is not None:
+                innerSlot.connect(slots[i].partner)
+                break 
+            else:
+                innerSlot.resize(len( slots[i] ) )
+            innerSlot = innerSlot[indexes[i]]
+            
     def notifyDisconnect(self, slot):
-        self.testRestoreOriginalOperator()
-        
+        pass
+    
     def notifyPartialMultiDisconnect(self, slots, indexes):
-        return
-        maxLen = 0
-        for name, islot in self.inputs.items():
-            maxLen = max(len(islot), maxLen)
-        
-        while len(self.innerOperators) > maxLen:
-            op = self.innerOperators[-1]
-            self.removeInnerOperator(op)
-
+        pass
+    
     def notifyPartialMultiSlotRemove(self, slots, indexes):
-        print "OperatorWrapper notifyPartialMultiSlotRemove", slots, indexes, self.name
-        if len(indexes) == 1:
-            op = self.innerOperators[indexes[0]]
-            self.removeInnerOperator(op)
-        else:
-            self.innerOperators[indexes[0]].notifyPartialMultiSlotRemove(slots[1:], indexes[1:])
+        pass
     
     def getPartialMultiOutSlot(self, slots, indexes, key, result):
-        if len(indexes) == 1:
-            #print "getPartialMultiOutSlot", indexes, slots
-            return self.innerOperators[indexes[0]].getOutSlot(self.innerOperators[indexes[0]].outputs[slots[0].name], key, result)
-        else:
-            print "???????????????????????????????????????????????????"
-            self.innerOperators[indexes[0]].getPartialMultiOutSlot(slots[1:], indexes[1:], key, result)
-
-
-
-
-
+        raise RuntimeError("OperatorGroup: getPartialMultiOutSlot, this method should never get called!!")
+   
+                        
 class Worker(Thread):
     def __init__(self, graph):
         Thread.__init__(self)
