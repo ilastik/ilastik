@@ -1,12 +1,12 @@
 import numpy, vigra
 import time
-from graph import *
+from lazyflow.graph import *
 import gc
-import roi
+import lazyflow.roi
 import threading
 
-from operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
-from operators.obsoleteOperators import OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
+from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
+from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
 
 __testing__ = False
 

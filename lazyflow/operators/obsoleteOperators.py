@@ -1,12 +1,12 @@
 import numpy
 
-from graph import Operator, InputSlot, OutputSlot
-from roi import sliceToRoi, roiToSlice, block_view
+from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.roi import sliceToRoi, roiToSlice, block_view
 from Queue import Empty
 from collections import deque
 import greenlet, threading
 import vigra
-from operators import OpArrayPiper
+from lazyflow.operators.operators import OpArrayPiper
 
 """
 distributed blocks

@@ -179,7 +179,12 @@ class InputSlot(object):
             greenletContainer[0] = greenlet.getcurrent()
             if not event.isSet():
                 # --> wait until results are ready
-                greenlet.getcurrent().parent.switch(None)
+                if greenlet.getcurrent().parent != None:
+                    greenlet.getcurrent().parent.switch(None)
+                else:
+                    # loop to allow ctrl-c signal !
+                    while not event.isSet():
+                        event.wait(timeout = 0.25) #in seconds
             greenletContainer[0] = None
             return destination
             

@@ -1,14 +1,14 @@
 import numpy, vigra
 import time
-import graph
+from lazyflow import graph
 import gc
-import roi
+from lazyflow import roi
 import sys
 import copy
 
-from operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
-from mockOperators import ArrayProvider, SingleValueProvider
-from graph import MultiInputSlot
+from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
+from tests.mockOperators import ArrayProvider, SingleValueProvider
+from lazyflow.graph import MultiInputSlot
 
 from test_classification_1 import OpGaussianSmooting
 

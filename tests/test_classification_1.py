@@ -1,14 +1,13 @@
 import numpy, vigra
 import time
-from graph import *
+from lazyflow.graph import *
 import gc
-import roi
+from lazyflow import roi
 import copy
 import sys
 
-from operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
-from mockOperators import ArrayProvider, SingleValueProvider
-from graph import MultiInputSlot
+from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
+from tests.mockOperators import ArrayProvider, SingleValueProvider
         
 class OpBaseVigraFilter(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma")]

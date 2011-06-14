@@ -1,7 +1,7 @@
 import numpy
 
-from graph import Operators, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
-from roi import sliceToRoi, roiToSlice, block_view
+from lazyflow.graph import Operators, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.roi import sliceToRoi, roiToSlice, block_view
 from Queue import Empty
 from collections import deque
 import greenlet, threading
@@ -114,7 +114,7 @@ class OpMultiMultiArrayPiper(Operator):
 
 
 
-import drtile
+from  lazyflow import drtile
 
 class BlockQueue(object):
     __slots__ = ["queue","lock"]
