@@ -1,7 +1,7 @@
 import numpy
 import sys
 import copy
-from roi import sliceToRoi
+from roi import sliceToRoi, roiToSlice
 
 from collections import deque
 from Queue import Queue, LifoQueue, Empty
@@ -84,7 +84,8 @@ class GetItemRequestObject(object):
         return self._slot.fireRequest(self._key, destination)     
     
     def allocate(self):
-        destination = self._slot.allocateStorage(self._key)
+        destination, key = self._slot.allocateStorage(self._key)
+        self._key = key
         return self.writeInto(destination)
     
     def __call__(self):
@@ -176,12 +177,13 @@ class InputSlot(object):
         event = self.graph.putTask(self.partner.fireRequest, (key,destination), greenletContainer, customClosure)
                         
         def closureGetter():
-            greenletContainer[0] = greenlet.getcurrent()
             if not event.isSet():
                 # --> wait until results are ready
                 if greenlet.getcurrent().parent != None:
+                    greenletContainer[0] = greenlet.getcurrent()
                     greenlet.getcurrent().parent.switch(None)
                 else:
+                    greenletContainer[0] = None
                     # loop to allow ctrl-c signal !
                     while not event.isSet():
                         event.wait(timeout = 0.25) #in seconds
@@ -193,7 +195,8 @@ class InputSlot(object):
     def allocateStorage(self, key):
         start, stop = sliceToRoi(key, self.shape)
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
-        return storage
+        key = roiToSlice(start,stop)
+        return storage, key
             
     def __setitem__(self, key, value):
         assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"
@@ -264,7 +267,8 @@ class OutputSlot(object):
     def allocateStorage(self, key):
         start, stop = sliceToRoi(key, self.shape)
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
-        return storage
+        key = roiToSlice(start,stop)
+        return storage, key
 
     def __getitem__(self, key):
         return GetItemRequestObject(self,key)

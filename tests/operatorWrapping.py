@@ -194,3 +194,5 @@ opd.inputs["Input"].disconnect()
 
 assert not isinstance(opd.inputs["Input"], MultiInputSlot), opd.inputs["Input"].level
 assert not isinstance(opd.outputs["Output"], MultiOutputSlot), opd.outputs["Output"].level
+
+g.finalize()

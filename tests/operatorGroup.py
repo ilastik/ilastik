@@ -108,3 +108,6 @@ opGA.inputs["Input"].connect(source0)
 res1 = opd.outputs["Output"][0][:,:].allocate()
 
 res2 = opGA.outputs["MultiOutput"][0][:,:].allocate()
+
+
+g.finalize()
