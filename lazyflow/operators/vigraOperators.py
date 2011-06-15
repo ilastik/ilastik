@@ -52,7 +52,8 @@ class OpBaseVigraFilter(OpArrayPiper):
     name = "OpBaseVigraFilter"
     vigraFilter = None
     outputDtype = numpy.float32 
-        
+    inputDtype = numpy.float32
+    
     def __init__(self, graph):
         OpArrayPiper.__init__(self, graph)
         
@@ -75,7 +76,8 @@ class OpBaseVigraFilter(OpArrayPiper):
                 sigma = float(sigma[0])
                 
                 
-                temp = self.vigraFilter(numpy.require(t[:], dtype=numpy.float32), sigma)
+                temp = self.vigraFilter(numpy.require(t[:], dtype=self.inputDtype), sigma)
+
                 if channelsPerChannel>1:
                     result[subkey,i*channelsPerChannel:(i+1)*channelsPerChannel] = temp
                 else:
@@ -87,7 +89,7 @@ class OpBaseVigraFilter(OpArrayPiper):
             sigma = req()
             sigma = float(sigma[0])
             
-            temp = self.vigraFilter(numpy.require(t[:], dtype=numpy.float32), sigma)
+            temp = self.vigraFilter(numpy.require(t[:], dtype=self.inputDtype), sigma)
             result[subkey,0:channelsPerChannel] = temp
             
     def notifyConnect(self, inputSlot):
@@ -117,7 +119,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         raise RuntimeError('resultingChannels() not implemented')
         
 
-class OpGaussianSmooting(OpBaseVigraFilter):
+class OpGaussianSmoothing(OpBaseVigraFilter):
     name = "GaussianSmoothing"
     vigraFilter = staticmethod(vigra.filters.gaussianSmoothing)
     outputDtype = numpy.float32 
@@ -133,9 +135,59 @@ class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
     outputDtype = numpy.float32 
 
     def resultingChannels(self):
-        temp = self.outputs["Output"].axistags.axisTypeCount(vigra.AxisType.Space)
+        temp = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)
         return temp
 
 
+class OpHessianOfGaussian(OpBaseVigraFilter):
+    name = "HessianOfGaussian"
+    vigraFilter = staticmethod(vigra.filters.hessianOfGaussian)
+    outputDtype = numpy.float32 
 
+    def resultingChannels(self):
+        temp = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)**2
+        return temp
 
+class OpLaplacianOfGaussian(OpBaseVigraFilter):
+    name = "LaplacianOfGaussian"
+    vigraFilter = staticmethod(vigra.filters.laplacianOfGaussian)
+    outputDtype = numpy.float32 
+
+    def resultingChannels(self):
+        return 1
+
+class OpOpening(OpBaseVigraFilter):
+    name = "Opening"
+    vigraFilter = staticmethod(vigra.filters.multiGrayscaleOpening)
+    outputDtype = numpy.uint8 
+    inputDtype = numpy.uint8 
+
+    def resultingChannels(self):
+        return 1
+
+class OpClosing(OpBaseVigraFilter):
+    name = "Closing"
+    vigraFilter = staticmethod(vigra.filters.multiGrayscaleClosing)
+    outputDtype = numpy.uint8 
+    inputDtype = numpy.uint8 
+
+    def resultingChannels(self):
+        return 1
+
+class OpErosion(OpBaseVigraFilter):
+    name = "Erosion"
+    vigraFilter = staticmethod(vigra.filters.multiGrayscaleErosion)
+    outputDtype = numpy.uint8 
+    inputDtype = numpy.uint8 
+
+    def resultingChannels(self):
+        return 1
+
+class OpDilation(OpBaseVigraFilter):
+    name = "Dilation"
+    vigraFilter = staticmethod(vigra.filters.multiGrayscaleDilation)
+    outputDtype = numpy.uint8 
+    inputDtype = numpy.uint8 
+
+    def resultingChannels(self):
+        return 1
