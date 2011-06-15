@@ -9,145 +9,149 @@ import sys
 from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
 from tests.mockOperators import ArrayProvider, SingleValueProvider
         
-class OpBaseVigraFilter(OpArrayPiper):
-    inputSlots = [InputSlot("Input"), InputSlot("Sigma")]
-    outputSlots = [OutputSlot("Output")]    
-    
-    name = "OpBaseVigraFilter"
-    vigraFilter = None
-    
-    def __init__(self, graph):
-        OpArrayPiper.__init__(self, graph)
-        
-    def getOutSlot(self, slot, key, result):
-        if self.resultingChannels() > 1:
-            key = key[0:-1]
-        v = self.inputs["Input"][key].allocate()
-        t = v()
-        #print self.name, "for shape", t.shape, "and key", key
-        req = self.inputs["Sigma"][:].allocate()
-        sigma = req()
-        #print "tttttttttttttt", sigma, sigma.shape, sigma.dtype
-        sigma = float(sigma[0])
-        temp = self.vigraFilter(numpy.require(t[:], dtype=numpy.float32), sigma)
-        #print "xxxxxxxxxxxxxxxxxxxxxxxxxxx", self.name, key, result.shape
-        #print " XXXXXXXXXXXXXXXXXXX ", self.name, temp.axistags
-        result[:] = temp
-        
-    def notifyConnect(self, inputSlot):
-        if inputSlot == self.inputs["Input"]:
-            self.outputs["Output"]._dtype = inputSlot.dtype
-            p = self.inputs["Input"].partner
-            self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
-            
-            channels = self.resultingChannels()
-            if channels > 1:
-                self.outputs["Output"]._shape = inputSlot.shape + (channels,)
-                if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                    self.outputs["Output"]._axistags.insertChannelAxis()
-            else:
-                self.outputs["Output"]._shape = inputSlot.shape
-            
-            
-                
-        elif inputSlot == self.inputs["Sigma"]:
-            self.outputs["Output"].setDirty()
-            
-    def resultingChannels(self):
-        raise RuntimeError('resultingChannels() not implemented')
-        
+#class OpBaseVigraFilter(OpArrayPiper):
+#    inputSlots = [InputSlot("Input"), InputSlot("Sigma")]
+#    outputSlots = [OutputSlot("Output")]    
+#    
+#    name = "OpBaseVigraFilter"
+#    vigraFilter = None
+#    
+#    def __init__(self, graph):
+#        OpArrayPiper.__init__(self, graph)
+#        
+#    def getOutSlot(self, slot, key, result):
+#        if self.resultingChannels() > 1:
+#            key = key[0:-1]
+#        v = self.inputs["Input"][key].allocate()
+#        t = v()
+#        print self.name, "for shape", t.shape, "and key", key
+#        req = self.inputs["Sigma"][:].allocate()
+#        sigma = req()
+#        print "tttttttttttttt", sigma, sigma.shape, sigma.dtype
+#        sigma = float(sigma[0])
+#        temp = self.vigraFilter(numpy.require(t[:], dtype=numpy.float32), sigma)
+#        print "xxxxxxxxxxxxxxxxxxxxxxxxxxx", self.name, key, result.shape
+#        print " XXXXXXXXXXXXXXXXXXX ", self.name, temp.axistags
+#        result[:] = temp
+#        
+#    def notifyConnect(self, inputSlot):
+#        if inputSlot == self.inputs["Input"]:
+#            self.outputs["Output"]._dtype = inputSlot.dtype
+#            p = self.inputs["Input"].partner
+#            self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
+#            
+#            channels = self.resultingChannels()
+#            if channels > 1:
+#                self.outputs["Output"]._shape = inputSlot.shape + (channels,)
+#                if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
+#                    self.outputs["Output"]._axistags.insertChannelAxis()
+#            else:
+#                self.outputs["Output"]._shape = inputSlot.shape
+#            
+#            
+#                
+#        elif inputSlot == self.inputs["Sigma"]:
+#            self.outputs["Output"].setDirty()
+#            
+#    def resultingChannels(self):
+#        raise RuntimeError('resultingChannels() not implemented')
+#        
+#
+#class OpGaussianSmooting(OpBaseVigraFilter):
+#    name = "GaussianSmooting"
+#    vigraFilter = staticmethod(vigra.filters.gaussianSmoothing)
+#    
+#    def notifyConnect(self, inputSlot):
+#        if inputSlot == self.inputs["Input"]:
+#            self.numChannels  = inputSlot.axistags.axisTypeCount(vigra.AxisType.Channels)
+#            self.channelIndex = self.inputs["Input"].axistags.channelIndex
+#        
+#        OpBaseVigraFilter.notifyConnect(self, inputSlot)
+#    
+#    def getOutSlot(self, slot, key, result):
+#        numChannels = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels)
+#        assert numChannels in [0,1]
+#        
+#        keys = []
+#        if numChannels == 0:
+#            keys.append(key)
+#        else:
+#            for i in range(self.inputs["Input"].shape[self.channelIndex]):
+#                k = list(copy.copy(key))
+#                k[-1] = slice(i,i+1,None)
+#                keys.append(tuple(k))
+#       
+#        req = self.inputs["Sigma"][:].allocate()
+#        sigma = req()
+#        sigma = float(sigma[0])
+#        
+#        for i,k in enumerate(keys):
+#            v = self.inputs["Input"][k].allocate()
+#            t = v()
+#            t = numpy.require(t, dtype=numpy.float32)
+#            t = t.view(vigra.VigraArray)
+#            t.axistags = self.inputs["Input"].axistags
+#            
+#            temp = self.vigraFilter(t, sigma)
+#            if numChannels == 0:
+#                result[:] = temp
+#            else:
+#                s = [slice(None,None,None) if j != self.channelIndex else slice(i,i+1,None) for j in range(result.ndim)]
+#                result[s] = temp
+#
+#    def resultingChannels(self):
+#        return self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels)
+#    
+#    
+#class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
+#    name = "HessianOfGaussianEigenvalues"
+#    vigraFilter = staticmethod(vigra.filters.hessianOfGaussianEigenvalues)
+#    
+#    def resultingChannels(self):
+#        temp = self.outputs["Output"].axistags.axisTypeCount(vigra.AxisType.Space)
+#        return temp
+#
+#class OpMultiArrayStacker(Operator):
+#    inputSlots = [MultiInputSlot("MultiInput")]
+#    outputSlots = [OutputSlot("SingleOutput")]
+#    
+#    def notifySubConnect(self, slots, indexes):
+#        print "  OpMultiArrayStacker.notifyConnect() with", slots, indexes
+#        self.outputs["SingleOutput"]._dtype = self.inputs["MultiInput"][-1].dtype
+#        self.outputs["SingleOutput"]._axistags = copy.copy(self.inputs["MultiInput"][-1].axistags)
+#        if self.outputs["SingleOutput"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
+#            self.outputs["SingleOutput"]._axistags.insertChannelAxis()
+#        
+#        c = 0
+#        for inSlot in self.inputs["MultiInput"]:
+#            if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
+#                c += 1
+#            else:
+#                c += inSlot.shape[inSlot.axistags.channelIndex]
+#        self.outputs["SingleOutput"]._shape = inSlot.shape[:-1] + (c,)    
+#
+#    
+#    def getOutSlot(self, slot, key, result):
+#        cnt = 0
+#        key = key[:-1]
+#        for i, inSlot in enumerate(self.inputs['MultiInput']):
+#            print "a sadf sadf sadf asdf ", key
+#            if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
+#                 
+#                v = inSlot[key].writeInto(result[..., cnt])
+#                cnt += 1
+#            else:
+#                channels = inSlot.shape[inSlot.axistags.channelIndex]
+#                print " 555555555 55555555555555 adding end slicer", result.shape
+#                key_ = key + (slice(None,None,None),)
+#                v = inSlot[key_].writeInto(result[...,cnt:cnt+channels])
+#                cnt += channels
+#            v()
+#                 
 
-class OpGaussianSmooting(OpBaseVigraFilter):
-    name = "GaussianSmooting"
-    vigraFilter = staticmethod(vigra.filters.gaussianSmoothing)
-    
-    def notifyConnect(self, inputSlot):
-        if inputSlot == self.inputs["Input"]:
-            self.numChannels  = inputSlot.axistags.axisTypeCount(vigra.AxisType.Channels)
-            self.channelIndex = self.inputs["Input"].axistags.channelIndex
-        
-        OpBaseVigraFilter.notifyConnect(self, inputSlot)
-    
-    def getOutSlot(self, slot, key, result):
-        numChannels = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels)
-        assert numChannels in [0,1]
-        
-        keys = []
-        if numChannels == 0:
-            keys.append(key)
-        else:
-            for i in range(self.inputs["Input"].shape[self.channelIndex]):
-                k = list(copy.copy(key))
-                k[-1] = slice(i,i+1,None)
-                keys.append(tuple(k))
-       
-        req = self.inputs["Sigma"][:].allocate()
-        sigma = req()
-        sigma = float(sigma[0])
-        
-        for i,k in enumerate(keys):
-            v = self.inputs["Input"][k].allocate()
-            t = v()
-            t = numpy.require(t, dtype=numpy.float32)
-            t = t.view(vigra.VigraArray)
-            t.axistags = self.inputs["Input"].axistags
-            
-            temp = self.vigraFilter(t, sigma)
-            if numChannels == 0:
-                result[:] = temp
-            else:
-                s = [slice(None,None,None) if j != self.channelIndex else slice(i,i+1,None) for j in range(result.ndim)]
-                result[s] = temp
 
-    def resultingChannels(self):
-        return self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels)
-    
-    
-class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
-    name = "HessianOfGaussianEigenvalues"
-    vigraFilter = staticmethod(vigra.filters.hessianOfGaussianEigenvalues)
-    
-    def resultingChannels(self):
-        temp = self.outputs["Output"].axistags.axisTypeCount(vigra.AxisType.Space)
-        return temp
+from lazyflow.operators.vigraOperators import *
 
-class OpMultiArrayStacker(Operator):
-    inputSlots = [MultiInputSlot("MultiInput")]
-    outputSlots = [OutputSlot("SingleOutput")]
-    
-    def notifySubConnect(self, slots, indexes):
-        #print "  OpMultiArrayStacker.notifyConnect() with", slots, indexes
-        self.outputs["SingleOutput"]._dtype = self.inputs["MultiInput"][-1].dtype
-        self.outputs["SingleOutput"]._axistags = copy.copy(self.inputs["MultiInput"][-1].axistags)
-        if self.outputs["SingleOutput"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-            self.outputs["SingleOutput"]._axistags.insertChannelAxis()
-        
-        c = 0
-        for inSlot in self.inputs["MultiInput"]:
-            if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                c += 1
-            else:
-                c += inSlot.shape[inSlot.axistags.channelIndex]
-        self.outputs["SingleOutput"]._shape = inSlot.shape[:-1] + (c,)    
-
-    
-    def getOutSlot(self, slot, key, result):
-        cnt = 0
-        key = key[:-1]
-        for i, inSlot in enumerate(self.inputs['MultiInput']):
-            #print "a sadf sadf sadf asdf ", key
-            if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                 
-                v = inSlot[key].writeInto(result[..., cnt])
-                cnt += 1
-            else:
-                channels = inSlot.shape[inSlot.axistags.channelIndex]
-                #print " 555555555 55555555555555 adding end slicer", result.shape
-                key_ = key + (slice(None,None,None),)
-                v = inSlot[key_].writeInto(result[...,cnt:cnt+channels])
-                cnt += channels
-            v()
-                 
 if __name__ == "__main__":
     shape = (200,200,200)
     numThreads = 1
