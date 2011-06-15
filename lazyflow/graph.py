@@ -69,7 +69,7 @@ class Operators(object):
             cls.register(o)
 
 
-class GetItemRequestObject(object):
+class GetItemWriterObject(object):
     """ Enables the syntax:
         InputSlot[:,:].writeInto(array)
         for loading input data"""
@@ -93,6 +93,47 @@ class GetItemRequestObject(object):
         #      everything is ported ?
         return self.allocate()
 
+
+class GetItemRequestObject(object):
+    __slots__ = ["greenlet", "event", "thread", "key", "destination", "closure"]
+
+
+    def __init__(self, graph, partner, key, destination):
+        self.key = key
+        self.greenlet = None
+        self.destination = destination
+        self.closure = None
+        self.event = Event()
+        self.thread = current_thread()        
+        graph.putTask(partner.fireRequest, self)
+
+    
+    def wait(self, timeout = 0):
+        pass
+        if not self.event.isSet():
+            # --> wait until results are ready
+            if greenlet.getcurrent().parent != None:
+                self.greenlet = greenlet.getcurrent()
+                greenlet.getcurrent().parent.switch(None)
+            else:
+                self.greenlet = None
+                # loop to allow ctrl-c signal !
+                if timeout == 0:
+                    while not self.event.isSet():
+                        self.event.wait(timeout = 0.25) #in seconds
+                else:
+                    self.event.wait(timeout = timeout) #in seconds
+                    
+        self.greenlet = None
+        return self.destination   
+         
+    def notify(self, closure):
+        self.closure = closure
+
+    def __call__(self):
+        #TODO: remove this convenience function when
+        #      everything is ported ?
+        return self.wait()
 
 class InputSlot(object):
     def __init__(self, name, operator = None):
@@ -165,32 +206,14 @@ class InputSlot(object):
         return True
 
     def __getitem__(self, key):
-        return GetItemRequestObject(self, key)
+        return GetItemWriterObject(self, key)
         
     def fireRequest(self, key, destination):
         assert self.partner is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
-        
-        customClosure = None
-        
-        #FIXME: I use ndarray here, because?? -> thread safe !
-        greenletContainer = numpy.ndarray((1,), dtype = object) #FIXME dangerous? garbage collection
-        event = self.graph.putTask(self.partner.fireRequest, (key,destination), greenletContainer, customClosure)
-                        
-        def closureGetter():
-            if not event.isSet():
-                # --> wait until results are ready
-                if greenlet.getcurrent().parent != None:
-                    greenletContainer[0] = greenlet.getcurrent()
-                    greenlet.getcurrent().parent.switch(None)
-                else:
-                    greenletContainer[0] = None
-                    # loop to allow ctrl-c signal !
-                    while not event.isSet():
-                        event.wait(timeout = 0.25) #in seconds
-            greenletContainer[0] = None
-            return destination
+                                        
+        reqObject = GetItemRequestObject(self.graph, self.partner, key, destination)
             
-        return closureGetter
+        return reqObject
 
     def allocateStorage(self, key):
         start, stop = sliceToRoi(key, self.shape)
@@ -271,7 +294,7 @@ class OutputSlot(object):
         return storage, key
 
     def __getitem__(self, key):
-        return GetItemRequestObject(self,key)
+        return GetItemWriterObject(self,key)
 
     def fireRequest(self, key, destination):
         assert self.operator is not None, "cannot do __getitem__ on Slot %s, of %r -> now operator !!" % (self.name,self.operator) 
@@ -283,20 +306,20 @@ class OutputSlot(object):
         requestCounter += 1
         requestCounterLock.release()
         
-        if gr.parent is None:
-            temp = numpy.ndarray((1,), dtype = object)
-            event = self.graph.putTask(self.fireRequest, (key, destination), temp)
-            # loop to allow ctrl-c
-            while not event.isSet():
-                event.wait(timeout = 0.25) #in seconds
-            print "Request finished (needed %d requests to satisfy me)" % (requestCounter)
-            
-            requestCounterLock.acquire()
-            requestCounter = 0
-            requestCounterLock.release()
-            
-        else:
-            self.getOutSlotFromOp(key, destination)
+#        if gr.parent is None:
+#            temp = numpy.ndarray((1,), dtype = object)
+#            event = self.graph.putTask(self.fireRequest, (key, destination), temp)
+#             loop to allow ctrl-c
+#            while not event.isSet():
+#                event.wait(timeout = 0.25) #in seconds
+#            print "Request finished (needed %d requests to satisfy me)" % (requestCounter)
+#            
+#            requestCounterLock.acquire()
+#            requestCounter = 0
+#            requestCounterLock.release()
+#            
+#        else:
+        self.getOutSlotFromOp(key, destination)
         
         return destination
     
@@ -1073,8 +1096,8 @@ class Worker(Thread):
                 task = None
                 if len(self.pendingGreenlets) > 0:
                     task = self.pendingGreenlets.popleft()
-                    if task[1][0] is not None:
-                        task = task[1][0].switch()
+                    if task[1].greenlet is not None:
+                        task = task[1].greenlet.switch()
                     
                 if task is None:
                     try:
@@ -1085,9 +1108,9 @@ class Worker(Thread):
                     task = gr.switch()
                     
                 if task is not None:
-                    if task[2].isSet():
-                        if task[1][0] is not None:
-                            task[3].pendingGreenlets.append(task)
+                    if task[1].event.isSet():
+                        if task[1].greenlet is not None:
+                            task[1].thread.pendingGreenlets.append(task)
         print "Finalized Worker"
                 
     
@@ -1104,21 +1127,19 @@ class Graph(object):
             self.workers.append(w)
             w.start()
     
-    def putTask(self, func, key, gr, customClosure = None):
-        event = Event()
-        thread = current_thread()
-        
+    def putTask(self, func, reqObject):
+
         def runnerClosure():
-            func(*key)
-            event.set()
-            if customClosure is not None:
-                customClosure()
+            func(reqObject.key, reqObject.destination)
+            reqObject.event.set()
+            if reqObject.closure is not None:
+                reqObject.closure()
             # return something that can be handled by the innnerWork function
-            ret = [None, gr, event, thread]
+            ret = [None, reqObject]
             return ret
-        task = [runnerClosure, gr, event, thread]
+
+        task = [runnerClosure, reqObject]
         self.tasks.put(task)
-        return event
     
     def finalize(self):
         print "Finalizing Graph..."
