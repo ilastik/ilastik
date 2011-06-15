@@ -438,7 +438,7 @@ class MultiInputSlot(object):
                 for i, slot in enumerate(self):                
                     slot.connect(partner)
                     if self.operator is not None:
-                        self.operator.notifyPartialMultiConnect((self,slot), (i,))
+                        self.operator.notifySubConnect((self,slot), (i,))
             elif partner.level > self.level:
                 partner.disconnectSlot(self)
                 #print "MultiInputSlot", self.name, "of op", self.operator.name, self.operator
@@ -454,25 +454,25 @@ class MultiInputSlot(object):
 
     def notifyConnect(self, slot):
         index = self.inputSlots.index(slot)
-        self.operator.notifyPartialMultiConnect((self,slot), (index,))
+        self.operator.notifySubConnect((self,slot), (index,))
     
-    def notifyPartialMultiConnect(self, slots, indexes):        
+    def notifySubConnect(self, slots, indexes):        
         index = self.inputSlots.index(slots[0])
-        self.operator.notifyPartialMultiConnect( (self,) + slots, (index,) +indexes)
+        self.operator.notifySubConnect( (self,) + slots, (index,) +indexes)
 
     def notifyDisconnect(self, slot):
         index = self.inputSlots.index(slot)
-        self.operator.notifyPartialMultiDisconnect((self, slot), (index,))
+        self.operator.notifySubDisconnect((self, slot), (index,))
     
-    def notifyPartialMultiDisconnect(self, slots, indexes):
+    def notifySubDisconnect(self, slots, indexes):
         index = self.inputSlots.index(slots[0])
-        self.operator.notifyPartialMultiDisconnect((self,) + slots, (index,) + indexes)
+        self.operator.notifySubDisconnect((self,) + slots, (index,) + indexes)
         
-    def notifyPartialMultiSlotRemove(self, slots, indexes):
+    def notifySubSlotRemove(self, slots, indexes):
         if len(slots)>0:
             index = self.inputSlots.index(slots[0])
             indexes = (index,) + indexes
-        self.operator.notifyPartialMultiSlotRemove((self,) + slots, indexes)
+        self.operator.notifySubSlotRemove((self,) + slots, indexes)
         
     def disconnect(self):
         if self.partner is not None:
@@ -498,7 +498,7 @@ class MultiInputSlot(object):
         # index is the number of the slots while it
         # was still there
         if notify:
-            self.notifyPartialMultiSlotRemove((),(index,))
+            self.notifySubSlotRemove((),(index,))
 
     def _partialSetItem(self, slot, key, value):
         index = self.inputSlots.index(slot)
@@ -618,15 +618,15 @@ class MultiOutputSlot(object):
             
     def getOutSlot(self, slot, key, result):
         index = self.outputSlots.index(slot)
-        return self.operator.getPartialMultiOutSlot((self, slot,),(index,),key, result)
+        return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
 
-    def getPartialMultiOutSlot(self, slots, indexes, key, result):
+    def getSubOutSlot(self, slots, indexes, key, result):
         try:
             index = self.outputSlots.index(slots[0])
         except:
             #print self.name, self.operator.name, self.operator, slots
             raise
-        return self.operator.getPartialMultiOutSlot((self,) + slots, (index,) + indexes, key, result)
+        return self.operator.getSubOutSlot((self,) + slots, (index,) + indexes, key, result)
     
     #TODO RENAME? createInstance
     # def __copy__ ?
@@ -646,7 +646,7 @@ class MultiOutputSlot(object):
 
     def getOutSlotFromOp(self, slot, key, destination):
         index = self.outputSlots.index(slot)
-        self.operator.getPartialMultiOutSlot(self, slot, index, key, destination)
+        self.operator.getSubOutSlot(self, slot, index, key, destination)
 
     @property
     def graph(self):
@@ -697,28 +697,28 @@ class Operator(object):
     def notifyConnect(self, inputSlot):
         pass
     
-    def notifyPartialMultiConnect(self, slots, indexes):
+    def notifySubConnect(self, slots, indexes):
         pass
    
-    def notifyPartialMultiSlotRemove(self, slots, indexes):
+    def notifySubSlotRemove(self, slots, indexes):
         pass
          
     def getOutSlot(self, slot, key, result):
         return None
 
-    def getPartialMultiOutSlot(self, slots, indexes, key, result):
+    def getSubOutSlot(self, slots, indexes, key, result):
         return None
     
     def setInSlot(self, slot, key, value):
         pass
 
-    def setPartialMultiInSlot(self,slots,indexes, key,value):
+    def setSubInSlot(self,slots,indexes, key,value):
         pass
 
     def notifyDisconnect(self, slot):
         pass
     
-    def notifyPartialMultiDisconnect(self, slots, indexes):
+    def notifySubDisconnect(self, slots, indexes):
         pass
 
 
@@ -923,8 +923,8 @@ class OperatorWrapper(Operator):
             assert len(mslot) == len(self.innerOperators) == maxLen, "%d, %d" % (len(mslot), len(self.innerOperators))        
 
     
-    def notifyPartialMultiConnect(self, slots, indexes):
-        #print "OperatorWrapper notifyPartialMultiConnect", self.name, slots, indexes
+    def notifySubConnect(self, slots, indexes):
+        #print "OperatorWrapper notifySubConnect", self.name, slots, indexes
         numMax = self._ensureInputSize(len(slots[0]))
         
         if slots[1].partner is not None:
@@ -941,7 +941,7 @@ class OperatorWrapper(Operator):
             if isinstance(self.innerOperators[indexes[0]], OperatorWrapper):
                 
                 if len(indexes)>1:
-                    self.innerOperators[indexes[0]].notifyPartialMultiConnect(slots[1:],indexes[1:])
+                    self.innerOperators[indexes[0]].notifySubConnect(slots[1:],indexes[1:])
                 else:
                     self.innerOperators[indexes[0]].notifyConnect(slots[1],indexes[0])
             else:
@@ -959,7 +959,7 @@ class OperatorWrapper(Operator):
     def notifyDisconnect(self, slot):
         self.testRestoreOriginalOperator()
         
-    def notifyPartialMultiDisconnect(self, slots, indexes):
+    def notifySubDisconnect(self, slots, indexes):
         return
         maxLen = 0
         for name, islot in self.inputs.items():
@@ -969,27 +969,27 @@ class OperatorWrapper(Operator):
             op = self.innerOperators[-1]
             self.removeInnerOperator(op)
 
-    def notifyPartialMultiSlotRemove(self, slots, indexes):
-        print "OperatorWrapper notifyPartialMultiSlotRemove", slots, indexes, self.name
+    def notifySubSlotRemove(self, slots, indexes):
+        print "OperatorWrapper notifySubSlotRemove", slots, indexes, self.name
         if len(indexes) == 1:
             op = self.innerOperators[indexes[0]]
             self.removeInnerOperator(op)
         else:
-            self.innerOperators[indexes[0]].notifyPartialMultiSlotRemove(slots[1:], indexes[1:])
+            self.innerOperators[indexes[0]].notifySubSlotRemove(slots[1:], indexes[1:])
     
-    def getPartialMultiOutSlot(self, slots, indexes, key, result):
+    def getSubOutSlot(self, slots, indexes, key, result):
         if len(indexes) == 1:
-            #print "getPartialMultiOutSlot", indexes, slots
+            #print "getSubOutSlot", indexes, slots
             return self.innerOperators[indexes[0]].getOutSlot(self.innerOperators[indexes[0]].outputs[slots[0].name], key, result)
         else:
             print "???????????????????????????????????????????????????"
-            self.innerOperators[indexes[0]].getPartialMultiOutSlot(slots[1:], indexes[1:], key, result)
+            self.innerOperators[indexes[0]].getSubOutSlot(slots[1:], indexes[1:], key, result)
         
     def setInSlot(self, slot, key, value):
         #TODO: code this
         pass
 
-    def setPartialMultiInSlot(self,multislot,slot,index, key,value):
+    def setSubInSlot(self,multislot,slot,index, key,value):
         #TODO: code this
         pass
 
@@ -1030,7 +1030,7 @@ class OperatorGroup(Operator):
         innerIns[inputSlot.name].connect(inputSlot.partner)
 
     
-    def notifyPartialMultiConnect(self, slots, indexes):
+    def notifySubConnect(self, slots, indexes):
         
         innerIns = self.getInnerInputSlots()
         
@@ -1047,14 +1047,14 @@ class OperatorGroup(Operator):
     def notifyDisconnect(self, slot):
         pass
     
-    def notifyPartialMultiDisconnect(self, slots, indexes):
+    def notifySubDisconnect(self, slots, indexes):
         pass
     
-    def notifyPartialMultiSlotRemove(self, slots, indexes):
+    def notifySubSlotRemove(self, slots, indexes):
         pass
     
-    def getPartialMultiOutSlot(self, slots, indexes, key, result):
-        raise RuntimeError("OperatorGroup: getPartialMultiOutSlot, this method should never get called!!")
+    def getSubOutSlot(self, slots, indexes, key, result):
+        raise RuntimeError("OperatorGroup: getSubOutSlot, this method should never get called!!")
    
                         
 class Worker(Thread):

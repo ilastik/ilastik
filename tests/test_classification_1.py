@@ -115,7 +115,7 @@ class OpMultiArrayStacker(Operator):
     inputSlots = [MultiInputSlot("MultiInput")]
     outputSlots = [OutputSlot("SingleOutput")]
     
-    def notifyPartialMultiConnect(self, slots, indexes):
+    def notifySubConnect(self, slots, indexes):
         #print "  OpMultiArrayStacker.notifyConnect() with", slots, indexes
         self.outputs["SingleOutput"]._dtype = self.inputs["MultiInput"][-1].dtype
         self.outputs["SingleOutput"]._axistags = copy.copy(self.inputs["MultiInput"][-1].axistags)

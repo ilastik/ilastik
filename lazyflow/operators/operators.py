@@ -52,17 +52,17 @@ class OpMultiArrayPiper(Operator):
                 oslot._shape = islot.shape
                 oslot._axistags = islot.axistags
     
-    def notifyPartialMultiConnect(self, slots, indexes):
-        print "OpMultiArrayPiper notifyPartialMultiConnect"
+    def notifySubConnect(self, slots, indexes):
+        print "OpMultiArrayPiper notifySubConnect"
         self.notifyConnect(slots[0])
 
-    def notifyPartialMultiSlotRemove(self, slots, indexes):
+    def notifySubSlotRemove(self, slots, indexes):
         self.outputs["MultiOutput"].pop(indexes[0])
     
     def getOutSlot(self, slot, key, result):
         raise RuntimeError("OpMultiPipler does not support getOutSlot")
 
-    def getPartialMultiOutSlot(self, slots, indexes, key, result):
+    def getSubOutSlot(self, slots, indexes, key, result):
         req = self.inputs["MultiInput"][indexes[0]][key].writeInto(result)
         res = req()
         return res
@@ -70,7 +70,7 @@ class OpMultiArrayPiper(Operator):
     def setInSlot(self, slot, key, value):
         raise RuntimeError("OpMultiPipler does not support setInSlot")
 
-    def setPartialMultiInSlot(self,multislot,slot,index, key,value):
+    def setSubInSlot(self,multislot,slot,index, key,value):
         pass
 
 class OpMultiMultiArrayPiper(Operator):
@@ -92,8 +92,8 @@ class OpMultiMultiArrayPiper(Operator):
                     oslot._shape = islot.shape
                     oslot._axistags = islot.axistags
             
-    def notifyPartialMultiConnect(self, slots, indexes):
-        #print "OpMultiArrayPiper notifyPartialMultiConnect", slots, indexes
+    def notifySubConnect(self, slots, indexes):
+        #print "OpMultiArrayPiper notifySubConnect", slots, indexes
         self.notifyConnect(self.inputs["MultiInput"])
         
 
@@ -101,7 +101,7 @@ class OpMultiMultiArrayPiper(Operator):
     def getOutSlot(self, slot, key, result):
         raise RuntimeError("OpMultiMultiPipler does not support getOutSlot")
 
-    def getPartialMultiOutSlot(self, slots, indexes, key, result):
+    def getSubOutSlot(self, slots, indexes, key, result):
         req = self.inputs["MultiInput"][indexes[0]][indexes[1]][key].writeInto(result)
         res = req()
         return res
@@ -109,7 +109,7 @@ class OpMultiMultiArrayPiper(Operator):
     def setInSlot(self, slot, key, value):
         raise RuntimeError("OpMultiPipler does not support setInSlot")
 
-    def setPartialMultiInSlot(self,multislot,slot,index, key,value):
+    def setSubInSlot(self,multislot,slot,index, key,value):
         pass
 
 
