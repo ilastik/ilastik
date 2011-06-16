@@ -239,7 +239,6 @@ class OpImageWriter(Operator):
             imSlot = self.inputs["Image"]
 
             axistags = copy.copy(imSlot.axistags)
-            assert axistags != None, "aisjdlkadkahsdkjhasdkjhaskdkkkk ooooooooooh"
             
             image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
             

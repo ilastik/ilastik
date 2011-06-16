@@ -323,7 +323,7 @@ class OpArrayCache(OpArrayPiper):
         
         
         # finally, store results in result area
-        print "Oparraycache debug",result.shape,self._cache[roiToSlice(start, stop)].shape
+        #print "Oparraycache debug",result.shape,self._cache[roiToSlice(start, stop)].shape
         result[:] = self._cache[roiToSlice(start, stop)]
         
         

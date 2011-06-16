@@ -130,8 +130,13 @@ class GetItemRequestObject(object):
         return self.destination   
          
     def notify(self, closure):
-        self.closure = closure
-
+        if greenlet.getcurrent().parent != None:
+            self.closure = closure
+        else:
+            print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
+            self.wait()
+            closure()
+            
     def __call__(self):
         #TODO: remove this convenience function when
         #      everything is ported ?
@@ -310,21 +315,11 @@ class OutputSlot(object):
         requestCounter += 1
         requestCounterLock.release()
         
-#        if gr.parent is None:
-#            temp = numpy.ndarray((1,), dtype = object)
-#            event = self.graph.putTask(self.fireRequest, (key, destination), temp)
-#             loop to allow ctrl-c
-#            while not event.isSet():
-#                event.wait(timeout = 0.25) #in seconds
-#            print "Request finished (needed %d requests to satisfy me)" % (requestCounter)
-#            
-#            requestCounterLock.acquire()
-#            requestCounter = 0
-#            requestCounterLock.release()
-#            
+#        if gr.parent == None:
+#            reqObject = GetItemRequestObject(self.graph, self, key, destination)
+#            return reqObject
 #        else:
         self.getOutSlotFromOp(key, destination)
-        
         return destination
     
     def getOutSlotFromOp(self, key, destination):
@@ -1135,7 +1130,7 @@ class Worker(Thread):
                 
     
 class Graph(object):
-    def __init__(self, numThreads = 2):
+    def __init__(self, numThreads = 3):
         self.operators = []
         self.tasks = LifoQueue() #Lifo <-> depth first, fifo <-> breath first
         self.workers = []
