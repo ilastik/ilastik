@@ -201,12 +201,12 @@ class OpImageReader(Operator):
     
     def notifyConnect(self, inputSlot):
         filename = self.inputs["Filename"][:].allocate().wait()[0]
-        temp = vigra.impex.readImage(filename)
+        info = vigra.impex.ImageInfo(filename)
         
         oslot = self.outputs["Image"]
-        oslot._shape = temp.shape
-        oslot._dtype = temp.dtype
-        oslot._axistags = temp.axistags
+        oslot._shape = info.getShape()
+        oslot._dtype = info.getDtype()
+        oslot._axistags = info.getAxisTags()
     
     def getOutSlot(self, slot, key, result):
         filename = self.inputs["Filename"][:].allocate().wait()[0]
