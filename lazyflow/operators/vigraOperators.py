@@ -113,7 +113,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                 self.outputs["Output"]._axistags.insertChannelAxis()
                 
         elif inputSlot == self.inputs["Sigma"]:
-            self.outputs["Output"].setDirty()
+            self.outputs["Output"].setDirty(slice(None,None,None))
             
     def resultingChannels(self):
         raise RuntimeError('resultingChannels() not implemented')
