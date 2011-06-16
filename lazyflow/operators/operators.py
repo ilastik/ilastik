@@ -191,6 +191,7 @@ class OpArrayCache(OpArrayPiper):
         blockStop = numpy.ceil(1.0 * stop / self._blockShape)
         blockKey = roiToSlice(blockStart,blockStop)
         self._blockState[blockKey] -= 1
+        #FIXEM: we should recalculate results for which others are waiting and notify them...
         self._lock.release()
         
         self.outputs["Output"].setDirty(key)

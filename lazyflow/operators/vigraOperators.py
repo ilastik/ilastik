@@ -61,39 +61,49 @@ class OpBaseVigraFilter(OpArrayPiper):
         OpArrayPiper.__init__(self, graph)
         
     def getOutSlot(self, slot, key, result):
+        req = self.inputs["Sigma"][:].allocate()
+        sigma = req()
+        sigma = float(sigma[0])
         
-        start, stop = roi.sliceToRoi(key,self.inputs["Input"].shape)
+        shape = self.inputs["Input"].shape
+        
 
         subkey = key[0:-1]
+
+        oldstart, oldstop = roi.sliceToRoi(key, shape)
+        start, stop = roi.sliceToRoi(subkey,shape)
+        newStart, newStop = roi.extendSlice(start, stop, shape[:-1], sigma)
+        
+        readKey = roi.roiToSlice(newStart, newStop)
+        
+        print start, stop, newStart, newStop
+        
+        writeKey = roi.roiToSlice(start - newStart, newStop - newStart)
+                
         channelsPerChannel = self.resultingChannels()
         
-        print self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels), self.inputs["Input"].shape
+        print self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels), shape
         
         if self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
-            for i in range(numpy.floor(start[-1]/channelsPerChannel),numpy.ceil(stop[-1]/channelsPerChannel)):
-                print "jjjjjjjjj", i
-                v = self.inputs["Input"][subkey + (i,)].allocate()
+            for i in range(numpy.floor(oldstart[-1]/channelsPerChannel),numpy.ceil(oldstop[-1]/channelsPerChannel)):
+                v = self.inputs["Input"][readKey + (i,)].allocate()
                 t = v().squeeze()
-                req = self.inputs["Sigma"][:].allocate()
-                sigma = req()
-                sigma = float(sigma[0])
                 
+                print sigma, t.shape
                 
                 temp = self.vigraFilter(numpy.require(t[:], dtype=self.inputDtype), sigma)
-
+                                
                 if channelsPerChannel>1:
-                    result[subkey,i*channelsPerChannel:(i+1)*channelsPerChannel] = temp
+                    
+                    result[...,i*channelsPerChannel:(i+1)*channelsPerChannel] = temp[writeKey]
                 else:
-                    result[subkey + (i,)] = temp
+                    result[...,i] = temp[writeKey]
         else:
-            v = self.inputs["Input"][subkey].allocate()
+            v = self.inputs["Input"][readKey].allocate()
             t = v()
-            req = self.inputs["Sigma"][:].allocate()
-            sigma = req()
-            sigma = float(sigma[0])
             
             temp = self.vigraFilter(numpy.require(t[:], dtype=self.inputDtype), sigma)
-            result[subkey,0:channelsPerChannel] = temp
+            result[...,0:channelsPerChannel] = temp[writeKey]
             
     def notifyConnect(self, inputSlot):
         if inputSlot == self.inputs["Input"]:

@@ -1,4 +1,4 @@
-import numpy
+import numpy, vigra
 from numpy.lib.stride_tricks import as_strided as ast
 
 def sliceToRoi(s, shape=None):
@@ -57,6 +57,13 @@ def roiToSlice(start, stop, hardBind=False):
         return tuple(map(lambda x:slice(x[0],x[1]),zip(start,stop)))
 
 
+
+def extendSlice(start, stop, shape, sigma):
+    zeros = start - start
+    newStart = numpy.maximum(start - numpy.ceil(3.5 * sigma), zeros)
+    sa = numpy.array(shape)
+    newStop = numpy.minimum(stop + numpy.ceil(3.5 * sigma), sa)
+    return newStart, newStop
 
 
 def block_view(A, block= (3, 3)):
