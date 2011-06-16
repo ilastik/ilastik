@@ -11,7 +11,7 @@ from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySlice
 
 
 class SingleValueProvider(OutputSlot):
-    def __init__(self, name, dtype):
+    def __init__(self, name, dtype = object):
         OutputSlot.__init__(self,name)
         self._shape = (1,)
         self._dtype = dtype
@@ -60,10 +60,11 @@ class ArrayProvider(OutputSlot):
 class ListToMultiOperator(Operator):
     name = "List to Multislot converter"
     inputSlots = [InputSlot("List")]
-    outputSlots = [OutputSlot("Items")]
+    outputSlots = [MultiOutputSlot("Items", level = 1)]
     
     def notifyConnect(self, inputSlot):
-        self.list = self.inputs["List"][:].allocate().wait()[0]
+        list = self.inputs["List"][:].allocate().wait()[0]
+        self.list= list
         self.outputs["Items"].resize(len(list))
         for o in self.outputs["Items"]:
             o._dtype = object
