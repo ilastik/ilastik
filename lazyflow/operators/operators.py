@@ -193,9 +193,7 @@ class OpArrayCache(OpArrayPiper):
         self._blockState[blockKey] -= 1
         self._lock.release()
         
-        print "llllllllllllllllllllll"
         self.outputs["Output"].setDirty(key)
-        print "pppppppppppppppppppppp"
         
     def getOutSlot(self,slot,key,result):
         start, stop = sliceToRoi(key, self.shape)

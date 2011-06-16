@@ -276,11 +276,8 @@ class OutputSlot(object):
             partner.disconnect()
         
     def setDirty(self, key):
-        print key
         start, stop = sliceToRoi(key, self.shape)
         key = roiToSlice(start,stop)
-        print start, stop, key
-        print self.name, self.operator
         for p in self.partners:
             p.setDirty(key) #set everything dirty
 
