@@ -10,7 +10,8 @@ from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySlice
 
 __testing__ = False
 
-from tests.mockOperators import OpA, OpB, OpC, ArrayProvider
+from tests.mockOperators import OpA, OpB, OpC
+from lazyflow.operators.valueProviders import ArrayProvider
 
 g = Graph(numThreads = 2)
 

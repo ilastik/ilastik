@@ -23,7 +23,7 @@ class SingleValueProvider(OutputSlot):
         self._lock.acquire()
         self._data[0] = v
         self._lock.release()
-        self.setDirty()
+        self.setDirty(slice(None,None,None))
 
     def fireRequest(self, key, destination):
         assert self._data is not None, "cannot do __getitem__ on Slot %s,  data was not set !!" % (self.name,self,)
@@ -47,7 +47,7 @@ class ArrayProvider(OutputSlot):
         self._lock.acquire()
         self._data = d
         self._lock.release()
-        self.setDirty()
+        self.setDirty(slice(None,None,None))
         
     def fireRequest(self, key, destination):
         assert self._data is not None, "cannot do __getitem__ on Slot %s,  data was not set !!" % self.name

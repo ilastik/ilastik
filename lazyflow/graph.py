@@ -194,10 +194,10 @@ class InputSlot(object):
         s = InputSlot(self.name, operator)
         return s
             
-    def setDirty(self):
+    def setDirty(self, key):
         assert self.operator is not None, \
                "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
-        self.operator.setDirty(self)
+        self.operator.notifyDirty(self, key)
     
     def connectOk(self, partner):
         # reimplement this method
@@ -275,9 +275,14 @@ class OutputSlot(object):
             self.partners.remove(partner)
             partner.disconnect()
         
-    def setDirty(self):
+    def setDirty(self, key):
+        print key
+        start, stop = sliceToRoi(key, self.shape)
+        key = roiToSlice(start,stop)
+        print start, stop, key
+        print self.name, self.operator
         for p in self.partners:
-            p.setDirty()
+            p.setDirty(key) #set everything dirty
 
     #FIXME __copy__ ?
     def getInstance(self, operator):
@@ -533,10 +538,20 @@ class MultiInputSlot(object):
         s = MultiInputSlot(self.name, operator, level = self.level)
         return s
             
-    def setDirty(self):
+    def setDirty(self, key = None):
         assert self.operator is not None, "Slot %s cannot be set dirty, slot not belonging to any actual operator instance" % self.name
-        self.operator.setDirty(self)
+        self.operator.setDirty(self, key)
+
+    def notifyDirty(self, slot, key):
+        index = self.inputSlots.index(slot)
+        self.operator.notifySubSlotDirty((self,slot),(index,),key)
+        pass
     
+    def notifySubSlotDirty(self, slots, indexes, key):
+        index = self.inputSlots.index(slots[0])
+        self.operator.notifySubSlotDirty((self,)+slots,(index,) + indexes,key)
+        pass
+   
     def connectOk(self, partner):
         # reimplement this method
         # if you want a more involved
@@ -711,11 +726,17 @@ class Operator(object):
         for s in self.inputs.values():
             s.disconnect()
 
-    def setDirty(self, inputSlot = None):
+    def notifyDirty(self, inputSlot, key):
         # simple default implementation
         # -> set all outputs dirty    
         for os in self.outputs.values():
-            os.setDirty()
+            os.setDirty(slice(None,None,None))
+            
+    def notifySubSlotDirty(self, slots, indexes, key):
+        # simple default implementation
+        # -> set all outputs dirty    
+        for os in self.outputs.values():
+            os.setDirty(slice(None,None,None))
 
     def notifyConnect(self, inputSlot):
         pass

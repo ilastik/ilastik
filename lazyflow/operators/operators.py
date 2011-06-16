@@ -25,6 +25,9 @@ class OpArrayPiper(Operator):
         res = req()
         return res
 
+    def notifyDirty(self,slot,key):
+        self.outputs["Output"].setDirty(key)
+
     @property
     def shape(self):
         return self.outputs["Output"]._shape
@@ -73,6 +76,9 @@ class OpMultiArrayPiper(Operator):
     def setSubInSlot(self,multislot,slot,index, key,value):
         pass
 
+    def notifySubSlotDirty(self,slots,indexes,key):
+        self.outputs["Output"][indexes[0]].setDirty(key)
+
 class OpMultiMultiArrayPiper(Operator):
     name = "MultiMultiArrayPiper"
     description = "simple piping operator"
@@ -111,6 +117,9 @@ class OpMultiMultiArrayPiper(Operator):
 
     def setSubInSlot(self,multislot,slot,index, key,value):
         pass
+
+    def notifySubSlotDirty(self,slots,indexes,key):
+        self.outputs["Output"][indexes[0]][indexes[1]].setDirty(key)
 
 
 
@@ -174,14 +183,19 @@ class OpArrayCache(OpArrayPiper):
 #            self._blockQuery[p] = BlockQueue()
             
 
-    def setDirty(self, inputSlot=None):
+    def notifyDirty(self, slot, key):
+        start, stop = sliceToRoi(key, self.shape)
+        
         self._lock.acquire()
-#        self._dirtyState = 2
-#        self._blockState[:] = 1
-        self._dirtyState += 1
+        blockStart = numpy.floor(1.0 * start / self._blockShape)
+        blockStop = numpy.ceil(1.0 * stop / self._blockShape)
+        blockKey = roiToSlice(blockStart,blockStop)
+        self._blockState[blockKey] -= 1
         self._lock.release()
-        OpArrayPiper.setDirty(self, inputSlot=inputSlot)
-        print "OpArrayCache setDirty"
+        
+        print "llllllllllllllllllllll"
+        self.outputs["Output"].setDirty(key)
+        print "pppppppppppppppppppppp"
         
     def getOutSlot(self,slot,key,result):
         start, stop = sliceToRoi(key, self.shape)

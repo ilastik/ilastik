@@ -10,7 +10,8 @@ from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySlice
 
 __testing__ = False
 
-from tests.mockOperators import OpA, OpB, OpC, ArrayProvider
+from tests.mockOperators import OpA, OpB, OpC
+from lazyflow.operators.valueProviders import ArrayProvider
 
 def runBenchmark(numThreads, cacheClass, shape, requests):    
     g = Graph(numThreads = numThreads)
@@ -38,6 +39,7 @@ def runBenchmark(numThreads, cacheClass, shape, requests):
     
     for r in requests:
         if r == "setDirty":
+            print "setting new data and dirty...."
             provider.setData(numpy.zeros(provider.shape,dtype = provider.dtype))
             continue
         key = roi.roiToSlice(numpy.array(r[0]), numpy.array(r[1]))
