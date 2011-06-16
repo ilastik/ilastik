@@ -77,6 +77,8 @@ class GetItemWriterObject(object):
     __slots__ = ["_key", "_slot"]
     
     def __init__(self, slot, key):
+        start, stop = sliceToRoi(key, slot.shape)
+        key = roiToSlice(start,stop)        
         self._key = key
         self._slot = slot
     

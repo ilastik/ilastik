@@ -3,6 +3,7 @@ import numpy, vigra
 from lazyflow.graph import *
 import gc
 from lazyflow import roi
+import copy
 
 from operators import OpArrayPiper, OpMultiArrayPiper
 
@@ -233,10 +234,19 @@ class OpImageWriter(Operator):
     def notifyConnect(self, inputSlot):
         
         if self.inputs["Filename"].partner is not None and self.inputs["Image"].partner is not None:
-            filename = self.inputs["Filename"][:].allocate().wait()[0]
-    
-            image = self.inputs["Image"][:].allocate().wait()
+            filename = self.inputs["Filename"][0].allocate().wait()[0]
+
             imSlot = self.inputs["Image"]
-            vimage = vigra.VigraArray(image, dtype = imSlot.dtype, axistags = imSlot.axistags)
-            vigra.impex.writeImage(vimage, filename)
+
+            axistags = copy.copy(imSlot.axistags)
+            assert axistags != None, "aisjdlkadkahsdkjhasdkjhaskdkkkk ooooooooooh"
+            
+            image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
+            
+            def closure():
+                dtype = imSlot.dtype
+                vimage = vigra.VigraArray(image, dtype = dtype, axistags = axistags)
+                vigra.impex.writeImage(vimage, filename)
+    
+            self.inputs["Image"][:].writeInto(image).notify(closure)
         
