@@ -191,3 +191,41 @@ class OpDilation(OpBaseVigraFilter):
 
     def resultingChannels(self):
         return 1
+
+
+
+class OpImageReader(Operator):
+    name = "Image Reader"
+    inputSlots = [InputSlot("Filename")]
+    outputSlots = [OutputSlot("Image")]
+    
+    def notifyConnect(self, inputSlot):
+        filename = self.inputs["Filename"][:].allocate().wait()[0]
+        temp = vigra.impex.readImage(filename)
+        
+        oslot = self.outputs["Image"]
+        oslot._shape = temp.shape
+        oslot._dtype = temp.dtype
+        oslot._axistags = temp.axistags
+    
+    def getOutSlot(self, slot, key, result):
+        filename = self.inputs["Filename"][:].allocate().wait()[0]
+        temp = vigra.impex.readImage(filename)
+        
+        result[:] = temp[key]
+    
+
+class OpImageWriter(Operator):
+    name = "Image Writer"
+    inputSlots = [InputSlot("Filename"), InputSlot("Image")]
+    
+    def notifyConnect(self, inputSlot):
+        
+        if self.inputs["Filename"].partner is not None and self.inputs["Image"].partner is not None:
+            filename = self.inputs["Filename"][:].allocate().wait()[0]
+    
+            image = self.inputs["Image"][:].allocate().wait()
+            imSlot = self.inputs["Image"]
+            vimage = vigra.VigraArray(image, dtype = imSlot.dtype, axistags = imSlot.axistags)
+            vigra.impex.writeImage(vimage, filename)
+        

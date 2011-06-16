@@ -7,17 +7,28 @@ import sys
 import copy
 
 from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
-from tests.mockOperators import ArrayProvider, SingleValueProvider
+from lazyflow.operators.valueProviders import ArrayProvider, SingleValueProvider
 from lazyflow.graph import MultiInputSlot
 
 from lazyflow.operators.vigraOperators import *
 
-img = vigra.impex.readImage("ostrich.jpg")
-
-ostrichProvider = ArrayProvider("Ostrich_Input", shape=img.shape, dtype=img.dtype, axistags=img.axistags)
-ostrichProvider.setData(img)
 
 graph = graph.Graph(numThreads=2)
+
+fileNameProvider = SingleValueProvider("Filename", object)
+fileNameProvider.setValue("ostrich.jpg")
+
+ostrichProvider = OpImageReader(graph)
+ostrichProvider.inputs["Filename"].connect(fileNameProvider)
+
+
+fileNameProvider2 = SingleValueProvider("Filename", object)
+fileNameProvider2.setValue("ostrich_piped.jpg")
+
+
+ostrichWriter = OpImageWriter(graph)
+ostrichWriter.inputs["Filename"].connect(fileNameProvider2)
+ostrichWriter.inputs["Image"].connect(ostrichProvider.outputs["Image"])
 
 sigmaProvider = SingleValueProvider("Sigma", float)
 sigmaProvider.setValue(float(10))
@@ -27,7 +38,7 @@ operators = [OpGaussianSmoothing,OpOpening, OpClosing,OpLaplacianOfGaussian]
 for op in operators:
     
     operinstance = op(graph)
-    operinstance.inputs["Input"].connect(ostrichProvider)
+    operinstance.inputs["Input"].connect(ostrichProvider.outputs["Image"])
     operinstance.inputs["Sigma"].connect(sigmaProvider)
     result = operinstance.outputs["Output"][:,:,:].allocate()
     if result.shape[-1] > 3:
