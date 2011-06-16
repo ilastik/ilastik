@@ -13,13 +13,13 @@ class OpMultiArrayStacker(Operator):
     
     def notifySubConnect(self, slots, indexes):
         #print "  OpMultiArrayStacker.notifyConnect() with", slots, indexes
-        self.outputs["Output"]._dtype = self.inputs["MultiInput"][-1].dtype
-        self.outputs["Output"]._axistags = copy.copy(self.inputs["MultiInput"][-1].axistags)
+        self.outputs["Output"]._dtype = self.inputs["Images"][0].dtype
+        self.outputs["Output"]._axistags = copy.copy(self.inputs["Images"][-1].axistags)
         if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
             self.outputs["Output"]._axistags.insertChannelAxis()
         
         c = 0
-        for inSlot in self.inputs["MultiInput"]:
+        for inSlot in self.inputs["Images"]:
             if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
                 c += 1
             else:
@@ -30,19 +30,21 @@ class OpMultiArrayStacker(Operator):
     def getOutSlot(self, slot, key, result):
         cnt = 0
         key = key[:-1]
-        for i, inSlot in enumerate(self.inputs['MultiInput']):
-            #print "a sadf sadf sadf asdf ", key
+        requests = []
+        for i, inSlot in enumerate(self.inputs['Images']):
             if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
                  
-                v = inSlot[key].writeInto(result[..., cnt])
+                req = inSlot[key].writeInto(result[..., cnt])
                 cnt += 1
             else:
                 channels = inSlot.shape[inSlot.axistags.channelIndex]
-                #print " 555555555 55555555555555 adding end slicer", result.shape
                 key_ = key + (slice(None,None,None),)
-                v = inSlot[key_].writeInto(result[...,cnt:cnt+channels])
+                req = inSlot[key_].writeInto(result[...,cnt:cnt+channels])
                 cnt += channels
-            v()
+            requests.append(req)
+        
+        for r in requests:
+            r()
 
 
 class OpBaseVigraFilter(OpArrayPiper):
@@ -147,6 +149,15 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
     def resultingChannels(self):
         temp = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)**2
         return temp
+    
+class OpGaussinaGradientMagnitude(OpBaseVigraFilter):
+    name = "GaussianGradientMagnitude"
+    vigraFilter = staticmethod(vigra.filters.gaussianGradientMagnitude)
+    outputDtype = numpy.float32 
+
+    def resultingChannels(self):
+        
+        return 1
 
 class OpLaplacianOfGaussian(OpBaseVigraFilter):
     name = "LaplacianOfGaussian"
