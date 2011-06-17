@@ -307,7 +307,12 @@ class OutputSlot(object):
 
     def fireRequest(self, key, destination):
         assert self.operator is not None, "cannot do __getitem__ on Slot %s, of %r -> now operator !!" % (self.name,self.operator) 
-                
+        
+        start, stop = sliceToRoi(key, self.shape)
+        
+        assert numpy.min(start) >= 0, "Somebody is requesting shit from slot %s of operator %s (%r)" %(self.name, self.operator.name, self.operator)
+        assert (stop <= numpy.array(self.shape)).all(), "Somebody is requesting shit from slot %s of operator %s (%r)" %(self.name, self.operator.name, self.operator)
+        
         gr = greenlet.getcurrent()
         
         global requestCounter

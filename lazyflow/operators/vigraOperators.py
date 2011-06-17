@@ -75,9 +75,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         newStart, newStop = roi.extendSlice(start, stop, shape[:-1], sigma)
         
         readKey = roi.roiToSlice(newStart, newStop)
-        
-        print start, stop, newStart, newStop
-        
+                
         writeKey = roi.roiToSlice(start - newStart, newStop - newStart)
                 
         channelsPerChannel = self.resultingChannels()
@@ -88,7 +86,6 @@ class OpBaseVigraFilter(OpArrayPiper):
             for i in range(numpy.floor(oldstart[-1]/channelsPerChannel),numpy.ceil(oldstop[-1]/channelsPerChannel)):
                 v = self.inputs["Input"][readKey + (i,)].allocate()
                 t = v().squeeze()
-                
                 print sigma, t.shape
                 
                 temp = self.vigraFilter(numpy.require(t[:], dtype=self.inputDtype), sigma)
