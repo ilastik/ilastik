@@ -1,4 +1,4 @@
-import numpy, vigra
+import numpy, vigra, h5py
 
 from lazyflow.graph import *
 import gc
@@ -244,6 +244,8 @@ class OpImageWriter(Operator):
             filename = self.inputs["Filename"][0].allocate().wait()[0]
 
             imSlot = self.inputs["Image"]
+            
+            assert len(imSlot.shape) == 2 or len(imSlot.shape) == 3, "OpImageWriter: wrong image shape %r vigra can only write 2D images, with 1 or 3 channels" %(imSlot.shape,)
 
             axistags = copy.copy(imSlot.axistags)
             
@@ -255,4 +257,64 @@ class OpImageWriter(Operator):
                 vigra.impex.writeImage(vimage, filename)
     
             self.inputs["Image"][:].writeInto(image).notify(closure)
+    
+
+class OpH5Reader(Operator):
+    name = "H5 File Reader"
+    inputSlots = [InputSlot("Filename"), InputSlot("hdf5Path")]
+    outputSlots = [OutputSlot("Image")]
+    
         
+    def notifyConnect(self, inputSlot):       
+        if self.inputs["Filename"].partner is not None and self.inputs["hdf5Path"].partner is not None:
+            filename = self.inputs["Filename"][0].allocate().wait()[0]
+            hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
+            
+            f = h5py.File(filename, 'r')
+        
+            d = f[hdf5Path]
+            
+            self.outputs["Image"]._shape = d.shape
+            self.outputs["Image"]._axistags = vigra.VigraArray.defaultAxistags(len(d.shape))
+            f.close()
+        
+    def getOutSlot(self, slot, key, result):
+        filename = self.inputs["Filename"][0].allocate().wait()[0]
+        hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
+        
+        f = h5py.File(filename, 'r')
+    
+        d = f[hdf5Path]
+        
+        result[:] = d[key]
+        f.close()
+
+
+        
+class OpH5Writer(Operator):
+    name = "H5 File Writer"
+    inputSlots = [InputSlot("Filename"), InputSlot("hdf5Path"), InputSlot("Image")]
+
+    def notifyConnect(self, inputSlot):
+        
+        if self.inputs["Filename"].partner is not None and self.inputs["Image"].partner is not None and self.inputs["hdf5Path"].partner is not None:
+            filename = self.inputs["Filename"][0].allocate().wait()[0]
+            hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
+
+            imSlot = self.inputs["Image"]
+            
+            axistags = copy.copy(imSlot.axistags)
+            
+            image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
+                        
+            def closure():
+                f = h5py.File(filename, 'w')
+                g = f
+                pathElements = hdf5Path.split("/")
+                for s in pathElements[:-1]:
+                    g = g.create_group(s)
+                g.create_dataset(pathElements[-1],data = image)
+                f.close()
+    
+            self.inputs["Image"][:].writeInto(image).notify(closure)
+    
