@@ -130,12 +130,12 @@ class GetItemRequestObject(object):
         return self.destination   
          
     def notify(self, closure):
-        if greenlet.getcurrent().parent != None:
-            self.closure = closure
-        else:
-            print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
-            self.wait()
-            closure()
+        #if greenlet.getcurrent().parent != None:
+        self.closure = closure
+        #else:
+        #    print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
+        #    self.wait()
+        #    closure()
             
     def __call__(self):
         #TODO: remove this convenience function when
@@ -671,9 +671,9 @@ class MultiOutputSlot(object):
         s = MultiOutputSlot(self.name, operator, level = self.level)
         return s
             
-    def setDirty(self):
+    def setDirty(self, key):
         for partner in self.partners:
-            partner.setDirty(self)
+            partner.setDirty(key)
     
     def connectOk(self, partner):
         # reimplement this method

@@ -8,6 +8,9 @@ import copy
 from operators import OpArrayPiper, OpMultiArrayPiper
 
 
+
+
+
 class OpMultiArrayStacker(Operator):
     inputSlots = [MultiInputSlot("Images")]
     outputSlots = [OutputSlot("Output")]
@@ -45,7 +48,7 @@ class OpMultiArrayStacker(Operator):
             requests.append(req)
         
         for r in requests:
-            r()
+            r.wait()
 
 
 class OpBaseVigraFilter(OpArrayPiper):
@@ -63,8 +66,13 @@ class OpBaseVigraFilter(OpArrayPiper):
     def getOutSlot(self, slot, key, result):
         req = self.inputs["Sigma"][:].allocate()
         sigma = req()
-        sigma = float(sigma[0])
-        
+        sigma = sigma[0]
+
+        if isinstance(sigma, list):
+            largestSigma = sigma[-1]
+        else:
+            largestSigma = sigma
+                
         shape = self.inputs["Input"].shape
         
 
@@ -72,7 +80,7 @@ class OpBaseVigraFilter(OpArrayPiper):
 
         oldstart, oldstop = roi.sliceToRoi(key, shape)
         start, stop = roi.sliceToRoi(subkey,shape)
-        newStart, newStop = roi.extendSlice(start, stop, shape[:-1], sigma)
+        newStart, newStop = roi.extendSlice(start, stop, shape[:-1], largestSigma)
         
         readKey = roi.roiToSlice(newStart, newStop)
                 
@@ -80,15 +88,20 @@ class OpBaseVigraFilter(OpArrayPiper):
                 
         channelsPerChannel = self.resultingChannels()
         
+        axistags = self.inputs["Input"].axistags
+        
         print self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels), shape
         
         if self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
             for i in range(numpy.floor(oldstart[-1]/channelsPerChannel),numpy.ceil(oldstop[-1]/channelsPerChannel)):
                 v = self.inputs["Input"][readKey + (i,)].allocate()
                 t = v().squeeze()
-                print sigma, t.shape
+                t = numpy.require(t, dtype=self.inputDtype)
+                #t = t.view(vigra.VigraArray)
+                #t.axistags = copy.copy(axistags)
                 
-                temp = self.vigraFilter(numpy.require(t[:], dtype=self.inputDtype), sigma)
+                
+                temp = self.vigraFilter(t, sigma)
                                 
                 if channelsPerChannel>1:
                     
@@ -98,8 +111,10 @@ class OpBaseVigraFilter(OpArrayPiper):
         else:
             v = self.inputs["Input"][readKey].allocate()
             t = v()
-            
-            temp = self.vigraFilter(numpy.require(t[:], dtype=self.inputDtype), sigma)
+            t = numpy.require(t, dtype=self.inputDtype)
+            #t = t.view(vigra.VigraArray)
+            #t.axistags = copy.copy(axistags)            
+            temp = self.vigraFilter(t, sigma)
             result[...,0:channelsPerChannel] = temp[writeKey]
             
     def notifyConnect(self, inputSlot):
@@ -107,7 +122,7 @@ class OpBaseVigraFilter(OpArrayPiper):
             numChannels  = 1
             if inputSlot.axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
                 channelIndex = self.inputs["Input"].axistags.channelIndex
-                numChannels = self.inputs["Input"].shape[channelIndex]*self.resultingChannels()
+                numChannels = self.inputs["Input"].shape[channelIndex]
                 inShapeWithoutChannels = inputSlot.shape[:-1]
             else:
                 inShapeWithoutChannels = inputSlot.shape
@@ -117,7 +132,6 @@ class OpBaseVigraFilter(OpArrayPiper):
             self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
             
             channelsPerChannel = self.resultingChannels()
-            
             self.outputs["Output"]._shape = inShapeWithoutChannels + (numChannels * channelsPerChannel,)
             if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
                 self.outputs["Output"]._axistags.insertChannelAxis()
@@ -128,6 +142,61 @@ class OpBaseVigraFilter(OpArrayPiper):
     def resultingChannels(self):
         raise RuntimeError('resultingChannels() not implemented')
         
+
+#difference of Gaussians
+def differenceOfGausssians(image,sigmas):
+    """ difference of gaussian function"""
+    return vigra.filters.gaussianSmoothing(image,sigmas[0])-vigra.filters.gaussianSmoothing(image,sigmas[1])
+
+def coherenceOrientationOfStructureTensor(image,sigmas):
+    """
+    coherence Orientation of Structure tensor function:
+    input:  M*N*1ch VigraArray
+            sigma corresponding to the inner scale of the tensor
+            scale corresponding to the outher scale of the tensor
+    
+    output: M*N*2 VigraArray, the firest channel correspond to coherence
+                              the second channel correspond to orientation
+    """
+    
+    #FIXME: make more general
+    
+    #assert image.spatialDimensions==2, "Only implemented for 2 dimensional images"
+    assert len(image.shape)==2, "Only implemented for 2 dimensional images"
+    
+    st=vigra.filters.structureTensor(image, sigmas[0], sigmas[1])
+    i11=st[:,:,0]
+    i12=st[:,:,1]
+    i22=st[:,:,2]
+    
+    
+    res=numpy.ndarray((image.shape[0],image.shape[1],2))
+    
+    res[:,:,0]=numpy.sqrt( (i22-i11)**2+4*(i12**2))/(i11-i22)
+    res[:,:,1]=2*i12/(i22-i11)
+    
+    
+    return res
+
+
+
+
+class OpDifferenceOfGaussians(OpBaseVigraFilter):
+    name = "DifferenceOfGaussians"
+    vigraFilter = staticmethod(differenceOfGausssians)
+    outputDtype = numpy.float32 
+
+    def resultingChannels(self):
+        return 1
+
+class OpCoherenceOrientation(OpBaseVigraFilter):
+    name = "CoherenceOrientationOfStructureTensor"
+    vigraFilter = staticmethod(coherenceOrientationOfStructureTensor)
+    outputDtype = numpy.float32 
+    
+    def resultingChannels(self):
+        return 2    
+
 
 class OpGaussianSmoothing(OpBaseVigraFilter):
     name = "GaussianSmoothing"
@@ -318,3 +387,26 @@ class OpH5Writer(Operator):
     
             self.inputs["Image"][:].writeInto(image).notify(closure)
     
+#    def getOutSlot(self, slot, key, result):
+#        filename = self.inputs["Filename"][0].allocate().wait()[0]
+#        hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
+#
+#        imSlot = self.inputs["Image"]
+#        
+#        axistags = copy.copy(imSlot.axistags)
+#        
+#        image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
+#                    
+#
+#        self.inputs["Image"][:].writeInto(image).wait()
+#        
+#        
+#        f = h5py.File(filename, 'w')
+#        g = f
+#        pathElements = hdf5Path.split("/")
+#        for s in pathElements[:-1]:
+#            g = g.create_group(s)
+#        g.create_dataset(pathElements[-1],data = image)
+#        f.close()
+#        
+#        result[0] = True
