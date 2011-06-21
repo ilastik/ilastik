@@ -173,7 +173,7 @@ def coherenceOrientationOfStructureTensor(image,sigmas):
     res=numpy.ndarray((image.shape[0],image.shape[1],2))
     
     res[:,:,0]=numpy.sqrt( (i22-i11)**2+4*(i12**2))/(i11-i22)
-    res[:,:,1]=2*i12/(i22-i11)
+    res[:,:,1]=numpy.atan(2*i12/(i22-i11))/np.pi +0.5
     
     
     return res
