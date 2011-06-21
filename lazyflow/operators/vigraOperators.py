@@ -93,7 +93,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         print self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels), shape
         
         if self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
-            for i in range(numpy.floor(oldstart[-1]/channelsPerChannel),numpy.ceil(oldstop[-1]/channelsPerChannel)):
+            for i in range(int(numpy.floor(oldstart[-1]/channelsPerChannel)),int(numpy.ceil(oldstop[-1]/channelsPerChannel))):
                 v = self.inputs["Input"][readKey + (i,)].allocate()
                 t = v().squeeze()
                 t = numpy.require(t, dtype=self.inputDtype)

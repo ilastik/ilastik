@@ -97,7 +97,7 @@ class GetItemWriterObject(object):
 
 
 class GetItemRequestObject(object):
-    __slots__ = ["greenlet", "event", "thread", "key", "destination", "closure"]
+    __slots__ = ["requestLevel", "greenlet", "event", "thread", "key", "destination", "closure"]
 
 
     def __init__(self, graph, partner, key, destination):
@@ -106,7 +106,13 @@ class GetItemRequestObject(object):
         self.destination = destination
         self.closure = None
         self.event = Event()
-        self.thread = current_thread()        
+        self.thread = current_thread()
+        
+        if hasattr(self.thread, "currentRequestLevel"):
+            self.requestLevel = self.thread.currentRequestLevel + 1
+        else:
+            self.requestLevel = 1
+
         graph.putTask(partner.fireRequest, self)
 
     
@@ -130,12 +136,12 @@ class GetItemRequestObject(object):
         return self.destination   
          
     def notify(self, closure):
-        #if greenlet.getcurrent().parent != None:
-        self.closure = closure
-        #else:
-        #    print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
-        #    self.wait()
-        #    closure()
+        if isinstance(current_thread(), Worker):
+            self.closure = closure
+        else:
+            print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
+            self.wait()
+            closure()
             
     def __call__(self):
         #TODO: remove this convenience function when
@@ -1107,30 +1113,35 @@ class Worker(Thread):
         self.working = False
         self.daemon = True # kill automatically on application exit!
         self.pendingGreenlets = deque()
+        self.currentRequestLevel = 0
         print "Initializing Worker #%d" % len(self.graph.workers)
         pass
-    
+
     def run(self):
         while self.graph.running:
             while not self.graph.tasks.empty() or len(self.pendingGreenlets) > 0:
                 task = None
                 if len(self.pendingGreenlets) > 0:
                     task = self.pendingGreenlets.popleft()
-                    if task[1].greenlet is not None:
-                        task = task[1].greenlet.switch()
+                    if task[2].greenlet is not None:
+                        self.currentRequestLevel = task[2].requestLevel
+                        task = task[2].greenlet.switch()
                     
                 if task is None:
                     try:
                         task = self.graph.tasks.get(False)#timeout = 1.0)
                     except Empty:
                         continue
-                    gr = greenlet.greenlet(task[0])
+                    gr = greenlet.greenlet(task[1])
+                    self.currentRequestLevel = task[2].requestLevel
+                    print "Handling request of level", self.currentRequestLevel
                     task = gr.switch()
                     
+                    
                 if task is not None:
-                    if task[1].event.isSet():
-                        if task[1].greenlet is not None:
-                            task[1].thread.pendingGreenlets.append(task)
+                    if task[2].event.isSet():
+                        if task[2].greenlet is not None:
+                            task[2].thread.pendingGreenlets.append(task)
         print "Finalized Worker"
                 
     
@@ -1155,10 +1166,10 @@ class Graph(object):
             if reqObject.closure is not None:
                 reqObject.closure()
             # return something that can be handled by the innnerWork function
-            ret = [None, reqObject]
+            ret = [reqObject.requestLevel + 1, None, reqObject]
             return ret
 
-        task = [runnerClosure, reqObject]
+        task = [-reqObject.requestLevel, runnerClosure, reqObject]
         self.tasks.put(task)
     
     def finalize(self):
