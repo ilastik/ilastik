@@ -73,7 +73,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         else:
             largestSigma = sigma
                 
-        shape = self.inputs["Input"].shape
+        shape = self.outputs["Output"].shape
         
 
         subkey = key[0:-1]
@@ -85,6 +85,8 @@ class OpBaseVigraFilter(OpArrayPiper):
         readKey = roi.roiToSlice(newStart, newStop)
                 
         writeKey = roi.roiToSlice(start - newStart, newStop - newStart)
+            
+                
                 
         channelsPerChannel = self.resultingChannels()
         
@@ -115,7 +117,10 @@ class OpBaseVigraFilter(OpArrayPiper):
             #t = t.view(vigra.VigraArray)
             #t.axistags = copy.copy(axistags)            
             temp = self.vigraFilter(t, sigma)
-            result[...,0:channelsPerChannel] = temp[writeKey]
+            if channelsPerChannel>1:
+                result[...,0:channelsPerChannel] = temp[writeKey]
+            else:
+                result[...,0] = temp[writeKey]
             
     def notifyConnect(self, inputSlot):
         if inputSlot == self.inputs["Input"]:
@@ -173,7 +178,7 @@ def coherenceOrientationOfStructureTensor(image,sigmas):
     res=numpy.ndarray((image.shape[0],image.shape[1],2))
     
     res[:,:,0]=numpy.sqrt( (i22-i11)**2+4*(i12**2))/(i11-i22)
-    res[:,:,1]=numpy.atan(2*i12/(i22-i11))/np.pi +0.5
+    res[:,:,1]=numpy.arctan(2*i12/(i22-i11))/numpy.pi +0.5
     
     
     return res
@@ -343,8 +348,16 @@ class OpH5Reader(Operator):
         
             d = f[hdf5Path]
             
+            
+            self.outputs["Image"]._dtyoe = d.dtype
             self.outputs["Image"]._shape = d.shape
-            self.outputs["Image"]._axistags = vigra.VigraArray.defaultAxistags(len(d.shape))
+            
+            if len(d.shape) == 2:
+                axistags=vigra.AxisTags(vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space))   
+            else:
+                axistags= vigra.VigraArray.defaultAxistags(len(d.shape))
+            self.outputs["Image"]._axistags=axistags
+                
             f.close()
         
     def getOutSlot(self, slot, key, result):

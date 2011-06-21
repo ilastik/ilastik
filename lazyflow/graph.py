@@ -223,6 +223,7 @@ class InputSlot(object):
         
     def fireRequest(self, key, destination):
         assert self.partner is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
+        #print "GUGA", self.name, self.operator.name, self.operator, key
                                         
         reqObject = GetItemRequestObject(self.graph, self.partner, key, destination)
             
