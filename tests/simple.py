@@ -44,7 +44,7 @@ def runBenchmark(numThreads, cacheClass, shape, requests):
             continue
         key = roi.roiToSlice(numpy.array(r[0]), numpy.array(r[1]))
         t1 = time.time()
-        res1 = opc4.outputs["Output"][key].allocate()
+        res1 = opc4.outputs["Output"][key].allocate().wait()
         t2 = time.time()
         print "%s request %r runtime:" % (cacheClass.__name__,key) , t2-t1
         assert (res1 == 1).all(), res1

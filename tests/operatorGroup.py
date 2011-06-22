@@ -103,11 +103,11 @@ print len(ope.outputs["MultiOutput"])
 
 opGA.inputs["Input"].connect(source0)
 
+print opGA.outputs["MultiOutput"], len(opGA.outputs["MultiOutput"])
 
+res1 = opd.outputs["Output"][0][:].allocate().wait()
 
-res1 = opd.outputs["Output"][0][:,:].allocate()
-
-res2 = opGA.outputs["MultiOutput"][0][:,:].allocate()
+res2 = opGA.outputs["MultiOutput"][0][:].allocate().wait()
 
 
 g.finalize()

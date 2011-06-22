@@ -41,14 +41,14 @@ opd.inputs["Input"].connect(opb.outputs["MultiOutput"][0])
 ope.inputs["Input"].connect(opb.outputs["MultiOutput"][1])
 ope2.inputs["Input"].connect(ope.outputs["Output"])
 
-assert (opa.outputs["MultiOutput"][0][:,:].allocate() == 0).all()
-assert (opa.outputs["MultiOutput"][1][:,:].allocate() == 0).all()
+assert (opa.outputs["MultiOutput"][0][:,:].allocate().wait() == 0).all()
+assert (opa.outputs["MultiOutput"][1][:,:].allocate().wait() == 0).all()
 
-assert (opb.outputs["MultiOutput"][0][:,:].allocate() == 0).all()
-assert (opb.outputs["MultiOutput"][0][:,:].allocate() == 0).all()
+assert (opb.outputs["MultiOutput"][0][:,:].allocate().wait() == 0).all()
+assert (opb.outputs["MultiOutput"][0][:,:].allocate().wait() == 0).all()
 
-assert (opd.outputs["Output"][:,:].allocate() == 0).all()
-assert (ope.outputs["Output"][:,:].allocate() == 1).all()
+assert (opd.outputs["Output"][:,:].allocate().wait() == 0).all()
+assert (ope.outputs["Output"][:,:].allocate().wait() == 1).all()
 
 opc.inputs["MultiInput"].resize(2)
 opc.inputs["MultiInput"][0].connect(opd.outputs["Output"])
@@ -56,7 +56,7 @@ opc.inputs["MultiInput"][1].connect(ope2.outputs["Output"])
 
 print "aksjdkajsdkjad", len(opc.outputs["MultiOutput"])
 
-assert (opc.outputs["MultiOutput"][0][:,:].allocate() == 0).all(), numpy.nonzero(opc.outputs["MultiOutput"][0][:,:].allocate())
-assert (opc.outputs["MultiOutput"][1][:,:].allocate() == 2).all(), numpy.nonzero(opc.outputs["MultiOutput"][0][:,:].allocate() - 2)
+assert (opc.outputs["MultiOutput"][0][:,:].allocate().wait() == 0).all(), numpy.nonzero(opc.outputs["MultiOutput"][0][:,:].allocate())
+assert (opc.outputs["MultiOutput"][1][:,:].allocate().wait() == 2).all(), numpy.nonzero(opc.outputs["MultiOutput"][0][:,:].allocate() - 2)
 
 g.finalize()

@@ -37,7 +37,7 @@ h5reader = OpH5Reader(graph)
 h5reader.inputs["Filename"].connect(h5fileNameProvider)
 h5reader.inputs["hdf5Path"].connect(h5pathprovider)
 
-res = ostrich.outputs["Image"][:].allocate()
-resh5 = h5reader.outputs["Image"][:].allocate()
+res = ostrich.outputs["Image"][:].allocate().wait()
+resh5 = h5reader.outputs["Image"][:].allocate().wait()
 
 assert (res == resh5).all()

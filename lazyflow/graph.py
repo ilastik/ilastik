@@ -107,6 +107,9 @@ class GetItemRequestObject(object):
         self.closure = None
         self.event = Event()
         self.thread = current_thread()
+        if  not isinstance(self.thread, Worker):
+            self.thread = graph.workers[0]
+            pass
         
         if hasattr(self.thread, "currentRequestLevel"):
             self.requestLevel = self.thread.currentRequestLevel + 1
@@ -136,7 +139,7 @@ class GetItemRequestObject(object):
         return self.destination   
          
     def notify(self, closure):
-        if isinstance(current_thread(), Worker):
+        if isinstance(self.thread, Worker):
             self.closure = closure
         else:
             print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
@@ -327,12 +330,12 @@ class OutputSlot(object):
         requestCounter += 1
         requestCounterLock.release()
         
-#        if gr.parent == None:
-#            reqObject = GetItemRequestObject(self.graph, self, key, destination)
-#            return reqObject
-#        else:
-        self.getOutSlotFromOp(key, destination)
-        return destination
+        if gr.parent == None: #FIXME: this is a bad test for a end user call ?!
+            reqObject = GetItemRequestObject(self.graph, self, key, destination)
+            return reqObject
+        else:
+            self.getOutSlotFromOp(key, destination)
+            return destination
     
     def getOutSlotFromOp(self, key, destination):
         self.operator.getOutSlot(self, key, destination)
@@ -1078,6 +1081,7 @@ class OperatorGroup(Operator):
     def notifyConnect(self, inputSlot):
         innerIns = self.getInnerInputSlots()
         innerIns[inputSlot.name].connect(inputSlot.partner)
+        self._connectInnerOutputs()
 
     
     def notifySubConnect(self, slots, indexes):
@@ -1124,9 +1128,10 @@ class Worker(Thread):
                 task = None
                 if len(self.pendingGreenlets) > 0:
                     task = self.pendingGreenlets.popleft()
-                    if task[2].greenlet is not None:
+                    tgr = task[2].greenlet
+                    if tgr is not None:
                         self.currentRequestLevel = task[2].requestLevel
-                        task = task[2].greenlet.switch()
+                        task = tgr.switch()
                     
                 if task is None:
                     try:

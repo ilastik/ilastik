@@ -52,8 +52,8 @@ print len(opd.outputs["Output"])
 print len(ope.outputs["MultiOutput"])
 
 
-assert (ope.outputs["MultiOutput"][0][:,:].allocate() == 1).all(), numpy.nonzero(ope.outputs["MultiOutput"][0][:].allocate() - 1)
-assert (ope.outputs["MultiOutput"][1][:,:].allocate() == 2).all(), numpy.nonzero(ope.outputs["MultiOutput"][0][:].allocate() - 2)
+assert (ope.outputs["MultiOutput"][0][:,:].allocate().wait() == 1).all(), numpy.nonzero(ope.outputs["MultiOutput"][0][:].allocate().wait() - 1)
+assert (ope.outputs["MultiOutput"][1][:,:].allocate().wait() == 2).all(), numpy.nonzero(ope.outputs["MultiOutput"][0][:].allocate().wait() - 2)
 
 assert len(opb.outputs["MultiOutput"]) == 2, len(opb.outputs["MultiOutput"])
 assert len(opc.outputs["Output"]) == 2, len(opc.outputs["Output"])
@@ -86,9 +86,9 @@ assert len(opc.outputs["Output"]) == 3, len(opc.outputs["Output"])
 assert len(opd.outputs["Output"]) == 3, len(opd.outputs["Output"])
 assert len(ope.outputs["MultiOutput"]) == 3, len(ope.outputs["MultiOutput"])
 
-assert (ope.outputs["MultiOutput"][0][:,:].allocate() == 1).all(), numpy.nonzero(ope.outputs["MultiOutput"][0][:].allocate() - 1)
-#assert (ope.outputs["MultiOutput"][1][:,:].allocate() == 2).all(), numpy.nonzero(ope.outputs["MultiOutput"][2][:].allocate() - 2)
-#assert (ope.outputs["MultiOutput"][2][:,:].allocate() == 1).all(), numpy.nonzero(ope.outputs["MultiOutput"][1][:].allocate() - 1)
+assert (ope.outputs["MultiOutput"][0][:,:].allocate().wait() == 1).all(), numpy.nonzero(ope.outputs["MultiOutput"][0][:].allocate().wait() - 1)
+#assert (ope.outputs["MultiOutput"][1][:,:].allocate().wait() == 2).all(), numpy.nonzero(ope.outputs["MultiOutput"][2][:].allocate().wait() - 2)
+#assert (ope.outputs["MultiOutput"][2][:,:].allocate().wait() == 1).all(), numpy.nonzero(ope.outputs["MultiOutput"][1][:].allocate().wait() - 1)
 
 opb.inputs["MultiInput"].removeSlot(1)
 #opb.inputs["MultiInput"].removeSlot(1)
@@ -175,20 +175,20 @@ print "EOut: ", ope.outputs["MultiOutput"].level, len(ope.outputs["MultiOutput"]
 
 for i in range(7):
     print "Checking b2, ", i
-    assert (opb2.outputs["MultiOutput"][i][i % 2][:].allocate() == 0).all()
-    assert (opb2.outputs["MultiOutput"][i][(i + 1) % 2][:].allocate() == 1).all()
+    assert (opb2.outputs["MultiOutput"][i][i % 2][:].allocate().wait() == 0).all()
+    assert (opb2.outputs["MultiOutput"][i][(i + 1) % 2][:].allocate().wait() == 1).all()
     #assert (ope.outputs["MultiOutput"][i][0][:,:] == 1).all()
     #assert (ope.outputs["MultiOutput"][i][0][:,:] == 2).all()    
 
 for i in range(7):
     print "Checking", i
-    assert (ope.outputs["MultiOutput"][i][i % 2][:].allocate() == 1).all()
-    assert (ope.outputs["MultiOutput"][i][(i + 1) % 2][:].allocate() == 2).all()
+    assert (ope.outputs["MultiOutput"][i][i % 2][:].allocate().wait() == 1).all()
+    assert (ope.outputs["MultiOutput"][i][(i + 1) % 2][:].allocate().wait() == 2).all()
 
 for i in range(7):
     print "Checking", i
-    assert (ope.outputs["MultiOutput"][i][i % 2][:].allocate() == 1).all()
-    assert (ope.outputs["MultiOutput"][i][(i + 1) % 2][:].allocate() == 2).all()
+    assert (ope.outputs["MultiOutput"][i][i % 2][:].allocate().wait() == 1).all()
+    assert (ope.outputs["MultiOutput"][i][(i + 1) % 2][:].allocate().wait() == 2).all()
 
 
 opd.inputs["Input"].disconnect()
