@@ -59,6 +59,7 @@ class OpBaseVigraFilter(OpArrayPiper):
     vigraFilter = None
     outputDtype = numpy.float32 
     inputDtype = numpy.float32
+    supportsOut = True
     
     def __init__(self, graph):
         OpArrayPiper.__init__(self, graph)
@@ -83,8 +84,16 @@ class OpBaseVigraFilter(OpArrayPiper):
         newStart, newStop = roi.extendSlice(start, stop, shape[:-1], largestSigma)
         
         readKey = roi.roiToSlice(newStart, newStop)
-                
-        writeKey = roi.roiToSlice(start - newStart, newStop - newStart)
+        
+        writeNewStart = start - newStart
+        writeNewStop = newStop - newStart                
+        
+        if (writeNewStart == 0).all() and (newStop == writeNewStop).all():
+            fullResult = True
+        else:
+            fullResult = False
+        
+        writeKey = roi.roiToSlice(writeNewStart, writeNewStop)
             
                 
                 
@@ -92,35 +101,52 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         axistags = self.inputs["Input"].axistags
         
-        print self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels), shape
+        #print self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels), shape
         
         if self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
             for i in range(int(numpy.floor(oldstart[-1]/channelsPerChannel)),int(numpy.ceil(oldstop[-1]/channelsPerChannel))):
-                v = self.inputs["Input"][readKey + (i,)].allocate()
-                t = v().squeeze()
+                req = self.inputs["Input"][readKey + (slice(i,i+1,None),)].allocate()
+                t = req.wait()
                 t = numpy.require(t, dtype=self.inputDtype)
-                #t = t.view(vigra.VigraArray)
-                #t.axistags = copy.copy(axistags)
                 
+                t = t.view(vigra.VigraArray)
+                t.axistags = copy.copy(axistags)
                 
-                temp = self.vigraFilter(t, sigma)
-                                
-                if channelsPerChannel>1:
-                    
-                    result[...,i*channelsPerChannel:(i+1)*channelsPerChannel] = temp[writeKey]
+                if channelsPerChannel>1:                    
+                    resultArea = result[...,i*channelsPerChannel:(i+1)*channelsPerChannel]
                 else:
-                    result[...,i] = temp[writeKey]
+                    resultArea = result[...,i:i+1]
+
+                if not fullResult or not self.supportsOut:
+                    temp = self.vigraFilter(t, sigma)                                 
+                    resultArea[:] = temp[writeKey]
+                else:
+                    resultArea = resultArea.view(vigra.VigraArray)
+                    resultArea.axistags = copy.copy(axistags)
+
+                    #print self.name, " using fastpath", t.shape, t.axistags, resultArea.shape, resultArea.axistags
+                    
+                    self.vigraFilter(t,sigma, out = resultArea)
         else:
             v = self.inputs["Input"][readKey].allocate()
             t = v()
             t = numpy.require(t, dtype=self.inputDtype)
-            #t = t.view(vigra.VigraArray)
-            #t.axistags = copy.copy(axistags)            
-            temp = self.vigraFilter(t, sigma)
-            if channelsPerChannel>1:
-                result[...,0:channelsPerChannel] = temp[writeKey]
+            t = t.view(vigra.VigraArray)
+            t.axistags = copy.copy(axistags)            
+
+            if channelsPerChannel>1:                    
+                resultArea = result[...,i*channelsPerChannel:(i+1)*channelsPerChannel]
             else:
-                result[...,0] = temp[writeKey]
+                resultArea = result[...,i]
+
+            if not fullResult or not self.supportsOut:
+                temp = self.vigraFilter(t, sigma)
+                resultArea[:] = temp[writeKey]
+            else:
+                #print self.name, " using fastpath", t.shape, t.axistags, resultArea.shape, resultArea.axistags
+                resultArea = resultArea.view(vigra.VigraArray)
+                resultArea.axistags = copy.copy(axistags)     
+                self.vigraFilter(t, sigma, out = resultArea)
             
     def notifyConnect(self, inputSlot):
         if inputSlot == self.inputs["Input"]:
@@ -149,11 +175,11 @@ class OpBaseVigraFilter(OpArrayPiper):
         
 
 #difference of Gaussians
-def differenceOfGausssians(image,sigmas):
-    """ difference of gaussian function"""
-    return vigra.filters.gaussianSmoothing(image,sigmas[0])-vigra.filters.gaussianSmoothing(image,sigmas[1])
+def differenceOfGausssians(image,sigmas, out = None):
+    """ difference of gaussian function"""        
+    return (vigra.filters.gaussianSmoothing(image,sigmas[0])-vigra.filters.gaussianSmoothing(image,sigmas[1]))
 
-def coherenceOrientationOfStructureTensor(image,sigmas):
+def coherenceOrientationOfStructureTensor(image,sigmas, out = None):
     """
     coherence Orientation of Structure tensor function:
     input:  M*N*1ch VigraArray
@@ -167,15 +193,18 @@ def coherenceOrientationOfStructureTensor(image,sigmas):
     #FIXME: make more general
     
     #assert image.spatialDimensions==2, "Only implemented for 2 dimensional images"
-    assert len(image.shape)==2, "Only implemented for 2 dimensional images"
+    assert len(image.shape)==2 or (len(image.shape)==3 and image.shape[2] == 1), "Only implemented for 2 dimensional images"
     
     st=vigra.filters.structureTensor(image, sigmas[0], sigmas[1])
     i11=st[:,:,0]
     i12=st[:,:,1]
     i22=st[:,:,2]
     
-    
-    res=numpy.ndarray((image.shape[0],image.shape[1],2))
+    if out is not None:
+        assert out.shape[0] == image.shape[0] and out.shape[1] == image.shape[1] and out.shape[2] == 2
+        res = out
+    else:
+        res=numpy.ndarray((image.shape[0],image.shape[1],2))
     
     res[:,:,0]=numpy.sqrt( (i22-i11)**2+4*(i12**2))/(i11-i22)
     res[:,:,1]=numpy.arctan(2*i12/(i22-i11))/numpy.pi +0.5
@@ -190,7 +219,8 @@ class OpDifferenceOfGaussians(OpBaseVigraFilter):
     name = "DifferenceOfGaussians"
     vigraFilter = staticmethod(differenceOfGausssians)
     outputDtype = numpy.float32 
-
+    supportsOut = False
+    
     def resultingChannels(self):
         return 1
 
@@ -245,7 +275,8 @@ class OpLaplacianOfGaussian(OpBaseVigraFilter):
     name = "LaplacianOfGaussian"
     vigraFilter = staticmethod(vigra.filters.laplacianOfGaussian)
     outputDtype = numpy.float32 
-
+    supportsOut = False
+    
     def resultingChannels(self):
         return 1
 

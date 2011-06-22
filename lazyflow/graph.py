@@ -1159,7 +1159,7 @@ class Worker(Thread):
                     if task[2].requestLevel > 1 or self.process.get_memory_info().rss < self.graph.maxMem:
                         gr = greenlet.greenlet(task[1])
                         self.currentRequestLevel = task[2].requestLevel
-                        print "Handling request of level", self.currentRequestLevel, "Memory: ", self.process.get_memory_info().rss / (1024**2), "MB"
+                        #print "Handling request of level", self.currentRequestLevel, "Memory: ", self.process.get_memory_info().rss / (1024**2), "MB"
                         task = gr.switch()
                     else:
                         self.graph.tasks.put(task) #move task back to task queue
