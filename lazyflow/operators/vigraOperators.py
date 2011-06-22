@@ -376,50 +376,53 @@ class OpH5Reader(Operator):
 class OpH5Writer(Operator):
     name = "H5 File Writer"
     inputSlots = [InputSlot("Filename"), InputSlot("hdf5Path"), InputSlot("Image")]
+    outputSlots = [OutputSlot("WriteImage")]
 
     def notifyConnect(self, inputSlot):
         
         if self.inputs["Filename"].partner is not None and self.inputs["Image"].partner is not None and self.inputs["hdf5Path"].partner is not None:
-            filename = self.inputs["Filename"][0].allocate().wait()[0]
-            hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
+            self.outputs["WriteImage"]._shape = (1,)
+            self.outputs["WriteImage"]._dtype = object
+#            filename = self.inputs["Filename"][0].allocate().wait()[0]
+#            hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
+#
+#            imSlot = self.inputs["Image"]
+#            
+#            axistags = copy.copy(imSlot.axistags)
+#            
+#            image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
+#                        
+#            def closure():
+#                f = h5py.File(filename, 'w')
+#                g = f
+#                pathElements = hdf5Path.split("/")
+#                for s in pathElements[:-1]:
+#                    g = g.create_group(s)
+#                g.create_dataset(pathElements[-1],data = image)
+#                f.close()
+#    
+#            self.inputs["Image"][:].writeInto(image).notify(closure)
+    
+    def getOutSlot(self, slot, key, result):
+        filename = self.inputs["Filename"][0].allocate().wait()[0]
+        hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
 
-            imSlot = self.inputs["Image"]
-            
-            axistags = copy.copy(imSlot.axistags)
-            
-            image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
-                        
-            def closure():
-                f = h5py.File(filename, 'w')
-                g = f
-                pathElements = hdf5Path.split("/")
-                for s in pathElements[:-1]:
-                    g = g.create_group(s)
-                g.create_dataset(pathElements[-1],data = image)
-                f.close()
-    
-            self.inputs["Image"][:].writeInto(image).notify(closure)
-    
-#    def getOutSlot(self, slot, key, result):
-#        filename = self.inputs["Filename"][0].allocate().wait()[0]
-#        hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
-#
-#        imSlot = self.inputs["Image"]
-#        
-#        axistags = copy.copy(imSlot.axistags)
-#        
-#        image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
-#                    
-#
-#        self.inputs["Image"][:].writeInto(image).wait()
-#        
-#        
-#        f = h5py.File(filename, 'w')
-#        g = f
-#        pathElements = hdf5Path.split("/")
-#        for s in pathElements[:-1]:
-#            g = g.create_group(s)
-#        g.create_dataset(pathElements[-1],data = image)
-#        f.close()
-#        
-#        result[0] = True
+        imSlot = self.inputs["Image"]
+        
+        axistags = copy.copy(imSlot.axistags)
+        
+        image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
+                    
+
+        self.inputs["Image"][:].writeInto(image).wait()
+        
+        
+        f = h5py.File(filename, 'w')
+        g = f
+        pathElements = hdf5Path.split("/")
+        for s in pathElements[:-1]:
+            g = g.create_group(s)
+        g.create_dataset(pathElements[-1],data = image)
+        f.close()
+        
+        result[0] = True

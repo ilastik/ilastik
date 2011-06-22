@@ -1,12 +1,20 @@
 import numpy
 import sys
 import copy
-from roi import sliceToRoi, roiToSlice
+import psutil
+import os
+import time
+import gc
 
+from roi import sliceToRoi, roiToSlice
 from collections import deque
 from Queue import Queue, LifoQueue, Empty
 from threading import Thread, Event, current_thread, Lock
 import greenlet
+import weakref
+
+greenlet.GREENLET_USE_GC
+
 
 requestCounterLock = Lock()
 requestCounter = 0
@@ -97,7 +105,7 @@ class GetItemWriterObject(object):
 
 
 class GetItemRequestObject(object):
-    __slots__ = ["requestLevel", "greenlet", "event", "thread", "key", "destination", "closure"]
+    __slots__ = ["lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure"]
 
 
     def __init__(self, graph, partner, key, destination):
@@ -106,41 +114,48 @@ class GetItemRequestObject(object):
         self.destination = destination
         self.closure = None
         self.event = Event()
+        self.lock = Lock()
         self.thread = current_thread()
-        if  not isinstance(self.thread, Worker):
-            self.thread = graph.workers[0]
-            pass
         
         if hasattr(self.thread, "currentRequestLevel"):
             self.requestLevel = self.thread.currentRequestLevel + 1
         else:
             self.requestLevel = 1
 
+        if  not isinstance(self.thread, Worker):
+            self.thread = graph.workers[0]
+            pass
+
         graph.putTask(partner.fireRequest, self)
 
     
     def wait(self, timeout = 0):
         pass
+        self.lock.acquire()
         if not self.event.isSet():
             # --> wait until results are ready
             if greenlet.getcurrent().parent != None:
                 self.greenlet = greenlet.getcurrent()
-                greenlet.getcurrent().parent.switch(None)
-            else:
+                self.lock.release()
+                self.greenlet.parent.switch(None)
                 self.greenlet = None
+            else:
+                self.lock.release()
                 # loop to allow ctrl-c signal !
                 if timeout == 0:
                     while not self.event.isSet():
                         self.event.wait(timeout = 0.25) #in seconds
                 else:
                     self.event.wait(timeout = timeout) #in seconds
-                    
-        self.greenlet = None
+        else:
+            self.lock.release()
         return self.destination   
          
     def notify(self, closure):
         if isinstance(self.thread, Worker):
+            self.lock.acquire()
             self.closure = closure
+            self.lock.release()
         else:
             print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
             self.wait()
@@ -1117,47 +1132,52 @@ class Worker(Thread):
         self.graph = graph
         self.working = False
         self.daemon = True # kill automatically on application exit!
-        self.pendingGreenlets = deque()
+        self.finishedRequests = deque()
         self.currentRequestLevel = 0
-        print "Initializing Worker #%d" % len(self.graph.workers)
-        pass
+        self.process = psutil.Process(os.getpid())
+        self.number =  len(self.graph.workers)
+        print "Initializing Worker #%d" % self.number
 
     def run(self):
         while self.graph.running:
-            while not self.graph.tasks.empty() or len(self.pendingGreenlets) > 0:
+            while not self.graph.tasks.empty() or len(self.finishedRequests) > 0:
                 task = None
-                if len(self.pendingGreenlets) > 0:
-                    task = self.pendingGreenlets.popleft()
-                    tgr = task[2].greenlet
+                if len(self.finishedRequests) > 0:
+                    task = self.finishedRequests.popleft()
+                    tgr = task.greenlet
+                    task.greenlet = None
                     if tgr is not None:
-                        self.currentRequestLevel = task[2].requestLevel
+                        self.currentRequestLevel = task.requestLevel
                         task = tgr.switch()
-                    
+                    continue
+                
                 if task is None:
                     try:
                         task = self.graph.tasks.get(False)#timeout = 1.0)
                     except Empty:
                         continue
-                    gr = greenlet.greenlet(task[1])
-                    self.currentRequestLevel = task[2].requestLevel
-                    print "Handling request of level", self.currentRequestLevel
-                    task = gr.switch()
+                    if task[2].requestLevel > 1 or self.process.get_memory_info().rss < self.graph.maxMem:
+                        gr = greenlet.greenlet(task[1])
+                        self.currentRequestLevel = task[2].requestLevel
+                        print "Handling request of level", self.currentRequestLevel, "Memory: ", self.process.get_memory_info().rss / (1024**2), "MB"
+                        task = gr.switch()
+                    else:
+                        self.graph.tasks.put(task) #move task back to task queue
+                        print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
+                        gc.collect()
+                        time.sleep(1.0)
                     
-                    
-                if task is not None:
-                    if task[2].event.isSet():
-                        if task[2].greenlet is not None:
-                            task[2].thread.pendingGreenlets.append(task)
         print "Finalized Worker"
                 
     
 class Graph(object):
-    def __init__(self, numThreads = 3):
+    def __init__(self, numThreads = 3, softMaxMem =  500*1024*1024):
         self.operators = []
         self.tasks = LifoQueue() #Lifo <-> depth first, fifo <-> breath first
         self.workers = []
         self.running = True
         self.numThreads = numThreads
+        self.maxMem = softMaxMem # in bytes
         
         for i in xrange(self.numThreads):
             w = Worker(self)
@@ -1168,12 +1188,16 @@ class Graph(object):
 
         def runnerClosure():
             func(reqObject.key, reqObject.destination)
+            reqObject.lock.acquire()
             reqObject.event.set()
             if reqObject.closure is not None:
                 reqObject.closure()
-            # return something that can be handled by the innnerWork function
-            ret = [reqObject.requestLevel + 1, None, reqObject]
-            return ret
+            reqObject.lock.release()
+            
+            #append 
+            if reqObject.greenlet is not None:
+                reqObject.thread.finishedRequests.append(reqObject)
+            return None
 
         task = [-reqObject.requestLevel, runnerClosure, reqObject]
         self.tasks.put(task)
