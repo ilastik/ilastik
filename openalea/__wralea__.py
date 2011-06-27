@@ -26,6 +26,8 @@ sys.path.append("/home/cstraehl/Projects/eclipse-workspace/graph")
 import string
 from lazyflow.graph import *
 from lazyflow.operators.vigraOperators import *
+from lazyflow.operators.operators import *
+from lazyflow.operators.valueProviders import *
 from openalea.core import *
 from openalea.image_wralea import IImage
 
@@ -55,7 +57,7 @@ modname = globals()['__name__']
 ourMod = sys.modules[modname]
 ourDict = ourMod.__dict__
 print "### True module name : ", modname, " ###"
-__name__ = "ourstuff.lazyflow"
+__name__ = "ourstuff"
 
 
 for o in Operators.operators.values():
@@ -64,7 +66,18 @@ for o in Operators.operators.values():
     
     factoryInputs = []
     for slot in o.inputSlots:
-        factoryInputs.append( dict(name = slot.name, interface = None) )
+        itype = None
+        if slot.stype == "string":
+            itype = IStr()
+        elif slot.stype == "filestring":
+            itype = IFileStr()
+        elif slot.stype == "sequence":
+            itype = ISequence()
+        elif slot.stype == "integer":
+            itype = IInt()
+        elif slot.stype == "float":
+            itype = IFloat()
+        factoryInputs.append( dict(name = slot.name, interface = itype) )
 
     factoryOutputs= []
     for slot in o.outputSlots:
@@ -72,7 +85,7 @@ for o in Operators.operators.values():
     
     tempfac = Factory(name = o.name,
                 description = o.description,
-                category = "lazyflow",
+                category = "Lazyflow." + o.category,
                 nodemodule = "lazyflowoperators",
                 nodeclass = "OA_FUNC_" + o.__name__,
                 inputs = list(factoryInputs),

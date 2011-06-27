@@ -170,11 +170,26 @@ class GetItemRequestObject(object):
         return self.wait()
 
 class InputSlot(object):
-    def __init__(self, name, operator = None):
+    def __init__(self, name, operator = None, stype = "ndarray"):
         self.name = name
         self.operator = operator
         self.partner = None
         self.level = 0
+        self._value = None
+        self.stype = stype
+
+    def setValue(self, value):
+        assert self.partner == None, "InputSlot %s (%r): Cannot dot setValue, because it is connected !" %(self.name, self)
+        self._value = value
+
+    @property
+    def value(self):
+        if self.partner is not None:
+            temp = self[:].allocate().wait()[0]
+            return temp
+        else:
+            assert self._value is not None, "InputSlot %s (%r): Cannot access .value since slot is not connected and setValue has not been called !" %(self.name, self)
+            return self._value
 
     def connectAdd(self, partner):
         if isinstance(self.operator,(OperatorWrapper, Operator)):
@@ -225,7 +240,7 @@ class InputSlot(object):
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
-        s = InputSlot(self.name, operator)
+        s = InputSlot(self.name, operator, stype = self.stype)
         return s
             
     def setDirty(self, key):
@@ -240,6 +255,7 @@ class InputSlot(object):
         return True
 
     def __getitem__(self, key):
+        
         return GetItemWriterObject(self, key)
         
     def fireRequest(self, key, destination):
@@ -282,7 +298,7 @@ class InputSlot(object):
 
     
 class OutputSlot(object):
-    def __init__(self, name, operator = None):
+    def __init__(self, name, operator = None, stype = "ndarray"):
         self.name = name
         self.level = 0
         self.operator = operator
@@ -293,6 +309,7 @@ class OutputSlot(object):
         if not hasattr(self, "_axistags"):
             self._axistags = None
         self.partners = []
+        self.stype = stype
     
     def _connect(self, partner):
         if partner not in self.partners:
@@ -318,7 +335,7 @@ class OutputSlot(object):
 
     #FIXME __copy__ ?
     def getInstance(self, operator):
-        s = OutputSlot(self.name, operator)
+        s = OutputSlot(self.name, operator, stype = self.stype)
         s._shape = self._shape
         s._dtype = self._dtype
         s._axistags = self._axistags
@@ -385,12 +402,13 @@ class OutputSlot(object):
 
 
 class MultiInputSlot(object):
-    def __init__(self, name, operator = None, level = 1):
+    def __init__(self, name, operator = None, stype = "ndarray", level = 1):
         self.name = name
         self.operator = operator
         self.partner = None
         self.inputSlots = []
         self.level = level
+        self.stype = stype
     
     def __getitem__(self, key):
         return self.inputSlots[key]
@@ -407,9 +425,9 @@ class MultiInputSlot(object):
                     
     def _appendNew(self):
         if self.level <= 1:
-            islot = InputSlot(self.name ,self)
+            islot = InputSlot(self.name ,self, stype = self.stype)
         else:
-            islot = MultiInputSlot(self.name,self, level = self.level - 1)
+            islot = MultiInputSlot(self.name,self, stype = self.stype, level = self.level - 1)
         index = len(self) - 1
         self.inputSlots.append(islot)
         if self.partner is not None:
@@ -419,9 +437,9 @@ class MultiInputSlot(object):
     
     def _insertNew(self, index):
         if self.level == 1:
-            islot = InputSlot(self.name,self)
+            islot = InputSlot(self.name,self, self.stype)
         else:
-            islot = MultiInputSlot(self.name,self, level = self.level - 1)
+            islot = MultiInputSlot(self.name,self, stype = self.stype, level = self.level - 1)
         self.inputSlots.insert(index,islot)
         for i, isl in enumerate(self.inputSlots[index+1:]):
             isl.name = self.name
@@ -562,7 +580,7 @@ class MultiInputSlot(object):
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
-        s = MultiInputSlot(self.name, operator, level = self.level)
+        s = MultiInputSlot(self.name, operator, stype = self.stype, level = self.level)
         return s
             
     def setDirty(self, key = None):
@@ -591,12 +609,13 @@ class MultiInputSlot(object):
 
 
 class MultiOutputSlot(object):
-    def __init__(self, name, operator = None, level = 1):
+    def __init__(self, name, operator = None, stype = "ndarray",level = 1,):
         self.name = name
         self.operator = operator
         self.partners = []
         self.outputSlots = []
         self.level = level
+        self.stype = stype
     
     def __getitem__(self, key):
         return self.outputSlots[key]
@@ -665,9 +684,9 @@ class MultiOutputSlot(object):
     def resize(self, size):
         while len(self) < size:
             if self.level == 1:
-                slot = OutputSlot(self.name,self)
+                slot = OutputSlot(self.name,self, stype = self.stype)
             else:
-                slot = MultiOutputSlot(self.name,self, level = self.level - 1)
+                slot = MultiOutputSlot(self.name,self, stype = self.stype, level = self.level - 1)
             index = len(self)
             self.outputSlots.append(slot)
             for p in self.partners:
@@ -696,7 +715,7 @@ class MultiOutputSlot(object):
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
-        s = MultiOutputSlot(self.name, operator, level = self.level)
+        s = MultiOutputSlot(self.name, operator, stype = self.stype, level = self.level)
         return s
             
     def setDirty(self, key):
@@ -722,6 +741,7 @@ class Operator(object):
     outputSlots = []
     name = ""
     description = ""
+    category = "lazyflow"
     
     def __init__(self, graph):
         self.operator = None
@@ -825,18 +845,18 @@ class OperatorWrapper(Operator):
         # replicate input slot definitions
         for islot in self.operator.inputSlots:
             level = islot.level + 1
-            self._inputSlots.append(MultiInputSlot(islot.name, level = level))
+            self._inputSlots.append(MultiInputSlot(islot.name, stype = islot.stype, level = level))
 
         # replicate output slot definitions
         for oslot in self.outputSlots:
             level = oslot.level + 1
-            self._outputSlots.append(MultiOutputSlot(oslot.name, level = level))
+            self._outputSlots.append(MultiOutputSlot(oslot.name, stype = oslot.stype, level = level))
 
                 
         # replicate input slots for the instance
         for islot in self.operator.inputs.values():
             level = islot.level + 1
-            ii = MultiInputSlot(islot.name, self, level = level)
+            ii = MultiInputSlot(islot.name, self, stype = islot.stype, level = level)
             self.inputs[islot.name] = ii
             op = self.operator
             while isinstance(op.operator, (Operator, MultiInputSlot)):
@@ -846,7 +866,7 @@ class OperatorWrapper(Operator):
         # replicate output slots for the instance
         for oslot in self.operator.outputs.values():
             level = oslot.level + 1
-            oo = MultiOutputSlot(oslot.name, self, level = level)
+            oo = MultiOutputSlot(oslot.name, self, stype = oslot.stype, level = level)
             self.outputs[oslot.name] = oo
             op = self.operator
             while isinstance(op.operator, (Operator, MultiOutputSlot)):

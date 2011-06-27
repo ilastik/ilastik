@@ -59,12 +59,13 @@ class ArrayProvider(OutputSlot):
         
 class ListToMultiOperator(Operator):
     name = "List to Multislot converter"
-    inputSlots = [InputSlot("List")]
+    category = "Input"
+    inputSlots = [InputSlot("List", stype = "sequence")]
     outputSlots = [MultiOutputSlot("Items", level = 1)]
     
     def notifyConnect(self, inputSlot):
-        list = self.inputs["List"][:].allocate().wait()[0]
-        self.list= list
+        liste = self.inputs["List"].value
+        self.list= liste
         self.outputs["Items"].resize(len(list))
         for o in self.outputs["Items"]:
             o._dtype = object

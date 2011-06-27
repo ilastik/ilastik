@@ -52,10 +52,12 @@ class OpMultiArrayStacker(Operator):
 
 
 class OpBaseVigraFilter(OpArrayPiper):
-    inputSlots = [InputSlot("Input"), InputSlot("Sigma")]
+    inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float")]
     outputSlots = [OutputSlot("Output")]    
     
     name = "OpBaseVigraFilter"
+    category = "Vigra filter"
+    
     vigraFilter = None
     outputDtype = numpy.float32 
     inputDtype = numpy.float32
@@ -63,11 +65,10 @@ class OpBaseVigraFilter(OpArrayPiper):
     
     def __init__(self, graph):
         OpArrayPiper.__init__(self, graph)
+        self.supportsOut = False
         
     def getOutSlot(self, slot, key, result):
-        req = self.inputs["Sigma"][:].allocate()
-        sigma = req()
-        sigma = sigma[0]
+        sigma = self.inputs["Sigma"].value
 
         if isinstance(sigma, list):
             largestSigma = sigma[-1]
@@ -109,20 +110,21 @@ class OpBaseVigraFilter(OpArrayPiper):
                 t = req.wait()
                 t = numpy.require(t, dtype=self.inputDtype)
                 
-                t = t.view(vigra.VigraArray)
-                t.axistags = copy.copy(axistags)
+                #t = t.view(vigra.VigraArray)
+                #t.axistags = copy.copy(axistags)
+                t = t.squeeze() #vigra.VigraArray(t, dtype = self.inputDtype,axistags = copy.copy(axistags))
                 
                 if channelsPerChannel>1:                    
                     resultArea = result[...,i*channelsPerChannel:(i+1)*channelsPerChannel]
                 else:
-                    resultArea = result[...,i:i+1]
+                    resultArea = result[...,i]
 
                 if not fullResult or not self.supportsOut:
                     temp = self.vigraFilter(t, sigma)                                 
                     resultArea[:] = temp[writeKey]
                 else:
-                    resultArea = resultArea.view(vigra.VigraArray)
-                    resultArea.axistags = copy.copy(axistags)
+                    #resultArea = resultArea.view(vigra.VigraArray)
+                    #resultArea.axistags = copy.copy(axistags)
 
                     #print self.name, " using fastpath", t.shape, t.axistags, resultArea.shape, resultArea.axistags
                     
@@ -131,9 +133,11 @@ class OpBaseVigraFilter(OpArrayPiper):
             v = self.inputs["Input"][readKey].allocate()
             t = v()
             t = numpy.require(t, dtype=self.inputDtype)
-            t = t.view(vigra.VigraArray)
-            t.axistags = copy.copy(axistags)            
-
+            
+            #t = t.view(vigra.VigraArray)
+            #t.axistags = copy.copy(axistags)            
+            #t = vigra.VigraArray(t, dtype = self.inputDtype,axistags = copy.copy(axistags))
+            
             if channelsPerChannel>1:                    
                 resultArea = result[...,i*channelsPerChannel:(i+1)*channelsPerChannel]
             else:
@@ -144,8 +148,8 @@ class OpBaseVigraFilter(OpArrayPiper):
                 resultArea[:] = temp[writeKey]
             else:
                 #print self.name, " using fastpath", t.shape, t.axistags, resultArea.shape, resultArea.axistags
-                resultArea = resultArea.view(vigra.VigraArray)
-                resultArea.axistags = copy.copy(axistags)     
+                #resultArea = resultArea.view(vigra.VigraArray)
+                #resultArea.axistags = copy.copy(axistags)     
                 self.vigraFilter(t, sigma, out = resultArea)
             
     def notifyConnect(self, inputSlot):
@@ -336,11 +340,13 @@ class OpDilation(OpBaseVigraFilter):
 
 class OpImageReader(Operator):
     name = "Image Reader"
-    inputSlots = [InputSlot("Filename")]
+    category = "Input"
+    
+    inputSlots = [InputSlot("Filename", stype = "filestring")]
     outputSlots = [OutputSlot("Image")]
     
     def notifyConnect(self, inputSlot):
-        filename = self.inputs["Filename"][:].allocate().wait()[0]
+        filename = self.inputs["Filename"].value
         info = vigra.impex.ImageInfo(filename)
         
         oslot = self.outputs["Image"]
@@ -349,13 +355,15 @@ class OpImageReader(Operator):
         oslot._axistags = info.getAxisTags()
     
     def getOutSlot(self, slot, key, result):
-        filename = self.inputs["Filename"][:].allocate().wait()[0]
+        filename = self.inputs["Filename"].value
         temp = vigra.impex.readImage(filename)
         
         result[:] = temp[key]
     
 class OpOstrichReader(Operator):
     name = "Ostrich Reader"
+    category = "Input"
+    
     inputSlots = []
     outputSlots = [OutputSlot("Image")]
 
@@ -378,12 +386,14 @@ class OpOstrichReader(Operator):
 
 class OpImageWriter(Operator):
     name = "Image Writer"
-    inputSlots = [InputSlot("Filename"), InputSlot("Image")]
+    category = "Output"
+    
+    inputSlots = [InputSlot("Filename", stype = "filestring" ), InputSlot("Image")]
     
     def notifyConnect(self, inputSlot):
         
         if self.inputs["Filename"].partner is not None and self.inputs["Image"].partner is not None:
-            filename = self.inputs["Filename"][0].allocate().wait()[0]
+            filename = self.inputs["Filename"].value
 
             imSlot = self.inputs["Image"]
             
@@ -403,14 +413,16 @@ class OpImageWriter(Operator):
 
 class OpH5Reader(Operator):
     name = "H5 File Reader"
-    inputSlots = [InputSlot("Filename"), InputSlot("hdf5Path")]
+    category = "Input"
+    
+    inputSlots = [InputSlot("Filename", stype = "filestring"), InputSlot("hdf5Path", stype = "string")]
     outputSlots = [OutputSlot("Image")]
     
         
     def notifyConnect(self, inputSlot):       
         if self.inputs["Filename"].partner is not None and self.inputs["hdf5Path"].partner is not None:
-            filename = self.inputs["Filename"][0].allocate().wait()[0]
-            hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
+            filename = self.inputs["Filename"].value
+            hdf5Path = self.inputs["hdf5Path"].value
             
             f = h5py.File(filename, 'r')
         
@@ -429,8 +441,8 @@ class OpH5Reader(Operator):
             f.close()
         
     def getOutSlot(self, slot, key, result):
-        filename = self.inputs["Filename"][0].allocate().wait()[0]
-        hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
+        filename = self.inputs["Filename"].value
+        hdf5Path = self.inputs["hdf5Path"].value
         
         f = h5py.File(filename, 'r')
     
@@ -443,7 +455,9 @@ class OpH5Reader(Operator):
         
 class OpH5Writer(Operator):
     name = "H5 File Writer"
-    inputSlots = [InputSlot("Filename"), InputSlot("hdf5Path"), InputSlot("Image")]
+    category = "Output"
+    
+    inputSlots = [InputSlot("Filename", stype = "filestring"), InputSlot("hdf5Path", stype = "string"), InputSlot("Image")]
     outputSlots = [OutputSlot("WriteImage")]
 
     def notifyConnect(self, inputSlot):
@@ -472,8 +486,8 @@ class OpH5Writer(Operator):
 #            self.inputs["Image"][:].writeInto(image).notify(closure)
     
     def getOutSlot(self, slot, key, result):
-        filename = self.inputs["Filename"][0].allocate().wait()[0]
-        hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
+        filename = self.inputs["Filename"].value
+        hdf5Path = self.inputs["hdf5Path"].value
 
         imSlot = self.inputs["Image"]
         

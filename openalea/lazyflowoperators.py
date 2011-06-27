@@ -25,7 +25,10 @@ sys.path.append("/home/cstraehl/Projects/eclipse-workspace/graph")
 
 import string
 from lazyflow.graph import *
+import lazyflow.graph
 from lazyflow.operators.vigraOperators import *
+from lazyflow.operators.operators import *
+from lazyflow.operators.valueProviders import *
 from openalea.core import *
 
 
@@ -62,7 +65,15 @@ for o in Operators.operators.values():
 
     doConnections = []
     for slot in o.inputSlots:
-        doConnections.append("o.inputs['%s'].connect(%s)" % (slot.name,slot.name))
+        doConnections.append("""
+    _argument = %s
+    _slotname = '%s'
+    if isinstance(_argument, OutputSlot):
+        o.inputs[_slotname].connect(_argument) 
+    else:
+        print "Setting value", _slotname, _argument, type(_argument)
+        o.inputs[_slotname].setValue(_argument)
+""" % (slot.name,slot.name))
     
     
     assignmentsLeft = []    
@@ -77,12 +88,13 @@ for o in Operators.operators.values():
         
         code = """\n
 def OA_FUNC_%s(%s):
+    print "Arguments: ", %s
     o = %s(globalGraph) #create Operator
     print o
     %s #doConnections
     %s = %s #set return values
     return %s #return outputSlots
-    """ % (o.__name__,string.join(inputArgs,","),o.__name__,string.join(doConnections,"\n    "), string.join(assignmentsLeft,","),string.join(assignmentsRight,","),string.join(assignmentsLeft,","))
+    """ % (o.__name__,string.join(inputArgs,","),string.join(inputArgs,","),o.__name__,string.join(doConnections,"\n"), string.join(assignmentsLeft,","),string.join(assignmentsRight,","),string.join(assignmentsLeft,","))
     
         print code    
     
@@ -90,11 +102,12 @@ def OA_FUNC_%s(%s):
     else:
         code = """\n
 def OA_FUNC_%s(%s):
+    print "Arguments: ", %s
     o = %s(globalGraph)
     print o
     %s #doConnections
     print o
-    """ % (o.__name__,string.join(inputArgs,","),o.__name__,string.join(doConnections,"\n    "))
+    """ % (o.__name__,string.join(inputArgs,","),string.join(inputArgs,","),o.__name__,string.join(doConnections,"\n"))
             
         exec code
         

@@ -39,7 +39,7 @@ for op in operators:
     
     operinstance = op(graph)
     operinstance.inputs["Input"].connect(ostrichProvider.outputs["Image"])
-    operinstance.inputs["Sigma"].connect(sigmaProvider)
+    operinstance.inputs["Sigma"].setValue(float(10)) #connect(sigmaProvider)
     result = operinstance.outputs["Output"][:,:,:].allocate().wait()
     if result.shape[-1] > 3:
         result = result[...,0:3]
