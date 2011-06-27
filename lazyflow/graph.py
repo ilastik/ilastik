@@ -75,6 +75,9 @@ class Operators(object):
     def registerOperatorSubclasses(cls):
         for o in itersubclasses(Operator):
             cls.register(o)
+        cls.operators.pop("OperatorGroup")
+        cls.operators.pop("OperatorWrapper")
+        #+cls.operators.pop("Operator")
 
 
 class GetItemWriterObject(object):
@@ -718,6 +721,7 @@ class Operator(object):
     inputSlots  = []
     outputSlots = []
     name = ""
+    description = ""
     
     def __init__(self, graph):
         self.operator = None

@@ -179,6 +179,10 @@ def differenceOfGausssians(image,sigmas, out = None):
     """ difference of gaussian function"""        
     return (vigra.filters.gaussianSmoothing(image,sigmas[0])-vigra.filters.gaussianSmoothing(image,sigmas[1]))
 
+
+def firstHessianOfGaussianEigenvalues(image, sigmas):
+    return vigra.filters.hessianOfGaussianEigenvalues(image, sigmas)[...,0]
+
 def coherenceOrientationOfStructureTensor(image,sigmas, out = None):
     """
     coherence Orientation of Structure tensor function:
@@ -251,6 +255,18 @@ class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
     def resultingChannels(self):
         temp = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)
         return temp
+
+
+
+class OpHessianOfGaussianEigenvaluesFirst(OpBaseVigraFilter):
+    name = "First Eigenvalue of Hessian Matrix"
+    vigraFilter = staticmethod(firstHessianOfGaussianEigenvalues)
+    outputDtype = numpy.float32 
+    supportsOut = False
+
+    def resultingChannels(self):
+        return 1
+
 
 
 class OpHessianOfGaussian(OpBaseVigraFilter):
@@ -338,6 +354,27 @@ class OpImageReader(Operator):
         
         result[:] = temp[key]
     
+class OpOstrichReader(Operator):
+    name = "Ostrich Reader"
+    inputSlots = []
+    outputSlots = [OutputSlot("Image")]
+
+    
+    
+    def __init__(self, g):
+        Operator.__init__(self,g
+        )
+        filename = self.filename = "/home/cstraehl/Projects/eclipse-workspace/graph/tests/ostrich.jpg"
+        info = vigra.impex.ImageInfo(filename)
+        
+        oslot = self.outputs["Image"]
+        oslot._shape = info.getShape()
+        oslot._dtype = info.getDtype()
+        oslot._axistags = info.getAxisTags()
+    
+    def getOutSlot(self, slot, key, result):
+        temp = vigra.impex.readImage(self.filename)
+        result[:] = temp[key]
 
 class OpImageWriter(Operator):
     name = "Image Writer"
