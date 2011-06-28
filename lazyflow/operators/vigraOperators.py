@@ -14,20 +14,25 @@ from operators import OpArrayPiper, OpMultiArrayPiper
 class OpMultiArrayStacker(Operator):
     inputSlots = [MultiInputSlot("Images")]
     outputSlots = [OutputSlot("Output")]
+
+    name = "Multi Array Stacker"
+    category = "Misc"
     
     def notifySubConnect(self, slots, indexes):
-        #print "  OpMultiArrayStacker.notifyConnect() with", slots, indexes
-        self.outputs["Output"]._dtype = self.inputs["Images"][0].dtype
-        self.outputs["Output"]._axistags = copy.copy(self.inputs["Images"][-1].axistags)
-        if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-            self.outputs["Output"]._axistags.insertChannelAxis()
-        
+        dtypeDone = False        
         c = 0
         for inSlot in self.inputs["Images"]:
-            if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                c += 1
-            else:
-                c += inSlot.shape[inSlot.axistags.channelIndex]
+            if inSlot.partner is not None:
+                if dtypeDone is False:
+                    self.outputs["Output"]._dtype = inSlot.dtype
+                    self.outputs["Output"]._axistags = copy.copy(inSlot.axistags)
+                    if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
+                        self.outputs["Output"]._axistags.insertChannelAxis()
+                    
+                if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
+                    c += 1
+                else:
+                    c += inSlot.shape[inSlot.axistags.channelIndex]
         self.outputs["Output"]._shape = inSlot.shape[:-1] + (c,)    
 
     
@@ -36,19 +41,44 @@ class OpMultiArrayStacker(Operator):
         key = key[:-1]
         requests = []
         for i, inSlot in enumerate(self.inputs['Images']):
-            if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                 
-                req = inSlot[key].writeInto(result[..., cnt])
-                cnt += 1
-            else:
-                channels = inSlot.shape[inSlot.axistags.channelIndex]
-                key_ = key + (slice(None,None,None),)
-                req = inSlot[key_].writeInto(result[...,cnt:cnt+channels])
-                cnt += channels
-            requests.append(req)
+            if inSlot.partner is not None:
+                if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
+                     
+                    req = inSlot[key].writeInto(result[..., cnt])
+                    cnt += 1
+                else:
+                    channels = inSlot.shape[inSlot.axistags.channelIndex]
+                    key_ = key + (slice(None,None,None),)
+                    req = inSlot[key_].writeInto(result[...,cnt:cnt+channels])
+                    cnt += channels
+                requests.append(req)
         
         for r in requests:
             r.wait()
+
+
+class Op5Stacker(Operator):
+    name = "5 Array Stacker"
+    category = "Misc"
+
+    
+    inputSlots = [InputSlot("Image1"),InputSlot("Image2"),InputSlot("Image3"),InputSlot("Image4"),InputSlot("Image5")]
+    outputSlots = [MultiOutputSlot("Output")]
+
+    
+    def __init__(self, graph):
+        Operator.__init__(self, graph)
+        self.op = OpMultiArrayStacker(graph)
+        
+    def notifyConnect(self, slot):
+        self.op.inputs["Images"].disconnect()
+        
+        for slot in self.inputs.values():
+            if slot.partner is not None:
+                self.op.inputs["Images"].connectAdd(slot.partner)
+        
+        self.outputs["Output"] = self.op.outputs["Output"]
+
 
 
 class OpBaseVigraFilter(OpArrayPiper):
@@ -152,28 +182,25 @@ class OpBaseVigraFilter(OpArrayPiper):
                 #resultArea.axistags = copy.copy(axistags)     
                 self.vigraFilter(t, sigma, out = resultArea)
             
-    def notifyConnect(self, inputSlot):
-        if inputSlot == self.inputs["Input"]:
-            numChannels  = 1
-            if inputSlot.axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
-                channelIndex = self.inputs["Input"].axistags.channelIndex
-                numChannels = self.inputs["Input"].shape[channelIndex]
-                inShapeWithoutChannels = inputSlot.shape[:-1]
-            else:
-                inShapeWithoutChannels = inputSlot.shape
-                        
-            self.outputs["Output"]._dtype = self.outputDtype
-            p = self.inputs["Input"].partner
-            self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
-            
-            channelsPerChannel = self.resultingChannels()
-            self.outputs["Output"]._shape = inShapeWithoutChannels + (numChannels * channelsPerChannel,)
-            if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                self.outputs["Output"]._axistags.insertChannelAxis()
-                
-        elif inputSlot == self.inputs["Sigma"]:
-            self.outputs["Output"].setDirty(slice(None,None,None))
-            
+    def notifyConnectAll(self):
+        numChannels  = 1
+        inputSlot = self.inputs["Input"]
+        if inputSlot.axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
+            channelIndex = self.inputs["Input"].axistags.channelIndex
+            numChannels = self.inputs["Input"].shape[channelIndex]
+            inShapeWithoutChannels = inputSlot.shape[:-1]
+        else:
+            inShapeWithoutChannels = inputSlot.shape
+                    
+        self.outputs["Output"]._dtype = self.outputDtype
+        p = self.inputs["Input"].partner
+        self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
+        
+        channelsPerChannel = self.resultingChannels()
+        self.outputs["Output"]._shape = inShapeWithoutChannels + (numChannels * channelsPerChannel,)
+        if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
+            self.outputs["Output"]._axistags.insertChannelAxis()
+
     def resultingChannels(self):
         raise RuntimeError('resultingChannels() not implemented')
         
@@ -279,7 +306,7 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
     outputDtype = numpy.float32 
 
     def resultingChannels(self):
-        temp = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)**2
+        temp = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
         return temp
     
 class OpGaussinaGradientMagnitude(OpBaseVigraFilter):
@@ -345,7 +372,7 @@ class OpImageReader(Operator):
     inputSlots = [InputSlot("Filename", stype = "filestring")]
     outputSlots = [OutputSlot("Image")]
     
-    def notifyConnect(self, inputSlot):
+    def notifyConnectAll(self):
         filename = self.inputs["Filename"].value
         info = vigra.impex.ImageInfo(filename)
         
@@ -370,8 +397,7 @@ class OpOstrichReader(Operator):
     
     
     def __init__(self, g):
-        Operator.__init__(self,g
-        )
+        Operator.__init__(self,g)
         filename = self.filename = "/home/cstraehl/Projects/eclipse-workspace/graph/tests/ostrich.jpg"
         info = vigra.impex.ImageInfo(filename)
         
@@ -384,31 +410,30 @@ class OpOstrichReader(Operator):
         temp = vigra.impex.readImage(self.filename)
         result[:] = temp[key]
 
+
 class OpImageWriter(Operator):
     name = "Image Writer"
     category = "Output"
     
     inputSlots = [InputSlot("Filename", stype = "filestring" ), InputSlot("Image")]
     
-    def notifyConnect(self, inputSlot):
+    def notifyConnectAll(self):
+        filename = self.inputs["Filename"].value
+
+        imSlot = self.inputs["Image"]
         
-        if self.inputs["Filename"].partner is not None and self.inputs["Image"].partner is not None:
-            filename = self.inputs["Filename"].value
+        assert len(imSlot.shape) == 2 or len(imSlot.shape) == 3, "OpImageWriter: wrong image shape %r vigra can only write 2D images, with 1 or 3 channels" %(imSlot.shape,)
 
-            imSlot = self.inputs["Image"]
-            
-            assert len(imSlot.shape) == 2 or len(imSlot.shape) == 3, "OpImageWriter: wrong image shape %r vigra can only write 2D images, with 1 or 3 channels" %(imSlot.shape,)
+        axistags = copy.copy(imSlot.axistags)
+        
+        image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
+        
+        def closure():
+            dtype = imSlot.dtype
+            vimage = vigra.VigraArray(image, dtype = dtype, axistags = axistags)
+            vigra.impex.writeImage(vimage, filename)
 
-            axistags = copy.copy(imSlot.axistags)
-            
-            image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
-            
-            def closure():
-                dtype = imSlot.dtype
-                vimage = vigra.VigraArray(image, dtype = dtype, axistags = axistags)
-                vigra.impex.writeImage(vimage, filename)
-    
-            self.inputs["Image"][:].writeInto(image).notify(closure)
+        self.inputs["Image"][:].writeInto(image).notify(closure)
     
 
 class OpH5Reader(Operator):
@@ -419,26 +444,25 @@ class OpH5Reader(Operator):
     outputSlots = [OutputSlot("Image")]
     
         
-    def notifyConnect(self, inputSlot):       
-        if self.inputs["Filename"].partner is not None and self.inputs["hdf5Path"].partner is not None:
-            filename = self.inputs["Filename"].value
-            hdf5Path = self.inputs["hdf5Path"].value
-            
-            f = h5py.File(filename, 'r')
+    def notifyConnectAll(self):
+        filename = self.inputs["Filename"].value
+        hdf5Path = self.inputs["hdf5Path"].value
         
-            d = f[hdf5Path]
+        f = h5py.File(filename, 'r')
+    
+        d = f[hdf5Path]
+        
+        
+        self.outputs["Image"]._dtyoe = d.dtype
+        self.outputs["Image"]._shape = d.shape
+        
+        if len(d.shape) == 2:
+            axistags=vigra.AxisTags(vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space))   
+        else:
+            axistags= vigra.VigraArray.defaultAxistags(len(d.shape))
+        self.outputs["Image"]._axistags=axistags
             
-            
-            self.outputs["Image"]._dtyoe = d.dtype
-            self.outputs["Image"]._shape = d.shape
-            
-            if len(d.shape) == 2:
-                axistags=vigra.AxisTags(vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space))   
-            else:
-                axistags= vigra.VigraArray.defaultAxistags(len(d.shape))
-            self.outputs["Image"]._axistags=axistags
-                
-            f.close()
+        f.close()
         
     def getOutSlot(self, slot, key, result):
         filename = self.inputs["Filename"].value
@@ -460,11 +484,9 @@ class OpH5Writer(Operator):
     inputSlots = [InputSlot("Filename", stype = "filestring"), InputSlot("hdf5Path", stype = "string"), InputSlot("Image")]
     outputSlots = [OutputSlot("WriteImage")]
 
-    def notifyConnect(self, inputSlot):
-        
-        if self.inputs["Filename"].partner is not None and self.inputs["Image"].partner is not None and self.inputs["hdf5Path"].partner is not None:
-            self.outputs["WriteImage"]._shape = (1,)
-            self.outputs["WriteImage"]._dtype = object
+    def notifyConnectAll(self):        
+        self.outputs["WriteImage"]._shape = (1,)
+        self.outputs["WriteImage"]._dtype = object
 #            filename = self.inputs["Filename"][0].allocate().wait()[0]
 #            hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
 #

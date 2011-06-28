@@ -63,7 +63,8 @@ class ListToMultiOperator(Operator):
     inputSlots = [InputSlot("List", stype = "sequence")]
     outputSlots = [MultiOutputSlot("Items", level = 1)]
     
-    def notifyConnect(self, inputSlot):
+    def notifyConnectAll(self):
+        inputSlot = self.inputs["List"]
         liste = self.inputs["List"].value
         self.list= liste
         self.outputs["Items"].resize(len(list))

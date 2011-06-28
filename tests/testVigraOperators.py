@@ -35,6 +35,7 @@ sigmaProvider.setValue(float(10))
 
 operators = [OpGaussianSmoothing,OpOpening, OpClosing,OpLaplacianOfGaussian]
 
+print "Beginning vigra operator tests..."
 for op in operators:
     
     operinstance = op(graph)

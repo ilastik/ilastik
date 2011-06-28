@@ -15,7 +15,8 @@ class OpArrayPiper(Operator):
     inputSlots = [InputSlot("Input")]
     outputSlots = [OutputSlot("Output")]    
     
-    def notifyConnect(self, inputSlot):
+    def notifyConnectAll(self):
+        inputSlot = self.inputs["Input"]
         self.outputs["Output"]._dtype = inputSlot.dtype
         self.outputs["Output"]._shape = inputSlot.shape
         self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
@@ -45,7 +46,8 @@ class OpMultiArrayPiper(Operator):
     inputSlots = [MultiInputSlot("MultiInput")]
     outputSlots = [MultiOutputSlot("MultiOutput")]
     
-    def notifyConnect(self, inputSlot):
+    def notifyConnectAll(self):
+        inputSlot = self.inputs["MultiInput"]
         print "OpMultiArrayPiper notifyConnect"
         self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
         for i,islot in enumerate(self.inputs["MultiInput"]):
@@ -57,7 +59,7 @@ class OpMultiArrayPiper(Operator):
     
     def notifySubConnect(self, slots, indexes):
         print "OpMultiArrayPiper notifySubConnect"
-        self.notifyConnect(slots[0])
+        self.notifyConnectAll()
 
     def notifySubSlotRemove(self, slots, indexes):
         self.outputs["MultiOutput"].pop(indexes[0])
@@ -86,7 +88,8 @@ class OpMultiMultiArrayPiper(Operator):
     inputSlots = [MultiInputSlot("MultiInput", level = 2)]
     outputSlots = [MultiOutputSlot("MultiOutput", level = 2)]
     
-    def notifyConnect(self, inputSlot):
+    def notifyConnectAll(self):
+        inputSlot = self.inputs["MultiInput"]
         #print "OpMultiArrayPiper notifyConnect", inputSlot
         self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
         for i,mislot in enumerate(self.inputs["MultiInput"]):
@@ -100,7 +103,7 @@ class OpMultiMultiArrayPiper(Operator):
             
     def notifySubConnect(self, slots, indexes):
         #print "OpMultiArrayPiper notifySubConnect", slots, indexes
-        self.notifyConnect(self.inputs["MultiInput"])
+        self.notifyConnectAll()
         
 
     
@@ -143,8 +146,9 @@ class OpArrayCache(OpArrayPiper):
         self._origBlockShape = blockShape
         self._immediateAlloc = immediateAlloc
 
-    def notifyConnect(self, inputSlot):
-        OpArrayPiper.notifyConnect(self, inputSlot)
+    def notifyConnectAll(self):
+        inputSlot = self.inputs["Input"]
+        OpArrayPiper.notifyConnectAll(self)
         self._cache = numpy.ndarray(self.shape, dtype = self.dtype)
         
         if type(self._origBlockShape) != tuple:
