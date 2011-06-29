@@ -13,7 +13,7 @@ from lazyflow.graph import MultiInputSlot
 from lazyflow.operators.vigraOperators import *
 
 
-graph = graph.Graph(numThreads=2)
+graph = graph.Graph(numThreads=1)
 
 fileNameProvider = SingleValueProvider("Filename", object)
 fileNameProvider.setValue("ostrich.jpg")
@@ -49,5 +49,51 @@ for op in operators:
     result = result.view(vigra.VigraArray)
     result.axistags=a
     vigra.impex.writeImage(result, "ostrich_%s.png" %(op.name,))
+
+
+
+g1 = OpHessianOfGaussian(graph)
+g1.inputs["Input"].connect(ostrichProvider.outputs["Image"])
+g1.inputs["Sigma"].setValue(float(3)) #connect(sigmaProvider)
+
+print "JJJJJJJJJJ1", g1.outputs["Output"].shape
+
+
+g4 = OpGaussianSmoothing(graph)
+g4.inputs["Input"].connect(ostrichProvider.outputs["Image"])
+g4.inputs["Sigma"].setValue(float(3)) #connect(sigmaProvider)
+
+#g4.outputs["Output"][:,:,:].allocate().wait()
+
+print "JJJJJJJJJJ4", g4.outputs["Output"].shape
+
+
+g2 = Op5Stacker(graph)
+g2.inputs["Image1"].connect(g1.outputs["Output"])
+g2.inputs["Image2"].connect(g4.outputs["Output"])
+
+g2.outputs["Output"][:,:,:].allocate().wait()
+
+print "JJJJJJJJJJ2", g2.outputs["Output"].shape
+
+g3 = OpGaussianSmoothing(graph)
+g3.inputs["Input"].connect(g2.outputs["Output"])
+g3.inputs["Sigma"].setValue(float(3)) #connect(sigmaProvider)
+
+g3.outputs["Output"][:,:,:].allocate().wait()
+
+print "JJJJJJJJJJ3", g3.outputs["Output"].shape
+
+print "Assert that stacker does not change features"
+for i in range(1,2):
+    print "Checking slice",i
+    time.sleep(1)
+    r1  = g4.outputs["Output"][:,:,1].allocate().wait()
+    r2 = g2.outputs["Output"][:,:,1].allocate().wait()
+    
+    assert (r1[:] == r2[:]).all(), i
+
+
+
 
 graph.finalize()

@@ -38,20 +38,42 @@ class OpMultiArrayStacker(Operator):
     
     def getOutSlot(self, slot, key, result):
         cnt = 0
+        written = 0
+        start, stop = roi.sliceToRoi(key, self.outputs["Output"].shape)
         key = key[:-1]
         requests = []
         for i, inSlot in enumerate(self.inputs['Images']):
             if inSlot.partner is not None:
+                req = None
                 if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                     
-                    req = inSlot[key].writeInto(result[..., cnt])
+                    #print "########################", inSlot.shape, inSlot.axistags
+                    if cnt >= start[-1] and start[-1] + written < stop[-1]:
+                        #print "OOOOOOOOOOOOOOOOO1", i, cnt, start[-1], stop[-1], result[..., cnt].shape
+                        req = inSlot[key].writeInto(result[..., cnt])
+                        written += 1
                     cnt += 1
+                    
                 else:
                     channels = inSlot.shape[inSlot.axistags.channelIndex]
-                    key_ = key + (slice(None,None,None),)
-                    req = inSlot[key_].writeInto(result[...,cnt:cnt+channels])
+                    if cnt + channels >= start[-1] and start[-1] - cnt < channels and start[-1] + written < stop[-1]:
+                        
+                        begin = 0
+                        if cnt < start[-1]:
+                            begin = start[-1] - cnt
+                        end = channels
+                        if cnt + end > stop[-1]:
+                            end -= cnt + end - stop[-1]
+                        key_ = key + (slice(begin,end,None),)
+
+                        #print "OOOOOOOOOOOOOO2", i, cnt, start[-1],stop[-1],inSlot.shape[-1], begin, end, key_, result.shape, result[...,written:written+end-begin].shape, written,written+end-begin
+                        assert (end <= numpy.array(inSlot.shape)).all()
+                        assert (begin < numpy.array(inSlot.shape)).all(), "begin : %r, shape: %r" % (begin, inSlot.shape)
+                        req = inSlot[key_].writeInto(result[...,written:written+end-begin])
+                        written += end - begin
                     cnt += channels
-                requests.append(req)
+               
+                if req is not None:
+                   requests.append(req)
         
         for r in requests:
             r.wait()
@@ -114,10 +136,12 @@ class OpBaseVigraFilter(OpArrayPiper):
         start, stop = roi.sliceToRoi(subkey,shape)
         newStart, newStop = roi.extendSlice(start, stop, shape[:-1], largestSigma)
         
+        
+        
         readKey = roi.roiToSlice(newStart, newStop)
         
         writeNewStart = start - newStart
-        writeNewStop = newStop - newStart                
+        writeNewStop = writeNewStart +  stop - start
         
         if (writeNewStart == 0).all() and (newStop == writeNewStop).all():
             fullResult = True
@@ -126,7 +150,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         writeKey = roi.roiToSlice(writeNewStart, writeNewStop)
             
-                
+        #print start, stop, newStart, newStop, writeKey
                 
         channelsPerChannel = self.resultingChannels()
         
@@ -134,53 +158,76 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         #print self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels), shape
         
-        if self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
-            for i in range(int(numpy.floor(oldstart[-1]/channelsPerChannel)),int(numpy.ceil(oldstop[-1]/channelsPerChannel))):
-                req = self.inputs["Input"][readKey + (slice(i,i+1,None),)].allocate()
-                t = req.wait()
-                t = numpy.require(t, dtype=self.inputDtype)
-                
-                #t = t.view(vigra.VigraArray)
-                #t.axistags = copy.copy(axistags)
-                t = t.squeeze() #vigra.VigraArray(t, dtype = self.inputDtype,axistags = copy.copy(axistags))
-                
-                if channelsPerChannel>1:                    
-                    resultArea = result[...,i*channelsPerChannel:(i+1)*channelsPerChannel]
-                else:
-                    resultArea = result[...,i]
-
-                if not fullResult or not self.supportsOut:
-                    temp = self.vigraFilter(t, sigma)                                 
-                    resultArea[:] = temp[writeKey]
-                else:
-                    #resultArea = resultArea.view(vigra.VigraArray)
-                    #resultArea.axistags = copy.copy(axistags)
-
-                    #print self.name, " using fastpath", t.shape, t.axistags, resultArea.shape, resultArea.axistags
-                    
-                    self.vigraFilter(t,sigma, out = resultArea)
-        else:
-            v = self.inputs["Input"][readKey].allocate()
-            t = v()
+        #if self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
+        i2 = 0          
+        #print "kjlasdjksad", self.name, oldstart[-1], oldstop[-1], int(numpy.floor(1.0 * oldstart[-1]/channelsPerChannel)),int(numpy.ceil(1.0* oldstop[-1]/channelsPerChannel)), channelsPerChannel
+        for i in range(int(numpy.floor(1.0 * oldstart[-1]/channelsPerChannel)),int(numpy.ceil(1.0 * oldstop[-1]/channelsPerChannel))):
+            
+            #print "TRUTRUTRUTRUTRU", self.inputs["Input"].shape, readKey, i,i+1
+            req = self.inputs["Input"][readKey + (slice(i,i+1,None),)].allocate()
+            t = req.wait()
             t = numpy.require(t, dtype=self.inputDtype)
             
             #t = t.view(vigra.VigraArray)
-            #t.axistags = copy.copy(axistags)            
-            #t = vigra.VigraArray(t, dtype = self.inputDtype,axistags = copy.copy(axistags))
+            #t.axistags = copy.copy(axistags)
+            t = t.squeeze() #vigra.VigraArray(t, dtype = self.inputDtype,axistags = copy.copy(axistags))
+
+            sourceBegin = 0
+            if oldstart[-1] > i * channelsPerChannel:
+                sourceBegin = oldstart[-1] - i * channelsPerChannel
+            sourceEnd = channelsPerChannel
+            if oldstop[-1] < (i+1) * channelsPerChannel:
+                sourceEnd = channelsPerChannel - ((i+1) * channelsPerChannel - oldstop[-1])
+            
+            destBegin = i2
+            destEnd = i2 + sourceEnd - sourceBegin
             
             if channelsPerChannel>1:                    
-                resultArea = result[...,i*channelsPerChannel:(i+1)*channelsPerChannel]
+                resultArea = result[...,destBegin:destEnd]
             else:
-                resultArea = result[...,i]
+                #print "UPUPUPUPUPUPUPUP", result.shape, i2
+                resultArea = result[...,i2]
 
             if not fullResult or not self.supportsOut:
                 temp = self.vigraFilter(t, sigma)
-                resultArea[:] = temp[writeKey]
+                if channelsPerChannel>1:
+                    try:
+                        resultArea[:] = temp[writeKey + (slice(sourceBegin,sourceEnd,None),)]
+                    except:
+                        print "ERROR: destination and request shapes differ !", resultArea.shape, temp.shape, writeKey, destBegin, destEnd, sourceBegin, sourceEnd
+                else:
+                    resultArea[:] = temp[writeKey]
             else:
-                #print self.name, " using fastpath", t.shape, t.axistags, resultArea.shape, resultArea.axistags
                 #resultArea = resultArea.view(vigra.VigraArray)
-                #resultArea.axistags = copy.copy(axistags)     
-                self.vigraFilter(t, sigma, out = resultArea)
+                #resultArea.axistags = copy.copy(axistags)
+
+                #print self.name, " using fastpath", t.shape, t.axistags, resultArea.shape, resultArea.axistags
+                
+                self.vigraFilter(t,sigma, out = resultArea)
+            i2 += channelsPerChannel
+#        else:
+#            
+#            v = self.inputs["Input"][readKey].allocate()
+#            t = v()
+#            t = numpy.require(t, dtype=self.inputDtype)
+#            
+#            #t = t.view(vigra.VigraArray)
+#            #t.axistags = copy.copy(axistags)            
+#            #t = vigra.VigraArray(t, dtype = self.inputDtype,axistags = copy.copy(axistags))
+#            
+#            if channelsPerChannel>1:                    
+#                resultArea = result[...,i*channelsPerChannel:(i+1)*channelsPerChannel]
+#            else:
+#                resultArea = result[...,i]
+#
+#            if not fullResult or not self.supportsOut:
+#                temp = self.vigraFilter(t, sigma)
+#                resultArea[:] = temp[writeKey]
+#            else:
+#                #print self.name, " using fastpath", t.shape, t.axistags, resultArea.shape, resultArea.axistags
+#                #resultArea = resultArea.view(vigra.VigraArray)
+#                #resultArea.axistags = copy.copy(axistags)     
+#                self.vigraFilter(t, sigma, out = resultArea)
             
     def notifyConnectAll(self):
         numChannels  = 1
