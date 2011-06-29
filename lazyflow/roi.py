@@ -1,4 +1,4 @@
-import numpy
+import numpy, vigra
 from numpy.lib.stride_tricks import as_strided as ast
 
 def sliceToRoi(s, shape=None):
@@ -7,10 +7,17 @@ def sliceToRoi(s, shape=None):
        Returns:
             ROI instance corresponding to slice
     """
-    assert type(s) == list or type(s) == slice or type(s) == tuple
+    assert type(s) == list or type(s) == slice or type(s) == tuple or type(s) == int
     
     if not isinstance(s, (list,tuple)):
-        s = [s]
+        #special case for the [:] getall access
+        if s == slice(None,None,None):
+            s2 = []
+            for i in range(len(shape)):
+                s2.append(s)    
+            s = s2 
+        else:
+            s = [s]
     s = list(s)    
     for i,k in enumerate(s):
         if type(k) is not slice:
@@ -50,6 +57,13 @@ def roiToSlice(start, stop, hardBind=False):
         return tuple(map(lambda x:slice(x[0],x[1]),zip(start,stop)))
 
 
+
+def extendSlice(start, stop, shape, sigma):
+    zeros = start - start
+    newStart = numpy.maximum(start - numpy.ceil(3.5 * sigma), zeros)
+    sa = numpy.array(shape)
+    newStop = numpy.minimum(stop + numpy.ceil(3.5 * sigma), sa)
+    return newStart, newStop
 
 
 def block_view(A, block= (3, 3)):

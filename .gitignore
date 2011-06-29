@@ -1,0 +1,8 @@
+.project
+.pydevproject
+*.pyc
+*.backup
+build
+dist
+lazyflow.egg-info
+
