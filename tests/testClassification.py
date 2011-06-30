@@ -191,17 +191,16 @@ if __name__=="__main__":
     opPredict=OpPredictRandomForest(g)
     opPredict.inputs['Classifier'].connect(opTrain.outputs['Classifier'])    
     
+
+    opPredict.inputs['Image'].connect(stacker.outputs['Output'])
     classes=SingleValueProvider("Classes")
     classes.setValue(2)
     
     opPredict.inputs['LabelsCount'].connect(classes)
-    opPredict.inputs['Images'].connectAdd(stacker.outputs['Output'])
-
     
     
-    print len(opPredict.outputs['PMaps'])
-    for out in opPredict.outputs['PMaps']:
-        print "Here", out[:].allocate().wait()
+   
+    print opPredict.outputs['PMaps'][:].allocate().wait()
         
     
     

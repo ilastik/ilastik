@@ -67,15 +67,14 @@ class OpPredictRandomForest(Operator):
     name = "TrainRandomForest"
     description = "Predict on multiple images"
     
-    inputSlots = [MultiInputSlot("Images"),InputSlot("Classifier"),InputSlot("LabelsCount",stype='integer')]
-    outputSlots = [MultiOutputSlot("PMaps")]
+    inputSlots = [InputSlot("Image"),InputSlot("Classifier"),InputSlot("LabelsCount",stype='integer')]
+    outputSlots = [OutputSlot("PMaps")]
     
     def notifyConnectAll(self):
-        inputSlot = self.inputs["Images"]    
+        inputSlot = self.inputs["Image"]    
         nlabels=self.inputs["LabelsCount"].value        
         
-        print "KKKKKKKKKKKKKKK", len(inputSlot)
-        
+        """
         self.outputs["PMaps"].resize(len(inputSlot)) #clearAllSlots()
         for i,islot in enumerate(self.inputs["Images"]):
             oslot = self.outputs["PMaps"][i]
@@ -84,26 +83,30 @@ class OpPredictRandomForest(Operator):
                 oslot._shape = islot.shape[:-1]+(nlabels,)
                 oslot._axistags = islot.axistags
         
-                
-        
-        
+        """
+        oslot = self.outputs["PMaps"]
+        islot=self.inputs["Image"]
+        oslot._dtype = numpy.float32
+        oslot._shape = islot.shape[:-1]+(nlabels,)
+        oslot._axistags = islot.axistags
+    """    
     def notifySubConnect(self, slots, indexes):
         print "OpClassifier notifySubConnect"
         self.notifyConnectAll()                 
-    
+    """
         
         
 
-    def getSubOutSlot(self, slots, indexes, key, result):
+    def getOutSlot(self,slot, key, result):
         nlabels=self.inputs["LabelsCount"].value
 
         RF=self.inputs["Classifier"].value
         assert RF.labelCount() == nlabels, "ERROR: OpPredictRandomForest, labelCount differs from true labelCount!"        
                 
         newKey = key[:-1]
-        newKey += (slice(0,self.inputs["Images"][indexes[0]].shape[-1],None),)
+        newKey += (slice(0,self.inputs["Image"].shape[-1],None),)
         
-        res = self.inputs["Images"][indexes[0]][newKey].allocate().wait()
+        res = self.inputs["Image"][newKey].allocate().wait()
                
         shape=res.shape
         prod = 1
