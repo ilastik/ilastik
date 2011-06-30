@@ -68,7 +68,7 @@ for o in Operators.operators.values():
         doConnections.append("""
     _argument = %s
     _slotname = '%s'
-    if isinstance(_argument, OutputSlot):
+    if isinstance(_argument, OutputSlot) or isinstance(_argument, MultiOutputSlot):
         o.inputs[_slotname].connect(_argument) 
     else:
         print "Setting value", _slotname, _argument, type(_argument)

@@ -80,8 +80,19 @@ for o in Operators.operators.values():
         factoryInputs.append( dict(name = slot.name, interface = itype) )
 
     factoryOutputs= []
-    for slot in o.outputSlots:
-        factoryOutputs.append(dict(name = slot.name, interface = None) )
+    for slot in o.inputSlots:
+        itype = None
+        if slot.stype == "string":
+            itype = IStr()
+        elif slot.stype == "filestring":
+            itype = IFileStr()
+        elif slot.stype == "sequence":
+            itype = ISequence()
+        elif slot.stype == "integer":
+            itype = IInt()
+        elif slot.stype == "float":
+            itype = IFloat()
+        factoryOutputs.append( dict(name = slot.name, interface = itype) )    
     
     tempfac = Factory(name = o.name,
                 description = o.description,
