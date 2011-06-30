@@ -89,6 +89,7 @@ for o in Operators.operators.values():
     for slot in o.outputSlots:
         assignmentsRight.append("o.outputs['%s']" % (slot.name,) )
 
+
     if len(assignmentsLeft) > 0:
         
         code = """\n

@@ -635,7 +635,7 @@ class MultiInputSlot(object):
 
 
 class MultiOutputSlot(object):
-    def __init__(self, name, operator = None, stype = "ndarray",level = 1,):
+    def __init__(self, name, operator = None, stype = "ndarray",level = 1):
         self.name = name
         self.operator = operator
         self.partners = []
