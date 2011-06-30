@@ -7,6 +7,7 @@ from lazyflow.operators.operators import OpArrayPiper
 from lazyflow.operators.vigraOperators import *
 from lazyflow.operators.valueProviders import *
 from lazyflow.operators.classifierOperators import *
+from lazyflow.operators.generic import *
 
 #from OptionsProviders import *
 #from VigraFilters import *
@@ -199,8 +200,15 @@ if __name__=="__main__":
     opPredict.inputs['LabelsCount'].connect(classes)
     
     
-   
-    print opPredict.outputs['PMaps'][:].allocate().wait()
-        
+    
+    selector=OpSingleChannelSelector(g)
+    
+    index=SingleValueProvider("Index")
+    index.setValue(1)
+    
+    selector.inputs["Index"].connect(index)
+    selector.inputs["Input"].connect(opPredict.outputs['PMaps'])
+    
+    print selector.outputs["Output"][:].allocate().wait()
     
     
