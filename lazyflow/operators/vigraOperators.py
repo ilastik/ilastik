@@ -102,6 +102,44 @@ class Op5Stacker(Operator):
         self.outputs["Output"] = self.op.outputs["Output"]
 
 
+class Op5Slotter(Operator):
+    name = "5 Elements to Multislot"
+    category = "Misc"
+
+    
+    inputSlots = [InputSlot("Image1"),InputSlot("Image2"),InputSlot("Image3"),InputSlot("Image4"),InputSlot("Image5")]
+    outputSlots = [MultiOutputSlot("Images")]
+        
+    def notifyConnect(self, slot):
+        
+        length = 0
+        for slot in self.inputs.values():
+            if slot.partner is not None:
+                length += 1                
+
+        self.outputs["Images"].resize(length)
+
+        i = 0
+        for slot in self.inputs.values():
+            if slot.partner is not None:
+                self.outputs["Images"][i]._shape = slot.shape
+                self.outputs["Images"][i]._dtype = slot.dtype
+                self.outputs["Images"][i]._axistags = copy.copy(slot.axistags)
+                i += 1       
+                
+        print "LKSJHDKJSHK", self.outputs["Images"]
+        
+    def getSubOutSlot(self, slots, indexes, key, result):
+        i = 0
+        for slot in self.inputs.values():
+            if slot.partner is not None:
+                if i == indexes[0]:
+                    result[:] = slot[key].allocate().wait()
+                    break
+                i += 1                
+
+
+
 
 class OpBaseVigraFilter(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("sigma", stype = "float")]
