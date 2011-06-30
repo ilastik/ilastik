@@ -30,17 +30,17 @@ ostrichWriter = OpImageWriter(graph)
 ostrichWriter.inputs["Filename"].connect(fileNameProvider2)
 ostrichWriter.inputs["Image"].connect(ostrichProvider.outputs["Image"])
 
-sigmaProvider = SingleValueProvider("Sigma", float)
+sigmaProvider = SingleValueProvider("sigma", float)
 sigmaProvider.setValue(float(10))
 
-operators = [OpGaussianSmoothing,OpOpening, OpClosing,OpLaplacianOfGaussian]
+operators = [OpGaussianSmoothing,OpOpening, OpClosing, OpHessianOfGaussian]
 
 print "Beginning vigra operator tests..."
 for op in operators:
     
     operinstance = op(graph)
     operinstance.inputs["Input"].connect(ostrichProvider.outputs["Image"])
-    operinstance.inputs["Sigma"].setValue(float(10)) #connect(sigmaProvider)
+    operinstance.inputs["sigma"].setValue(float(10)) #connect(sigmaProvider)
     result = operinstance.outputs["Output"][:,:,:].allocate().wait()
     if result.shape[-1] > 3:
         result = result[...,0:3]
@@ -54,14 +54,14 @@ for op in operators:
 
 g1 = OpHessianOfGaussian(graph)
 g1.inputs["Input"].connect(ostrichProvider.outputs["Image"])
-g1.inputs["Sigma"].setValue(float(3)) #connect(sigmaProvider)
+g1.inputs["sigma"].setValue(float(3)) #connect(sigmaProvider)
 
 print "JJJJJJJJJJ1", g1.outputs["Output"].shape
 
 
 g4 = OpGaussianSmoothing(graph)
 g4.inputs["Input"].connect(ostrichProvider.outputs["Image"])
-g4.inputs["Sigma"].setValue(float(3)) #connect(sigmaProvider)
+g4.inputs["sigma"].setValue(float(3)) #connect(sigmaProvider)
 
 #g4.outputs["Output"][:,:,:].allocate().wait()
 
@@ -78,7 +78,7 @@ print "JJJJJJJJJJ2", g2.outputs["Output"].shape
 
 g3 = OpGaussianSmoothing(graph)
 g3.inputs["Input"].connect(g2.outputs["Output"])
-g3.inputs["Sigma"].setValue(float(3)) #connect(sigmaProvider)
+g3.inputs["sigma"].setValue(float(3)) #connect(sigmaProvider)
 
 g3.outputs["Output"][:,:,:].allocate().wait()
 
