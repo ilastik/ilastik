@@ -72,8 +72,12 @@ for o in Operators.operators.values():
         o.inputs[_slotname].connect(_argument) 
     else:
         print "Setting value", _slotname, _argument, type(_argument)
-        o.inputs[_slotname].setValue(_argument)
-""" % (slot.name,slot.name))
+        if isinstance(o.inputs[_slotname], InputSlot):
+            o.inputs[_slotname].setValue(_argument)
+        elif isinstance(o.inputs[_slotname], MultiInputSlot):
+            if o.inputs[_slotname].level == 1:
+                for i, slot in enumerate(o.inputs[_slotname]):
+                    slot.setValue(_argument)""" % (slot.name,slot.name))
     
     
     assignmentsLeft = []    
@@ -93,8 +97,7 @@ def OA_FUNC_%s(%s):
     print o
     %s #doConnections
     %s = %s #set return values
-    return %s #return outputSlots
-    """ % (o.__name__,string.join(inputArgs,","),string.join(inputArgs,","),o.__name__,string.join(doConnections,"\n"), string.join(assignmentsLeft,","),string.join(assignmentsRight,","),string.join(assignmentsLeft,","))
+    return %s #return outputSlots""" % (o.__name__,string.join(inputArgs,","),string.join(inputArgs,","),o.__name__,string.join(doConnections,"\n"), string.join(assignmentsLeft,","),string.join(assignmentsRight,","),string.join(assignmentsLeft,","))
     
         print code    
     
@@ -106,8 +109,7 @@ def OA_FUNC_%s(%s):
     o = %s(globalGraph)
     print o
     %s #doConnections
-    print o
-    """ % (o.__name__,string.join(inputArgs,","),string.join(inputArgs,","),o.__name__,string.join(doConnections,"\n"))
+    print o""" % (o.__name__,string.join(inputArgs,","),string.join(inputArgs,","),o.__name__,string.join(doConnections,"\n"))
             
         exec code
         

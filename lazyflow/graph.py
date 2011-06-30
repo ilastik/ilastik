@@ -421,6 +421,7 @@ class MultiInputSlot(object):
         self.inputSlots = []
         self.level = level
         self.stype = stype
+        self._value = None
     
     def __getitem__(self, key):
         return self.inputSlots[key]
@@ -1036,9 +1037,9 @@ class OperatorWrapper(Operator):
         for i,islot in enumerate(inputSlot):
             if islot.partner is not None:
                 self.innerOperators[i].inputs[inputSlot.name].connect(islot.partner)
-
-
-
+                print "Wrapped Op", self.name, "connected", i
+            elif islot._value is not None:
+                self.innerOperators[i].inputs[inputSlot.name].setValue(islot._value)
 
                         
         self._connectInnerOutputs()
@@ -1061,6 +1062,10 @@ class OperatorWrapper(Operator):
             #
             if not isinstance(self.innerOperators[indexes[0]], OperatorWrapper):
                 self.innerOperators[indexes[0]].inputs[slots[0].name].connect(slots[1].partner)
+        elif slots[1]._value is not None:
+            if not isinstance(self.innerOperators[indexes[0]], OperatorWrapper):
+                self.innerOperators[indexes[0]].inputs[slots[0].name].setValue(slots[1]._value)
+            
         else:            
             if isinstance(self.innerOperators[indexes[0]], OperatorWrapper):
                 

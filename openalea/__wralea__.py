@@ -80,7 +80,7 @@ for o in Operators.operators.values():
         factoryInputs.append( dict(name = slot.name, interface = itype) )
 
     factoryOutputs= []
-    for slot in o.inputSlots:
+    for slot in o.outputSlots:
         itype = None
         if slot.stype == "string":
             itype = IStr()
