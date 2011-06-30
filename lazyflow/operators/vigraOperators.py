@@ -448,6 +448,33 @@ class OpImageReader(Operator):
         
         result[:] = temp[key]
     
+import glob
+class OpFileGlobList(Operator):
+    name = "Glob filenames to 1D-String Array"
+    category = "Input"
+    
+    inputSlots = [InputSlot("Globstring", stype = "string")]
+    outputSlots = [MultiOutputSlot("Filenames", stype = "filestring")]
+    
+    def notifyConnectAll(self):
+        globstring = self.inputs["Globstring"].value
+        
+        self.filenames = glob.glob(globstring)        
+        
+        oslot = self.outputs["Filenames"]
+        oslot.resize(len(self.filenames))
+        for slot in oslot:
+            slot._shape = (1,)
+            slot._dtype = object
+            slot._axistags = None
+    
+    def getSubOutSlot(self, slots, indexes, key, result):
+        result[0] = self.filenames[indexes[0]]
+    
+    
+    
+    
+    
 class OpOstrichReader(Operator):
     name = "Ostrich Reader"
     category = "Input"
