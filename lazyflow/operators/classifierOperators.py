@@ -19,7 +19,7 @@ class OpTrainRandomForest(Operator):
     
     def notifyConnectAll(self):
         self.outputs["Classifier"]._dtype = object
-        self.outputs["Classfier"]._shape = (1,)
+        self.outputs["Classifier"]._shape = (1,)
         
     def notifySubConnect(self, slots, indexes):
         print "OpClassifier notifySubConnect"
@@ -32,22 +32,28 @@ class OpTrainRandomForest(Operator):
         labelsMatrix=[]
         
         for i,labels in enumerate(self.inputs["Labels"]):
-            labels=labels[:].allocate().wait()
-            indexes=numpy.nonzero(labels)
+            
+            labels=labels[:].allocate().wait()[:,:,0:1]
+            indexes=numpy.nonzero(labels[:,:,0])
+            print "kjshajvjhvajhv", len(indexes[0])
             #Maybe later request only part of the region?
             image=self.inputs["Images"][i][:].allocate().wait()
+            print image.shape, labels.shape
             
             features=image[indexes]
             labels=labels[indexes]
+            
+            print "GANG",features.shape, labels.shape
             featMatrix.append(features)
             labelsMatrix.append(labels)
-            
-        featMatrix=numpy.concatenate(features,axis=0)
-        labelsMatrix=numpy.concatenate(labels,axis=0)
+        
+        print features.shape
+        featMatrix=numpy.concatenate(featMatrix,axis=0)
+        labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
         
         RF=vigra.learning.RandomForest(100)        
         
-        result=RF.learnRF(featMatrix,labelsMatrix)
+        result=RF.learnRF(featMatrix,labelsMatrix.astype(numpy.uint32))
         return result
         
 

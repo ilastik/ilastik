@@ -285,7 +285,7 @@ def coherenceOrientationOfStructureTensor(image,sigma0, sigma1, out = None):
     #assert image.spatialDimensions==2, "Only implemented for 2 dimensional images"
     assert len(image.shape)==2 or (len(image.shape)==3 and image.shape[2] == 1), "Only implemented for 2 dimensional images"
     
-    st=vigra.filters.structureTensor(image, sigmas0, sigmas1)
+    st=vigra.filters.structureTensor(image, sigma0, sigma1)
     i11=st[:,:,0]
     i12=st[:,:,1]
     i22=st[:,:,2]

@@ -20,7 +20,7 @@ if __name__=="__main__":
     
     
     
-    g = Graph(numThreads = 11, softMaxMem = 2000*1024**2)
+    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
 
     filenameProvider = SingleValueProvider("Filename")
     filenameProvider.setValue(filename)
@@ -165,6 +165,9 @@ if __name__=="__main__":
     stacker.inputs["Images"].connectAdd(coher2.outputs["Output"])
     stacker.inputs["Images"].connectAdd(hog2.outputs["Output"])
     
+    
+   
+    
     #####Get the labels###
     filenamelabels='labels_ostrich.jpg'
     
@@ -179,9 +182,10 @@ if __name__=="__main__":
     #######Training
     
     opTrain = OpTrainRandomForest(g)
-    opTrain.inputs['Labels'].connect(stacker.outputs["Output"])
-    opTrain.inputs['Images'].connect(stacker.outputs["Output"])
+    opTrain.inputs['Labels'].connectAdd(labelsReader.outputs["Image"])
+    opTrain.inputs['Images'].connectAdd(stacker.outputs["Output"])
     
+    opTrain.outputs['Classifier'][:].allocate().wait()    
     
     ##################Prediction
     opPredict=OpPredictRandomForest(g)
@@ -192,7 +196,8 @@ if __name__=="__main__":
     
     opPredict.inputs['LabelsCount'].connect(classes)
     
-    for out in opPredict.outputs['Pmaps']:
+    print len(opPredict.outputs['PMaps'])
+    for out in opPredict.outputs['PMaps']:
         print out[:].allocate().wait()
         
     
