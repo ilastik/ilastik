@@ -7,6 +7,7 @@ from lazyflow.operators.operators import OpArrayPiper
 from lazyflow.operators.vigraOperators import *
 from lazyflow.operators.valueProviders import *
 from lazyflow.operators.classifierOperators import *
+from lazyflow.operators.generic import *
 
 #from OptionsProviders import *
 #from VigraFilters import *
@@ -191,17 +192,23 @@ if __name__=="__main__":
     opPredict=OpPredictRandomForest(g)
     opPredict.inputs['Classifier'].connect(opTrain.outputs['Classifier'])    
     
+
+    opPredict.inputs['Image'].connect(stacker.outputs['Output'])
     classes=SingleValueProvider("Classes")
     classes.setValue(2)
     
     opPredict.inputs['LabelsCount'].connect(classes)
-    opPredict.inputs['Images'].connectAdd(stacker.outputs['Output'])
-
     
     
-    print len(opPredict.outputs['PMaps'])
-    for out in opPredict.outputs['PMaps']:
-        print "Here", out[:].allocate().wait()
-        
+    
+    selector=OpSingleChannelSelector(g)
+    
+    index=SingleValueProvider("Index")
+    index.setValue(1)
+    
+    selector.inputs["Index"].connect(index)
+    selector.inputs["Input"].connect(opPredict.outputs['PMaps'])
+    
+    print selector.outputs["Output"][:].allocate().wait()
     
     
