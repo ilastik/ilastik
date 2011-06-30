@@ -20,7 +20,7 @@ __license__ = "Cecill-C"
 __revision__ = " $Id:  $ "
 
 import sys
-sys.path.append("/home/cstraehl/Projects/eclipse-workspace/graph")
+sys.path.append("/home/lfiaschi/graph-christoph")
 
 
 import string
