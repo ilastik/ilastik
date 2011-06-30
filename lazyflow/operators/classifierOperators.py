@@ -33,8 +33,12 @@ class OpTrainRandomForest(Operator):
         
         for i,labels in enumerate(self.inputs["Labels"]):
             
-            labels=labels[:].allocate().wait()[:,:,0:1]
-            indexes=numpy.nonzero(labels[:,:,0])
+            labels=labels[:].allocate().wait()
+            print "hsahfjkhfjhfsaj", labels.max()
+            
+            
+            print "ajhajkfhjkafhjfhaj",labels.min()
+            indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
             print "kjshajvjhvajhv", len(indexes[0])
             #Maybe later request only part of the region?
             image=self.inputs["Images"][i][:].allocate().wait()
@@ -53,8 +57,9 @@ class OpTrainRandomForest(Operator):
         
         RF=vigra.learning.RandomForest(100)        
         
-        result=RF.learnRF(featMatrix,labelsMatrix.astype(numpy.uint32))
-        return result
+        RF.learnRF(featMatrix,labelsMatrix.astype(numpy.uint32))
+        result[0]=RF
+        
         
 
 
@@ -69,13 +74,17 @@ class OpPredictRandomForest(Operator):
         inputSlot = self.inputs["Images"]    
         nlabels=self.inputs["LabelsCount"].value        
         
-        self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
+        print "KKKKKKKKKKKKKKK", len(inputSlot)
+        
+        self.outputs["PMaps"].resize(len(inputSlot)) #clearAllSlots()
         for i,islot in enumerate(self.inputs["Images"]):
             oslot = self.outputs["PMaps"][i]
             if islot.partner is not None:
                 oslot._dtype = numpy.float32
                 oslot._shape = islot.shape[:-1]+(nlabels,)
                 oslot._axistags = islot.axistags
+        
+                
         
         
     def notifySubConnect(self, slots, indexes):
@@ -86,29 +95,29 @@ class OpPredictRandomForest(Operator):
         
 
     def getSubOutSlot(self, slots, indexes, key, result):
-        res = self.inputs["Images"][indexes[0]][indexes[1]][key].allocate().wait()
+        nlabels=self.inputs["LabelsCount"].value
+
+        RF=self.inputs["Classifier"].value
+        assert RF.labelCount() == nlabels, "ERROR: OpPredictRandomForest, labelCount differs from true labelCount!"        
+                
+        newKey = key[:-1]
+        newKey += (slice(0,self.inputs["Images"][indexes[0]].shape[-1],None),)
+        
+        res = self.inputs["Images"][indexes[0]][newKey].allocate().wait()
                
         shape=res.shape
-        if len(shape)==3:        
+        prod = 1
+        for i,e in enumerate(shape):
+            if i < len(shape) - 1:
+                prod *= e            
+
+        features=res.reshape(prod, shape[-1])
         
-            features=res.reshape(shape[0]*shape[1],shape[2])
-        if len(shape)==4:
-            features=res.reshape(shape[0]*shape[1]*shape[2],shape[3])
-        
-        RF=self.inputs["Classfier"][:].allocate().wait()
-        
+
         result=RF.predictProbabilities(features)        
         
-        result=result.reshape(shape[0],shape[1],RF.labelCount())
-               
-        
-        nlabels=self.inputs["LabelsCount"].value
-        
-        if RF.labelCount != nlabels: 
-            raise
-            
-        return result
-            
+        result=result.reshape(*(shape[:-1] + (RF.labelCount(),)))
+
             
             
             

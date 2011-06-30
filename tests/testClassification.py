@@ -169,14 +169,14 @@ if __name__=="__main__":
    
     
     #####Get the labels###
-    filenamelabels='labels_ostrich.jpg'
+    filenamelabels='labels_ostrich.png'
     
-    filenamesProvider2 = SingleValueProvider("Filename")
-    filenamesProvider2.setValue(filename)
+    filenameProvider2 = SingleValueProvider("Filename")
+    filenameProvider2.setValue(filenamelabels)
         
     
     labelsReader = OpImageReader(g)
-    labelsReader.inputs["Filename"].connect(filenameProvider)
+    labelsReader.inputs["Filename"].connect(filenameProvider2)
 
         
     #######Training
@@ -185,7 +185,7 @@ if __name__=="__main__":
     opTrain.inputs['Labels'].connectAdd(labelsReader.outputs["Image"])
     opTrain.inputs['Images'].connectAdd(stacker.outputs["Output"])
     
-    opTrain.outputs['Classifier'][:].allocate().wait()    
+    #print "Here ########################", opTrain.outputs['Classifier'][:].allocate().wait()    
     
     ##################Prediction
     opPredict=OpPredictRandomForest(g)
@@ -195,10 +195,13 @@ if __name__=="__main__":
     classes.setValue(2)
     
     opPredict.inputs['LabelsCount'].connect(classes)
+    opPredict.inputs['Images'].connectAdd(stacker.outputs['Output'])
+
+    
     
     print len(opPredict.outputs['PMaps'])
     for out in opPredict.outputs['PMaps']:
-        print out[:].allocate().wait()
+        print "Here", out[:].allocate().wait()
         
     
     
