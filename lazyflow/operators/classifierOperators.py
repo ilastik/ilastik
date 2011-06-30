@@ -64,7 +64,7 @@ class OpTrainRandomForest(Operator):
 
 
 class OpPredictRandomForest(Operator):
-    name = "TrainRandomForest"
+    name = "PredictRandomForest"
     description = "Predict on multiple images"
     
     inputSlots = [MultiInputSlot("Images"),InputSlot("Classifier"),InputSlot("LabelsCount",stype='integer')]

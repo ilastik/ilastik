@@ -29,6 +29,7 @@ import lazyflow.graph
 from lazyflow.operators.vigraOperators import *
 from lazyflow.operators.operators import *
 from lazyflow.operators.valueProviders import *
+from lazyflow.operators.classifierOperators import *
 from openalea.core import *
 
 
