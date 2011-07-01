@@ -136,19 +136,67 @@ class BlockQueue(object):
         self.lock = threading.Lock()
 
 class FakeGetItemRequestObject(object):
-    def __init__(gr):
+    def __init__(self,gr):
         self.greenlet = gr
+        self.lock = threading.Lock()
 
+        self.thread = threading.current_thread()
+        
+        if hasattr(self.thread, "currentRequestLevel"):
+            self.requestLevel = self.thread.currentRequestLevel + 1
+        else:
+            self.requestLevel = 1
+            self.thread = graph.workers[0]
+
+class OpRequestSplitter(OpArrayPiper):
+    name = "RequestSplitter"
+    description = "split requests into two parts along longest axis"
+    category = "misc"
+    
+    def getOutSlot(self, slot, key, result):
+        start, stop = sliceToRoi(key, self.shape)
+        
+        diff = stop-start
+        
+        splitDim = numpy.argmax(diff)
+        splitPos = start[splitDim] + diff[splitDim] / 2
+        
+        stop2 = stop.copy()
+        stop2[splitDim] = splitPos
+        start2 = start.copy()
+        start2[splitDim] = splitPos
+        
+        
+        destStart = start -start # zeros
+        destStop = stop - start
+        
+        destStop2 = destStop.copy()
+        destStop2[splitDim] = diff[splitDim] / 2
+        destStart2 = destStart.copy()
+        destStart2[splitDim] = diff[splitDim] / 2
+        
+        writeKey1 = roiToSlice(destStart,destStop2)        
+        writeKey2 = roiToSlice(destStart2,destStop)        
+        
+        key1 = roiToSlice(start,stop2)
+        key2 = roiToSlice(start2,stop)
+
+        req1 = self.inputs["Input"][key1].writeInto(result[writeKey1])
+        req2 = self.inputs["Input"][key2].writeInto(result[writeKey2])
+        req1.wait()
+        req2.wait()
+        
 
 
 class OpArrayCache(OpArrayPiper):
     name = "ArrayCache"
     description = "numpy.ndarray caching class"
-        
+    category = "misc"
+    
     def __init__(self, graph, blockShape = None, immediateAlloc = True):
         OpArrayPiper.__init__(self, graph)
         if blockShape == None:
-            blockShape = 128 #FIXME: GIGANTIC BUG! we need this setting for the demo, something is not right in wonderland ...
+            blockShape = 128
         self._origBlockShape = blockShape
         self._immediateAlloc = immediateAlloc
 
@@ -210,7 +258,6 @@ class OpArrayCache(OpArrayPiper):
     def getOutSlot(self,slot,key,result):
         start, stop = sliceToRoi(key, self.shape)
         
-        print "Request::::: ", key 
         self._lock.acquire()
         blockStart = numpy.floor(1.0 * start / self._blockShape)
         blockStop = numpy.ceil(1.0 * stop / self._blockShape)
@@ -232,7 +279,7 @@ class OpArrayCache(OpArrayPiper):
         trueDirtyIndices = numpy.nonzero(numpy.where(cond, 1,0))
         
         axistags = vigra.VigraArray.defaultAxistags(tileWeights.ndim)
-        print "TilWEights AXISTAGS:", axistags
+
         tileWeights = tileWeights.view(vigra.VigraArray)
         tileWeights.axistags = axistags
         
@@ -250,8 +297,6 @@ class OpArrayCache(OpArrayPiper):
 #        print self._blockState[blockKey][trueDirtyIndices]
 #        print "Ranges:"
 #        print "TileArray:", tileArray
-        print "TILEWEIGHTS", tileWeights        
-        print "TILEARRAY", tileArray
 
         for i in range(tileArray.shape[1]):
 
@@ -294,11 +339,9 @@ class OpArrayCache(OpArrayPiper):
         
         
         requests = []
-        print "ALL DIRTYREQUESTS:"
         #fire off requests
         for r in dirtyRequests:
             bq, key, reqStart, reqStop = r
-            print "dirtyRequest", key
             req = self.inputs["Input"][key].writeInto(self._cache[key])
             requests.append(req)
             
@@ -328,10 +371,10 @@ class OpArrayCache(OpArrayPiper):
                 w[1].finishedRequests.append(FakeGetItemRequestObject(w[0]))
             bq.queue = None
             bq.lock.release()
+            self.graph.workAvailableEvent.set()
         
         # indicate to all workers that there might be something to do
         # i.e. continuing after the finished requests
-        self.graph.workAvailableEvent.set()
         
         
         #wait for all in process queries

@@ -1270,13 +1270,13 @@ class Graph(object):
             reqObject.event.set()
             if reqObject.closure is not None:
                 reqObject.closure()
+            reqObject.lock.release()
             
             #append 
             if reqObject.greenlet is not None:
                 reqObject.thread.finishedRequests.append(reqObject)
                 self.workAvailableEvent.set()
 
-            reqObject.lock.release()
             return None
 
         task = [-reqObject.requestLevel, runnerClosure, reqObject]

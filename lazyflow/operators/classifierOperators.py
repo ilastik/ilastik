@@ -13,6 +13,7 @@ import copy
 class OpTrainRandomForest(Operator):
     name = "TrainRandomForest"
     description = "Train a random forest on multiple images"
+    category = "Learning"
     
     inputSlots = [MultiInputSlot("Images"),MultiInputSlot("Labels")]
     outputSlots = [OutputSlot("Classifier")]
@@ -73,6 +74,7 @@ class OpTrainRandomForest(Operator):
 class OpPredictRandomForest(Operator):
     name = "PredictRandomForest"
     description = "Predict on multiple images"
+    category = "Learning"
     
     inputSlots = [InputSlot("Image"),InputSlot("Classifier"),InputSlot("LabelsCount",stype='integer')]
     outputSlots = [OutputSlot("PMaps")]
