@@ -20,6 +20,7 @@ class OpTrainRandomForest(Operator):
     def notifyConnectAll(self):
         self.outputs["Classifier"]._dtype = object
         self.outputs["Classifier"]._shape = (1,)
+        self.outputs["Classifier"]._axistags  = "classifier"
         
     def notifySubConnect(self, slots, indexes):
         print "OpClassifier notifySubConnect"
@@ -56,8 +57,14 @@ class OpTrainRandomForest(Operator):
         labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
         
         RF=vigra.learning.RandomForest(100)        
-        
-        RF.learnRF(featMatrix,labelsMatrix.astype(numpy.uint32))
+        try:
+            RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
+        except:
+            print "ERROR: couldnt learn classifier"
+            print featMatrix, labelsMatrix
+            print featMatrix.shape, featMatrix.dtype
+            print labelsMatrix.shape, labelsMatrix.dtype            
+            
         result[0]=RF
         
         
@@ -117,9 +124,11 @@ class OpPredictRandomForest(Operator):
         features=res.reshape(prod, shape[-1])
         
 
-        result=RF.predictProbabilities(features)        
+        prediction=RF.predictProbabilities(features.astype(numpy.float32))        
         
-        result=result.reshape(*(shape[:-1] + (RF.labelCount(),)))
+        prediction = prediction.reshape(*(shape[:-1] + (RF.labelCount(),)))
+                
+        result[:]=prediction[...,key[-1]]
 
             
             

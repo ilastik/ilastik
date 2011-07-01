@@ -29,6 +29,7 @@ from lazyflow.operators.vigraOperators import *
 from lazyflow.operators.operators import *
 from lazyflow.operators.valueProviders import *
 from lazyflow.operators.classifierOperators import *
+from lazyflow.operators.generic import *
 from openalea.core import *
 from openalea.image_wralea import IImage
 

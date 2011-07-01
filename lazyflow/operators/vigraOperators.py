@@ -485,6 +485,7 @@ class OpImageReader(Operator):
         temp = vigra.impex.readImage(filename)
         
         result[:] = temp[key]
+        #self.outputs["Image"][:]=temp[:]
     
 import glob
 class OpFileGlobList(Operator):

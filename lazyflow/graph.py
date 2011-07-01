@@ -133,7 +133,6 @@ class GetItemRequestObject(object):
 
     
     def wait(self, timeout = 0):
-        pass
         self.lock.acquire()
         if not self.event.isSet():
             # --> wait until results are ready
@@ -1214,17 +1213,21 @@ class Worker(Thread):
 
     def run(self):
         while self.graph.running:
+            self.graph.workAvailableEvent.wait(1.0)
+            self.graph.workAvailableEvent.clear()
+
             while not self.graph.tasks.empty() or len(self.finishedRequests) > 0:
                 task = None
                 if len(self.finishedRequests) > 0:
-                    task = self.finishedRequests.popleft()
-                    tgr = task.greenlet
-                    task.greenlet = None
+                    reqObject = self.finishedRequests.popleft()
+                    reqObject.lock.acquire()
+                    tgr = reqObject.greenlet
+                    reqObject.greenlet = None
+                    reqObject.lock.release()
                     if tgr is not None:
-                        self.currentRequestLevel = task.requestLevel
+                        self.currentRequestLevel = reqObject.requestLevel
                         task = tgr.switch()
                     continue
-                
                 if task is None:
                     try:
                         task = self.graph.tasks.get(False)#timeout = 1.0)
@@ -1252,6 +1255,7 @@ class Graph(object):
         self.running = True
         self.numThreads = numThreads
         self.maxMem = softMaxMem # in bytes
+        self.workAvailableEvent = Event()
         
         for i in xrange(self.numThreads):
             w = Worker(self)
@@ -1266,15 +1270,19 @@ class Graph(object):
             reqObject.event.set()
             if reqObject.closure is not None:
                 reqObject.closure()
-            reqObject.lock.release()
             
             #append 
             if reqObject.greenlet is not None:
                 reqObject.thread.finishedRequests.append(reqObject)
+                self.workAvailableEvent.set()
+
+            reqObject.lock.release()
             return None
 
         task = [-reqObject.requestLevel, runnerClosure, reqObject]
         self.tasks.put(task)
+        self.workAvailableEvent.set()
+        
     
     def finalize(self):
         print "Finalizing Graph..."

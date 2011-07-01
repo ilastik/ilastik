@@ -134,7 +134,13 @@ class BlockQueue(object):
     def __init__(self):
         self.queue = None
         self.lock = threading.Lock()
-              
+
+class FakeGetItemRequestObject(object):
+    def __init__(gr):
+        self.greenlet = gr
+
+
+
 class OpArrayCache(OpArrayPiper):
     name = "ArrayCache"
     description = "numpy.ndarray caching class"
@@ -142,7 +148,7 @@ class OpArrayCache(OpArrayPiper):
     def __init__(self, graph, blockShape = None, immediateAlloc = True):
         OpArrayPiper.__init__(self, graph)
         if blockShape == None:
-            blockShape = 128
+            blockShape = 128 #FIXME: GIGANTIC BUG! we need this setting for the demo, something is not right in wonderland ...
         self._origBlockShape = blockShape
         self._immediateAlloc = immediateAlloc
 
@@ -158,7 +164,7 @@ class OpArrayCache(OpArrayPiper):
 
         self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
         
-        print "Reconfigured OpArrayCache with ", self._blockShape, self._dirtyShape
+        print "Reconfigured OpArrayCache with ", self.shape, self._blockShape, self._dirtyShape
 
         # if the entry in _dirtyArray differs from _dirtyState
         # the entry is considered dirty
@@ -175,8 +181,8 @@ class OpArrayCache(OpArrayPiper):
         self._blockNumbers = _blockNumbers
         self._blockIndices = _blockIndices
         
-        self._blockState[:]= 1
-        self._dirtyState = 2
+        self._blockState[:]= 1 #this is the dirty state
+        self._dirtyState = 2 #this is the clean state
         
         self._lock = threading.Lock()
         
@@ -195,6 +201,7 @@ class OpArrayCache(OpArrayPiper):
         blockStop = numpy.ceil(1.0 * stop / self._blockShape)
         blockKey = roiToSlice(blockStart,blockStop)
         self._blockState[blockKey] -= 1
+        self_blockState = numpy.where(self._blockState < 0, 0, self._blockState)
         #FIXEM: we should recalculate results for which others are waiting and notify them...
         self._lock.release()
         
@@ -203,7 +210,7 @@ class OpArrayCache(OpArrayPiper):
     def getOutSlot(self,slot,key,result):
         start, stop = sliceToRoi(key, self.shape)
         
-#        print "Request::::: ", key 
+        print "Request::::: ", key 
         self._lock.acquire()
         blockStart = numpy.floor(1.0 * start / self._blockShape)
         blockStop = numpy.ceil(1.0 * stop / self._blockShape)
@@ -224,17 +231,17 @@ class OpArrayCache(OpArrayPiper):
         tileWeights = numpy.where(cond, 1, 256**3+1)       
         trueDirtyIndices = numpy.nonzero(numpy.where(cond, 1,0))
         
-        if tileWeights.ndim == 2:
-            tileWeights = vigra.ScalarImage(tileWeights, dtype = numpy.uint32)
-        elif tileWeights.ndim == 3:
-            tileWeights = vigra.ScalarVolume(tileWeights, dtype = numpy.uint32)
-        else:
-            axistags = vigra.VigraArray.defaultAxistags(tileWeights.ndim)
-            tileWeights = vigra.VigraArray(tileWeights, dtype = numpy.uint32, axistags = axistags)
-            #raise RuntimeError("OpArrayCache supports only 2 and three dimensions caches for now. FIXME.")
-            
+        axistags = vigra.VigraArray.defaultAxistags(tileWeights.ndim)
+        print "TilWEights AXISTAGS:", axistags
+        tileWeights = tileWeights.view(vigra.VigraArray)
+        tileWeights.axistags = axistags
+        
+        
+        #tileWeights = vigra.VigraArray(tileWeights, dtype = numpy.uint32, axistags = axistags)
+                    
 #        print "calling drtile..."
         tileArray = drtile.test_DRTILE(tileWeights, 256**3 + 1)
+                
 #        print "finished calling drtile."
         dirtyRois = []
         half = tileArray.shape[0]/2
@@ -243,12 +250,19 @@ class OpArrayCache(OpArrayPiper):
 #        print self._blockState[blockKey][trueDirtyIndices]
 #        print "Ranges:"
 #        print "TileArray:", tileArray
+        print "TILEWEIGHTS", tileWeights        
+        print "TILEARRAY", tileArray
+
         for i in range(tileArray.shape[1]):
 
             #drStart2 = (tileArray[half-1::-1,i] + blockStart)
             #drStop2 = (tileArray[half*2:half-1:-1,i] + blockStart)
-            drStart2 = (tileArray[:half,i] + blockStart)
-            drStop2 = (tileArray[half:,i] + blockStart)
+            drStart2 = numpy.flipud(tileArray[:half,i] + blockStart)
+            drStop2 = numpy.flipud(tileArray[half:,i] + blockStart)
+            
+            print drStart2, drStop2, self._dirtyShape            
+            
+            
             drStart = drStart2*self._blockShape
             drStop = drStop2*self._blockShape
             drStop = numpy.minimum(drStop, self.shape)
@@ -278,10 +292,13 @@ class OpArrayCache(OpArrayPiper):
                 
         self._lock.release()
         
+        
         requests = []
+        print "ALL DIRTYREQUESTS:"
         #fire off requests
         for r in dirtyRequests:
             bq, key, reqStart, reqStop = r
+            print "dirtyRequest", key
             req = self.inputs["Input"][key].writeInto(self._cache[key])
             requests.append(req)
             
@@ -292,7 +309,7 @@ class OpArrayCache(OpArrayPiper):
 #            print "number of fired requests:", len(requests)
         #wait for all requests to finish
         for req in requests:
-            req()
+            req.wait()
 
         #print "requests finished"
 
@@ -308,18 +325,21 @@ class OpArrayCache(OpArrayPiper):
             bq.lock.acquire()
             for w in bq.queue:
                 #[None, gr,event,thread]
-                w[3].pendingGreenlets.append(w)
+                w[1].finishedRequests.append(FakeGetItemRequestObject(w[0]))
             bq.queue = None
             bq.lock.release()
+        
+        # indicate to all workers that there might be something to do
+        # i.e. continuing after the finished requests
+        self.graph.workAvailableEvent.set()
         
         
         #wait for all in process queries
         for q in inProcessQueries:
             q.lock.acquire()
             if q.queue is not None:
-                temp = numpy.ndarray((1,), dtype = object)
-                temp[0] = greenlet.getcurrent()
-                task = [None, temp, threading.Event(),threading.current_thread()]
+                gr = greenlet.getcurrent()
+                task = [gr,threading.current_thread()]
                 q.queue.append(task)
                 q.lock.release()
                 greenlet.getcurrent().parent.switch(None)
