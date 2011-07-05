@@ -67,7 +67,7 @@ class ListToMultiOperator(Operator):
         inputSlot = self.inputs["List"]
         liste = self.inputs["List"].value
         self.list= liste
-        self.outputs["Items"].resize(len(list))
+        self.outputs["Items"].resize(len(self.list))
         for o in self.outputs["Items"]:
             o._dtype = object
             o._shape = (1,)
