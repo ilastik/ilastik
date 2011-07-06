@@ -154,7 +154,7 @@ class GetItemRequestObject(object):
                 self.lock.release()
         else:
             if isinstance(self.slot._value, numpy.ndarray):
-                self.destination[:] = self.slot._value[key]
+                self.destination[:] = self.slot._value[self.key]
             else:
                 self.destination[:] = self.slot._value
         return self.destination   
@@ -291,6 +291,9 @@ class InputSlot(object):
             
     def __setitem__(self, key, value):
         assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"
+        if self._value is not None:
+            self._value[key] = value
+            self.setDirty(key) # only propagate the dirty key at the very beginning of the chain
         self.operator.setInSlot(self,key,value)
         
     @property

@@ -7,7 +7,7 @@ import sys
 import copy
 
 from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
-from lazyflow.operators.valueProviders import ArrayProvider
+
 from lazyflow.graph import MultiInputSlot
 
 from lazyflow.operators.vigraOperators import *

@@ -11,7 +11,6 @@ from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySlice
 __testing__ = False
 
 from tests.mockOperators import OpA, OpB, OpC
-from lazyflow.operators.valueProviders import ArrayProvider
 
 
 class OperatorGroupA(OperatorGroup):
@@ -34,8 +33,8 @@ class OperatorGroupA(OperatorGroup):
         opd = OpArrayCache(self.graph)
         self.ope = OpMultiArrayPiper(self.graph)
         
-        opa1.inputs["Input"].connect(source0)
-        opa2.inputs["Input"].connect(source0)
+        opa1.inputs["Input"].connect(source0.outputs["Output"])
+        opa2.inputs["Input"].connect(source0.outputs["Output"])
 
         opb.inputs["MultiInput"].connectAdd(opa1.outputs["Output"])
         opb.inputs["MultiInput"].connectAdd(opa2.outputs["Output"])
@@ -64,8 +63,8 @@ Operators.registerOperatorSubclasses()
 
 g = Graph(numThreads = 2)
 
-source0 = ArrayProvider( "Zeros", shape = (200,100), dtype=numpy.uint8)
-source0.setData(numpy.zeros(source0.shape,dtype = source0.dtype))
+source0 = OpArrayPiper(g)
+source0.inputs["Input"].setValue(numpy.zeros(shape = (200,100), dtype=numpy.uint8))
 
 opa1 = OpA(g)
 opa2 = OpB(g)
@@ -76,8 +75,8 @@ opd = OpArrayCache(g)
 ope = OpMultiArrayPiper(g)
 
 
-opa1.inputs["Input"].connect(source0)
-opa2.inputs["Input"].connect(source0)
+opa1.inputs["Input"].connect(source0.outputs["Output"])
+opa2.inputs["Input"].connect(source0.outputs["Output"])
 
 opb.inputs["MultiInput"].connectAdd(opa1.outputs["Output"])
 opb.inputs["MultiInput"].connectAdd(opa2.outputs["Output"])
@@ -97,7 +96,7 @@ print len(ope.inputs["MultiInput"])
 print len(ope.outputs["MultiOutput"])
 
 
-opGA.inputs["Input"].connect(source0)
+opGA.inputs["Input"].connect(source0.outputs["Output"])
 
 print opGA.outputs["MultiOutput"], len(opGA.outputs["MultiOutput"])
 print opGA.ope.outputs["MultiOutput"], len(opGA.ope.outputs["MultiOutput"])

@@ -11,15 +11,14 @@ from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySlice
 __testing__ = False
 
 from tests.mockOperators import OpA, OpB, OpC
-from lazyflow.operators.valueProviders import ArrayProvider
 
 g = Graph(numThreads = 2)
 
-source0 = ArrayProvider( "Zeros", shape = (200,100), dtype=numpy.uint8)
-source0.setData(numpy.zeros(source0.shape,dtype = source0.dtype))
+source0 = OpArrayPiper(g)
+source0.inputs["Input"].setValue(numpy.zeros((200,200),dtype = numpy.uint8))
 
-source1 = ArrayProvider( "Zeros", shape = (300,50), dtype=numpy.uint8)
-source1.setData(numpy.zeros(source1.shape,dtype = source1.dtype))
+source1 = OpArrayPiper(g)
+source1.inputs["Input"].setValue(numpy.zeros((375,50),dtype = numpy.uint8))
 
 
 opa = OpMultiArrayPiper(g)
@@ -31,8 +30,8 @@ ope = OpB(g)
 ope2 = OpB(g)
 
 opa.inputs["MultiInput"].resize(2)
-opa.inputs["MultiInput"].connect(source0)
-opa.inputs["MultiInput"].connect(source1)
+opa.inputs["MultiInput"].connect(source0.outputs["Output"])
+opa.inputs["MultiInput"].connect(source1.outputs["Output"])
 
 opb.inputs["MultiInput"].connect(opa.outputs["MultiOutput"])
 assert len(opb.outputs["MultiOutput"]) == 2, len(opb.outputs["MultiOutput"])

@@ -11,14 +11,13 @@ from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySlice
 __testing__ = False
 
 from tests.mockOperators import OpA, OpB, OpC
-from lazyflow.operators.valueProviders import ArrayProvider
 
 Operators.registerOperatorSubclasses()
 
 g = Graph(numThreads = 2)
 
-source0 = ArrayProvider( "Zeros", shape = (200,100), dtype=numpy.uint8)
-source0.setData(numpy.zeros(source0.shape,dtype = source0.dtype))
+source0 = OpArrayPiper(g)
+source0.inputs["Input"].setValue(numpy.zeros(shape = (200,100), dtype=numpy.uint8))
 
 opa1 = OpA(g)
 opa2 = OpB(g)
@@ -29,8 +28,8 @@ opd = OpArrayCache(g)
 ope = OpMultiArrayPiper(g)
 
 
-opa1.inputs["Input"].connect(source0)
-opa2.inputs["Input"].connect(source0)
+opa1.inputs["Input"].connect(source0.outputs["Output"])
+opa2.inputs["Input"].connect(source0.outputs["Output"])
 
 opb.inputs["MultiInput"].connectAdd(opa1.outputs["Output"])
 opb.inputs["MultiInput"].connectAdd(opa2.outputs["Output"])
@@ -60,7 +59,7 @@ assert len(opc.outputs["Output"]) == 2, len(opc.outputs["Output"])
 assert len(opd.outputs["Output"]) == 2, len(opd.outputs["Output"])
 assert len(ope.outputs["MultiOutput"]) == 2, len(ope.outputs["MultiOutput"])
 
-opb.inputs["MultiInput"].connectAdd(source0)
+opb.inputs["MultiInput"].connectAdd(source0.outputs["Output"])
 
 print "Added other input"
 print "inputs:"
@@ -123,8 +122,8 @@ g.finalize()
 
 g = Graph(numThreads = 2)
 
-source0 = ArrayProvider( "Zeros", shape = (200,100), dtype=numpy.uint8)
-source0.setData(numpy.zeros(source0.shape,dtype = source0.dtype))
+source0 = OpArrayPiper(g)
+source0.inputs["Input"].setValue(numpy.zeros(shape = (200,100), dtype=numpy.uint8))
 
 opb = OpMultiMultiArrayPiper(g)
 
@@ -134,8 +133,8 @@ for i in range(7):
     opas.append(OpB(g))
     opb0 = OpMultiArrayPiper(g)
     
-    opas[0].inputs["Input"].connect(source0)
-    opas[1].inputs["Input"].connect(source0)
+    opas[0].inputs["Input"].connect(source0.outputs["Output"])
+    opas[1].inputs["Input"].connect(source0.outputs["Output"])
     0
     opb0.inputs["MultiInput"].connectAdd(opas[i % 2].outputs["Output"])
     opb0.inputs["MultiInput"].connectAdd(opas[(i + 1) % 2].outputs["Output"])

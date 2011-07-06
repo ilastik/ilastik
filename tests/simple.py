@@ -11,12 +11,13 @@ from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySlice
 __testing__ = False
 
 from tests.mockOperators import OpA, OpB, OpC
-from lazyflow.operators.valueProviders import ArrayProvider
+
 
 def runBenchmark(numThreads, cacheClass, shape, requests):    
     g = Graph(numThreads = numThreads)
-    provider = ArrayProvider( "Zeros", shape = shape, dtype=numpy.uint8)
-    provider.setData(numpy.zeros(provider.shape,dtype = provider.dtype))
+    provider = OpArrayPiper(g)
+    provider.inputs["Input"].setValue(numpy.zeros(shape,dtype = numpy.uint8))
+
     opa = OpA(g)
     opb = OpB(g)
     opc1 = cacheClass(g,5)
@@ -26,7 +27,7 @@ def runBenchmark(numThreads, cacheClass, shape, requests):
     opc4 = cacheClass(g,11)
     opf = OpArrayCache(g)
     
-    opa.inputs["Input"].connect(provider)
+    opa.inputs["Input"].connect(provider.outputs["Output"])
     opb.inputs["Input"].connect(opa.outputs["Output"])
     opc1.inputs["Input"].connect(opb.outputs["Output"])
     opc2.inputs["Input"].connect(opc1.outputs["Output"])
@@ -41,7 +42,7 @@ def runBenchmark(numThreads, cacheClass, shape, requests):
     for r in requests:
         if r == "setDirty":
             print "setting new data and dirty...."
-            provider.setData(numpy.zeros(provider.shape,dtype = provider.dtype))
+            provider.inputs["Input"][:] = numpy.zeros(provider.inputs["Input"].shape,dtype = provider.inputs["Input"].dtype)
             continue
         key = roi.roiToSlice(numpy.array(r[0]), numpy.array(r[1]))
         t1 = time.time()
