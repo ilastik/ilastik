@@ -31,4 +31,24 @@ class ArrayProvider(OutputSlot):
         self._lock.acquire()
         destination[:] = self._data.__getitem__(key)
         self._lock.release()
+
         
+        
+        
+class ListToMultiOperator(Operator):
+    name = "List to Multislot converter"
+    category = "Input"
+    inputSlots = [InputSlot("List", stype = "sequence")]
+    outputSlots = [MultiOutputSlot("Items", level = 1)]
+    
+    def notifyConnectAll(self):
+        inputSlot = self.inputs["List"]
+        liste = self.inputs["List"].value
+        self.list= liste
+        self.outputs["Items"].resize(len(self.list))
+        for o in self.outputs["Items"]:
+            o._dtype = object
+            o._shape = (1,)
+    
+    def getSubOutSlot(self, slots, indexes, key, result):
+        result[0] = self.list[indexes[0]]

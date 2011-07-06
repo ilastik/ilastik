@@ -36,12 +36,9 @@ class OpTrainRandomForest(Operator):
         for i,labels in enumerate(self.inputs["Labels"]):
             
             labels=labels[:].allocate().wait()
-            print "hsahfjkhfjhfsaj", labels.max()
-            
-            
-            print "ajhajkfhjkafhjfhaj",labels.min()
+       
             indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
-            print "kjshajvjhvajhv", len(indexes[0])
+
             #Maybe later request only part of the region?
             image=self.inputs["Images"][i][:].allocate().wait()
             print image.shape, labels.shape
@@ -49,7 +46,7 @@ class OpTrainRandomForest(Operator):
             features=image[indexes]
             labels=labels[indexes]
             
-            print "GANG",features.shape, labels.shape
+
             featMatrix.append(features)
             labelsMatrix.append(labels)
         
