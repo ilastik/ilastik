@@ -1,4 +1,5 @@
 import numpy
+import vigra
 import sys
 import copy
 import psutil
@@ -108,10 +109,10 @@ class GetItemWriterObject(object):
 
 
 class GetItemRequestObject(object):
-    __slots__ = ["lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure"]
+    __slots__ = ["slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure"]
 
 
-    def __init__(self, graph, partner, key, destination):
+    def __init__(self, slot, graph, partner, key, destination):
         self.key = key
         self.greenlet = None
         self.destination = destination
@@ -119,41 +120,46 @@ class GetItemRequestObject(object):
         self.event = Event()
         self.lock = Lock()
         self.thread = current_thread()
+        self.slot = slot
         
-        if hasattr(self.thread, "currentRequestLevel"):
-            self.requestLevel = self.thread.currentRequestLevel + 1
-        else:
-            self.requestLevel = 1
-
-        if  not isinstance(self.thread, Worker):
-            self.thread = graph.workers[0]
-            pass
-
-        graph.putTask(partner.fireRequest, self)
+        if slot is None or slot.partner is not None:
+            if hasattr(self.thread, "currentRequestLevel"): #TODO: use more self explaining test
+                self.requestLevel = self.thread.currentRequestLevel + 1
+            else:
+                self.requestLevel = 1
+                self.thread = graph.workers[0]
+            
+            graph.putTask(partner.fireRequest, self)
 
     
     def wait(self, timeout = 0):
-        self.lock.acquire()
-        if not self.event.isSet():
-            # --> wait until results are ready
-            if greenlet.getcurrent().parent != None:
-                self.greenlet = greenlet.getcurrent()
-                self.lock.release()
-                self.greenlet.parent.switch(None)
-                self.greenlet = None
+        if self.slot is None or self.slot.partner is not None:
+            self.lock.acquire()
+            if not self.event.isSet():
+                # --> wait until results are ready
+                if greenlet.getcurrent().parent != None: #TODO: use other test as in __init__  
+                    self.greenlet = greenlet.getcurrent()
+                    self.lock.release()
+                    self.greenlet.parent.switch(None)
+                    self.greenlet = None
+                else:
+                    self.lock.release()
+                    # loop to allow ctrl-c signal !
+                    if timeout == 0:
+                        while not self.event.isSet():
+                            self.event.wait(timeout = 0.25) #in seconds
+                    else:
+                        self.event.wait(timeout = timeout) #in seconds
             else:
                 self.lock.release()
-                # loop to allow ctrl-c signal !
-                if timeout == 0:
-                    while not self.event.isSet():
-                        self.event.wait(timeout = 0.25) #in seconds
-                else:
-                    self.event.wait(timeout = timeout) #in seconds
         else:
-            self.lock.release()
+            if isinstance(self.slot._value, numpy.ndarray):
+                self.destination[:] = self.slot._value[key]
+            else:
+                self.destination[:] = self.slot._value
         return self.destination   
          
-    def notify(self, closure):
+    def notify(self, closure): 
         if isinstance(self.thread, Worker):
             self.lock.acquire()
             self.closure = closure
@@ -249,7 +255,7 @@ class InputSlot(object):
         self.partner = None
     
     #TODO RENAME? createInstance
-    # def __copy__ ?
+    # def __copy__ ?, clone ?
     def getInstance(self, operator):
         s = InputSlot(self.name, operator, stype = self.stype)
         return s
@@ -270,17 +276,17 @@ class InputSlot(object):
         return GetItemWriterObject(self, key)
         
     def fireRequest(self, key, destination):
-        assert self.partner is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
+        assert self.partner is not None or self._value is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
         #print "GUGA", self.name, self.operator.name, self.operator, key
                                         
-        reqObject = GetItemRequestObject(self.graph, self.partner, key, destination)
+        reqObject = GetItemRequestObject(self, self.graph, self.partner, key, destination)
             
         return reqObject
 
     def allocateStorage(self, key):
         start, stop = sliceToRoi(key, self.shape)
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
-        key = roiToSlice(start,stop)
+        key = roiToSlice(start,stop) #we need a fully specified key e.g. not [:] but [0:10,0:17] !!
         return storage, key
             
     def __setitem__(self, key, value):
@@ -293,24 +299,39 @@ class InputSlot(object):
 
     @property
     def dtype(self):
-        return self.partner.dtype
+        if self.partner is not None:
+            return self.partner.dtype
+        elif self._value is not None:
+            if isinstance(self._value, numpy.ndarray):
+                return self._value.dtype
+            else:
+                return object
             
     @property
     def shape(self):
-        assert self.partner is not None, "cannot acess shape on Slot '%s', of %r Not Connected !" % (self.name,self.operator)
-        return self.partner.shape
+        if self.partner is not None:
+            return self.partner.shape
+        elif self._value is not None:
+            if isinstance(self._value, numpy.ndarray):
+                return self._value.shape
+            else:
+                return (1,)
 
     @property
     def axistags(self):
-        assert self.partner is not None, "cannot acess shape on Slot '%s', of %r Not Connected !" % (self.name,self.operator)
-        if self.partner.name is not "Sigma":
-            assert self.partner.axistags is not None, "%s, %s" % (self.name, self.partner.name)
-        return self.partner.axistags
+        if self.partner is not None:
+            return self.partner.axistags
+        elif self._value is not None:
+            if isinstance(self._value, vigra.VigraArray):
+                return copy.copy(self._value.axistags)
+            else:
+                return vigra.VigraArray.defaultAxistags(len(self.shape))
 
     
 class OutputSlot(object):
     def __init__(self, name, operator = None, stype = "ndarray"):
         self.name = name
+        self._metaParent = operator
         self.level = 0
         self.operator = operator
         if not hasattr(self, "_dtype"):
@@ -377,7 +398,7 @@ class OutputSlot(object):
         requestCounterLock.release()
         
         if gr.parent == None: #FIXME: this is a bad test for a end user call ?!
-            reqObject = GetItemRequestObject(self.graph, self, key, destination)
+            reqObject = GetItemRequestObject(None, self.graph, self, key, destination)
             return reqObject
         else:
             self.getOutSlotFromOp(key, destination)
@@ -637,6 +658,7 @@ class MultiOutputSlot(object):
     def __init__(self, name, operator = None, stype = "ndarray",level = 1):
         self.name = name
         self.operator = operator
+        self._metaParent = operator
         self.partners = []
         self.outputSlots = []
         self.level = level
@@ -921,6 +943,11 @@ class OperatorWrapper(Operator):
             for p in partners:         
                 oo._connect(p)
 
+    def getOriginalOperator(self):
+        op = self.operator
+        while isinstance(op, OperatorWrapper):
+            op = self.operator
+        return op
                     
     def testRestoreOriginalOperator(self):
         #TODO: only restore to the level that is needed, not to the most upper one !
@@ -986,23 +1013,24 @@ class OperatorWrapper(Operator):
         for k,mslot in self.outputs.items():
             assert isinstance(mslot,MultiOutputSlot)
                         
-#            while len(mslot) > len(self.innerOperators):
-#                mslot.pop()
-#            while len(mslot) < len(self.innerOperators):
-#                mslot.append(self.innerOperators[len(mslot)-1].outputs[mslot.name])
-
             mslot.resize(len(self.innerOperators))
 
         for index, innerOp in enumerate(self.innerOperators):
-            for mslot in self.outputs.values():
-                mslot[index] = innerOp.outputs[mslot.name]
+            for key,mslot in self.outputs.items():
+                    mslot[index] = innerOp.outputs[key]
+
+#    def _recuresSetOutputs(self, outer, inner):
+#        if not isinstance(inner, MultiOutputSlot):
+#            assert not isinstance(outer, MultiOutputSlot)
+#            outer._dtype = inner._dtype
+#            outer._shape = inner._shape
+#            outer._axistags = inner._axistags
+#        else:
+#            outer.resize(len(inner))
+#            for i, innerSlot in enumerate(inner):
+#                self._recuresSetOutputs(outer[i], inner[i])
                 
-#        print self.__class__, self.name, "_connectInnerOutputs"
-#        print len(self.innerOperators)
-#        for index, innerOp in enumerate(self.innerOperators):
-#            for ii, mslot in enumerate(self.outputs.values()):
-#                print index, ii, len(mslot)
-#        print "finish _connectInnerOutputs"
+
 
     def _ensureInputSize(self, numMax = 0):
         
@@ -1118,12 +1146,16 @@ class OperatorWrapper(Operator):
         else:
             self.innerOperators[indexes[0]].notifySubSlotRemove(slots[1:], indexes[1:])
     
+    def getOutSlot(self, slot, key, result):
+        #this should never be called !!!        
+        pass
+
+
     def getSubOutSlot(self, slots, indexes, key, result):
         if len(indexes) == 1:
             #print "getSubOutSlot", indexes, slots
             return self.innerOperators[indexes[0]].getOutSlot(self.innerOperators[indexes[0]].outputs[slots[0].name], key, result)
         else:
-            print "???????????????????????????????????????????????????"
             self.innerOperators[indexes[0]].getSubOutSlot(slots[1:], indexes[1:], key, result)
         
     def setInSlot(self, slot, key, value):
@@ -1135,56 +1167,86 @@ class OperatorWrapper(Operator):
         pass
 
 
-
-
 class OperatorGroup(Operator):
     def __init__(self, graph):
         Operator.__init__(self,graph)
-        self.createInnerOperators()
-        self._connectInnerOutputs()
-    
+        self._visibleOutputs = None
+        self._visibleInputs = None
+        
     def createInnerOperators(self):
         # this method must setup the
         # inner operators and connect them (internally)
         pass
         
-    def getInnerInputSlots(self):
-        # this method must return a hash that
-        # contains the inner slots corresponding
-        # to the slotname
+    def setupInputSlots(self):
+        # this method must setupt the 
+        # set self._visibleInputs
         pass
+        
     
-    def getInnerOutputSlots(self):
-        # this method must return a hash that
-        # contains the inner slots corresponding
-        # to the slotname
+    def setupOutputSlots(self):
+        # this method must setup 
+        # self._visibleOutputs
         pass
     
     def _connectInnerOutputs(self):
-        innerOuts = self.getInnerOutputSlots()
+        self.setupOutputSlots()
         
-        for key, value in innerOuts.items():
-            self.outputs[key] = value
+        for key, value in self.outputs.items():
+            self._recurseOutputs(value, self._visibleOutputs[key])
+   
+    def _recurseOutputs(self, outer, inner):
+        if not isinstance(inner, MultiOutputSlot):
+            assert not isinstance(outer, MultiOutputSlot)
+            outer._dtype = inner._dtype
+            outer._shape = inner._shape
+            outer._axistags = inner._axistags
+        else:
+            outer.resize(len(inner))
+            for i, innerSlot in enumerate(inner):
+                self._recurseOutputs(outer[i], inner[i])
+                   
+    def getSubOutSlot(self, slots, indexes, key, result):               
+        slot = self._visibleOutputs[slots[0].name]
+        for ind in indexes:
+            slot = slot[ind]
+        slot[key].writeInto(result)
+
+    def getOutSlot(self, slot, key, result):
+        self._visibleOutputs[slot.name][key].writeInto(result)
+   
+   
+    def notifyConnectAll(self):
+        self.createInnerOperators()
+        self.setupInputSlots()
+        self._connectInnerOutputs()
     
     def notifyConnect(self, inputSlot):
-        innerIns = self.getInnerInputSlots()
-        innerIns[inputSlot.name].connect(inputSlot.partner)
-        self._connectInnerOutputs()
+        if self._visibleInputs is not None:
+            innerIns = self._visibleInputs
+            innerIns[inputSlot.name].connect(inputSlot.partner)
+            self._connectInnerOutputs()
 
     
     def notifySubConnect(self, slots, indexes):
-        
-        innerIns = self.getInnerInputSlots()
-        
-        innerSlot = innerIns[indexes[0].name]
-
-        for i in range(len(slots)):
-            if slots[i].partner is not None:
-                innerSlot.connect(slots[i].partner)
-                break 
-            else:
-                innerSlot.resize(len( slots[i] ) )
-            innerSlot = innerSlot[indexes[i]]
+        if self._visibleInputs is not None:            
+            innerIns = self._visibleInputs
+            
+            innerSlot = innerIns[indexes[0].name]
+    
+            for i in range(len(slots)-1):
+                if slots[i].partner is not None:
+                    innerSlot.connect(slots[i+1].partner)
+                    break 
+                else:
+                    innerSlot.resize(len( slots[i] ) )
+                innerSlot = innerSlot[indexes[i]]
+            
+            self._connectInnerOutputs()
+            
+                            
+            
+            
             
     def notifyDisconnect(self, slot):
         pass
@@ -1194,9 +1256,7 @@ class OperatorGroup(Operator):
     
     def notifySubSlotRemove(self, slots, indexes):
         pass
-    
-    def getSubOutSlot(self, slots, indexes, key, result):
-        raise RuntimeError("OperatorGroup: getSubOutSlot, this method should never get called!!")
+
    
                         
 class Worker(Thread):
@@ -1227,17 +1287,19 @@ class Worker(Thread):
                     if tgr is not None:
                         self.currentRequestLevel = reqObject.requestLevel
                         task = tgr.switch()
-                    continue
-                if task is None:
+                else:
                     try:
                         task = self.graph.tasks.get(False)#timeout = 1.0)
                     except Empty:
                         continue
-                    if task[2].requestLevel > 1 or self.process.get_memory_info().rss < self.graph.maxMem:
-                        gr = greenlet.greenlet(task[1])
-                        self.currentRequestLevel = task[2].requestLevel
+                    prio, closure, reqObject = task
+                    #TODO: isnt a comparison against currentRequestLevel better 
+                    # then against 1 ? ...
+                    if reqObject.requestLevel > 1 or self.process.get_memory_info().rss < self.graph.maxMem:
+                        gr = greenlet.greenlet(closure)
+                        self.currentRequestLevel = reqObject.requestLevel
                         #print "Handling request of level", self.currentRequestLevel, "Memory: ", self.process.get_memory_info().rss / (1024**2), "MB"
-                        task = gr.switch()
+                        gr.switch()
                     else:
                         self.graph.tasks.put(task) #move task back to task queue
                         print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
@@ -1264,7 +1326,7 @@ class Graph(object):
     
     def putTask(self, func, reqObject):
 
-        def runnerClosure():
+        def runnerClosure(): #TODO: move this code into worker
             func(reqObject.key, reqObject.destination)
             reqObject.lock.acquire()
             reqObject.event.set()
@@ -1297,3 +1359,5 @@ class Graph(object):
         assert op in self.operators, "Operator %r not a registered Operator" % op
         self.operators.remove(op)
         op.disconnect()
+        
+        

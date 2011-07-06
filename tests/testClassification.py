@@ -23,126 +23,114 @@ if __name__=="__main__":
     
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
 
-    filenameProvider = SingleValueProvider("Filename")
-    filenameProvider.setValue(filename)
-    
             
     vimageReader = OpImageReader(g)
-    vimageReader.inputs["Filename"].connect(filenameProvider)
+    vimageReader.inputs["Filename"].setValue(filename)
 
     
     #Sigma provider 0.9
-    sigmaProvider = SingleValueProvider("Sigma", object)
-    sigmaProvider.setValue(0.9) 
+    sigmaProvider = OpArrayPiper(g)
+    sigmaProvider.inputs["Input"].setValue(0.9) 
     
     
     #Gaussian Smoothing     
     opa = OpGaussianSmoothing(g)   
     opa.inputs["Input"].connect(vimageReader.outputs["Image"])
-    opa.inputs["sigma"].connect(sigmaProvider)
+    opa.inputs["sigma"].connect(sigmaProvider.outputs["Output"])
     
     
     #Gradient Magnitude
     opgg=OpGaussinaGradientMagnitude(g)
     opgg.inputs["Input"].connect(vimageReader.outputs["Image"])
-    opgg.inputs["sigma"].connect(sigmaProvider)
+    opgg.inputs["sigma"].connect(sigmaProvider.outputs["Output"])
     
     
     #Laplacian of Gaussian
     olg=OpLaplacianOfGaussian(g)
     olg.inputs["Input"].connect(vimageReader.outputs["Image"])
-    olg.inputs["scale"].connect(sigmaProvider)
+    olg.inputs["scale"].connect(sigmaProvider.outputs["Output"])
     
     #Double sigma provider1
-    SigmaProviderP1=SingleValueProvider("Sigma", object)
-    SigmaProviderP1.setValue(0.9) 
+    SigmaProviderP1=OpArrayPiper(g)
+    SigmaProviderP1.inputs["Input"].setValue(0.9) 
     
-    SigmaProviderP2=SingleValueProvider("Sigma", object)
-    SigmaProviderP2.setValue(0.9*1.5) 
+    SigmaProviderP2=OpArrayPiper(g)
+    SigmaProviderP2.inputs["Input"].setValue(0.9*1.5) 
         
     
     #difference of gaussians
     dg=OpDifferenceOfGaussians(g)
     dg.inputs["Input"].connect(vimageReader.outputs["Image"])
-    dg.inputs["sigma0"].connect(SigmaProviderP1)
-    dg.inputs["sigma1"].connect(SigmaProviderP2)
+    dg.inputs["sigma0"].connect(SigmaProviderP1.outputs["Output"])
+    dg.inputs["sigma1"].connect(SigmaProviderP2.outputs["Output"])
     
         
     #Double sigma provider2
-    SigmaProviderP3=SingleValueProvider("Sigma", object)
-    SigmaProviderP3.setValue(0.9) 
+    SigmaProviderP3=OpArrayPiper(g)
+    SigmaProviderP3.inputs["Input"].setValue(0.9) 
     
     
-    SigmaProviderP4=SingleValueProvider("Sigma", object)
-    SigmaProviderP4.setValue(0.9*1.2) 
+    SigmaProviderP4=OpArrayPiper(g)
+    SigmaProviderP4.inputs["Input"].setValue(0.9*1.2) 
         
     
     #Coherence Op
     coher=OpCoherenceOrientation(g)
     coher.inputs["Input"].connect(vimageReader.outputs["Image"])
-    coher.inputs["sigma0"].connect(SigmaProviderP3)
-    coher.inputs["sigma1"].connect(SigmaProviderP4)
+    coher.inputs["sigma0"].connect(SigmaProviderP3.outputs["Output"])
+    coher.inputs["sigma1"].connect(SigmaProviderP4.outputs["Output"])
     
     #Hessian Eigenvalues
     hog = OpHessianOfGaussianEigenvalues(g)
     hog.inputs["Input"].connect(vimageReader.outputs["Image"])
-    hog.inputs["scale"].connect(sigmaProvider)
+    hog.inputs["scale"].connect(sigmaProvider.outputs["Output"])
     
     #########################
     #Sigma provider 2.7
     ###########################
-    sigmaProvider2 = SingleValueProvider("Sigma", object)
-    sigmaProvider2.setValue(2.7) 
+    sigmaProvider2 = OpArrayPiper(g)
+    sigmaProvider2.inputs["Input"].setValue(2.7) 
     
     opa2 = OpGaussianSmoothing(g)   
     opa2.inputs["Input"].connect(vimageReader.outputs["Image"])
-    opa2.inputs["sigma"].connect(sigmaProvider2)
+    opa2.inputs["sigma"].connect(sigmaProvider2.outputs["Output"])
 
     #Gradient Magnitude2
     opgg2=OpGaussinaGradientMagnitude(g)
     opgg2.inputs["Input"].connect(vimageReader.outputs["Image"])
-    opgg2.inputs["sigma"].connect(sigmaProvider2)
+    opgg2.inputs["sigma"].connect(sigmaProvider2.outputs["Output"])
     
     #Laplacian of Gaussian
     olg2=OpLaplacianOfGaussian(g)
     olg2.inputs["Input"].connect(vimageReader.outputs["Image"])
-    olg2.inputs["scale"].connect(sigmaProvider2)
+    olg2.inputs["scale"].connect(sigmaProvider2.outputs["Output"])
     
     #################################
     #Double sigma provider3
     #######################################
-    SigmaProviderP5=SingleValueProvider("Sigma", object)
-    SigmaProviderP5.setValue(2.7) 
-    
-    SigmaProviderP6=SingleValueProvider("Sigma", object)
-    SigmaProviderP6.setValue(2.7*1.5) 
+
         
     #difference of gaussians
     dg2=OpDifferenceOfGaussians(g)
     dg2.inputs["Input"].connect(vimageReader.outputs["Image"])
-    dg2.inputs["sigma0"].connect(SigmaProviderP5)
-    dg2.inputs["sigma1"].connect(SigmaProviderP6)
+    dg2.inputs["sigma0"].setValue(2.7)
+    dg2.inputs["sigma1"].setValue(2.7*1.5)
         
     
     #################################
     #Double sigma provider4
     #######################################
-    SigmaProviderP7=SingleValueProvider("Sigma", object)
-    SigmaProviderP7.setValue(2.7) 
-    
-    SigmaProviderP8=SingleValueProvider("Sigma", object)
-    SigmaProviderP8.setValue(1.2)     
     
     coher2=OpCoherenceOrientation(g)
     coher2.inputs["Input"].connect(vimageReader.outputs["Image"])
-    coher2.inputs["sigma0"].connect(SigmaProviderP7)
-    coher2.inputs["sigma1"].connect(SigmaProviderP8)
+    coher2.inputs["sigma0"].setValue(2.7)
+    coher2.inputs["sigma1"].setValue(1.2)
     
     
     #Hessian Eigenvalues2
     hog2 = OpHessianOfGaussianEigenvalues(g)
     hog2.inputs["Input"].connect(vimageReader.outputs["Image"])
-    hog2.inputs["scale"].connect(sigmaProvider2)
+    hog2.inputs["scale"].connect(sigmaProvider2.outputs["Output"])
     
     
     ###################################
@@ -172,12 +160,9 @@ if __name__=="__main__":
     #####Get the labels###
     filenamelabels='labels_ostrich.png'
     
-    filenameProvider2 = SingleValueProvider("Filename")
-    filenameProvider2.setValue(filenamelabels)
-        
     
     labelsReader = OpImageReader(g)
-    labelsReader.inputs["Filename"].connect(filenameProvider2)
+    labelsReader.inputs["Filename"].setValue(filenamelabels)
 
         
     #######Training
@@ -194,19 +179,16 @@ if __name__=="__main__":
     
 
     opPredict.inputs['Image'].connect(stacker.outputs['Output'])
-    classes=SingleValueProvider("Classes")
-    classes.setValue(2)
+
     
-    opPredict.inputs['LabelsCount'].connect(classes)
+    opPredict.inputs['LabelsCount'].setValue(2)
     
     
     
     selector=OpSingleChannelSelector(g)
     
-    index=SingleValueProvider("Index")
-    index.setValue(1)
     
-    selector.inputs["Index"].connect(index)
+    selector.inputs["Index"].setValue(1)
     selector.inputs["Input"].connect(opPredict.outputs['PMaps'])
     
     print selector.outputs["Output"][:].allocate().wait()

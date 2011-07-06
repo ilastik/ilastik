@@ -229,6 +229,8 @@ class OpArrayCache(OpArrayPiper):
         self._blockNumbers = _blockNumbers
         self._blockIndices = _blockIndices
         
+                            #TODO: introduce constants for readability
+                            #0 is "in process"
         self._blockState[:]= 1 #this is the dirty state
         self._dirtyState = 2 #this is the clean state
         
@@ -248,8 +250,8 @@ class OpArrayCache(OpArrayPiper):
         blockStart = numpy.floor(1.0 * start / self._blockShape)
         blockStop = numpy.ceil(1.0 * stop / self._blockShape)
         blockKey = roiToSlice(blockStart,blockStop)
-        self._blockState[blockKey] -= 1
-        self_blockState = numpy.where(self._blockState < 0, 0, self._blockState)
+        self._blockState[blockKey] = 1     #FIXME: should be =1 ????? !!!!!!!
+        self._blockState = numpy.where(self._blockState < 0, 0, self._blockState)
         #FIXEM: we should recalculate results for which others are waiting and notify them...
         self._lock.release()
         
@@ -275,7 +277,7 @@ class OpArrayCache(OpArrayPiper):
         cond = (self._blockState[blockKey] != self._dirtyState) * (self._blockState[blockKey] != 0)
         #dirtyBlockNums = numpy.extract(cond.ravel(), self._blockNumbers[blockKey].ravel())
         #dirtyBlockInd = self._flatBlockIndices[dirtyBlockNums,:]
-        tileWeights = numpy.where(cond, 1, 256**3+1)       
+        tileWeights = numpy.where(cond == True, 0, 1)       
         trueDirtyIndices = numpy.nonzero(numpy.where(cond, 1,0))
         
         axistags = vigra.VigraArray.defaultAxistags(tileWeights.ndim)
@@ -287,7 +289,7 @@ class OpArrayCache(OpArrayPiper):
         #tileWeights = vigra.VigraArray(tileWeights, dtype = numpy.uint32, axistags = axistags)
                     
 #        print "calling drtile..."
-        tileArray = drtile.test_DRTILE(tileWeights, 256**3 + 1)
+        tileArray = drtile.test_DRTILE(tileWeights, 1)
                 
 #        print "finished calling drtile."
         dirtyRois = []
@@ -305,32 +307,33 @@ class OpArrayCache(OpArrayPiper):
             drStart2 = numpy.flipud(tileArray[:half,i] + blockStart)
             drStop2 = numpy.flipud(tileArray[half:,i] + blockStart)
             
-            print drStart2, drStop2, self._dirtyShape            
-            
             
             drStart = drStart2*self._blockShape
             drStop = drStop2*self._blockShape
             drStop = numpy.minimum(drStop, self.shape)
-            dirtyRois.append([drStart,drStop])
         
-            #set up a new block query object
-            bq = BlockQueue()
-            bq.queue = deque()
-            key = roiToSlice(drStart,drStop)
             key2 = roiToSlice(drStart2,drStop2)
-#            print "Request %d: %r" %(i,key)
-
-            
-            self._blockQuery[key2] = bq
-            if (self._blockState[key2] == self._dirtyState).any() or (self._blockState[key2] == 0).any():
-                import h5py
-                f = h5py.File("test.h5", "w")
-                f.create_dataset("data",data = tileWeights)
-                print "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights)
-                assert 1 == 2
-            
-#            assert(self._blockState[key2] != 0).all(), "%r, %r, %r, %r, %r,%r" % (key2, blockKey, self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey], tileWeights)
-            dirtyRequests.append((bq,key,drStart,drStop))
+            if (self._blockState[key2] != self._dirtyState).any():
+                #set up a new block query object
+                bq = BlockQueue()
+                bq.queue = deque()
+                key = roiToSlice(drStart,drStop)
+                dirtyRois.append([drStart,drStop])
+    #            print "Request %d: %r" %(i,key)
+    
+                
+                self._blockQuery[key2] = bq
+                if (self._blockState[key2] == self._dirtyState).any() or (self._blockState[key2] == 0).any():
+                    print "original condition", cond  
+                    print "original tilearray", tileArray
+                    import h5py
+                    f = h5py.File("test.h5", "w")
+                    f.create_dataset("data",data = tileWeights)
+                    print "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights)
+                    assert 1 == 2
+                
+    #            assert(self._blockState[key2] != 0).all(), "%r, %r, %r, %r, %r,%r" % (key2, blockKey, self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey], tileWeights)
+                dirtyRequests.append((bq,key,drStart,drStop))
             
 #        # indicate the inprocessing state, by setting array to 0        
         self._blockState[blockKey] = numpy.where(cond, 0, self._blockState[blockKey])
@@ -375,6 +378,8 @@ class OpArrayCache(OpArrayPiper):
         
         # indicate to all workers that there might be something to do
         # i.e. continuing after the finished requests
+        
+        
         
         
         #wait for all in process queries

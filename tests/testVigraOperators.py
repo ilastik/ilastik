@@ -7,7 +7,7 @@ import sys
 import copy
 
 from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
-from lazyflow.operators.valueProviders import ArrayProvider, SingleValueProvider
+from lazyflow.operators.valueProviders import ArrayProvider
 from lazyflow.graph import MultiInputSlot
 
 from lazyflow.operators.vigraOperators import *
@@ -15,23 +15,15 @@ from lazyflow.operators.vigraOperators import *
 
 graph = graph.Graph(numThreads=1)
 
-fileNameProvider = SingleValueProvider("Filename", object)
-fileNameProvider.setValue("ostrich.jpg")
 
 ostrichProvider = OpImageReader(graph)
-ostrichProvider.inputs["Filename"].connect(fileNameProvider)
-
-
-fileNameProvider2 = SingleValueProvider("Filename", object)
-fileNameProvider2.setValue("ostrich_piped.jpg")
+ostrichProvider.inputs["Filename"].setValue("ostrich.jpg")
 
 
 ostrichWriter = OpImageWriter(graph)
-ostrichWriter.inputs["Filename"].connect(fileNameProvider2)
+ostrichWriter.inputs["Filename"].setValue("ostrich_piped.jpg")
 ostrichWriter.inputs["Image"].connect(ostrichProvider.outputs["Image"])
 
-sigmaProvider = SingleValueProvider("sigma", float)
-sigmaProvider.setValue(float(10))
 
 operators = [OpGaussianSmoothing,OpOpening, OpClosing, OpHessianOfGaussian]
 

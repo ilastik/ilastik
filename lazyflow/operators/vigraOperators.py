@@ -126,9 +126,7 @@ class Op5Slotter(Operator):
                 self.outputs["Images"][i]._dtype = slot.dtype
                 self.outputs["Images"][i]._axistags = copy.copy(slot.axistags)
                 i += 1       
-                
-        print "LKSJHDKJSHK", self.outputs["Images"]
-        
+                        
     def getSubOutSlot(self, slots, indexes, key, result):
         i = 0
         for slot in self.inputs.values():
@@ -429,8 +427,8 @@ class OpLaplacianOfGaussian(OpBaseVigraFilter):
 class OpOpening(OpBaseVigraFilter):
     name = "Opening"
     vigraFilter = staticmethod(vigra.filters.multiGrayscaleOpening)
-    outputDtype = numpy.uint8 
-    inputDtype = numpy.uint8 
+    outputDtype = numpy.float32
+    inputDtype = numpy.float32
 
     def resultingChannels(self):
         return 1
@@ -438,8 +436,8 @@ class OpOpening(OpBaseVigraFilter):
 class OpClosing(OpBaseVigraFilter):
     name = "Closing"
     vigraFilter = staticmethod(vigra.filters.multiGrayscaleClosing)
-    outputDtype = numpy.uint8 
-    inputDtype = numpy.uint8 
+    outputDtype = numpy.float32
+    inputDtype = numpy.float32
 
     def resultingChannels(self):
         return 1
@@ -447,8 +445,8 @@ class OpClosing(OpBaseVigraFilter):
 class OpErosion(OpBaseVigraFilter):
     name = "Erosion"
     vigraFilter = staticmethod(vigra.filters.multiGrayscaleErosion)
-    outputDtype = numpy.uint8 
-    inputDtype = numpy.uint8 
+    outputDtype = numpy.float32
+    inputDtype = numpy.float32
 
     def resultingChannels(self):
         return 1
@@ -456,8 +454,8 @@ class OpErosion(OpBaseVigraFilter):
 class OpDilation(OpBaseVigraFilter):
     name = "Dilation"
     vigraFilter = staticmethod(vigra.filters.multiGrayscaleDilation)
-    outputDtype = numpy.uint8 
-    inputDtype = numpy.uint8 
+    outputDtype = numpy.float32
+    inputDtype = numpy.float32
 
     def resultingChannels(self):
         return 1
@@ -525,7 +523,8 @@ class OpOstrichReader(Operator):
     
     def __init__(self, g):
         Operator.__init__(self,g)
-        filename = self.filename = "/home/lfiaschi/graph-christoph/tests/ostrich.jpg"
+        #filename = self.filename = "/home/lfiaschi/graph-christoph/tests/ostrich.jpg"
+        filename = self.filename = "/home/cstraehl/Projects/eclipse-workspace/graph/tests/ostrich.jpg"
         info = vigra.impex.ImageInfo(filename)
         
         oslot = self.outputs["Image"]

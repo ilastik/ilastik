@@ -25,7 +25,7 @@ class OperatorGroupA(OperatorGroup):
         # inner operators and connect them (internally)
         
         self.source0 = OpArrayPiper(self.graph)
-        
+        self.source0.inputs["Input"].connect(self.inputs["Input"].partner)
         opa1 = OpA(self.graph)
         opa2 = OpB(self.graph)
         
@@ -33,11 +33,10 @@ class OperatorGroupA(OperatorGroup):
         opc = OpB(self.graph)
         opd = OpArrayCache(self.graph)
         self.ope = OpMultiArrayPiper(self.graph)
-#        
-#        
-#        #opa1.inputs["Input"].connect(source0)
-#        #opa2.inputs["Input"].connect(source0)
-#        
+        
+        opa1.inputs["Input"].connect(source0)
+        opa2.inputs["Input"].connect(source0)
+
         opb.inputs["MultiInput"].connectAdd(opa1.outputs["Output"])
         opb.inputs["MultiInput"].connectAdd(opa2.outputs["Output"])
         
@@ -45,22 +44,19 @@ class OperatorGroupA(OperatorGroup):
         opd.inputs["Input"].connect(opc.outputs["Output"])
         self.ope.inputs["MultiInput"].connect(opd.outputs["Output"])        
         
-    def getInnerInputSlots(self):
+    def setupInputSlots(self):
         # this method must return a hash that
         # contains the inner slots corresponding
         # to the slotname
         inputs = {}
         inputs["Input"] = self.source0.inputs["Input"]
-        return inputs
-        
+        self._visibleInputs = inputs
+
+
     
-    def getInnerOutputSlots(self):
-        # this method must return a hash that
-        # contains the inner slots corresponding
-        # to the slotname
-        outputs = {}
-        outputs["Input"] = self.ope.outputs["MultiOutput"]
-        return outputs
+    def setupOutputSlots(self):
+        self._visibleOutputs = {}
+        self._visibleOutputs["MultiOutput"] = self.ope.outputs["MultiOutput"]
 
 
 
@@ -104,10 +100,13 @@ print len(ope.outputs["MultiOutput"])
 opGA.inputs["Input"].connect(source0)
 
 print opGA.outputs["MultiOutput"], len(opGA.outputs["MultiOutput"])
+print opGA.ope.outputs["MultiOutput"], len(opGA.ope.outputs["MultiOutput"])
 
 res1 = opd.outputs["Output"][0][:].allocate().wait()
 
 res2 = opGA.outputs["MultiOutput"][0][:].allocate().wait()
 
+
+print g.saveSubGraph({},{"Out": opGA.outputs["MultiOutput"]})
 
 g.finalize()

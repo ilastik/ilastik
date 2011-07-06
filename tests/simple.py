@@ -35,6 +35,7 @@ def runBenchmark(numThreads, cacheClass, shape, requests):
     opc4.inputs["Input"].connect(opc3.outputs["Output"])
     opf.inputs["Input"].connect(opc1.outputs["Output"])
     
+
     tg1 = time.time()
     
     for r in requests:
@@ -56,7 +57,8 @@ def runBenchmark(numThreads, cacheClass, shape, requests):
 
 
 shape = (200,200,200)
-requests = [[[0,0,0],[100,100,1]],
+requests = [[[30,30,30],[100,100,31]],
+            [[0,0,0],[100,100,1]],
             [[50,50,50],[150,150,150]],
             [[50,50,50],[150,150,150]],
             [[0,0,0],[200,200,200]],
