@@ -36,7 +36,6 @@ import psutil
 import os
 import time
 import gc
-import h5serialize
 
 from roi import sliceToRoi, roiToSlice
 from collections import deque
@@ -251,6 +250,13 @@ class GetItemRequestObject(object):
         return self.wait()
 
 class InputSlot(object):
+    """
+    The base class for input slots, it provides methods
+    to connect the InputSlot to an OutputSlot of another
+    operator (i.e. .connect(partner) call) or allows 
+    to directly provide a value as input (i.e. .setValue(value) call)
+    """
+    
     def __init__(self, name, operator = None, stype = "ndarray"):
         self.name = name
         self.operator = operator
@@ -260,12 +266,22 @@ class InputSlot(object):
         self.stype = stype
 
     def setValue(self, value):
+        """
+        This methods allows to directly provide an array
+        or other entitiy as input the the InputSlot instead
+        of connecting it to a partner OutputSlot.
+        """
         assert self.partner == None, "InputSlot %s (%r): Cannot dot setValue, because it is connected !" %(self.name, self)
         self._value = value
         self.notifyConnect()
 
     @property
     def value(self):
+        """
+        a convenience method for retrieving the value
+        from an (1,) shaped ndarray of dtype object, 
+        used slots that contain single strings, floats, integers etc.
+        """
         if self.partner is not None:
             temp = self[:].allocate().wait()[0]
             return temp
@@ -281,6 +297,13 @@ class InputSlot(object):
             raise RuntimeError("InputSlot: connectAdd called for a inner slot, NOT ALLOWED")        
     
     def connect(self, partner):
+        """
+        connects the InputSlot to a partner OutputSlot
+        
+        when all InputSlots of an Operator are connected (or
+        are given a value by calling .setvalue(value))
+        the Operator is notified via its notifyConnectAll() method.
+        """
         assert partner is None or isinstance(partner, (OutputSlot, MultiOutputSlot)), \
                "InputSlot(name=%s, operator=%s).connect: partner has type %r" \
                % (self.name, self.operator, type(partner))
@@ -303,10 +326,12 @@ class InputSlot(object):
                 self.notifyConnect()
         
     def notifyConnect(self):
-        # notify operator of connection
-        # the operator may do a compatibility
-        # check that involves
-        # more then one slot
+        """
+        notify operator of connection
+        the operator may do a compatibility
+        check that involves
+        more then one slot
+        """
         if self.operator is not None:
             self.operator.notifyConnect(self)
             
@@ -326,6 +351,10 @@ class InputSlot(object):
 
        
     def disconnect(self):
+        """
+        Disconnect a InputSlot from its partner
+        """
+        #TODO: also reset ._value ??
         if self.partner is not None:
             self.partner.disconnectSlot(self)
         self.partner = None
@@ -337,6 +366,13 @@ class InputSlot(object):
         return s
             
     def setDirty(self, key):
+        """
+        this method is called by a partnering OutputSlot
+        when its content changes.
+        
+        the key parameter identifies the changed region
+        of an numpy.ndarray
+        """
         assert self.operator is not None, \
                "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
         self.operator.notifyDirty(self, key)
@@ -348,7 +384,13 @@ class InputSlot(object):
         return True
 
     def __getitem__(self, key):
+        """
+        retrieve the array content from the partner OutputSlot
         
+        the method supports the array access interface.
+        
+        allows to call inputslot[0,:,3:11] 
+        """
         return GetItemWriterObject(self, key)
         
     def fireRequest(self, key, destination):
@@ -408,6 +450,19 @@ class InputSlot(object):
 
     
 class OutputSlot(object):
+    """
+    The base class for output slots, it provides methods
+    to connect the OutputSlot to an InputSlot of another
+    operator (i.e. .connect(partner) call).
+    
+    the content of the OutputSlot e.g. the result of the operator
+    it belongs to can be requested with the usual
+    python array slicing syntax, i.e.
+    
+    outputslot[3,:,14:32]
+    
+    this call returns an GetItemWriterObject.
+    """    
     def __init__(self, name, operator = None, stype = "ndarray"):
         self.name = name
         self._metaParent = operator
@@ -439,6 +494,14 @@ class OutputSlot(object):
             partner.disconnect()
         
     def setDirty(self, key):
+        """
+        This method can be called by an operator
+        to indicate that a region (identified by key)
+        has changed and needs recalculation.
+        
+        the method notifies all InputSlots that are connected to
+        this output slot
+        """
         start, stop = sliceToRoi(key, self.shape)
         key = roiToSlice(start,stop)
         for p in self.partners:
@@ -508,6 +571,12 @@ class OutputSlot(object):
 
 
 class MultiInputSlot(object):
+    """
+    The MultiInputSlot is a multidimensional InputSlot.
+    
+    it contains nested lists of InputSlot objects.
+    """
+    
     def __init__(self, name, operator = None, stype = "ndarray", level = 1):
         self.name = name
         self.operator = operator
@@ -729,6 +798,12 @@ class MultiInputSlot(object):
 
 
 class MultiOutputSlot(object):
+    """
+    The MultiOutputSlot is a multidimensional OutputSlot.
+    
+    it contains nested lists of OutputSlot objects.
+    """
+    
     def __init__(self, name, operator = None, stype = "ndarray",level = 1):
         self.name = name
         self.operator = operator
@@ -858,8 +933,35 @@ class MultiOutputSlot(object):
         return self.operator.graph
 
 class Operator(object):
-    inputSlots  = []
-    outputSlots = []
+    """
+    The base class for all Operators.
+    
+    Operators consist of a class inheriting from this class
+    and need to specify their inputs and outputs via
+    thei inputSlot and outputSlot class properties.
+    
+    Each instance of an operator obtains individual
+    copies of the inputSlots and outputSlots, which are
+    available in the self.inputs and self.outputs instance
+    properties.
+    
+    these instance properties can be used to connect
+    the inputs and outputs of different operators.
+    
+    Example:
+        operator1.inputs["InputA"].connect(operator2.outputs["OutputC"])
+    
+    
+    Different examples for simple operators are provided
+    in an example directory. plese read through the
+    examples to learn how to implement your own operators...
+    """
+    
+    #definition of inputs slots
+    inputSlots  = [] 
+
+    #definition of output slots -> operators instances 
+    outputSlots = [] 
     name = ""
     description = ""
     category = "lazyflow"
