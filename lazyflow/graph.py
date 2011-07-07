@@ -1,3 +1,33 @@
+"""
+This module implements the basic flow graph
+of the lazyflow module.
+
+Basic usage example:
+    
+---
+import numpy
+import lazyflow.graph
+from lazyflow.operators.operators import  OpArrayPiper
+
+
+g = lazyflow.graph.Graph()
+
+operator1 = OpArrayPiper(g)
+operator2 = OpArrayPiper(g)
+
+operator1.inputs["Input"].setValue(numpy.zeros((10,20,30), dtype = numpy.uint8))
+
+operator2.inputs["Input"].connect( operator1.outputs["Output"])
+
+result = operator2.outputs["Output"][:].allocate().wait()
+
+g.finalize()
+---
+
+
+"""
+
+
 import numpy
 import vigra
 import sys
@@ -15,15 +45,8 @@ from threading import Thread, Event, current_thread, Lock
 import greenlet
 import weakref
 
-greenlet.GREENLET_USE_GC
 
-
-requestCounterLock = Lock()
-requestCounter = 0
-
-
-
-#sys.setrecursionlimit(1000)
+greenlet.GREENLET_USE_GC # use garbage collection
 
 def itersubclasses(cls, _seen=None):
     """
@@ -85,9 +108,17 @@ class Operators(object):
 
 
 class GetItemWriterObject(object):
-    """ Enables the syntax:
-        InputSlot[:,:].writeInto(array)
-        for loading input data"""
+    """
+    Enables the syntax:
+
+    InputSlot[:,:].writeInto(array)
+    InputSlot[:,:].allocate()
+    
+    for requesting data from an input or output slot of an operator.
+    
+    An instance of this class is returned by a call to a __getitem__ (i.e. [key])
+    method call of any InputSlot or OutputSlot.
+    """
     
     __slots__ = ["_key", "_slot"]
     
@@ -98,9 +129,26 @@ class GetItemWriterObject(object):
         self._slot = slot
     
     def writeInto(self, destination):
+        """
+        the writeInto method ensures that the data
+        that is requested from an InputSlot or OutputSlot is written
+        into the specified numpy.ndarray
+        
+        of course the destination numpy.ndarray must have
+        the same size/shape/dimension as the slot will
+        return in reponse to the requested key
+        """
         return self._slot.fireRequest(self._key, destination)     
     
     def allocate(self):
+        """
+        if the user does not want lazyflow to write calculation
+        results into a specific numpy array he can use
+        the .allocate() call.
+        
+        a destination array of required size,shape,dtype will
+        be constructed in which the results will be written.
+        """
         destination, key = self._slot.allocateStorage(self._key)
         self._key = key
         return self.writeInto(destination)
@@ -112,8 +160,20 @@ class GetItemWriterObject(object):
 
 
 class GetItemRequestObject(object):
+    """ 
+    Enables the syntax
+    InputSlot[:,:].writeInto(array).wait() or
+    InputSlot[:,:].writeInto(array).notify(someFunction)
+    
+    the GetItemRequestObject is responsible for the
+    .wait() and .notify() part of the above statements.
+    
+    It is returned by all method calls to an GetItemWriterObject (which
+    in turn is returned by a call to the __getitem__ method of an
+    InputSlot and OutputSlot) 
+    """
+        
     __slots__ = ["slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure"]
-
 
     def __init__(self, slot, graph, partner, key, destination):
         self.key = key
@@ -136,6 +196,12 @@ class GetItemRequestObject(object):
 
     
     def wait(self, timeout = 0):
+        """
+        calling .wait() on an RequestObject is a blocking
+        call that will only return once the results
+        of a requested Slot are calculated and stored in
+        the  result area.
+        """
         if self.slot is None or self.slot.partner is not None:
             self.lock.acquire()
             if not self.event.isSet():
@@ -163,6 +229,13 @@ class GetItemRequestObject(object):
         return self.destination   
          
     def notify(self, closure): 
+        """
+        calling .notify(someFunction) on an RequestObject is a NON-blocking
+        call that will return immediately.
+        once the results are calculated and stored in the result
+        are, the provided someFunction will be called by lazyflow.
+        """
+        
         if isinstance(self.thread, Worker):
             self.lock.acquire()
             self.closure = closure
@@ -397,11 +470,6 @@ class OutputSlot(object):
         assert (stop <= numpy.array(self.shape)).all(), "Somebody is requesting shit from slot %s of operator %s (%r) :  start: %r, stop %r, shape %r" %(self.name, self.operator.name, self.operator, start, stop, self.shape)
         
         gr = greenlet.getcurrent()
-        
-        global requestCounter
-        requestCounterLock.acquire()
-        requestCounter += 1
-        requestCounterLock.release()
         
         if gr.parent == None: #FIXME: this is a bad test for a end user call ?!
             reqObject = GetItemRequestObject(None, self.graph, self, key, destination)
