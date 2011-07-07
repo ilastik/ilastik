@@ -1,3 +1,33 @@
+"""
+This module implements the basic flow graph
+of the lazyflow module.
+
+Basic usage example:
+    
+---
+import numpy
+import lazyflow.graph
+from lazyflow.operators.operators import  OpArrayPiper
+
+
+g = lazyflow.graph.Graph()
+
+operator1 = OpArrayPiper(g)
+operator2 = OpArrayPiper(g)
+
+operator1.inputs["Input"].setValue(numpy.zeros((10,20,30), dtype = numpy.uint8))
+
+operator2.inputs["Input"].connect( operator1.outputs["Output"])
+
+result = operator2.outputs["Output"][:].allocate().wait()
+
+g.finalize()
+---
+
+
+"""
+
+
 import numpy
 import vigra
 import sys
@@ -14,13 +44,8 @@ from threading import Thread, Event, current_thread, Lock
 import greenlet
 import weakref
 
-greenlet.GREENLET_USE_GC
 
-
-requestCounterLock = Lock()
-requestCounter = 0
-
-#sys.setrecursionlimit(1000)
+greenlet.GREENLET_USE_GC # use garbage collection
 
 def itersubclasses(cls, _seen=None):
     """
@@ -82,9 +107,17 @@ class Operators(object):
 
 
 class GetItemWriterObject(object):
-    """ Enables the syntax:
-        InputSlot[:,:].writeInto(array)
-        for loading input data"""
+    """
+    Enables the syntax:
+
+    InputSlot[:,:].writeInto(array)
+    InputSlot[:,:].allocate()
+    
+    for requesting data from an input or output slot of an operator.
+    
+    An instance of this class is returned by a call to a __getitem__ (i.e. [key])
+    method call of any InputSlot or OutputSlot.
+    """
     
     __slots__ = ["_key", "_slot"]
     
@@ -95,9 +128,26 @@ class GetItemWriterObject(object):
         self._slot = slot
     
     def writeInto(self, destination):
+        """
+        the writeInto method ensures that the data
+        that is requested from an InputSlot or OutputSlot is written
+        into the specified numpy.ndarray
+        
+        of course the destination numpy.ndarray must have
+        the same size/shape/dimension as the slot will
+        return in reponse to the requested key
+        """
         return self._slot.fireRequest(self._key, destination)     
     
     def allocate(self):
+        """
+        if the user does not want lazyflow to write calculation
+        results into a specific numpy array he can use
+        the .allocate() call.
+        
+        a destination array of required size,shape,dtype will
+        be constructed in which the results will be written.
+        """
         destination, key = self._slot.allocateStorage(self._key)
         self._key = key
         return self.writeInto(destination)
@@ -109,8 +159,20 @@ class GetItemWriterObject(object):
 
 
 class GetItemRequestObject(object):
+    """ 
+    Enables the syntax
+    InputSlot[:,:].writeInto(array).wait() or
+    InputSlot[:,:].writeInto(array).notify(someFunction)
+    
+    the GetItemRequestObject is responsible for the
+    .wait() and .notify() part of the above statements.
+    
+    It is returned by all method calls to an GetItemWriterObject (which
+    in turn is returned by a call to the __getitem__ method of an
+    InputSlot and OutputSlot) 
+    """
+        
     __slots__ = ["slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure"]
-
 
     def __init__(self, slot, graph, partner, key, destination):
         self.key = key
@@ -133,6 +195,12 @@ class GetItemRequestObject(object):
 
     
     def wait(self, timeout = 0):
+        """
+        calling .wait() on an RequestObject is a blocking
+        call that will only return once the results
+        of a requested Slot are calculated and stored in
+        the  result area.
+        """
         if self.slot is None or self.slot.partner is not None:
             self.lock.acquire()
             if not self.event.isSet():
@@ -160,6 +228,13 @@ class GetItemRequestObject(object):
         return self.destination   
          
     def notify(self, closure): 
+        """
+        calling .notify(someFunction) on an RequestObject is a NON-blocking
+        call that will return immediately.
+        once the results are calculated and stored in the result
+        are, the provided someFunction will be called by lazyflow.
+        """
+        
         if isinstance(self.thread, Worker):
             self.lock.acquire()
             self.closure = closure
@@ -175,6 +250,13 @@ class GetItemRequestObject(object):
         return self.wait()
 
 class InputSlot(object):
+    """
+    The base class for input slots, it provides methods
+    to connect the InputSlot to an OutputSlot of another
+    operator (i.e. .connect(partner) call) or allows 
+    to directly provide a value as input (i.e. .setValue(value) call)
+    """
+    
     def __init__(self, name, operator = None, stype = "ndarray"):
         self.name = name
         self.operator = operator
@@ -184,12 +266,22 @@ class InputSlot(object):
         self.stype = stype
 
     def setValue(self, value):
+        """
+        This methods allows to directly provide an array
+        or other entitiy as input the the InputSlot instead
+        of connecting it to a partner OutputSlot.
+        """
         assert self.partner == None, "InputSlot %s (%r): Cannot dot setValue, because it is connected !" %(self.name, self)
         self._value = value
         self.notifyConnect()
 
     @property
     def value(self):
+        """
+        a convenience method for retrieving the value
+        from an (1,) shaped ndarray of dtype object, 
+        used slots that contain single strings, floats, integers etc.
+        """
         if self.partner is not None:
             temp = self[:].allocate().wait()[0]
             return temp
@@ -205,6 +297,13 @@ class InputSlot(object):
             raise RuntimeError("InputSlot: connectAdd called for a inner slot, NOT ALLOWED")        
     
     def connect(self, partner):
+        """
+        connects the InputSlot to a partner OutputSlot
+        
+        when all InputSlots of an Operator are connected (or
+        are given a value by calling .setvalue(value))
+        the Operator is notified via its notifyConnectAll() method.
+        """
         assert partner is None or isinstance(partner, (OutputSlot, MultiOutputSlot)), \
                "InputSlot(name=%s, operator=%s).connect: partner has type %r" \
                % (self.name, self.operator, type(partner))
@@ -227,10 +326,12 @@ class InputSlot(object):
                 self.notifyConnect()
         
     def notifyConnect(self):
-        # notify operator of connection
-        # the operator may do a compatibility
-        # check that involves
-        # more then one slot
+        """
+        notify operator of connection
+        the operator may do a compatibility
+        check that involves
+        more then one slot
+        """
         if self.operator is not None:
             self.operator.notifyConnect(self)
             
@@ -250,6 +351,10 @@ class InputSlot(object):
 
        
     def disconnect(self):
+        """
+        Disconnect a InputSlot from its partner
+        """
+        #TODO: also reset ._value ??
         if self.partner is not None:
             self.partner.disconnectSlot(self)
         self.partner = None
@@ -261,6 +366,13 @@ class InputSlot(object):
         return s
             
     def setDirty(self, key):
+        """
+        this method is called by a partnering OutputSlot
+        when its content changes.
+        
+        the key parameter identifies the changed region
+        of an numpy.ndarray
+        """
         assert self.operator is not None, \
                "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
         self.operator.notifyDirty(self, key)
@@ -272,7 +384,13 @@ class InputSlot(object):
         return True
 
     def __getitem__(self, key):
+        """
+        retrieve the array content from the partner OutputSlot
         
+        the method supports the array access interface.
+        
+        allows to call inputslot[0,:,3:11] 
+        """
         return GetItemWriterObject(self, key)
         
     def fireRequest(self, key, destination):
@@ -332,6 +450,19 @@ class InputSlot(object):
 
     
 class OutputSlot(object):
+    """
+    The base class for output slots, it provides methods
+    to connect the OutputSlot to an InputSlot of another
+    operator (i.e. .connect(partner) call).
+    
+    the content of the OutputSlot e.g. the result of the operator
+    it belongs to can be requested with the usual
+    python array slicing syntax, i.e.
+    
+    outputslot[3,:,14:32]
+    
+    this call returns an GetItemWriterObject.
+    """    
     def __init__(self, name, operator = None, stype = "ndarray"):
         self.name = name
         self._metaParent = operator
@@ -363,6 +494,14 @@ class OutputSlot(object):
             partner.disconnect()
         
     def setDirty(self, key):
+        """
+        This method can be called by an operator
+        to indicate that a region (identified by key)
+        has changed and needs recalculation.
+        
+        the method notifies all InputSlots that are connected to
+        this output slot
+        """
         start, stop = sliceToRoi(key, self.shape)
         key = roiToSlice(start,stop)
         for p in self.partners:
@@ -394,11 +533,6 @@ class OutputSlot(object):
         assert (stop <= numpy.array(self.shape)).all(), "Somebody is requesting shit from slot %s of operator %s (%r) :  start: %r, stop %r, shape %r" %(self.name, self.operator.name, self.operator, start, stop, self.shape)
         
         gr = greenlet.getcurrent()
-        
-        global requestCounter
-        requestCounterLock.acquire()
-        requestCounter += 1
-        requestCounterLock.release()
         
         if gr.parent == None: #FIXME: this is a bad test for a end user call ?!
             reqObject = GetItemRequestObject(None, self.graph, self, key, destination)
@@ -437,6 +571,12 @@ class OutputSlot(object):
 
 
 class MultiInputSlot(object):
+    """
+    The MultiInputSlot is a multidimensional InputSlot.
+    
+    it contains nested lists of InputSlot objects.
+    """
+    
     def __init__(self, name, operator = None, stype = "ndarray", level = 1):
         self.name = name
         self.operator = operator
@@ -658,6 +798,12 @@ class MultiInputSlot(object):
 
 
 class MultiOutputSlot(object):
+    """
+    The MultiOutputSlot is a multidimensional OutputSlot.
+    
+    it contains nested lists of OutputSlot objects.
+    """
+    
     def __init__(self, name, operator = None, stype = "ndarray",level = 1):
         self.name = name
         self.operator = operator
@@ -787,8 +933,35 @@ class MultiOutputSlot(object):
         return self.operator.graph
 
 class Operator(object):
-    inputSlots  = []
-    outputSlots = []
+    """
+    The base class for all Operators.
+    
+    Operators consist of a class inheriting from this class
+    and need to specify their inputs and outputs via
+    thei inputSlot and outputSlot class properties.
+    
+    Each instance of an operator obtains individual
+    copies of the inputSlots and outputSlots, which are
+    available in the self.inputs and self.outputs instance
+    properties.
+    
+    these instance properties can be used to connect
+    the inputs and outputs of different operators.
+    
+    Example:
+        operator1.inputs["InputA"].connect(operator2.outputs["OutputC"])
+    
+    
+    Different examples for simple operators are provided
+    in an example directory. plese read through the
+    examples to learn how to implement your own operators...
+    """
+    
+    #definition of inputs slots
+    inputSlots  = [] 
+
+    #definition of output slots -> operators instances 
+    outputSlots = [] 
     name = ""
     description = ""
     category = "lazyflow"
@@ -1362,5 +1535,4 @@ class Graph(object):
         assert op in self.operators, "Operator %r not a registered Operator" % op
         self.operators.remove(op)
         op.disconnect()
-        
-        
+ 

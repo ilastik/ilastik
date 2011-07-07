@@ -13,7 +13,7 @@ from lazyflow.graph import MultiInputSlot
 from lazyflow.operators.vigraOperators import *
 
 
-graph = graph.Graph(numThreads=1)
+graph = graph.Graph(numThreads=2)
 
 
 ostrichProvider = OpImageReader(graph)
