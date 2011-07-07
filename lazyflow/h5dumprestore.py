@@ -171,7 +171,8 @@ setattr(h5py.Group,"reconstructObject",reconstructObjectFromH5G)
 
 ######################################################
 #
-#    simple tests
+#    inject h5dumprestore support
+#    into vigra.AxisTags
 #
 #######################################################
 
@@ -200,6 +201,54 @@ setattr(vigra.AxisTags,"dumpToH5G",dumpAxisTags)
 setattr(vigra.AxisTags,"reconstructFromH5G", types.MethodType(reconstructAxisTags, vigra.AxisTags))
 
 
+######################################################
+#
+#    inject h5dumprestore support
+#    into vigra.learning.RandomForest
+#
+#    unfortunately the RandomForest does not support
+#    serialization to bytestreams or string so
+#    we must use a hackish way to achieve the same.
+#
+#######################################################
+
+import tempfile
+
+def dumpRF(self, h5G):
+    """
+    hackish way to save into our own hdf5 group dataset and keep control
+    of things, we do not like C/C++ coded hdf5 saving
+    routines that do not accept h5py Group objects from python!!!!
+    """
+    
+    # first, save the RF to a tempfile
+    tf = tempfile.NamedTemporaryFile(delete=False)
+    self.writeHDF5(tf.name, "RandomForest")
+    tf.close()
+
+    arr = numpy.fromfile(tf.name, dtype = numpy.uint8)
+    # finally, save into our group
+    h5G.create_dataset("classifierh5content", data = arr)
+    
+import time
+
+def reconstructRF(cls, h5G):
+    """
+    hackish way to restore from our own hdf5 group dataset.
+    """    
+    classifierDump = h5G["classifierh5content"].value
+    tf = tempfile.NamedTemporaryFile(delete=False)
+    tf.close()
+    classifierDump.tofile(tf.name)
+    
+    classifier = vigra.learning.RandomForest(tf.name, "RandomForest")
+    
+    return classifier
+        
+#inject the funcitonality into the vigra.learning.RandomForest class
+setattr(vigra.learning.RandomForest,"dumpToH5G",dumpRF)
+setattr(vigra.learning.RandomForest,"reconstructFromH5G", types.MethodType(reconstructRF, vigra.learning.RandomForest))
+
 
 
 if __name__ == '__main__':
@@ -216,12 +265,26 @@ if __name__ == '__main__':
         g.dumpObject(o)
         o2 = g.reconstructObject()
         
-        print "###############################################"
-        print "###############################################"
+        print
+        print "################"
         print "Original:", o
-        print "###################'"
-        print "Result:", o2
+        print "------"
+        print "Result  :", o2
         print o2.__class__
         
         f.close()
+
+    print "################"
+    print "Testing random forest save/restore"            
+
+    data = numpy.ndarray((10,3), numpy.float32)
+    labels = numpy.ones((10,1), numpy.uint32)
+    labels[5:,0] = 2
+    rf = vigra.learning.RandomForest()        
+    rf.learnRF(data, labels)
+        
+    f = h5py.File("/tmp/test.h5","w")
+    g = f.create_group("/testg")
+    g.dumpObject(rf)
+    o2 = g.reconstructObject()
     
