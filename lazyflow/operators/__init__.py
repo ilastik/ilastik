@@ -1,0 +1,49 @@
+import traceback, os,  sys
+
+import lazyflow
+
+from lazyflow.graph import Operator
+from lazyflow.helpers import itersubclasses
+
+try:
+    if modules != None:
+        pass
+except:
+    modules = []
+    import generic
+    import vigraOperators
+    import classifierOperators
+    import valueProviders
+    import operators
+
+    ops = itersubclasses(Operator)
+    print "Loading default Operators..."
+    for o in ops:
+        print "    Adding", o.__name__
+        globals()[o.__name__] = o
+
+    ops = list(itersubclasses(Operator))
+    
+    dirs = lazyflow.graph.CONFIG.get("Operators","directories", lazyflow.graph.CONFIG_DIR + "operators")
+    dirs = dirs.split(",")
+    for d in dirs:
+        print "Loading Operators from ", d,"..."
+        d = os.path.expanduser(d.strip())
+        sys.path.append(d)
+        files = os.listdir(d)
+        for f in files:
+            if os.path.isfile(d + "/" + f) and f[-3:] == ".py":
+                try:
+                    print "  Processing file", f
+                    module = __import__(f[:-2])
+                except Exception, e:
+                    traceback.print_exc(file=sys.stdout)
+                    pass
+
+        ops2 = list(itersubclasses(Operator))
+
+        newOps = list(set(list(ops2)).difference(set(list(ops))))
+        
+        for o in newOps:
+            print "    Adding", o.__name__
+            globals()[o.__name__] = o
