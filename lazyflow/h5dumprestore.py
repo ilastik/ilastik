@@ -61,9 +61,15 @@ def stringToClass(s):
     parts = s.split(".")
     if parts[0] == "__builtin__":
         parts[0] = "__builtins__"
-    cls = globals()[parts[0]]
-    for p in parts[1:]:
-        cls = cls.__dict__[p]
+    cls = globals().get(parts[0],None)
+    if cls is None:
+         cls = __import__(parts[0])
+         cls = cls.__dict__
+    else:
+        cls = cls
+    for p in parts[1:-1]:
+        cls = cls[p].__dict__
+    cls = cls[parts[-1]]
     return cls
 
 def instanceClassToString(thing):
@@ -91,6 +97,7 @@ def dumpObjectToH5G(self, thing):
     """
     
     self.attrs["className"] = instanceClassToString(thing)
+    self.attrs["id"] = id(thing)
     if hasattr(thing, "dumpToH5G"):
         thing.dumpToH5G(self)
     else:

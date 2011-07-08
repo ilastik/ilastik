@@ -37,7 +37,9 @@ import os
 import time
 import gc
 import ConfigParser
+import string
 
+from h5dumprestore import instanceClassToString, stringToClass
 from helpers import itersubclasses
 from roi import sliceToRoi, roiToSlice
 from collections import deque
@@ -598,7 +600,7 @@ class MultiInputSlot(object):
         self.inputSlots = []
         self.level = level
         self.stype = stype
-        self._value = None
+        self.value = None
     
     def __getitem__(self, key):
         return self.inputSlots[key]
@@ -1005,6 +1007,9 @@ class Operator(object):
             # of the partner operators are created       
         self.graph.registerOperator(self)
          
+    def getOriginalOperator(self):
+        return self
+        
     def disconnect(self):
         for s in self.outputs.values():
             s.disconnect()
@@ -1558,3 +1563,136 @@ class Graph(object):
         self.operators.remove(op)
         op.disconnect()
  
+ 
+    def dumpToH5G(self,h5g):
+        endPoints = []
+        
+        # loop over all operators and
+        # and find the endpoints
+        for o in self.operators:
+            olength = 0
+            ilength = 0
+            for os in o.outputs.values():
+                olength += len(os.partners)
+            for k, ins in o.inputs.items():
+                if ins.partner is not None or ins.value is not None:
+                    ilength += 1
+            # if an operator has no outputs but inputs
+            # it belongs to the graph and is an endpoint
+            if olength == 0 and ilength > 0:
+                ooooo = o.getOriginalOperator()
+                if ooooo not in endPoints:
+                    endPoints.append(ooooo)                
+                
+        queue = endPoints
+        
+        doneQueue = []
+        
+        # loop over all operators in the queue
+        # (i.e. the endpoints in the beginning)
+        # and append all inputs operators on which
+        # they depend onto the queue
+        # -> we construct the dependency graph in
+        #    a breadth first manner
+        while len(queue) > 0:
+            op = queue.pop(0)
+            doneQueue.append(op)
+            for i in op.inputs.values():
+                if i.partner is not None:
+                    p = i.partner
+                    # we use the metaParent to allow for operatorGroups and operatorWrappers
+                    assert p._metaParent is not None, "%r, %r" % (p.name, p.operator)
+                    partnerOp = p._metaParent.getOriginalOperator()
+                    if partnerOp not in queue and partnerOp not in doneQueue:
+                        queue.append(partnerOp)
+        
+        # we reverse the dependencies
+        # since the graph has to be reconstructed beginning from the inputs
+        doneQueue.reverse()
+
+        # create subgroups for the operators, inslot values and connections themself                        
+        h5ops = h5g.create_group("operators")
+        h5values = h5g.create_group("inslot_values")
+        h5gconnections = h5g.create_group("connections")
+        
+        #save the operator class names and ids
+        for i,op in enumerate(doneQueue):
+            opG = h5ops.create_group(str(id(op)))
+            opG.attrs["id"] = str(id(op))
+            opG.attrs["class"] = instanceClassToString(op)
+                    
+        connections = []
+
+        # save the connections between the operators
+        # and potential .value, so that everything can be restored 
+        for i,op in enumerate(doneQueue):
+            for key,inslot in op.inputs.items():
+                #save a connection
+                val = inslot.value
+                if inslot.partner is not None:
+                    partnerOp = inslot.partner.operator.getOriginalOperator()
+                    partnerSlotName = inslot.partner.name
+                    connections.append(["connect", [str(id(op)),key,str(id(partnerOp)), partnerSlotName]])                    
+                elif val is not None:
+                    #save the value in to the dedicated value group
+                    connections.append(["setValue", [str(id(op)), key, str(id(val))]])
+                    valG = h5values.create_group(str(id(val)))
+                    valG.dumpObject(val)
+        
+        # save the connectino nested lists recursively
+        h5gconnections.dumpObject(connections)
+        
+        
+    @classmethod
+    def reconstructFromH5G(cls, h5g):
+        graph = Graph()
+        
+        reconstructedOperators = {}        
+        reconstructedValues = {}
+        
+        h5ops = h5g["operators"]
+        h5values = h5g["inslot_values"]
+        connections = h5g["connections"].reconstructObject()
+        
+        def getReconstructedOperator(opId):
+            """
+            helper method to map an operatorId string to an reconstructed object
+            """
+            op = reconstructedOperators.get(opId,None)
+            if op is None:
+                # if the operator is accessed for the first tim
+                # construct the object once
+                opClassName = h5ops[opId].attrs["class"]
+                opClass = stringToClass(opClassName)
+                reconstructedOperators[opId] = op = opClass(graph)
+            return op
+
+        def getReconstructedValue(valueId):
+            """
+            helper method to map an valueId string to an reconstructed object
+            """
+            value = reconstructedValues.get(valueId,None)
+            if value is None:
+                # if the valueId is accessed for the first tim
+                # construct the object once
+                reconstructedValues[valueId] = value = h5values[valueId].reconstructObject()
+            return value
+
+                
+        for c in connections:
+            operation, arguments = c
+            if operation == "connect":
+                opInId, inSlotName, opOutId,outSlotName = arguments
+                opInObject = getReconstructedOperator(opInId)
+                opOutObject = getReconstructedOperator(opOutId)
+                opInObject.inputs[inSlotName].connect(opOutObject.outputs[outSlotName])
+                
+            elif operation == "setValue":
+                opId, inSlotName, valueId = arguments
+                op = getReconstructedOperator(opId)
+                value = getReconstructedValue(valueId)
+                op.inputs[inSlotName].setValue(value)
+                
+        return graph
+                
+     
