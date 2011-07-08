@@ -95,7 +95,7 @@ def dumpObjectToH5G(self, thing):
         thing.dumpToH5G(self)
     else:
         if isinstance(thing,numpy.ndarray):
-            self.attrs["dtype"] = classToString(thing.dtype)
+            self.attrs["dtype"] = thing.dtype.__str__()
             self.attrs["shape"] = thing.shape
             if thing.dtype is not object:
                 self.create_dataset("ndarray", data = thing)
@@ -134,9 +134,13 @@ def reconstructObjectFromH5G(self):
         return cls.reconstructFromH5G(self)
     else:
         if cls == numpy.ndarray:
-            dtype = stringToClass(self.attrs["dtype"])
+            try:
+                dtype = numpy.__dict__[self.attrs["dtype"]]
+            except:
+                #assume that otherwise the dtype has been an object ?! correct ??
+                dtype = object
             if dtype is not object:
-                arr = g["ndarray"][:]
+                arr = self["ndarray"][:]
             else:
                 arr = numpy.ndarray(g.attrs["shape"], dtype = dtype)
                 view = arr.ravel()
@@ -257,7 +261,7 @@ if __name__ == '__main__':
     
     at.dropChannelAxis()
 
-    testObjects = [at,[at], {"pups" : at}, [at, "test", 42, 42.0, {"42" : 42,"test" : ["test"]}]]    
+    testObjects = [ numpy.zeros((100,20,7),numpy.uint8), at,[at,numpy.zeros((100,20,7),numpy.uint8)], {"pups" : at}, [at, "test", 42, 42.0, {"42" : 42,"test" : ["test"]}]]    
     
     for o in testObjects:
         f = h5py.File("/tmp/test.h5","w")
