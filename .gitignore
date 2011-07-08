@@ -1,4 +1,4 @@
 build
 tests/*.h5
 *.pyc
-
+*.*~
