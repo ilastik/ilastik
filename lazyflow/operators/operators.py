@@ -372,9 +372,9 @@ class OpArrayCache(OpArrayPiper):
             for w in bq.queue:
                 #[None, gr,event,thread]
                 w[1].finishedRequests.append(FakeGetItemRequestObject(w[0]))
+                w[1].signalWorkAvailable()
             bq.queue = None
             bq.lock.release()
-            self.graph.workAvailableEvent.set()
         
         # indicate to all workers that there might be something to do
         # i.e. continuing after the finished requests

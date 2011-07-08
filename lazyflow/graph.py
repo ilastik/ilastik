@@ -50,7 +50,7 @@ import weakref
 greenlet.GREENLET_USE_GC # use garbage collection
 
 
-class DefaltConfigParser(ConfigParser.SafeConfigParser):
+class DefaultConfigParser(ConfigParser.SafeConfigParser):
     """
     Simple extension to the default SafeConfigParser that
     accepts a default parameter in its .get method and
@@ -96,7 +96,7 @@ except:
     CONFIG_DIR = os.path.expanduser("~/.lazyflow/")
     if not os.path.exists(CONFIG_DIR):
         os.mkdir(CONFIG_DIR)
-    CONFIG = DefaltConfigParser()
+    CONFIG = DefaultConfigParser()
 
 
 class Operators(object):
@@ -183,7 +183,7 @@ class GetItemRequestObject(object):
     InputSlot and OutputSlot) 
     """
         
-    __slots__ = ["slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure"]
+    __slots__ = ["func", "slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure"]
 
     def __init__(self, slot, graph, partner, key, destination):
         self.key = key
@@ -194,6 +194,7 @@ class GetItemRequestObject(object):
         self.lock = Lock()
         self.thread = current_thread()
         self.slot = slot
+        self.func = None
         
         if slot is None or slot.partner is not None:
             if hasattr(self.thread, "currentRequestLevel"): #TODO: use more self explaining test
@@ -202,7 +203,9 @@ class GetItemRequestObject(object):
                 self.requestLevel = 1
                 self.thread = graph.workers[0]
             
-            graph.putTask(partner.fireRequest, self)
+            self.func = partner.fireRequest
+            
+            graph.putTask(self)
 
     
     def wait(self, timeout = 0):
@@ -1453,19 +1456,39 @@ class Worker(Thread):
         self.working = False
         self.daemon = True # kill automatically on application exit!
         self.finishedRequests = deque()
+        self.requests = deque()
         self.currentRequestLevel = 0
         self.process = psutil.Process(os.getpid())
         self.number =  len(self.graph.workers)
+        self.workAvailableEvent = Event()
+        self.workAvailableEvent.clear()
         print "Initializing Worker #%d" % self.number
 
+    def signalWorkAvailable(self):
+        self.workAvailableEvent.set()
+        
+    def processReqObject(self, reqObject):
+        reqObject.func(reqObject.key, reqObject.destination)
+        reqObject.lock.acquire()
+        reqObject.event.set()
+        if reqObject.closure is not None:
+            reqObject.closure()
+        reqObject.lock.release()
+        
+        #append 
+        if reqObject.greenlet is not None:
+            reqObject.thread.finishedRequests.append(reqObject)
+            reqObject.thread.signalWorkAvailable()
+        
     def run(self):
         while self.graph.running:
-            self.graph.workAvailableEvent.wait(1.0)
-            self.graph.workAvailableEvent.clear()
-
+            self.graph.freeWorkers.append(self)
+            self.workAvailableEvent.wait(1.0)
+            self.graph.freeWorkers.remove(self)
+            self.workAvailableEvent.clear()
+            
             while not self.graph.tasks.empty() or len(self.finishedRequests) > 0:
-                task = None
-                if len(self.finishedRequests) > 0:
+                while len(self.finishedRequests) > 0:
                     reqObject = self.finishedRequests.popleft()
                     reqObject.lock.acquire()
                     tgr = reqObject.greenlet
@@ -1474,19 +1497,19 @@ class Worker(Thread):
                     if tgr is not None:
                         self.currentRequestLevel = reqObject.requestLevel
                         task = tgr.switch()
-                else:
-                    try:
-                        task = self.graph.tasks.get(False)#timeout = 1.0)
-                    except Empty:
-                        continue
-                    prio, closure, reqObject = task
+                task = None
+                try:
+                    task = self.graph.tasks.get(False)#timeout = 1.0)
+                except Empty:
+                    pass
+                if task is not None:
+                    prio, reqObject = task
                     #TODO: isnt a comparison against currentRequestLevel better 
                     # then against 1 ? ...
                     if reqObject.requestLevel > 1 or self.process.get_memory_info().rss < self.graph.maxMem:
-                        gr = greenlet.greenlet(closure)
+                        gr = greenlet.greenlet(self.processReqObject)
                         self.currentRequestLevel = reqObject.requestLevel
-                        #print "Handling request of level", self.currentRequestLevel, "Memory: ", self.process.get_memory_info().rss / (1024**2), "MB"
-                        gr.switch()
+                        gr.switch( reqObject)
                     else:
                         self.graph.tasks.put(task) #move task back to task queue
                         print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
@@ -1501,37 +1524,25 @@ class Graph(object):
         self.operators = []
         self.tasks = LifoQueue() #Lifo <-> depth first, fifo <-> breath first
         self.workers = []
+        self.freeWorkers = deque()
         self.running = True
         self.numThreads = numThreads
         self.maxMem = softMaxMem # in bytes
-        self.workAvailableEvent = Event()
         
         for i in xrange(self.numThreads):
             w = Worker(self)
             self.workers.append(w)
             w.start()
+            self.freeWorkers.append(w)
     
-    def putTask(self, func, reqObject):
-
-        def runnerClosure(): #TODO: move this code into worker
-            func(reqObject.key, reqObject.destination)
-            reqObject.lock.acquire()
-            reqObject.event.set()
-            if reqObject.closure is not None:
-                reqObject.closure()
-            reqObject.lock.release()
-            
-            #append 
-            if reqObject.greenlet is not None:
-                reqObject.thread.finishedRequests.append(reqObject)
-                self.workAvailableEvent.set()
-
-            return None
-
-        task = [-reqObject.requestLevel, runnerClosure, reqObject]
+    def putTask(self, reqObject):
+        task = [-reqObject.requestLevel, reqObject]
         self.tasks.put(task)
-        self.workAvailableEvent.set()
         
+        if len(self.freeWorkers) > 0:
+            w = self.freeWorkers.pop()
+            self.freeWorkers.appendleft(w)
+            w.signalWorkAvailable()
     
     def finalize(self):
         print "Finalizing Graph..."
