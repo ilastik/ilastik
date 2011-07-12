@@ -8,14 +8,15 @@
 #include <vigra/multi_convolution.hxx>
 #include <vigra/functorexpression.hxx>
 
-#include "starContext.hxx"
+//#include "starContext.hxx"
 #include "starContextMulti.hxx"
+#include "integralImage.hxx"
 
 
 namespace python = boost::python;
 
-namespace vigra
-{
+//namespace vigra
+//{
 template <class IND, class T>
 NumpyAnyArray pythonStarContext2Dmulti(NumpyArray<1, Singleband<IND> > radii,
                                        NumpyArray<3, Multiband<T> > predictions,
@@ -37,6 +38,15 @@ NumpyAnyArray pythonAvContext2Dmulti(NumpyArray<1, Singleband<IND> >& sizes,
     return res;
 }
 
+template <class T>
+NumpyAnyArray pythonIntegralImage(NumpyArray<3, Multiband<T> > image,
+                                  NumpyArray<3, Multiband<T> > res)
+{
+    integralImage(image, res);
+    std::cout<<"back at glue function"<<std::endl;
+    return res;
+}
+
 void defineContext() {
     using namespace python;
                                                                         
@@ -47,9 +57,11 @@ void defineContext() {
     def("avContext2Dmulti", registerConverters(&pythonAvContext2Dmulti<int, float>), (arg("sizes"), arg("predictions"),
                                                                                       arg("out")=python::object()));
     def("avContext2Dmulti", registerConverters(&pythonAvContext2Dmulti<unsigned int, float>), (arg("sizes"), arg("predictions"),
-                                                                                      arg("out")=python::object()));                                                                                   
+                                                                                      arg("out")=python::object())); 
+    //we define for floats because we want to use it on probability maps                                                                                  
+    def("integralImage", registerConverters(&pythonIntegralImage<float>), (arg("image"), arg("out")=python::object()));
 }
-} //namespace vigra
+//} //namespace vigra
 
 using namespace vigra;
 using namespace boost::python;
