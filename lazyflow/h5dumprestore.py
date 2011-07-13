@@ -66,7 +66,7 @@ def stringToClass(s):
          cls = __import__(parts[0])
          cls = cls.__dict__
     else:
-        cls = cls
+        cls = cls.__dict__
     for p in parts[1:-1]:
         cls = cls[p].__dict__
     cls = cls[parts[-1]]
@@ -86,7 +86,7 @@ def classToString(thing):
     """
     return str(thing.__module__ + "." + thing.__name__)
 
-def dumpObjectToH5G(self, thing):
+def dumpObjectToH5G(self, thing, patchBoard = {}):
     """
     Helper method that is injected into the h5py.Group class.
     
@@ -98,8 +98,18 @@ def dumpObjectToH5G(self, thing):
     
     self.attrs["className"] = instanceClassToString(thing)
     self.attrs["id"] = id(thing)
+    if patchBoard.has_key(id(thing)):
+        # if the object has already been stored, return
+        # this might happen in circular dependencies
+        objGroup = self[patchBoard[id(thing)]]
+        self.attrs["className"] = "h5dumprestoreReference"
+        self.attrs["reference"] = str(objGroup.name)
+        return 
+    else:
+        patchBoard[id(thing)] = str(self.name) #save the group in which an object is stored
+    
     if hasattr(thing, "dumpToH5G"):
-        thing.dumpToH5G(self)
+        thing.dumpToH5G(self, patchBoard)
     else:
         if isinstance(thing,numpy.ndarray):
             self.attrs["dtype"] = thing.dtype.__str__()
@@ -109,16 +119,16 @@ def dumpObjectToH5G(self, thing):
             else:
                 for i,o in enumerate(thing.ravel()):
                     g = self.create_group(str(i))
-                    g.dumpObject(o)
+                    g.dumpObject(o, patchBoard)
         elif isinstance(thing, (list,tuple)):
             self.attrs["len"] = len(thing)
             for i,o in enumerate(thing):
                 g = self.create_group(str(i))
-                g.dumpObject(o)
+                g.dumpObject(o, patchBoard)
         elif isinstance(thing, dict):
             for i,o in thing.items():
                 g = self.create_group(str(i))
-                g.dumpObject(o)
+                g.dumpObject(o, patchBoard)
             
         else:          
             if not isinstance(thing, (float, int, str, string)):
@@ -126,7 +136,8 @@ def dumpObjectToH5G(self, thing):
             self.attrs["value"] = thing
 
 
-def reconstructObjectFromH5G(self):
+
+def reconstructObjectFromH5G(self, patchBoard = None):
     """
     Helper method that is injected into the h5py.Group class.
     
@@ -134,11 +145,27 @@ def reconstructObjectFromH5G(self):
         
         group.reconstructObject(someObject)
     
-    """
+    """        
+    if patchBoard is None:
+        patchBoard = {}
+        self.patchBoard = patchBoard
     
+    #handle circular references
+    if patchBoard.has_key(self.attrs["id"]):
+        return patchBoard[self.attrs["id"]]
+    
+    if self.attrs["className"] == "h5dumprestoreReference":
+        origGroup = self[self.attrs["reference"]]
+        result = origGroup.reconstructObject(patchBoard)
+        patchBoard[self.attrs["id"]] = result
+
+        return result
+        
     cls = stringToClass(self.attrs["className"])
     if hasattr(cls,"reconstructFromH5G"):
-        return cls.reconstructFromH5G(self)
+        result =  cls.reconstructFromH5G(self, patchBoard)
+        patchBoard[self.attrs["id"]] = result
+
     else:
         if cls == numpy.ndarray:
             try:
@@ -152,24 +179,30 @@ def reconstructObjectFromH5G(self):
                 arr = numpy.ndarray(g.attrs["shape"], dtype = dtype)
                 view = arr.ravel()
                 for i,g in self.items():
-                    view[int(i)] = g.reconstructObject()
-            return arr
+                    view[int(i)] = g.reconstructObject(patchBoard)
+            result = arr
+            patchBoard[self.attrs["id"]] = result
+
         elif cls == list or cls == tuple:
             length = self.attrs["len"]
             temp = range(0,length)
+            patchBoard[self.attrs["id"]] = temp
             for i,g in self.items():
-                temp[int(i)] = g.reconstructObject()
+                temp[int(i)] = g.reconstructObject(patchBoard)
             if cls == tuple:
                 temp = tuple(temp)
-            return temp
+            result =  temp
         elif cls == dict:
             temp = {}
+            patchBoard[self.attrs["id"]] = temp
             for i,g in self.items():
-                temp[str(i)] = g.reconstructObject()
-            return temp
+                temp[str(i)] = g.reconstructObject(patchBoard)
+            result =  temp
         else:
-            return self.attrs["value"]
-            
+            result =  self.attrs["value"]
+            patchBoard[self.attrs["id"]] = result
+
+    return result
 
 
 # inject the above two helper methods into
@@ -189,7 +222,7 @@ setattr(h5py.Group,"reconstructObject",reconstructObjectFromH5G)
 
 import vigra
 
-def dumpAxisTags(self, h5G):
+def dumpAxisTags(self, h5G, patchBoard):
     cp = copy.copy(self)
     length = len(cp)
     cp.dropChannelAxis()
@@ -199,9 +232,9 @@ def dumpAxisTags(self, h5G):
         insertChannel = True
     h5G.attrs["ndim"] =  length2
     h5G.attrs["hasChannelAxis"] = insertChannel
-    
+        
 
-def reconstructAxisTags(cls, h5G):
+def reconstructAxisTags(cls, h5G, patchBoard):
     ndim = h5G.attrs["ndim"]
     at = vigra.VigraArray.defaultAxistags(ndim)
     if h5G.attrs["hasChannelAxis"] == True:
@@ -225,7 +258,7 @@ setattr(vigra.AxisTags,"reconstructFromH5G", types.MethodType(reconstructAxisTag
 
 import tempfile
 
-def dumpRF(self, h5G):
+def dumpRF(self, h5G, patchBoard):
     """
     hackish way to save into our own hdf5 group dataset and keep control
     of things, we do not like C/C++ coded hdf5 saving
@@ -243,7 +276,7 @@ def dumpRF(self, h5G):
     
 import time
 
-def reconstructRF(cls, h5G):
+def reconstructRF(cls, h5G, patchBoard):
     """
     hackish way to restore from our own hdf5 group dataset.
     """    
@@ -299,3 +332,4 @@ if __name__ == '__main__':
     g.dumpObject(rf)
     o2 = g.reconstructObject()
     
+    f.close()
