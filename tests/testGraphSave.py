@@ -3,7 +3,7 @@ import threading
 from lazyflow.graph import *
 import copy
 
-from lazyflow.operators.operators import OpArrayPiper 
+from lazyflow.operators.operators import OpArrayPiper, OpArrayCache
 from lazyflow.operators.vigraOperators import *
 from lazyflow.operators.valueProviders import *
 from lazyflow.operators.classifierOperators import *
@@ -184,14 +184,16 @@ if __name__=="__main__":
     opPredict.inputs['LabelsCount'].setValue(2)
     
     
+    opcache = OpArrayCache(g)    
+    opcache.inputs["Input"].connect(opPredict.outputs['PMaps'])
     
     selector=OpSingleChannelSelector(g)
     
     
     selector.inputs["Index"].setValue(1)
-    selector.inputs["Input"].connect(opPredict.outputs['PMaps'])
+    selector.inputs["Input"].connect(opcache.outputs['Output'])
     
-    print selector.outputs["Output"][:].allocate().wait()
+    result =  opcache.outputs["Output"][:].allocate().wait()
     
     
     
@@ -202,12 +204,16 @@ if __name__=="__main__":
     
     group = f.create_group("graph")
     group.dumpObject(g)
+    g.finalize()    
     
-    outId = id(selector.outputs["Output"])
+    outId = id(opcache.outputs["Output"])
     g2 = group.reconstructObject()
     
     
-    group.patchBoard[outId][:].allocate().wait()
+    result2 = group.patchBoard[outId][:].allocate().wait()
+    
+    
+    assert (result2 == result).all()
     
     g.finalize()
     g2.finalize()

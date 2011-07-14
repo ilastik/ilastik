@@ -4,6 +4,7 @@ from lazyflow.graph import Operators, Operator, InputSlot, OutputSlot, MultiInpu
 from lazyflow.roi import sliceToRoi, roiToSlice, block_view
 from Queue import Empty
 from collections import deque
+from lazyflow.h5dumprestore import stringToClass
 import greenlet, threading
 import vigra
 import copy
@@ -199,7 +200,8 @@ class OpArrayCache(OpArrayPiper):
             blockShape = 128
         self._origBlockShape = blockShape
         self._immediateAlloc = immediateAlloc
-
+        self._lock = threading.Lock()
+        
     def notifyConnectAll(self):
         inputSlot = self.inputs["Input"]
         OpArrayPiper.notifyConnectAll(self)
@@ -233,8 +235,6 @@ class OpArrayCache(OpArrayPiper):
                             #0 is "in process"
         self._blockState[:]= 1 #this is the dirty state
         self._dirtyState = 2 #this is the clean state
-        
-        self._lock = threading.Lock()
         
         # allocate queryArray object
         self._flatBlockIndices =  self._blockIndices[:]
@@ -421,3 +421,42 @@ class OpArrayCache(OpArrayPiper):
         #pass request on
         self.outputs["Output"][key] = value
         
+        
+        
+    def dumpToH5G(self, h5g, patchBoard):
+        
+        h5g.dumpSubObjects({
+                    "graph": self.graph,
+                    "inputs": self.inputs,
+                    "outputs": self.outputs,
+                    "_origBlockShape" : self._origBlockShape,
+                    "_blockShape" : self._blockShape,
+                    "_dirtyShape" : self._dirtyShape,
+                    "_blockState" : self._blockState,
+                    "_dirtyState" : self._dirtyState,
+                    "_cache" : self._cache,
+                },patchBoard)    
+                
+                
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        g = h5g["graph"].reconstructObject(patchBoard)
+        
+        op = stringToClass(h5g.attrs["className"])(g)
+        
+        patchBoard[h5g.attrs["id"]] = op
+        h5g.reconstructSubObjects(op, {
+                    "inputs": "inputs",
+                    "outputs": "outputs",
+                    "_origBlockShape" : "_origBlockShape",
+                    "_blockShape" : "_blockShape",
+                    "_blockState" : "_blockState",
+                    "_dirtyState" : "_dirtyState",
+                    "_dirtyShape" : "_dirtyShape",
+                    "_cache" : "_cache",
+                },patchBoard)    
+
+        setattr(op, "_blockQuery", numpy.ndarray(op._dirtyShape, dtype = object))
+
+        return op        
