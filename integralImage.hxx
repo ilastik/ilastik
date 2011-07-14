@@ -9,8 +9,8 @@
 
 using namespace vigra;
 
-template <class T>
-void integralImage(NumpyArray<3, Multiband<T> >& image, NumpyArray<3, Multiband<T> >& intimage)
+template <class T, class S1, class S2>
+void integralImage(MultiArrayView<3, T, S1>& image, MultiArrayView<3, T, S2>& intimage)
 {
     //compute the integral image of a given image
     //for multichannel images, compute channelwise

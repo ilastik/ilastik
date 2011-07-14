@@ -1,9 +1,7 @@
-import vigra
-import h5py
 import numpy
 import time
-import add_context_functions as fun
-from vigra import context
+#import add_context_functions as fun
+import context
 
 
 nx = 3
@@ -20,9 +18,9 @@ for x in range(nx):
 
 #dummy = vigra.VigraArray(dummypred.shape, axistags=vigra.VigraArray.defaultAxistags(3)).astype(dummypred.dtype)
 #dummy[:]=dummypred[:]
-print dummy.dtype,dummy.shape,type(dummy)
+#print dummy.dtype,dummy.shape,type(dummy)
 print "here", dummypred.shape
-vigra.context.starContext2Dmulti(radii, dummypred, res)
+context.starContext2Dmulti(radii, dummypred, res)
 print res
 
 print "first test"

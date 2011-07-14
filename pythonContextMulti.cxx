@@ -29,9 +29,9 @@ NumpyAnyArray pythonStarContext2Dmulti(NumpyArray<1, Singleband<IND> > radii,
 }
 
 template <class IND, class T>
-NumpyAnyArray pythonAvContext2Dmulti(NumpyArray<1, Singleband<IND> >& sizes,
-                                     NumpyArray<3, Multiband<T> >& predictions,
-                                     NumpyArray<3, Multiband<T> >& res)
+NumpyAnyArray pythonAvContext2Dmulti(NumpyArray<1, Singleband<IND> > sizes,
+                                     NumpyArray<3, Multiband<T> > predictions,
+                                     NumpyArray<3, Multiband<T> > res)
 {
     avContext2Dmulti(sizes, predictions, res);
     std::cout<<"back at glue function"<<std::endl;
