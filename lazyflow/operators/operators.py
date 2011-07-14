@@ -244,6 +244,7 @@ class OpArrayCache(OpArrayPiper):
             
 
     def notifyDirty(self, slot, key):
+        print "OpArrayCache : DIRTY", key
         start, stop = sliceToRoi(key, self.shape)
         
         self._lock.acquire()
@@ -402,6 +403,8 @@ class OpArrayCache(OpArrayPiper):
         
         
     def setInSlot(self, slot, key, value):
+        print "OpArrayCache : SetInSlot", key
+        
         start, stop = sliceToRoi(key, self.shape)
         blockStart = numpy.ceil(1.0 * start / self._blockShape)
         blockStop = numpy.floor(1.0 * stop / self._blockShape)
@@ -424,7 +427,6 @@ class OpArrayCache(OpArrayPiper):
         
         
     def dumpToH5G(self, h5g, patchBoard):
-        
         h5g.dumpSubObjects({
                     "graph": self.graph,
                     "inputs": self.inputs,
@@ -458,5 +460,8 @@ class OpArrayCache(OpArrayPiper):
                 },patchBoard)    
 
         setattr(op, "_blockQuery", numpy.ndarray(op._dirtyShape, dtype = object))
+
+        if op.dtype == object:
+            print op._cache
 
         return op        

@@ -171,11 +171,15 @@ if __name__=="__main__":
     opTrain.inputs['Labels'].connectAdd(labelsReader.outputs["Image"])
     opTrain.inputs['Images'].connectAdd(stacker.outputs["Output"])
     
+    opcacheC = OpArrayCache(g)    
+    opcacheC.inputs["Input"].connect(opTrain.outputs['Classifier'])
+    
+    
     #print "Here ########################", opTrain.outputs['Classifier'][:].allocate().wait()    
     
     ##################Prediction
     opPredict=OpPredictRandomForest(g)
-    opPredict.inputs['Classifier'].connect(opTrain.outputs['Classifier'])    
+    opPredict.inputs['Classifier'].connect(opcacheC.outputs['Output'])    
     
 
     opPredict.inputs['Image'].connect(stacker.outputs['Output'])
@@ -196,9 +200,6 @@ if __name__=="__main__":
     result =  opcache.outputs["Output"][:].allocate().wait()
     
     
-    
-    
-    
     import h5py
     f = h5py.File("/tmp/test.h5","w")
     
@@ -207,13 +208,18 @@ if __name__=="__main__":
     g.finalize()    
     
     outId = id(opcache.outputs["Output"])
+    outIdC = id(opcacheC.outputs["Output"])
     g2 = group.reconstructObject()
     
-    
+        
     result2 = group.patchBoard[outId][:].allocate().wait()
     
     
     assert (result2 == result).all()
+    
+    
+    classifier = group.patchBoard[outIdC][:].allocate().wait()[0]
+    assert isinstance(classifier, vigra.learning.RandomForest)
     
     g.finalize()
     g2.finalize()

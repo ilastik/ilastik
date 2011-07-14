@@ -126,12 +126,15 @@ def dumpObjectToH5G(self, thing, patchBoard = {}):
         if isinstance(thing,numpy.ndarray):
             self.attrs["dtype"] = thing.dtype.__str__()
             self.attrs["shape"] = thing.shape
-            if thing.dtype is not object:
+            if thing.dtype != object:
                 self.create_dataset("ndarray", data = thing)
             else:
-                for i,o in enumerate(thing.ravel()):
+                view = thing.ravel()
+                for i in range(view.shape[0]):
                     g = self.create_group(str(i))
-                    g.dumpObject(o, patchBoard)
+                    g.dumpObject(view[i], patchBoard)
+                    print "MOTHERFUCKER SAVE", i, g.attrs["className"], view[i]
+                    
         elif isinstance(thing, (list,tuple)):
             self.attrs["len"] = len(thing)
             for i,o in enumerate(thing):
@@ -196,13 +199,14 @@ def reconstructObjectFromH5G(self, patchBoard = None):
             except:
                 #assume that otherwise the dtype has been an object ?! correct ??
                 dtype = object
-            if dtype is not object:
+            if dtype != object:
                 arr = self["ndarray"][:]
             else:
-                arr = numpy.ndarray(g.attrs["shape"], dtype = dtype)
+                arr = numpy.ndarray(self.attrs["shape"], dtype = object)
                 view = arr.ravel()
                 for i,g in self.items():
                     view[int(i)] = g.reconstructObject(patchBoard)
+                    print "MOTHERFUCKER LOAD", i, view[int(i)]
             result = arr
             patchBoard[self.attrs["id"]] = result
 
