@@ -3,3 +3,4 @@ tests/*.h5
 *.pyc
 *.*~
 tests/*.png
+tests/images
