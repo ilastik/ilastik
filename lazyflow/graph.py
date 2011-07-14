@@ -464,6 +464,33 @@ class InputSlot(object):
             else:
                 return vigra.VigraArray.defaultAxistags(len(self.shape))
 
+    def dumpToH5G(self, h5g, patchBoard):
+        h5g.dumpSubObjects({
+            "name" : self.name,
+            "level" : self.level,
+            "operator" : self.operator,
+            "partner" : self.partner,
+            "value" : self._value,
+            "stype" : self.stype
+            
+        },patchBoard)
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        s = cls("temp")
+        
+        h5g.reconstructSubObjects(s,{
+            "name" : "name",
+            "level" : "level",
+            "operator" : "operator",
+            "partner" : "partner",
+            "value" : "_value",
+            "stype" : "stype"
+            
+        },patchBoard)
+
+        return s
     
 class OutputSlot(object):
     """
@@ -585,6 +612,38 @@ class OutputSlot(object):
         return self._axistags
 
 
+    def dumpToH5G(self, h5g, patchBoard):
+        h5g.dumpSubObjects({
+            "name" : self.name,
+            "level" : self.level,
+            "operator" : self.operator,
+            "shape" : self._shape,
+            "axistags" : self._axistags,
+            "dtype" : self._dtype,
+            "partners" : self.partners,
+            "stype" : self.stype
+            
+        },patchBoard)
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        s = cls("temp")
+        
+        h5g.reconstructSubObjects(s,{
+            "name" : "name",
+            "level" : "level",
+            "operator" : "operator",
+            "shape" : "_shape",
+            "axistags" : "_axistags",
+            "dtype" : "_dtype",
+            "partners" : "partners",
+            "stype" : "stype"
+            
+        },patchBoard)
+            
+        return s
+        
 
 class MultiInputSlot(object):
     """
@@ -812,6 +871,34 @@ class MultiInputSlot(object):
     def graph(self):
         return self.operator.graph
 
+    def dumpToH5G(self, h5g, patchBoard):
+        h5g.dumpSubObjects({
+            "name" : self.name,
+            "level" : self.level,
+            "operator" : self.operator,
+            "partner" : self.partner,
+            "stype" : self.stype,
+            "inputSlots": self.inputSlots
+            
+        },patchBoard)
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        s = cls("temp")
+        
+        h5g.reconstructSubObjects(s,{
+            "name" : "name",
+            "level" : "level",
+            "operator" : "operator",
+            "partner" : "partner",
+            "stype" : "stype",
+            "inputSlots": "inputSlots"
+            
+        },patchBoard)
+            
+        return s
+
 
 class MultiOutputSlot(object):
     """
@@ -948,6 +1035,36 @@ class MultiOutputSlot(object):
     def graph(self):
         return self.operator.graph
 
+
+    def dumpToH5G(self, h5g, patchBoard):
+        h5g.dumpSubObjects({
+            "name" : self.name,
+            "level" : self.level,
+            "operator" : self.operator,
+            "partners" : self.partners,
+            "stype" : self.stype,
+            "outputSlots" : self.outputSlots
+            
+        },patchBoard)
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        s = cls("temp")
+        
+        h5g.reconstructSubObjects(s,{
+            "name" : "name",
+            "level" : "level",
+            "operator" : "operator",
+            "partners" : "partners",
+            "stype" : "stype",
+            "outputSlots" : "outputSlots"
+            
+        },patchBoard)
+            
+        return s
+
+
 class Operator(object):
     """
     The base class for all Operators.
@@ -1059,7 +1176,33 @@ class Operator(object):
         pass
 
 
+    def dumpToH5G(self, h5g, patchBoard):
+        h5inputs = h5g.create_group("inputs")
+        h5inputs.dumpObject(self.inputs)
 
+        h5outputs = h5g.create_group("outputs")
+        h5outputs.dumpObject(self.outputs)
+        
+        h5graph = h5g.create_group("graph")
+        h5graph.dumpObject(self.graph)
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        h5graph = h5g["graph"]        
+        g = h5graph.reconstructObject(patchBoard)        
+        op = stringToClass(h5g.attrs["className"])(g)
+
+        patchBoard[h5g.attrs["id"]] = op        
+        
+        h5inputs = h5g["inputs"]
+        op.inputs = h5inputs.reconstructObject(patchBoard)
+        
+        h5outputs = h5g["outputs"]
+        op.outputs = h5outputs.reconstructObject(patchBoard)
+        
+        return op
+        
 class OperatorWrapper(Operator):
     name = ""
     
@@ -1075,68 +1218,69 @@ class OperatorWrapper(Operator):
         self.inputs = {}
         self.outputs = {}
         self.operator = operator
-        self.graph = operator.graph
-        self.name = operator.name
-        self.comprehensionSlots = 1
-        self.innerOperators = []
-        self.comprehensionCount = 0
-        self.origInputs = self.operator.inputs.copy()
-        self.origOutputs = self.operator.outputs.copy()
-        print "wrapping ", operator.name, operator
-        
-        self._inputSlots = []
-        self._outputSlots = []
-        
-        # replicate input slot definitions
-        for islot in self.operator.inputSlots:
-            level = islot.level + 1
-            self._inputSlots.append(MultiInputSlot(islot.name, stype = islot.stype, level = level))
-
-        # replicate output slot definitions
-        for oslot in self.outputSlots:
-            level = oslot.level + 1
-            self._outputSlots.append(MultiOutputSlot(oslot.name, stype = oslot.stype, level = level))
-
-                
-        # replicate input slots for the instance
-        for islot in self.operator.inputs.values():
-            level = islot.level + 1
-            ii = MultiInputSlot(islot.name, self, stype = islot.stype, level = level)
-            self.inputs[islot.name] = ii
-            op = self.operator
-            while isinstance(op.operator, (Operator, MultiInputSlot)):
-                op = op.operator
-            op.inputs[islot.name] = ii
-        
-        # replicate output slots for the instance
-        for oslot in self.operator.outputs.values():
-            level = oslot.level + 1
-            oo = MultiOutputSlot(oslot.name, self, stype = oslot.stype, level = level)
-            self.outputs[oslot.name] = oo
-            op = self.operator
-            while isinstance(op.operator, (Operator, MultiOutputSlot)):
-                op = op.operator
-            op.outputs[oslot.name] = oo
-
-        #connect input slots
-        for islot in self.origInputs.values():
-            ii = self.inputs[islot.name]
-            partner = islot.partner
-            islot.disconnect()
-            self.operator.inputs[islot.name] = ii
-            if partner is not None:
-                partner._connect(ii)
-                
-        self._connectInnerOutputs()
-
-
-        #connect output slots
-        for oslot in self.origOutputs.values():
-            oo = self.outputs[oslot.name]            
-            partners = copy.copy(oslot.partners)
-            oslot.disconnect()
-            for p in partners:         
-                oo._connect(p)
+        if operator is not None:
+            self.graph = operator.graph
+            self.name = operator.name
+            self.comprehensionSlots = 1
+            self.innerOperators = []
+            self.comprehensionCount = 0
+            self.origInputs = self.operator.inputs.copy()
+            self.origOutputs = self.operator.outputs.copy()
+            print "wrapping ", operator.name, operator
+            
+            self._inputSlots = []
+            self._outputSlots = []
+            
+            # replicate input slot definitions
+            for islot in self.operator.inputSlots:
+                level = islot.level + 1
+                self._inputSlots.append(MultiInputSlot(islot.name, stype = islot.stype, level = level))
+    
+            # replicate output slot definitions
+            for oslot in self.outputSlots:
+                level = oslot.level + 1
+                self._outputSlots.append(MultiOutputSlot(oslot.name, stype = oslot.stype, level = level))
+    
+                    
+            # replicate input slots for the instance
+            for islot in self.operator.inputs.values():
+                level = islot.level + 1
+                ii = MultiInputSlot(islot.name, self, stype = islot.stype, level = level)
+                self.inputs[islot.name] = ii
+                op = self.operator
+                while isinstance(op.operator, (Operator, MultiInputSlot)):
+                    op = op.operator
+                op.inputs[islot.name] = ii
+            
+            # replicate output slots for the instance
+            for oslot in self.operator.outputs.values():
+                level = oslot.level + 1
+                oo = MultiOutputSlot(oslot.name, self, stype = oslot.stype, level = level)
+                self.outputs[oslot.name] = oo
+                op = self.operator
+                while isinstance(op.operator, (Operator, MultiOutputSlot)):
+                    op = op.operator
+                op.outputs[oslot.name] = oo
+    
+            #connect input slots
+            for islot in self.origInputs.values():
+                ii = self.inputs[islot.name]
+                partner = islot.partner
+                islot.disconnect()
+                self.operator.inputs[islot.name] = ii
+                if partner is not None:
+                    partner._connect(ii)
+                    
+            self._connectInnerOutputs()
+    
+    
+            #connect output slots
+            for oslot in self.origOutputs.values():
+                oo = self.outputs[oslot.name]            
+                partners = copy.copy(oslot.partners)
+                oslot.disconnect()
+                for p in partners:         
+                    oo._connect(p)
 
     def getOriginalOperator(self):
         op = self.operator
@@ -1362,6 +1506,38 @@ class OperatorWrapper(Operator):
         pass
 
 
+    def dumpToH5G(self, h5g, patchBoard):
+        h5g.dumpSubObjects({
+                    "operator": self.operator,
+                    "origInputs": self.origInputs,
+                    "origOutputs": self.origOutputs,
+                    "_inputSlots": self._inputSlots,
+                    "_outputSlots": self._outputSlots,
+                    "inputs": self.inputs,
+                    "outputs": self.outputs,
+                    "innerOperators": self.innerOperators                    
+                },patchBoard)    
+                
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        op = stringToClass(h5g.attrs["className"])(None)
+        
+        patchBoard[h5g.attrs["id"]] = op
+        
+        h5g.reconstructSubObjects(op, {
+                    "operator" : "operator",
+                    "origInputs": "origInputs",
+                    "origOutputs": "origOutputs",
+                    "_inputSlots": "_inputSlots",
+                    "_outputSlots": "_outputSlots",
+                    "inputs": "inputs",
+                    "outputs": "outputs",
+                    "innerOperators": "innerOperators"                    
+                },patchBoard)    
+
+        return op
+
 class OperatorGroup(Operator):
     def __init__(self, graph):
         Operator.__init__(self,graph)
@@ -1563,8 +1739,23 @@ class Graph(object):
         self.operators.remove(op)
         op.disconnect()
  
+    def dumpToH5G(self, h5g, patchBoard):
+        h5op = h5g.create_group("operators")
+        h5op.dumpObject(self.operators, patchBoard)
+        
+        h5g.attrs["numThreads"] = self.numThreads
+        h5g.attrs["softMaxMem"] = self.maxMem
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        g = Graph(numThreads = h5g.attrs["numThreads"], softMaxMem = h5g.attrs["softMaxMem"])
+        patchBoard[h5g.attrs["id"]] = g 
+        h5ops = h5g["operators"]        
+        g.operators = h5ops.reconstructObject(patchBoard)
  
-    def dumpToH5G(self,h5g):
+        return g
+ 
+    def dumpToH5G_OLD(self,h5g):
         endPoints = []
         
         # loop over all operators and
@@ -1644,7 +1835,7 @@ class Graph(object):
         
         
     @classmethod
-    def reconstructFromH5G(cls, h5g):
+    def reconstructFromH5G_OLD(cls, h5g, patchBoard):
         graph = Graph()
         
         reconstructedOperators = {}        

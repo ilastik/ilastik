@@ -15,8 +15,16 @@ reconstructedObject = g.reconstructObject()
 
 To support hdf5 dumping and restoring your
 objects must implement the interface of the
-H5Dumpable class.
+H5Dumpable class. I.e. your class should reimplement the following
+two methods:
     
+    def dumpToH5G(self, h5g, patchBoard):
+        pass
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        pass
+
 """
 import h5py
 import string
@@ -66,10 +74,14 @@ def stringToClass(s):
          cls = __import__(parts[0])
          cls = cls.__dict__
     else:
-        cls = cls.__dict__
+        if not isinstance(cls, dict):
+            cls = cls.__dict__
     for p in parts[1:-1]:
         cls = cls[p].__dict__
-    cls = cls[parts[-1]]
+    if parts[-1] == "NoneType":
+        cls = type(None)
+    else:
+        cls = cls[parts[-1]]
     return cls
 
 def instanceClassToString(thing):
@@ -129,9 +141,16 @@ def dumpObjectToH5G(self, thing, patchBoard = {}):
             for i,o in thing.items():
                 g = self.create_group(str(i))
                 g.dumpObject(o, patchBoard)
-            
+        elif isinstance(thing, type(None)):
+            pass
+        elif isinstance(thing, numpy.dtype):
+            self.attrs["name"] =  thing.name
+        elif isinstance(thing, type):
+            self.attrs["name"] =  thing.__name__
+        elif isinstance(thing, type):
+            pass
         else:          
-            if not isinstance(thing, (float, int, str, string)):
+            if not isinstance(thing, (float, int, str)):
                 print "h5serialize.py: UNKNOWN CLASS", thing, thing.__class__
             self.attrs["value"] = thing
 
@@ -146,12 +165,14 @@ def reconstructObjectFromH5G(self, patchBoard = None):
         group.reconstructObject(someObject)
     
     """        
+    resultIsNone = False
     if patchBoard is None:
         patchBoard = {}
         self.patchBoard = patchBoard
     
     #handle circular references
     if patchBoard.has_key(self.attrs["id"]):
+        #assert patchBoard[self.attrs["id"]] is not None
         return patchBoard[self.attrs["id"]]
     
     if self.attrs["className"] == "h5dumprestoreReference":
@@ -164,7 +185,9 @@ def reconstructObjectFromH5G(self, patchBoard = None):
     cls = stringToClass(self.attrs["className"])
     if hasattr(cls,"reconstructFromH5G"):
         result =  cls.reconstructFromH5G(self, patchBoard)
+        assert result is not None, "%r %r" % (self.attrs["className"],self.attrs["className"])
         patchBoard[self.attrs["id"]] = result
+    
 
     else:
         if cls == numpy.ndarray:
@@ -198,17 +221,46 @@ def reconstructObjectFromH5G(self, patchBoard = None):
             for i,g in self.items():
                 temp[str(i)] = g.reconstructObject(patchBoard)
             result =  temp
-        else:
+        elif cls in [float, int, str]:
             result =  self.attrs["value"]
             patchBoard[self.attrs["id"]] = result
+        elif cls == type(None):
+            resultIsNone = True
+            result = None
+            #patchBoard[self.attrs["id"]] = None
+        elif cls == numpy.dtype:
+            result = numpy.__dict__[self.attrs["name"]]
+        elif cls == type:
+            result = numpy.__dict__[self.attrs["name"]]
+        else:
+            print "ERROR", self.attrs["className"], cls
+    
+    if not resultIsNone:
+        return result
+    else:
+        return None
 
-    return result
+
+def dumpSubObjectsToH5G(self, subObjects, patchBoard):
+    for k,v in subObjects.items():
+        g = self.create_group(k)       
+        g.dumpObject(v, patchBoard)
+
+def reconstructSubObjectFromH5G(self, mainObject, subObjects, patchBoard):
+    for k,v in subObjects.items():
+        g = self[k]
+        obj = g.reconstructObject(patchBoard)
+        setattr(mainObject, v, obj)
+
+
 
 
 # inject the above two helper methods into
 # the h5py Group class :
 setattr(h5py.Group,"dumpObject",dumpObjectToH5G)
 setattr(h5py.Group,"reconstructObject",reconstructObjectFromH5G)
+setattr(h5py.Group,"dumpSubObjects",dumpSubObjectsToH5G)
+setattr(h5py.Group,"reconstructSubObjects",reconstructSubObjectFromH5G)
 
 
 
@@ -236,9 +288,11 @@ def dumpAxisTags(self, h5G, patchBoard):
 
 def reconstructAxisTags(cls, h5G, patchBoard):
     ndim = h5G.attrs["ndim"]
-    at = vigra.VigraArray.defaultAxistags(ndim)
     if h5G.attrs["hasChannelAxis"] == True:
-        at.insertChannelAxis()
+        at = vigra.VigraArray.defaultAxistags(ndim + 1)
+    else:
+        at = vigra.VigraArray.defaultAxistags(ndim + 1)
+        at.dropChannelAxis()
     return at
         
 setattr(vigra.AxisTags,"dumpToH5G",dumpAxisTags)
