@@ -1,4 +1,4 @@
-#include <Python.h>
+//#include <Python.h>
 #include <iostream>
 #include <boost/python.hpp>
 #include <set>
@@ -10,7 +10,7 @@
 
 #include "starContext.hxx"
 #include "starContextMulti.hxx"
-
+#include "histogram.hxx"
 
 namespace python = boost::python;
 
@@ -73,7 +73,31 @@ NumpyAnyArray pythonStarContext2Dmulti(NumpyArray<1, Singleband<IND> > radii,
     return res;
 }
                    
-                   
+template <class IND, class T>
+NumpyAnyArray
+pythonHistogram2D(NumpyArray<3, Multiband<IND> > predictions,
+				  int nbins,
+                  NumpyArray<3, Multiband<T> > res=python::object())
+{
+	int h=predictions.shape(0);
+	int w=predictions.shape(1);
+	int c=predictions.shape(2);
+
+	vigra_precondition(c>=2,"right now is better");
+
+	MultiArrayShape<3>::type sh(h,w,c);
+    res.reshapeIfEmpty(sh);
+
+    histogram2D(predictions,nbins,res);
+
+    return res;
+
+
+
+}
+
+
+
                    
 void defineContext() {
     using namespace python;
