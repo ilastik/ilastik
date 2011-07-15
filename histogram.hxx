@@ -1,5 +1,5 @@
-#ifndef INTEGRALIMAGE_HXX
-#define INTEGRALIMAGE_HXX
+#ifndef HISTOGRAM_HXX
+#define HISTOGRAM_HXX
 
 #include <vigra/multi_array.hxx>
 #include <vigra/multi_pointoperators.hxx>

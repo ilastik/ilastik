@@ -1,4 +1,4 @@
-#include <Python.h>
+//#include <Python.h>
 #include <iostream>
 #include <boost/python.hpp>
 #include <set>
@@ -11,7 +11,7 @@
 //#include "starContext.hxx"
 #include "starContextMulti.hxx"
 #include "integralImage.hxx"
-
+#include "histogram.hxx"
 
 namespace python = boost::python;
 
@@ -22,9 +22,10 @@ NumpyAnyArray pythonStarContext2Dmulti(NumpyArray<1, Singleband<IND> > radii,
                                        NumpyArray<3, Multiband<T> > predictions,
                                        NumpyArray<3, Multiband<T> > res = python::object())
 {
-    
+	{ PyAllowThreads _pythread;
     starContext2Dmulti(radii, predictions, res);
     std::cout<<"back at glue function"<<std::endl;
+	}
     return res;
 }
 
@@ -33,8 +34,10 @@ NumpyAnyArray pythonAvContext2Dmulti(NumpyArray<1, Singleband<IND> > sizes,
                                      NumpyArray<3, Multiband<T> > predictions,
                                      NumpyArray<3, Multiband<T> > res)
 {
+	{ PyAllowThreads _pythread;
     avContext2Dmulti(sizes, predictions, res);
     std::cout<<"back at glue function"<<std::endl;
+	}
     return res;
 }
 
@@ -42,10 +45,40 @@ template <class T>
 NumpyAnyArray pythonIntegralImage(NumpyArray<3, Multiband<T> > image,
                                   NumpyArray<3, Multiband<T> > res)
 {
+	{ PyAllowThreads _pythread;
     integralImage(image, res);
     std::cout<<"back at glue function"<<std::endl;
+	}
     return res;
 }
+
+
+template <class T1, class T2>
+NumpyAnyArray
+pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
+				  int nbins=4,
+                  NumpyArray<3, Multiband<T2> > res=python::object())
+{
+	{ PyAllowThreads _pythread;
+
+
+	int h=predictions.shape(0);
+	int w=predictions.shape(1);
+	int c=predictions.shape(2);
+
+	vigra_precondition(c>=2,"right now is better");
+
+	MultiArrayShape<3>::type sh(h,w,c);
+    res.reshapeIfEmpty(sh);
+
+    histogram2D(predictions,nbins,res);
+
+	}
+    return res;
+
+
+}
+
 
 void defineContext() {
     using namespace python;
@@ -60,6 +93,11 @@ void defineContext() {
                                                                                       arg("out")=python::object())); 
     //we define for floats because we want to use it on probability maps                                                                                  
     def("integralImage", registerConverters(&pythonIntegralImage<float>), (arg("image"), arg("out")=python::object()));
+
+    // Start histogram
+    def("histogram2D",registerConverters(&pythonHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4,
+																				arg("out")=python::object()));
+
 }
 //} //namespace vigra
 

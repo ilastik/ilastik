@@ -19,7 +19,8 @@ namespace vigra
 template <class T>
 NumpyAnyArray pythonSimpleContext(NumpyArray<2, Singleband<T> > predictions, NumpyArray<2, Singleband<T> > res = python::object())
 {
-    res.reshapeIfEmpty(predictions.shape(), "simpleContext(): Output array has wrong shape.");
+
+	res.reshapeIfEmpty(predictions.shape(), "simpleContext(): Output array has wrong shape.");
     std::cout<<"res.shape: "<<res.shape()[0]<<std::endl;
     int count = 0;
     for (int iobs=0; iobs<predictions.shape()[0]; iobs++){
@@ -28,6 +29,8 @@ NumpyAnyArray pythonSimpleContext(NumpyArray<2, Singleband<T> > predictions, Num
             count++;
         }
     }
+	}
+
     return res;
 }
 
@@ -39,6 +42,7 @@ NumpyAnyArray pythonStarContext3D(NumpyArray<1, Singleband<IND> > radii,
                                   NumpyArray<2, Singleband<T> > res = python::object())
 
 {
+	{ PyAllowThreads _pythread;
     //std::cout<<"full shape: "<<fullshape[0]<<" "<<fullshape[1]<<" "<<fullshape[2]<<std::endl;
     //std::cout<<"shape shape: "<<fullshape.size()<<std::endl;
     //std::cout<<"predictions: "<<predictions.shape()<<std::endl;
@@ -47,7 +51,7 @@ NumpyAnyArray pythonStarContext3D(NumpyArray<1, Singleband<IND> > radii,
    
     std::cout<<"back at glue function"<<std::endl;
     std::cout<<"res shape: "<<res.shape()<<std::endl;
-    
+	}
     return res;
 }
 
@@ -58,9 +62,13 @@ NumpyAnyArray pythonStarContext2D(NumpyArray<1, Singleband<IND> > radii,
                                   NumpyArray<2, Singleband<T> > predictions, 
                                   NumpyArray<2, Singleband<T> > res = python::object())
 {
-    starContext2D(radii, fullshape, selections, predictions, res);
+	{ PyAllowThreads _pythread;
+
+	starContext2D(radii, fullshape, selections, predictions, res);
     std::cout<<"returning results: "<<res.shape()<<std::endl;
     return res;
+
+	}
 }
 
 template <class IND, class T>
@@ -68,17 +76,24 @@ NumpyAnyArray pythonStarContext2Dmulti(NumpyArray<1, Singleband<IND> > radii,
                                   NumpyArray<3, Multiband<T> > predictions,
                                   NumpyArray<3, Multiband<T> > res = python::object())
 {
-    starContext2Dmulti(radii, predictions, res);
+	{ PyAllowThreads _pythread;
+	starContext2Dmulti(radii, predictions, res);
     std::cout<<"back at glue function"<<std::endl;
+	}
+
     return res;
+
 }
                    
-template <class IND, class T>
+template <class T1, class T2>
 NumpyAnyArray
-pythonHistogram2D(NumpyArray<3, Multiband<IND> > predictions,
-				  int nbins,
-                  NumpyArray<3, Multiband<T> > res=python::object())
+pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
+				  int nbins=4,
+                  NumpyArray<3, Multiband<T2> > res=python::object())
 {
+	{ PyAllowThreads _pythread;
+
+
 	int h=predictions.shape(0);
 	int w=predictions.shape(1);
 	int c=predictions.shape(2);
@@ -90,8 +105,8 @@ pythonHistogram2D(NumpyArray<3, Multiband<IND> > predictions,
 
     histogram2D(predictions,nbins,res);
 
+	}
     return res;
-
 
 
 }
@@ -111,10 +126,17 @@ void defineContext() {
     def("starContext2D", registerConverters(&pythonStarContext2D<unsigned int, float>), (arg("radii"), arg("fullshape"), arg("selections"), 
                                                                             arg("predictions"), arg("out")=python::object()));                                                                         
     def("starContext2Dmulti", registerConverters(&pythonStarContext2Dmulti<unsigned int, float>), (arg("radii"), arg("predictions"),
-                                                                                         arg("out")=python::object()));
-    def("starContext2Dmulti", registerConverters(&pythonStarContext2Dmulti<int, float>), (arg("radii"), arg("predictions"),
-                                                                                         arg("out")=python::object()));                                                                                         
+																			arg("out")=python::object()));
 
+    def("starContext2Dmulti",registerConverters(&pythonStarContext2Dmulti<int, float>) , (arg("radii"), arg("predictions"),
+        		arg("out")=python::object()));
+
+
+    //histograms features
+
+
+    def("histogram2D",registerConverters(&pythonHistogram2D<int, float>) , (arg("predictions"), arg("nbin")=4,
+                                                                                             arg("out")=python::object()));
 
 }
 }
