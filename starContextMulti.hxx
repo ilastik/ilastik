@@ -285,7 +285,7 @@ void varContext2Dmulti(MultiArrayView<1, IND, S>&sizes,
     
     integralImage(predictions, integral);
     integralImage2(predictions, integral2);
-    
+
     for (IND c=0; c<nclasses; ++c) {
         std::cout<<"class "<<c<<std::endl;
         for (IND x=0; x<nx; ++x) {

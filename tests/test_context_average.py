@@ -10,7 +10,7 @@ import vigra
 #!!! because I'm too lazy to make it generic
 
 nx = 7
-ny = 7
+ny = 10
 nc = 2
 dummypred = numpy.random.rand(nx, ny, nc)
 #dummypred = numpy.arange(nx*ny*nc)
@@ -23,7 +23,7 @@ dummy[:]=dummypred[:]
 
 sizes = numpy.array([1, 2], dtype=numpy.uint32)
 resshape = (nx, ny, nc*sizes.shape[0])
-res = numpy.zeros(resshape, dtype=numpy.float32)
+res = vigra.VigraArray(resshape, axistags=vigra.VigraArray.defaultAxistags(3)).astype(numpy.float32)
 
 print sizes.dtype, dummypred.dtype, res.dtype
 print sizes.shape, dummypred.shape, res.shape

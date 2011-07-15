@@ -42,12 +42,15 @@ NumpyAnyArray pythonAvContext2Dmulti(NumpyArray<1, Singleband<IND> > sizes,
 }
 
 template <class IND, class T>
-void pythonVarContext2Dmulti(NumpyArray<1, Singleband<IND> > sizes,
+NumpyAnyArray pythonVarContext2Dmulti(NumpyArray<1, Singleband<IND> > sizes,
                              NumpyArray<3, Multiband<T> > predictions,
                              NumpyArray<3, Multiband<T> > res)
 {
+    { PyAllowThreads _pythread;
     varContext2Dmulti(sizes, predictions, res);
     std::cout<<"back at glue function"<<std::endl;
+    }
+    return res;
 }
     
 template <class T>
