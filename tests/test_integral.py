@@ -1,5 +1,6 @@
 import numpy
 import context
+import vigra
 
 im = numpy.zeros((5, 5, 2), dtype=numpy.float32)
 intimage = numpy.zeros((5, 5, 2), dtype=numpy.float32)
@@ -48,4 +49,31 @@ if intimage[3, 4, 0]!=4 or intimage[3, 4, 1]!=4 or intimage[4, 3, 0]!=4 or intim
 
 if intimage[4, 4, 0]!=6 or intimage[4, 4, 1]!=6:
     print "wrong5"
+
+nx = 7
+ny = 10
+nc = 2
+
+#dummypred = numpy.random.rand(nx, ny, nc)
+dummypred = numpy.arange(nx*ny*nc)
+dummypred = dummypred.reshape((nx, ny, nc))
+dummypred = dummypred.astype(numpy.float32)
+
+dummy = vigra.VigraArray(dummypred.shape, axistags=vigra.VigraArray.defaultAxistags(3)).astype(dummypred.dtype)
+dummy[:]=dummypred[:]
+
+#intimage = numpy.zeros(dummypred.shape, dtype=numpy.float32)
+intimage = vigra.VigraArray(dummypred.shape, axistags=vigra.VigraArray.defaultAxistags(3)).astype(dummypred.dtype)
+#dummyint[:]=intimage[:]
+
+intimage = context.integralImage(dummy, intimage)
+sum_row00 = numpy.sum(dummypred[0, :, 0])
+sum_row01 = numpy.sum(dummypred[0, :, 1])
+if (abs(sum_row00-intimage[0, ny-1, 0])>1E-5 or abs(sum_row01-intimage[0, ny-1, 1])>1E-5):
+    print "sum of row 0, channel 0:", sum_row00, "computed as: ", intimage[0, intimage.shape[1]-1, 0]
+    print "sum of row 0, channel 1:", sum_row01, "computed as: ", intimage[0, intimage.shape[1]-1, 1]
     
+print
+print dummypred[0, :, 0]
+print intimage[0, :, 0]
+
