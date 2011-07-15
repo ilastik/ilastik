@@ -14,6 +14,8 @@ include_directories(
     ${PYTHON_INCLUDE_PATH}
 )
 add_library(context SHARED pythonContextMulti.cxx)
+add_executable(test test.cxx)
+
 message("xxx ${Boost_PYTHON_LIBRARY} ${VIGRA_NUMPY_CORE_LIBRARY} ${VIGRA_NUMPY_IMPEX_LIBRARY}")
 target_link_libraries(context ${Boost_PYTHON_LIBRARY} ${VIGRA_NUMPY_CORE_LIBRARY} ${PYTHON_LIBRARY})
 IF(WIN32)
