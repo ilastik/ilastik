@@ -170,6 +170,7 @@ if __name__=="__main__":
     opTrain = OpTrainRandomForest(g)
     opTrain.inputs['Labels'].connectAdd(labelsReader.outputs["Image"])
     opTrain.inputs['Images'].connectAdd(stacker.outputs["Output"])
+    opTrain.inputs['fixClassifier'].setValue(False)
     
     #print "Here ########################", opTrain.outputs['Classifier'][:].allocate().wait()    
     

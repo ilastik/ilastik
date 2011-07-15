@@ -15,19 +15,16 @@ class OpTrainRandomForest(Operator):
     description = "Train a random forest on multiple images"
     category = "Learning"
     
-    inputSlots = [MultiInputSlot("Images"),MultiInputSlot("Labels")]
+    inputSlots = [MultiInputSlot("Images"),MultiInputSlot("Labels"), InputSlot("fixClassifier", stype="bool")]
     outputSlots = [OutputSlot("Classifier")]
     
     def notifyConnectAll(self):
-        self.outputs["Classifier"]._dtype = object
-        self.outputs["Classifier"]._shape = (1,)
-        self.outputs["Classifier"]._axistags  = "classifier"
-        
-    def notifySubConnect(self, slots, indexes):
-        print "OpClassifier notifySubConnect"
-        self.notifyConnectAll()                 
-    
-        
+        if self.inputs["fixClassifier"].value == False:
+            self.outputs["Classifier"]._dtype = object
+            self.outputs["Classifier"]._shape = (1,)
+            self.outputs["Classifier"]._axistags  = "classifier"
+            self.outputs["Classifier"].setDirty((slice(0,1,None),))            
+                
     def getOutSlot(self, slot, key, result):
         
         featMatrix=[]
@@ -65,7 +62,13 @@ class OpTrainRandomForest(Operator):
             
         result[0]=RF
         
-        
+    def setInSlot(self, slot, key, value):
+        if self.inputs["fixClassifier"].value == False:
+            self.outputs["Classifier"].setDirty((slice(0,1,None),))
+
+    def setSubInSlot(self,slots,indexes, key,value):
+        if self.inputs["fixClassifier"].value == False:
+            self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
 
 class OpPredictRandomForest(Operator):

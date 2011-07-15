@@ -305,6 +305,13 @@ class InputSlot(object):
             assert self._value is not None, "InputSlot %s (%r): Cannot access .value since slot is not connected and setValue has not been called !" %(self.name, self)
             return self._value
 
+    def connected(self):
+        answer = True
+        if self._value is None and self.partner is None:
+            answer = False
+        return answer
+
+
     def connectAdd(self, partner):
         if isinstance(self.operator,(OperatorWrapper, Operator)):
             newop = OperatorWrapper(self.operator)
@@ -355,7 +362,8 @@ class InputSlot(object):
             if isinstance(self.operator,Operator):
                 allConnected = True
                 for slot in self.operator.inputs.values():
-                    if slot.partner is None and slot._value is None:
+                    print "IIIIIIII", self.operator.name, slot.name, slot._value
+                    if slot.connected() is False:
                         allConnected = False
                         break
                 if allConnected:
@@ -659,7 +667,11 @@ class MultiInputSlot(object):
         self.inputSlots = []
         self.level = level
         self.stype = stype
-        self.value = None
+        self._value = None
+    
+    @property
+    def value(self):
+        return self._value
     
     def __getitem__(self, key):
         return self.inputSlots[key]
@@ -735,6 +747,21 @@ class MultiInputSlot(object):
                 raise RuntimeError("trying to add a connection to a inner slot - NOT ALLOWED")
         else:
             raise RuntimeError("MultiInputSlot: undhandeled connectAdd case! ")
+
+    def connected(self):
+        answer = True
+        if self._value is None and self.partner is None:
+            answer = False
+        if answer is False:
+            answer = True
+            for s in self.inputSlots:
+                if s.connected() is False:
+                    answer = False
+                    break
+        
+        return answer
+
+
         
     def connect(self,partner):
         if self.partner == partner:
