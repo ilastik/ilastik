@@ -4,6 +4,7 @@ from lazyflow.graph import Operators, Operator, InputSlot, OutputSlot, MultiInpu
 from lazyflow.roi import sliceToRoi, roiToSlice, block_view
 from Queue import Empty
 from collections import deque
+from lazyflow.h5dumprestore import stringToClass
 import greenlet, threading
 import vigra
 import copy
@@ -199,7 +200,8 @@ class OpArrayCache(OpArrayPiper):
             blockShape = 128
         self._origBlockShape = blockShape
         self._immediateAlloc = immediateAlloc
-
+        self._lock = threading.Lock()
+        
     def notifyConnectAll(self):
         inputSlot = self.inputs["Input"]
         OpArrayPiper.notifyConnectAll(self)
@@ -234,8 +236,6 @@ class OpArrayCache(OpArrayPiper):
         self._blockState[:]= 1 #this is the dirty state
         self._dirtyState = 2 #this is the clean state
         
-        self._lock = threading.Lock()
-        
         # allocate queryArray object
         self._flatBlockIndices =  self._blockIndices[:]
         self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
@@ -244,6 +244,7 @@ class OpArrayCache(OpArrayPiper):
             
 
     def notifyDirty(self, slot, key):
+        print "OpArrayCache : DIRTY", key
         start, stop = sliceToRoi(key, self.shape)
         
         self._lock.acquire()
@@ -372,9 +373,9 @@ class OpArrayCache(OpArrayPiper):
             for w in bq.queue:
                 #[None, gr,event,thread]
                 w[1].finishedRequests.append(FakeGetItemRequestObject(w[0]))
+                w[1].signalWorkAvailable()
             bq.queue = None
             bq.lock.release()
-            self.graph.workAvailableEvent.set()
         
         # indicate to all workers that there might be something to do
         # i.e. continuing after the finished requests
@@ -402,6 +403,8 @@ class OpArrayCache(OpArrayPiper):
         
         
     def setInSlot(self, slot, key, value):
+        print "OpArrayCache : SetInSlot", key
+        
         start, stop = sliceToRoi(key, self.shape)
         blockStart = numpy.ceil(1.0 * start / self._blockShape)
         blockStop = numpy.floor(1.0 * stop / self._blockShape)
@@ -421,3 +424,44 @@ class OpArrayCache(OpArrayPiper):
         #pass request on
         self.outputs["Output"][key] = value
         
+        
+        
+    def dumpToH5G(self, h5g, patchBoard):
+        h5g.dumpSubObjects({
+                    "graph": self.graph,
+                    "inputs": self.inputs,
+                    "outputs": self.outputs,
+                    "_origBlockShape" : self._origBlockShape,
+                    "_blockShape" : self._blockShape,
+                    "_dirtyShape" : self._dirtyShape,
+                    "_blockState" : self._blockState,
+                    "_dirtyState" : self._dirtyState,
+                    "_cache" : self._cache,
+                },patchBoard)    
+                
+                
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        g = h5g["graph"].reconstructObject(patchBoard)
+        
+        op = stringToClass(h5g.attrs["className"])(g)
+        
+        patchBoard[h5g.attrs["id"]] = op
+        h5g.reconstructSubObjects(op, {
+                    "inputs": "inputs",
+                    "outputs": "outputs",
+                    "_origBlockShape" : "_origBlockShape",
+                    "_blockShape" : "_blockShape",
+                    "_blockState" : "_blockState",
+                    "_dirtyState" : "_dirtyState",
+                    "_dirtyShape" : "_dirtyShape",
+                    "_cache" : "_cache",
+                },patchBoard)    
+
+        setattr(op, "_blockQuery", numpy.ndarray(op._dirtyShape, dtype = object))
+
+        if op.dtype == object:
+            print op._cache
+
+        return op        

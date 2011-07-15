@@ -36,7 +36,11 @@ import psutil
 import os
 import time
 import gc
+import ConfigParser
+import string
 
+from h5dumprestore import instanceClassToString, stringToClass
+from helpers import itersubclasses
 from roi import sliceToRoi, roiToSlice
 from collections import deque
 from Queue import Queue, LifoQueue, Empty
@@ -47,45 +51,54 @@ import weakref
 
 greenlet.GREENLET_USE_GC # use garbage collection
 
-def itersubclasses(cls, _seen=None):
-    """
-    itersubclasses(cls)
 
-    Generator over all subclasses of a given class, in depth first order.
-
-    >>> list(itersubclasses(int)) == [bool]
-    True
-    >>> class A(object): pass
-    >>> class B(A): pass
-    >>> class C(A): pass
-    >>> class D(B,C): pass
-    >>> class E(D): pass
-    >>> 
-    >>> for cls in itersubclasses(A):
-    ...     print(cls.__name__)
-    B
-    D
-    E
-    C
-    >>> # get ALL (new-style) classes currently defined
-    >>> [cls.__name__ for cls in itersubclasses(object)] #doctest: +ELLIPSIS
-    ['type', ...'tuple', ...]
+class DefaultConfigParser(ConfigParser.SafeConfigParser):
     """
+    Simple extension to the default SafeConfigParser that
+    accepts a default parameter in its .get method and
+    returns its valaue when the parameter cannot be found
+    in the config file instead of throwing an exception
+    """
+    def __init__(self):
+        ConfigParser.SafeConfigParser.__init__(self)
+        if not os.path.exists(CONFIG_DIR+"config"):
+            self.configfile = open(CONFIG_DIR+"config", "w+")
+        else:
+            self.configfile = open(CONFIG_DIR+"config", "r+")
+        self.readfp(self.configfile)
+        self.configfile.close()
     
-    if not isinstance(cls, type):
-        raise TypeError('itersubclasses must be called with '
-                        'new-style classes, not %.100r' % cls)
-    if _seen is None: _seen = set()
-    try:
-        subs = cls.__subclasses__()
-    except TypeError: # fails only when cls is type
-        subs = cls.__subclasses__(cls)
-    for sub in subs:
-        if sub not in _seen:
-            _seen.add(sub)
-            yield sub
-            for sub in itersubclasses(sub, _seen):
-                yield sub
+    def get(self, section, option, default = None):
+        """
+        accepts a default parameter and returns its value
+        instead of throwing an exception when the section
+        or option is not found in the config file
+        """
+        try:
+            ans = ConfigParser.SafeConfigParser.get(self, section, option)
+            print ans
+            return ans
+        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError), e:
+            if default is not None:
+                if e == ConfigParser.NoSectionError:
+                    self.add_section(section)
+                    self.set(section, option, default)
+                if e == ConfigParser.NoOptionError:
+                    self.set(section, option, default)
+                return default
+            else:
+                raise e
+
+try:
+    if LAZYFLOW_LOADED == None:
+        pass
+except:
+    LAZYFLOW_LOADED = True
+    
+    CONFIG_DIR = os.path.expanduser("~/.lazyflow/")
+    if not os.path.exists(CONFIG_DIR):
+        os.mkdir(CONFIG_DIR)
+    CONFIG = DefaultConfigParser()
 
 
 class Operators(object):
@@ -172,7 +185,7 @@ class GetItemRequestObject(object):
     InputSlot and OutputSlot) 
     """
         
-    __slots__ = ["slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure"]
+    __slots__ = ["func", "slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure"]
 
     def __init__(self, slot, graph, partner, key, destination):
         self.key = key
@@ -183,6 +196,7 @@ class GetItemRequestObject(object):
         self.lock = Lock()
         self.thread = current_thread()
         self.slot = slot
+        self.func = None
         
         if slot is None or slot.partner is not None:
             if hasattr(self.thread, "currentRequestLevel"): #TODO: use more self explaining test
@@ -191,7 +205,9 @@ class GetItemRequestObject(object):
                 self.requestLevel = 1
                 self.thread = graph.workers[0]
             
-            graph.putTask(partner.fireRequest, self)
+            self.func = partner.fireRequest
+            
+            graph.putTask(self)
 
     
     def wait(self, timeout = 0):
@@ -448,6 +464,33 @@ class InputSlot(object):
             else:
                 return vigra.VigraArray.defaultAxistags(len(self.shape))
 
+    def dumpToH5G(self, h5g, patchBoard):
+        h5g.dumpSubObjects({
+            "name" : self.name,
+            "level" : self.level,
+            "operator" : self.operator,
+            "partner" : self.partner,
+            "value" : self._value,
+            "stype" : self.stype
+            
+        },patchBoard)
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        s = cls("temp")
+        
+        h5g.reconstructSubObjects(s,{
+            "name" : "name",
+            "level" : "level",
+            "operator" : "operator",
+            "partner" : "partner",
+            "value" : "_value",
+            "stype" : "stype"
+            
+        },patchBoard)
+
+        return s
     
 class OutputSlot(object):
     """
@@ -569,6 +612,38 @@ class OutputSlot(object):
         return self._axistags
 
 
+    def dumpToH5G(self, h5g, patchBoard):
+        h5g.dumpSubObjects({
+            "name" : self.name,
+            "level" : self.level,
+            "operator" : self.operator,
+            "shape" : self._shape,
+            "axistags" : self._axistags,
+            "dtype" : self._dtype,
+            "partners" : self.partners,
+            "stype" : self.stype
+            
+        },patchBoard)
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        s = cls("temp")
+        
+        h5g.reconstructSubObjects(s,{
+            "name" : "name",
+            "level" : "level",
+            "operator" : "operator",
+            "shape" : "_shape",
+            "axistags" : "_axistags",
+            "dtype" : "_dtype",
+            "partners" : "partners",
+            "stype" : "stype"
+            
+        },patchBoard)
+            
+        return s
+        
 
 class MultiInputSlot(object):
     """
@@ -584,7 +659,7 @@ class MultiInputSlot(object):
         self.inputSlots = []
         self.level = level
         self.stype = stype
-        self._value = None
+        self.value = None
     
     def __getitem__(self, key):
         return self.inputSlots[key]
@@ -796,6 +871,34 @@ class MultiInputSlot(object):
     def graph(self):
         return self.operator.graph
 
+    def dumpToH5G(self, h5g, patchBoard):
+        h5g.dumpSubObjects({
+            "name" : self.name,
+            "level" : self.level,
+            "operator" : self.operator,
+            "partner" : self.partner,
+            "stype" : self.stype,
+            "inputSlots": self.inputSlots
+            
+        },patchBoard)
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        s = cls("temp")
+        
+        h5g.reconstructSubObjects(s,{
+            "name" : "name",
+            "level" : "level",
+            "operator" : "operator",
+            "partner" : "partner",
+            "stype" : "stype",
+            "inputSlots": "inputSlots"
+            
+        },patchBoard)
+            
+        return s
+
 
 class MultiOutputSlot(object):
     """
@@ -932,6 +1035,36 @@ class MultiOutputSlot(object):
     def graph(self):
         return self.operator.graph
 
+
+    def dumpToH5G(self, h5g, patchBoard):
+        h5g.dumpSubObjects({
+            "name" : self.name,
+            "level" : self.level,
+            "operator" : self.operator,
+            "partners" : self.partners,
+            "stype" : self.stype,
+            "outputSlots" : self.outputSlots
+            
+        },patchBoard)
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        s = cls("temp")
+        
+        h5g.reconstructSubObjects(s,{
+            "name" : "name",
+            "level" : "level",
+            "operator" : "operator",
+            "partners" : "partners",
+            "stype" : "stype",
+            "outputSlots" : "outputSlots"
+            
+        },patchBoard)
+            
+        return s
+
+
 class Operator(object):
     """
     The base class for all Operators.
@@ -991,6 +1124,9 @@ class Operator(object):
             # of the partner operators are created       
         self.graph.registerOperator(self)
          
+    def getOriginalOperator(self):
+        return self
+        
     def disconnect(self):
         for s in self.outputs.values():
             s.disconnect()
@@ -1040,7 +1176,33 @@ class Operator(object):
         pass
 
 
+    def dumpToH5G(self, h5g, patchBoard):
+        h5inputs = h5g.create_group("inputs")
+        h5inputs.dumpObject(self.inputs)
 
+        h5outputs = h5g.create_group("outputs")
+        h5outputs.dumpObject(self.outputs)
+        
+        h5graph = h5g.create_group("graph")
+        h5graph.dumpObject(self.graph)
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        h5graph = h5g["graph"]        
+        g = h5graph.reconstructObject(patchBoard)        
+        op = stringToClass(h5g.attrs["className"])(g)
+
+        patchBoard[h5g.attrs["id"]] = op        
+        
+        h5inputs = h5g["inputs"]
+        op.inputs = h5inputs.reconstructObject(patchBoard)
+        
+        h5outputs = h5g["outputs"]
+        op.outputs = h5outputs.reconstructObject(patchBoard)
+        
+        return op
+        
 class OperatorWrapper(Operator):
     name = ""
     
@@ -1056,68 +1218,69 @@ class OperatorWrapper(Operator):
         self.inputs = {}
         self.outputs = {}
         self.operator = operator
-        self.graph = operator.graph
-        self.name = operator.name
-        self.comprehensionSlots = 1
-        self.innerOperators = []
-        self.comprehensionCount = 0
-        self.origInputs = self.operator.inputs.copy()
-        self.origOutputs = self.operator.outputs.copy()
-        print "wrapping ", operator.name, operator
-        
-        self._inputSlots = []
-        self._outputSlots = []
-        
-        # replicate input slot definitions
-        for islot in self.operator.inputSlots:
-            level = islot.level + 1
-            self._inputSlots.append(MultiInputSlot(islot.name, stype = islot.stype, level = level))
-
-        # replicate output slot definitions
-        for oslot in self.outputSlots:
-            level = oslot.level + 1
-            self._outputSlots.append(MultiOutputSlot(oslot.name, stype = oslot.stype, level = level))
-
-                
-        # replicate input slots for the instance
-        for islot in self.operator.inputs.values():
-            level = islot.level + 1
-            ii = MultiInputSlot(islot.name, self, stype = islot.stype, level = level)
-            self.inputs[islot.name] = ii
-            op = self.operator
-            while isinstance(op.operator, (Operator, MultiInputSlot)):
-                op = op.operator
-            op.inputs[islot.name] = ii
-        
-        # replicate output slots for the instance
-        for oslot in self.operator.outputs.values():
-            level = oslot.level + 1
-            oo = MultiOutputSlot(oslot.name, self, stype = oslot.stype, level = level)
-            self.outputs[oslot.name] = oo
-            op = self.operator
-            while isinstance(op.operator, (Operator, MultiOutputSlot)):
-                op = op.operator
-            op.outputs[oslot.name] = oo
-
-        #connect input slots
-        for islot in self.origInputs.values():
-            ii = self.inputs[islot.name]
-            partner = islot.partner
-            islot.disconnect()
-            self.operator.inputs[islot.name] = ii
-            if partner is not None:
-                partner._connect(ii)
-                
-        self._connectInnerOutputs()
-
-
-        #connect output slots
-        for oslot in self.origOutputs.values():
-            oo = self.outputs[oslot.name]            
-            partners = copy.copy(oslot.partners)
-            oslot.disconnect()
-            for p in partners:         
-                oo._connect(p)
+        if operator is not None:
+            self.graph = operator.graph
+            self.name = operator.name
+            self.comprehensionSlots = 1
+            self.innerOperators = []
+            self.comprehensionCount = 0
+            self.origInputs = self.operator.inputs.copy()
+            self.origOutputs = self.operator.outputs.copy()
+            print "wrapping ", operator.name, operator
+            
+            self._inputSlots = []
+            self._outputSlots = []
+            
+            # replicate input slot definitions
+            for islot in self.operator.inputSlots:
+                level = islot.level + 1
+                self._inputSlots.append(MultiInputSlot(islot.name, stype = islot.stype, level = level))
+    
+            # replicate output slot definitions
+            for oslot in self.outputSlots:
+                level = oslot.level + 1
+                self._outputSlots.append(MultiOutputSlot(oslot.name, stype = oslot.stype, level = level))
+    
+                    
+            # replicate input slots for the instance
+            for islot in self.operator.inputs.values():
+                level = islot.level + 1
+                ii = MultiInputSlot(islot.name, self, stype = islot.stype, level = level)
+                self.inputs[islot.name] = ii
+                op = self.operator
+                while isinstance(op.operator, (Operator, MultiInputSlot)):
+                    op = op.operator
+                op.inputs[islot.name] = ii
+            
+            # replicate output slots for the instance
+            for oslot in self.operator.outputs.values():
+                level = oslot.level + 1
+                oo = MultiOutputSlot(oslot.name, self, stype = oslot.stype, level = level)
+                self.outputs[oslot.name] = oo
+                op = self.operator
+                while isinstance(op.operator, (Operator, MultiOutputSlot)):
+                    op = op.operator
+                op.outputs[oslot.name] = oo
+    
+            #connect input slots
+            for islot in self.origInputs.values():
+                ii = self.inputs[islot.name]
+                partner = islot.partner
+                islot.disconnect()
+                self.operator.inputs[islot.name] = ii
+                if partner is not None:
+                    partner._connect(ii)
+                    
+            self._connectInnerOutputs()
+    
+    
+            #connect output slots
+            for oslot in self.origOutputs.values():
+                oo = self.outputs[oslot.name]            
+                partners = copy.copy(oslot.partners)
+                oslot.disconnect()
+                for p in partners:         
+                    oo._connect(p)
 
     def getOriginalOperator(self):
         op = self.operator
@@ -1343,6 +1506,38 @@ class OperatorWrapper(Operator):
         pass
 
 
+    def dumpToH5G(self, h5g, patchBoard):
+        h5g.dumpSubObjects({
+                    "operator": self.operator,
+                    "origInputs": self.origInputs,
+                    "origOutputs": self.origOutputs,
+                    "_inputSlots": self._inputSlots,
+                    "_outputSlots": self._outputSlots,
+                    "inputs": self.inputs,
+                    "outputs": self.outputs,
+                    "innerOperators": self.innerOperators                    
+                },patchBoard)    
+                
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        
+        op = stringToClass(h5g.attrs["className"])(None)
+        
+        patchBoard[h5g.attrs["id"]] = op
+        
+        h5g.reconstructSubObjects(op, {
+                    "operator" : "operator",
+                    "origInputs": "origInputs",
+                    "origOutputs": "origOutputs",
+                    "_inputSlots": "_inputSlots",
+                    "_outputSlots": "_outputSlots",
+                    "inputs": "inputs",
+                    "outputs": "outputs",
+                    "innerOperators": "innerOperators"                    
+                },patchBoard)    
+
+        return op
+
 class OperatorGroup(Operator):
     def __init__(self, graph):
         Operator.__init__(self,graph)
@@ -1442,19 +1637,39 @@ class Worker(Thread):
         self.working = False
         self.daemon = True # kill automatically on application exit!
         self.finishedRequests = deque()
+        self.requests = deque()
         self.currentRequestLevel = 0
         self.process = psutil.Process(os.getpid())
         self.number =  len(self.graph.workers)
+        self.workAvailableEvent = Event()
+        self.workAvailableEvent.clear()
         print "Initializing Worker #%d" % self.number
 
+    def signalWorkAvailable(self):
+        self.workAvailableEvent.set()
+        
+    def processReqObject(self, reqObject):
+        reqObject.func(reqObject.key, reqObject.destination)
+        reqObject.lock.acquire()
+        reqObject.event.set()
+        if reqObject.closure is not None:
+            reqObject.closure()
+        reqObject.lock.release()
+        
+        #append 
+        if reqObject.greenlet is not None:
+            reqObject.thread.finishedRequests.append(reqObject)
+            reqObject.thread.signalWorkAvailable()
+        
     def run(self):
         while self.graph.running:
-            self.graph.workAvailableEvent.wait(1.0)
-            self.graph.workAvailableEvent.clear()
-
+            self.graph.freeWorkers.append(self)
+            self.workAvailableEvent.wait(1.0)
+            self.graph.freeWorkers.remove(self)
+            self.workAvailableEvent.clear()
+            
             while not self.graph.tasks.empty() or len(self.finishedRequests) > 0:
-                task = None
-                if len(self.finishedRequests) > 0:
+                while len(self.finishedRequests) > 0:
                     reqObject = self.finishedRequests.popleft()
                     reqObject.lock.acquire()
                     tgr = reqObject.greenlet
@@ -1463,19 +1678,19 @@ class Worker(Thread):
                     if tgr is not None:
                         self.currentRequestLevel = reqObject.requestLevel
                         task = tgr.switch()
-                else:
-                    try:
-                        task = self.graph.tasks.get(False)#timeout = 1.0)
-                    except Empty:
-                        continue
-                    prio, closure, reqObject = task
+                task = None
+                try:
+                    task = self.graph.tasks.get(False)#timeout = 1.0)
+                except Empty:
+                    pass
+                if task is not None:
+                    prio, reqObject = task
                     #TODO: isnt a comparison against currentRequestLevel better 
                     # then against 1 ? ...
                     if reqObject.requestLevel > 1 or self.process.get_memory_info().rss < self.graph.maxMem:
-                        gr = greenlet.greenlet(closure)
+                        gr = greenlet.greenlet(self.processReqObject)
                         self.currentRequestLevel = reqObject.requestLevel
-                        #print "Handling request of level", self.currentRequestLevel, "Memory: ", self.process.get_memory_info().rss / (1024**2), "MB"
-                        gr.switch()
+                        gr.switch( reqObject)
                     else:
                         self.graph.tasks.put(task) #move task back to task queue
                         print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
@@ -1490,37 +1705,25 @@ class Graph(object):
         self.operators = []
         self.tasks = LifoQueue() #Lifo <-> depth first, fifo <-> breath first
         self.workers = []
+        self.freeWorkers = deque()
         self.running = True
         self.numThreads = numThreads
         self.maxMem = softMaxMem # in bytes
-        self.workAvailableEvent = Event()
         
         for i in xrange(self.numThreads):
             w = Worker(self)
             self.workers.append(w)
             w.start()
+            self.freeWorkers.append(w)
     
-    def putTask(self, func, reqObject):
-
-        def runnerClosure(): #TODO: move this code into worker
-            func(reqObject.key, reqObject.destination)
-            reqObject.lock.acquire()
-            reqObject.event.set()
-            if reqObject.closure is not None:
-                reqObject.closure()
-            reqObject.lock.release()
-            
-            #append 
-            if reqObject.greenlet is not None:
-                reqObject.thread.finishedRequests.append(reqObject)
-                self.workAvailableEvent.set()
-
-            return None
-
-        task = [-reqObject.requestLevel, runnerClosure, reqObject]
+    def putTask(self, reqObject):
+        task = [-reqObject.requestLevel, reqObject]
         self.tasks.put(task)
-        self.workAvailableEvent.set()
         
+        if len(self.freeWorkers) > 0:
+            w = self.freeWorkers.pop()
+            self.freeWorkers.appendleft(w)
+            w.signalWorkAvailable()
     
     def finalize(self):
         print "Finalizing Graph..."
@@ -1536,3 +1739,151 @@ class Graph(object):
         self.operators.remove(op)
         op.disconnect()
  
+    def dumpToH5G(self, h5g, patchBoard):
+        h5op = h5g.create_group("operators")
+        h5op.dumpObject(self.operators, patchBoard)
+        
+        h5g.attrs["numThreads"] = self.numThreads
+        h5g.attrs["softMaxMem"] = self.maxMem
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        g = Graph(numThreads = h5g.attrs["numThreads"], softMaxMem = h5g.attrs["softMaxMem"])
+        patchBoard[h5g.attrs["id"]] = g 
+        h5ops = h5g["operators"]        
+        g.operators = h5ops.reconstructObject(patchBoard)
+ 
+        return g
+ 
+    def dumpToH5G_OLD(self,h5g):
+        endPoints = []
+        
+        # loop over all operators and
+        # and find the endpoints
+        for o in self.operators:
+            olength = 0
+            ilength = 0
+            for os in o.outputs.values():
+                olength += len(os.partners)
+            for k, ins in o.inputs.items():
+                if ins.partner is not None or ins.value is not None:
+                    ilength += 1
+            # if an operator has no outputs but inputs
+            # it belongs to the graph and is an endpoint
+            if olength == 0 and ilength > 0:
+                ooooo = o.getOriginalOperator()
+                if ooooo not in endPoints:
+                    endPoints.append(ooooo)                
+                
+        queue = endPoints
+        
+        doneQueue = []
+        
+        # loop over all operators in the queue
+        # (i.e. the endpoints in the beginning)
+        # and append all inputs operators on which
+        # they depend onto the queue
+        # -> we construct the dependency graph in
+        #    a breadth first manner
+        while len(queue) > 0:
+            op = queue.pop(0)
+            doneQueue.append(op)
+            for i in op.inputs.values():
+                if i.partner is not None:
+                    p = i.partner
+                    # we use the metaParent to allow for operatorGroups and operatorWrappers
+                    assert p._metaParent is not None, "%r, %r" % (p.name, p.operator)
+                    partnerOp = p._metaParent.getOriginalOperator()
+                    if partnerOp not in queue and partnerOp not in doneQueue:
+                        queue.append(partnerOp)
+        
+        # we reverse the dependencies
+        # since the graph has to be reconstructed beginning from the inputs
+        doneQueue.reverse()
+
+        # create subgroups for the operators, inslot values and connections themself                        
+        h5ops = h5g.create_group("operators")
+        h5values = h5g.create_group("inslot_values")
+        h5gconnections = h5g.create_group("connections")
+        
+        #save the operator class names and ids
+        for i,op in enumerate(doneQueue):
+            opG = h5ops.create_group(str(id(op)))
+            opG.attrs["id"] = str(id(op))
+            opG.attrs["class"] = instanceClassToString(op)
+                    
+        connections = []
+
+        # save the connections between the operators
+        # and potential .value, so that everything can be restored 
+        for i,op in enumerate(doneQueue):
+            for key,inslot in op.inputs.items():
+                #save a connection
+                val = inslot.value
+                if inslot.partner is not None:
+                    partnerOp = inslot.partner.operator.getOriginalOperator()
+                    partnerSlotName = inslot.partner.name
+                    connections.append(["connect", [str(id(op)),key,str(id(partnerOp)), partnerSlotName]])                    
+                elif val is not None:
+                    #save the value in to the dedicated value group
+                    connections.append(["setValue", [str(id(op)), key, str(id(val))]])
+                    valG = h5values.create_group(str(id(val)))
+                    valG.dumpObject(val)
+        
+        # save the connectino nested lists recursively
+        h5gconnections.dumpObject(connections)
+        
+        
+    @classmethod
+    def reconstructFromH5G_OLD(cls, h5g, patchBoard):
+        graph = Graph()
+        
+        reconstructedOperators = {}        
+        reconstructedValues = {}
+        
+        h5ops = h5g["operators"]
+        h5values = h5g["inslot_values"]
+        connections = h5g["connections"].reconstructObject()
+        
+        def getReconstructedOperator(opId):
+            """
+            helper method to map an operatorId string to an reconstructed object
+            """
+            op = reconstructedOperators.get(opId,None)
+            if op is None:
+                # if the operator is accessed for the first tim
+                # construct the object once
+                opClassName = h5ops[opId].attrs["class"]
+                opClass = stringToClass(opClassName)
+                reconstructedOperators[opId] = op = opClass(graph)
+            return op
+
+        def getReconstructedValue(valueId):
+            """
+            helper method to map an valueId string to an reconstructed object
+            """
+            value = reconstructedValues.get(valueId,None)
+            if value is None:
+                # if the valueId is accessed for the first tim
+                # construct the object once
+                reconstructedValues[valueId] = value = h5values[valueId].reconstructObject()
+            return value
+
+                
+        for c in connections:
+            operation, arguments = c
+            if operation == "connect":
+                opInId, inSlotName, opOutId,outSlotName = arguments
+                opInObject = getReconstructedOperator(opInId)
+                opOutObject = getReconstructedOperator(opOutId)
+                opInObject.inputs[inSlotName].connect(opOutObject.outputs[outSlotName])
+                
+            elif operation == "setValue":
+                opId, inSlotName, valueId = arguments
+                op = getReconstructedOperator(opId)
+                value = getReconstructedValue(valueId)
+                op.inputs[inSlotName].setValue(value)
+                
+        return graph
+                
+     
