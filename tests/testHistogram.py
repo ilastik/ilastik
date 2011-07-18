@@ -22,7 +22,7 @@ def hR(upperLeft,lowerRight,H):
 
 def TestIntegralHistogram():
     
-    print "This only check if the result"
+    
     data=numpy.reshape(numpy.arange(50),(5,10)).astype(numpy.float32).T
     data=data-data.min()
     data=data/data.max()
@@ -85,17 +85,55 @@ def TestSimpleHistogram():
         ch2=numpy.histogram(data[y,x,2], bins, range)[0]
         return numpy.concatenate([ch0,ch1,ch2])
     
-    print data[0,0]
+   
     equal(hist(data,(0,0),3,(0,1)),res[0,0])
     
     equal(hist(data,(10,20),3,(0,1)),res[20,10])
     equal(hist(data,(11,12),3,(0,1)),res[12,11])
     equal(hist(data,(9,100),3,(0,1)),res[100,9])
     
+
+def TestOverlappingHistogram():
+    
+    data=vigra.impex.readImage('ostrich.jpg')
+    data=data.view(numpy.ndarray).astype(numpy.float32)
+    data=data-data.min()
+    data=data/data.max()
+    
+    bins=4
     
     
+    #check if we get the same case of not overlap
+    res=overlappingHistogram2D(data,bins,0)
+    res=res.view(numpy.ndarray)
+    assert res.shape==(data.shape[0],data.shape[1],data.shape[2]*bins)
+    
+    def hist(data,pos,bins,range):
+        y,x=pos
+        ch0=numpy.histogram(data[y,x,0], bins, range)[0]
+        ch1=numpy.histogram(data[y,x,1], bins, range)[0]
+        ch2=numpy.histogram(data[y,x,2], bins, range)[0]
+        return numpy.concatenate([ch0,ch1,ch2])
+    
+    equal(hist(data,(0,0),bins,(0,1)),res[0,0])
+    
+    equal(hist(data,(10,20),bins,(0,1)),res[20,10])
+    equal(hist(data,(11,12),bins,(0,1)),res[12,11])
+    equal(hist(data,(9,100),bins,(0,1)),res[100,9])
+    
+    print "This only check if the result does not give segfaults"
+    
+    
+    bins=20
+    res=overlappingHistogram2D(data,bins,0.9999999)
+    
+    bins=2
+    res=overlappingHistogram2D(data,bins,0.01)
+    
+   
     
 if __name__=="__main__":
     
     TestIntegralHistogram()
     TestSimpleHistogram()
+    TestOverlappingHistogram()

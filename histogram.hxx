@@ -105,32 +105,32 @@ void overlappingHistogram2D(MultiArrayView<3, T, S1>& image, int nbins,
 	double dt = 1 / double(nbins);
 	double ddt = dt * frac_overlap;
 
+	//Do this for all the channels
 	for (c = 0; c < nc; c++) {
 
-		for (y = 0; y < height; y++) {
-			MultiArrayView<2, T, StridedArrayTag> view1 = Hist.bindAt(1, y);
+		int shift=nbins*c; //shift to write the result to corret bin
 
-			for (x = 0; x < width; x++) {
+		for (y = 0; y < height; y++)
+		{
+			for (x = 0; x < width; x++)
+			{
 				double t = 0;
-				MultiArrayView<1, T, StridedArrayTag> view2 =
-						view1.bindAt(0, x); //view though the channels hist at at position x,y
 
 				T val = image(x, y, c);
-
 				if (val <= dt + 2 * ddt)
-					++Hist(x, y, nbins * c);
+					++Hist(x, y, shift+0);
 				t += dt;
 
-				for (int k = 1; k < nbins - 2; k++) {
-					if (val > t - ddt && t <= t + dt + ddt)
-						++Hist(x, y, nbins * c + k);
-
+				for (int k = 1; k < nbins - 1; k++)
+				{
+					if (val > t - ddt && val <= t + dt + ddt)
+						++Hist(x, y, shift + k);
 					t += dt;
 				}
 
 				if (nbins - 2 >= 0)
 					if (val <= 1 && val > 1 - dt - 2 * ddt)
-						++Hist(x, y, nbins * c + nbins - 1);
+						++Hist(x, y, shift + (nbins - 1));
 
 			}
 		}
