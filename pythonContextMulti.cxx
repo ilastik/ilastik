@@ -59,7 +59,6 @@ pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 				  int nbins=4,
                   NumpyArray<3, Multiband<T2> > res=python::object())
 {
-	{ PyAllowThreads _pythread;
 
 
 	int h=predictions.shape(0);
@@ -67,15 +66,43 @@ pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 	int c=predictions.shape(2);
 
 	vigra_precondition(c>=2,"right now is better");
+	MultiArrayShape<3>::type sh(h,w,c*nbins);
+	    res.reshapeIfEmpty(sh);
 
-	MultiArrayShape<3>::type sh(h,w,c);
-    res.reshapeIfEmpty(sh);
+	{
+	    	PyAllowThreads _pythread;
 
-    histogram2D(predictions,nbins,res);
+	    	histogram2D(predictions,nbins,res);
 
 	}
+
     return res;
 
+
+}
+
+template <class T1, class T2>
+NumpyAnyArray
+pythonIntegralHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
+				  int nbins=4)
+                  //NumpyArray<3, Multiband<T2> > res=python::object())
+{
+	int h=predictions.shape(0);
+	int w=predictions.shape(1);
+	int nc=predictions.shape(2);
+
+	MultiArrayShape<3>::type sh(h,w,nc*nbins);
+	//res.reshapeIfEmpty(sh);
+	NumpyArray<3,T2> res(sh);
+	std::cerr << "after";
+
+	{
+		PyAllowThreads _pythread;
+		integralHistogram2D(predictions,nbins,res);
+
+	}
+
+    return res;
 
 }
 
@@ -98,6 +125,8 @@ void defineContext() {
     def("histogram2D",registerConverters(&pythonHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4,
 																				arg("out")=python::object()));
 
+    def("intHistogram2D",registerConverters(&pythonIntegralHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4));
+                                                                                                    //arg("out")=python::object()));
 }
 //} //namespace vigra
 

@@ -4,8 +4,24 @@
 #include <vigra/multi_array.hxx>
 #include <vigra/multi_pointoperators.hxx>
 #include <vigra/utilities.hxx>
-# include <iostream>
+#include <iostream>
+#include <cmath>
 using namespace vigra;
+
+template<class T1,class T2>
+int getIndex(T1& value, int nbins, T2 min, T2 max) {
+
+	if (value==1)
+		return nbins-1;
+
+	int index;
+	double dt = double(max-min) / double(nbins);
+
+	index = std::ceil(double(value) / dt)-1;
+	if (value==min)
+		++index;
+	return index;
+}
 
 template<class T>
 int getIndex(const T& value, int nbins) {
@@ -16,7 +32,6 @@ int getIndex(const T& value, int nbins) {
 	int res;
 	double dt = 1.0 / double(nbins);
 
-	std::cerr << value << std::endl;
 	//if (value == 1)
 	//	nbins -= 1;
 
@@ -27,6 +42,7 @@ int getIndex(const T& value, int nbins) {
 
 	return res;
 }
+
 
 //compute the pixel histogram of a given image
 //for multichannel images, compute channelwise
@@ -81,8 +97,8 @@ void overlappingHistogram2D(MultiArrayView<3, T, S1>& image, int nbins,
 	int height = image.shape()[1];
 	int nc = image.shape()[2];
 
-	MultiArrayShape<3>::type shapeHist(width, height, nc * nbins);
-	Hist.reshape(shapeHist, 0.0);
+	MultiArrayShape<3>::type resShp(width, height, nc * nbins);
+	vigra_precondition(resShp[2]==Hist.shape(2),"wrong shape");
 
 	int x, y, c, index;
 
@@ -120,6 +136,86 @@ void overlappingHistogram2D(MultiArrayView<3, T, S1>& image, int nbins,
 		}
 	}
 
-	return Hist;
 }
+
+//compute integral histogram of a given image
+//for multichannel images, compute channelwise
+// we can choose an amount of overlap beteeen different pixels
+// The imput shoudl be a multiarray view last index indicating the channel
+// The result is a Histogram where last index loops through the bins
+// NB Assumes that the values of each channel in the original image are between 0,1
+template<class T1,class T2, class S1, class S2>
+void
+integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
+		MultiArrayView<3, T2, S2>& H) {
+
+	//FIXME you are imposing between zero and 1
+	int height = image.shape()[0];
+	int width = image.shape()[1];
+	int nc = image.shape()[2];
+	int x,y,c,index;
+	MultiArrayShape<3>::type resShp(width, height, nc * nbins);
+	vigra_precondition(resShp[2]==H.shape(2),"wrong shape");
+
+
+
+
+
+	//For all the channels do the same
+	for (c=0;c<nc;c++)
+	{
+		int shift=c*nbins;
+		std::cerr << "here" << std::endl ;
+
+		//initialize the histogram
+		for(int j=shift; j<nbins+shift;j++)
+		{
+			H(0,0,j)=0;
+		}
+
+		index=getIndex(image(0,0,c),nbins,0,1)+shift;
+
+		H(0,0,index)+=1;
+
+		for (y=1;y<height;y++)
+		{
+			index=getIndex(image(y,0,c),nbins,0,1)+shift;
+
+			for(int j=shift; j<nbins+shift;j++)
+			{
+				H(y,0,j)=H(y-1,0,j);
+			}
+			++H(y,0,index);
+		}
+
+		for (x=1;x<width;x++)
+		{
+			index=getIndex(image(0,x,c),nbins,0,1)+shift;
+			for(int j=shift; j<nbins+shift;j++)
+			{
+				H(0,x,j)=H(0,x-1,j);
+			}
+			++H(0,x,index);
+		}
+
+		for (y=1;y<height;y++)
+			for(x=1;x<width;x++)
+			{
+				index=getIndex(image(y,x,c),nbins,0,1)+shift;
+				for(int j=shift; j<nbins+shift;j++)
+				{
+					H(y,x,j)=H(y,x-1,j)+H(y-1,x,j)-H(y-1,x-1,j);
+				}
+				++H(y,x,index);
+
+			}
+
+		}
+
+}
+
+
+
+
+
 #endif

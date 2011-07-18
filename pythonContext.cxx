@@ -111,7 +111,32 @@ pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 
 }
 
+template <class T1, class T2>
+NumpyAnyArray
+pythonIntegralHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
+				  int nbins=4,
+                  NumpyArray<3, Multiband<T2> > res=python::object())
+{
 
+	{ PyAllowThreads _pythread;
+
+
+	int h=predictions.shape(0);
+	int w=predictions.shape(1);
+	int nc=predictions.shape(2);
+
+	vigra_precondition(nc>=2,"right now is better");
+
+	MultiArrayShape<3>::type sh(h,w,c);
+    res.reshapeIfEmpty(sh);
+
+    integralHistogram2D(predictions,nbins,res);
+
+	}
+
+    return res;
+
+}
 
                    
 void defineContext() {
@@ -133,13 +158,12 @@ void defineContext() {
 
 
     //histograms features
-
-
-    def("histogram2D",registerConverters(&pythonHistogram2D<int, float>) , (arg("predictions"), arg("nbin")=4,
+    def("histogram2D",registerConverters(&pythonHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4,
                                                                                              arg("out")=python::object()));
+    def("intHistogram2D",registerCondajklasjverters(&pythonIntegralHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4,
+                                                                                                arg("out")=python::object()));
+}
 
-}
-}
 
 using namespace vigra;
 using namespace boost::python;
