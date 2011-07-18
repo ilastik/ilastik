@@ -700,7 +700,7 @@ class MultiInputSlot(object):
             else:
                 self.partner._connect(islot)
         return islot 
-    
+
     def _insertNew(self, index):
         if self.level == 1:
             islot = InputSlot(self.name,self, self.stype)
