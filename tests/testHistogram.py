@@ -2,6 +2,22 @@ from context import *
 import vigra, numpy,h5py
 
 
+def hR(upperLeft,lowerRight,H):
+    h,w,nc=H.shape    
+    p1m,p2m=upperLeft
+    p1p,p2p=lowerRight
+    p1p-=1
+    p2p-=1
+    
+    res=H[p1p,p2p].copy()#-H[p1m,p2p]-H[p1p,p2m]+H[p1m,p2m] 
+    #print "here",res
+    #res+=H[0,p2p,:]+H[p1p,0,:]-H[p1m,0,:]-H[p1m,0,:]+H[0,0]
+    if p1m >0 and p2m>0:
+        res=H[p1p,p2p]-H[p1m-1,p2p]-H[p1p,p2m-1]+H[p1m-1,p2m-1] 
+            
+    
+    return res.astype(numpy.uint32)
+
 def TestIntegralHistogram():
     
     print "This only check if the result"
@@ -31,7 +47,11 @@ def TestIntegralHistogram():
     
     numpy.testing.assert_array_equal(res.view(numpy.ndarray), desired, verbose=True)
     
+    #####Check if the histogram works
     
+    h=hR((0,0),(5,10),res)
+    
+    print hR
     
     
     
