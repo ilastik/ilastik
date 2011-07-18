@@ -52,6 +52,66 @@ NumpyAnyArray pythonIntegralImage(NumpyArray<3, Multiband<T> > image,
     return res;
 }
 
+/****************************************************************************/
+
+//Begin histogram wrapping
+template <class T1, class T2>
+NumpyAnyArray
+pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
+				  int nbins=4,
+                  NumpyArray<3, Multiband<T2> > res=python::object())
+{
+
+
+	int h=predictions.shape(0);
+	int w=predictions.shape(1);
+	int c=predictions.shape(2);
+
+	vigra_precondition(c>=2,"right now is better");
+	MultiArrayShape<3>::type sh(h,w,c*nbins);
+	    res.reshapeIfEmpty(sh);
+
+	{
+	    	PyAllowThreads _pythread;
+
+	    	histogram2D(predictions,nbins,res);
+
+	}
+
+    return res;
+
+
+}
+
+
+
+template <class T1, class T2>
+NumpyAnyArray
+pythonOverlappingHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
+				  int nbins=4,float frac_overlap,
+                  NumpyArray<3, Multiband<T2> > res=python::object())
+{
+
+
+	int h=predictions.shape(0);
+	int w=predictions.shape(1);
+	int c=predictions.shape(2);
+
+	vigra_precondition(c>=2,"right now is better");
+	MultiArrayShape<3>::type sh(h,w,c*nbins);
+	    res.reshapeIfEmpty(sh);
+
+	{
+	    	PyAllowThreads _pythread;
+
+	    	overlappingHistogram2D(predictions,nbins,frac_overlap,res);
+
+	}
+
+    return res;
+
+
+}
 
 template <class T1, class T2>
 NumpyAnyArray
@@ -80,6 +140,7 @@ pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 
 
 }
+
 
 template <class T1, class T2>
 NumpyAnyArray
@@ -124,6 +185,10 @@ void defineContext() {
     // Start histogram
     def("histogram2D",registerConverters(&pythonHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4,
 																				arg("out")=python::object()));
+
+    def("histogram2D",registerConverters(&pythonOverlappingHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4, arg("f_overlap")=0.33,
+    																				arg("out")=python::object()));
+
 
     def("intHistogram2D",registerConverters(&pythonIntegralHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4));
                                                                                                     //arg("out")=python::object()));
