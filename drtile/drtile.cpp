@@ -352,6 +352,11 @@ vigra::MultiArray<2, coordinate_t> test_DRTILE_Impl(const vigra::MultiArrayView<
 }
 
 NumpyAnyArray test_DRTILE(NumpyAnyArray A, weight_t w, vigra::NumpyArray<2, coordinate_t> out) {
+    if(A.ndim() == 1) {
+        vigra::MultiArray<2, coordinate_t> x = test_DRTILE_Impl<1>(NumpyArray<1, weight_t>(A, true), w);
+        out.reshapeIfEmpty(x.shape());
+        out.copy( x );
+    }
     if(A.ndim() == 2) {
         vigra::MultiArray<2, coordinate_t> x = test_DRTILE_Impl<2>(NumpyArray<2, weight_t>(A, true), w);
         out.reshapeIfEmpty(x.shape());
