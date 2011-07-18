@@ -10,6 +10,7 @@ from lazyflow.operators.classifierOperators import *
 from lazyflow.operators.generic import *
 
 from lazyflow.operators import OpStarContext2D
+from lazyflow.operators import OpAverageContext2D
 
 
 #from OptionsProviders import *
@@ -19,34 +20,26 @@ from lazyflow.operators import OpStarContext2D
 
 if __name__=="__main__":
     
-   
     filename='ostrich.jpg'
     
-    
-    
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
-
             
     vimageReader = OpImageReader(g)
     vimageReader.inputs["Filename"].setValue(filename)
-
     
     #Sigma provider 0.9
     sigmaProvider = OpArrayPiper(g)
     sigmaProvider.inputs["Input"].setValue(0.9) 
-    
     
     #Gaussian Smoothing     
     opa = OpGaussianSmoothing(g)   
     opa.inputs["Input"].connect(vimageReader.outputs["Image"])
     opa.inputs["sigma"].connect(sigmaProvider.outputs["Output"])
     
-    
     #Gradient Magnitude
     opgg=OpGaussinaGradientMagnitude(g)
     opgg.inputs["Input"].connect(vimageReader.outputs["Image"])
     opgg.inputs["sigma"].connect(sigmaProvider.outputs["Output"])
-    
     
     #Laplacian of Gaussian
     olg=OpLaplacianOfGaussian(g)
@@ -60,7 +53,6 @@ if __name__=="__main__":
     SigmaProviderP2=OpArrayPiper(g)
     SigmaProviderP2.inputs["Input"].setValue(0.9*1.5) 
         
-    
     #difference of gaussians
     dg=OpDifferenceOfGaussians(g)
     dg.inputs["Input"].connect(vimageReader.outputs["Image"])
@@ -194,12 +186,24 @@ if __name__=="__main__":
     opPredict.inputs['LabelsCount'].connect(classCountProvider.outputs["Output"])
     
     
-    vigra.impex.writeImage(opPredict.outputs["PMaps"][:].allocate().wait()[:,:,0],"test_00000000.png")
+    vigra.impex.writeImage(opPredict.outputs["PMaps"][:].allocate().wait()[:,:,0],"images/test_00000000.png")
     
+    myPersonalEasyGraphNames = {}
     
+    myPersonalEasyGraphNames["graph"] = g
+    myPersonalEasyGraphNames["predict"] = opPredict
     
-    contOp=OpStarContext2D(g)
-    contOp.inputs["Radii"].setValue([2,5,10])
+    import h5py
+    f = h5py.File("graph_ostrich_gs_only.h5","w")
+    
+    group = f.create_group("graph")
+    group.dumpObject(myPersonalEasyGraphNames)
+    
+    g.finalize()    
+    
+    '''
+    contOp=OpAverageContext2D(g)
+    contOp.inputs["Radii"].setValue([2,5,10, 12, 15, 20, 25, 30, 35, 40])
     contOp.inputs["PMaps"].connect(opPredict.outputs["PMaps"])
     contOp.inputs["ClassesCount"].connect(classCountProvider.outputs["Output"])
     
@@ -213,7 +217,7 @@ if __name__=="__main__":
     contexts = [contOp]
     predictions=[opPredict]
     
-    for numStage in range(0,1):
+    for numStage in range(0,5):
         
         stacker2=OpMultiArrayStacker(g)
         
@@ -247,14 +251,14 @@ if __name__=="__main__":
         
         predictions.append(opPredict2)
         
-        contOp2=OpStarContext2D(g)
-        contOp2.inputs["Radii"].setValue([2,5,10])
+        contOp2=OpAverageContext2D(g)
+        contOp2.inputs["Radii"].setValue([2,5,10, 12, 15, 20, 25, 30, 35, 40])
         contOp2.inputs["PMaps"].connect(predictions[-1].outputs["PMaps"])
         contOp2.inputs["ClassesCount"].connect(classCountProvider.outputs["Output"])
         
         contexts.append(contOp2)
 
-        vigra.impex.writeImage(predictions[-1].outputs["PMaps"][:].allocate().wait()[:,:,0],"test2_" + str(numStage) + ".png")
+        vigra.impex.writeImage(predictions[-1].outputs["PMaps"][:].allocate().wait()[:,:,0],"images/test4_" + str(numStage) + ".png")
         
         #imwriter2=OpImageWriter(g)
         #imwriter2.inputs["Filename"].setValue("res_"+str(numStage)+".png")
@@ -270,5 +274,5 @@ if __name__=="__main__":
 
 
 g.finalize()
-    
-    
+
+'''

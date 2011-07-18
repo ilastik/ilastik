@@ -15,19 +15,46 @@ void integralImage(MultiArrayView<3, T, S1>& image, MultiArrayView<3, T, S2>& in
     //compute the integral image of a given image
     //for multichannel images, compute channelwise
     
-    int width = image.shape()[0];
-    int height = image.shape()[1];
+    int width = image.shape()[1];
+    int height = image.shape()[0];
     int nc = image.shape()[2];
+    
     for (int c=0; c<nc; ++c){
         T s = 0;
         for (int i=0; i<width; ++i){
             s += image(0, i, c);
             intimage(0, i, c)=s;
         }
-        for (int i=1; i<width; ++i){
+        for (int i=1; i<height; ++i){
             s=0;
-            for (int j=0; j<height; ++j){
+            for (int j=0; j<width; ++j){
                 s+=image(i, j, c);
+                intimage(i, j, c) = s+intimage(i-1, j, c);
+            }
+        }
+    }
+    return;
+}
+
+template <class T, class S1, class S2>
+void integralImage2(MultiArrayView<3, T, S1>& image, MultiArrayView<3, T, S2>& intimage)
+{
+    //compute the integral image of a given image squared
+    //for multichannel images, compute channelwise
+    
+    int width = image.shape()[1];
+    int height = image.shape()[0];
+    int nc = image.shape()[2];
+    for (int c=0; c<nc; ++c){
+        T s = 0;
+        for (int i=0; i<width; ++i){
+            s += image(0, i, c)*image(0, i, c);
+            intimage(0, i, c)=s;
+        }
+        for (int i=1; i<height; ++i){
+            s=0;
+            for (int j=0; j<width; ++j){
+                s+=image(i, j, c)*image(i, j, c);
                 intimage(i, j, c) = s+intimage(i-1, j, c);
             }
         }

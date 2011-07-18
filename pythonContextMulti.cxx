@@ -41,6 +41,18 @@ NumpyAnyArray pythonAvContext2Dmulti(NumpyArray<1, Singleband<IND> > sizes,
     return res;
 }
 
+template <class IND, class T>
+NumpyAnyArray pythonVarContext2Dmulti(NumpyArray<1, Singleband<IND> > sizes,
+                             NumpyArray<3, Multiband<T> > predictions,
+                             NumpyArray<3, Multiband<T> > res)
+{
+    { PyAllowThreads _pythread;
+    varContext2Dmulti(sizes, predictions, res);
+    std::cout<<"back at glue function"<<std::endl;
+    }
+    return res;
+}
+    
 template <class T>
 NumpyAnyArray pythonIntegralImage(NumpyArray<3, Multiband<T> > image,
                                   NumpyArray<3, Multiband<T> > res)
@@ -83,6 +95,14 @@ pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 
 }
 
+template <class T>
+NumpyAnyArray pythonIntegralImage2(NumpyArray<3, Multiband<T> > image,
+                                  NumpyArray<3, Multiband<T> > res)
+{
+    integralImage2(image, res);
+    std::cout<<"back at glue function"<<std::endl;
+    return res;
+}
 
 
 template <class T1 >
@@ -152,9 +172,14 @@ void defineContext() {
                                                                                       arg("out")=python::object()));
     def("avContext2Dmulti", registerConverters(&pythonAvContext2Dmulti<unsigned int, float>), (arg("sizes"), arg("predictions"),
                                                                                       arg("out")=python::object())); 
+    def("varContext2Dmulti", registerConverters(&pythonVarContext2Dmulti<int, float>), (arg("sizes"), arg("predictions"),
+                                                                                      arg("out")=python::object()));
+    def("varContext2Dmulti", registerConverters(&pythonVarContext2Dmulti<unsigned int, float>), (arg("sizes"), arg("predictions"),
+                                                                                      arg("out")=python::object()));                                                                                   
+                                                                                      
     //we define for floats because we want to use it on probability maps                                                                                  
     def("integralImage", registerConverters(&pythonIntegralImage<float>), (arg("image"), arg("out")=python::object()));
-
+    def("integralImage2", registerConverters(&pythonIntegralImage2<float>), (arg("image"), arg("out")=python::object()));
     // Start histogram
     def("histogram2D",registerConverters(&pythonHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4,
 																				arg("out")=python::object()));
