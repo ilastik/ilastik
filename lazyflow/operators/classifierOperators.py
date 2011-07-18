@@ -33,9 +33,7 @@ class OpTrainRandomForest(Operator):
         for i,labels in enumerate(self.inputs["Labels"]):
             if labels.shape is not None:
                 labels=labels[:].allocate().wait()
-        
                 indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
-
                 #Maybe later request only part of the region?
                 image=self.inputs["Images"][i][:].allocate().wait()
                 print image.shape, labels.shape
@@ -43,7 +41,6 @@ class OpTrainRandomForest(Operator):
                 features=image[indexes]
                 labels=labels[indexes]
                 
-
                 featMatrix.append(features)
                 labelsMatrix.append(labels)
         

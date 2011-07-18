@@ -672,6 +672,11 @@ class MultiInputSlot(object):
     @property
     def value(self):
         return self._value
+
+    def setValue(self, value):
+        self._value = value
+        for i,s in enumerate(self.inputSlots):
+            s.setValue(self._value)
     
     def __getitem__(self, key):
         return self.inputSlots[key]

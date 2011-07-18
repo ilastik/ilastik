@@ -204,6 +204,11 @@ class OpArrayCache(OpArrayPiper):
         if blockShape == None:
             blockShape = 128
         self._origBlockShape = blockShape
+        self._blockShape = None
+        self._dirtyShape = None
+        self._blockState = None
+        self._dirtyState = None
+        self._cache = None
         self._immediateAlloc = immediateAlloc
         self._lock = threading.Lock()
         
@@ -465,8 +470,5 @@ class OpArrayCache(OpArrayPiper):
                 },patchBoard)    
 
         setattr(op, "_blockQuery", numpy.ndarray(op._dirtyShape, dtype = object))
-
-        if op.dtype == object:
-            print op._cache
 
         return op        
