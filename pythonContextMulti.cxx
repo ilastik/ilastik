@@ -82,8 +82,8 @@ pythonIntegralImage2(NumpyArray<3, Multiband<T> > image,
 template <class T1, class T2>
 NumpyAnyArray
 pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
-				  int nbins=4,
-                  NumpyArray<3, Multiband<T2> > res=python::object())
+				  int nbins=4)
+                  //NumpyArray<3, Multiband<T2> > res=python::object())
 {
 
 
@@ -93,7 +93,7 @@ pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 
 	vigra_precondition(c>=2,"right now is better");
 	MultiArrayShape<3>::type sh(h,w,c*nbins);
-	    res.reshapeIfEmpty(sh);
+	NumpyArray<3, T2 >res(sh);
 
 	{
 	    	PyAllowThreads _pythread;
@@ -186,11 +186,11 @@ void defineContext() {
 
 
     // Start histogram
-    def("histogram2D",registerConverters(&pythonHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4,
-																				arg("out")=python::object()));
+    def("histogram2D",registerConverters(&pythonHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4));
+																				//arg("out")=python::object()));
 
-    def("histogram2D",registerConverters(&pythonOverlappingHistogram2D<float>) , (arg("predictions"), arg("nbin")=4, arg("f_overlap")=0.33,
-    																				arg("out")=python::object()));
+    //def("histogram2D",registerConverters(&pythonOverlappingHistogram2D<float>) , (arg("predictions"), arg("nbin")=4, arg("f_overlap")=0.33));
+    																				//arg("out")=python::object()));
 
 
     def("intHistogram2D",registerConverters(&pythonIntegralHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4));

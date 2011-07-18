@@ -69,7 +69,14 @@ def TestIntegralHistogram():
 
 
 def TestSimpleHistogram():
+    data=vigra.impex.readImage('ostrich.jpg')
+    data=data.view(numpy.ndarray).astype(numpy.float32)
+    data=data-data.min()
+    data=data/data.max()
     
+    res=histogram2D(data,3)
+    
+    assert res.shape==(data.shape[0],data.shape[1],data.shape[2]*3)
     
     
 
@@ -77,3 +84,4 @@ def TestSimpleHistogram():
 if __name__=="__main__":
     
     TestIntegralHistogram()
+    TestSimpleHistogram()
