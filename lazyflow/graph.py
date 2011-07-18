@@ -185,7 +185,7 @@ class GetItemRequestObject(object):
     InputSlot and OutputSlot) 
     """
         
-    __slots__ = ["func", "slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure"]
+    __slots__ = ["func", "slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure",  "kwargs"]
 
     def __init__(self, slot, graph, partner, key, destination):
         self.key = key
@@ -197,6 +197,7 @@ class GetItemRequestObject(object):
         self.thread = current_thread()
         self.slot = slot
         self.func = None
+        self.kwargs = {}
         
         if slot is None or slot.partner is not None:
             if hasattr(self.thread, "currentRequestLevel"): #TODO: use more self explaining test
@@ -243,13 +244,14 @@ class GetItemRequestObject(object):
                 self.destination[:] = self.slot._value
         return self.destination   
          
-    def notify(self, closure): 
+    def notify(self, closure, **kwargs): 
         """
         calling .notify(someFunction) on an RequestObject is a NON-blocking
         call that will return immediately.
         once the results are calculated and stored in the result
         are, the provided someFunction will be called by lazyflow.
         """
+        self.kwargs = kwargs
         
         if isinstance(self.thread, Worker):
             self.lock.acquire()
@@ -257,8 +259,8 @@ class GetItemRequestObject(object):
             self.lock.release()
         else:
             print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
-            self.wait()
-            closure()
+            result = self.wait()
+            closure(result = result, **self.kwargs)
             
     def __call__(self):
         #TODO: remove this convenience function when
@@ -1688,7 +1690,7 @@ class Worker(Thread):
         reqObject.lock.acquire()
         reqObject.event.set()
         if reqObject.closure is not None:
-            reqObject.closure()
+            reqObject.closure(result = reqObject.destination, **reqObject.kwargs)
         reqObject.lock.release()
         
         #append 
