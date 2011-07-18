@@ -31,21 +31,21 @@ class OpTrainRandomForest(Operator):
         labelsMatrix=[]
         
         for i,labels in enumerate(self.inputs["Labels"]):
-            
-            labels=labels[:].allocate().wait()
-       
-            indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
-
-            #Maybe later request only part of the region?
-            image=self.inputs["Images"][i][:].allocate().wait()
-            print image.shape, labels.shape
-            
-            features=image[indexes]
-            labels=labels[indexes]
-            
-
-            featMatrix.append(features)
-            labelsMatrix.append(labels)
+            if labels.shape is not None:
+                labels=labels[:].allocate().wait()
+           
+                indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
+    
+                #Maybe later request only part of the region?
+                image=self.inputs["Images"][i][:].allocate().wait()
+                print image.shape, labels.shape
+                
+                features=image[indexes]
+                labels=labels[indexes]
+                
+    
+                featMatrix.append(features)
+                labelsMatrix.append(labels)
         
         print features.shape
         featMatrix=numpy.concatenate(featMatrix,axis=0)
