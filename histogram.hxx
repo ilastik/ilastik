@@ -89,7 +89,7 @@ void histogram2D(const MultiArrayView<3, T, S1>& image, int nbins,
 // NB Assumes that the values of each channel in the original image are between 0,1
 template<class T, class S1, class S2>
 void overlappingHistogram2D(MultiArrayView<3, T, S1>& image, int nbins,
-		double frac_overlap, MultiArrayView<3, double, S2>& Hist) {
+		float frac_overlap, MultiArrayView<3, float, S2>& Hist) {
 
 	vigra_precondition(frac_overlap>=0 && frac_overlap<1,"fractionary overlap between [0,1)");
 
