@@ -694,9 +694,12 @@ class MultiInputSlot(object):
         index = len(self) - 1
         self.inputSlots.append(islot)
         if self.partner is not None:
-            if len(self.partner) >= len(self):
-                self.partner[index]._connect(islot)            
-        return islot
+            if self.partner.level > 0:
+                if len(self.partner) >= len(self):
+                    self.partner[index]._connect(islot)
+            else:
+                self.partner._connect(islot)
+        return islot 
     
     def _insertNew(self, index):
         if self.level == 1:
