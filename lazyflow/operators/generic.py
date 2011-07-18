@@ -56,24 +56,30 @@ class OpSubRegion(Operator):
             if e > 0:
                 outShape = outShape + (e,)
                 
-        self.outputs["Output"].shape = outShape
+        self.outputs["Output"]._shape = outShape
+        self.outputs["Output"]._axistags = self.inputs["Input"].axistags
+        self.outputs["Output"]._dtype = self.inputs["Input"].dtype
 
     def getOutSlot(self, slot, key, resultArea):
         start = self.inputs["Start"].value
         stop = self.inputs["Stop"].value
         temp = tuple(numpy.array(stop) - numpy.array(start))
         
+        readStart, readStop = sliceToRoi(key)
+        
         newKey = ()
         i = 0
         i2 = 0
         for e in temp:
             if e > 0:
-                newKey += (key[i],)
+                newKey += (slice(start[i2] + readStart[i], start[i2] + readStop[i],None),)
                 i +=1
             else:
-                newKey += (slice(start[i2],start[i2],None))
+                newKey += (slice(start[i2], start[i2], None),)
             i2 += 1
             
-        req = self.inputs["Input"][newKey].writeInto(resultArea).wait()
+        res = self.inputs["Input"][newKey].allocate().wait()
+        
+        resultArea[:] = res.squeeze()[:]
         
         
