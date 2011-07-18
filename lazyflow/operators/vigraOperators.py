@@ -489,7 +489,7 @@ class OpImageReader(Operator):
     def getOutSlot(self, slot, key, result):
         filename = self.inputs["Filename"].value
         temp = vigra.impex.readImage(filename)
-        
+
         result[:] = temp[key]
         #self.outputs["Image"][:]=temp[:]
     
