@@ -165,7 +165,7 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 	for (c=0;c<nc;c++)
 	{
 		int shift=c*nbins;
-		std::cerr << "here" << std::endl ;
+		//std::cerr << "here" << std::endl ;
 
 		//initialize the histogram
 		for(int j=shift; j<nbins+shift;j++)
@@ -174,7 +174,6 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 		}
 
 		index=getIndex(image(0,0,c),nbins,0,1)+shift;
-
 		H(0,0,index)+=1;
 
 		for (y=1;y<height;y++)
@@ -185,7 +184,7 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 			{
 				H(y,0,j)=H(y-1,0,j);
 			}
-			++H(y,0,index);
+			H(y,0,index)+=1;
 		}
 
 		for (x=1;x<width;x++)
@@ -195,7 +194,7 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 			{
 				H(0,x,j)=H(0,x-1,j);
 			}
-			++H(0,x,index);
+			H(0,x,index)+=1;
 		}
 
 		for (y=1;y<height;y++)
@@ -206,7 +205,7 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 				{
 					H(y,x,j)=H(y,x-1,j)+H(y-1,x,j)-H(y-1,x-1,j);
 				}
-				++H(y,x,index);
+				H(y,x,index)+=1;
 
 			}
 

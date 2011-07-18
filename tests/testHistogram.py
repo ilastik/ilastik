@@ -1,6 +1,6 @@
 from context import *
 import vigra, numpy,h5py
-
+from numpy.testing import assert_array_equal as equal
 
 def hR(upperLeft,lowerRight,H):
     h,w,nc=H.shape    
@@ -8,12 +8,12 @@ def hR(upperLeft,lowerRight,H):
     p1p,p2p=lowerRight
     p1p-=1
     p2p-=1
-    
-    res=H[p1p,p2p].copy()#-H[p1m,p2p]-H[p1p,p2m]+H[p1m,p2m] 
+    print p1p,p2p,H.shape
+    res=H[p1p,p2p,:].copy()#-H[p1m,p2p]-H[p1p,p2m]+H[p1m,p2m] 
     #print "here",res
     #res+=H[0,p2p,:]+H[p1p,0,:]-H[p1m,0,:]-H[p1m,0,:]+H[0,0]
     if p1m >0 and p2m>0:
-        res=H[p1p,p2p]-H[p1m-1,p2p]-H[p1p,p2m-1]+H[p1m-1,p2m-1] 
+        res=H[p1p,p2p,:]-H[p1m-1,p2p,:]-H[p1p,p2m-1,:]+H[p1m-1,p2m-1,:] 
             
     
     return res.astype(numpy.uint32)
@@ -31,7 +31,7 @@ def TestIntegralHistogram():
     data.axistags=vigra.VigraArray.defaultAxistags(3)
     
     res=intHistogram2D(data,3)
-    print res,type(res)
+
     assert res.shape==(10,5,3), "shape mismatch"
     
     """
@@ -45,13 +45,25 @@ def TestIntegralHistogram():
     h=h5py.File('test.h5','r')
     desired=h['TestIntegralHistogram/data1'][:]
     
-    numpy.testing.assert_array_equal(res.view(numpy.ndarray), desired, verbose=True)
+    equal(res.view(numpy.ndarray), desired, verbose=True)
     
-    #####Check if the histogram works
+    #####Check if the histogram works 
+    reduced=numpy.squeeze(data.view(numpy.ndarray)).view(numpy.ndarray)
+    print (data[:,:,0]*50).astype(numpy.uint8)
+    print ""
+    print (reduced[:,:]*50).astype(numpy.uint8)
     
-    h=hR((0,0),(5,10),res)
+    h=hR((0,0),(10,5),res).view(numpy.ndarray)
+    assert (h==numpy.histogram(reduced, 3)[0]).all()
     
-    print hR
+    
+    h=hR((0,0),(7,3),res).view(numpy.ndarray)
+    equal(h,numpy.histogram(data[:7,:3], 3,(0,1))[0])    
+    
+    h=hR((1,2),(7,3),res).view(numpy.ndarray)
+    equal(h,numpy.histogram(data[1:7,2:3], 3,(0,1))[0])    
+    
+    
     
     
     
