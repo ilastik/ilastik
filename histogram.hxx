@@ -67,7 +67,7 @@ void histogram2D(const MultiArrayView<3, T, S1>& image, int nbins,
 	for (p[2] = 0; p[2] < nc; p[2]++) {
 		for (p[1] = 0; p[1] < height; p[1]++) {
 			for (p[0] = 0; p[0] < width; p[0]++) {
-				index = getIndex(image[p], nc);
+				index = getIndex(image[p], nc,0,1);
 
 				index = index + nbins * p[2];
 

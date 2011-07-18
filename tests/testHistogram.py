@@ -75,12 +75,26 @@ def TestSimpleHistogram():
     data=data/data.max()
     
     res=histogram2D(data,3)
-    
+    res=res.view(numpy.ndarray)
     assert res.shape==(data.shape[0],data.shape[1],data.shape[2]*3)
     
+    def hist(data,pos,bins,range):
+        y,x=pos
+        ch0=numpy.histogram(data[y,x,0], bins, range)[0]
+        ch1=numpy.histogram(data[y,x,1], bins, range)[0]
+        ch2=numpy.histogram(data[y,x,2], bins, range)[0]
+        return numpy.concatenate([ch0,ch1,ch2])
     
-
-
+    print data[0,0]
+    equal(hist(data,(0,0),3,(0,1)),res[0,0])
+    
+    equal(hist(data,(10,20),3,(0,1)),res[20,10])
+    equal(hist(data,(11,12),3,(0,1)),res[12,11])
+    equal(hist(data,(9,100),3,(0,1)),res[100,9])
+    
+    
+    
+    
 if __name__=="__main__":
     
     TestIntegralHistogram()
