@@ -3,6 +3,8 @@ import vigra, numpy,h5py
 from numpy.testing import assert_array_equal as equal
 
 def hR(upperLeft,lowerRight,H):
+    """This function extracts the actual histogram from the integral histogram"""
+    
     h,w,nc=H.shape    
     p1m,p2m=upperLeft
     p1p,p2p=lowerRight
@@ -64,6 +66,9 @@ def TestIntegralHistogram():
     equal(h,numpy.histogram(data[1:7,2:3], 3,(0,1))[0])    
     
     
+
+
+def TestSimpleHistogram():
     
     
     
