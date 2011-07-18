@@ -1,0 +1,14 @@
+*.backup
+*.pyc
+*~
+CMakeCache.txt
+*kate-swp
+CMakeFiles
+a.out
+*.kdev4
+cmake_install.cmake
+pyresult.txt
+Makefile
+cppresult.txt
+drtile
+drtile.so

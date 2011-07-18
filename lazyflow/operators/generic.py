@@ -30,3 +30,50 @@ class OpSingleChannelSelector(Operator):
         
         
         result=im[...,index]
+        
+        
+        
+class OpSubRegion(Operator):
+    name = "OpSubRegion"
+    description = "Select a region of interest from an numpy array"
+    
+    inputSlots = [InputSlot("Input"), InputSlot("Start"), InputSlot("Stop")]
+    outputSlots = [OutputSlot("Output")]
+    
+    def notifyConnectAll(self):
+        start = self.inputs["Start"].value
+        stop = self.inputs["Stop"].value
+        assert isinstance(start, tuple)
+        assert isinstance(stop, tuple)
+        assert len(start) == len(self.inputs["Input"].shape)
+        assert len(start) == len(stop)
+        assert (numpy.array(stop)>= numpy.array(start)).all()
+        
+        temp = tuple(numpy.array(stop) - numpy.array(start))        
+        #drop singleton dimensions
+        outShape = ()        
+        for e in temp:
+            if e > 0:
+                outShape = outShape + (e,)
+                
+        self.outputs["Output"].shape = outShape
+
+    def getOutSlot(self, slot, key, resultArea):
+        start = self.inputs["Start"].value
+        stop = self.inputs["Stop"].value
+        temp = tuple(numpy.array(stop) - numpy.array(start))
+        
+        newKey = ()
+        i = 0
+        i2 = 0
+        for e in temp:
+            if e > 0:
+                newKey += (key[i],)
+                i +=1
+            else:
+                newKey += (slice(start[i2],start[i2],None))
+            i2 += 1
+            
+        req = self.inputs["Input"][newKey].writeInto(resultArea).wait()
+        
+        
