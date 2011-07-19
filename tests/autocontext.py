@@ -166,6 +166,8 @@ if __name__=="__main__":
     opTrain = OpTrainRandomForest(g)
     opTrain.inputs['Labels'].connectAdd(labelsReader.outputs["Image"])
     opTrain.inputs['Images'].connectAdd(stacker.outputs["Output"])
+    opTrain.inputs["fixClassifier"].setValue(False)
+    
     
     acache = OpArrayCache(g)
     acache.inputs["Input"].connect(opTrain.outputs['Classifier'])
@@ -188,20 +190,7 @@ if __name__=="__main__":
     
     vigra.impex.writeImage(opPredict.outputs["PMaps"][:].allocate().wait()[:,:,0],"images/test_00000000.png")
     
-    myPersonalEasyGraphNames = {}
-    
-    myPersonalEasyGraphNames["graph"] = g
-    myPersonalEasyGraphNames["predict"] = opPredict
-    
-    import h5py
-    f = h5py.File("graph_ostrich_gs_only.h5","w")
-    
-    group = f.create_group("graph")
-    group.dumpObject(myPersonalEasyGraphNames)
-    
-    g.finalize()    
-    
-    '''
+ 
     contOp=OpAverageContext2D(g)
     contOp.inputs["Radii"].setValue([2,5,10, 12, 15, 20, 25, 30, 35, 40])
     contOp.inputs["PMaps"].connect(opPredict.outputs["PMaps"])
@@ -228,6 +217,7 @@ if __name__=="__main__":
         #######Training2
         
         opTrain2 = OpTrainRandomForest(g)
+        opTrain2.inputs["fixClassifier"].setValue(False)
         opTrain2.inputs['Labels'].connectAdd(labelsReader.outputs["Image"])
         opTrain2.inputs['Images'].connectAdd(stacker2.outputs["Output"])
         
@@ -275,4 +265,4 @@ if __name__=="__main__":
 
 g.finalize()
 
-'''
+
