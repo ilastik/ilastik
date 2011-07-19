@@ -55,14 +55,14 @@ def TestIntegralHistogram():
     print ""
     print (reduced[:,:]*50).astype(numpy.uint8)
     
-    h=hR((0,0),(10,5),res).view(numpy.ndarray)
+    h=getHistOfRegion((0,0),(10,5),res).view(numpy.ndarray)
     assert (h==numpy.histogram(reduced, 3)[0]).all()
     
     
-    h=hR((0,0),(7,3),res).view(numpy.ndarray)
+    h=getHistOfRegion((0,0),(7,3),res).view(numpy.ndarray)
     equal(h,numpy.histogram(data[:7,:3], 3,(0,1))[0])    
     
-    h=hR((1,2),(7,3),res).view(numpy.ndarray)
+    h=getHistOfRegion((1,2),(7,3),res).view(numpy.ndarray)
     equal(h,numpy.histogram(data[1:7,2:3], 3,(0,1))[0])    
     
     
