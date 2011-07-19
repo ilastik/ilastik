@@ -112,30 +112,55 @@ void new_features(MultiArrayView<1, IND, S>& radii,
     return;
         
 }
-/*
-template <class IND, class T>
-void average_features(NumpyArray<1, Singleband<IND> >& sizes,
-                      IND x, IND y, IND c, NumpyArray<3, Multiband<T> >& predictions,
-                      std::vector<T>& averages)
+
+template <class IND, class T, class S1>
+void starFeatures3Dvar(std::vector<IND>& xvars,
+                       std::vector<IND>& yvars,
+                       std::vector<IND>& zvars,
+                       IND c,
+                       MultiArrayView<4, T, S1>& predictions, 
+                       std::vector<T>& neighbors)
 {
-    //this function computes average prediction for class c in squares of size specified
-    //in sizes. the returned average only counts the points in the outside rim of the square
-    //and does not count the ones, already included in the smaller squares.
-    
-    int ns = sizes.size();
-    std::vector<T> full;
-    for (int is=0; is<ns; ++is){
-        T pred = average_pred(x, y, c, is, predictions);
-        full.push_back(pred);
-        if (is>1){
-            T hollow = full[is]-full[is-1]*(is-1)*(is-1)/(is*is);
-            averages[is] = hollow;
+    IND nclasses = predictions.shape()[3];
+    typename std::vector<IND>::iterator xit;
+    typename std::vector<IND>::iterator yit;
+    typename std::vector<IND>::iterator zit;
+    int iflat = 0;
+    for (xit=xvars.begin(); xit!=xvars.end(); ++xit){
+        if ((*xit)==std::numeric_limits<IND>::max()){
+            //x too big or too small, set all to equal probability
+            for (yit=yvars.begin(); yit!=yvars.end(); ++yit){
+                for (zit=zvars.begin(); zit!=zvars.end(); ++zit){                    
+                    neighbors[iflat]=1./nclasses;
+                    iflat++;
+                }
+            }
         } else {
-            averages[is] = full[is];
+            for (yit=yvars.begin(); yit!=yvars.end(); ++yit){
+                if ((*yit)==std::numeric_limits<IND>::max()){
+                    for (zit=zvars.begin(); zit!=zvars.end(); ++zit){
+                        neighbors[iflat]=1./nclasses;
+                        iflat++;
+                    }
+                } else {
+                    for (zit=zvars.begin(); zit!=zvars.end(); ++zit){
+                        if ((*zit)==std::numeric_limits<IND>::max()){
+                            neighbors[iflat]=1./nclasses;
+                            iflat++;
+                        } else {
+                            neighbors[iflat]=predictions((*xit), (*yit), (*zit), c);
+                        }
+                    }
+                }
+            }
         }
     }
+    
+    
+    return;
+    
 }
-*/
+
 template <class IND, class T, class S1, class S2>
 void average_features_2(MultiArrayView<1, IND, S1>& radii,
                         IND x, IND y, IND c, 
@@ -204,7 +229,70 @@ T average_pred(IND x, IND y, IND c, int nav, MultiArrayView<3, T, S>& prediction
     }
     return sum/n;
 }
+
+template <class IND, class T, class S>
+void starContext3Dvar(MultiArrayView<1, IND, S>& radii_x,
+                      MultiArrayView<1, IND, S>& radii_y,
+                      MultiArrayView<1, IND, S>& radii_z,
+                      MultiArrayView<4, T, S>& predictions,
+                      MultiArrayView<4, T, S>& res)
+{
     
+    std::cout<<"stride order: "<<predictions.strideOrdering()<<std::endl;
+    std::cout<<"strides: "<<predictions.stride()<<std::endl;
+    int nx = predictions.shape()[0];
+    int ny = predictions.shape()[1];
+    int nz = predictions.shape()[2];
+    int nclasses = predictions.shape()[3];
+    int nrx = radii_x.shape()[0];
+    int nry = radii_y.shape()[0];
+    int nrz = radii_z.shape()[0];
+    //each radius gives 3 points: xminus, x, xplus
+    //FIXME: but we have to subtract 1 for the point itself
+    //only predictions for now, no averages
+    int nnewfeatures = nrx*nry*nrz*27;
+    std::vector<IND> xvars(nrx*3);
+    std::vector<IND> yvars(nry*3);
+    std::vector<IND> zvars(nrz*3);
+    for (IND x=0; x<nx; ++x){
+        //std::cout<<"class "<<c<<std::endl;
+        int ixvar=0;
+        for (IND irx=0; irx<nrx; ++x){
+            xvars[ixvar] = (x<irx) ? std::numeric_limits<IND>::max() : x-irx;
+            xvars[ixvar+1] = x;
+            xvars[ixvar+2] = (x+irx>=nx) ? std::numeric_limits<IND>::max() : x+irx;
+            ixvar+=3;
+        }
+        for (IND y=0; y<ny; ++y){
+            int iyvar = 0;
+            for (IND iry=0; iry<nry; ++y){
+                yvars[iyvar] = (y<iry) ? std::numeric_limits<IND>::max() : y-iry;
+                yvars[iyvar+1] = y;
+                yvars[iyvar+2] = (y+iry>=ny) ? std::numeric_limits<IND>::max() : y+iry;
+                iyvar+=3;
+            }
+            for (IND z=0; y<nz; ++z){
+                int izvar = 0;
+                for (IND irz=0; irz<nrz; ++z){
+                    zvars[izvar] = (z<irz) ? std::numeric_limits<IND>::max() : z-irz;
+                    zvars[izvar+1] = z;
+                    zvars[izvar+2] = (z+irz>=nz) ? std::numeric_limits<IND>::max() : z+irz;
+                    izvar+=3;
+                }
+                for (IND c=0; c<nclasses; ++c){
+                    std::vector<T> neighbors(nnewfeatures);
+                    starFeatures3Dvar(xvars, yvars, zvars, c, predictions, neighbors);
+                    for (IND ii=0; ii<nnewfeatures; ++ii){
+                        res(x, y, z, c*nnewfeatures+ii) = neighbors[ii];
+                    }
+                }
+            }
+        }
+    }
+    return;
+}
+
+
 template <class IND, class T, class S>
 void starContext2Dmulti(MultiArrayView<1, IND, S>& radii,
                         MultiArrayView<3, T, S>& predictions,

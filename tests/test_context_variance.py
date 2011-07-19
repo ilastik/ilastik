@@ -8,7 +8,7 @@ import vigra
 #!!! this test assumes that there are only 2 neighborhood sizes !!!
 
 nx = 7
-ny = 7
+ny = 10
 nc = 2
 dummypred = numpy.random.rand(nx, ny, nc)
 #dummypred = numpy.arange(nx*ny*nc)
