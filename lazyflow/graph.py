@@ -489,6 +489,8 @@ class InputSlot(object):
     def reconstructFromH5G(cls, h5g, patchBoard):
         
         s = cls("temp")
+
+        patchBoard[h5g.attrs["id"]] = s
         
         h5g.reconstructSubObjects(s,{
             "name" : "name",
@@ -639,6 +641,8 @@ class OutputSlot(object):
     def reconstructFromH5G(cls, h5g, patchBoard):
         
         s = cls("temp")
+
+        patchBoard[h5g.attrs["id"]] = s
         
         h5g.reconstructSubObjects(s,{
             "name" : "name",
@@ -923,6 +927,8 @@ class MultiInputSlot(object):
     def reconstructFromH5G(cls, h5g, patchBoard):
         
         s = cls("temp")
+
+        patchBoard[h5g.attrs["id"]] = s
         
         h5g.reconstructSubObjects(s,{
             "name" : "name",
@@ -1088,6 +1094,8 @@ class MultiOutputSlot(object):
     def reconstructFromH5G(cls, h5g, patchBoard):
         
         s = cls("temp")
+
+        patchBoard[h5g.attrs["id"]] = s
         
         h5g.reconstructSubObjects(s,{
             "name" : "name",
