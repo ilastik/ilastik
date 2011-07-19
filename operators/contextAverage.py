@@ -25,6 +25,7 @@ class OpAverageContext2D(Operator):
         h,w,c=self.inputs["PMaps"].shape
         
         self.outputs["Output"]._shape = (h,w,nclasses*len(radii))
+        print "JJJJJJJJJJJJJJJJJJJJJJJJJJJ-------------#################", self.inputs["PMaps"].axistags
         self.outputs["Output"]._axistags = copy.copy(self.inputs["PMaps"].axistags)
 
     def getOutSlot(self, slot, key, result):

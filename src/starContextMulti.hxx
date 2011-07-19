@@ -14,7 +14,6 @@
 #include "integralImage.hxx"
 
 using namespace vigra;
-//using namespace std;
 
 template <class IND, class T, class S>
 void new_features(MultiArrayView<1, IND, S>& radii,
@@ -161,41 +160,7 @@ void starFeatures3Dvar(std::vector<IND>& xvars,
     
 }
 
-template <class IND, class T, class S1, class S2>
-void average_features_2(MultiArrayView<1, IND, S1>& radii,
-                        IND x, IND y, IND c, 
-                        MultiArrayView<3, T, S2>& integral,
-                        std::vector<T>& averages)
-{
-    int nr = radii.size();
-    int nclasses = integral.shape()[2];
-    //std::cout<<"predictions shape: "<<predictions.shape()[0]<<" "<<predictions.shape()[1]<<" "<<predictions.shape()[2]<<std::endl;
-    for (int ir=0; ir<nr; ++ir){
-        IND xminus = 0;
-        IND yminus = 0;
-        if (x<radii[ir] || y<radii[ir] || x+radii[ir]>integral.shape()[0]-1 || y+radii[ir]>integral.shape()[1]-1){
-            averages[ir]= 1./nclasses;
-            continue;
-        } 
-        
-        T ul = (x==radii[ir] || y==radii[ir]) ? 0 : integral(x-radii[ir]-1, y-radii[ir]-1, c);
-        T ll = (y==radii[ir]) ? 0 : integral(x+radii[ir], y-radii[ir]-1, c);
-        T ur = (x==radii[ir]) ? 0 : integral(x-radii[ir]-1, y+radii[ir], c);
-        T lr = integral(x+radii[ir], y+radii[ir], c);
-        
-        T sum = lr-ll-ur+ul;
-        int n = (2*radii[ir]+1)*(2*radii[ir]+1);
-        if (ir>0){
-            T sum_prev = averages[ir-1]*(2*radii[ir-1]+1)*(2*radii[ir-1]+1);
-            sum-=sum_prev;
-            n-=(2*radii[ir-1]+1)*(2*radii[ir-1]+1);
-        }
-        averages[ir]=sum/n;
 
-    }
-    return;
-}
-        
 
 template <class IND, class T, class S>
 T average_pred(IND x, IND y, IND c, int nav, MultiArrayView<3, T, S>& predictions)
@@ -322,79 +287,6 @@ void starContext2Dmulti(MultiArrayView<1, IND, S>& radii,
     return;
 }
 
-template <class IND, class T, class S>
-void avContext2Dmulti(MultiArrayView<1, IND, S>& sizes,
-                      MultiArrayView<3, T, S>& predictions,
-                      MultiArrayView<3, T, S>& res)
-{
-    //fill the results array with averages of predictions array
-    //computed at the radii of sizes of each member of predictions
-    
-    int nx = predictions.shape()[0];
-    int ny = predictions.shape()[1];
-    int nclasses = predictions.shape()[2];
-    int nnewfeatures = sizes.size();
-    MultiArray<3, T> integral(predictions.shape());
-    
-    integralImage(predictions, integral);
-    
-    for (IND c=0; c<nclasses; ++c) {
-        std::cout<<"class "<<c<<std::endl;
-        for (IND x=0; x<nx; ++x){
-            for (IND y=0; y<ny; ++y){
-                std::vector<T> newf(nnewfeatures);
-                average_features_2(sizes, x, y, c, integral, newf);
-                
-                for (IND ii=0; ii<nnewfeatures; ++ii){
-                    res(x, y, c*nnewfeatures + ii) = newf[ii];
-                }
-            }
-        }
-    }
-    return;
-}
-    
-template <class IND, class T, class S>
-void varContext2Dmulti(MultiArrayView<1, IND, S>&sizes,
-                       MultiArrayView<3, T, S>& predictions,
-                       MultiArrayView<3, T, S>& res)
-{
-    //fill the results array with averages and variances of predictions array
-    //computed at the radii of sizes of each member of predictions
-    
-    int nx = predictions.shape()[0];
-    int ny = predictions.shape()[1];
-    int nclasses = predictions.shape()[2];
-    
-    int nnewfeatures = sizes.size();
-    
-    MultiArray<3, T> integral(predictions.shape());
-    MultiArray<3, T> integral2(predictions.shape());
-    
-    integralImage(predictions, integral);
-    integralImage2(predictions, integral2);
 
-    for (IND c=0; c<nclasses; ++c) {
-        std::cout<<"class "<<c<<std::endl;
-        for (IND x=0; x<nx; ++x) {
-            for (IND y=0; y<ny; ++y) {
-                std::vector<T> newf(nnewfeatures);
-                average_features_2(sizes, x, y, c, integral, newf);
-                std::vector<T> newf2(nnewfeatures);
-                average_features_2(sizes, x, y, c, integral2, newf2);
-                //fill the averages
-                for (IND ii=0; ii<nnewfeatures; ++ii) {
-                    res(x, y, c*2*nnewfeatures+ii) = newf[ii];
-                }
-                //fill the variances
-                for (IND ii=0; ii<nnewfeatures; ++ii) {
-                    res(x, y, c*2*nnewfeatures+nnewfeatures+ii) = newf2[ii]-newf[ii]*newf[ii];
-                }
-            }
-        }
-    }
-    return;
-}
-    
     
 #endif

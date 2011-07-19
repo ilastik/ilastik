@@ -10,6 +10,7 @@
 
 //#include "starContext.hxx"
 #include "starContextMulti.hxx"
+#include "contextAverage.hxx"
 #include "integralImage.hxx"
 #include "histogram.hxx"
 
