@@ -44,11 +44,11 @@ class ListToMultiOperator(Operator):
     def notifyConnectAll(self):
         inputSlot = self.inputs["List"]
         liste = self.inputs["List"].value
-        self.list= liste
-        self.outputs["Items"].resize(len(self.list))
+        self.outputs["Items"].resize(len(liste))
         for o in self.outputs["Items"]:
             o._dtype = object
             o._shape = (1,)
     
     def getSubOutSlot(self, slots, indexes, key, result):
-        result[0] = self.list[indexes[0]]
+        liste = self.inputs["List"].value
+        result[0] = liste[indexes[0]]
