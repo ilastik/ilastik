@@ -13,16 +13,18 @@ include_directories(
     ${PYTHON_INCLUDE_DIRS}
     ${PYTHON_INCLUDE_PATH}
 )
-add_library(context SHARED pythonContextMulti.cxx)
-add_executable(test test.cxx)
+add_library(contextcpp SHARED src/pythonContextMulti.cxx)
+add_executable(test src/test.cxx)
 
 message("xxx ${Boost_PYTHON_LIBRARY} ${VIGRA_NUMPY_CORE_LIBRARY} ${VIGRA_NUMPY_IMPEX_LIBRARY}")
-target_link_libraries(context ${Boost_PYTHON_LIBRARY} ${VIGRA_NUMPY_CORE_LIBRARY} ${PYTHON_LIBRARY})
+target_link_libraries(contextcpp ${Boost_PYTHON_LIBRARY} ${VIGRA_NUMPY_CORE_LIBRARY} ${PYTHON_LIBRARY})
 IF(WIN32)
-    SET_TARGET_PROPERTIES(context PROPERTIES OUTPUT_NAME "context" PREFIX "" SUFFIX  ".pyd")
+    SET_TARGET_PROPERTIES(contextcpp PROPERTIES OUTPUT_NAME "contextcpp" PREFIX "" SUFFIX  ".pyd")
 ELSEIF(MACOSX)
-    SET_TARGET_PROPERTIES(context PROPERTIES OUTPUT_NAME "context" PREFIX "" SUFFIX ".so")
+    SET_TARGET_PROPERTIES(contextcpp PROPERTIES OUTPUT_NAME "contextcpp" PREFIX "" SUFFIX ".so")
 ELSE()
-    SET_TARGET_PROPERTIES(context PROPERTIES OUTPUT_NAME "context" PREFIX "")
+    SET_TARGET_PROPERTIES(contextcpp PROPERTIES OUTPUT_NAME "contextcpp" PREFIX "")
 ENDIF()
+
+
 

@@ -218,8 +218,9 @@ void defineContext() {
 using namespace vigra;
 using namespace boost::python;
 
-BOOST_PYTHON_MODULE_INIT(context)
+BOOST_PYTHON_MODULE_INIT(contextcpp)
 {
+
     import_vigranumpy();
     defineContext();
 }
