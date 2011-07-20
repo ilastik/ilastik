@@ -34,7 +34,7 @@ FIND_PATH(VIGRA_INCLUDE_DIR vigra/matrix.hxx)
 FIND_LIBRARY(VIGRA_IMPEX_LIBRARY NAMES vigraimpex)
 
 find_python_module(vigra REQUIRED)
-
+message(${PY_VIGRA)
 FIND_FILE(VIGRA_NUMPY_CORE_LIBRARY
           NAMES vigranumpycore.so
           PATHS "${PY_VIGRA}" NO_CMAKE_SYSTEM_PATH NO_CMAKE_PATH NO_DEFAULT_PATH)
