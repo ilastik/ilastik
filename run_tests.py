@@ -2,7 +2,7 @@ import glob, os
 tests=glob.glob('tests/*.py')
 
 
-excludeList=['write some files to skip']
+excludeList=['test_context_star_2d.py']
 
 
 def do(testname):
