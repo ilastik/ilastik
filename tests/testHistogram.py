@@ -63,9 +63,28 @@ def TestIntegralHistogram():
     equal(h,numpy.histogram(data[:7,:3], 3,(0,1))[0])    
     
     h=getHistOfRegion((1,2),(7,3),res).view(numpy.ndarray)
-    equal(h,numpy.histogram(data[1:7,2:3], 3,(0,1))[0])    
+    equal(h,numpy.histogram(data[1:7,2:3], 3,(0,1))[0])
     
     
+    
+    
+    data=numpy.reshape(numpy.arange(2500),(50,50)).astype(numpy.float32).T
+    data=data-data.min()
+    data=data/data.max()
+    data.shape=data.shape+(1,)
+    
+    
+    data=data.view(vigra.VigraArray)
+    data.axistags=vigra.VigraArray.defaultAxistags(3)
+    
+    res=intHistogram2D(data,3)
+    
+    assert res.shape==(50,50,3), "shape mismatch"
+    
+    reduced=numpy.squeeze(data.view(numpy.ndarray)).view(numpy.ndarray)
+    
+    h=getHistOfRegion((8,8),(13,13),res).view(numpy.ndarray)
+    equal(h,numpy.histogram(reduced[8:13,8:13],3,(0,1))[0])
 
 
 def TestSimpleHistogram():
@@ -130,10 +149,48 @@ def TestOverlappingHistogram():
     bins=2
     res=overlappingHistogram2D(data,bins,0.01)
     
+ 
+ 
+def TestHistContext():
+    
+    
+    data=numpy.reshape(numpy.arange(2500),(50,50)).astype(numpy.float32).T
+    data=data-data.min()
+    data=data/data.max()
+    data.shape=data.shape+(1,)
+    
+    
+    data=data.view(vigra.VigraArray)
+    data.axistags=vigra.VigraArray.defaultAxistags(3)
+    
+    res=intHistogram2D(data,3)
+    
+    assert res.shape==(50,50,3), "shape mismatch"
+    
+    """
+    import h5py
+    file=h5py.File('test.h5','w')
+    g=file.create_group('TestIntegralHistogram')
+    d=g.create_dataset('data1',res.shape,res.dtype)
+    d[:]=res[:]
+    file.close()
+    """
+
+    a=histContext([1,2],res)
+    print a[:,:,0].T
+    
+    print res[:,:,0]
    
+   
+    reduced=numpy.squeeze(data.view(numpy.ndarray)).view(numpy.ndarray)
+    desired=numpy.histogram(reduced[8:13,8:13], 3,(0,1))[0]-numpy.histogram(reduced[9:12,9:12], 3,(0,1))[0]
     
+    equal(a[10,10],desired)
+ 
+ 
 if __name__=="__main__":
-    
+    TestHistContext()
     TestIntegralHistogram()
-    TestSimpleHistogram()
-    TestOverlappingHistogram()
+    #TestSimpleHistogram()
+    #TestOverlappingHistogram()
+    
