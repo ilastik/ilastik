@@ -105,7 +105,7 @@ pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 	int w=predictions.shape(1);
 	int c=predictions.shape(2);
 
-	vigra_precondition(c>=2,"right now is better");
+	//vigra_precondition(c>=2,"right now is better");
 	MultiArrayShape<3>::type sh(h,w,c*nbins);
 	NumpyArray<3, T2 >res(sh);
 
