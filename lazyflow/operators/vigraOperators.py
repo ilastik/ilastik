@@ -566,7 +566,7 @@ class OpImageWriter(Operator):
         
         image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
         
-        def closure():
+        def closure(result):
             dtype = imSlot.dtype
             vimage = vigra.VigraArray(image, dtype = dtype, axistags = axistags)
             vigra.impex.writeImage(vimage, filename)
