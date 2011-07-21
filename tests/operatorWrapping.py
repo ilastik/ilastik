@@ -5,6 +5,8 @@ import gc
 import lazyflow.roi
 import threading
 
+from lazyflow import operators
+
 from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
 from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
 
@@ -194,5 +196,42 @@ opd.inputs["Input"].disconnect()
 
 assert not isinstance(opd.inputs["Input"], MultiInputSlot), opd.inputs["Input"].level
 assert not isinstance(opd.outputs["Output"], MultiOutputSlot), opd.outputs["Output"].level
+
+
+
+g.finalize()
+
+
+
+g = Graph(numThreads = 2)
+
+opList1 = operators.ListToMultiOperator(g)
+opList1.inputs["List"].setValue(["ostrich.jpg"])
+opList2 = operators.ListToMultiOperator(g)
+opList2.inputs["List"].setValue(["ostrich.jpg","ostrich.jpg"])
+opList3 = operators.ListToMultiOperator(g)
+opList3.inputs["List"].setValue(["ostrich.jpg","ostrich.jpg","ostrich.jpg"])
+
+
+opRead = operators.OpImageReader(g)
+opRead.inputs["Filename"].connect(opList2.outputs["Items"])
+
+
+opRead.outputs["Image"][0][:].allocate().wait()
+
+assert len(opRead.outputs["Image"]) == 2
+
+opRead.inputs["Filename"].connect(opList1.outputs["Items"])
+assert len(opRead.outputs["Image"]) == 1
+
+opRead.inputs["Filename"].connect(opList3.outputs["Items"])
+assert len(opRead.outputs["Image"]) == 3
+
+
+print "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU"
+opRead.inputs["Filename"].disconnect()
+print "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU"
+opRead.inputs["Filename"].setValue("ostrich.jpg")
+assert opRead.outputs["Image"].level == 0, opRead.outputs["Image"].level
 
 g.finalize()

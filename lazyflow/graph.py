@@ -709,6 +709,7 @@ class MultiInputSlot(object):
     def setValue(self, value):
         self._value = value
         for i,s in enumerate(self.inputSlots):
+            s.disconnect()
             s.setValue(self._value)
         self._checkNotifyConnectAll()
     
@@ -825,6 +826,16 @@ class MultiInputSlot(object):
         
         return answer
 
+    def _requiredLength(self):
+        if self.partner is not None:
+            if self.partner.level == self.level:
+                return len(self.partner)
+            elif self.partner.level < self.level:
+                return 1
+        elif self._value is not None:
+            return 1
+        else:
+            return 0
 
         
     def connect(self,partner):
@@ -846,7 +857,6 @@ class MultiInputSlot(object):
                 
                 # create new self.inputSlots for each outputSlot 
                 # of our partner   
-                print "MultiInputSlot connecdt", self.operator, self.operator.name, len(self), partner.operator, partner.operator.name, len(partner)
                 if len(self) != len(partner):
                     self.resize(len(partner))
                 for i,p in enumerate(self.partner):
@@ -918,16 +928,17 @@ class MultiInputSlot(object):
     
     def _removeInputSlot(self, inputSlot, notify = True):
         index = self.inputSlots.index(inputSlot)
-        self.inputSlots.remove(inputSlot)
         inputSlot.disconnect()
-        for i, slot in enumerate(self[index:]):
-            slot.name = self.name+"3%d" % (index + i)
-        
         # notify parent operator of slot removal
         # index is the number of the slots while it
         # was still there
         if notify:
             self.notifySubSlotRemove((),(index,))
+        self.inputSlots.remove(inputSlot)
+        for i, slot in enumerate(self[index:]):
+            slot.name = self.name+"3%d" % (index + i)
+
+        
 
     def _partialSetItem(self, slot, key, value):
         index = self.inputSlots.index(slot)
@@ -1388,34 +1399,30 @@ class OperatorWrapper(Operator):
                     
     def testRestoreOriginalOperator(self):
         #TODO: only restore to the level that is needed, not to the most upper one !
-        
-        #print "OperatorWrapper testRestoreOriginalOperator", self.name
         needWrapping = False
         for iname, islot in self.inputs.items():
             if islot.partner is not None:
                 if islot.partner.level > self.origInputs[iname].level:
                     needWrapping = True
-                    
+                
         if needWrapping is False:
-            
-            if isinstance(self.operator, OperatorWrapper):
-                print "Restoring original operator of ", self, self.name
-                #print self, self.name
-                op = self
-                while isinstance(op.operator, (OperatorWrapper)):
-                    op = op.operator
-                    #print op, op.name
-                op.operator.outputs = op.origOutputs
-                op.operator.inputs = op.origInputs
+            print "Restoring original operator of ", self, self.name
+            #print self, self.name
+            op = self
+            while isinstance(op.operator, (OperatorWrapper)):
                 op = op.operator
-                 
-                for k, islot in self.inputs.items():
-                    if islot.partner is not None:
-                        op.inputs[k].connect(islot.partner)
-        
-                for k, oslot in self.outputs.items():
-                    for p in oslot.partners:
-                        op.outputs[k]._connect(p)
+                #print op, op.name
+            op.operator.outputs = op.origOutputs
+            op.operator.inputs = op.origInputs
+            op = op.operator
+             
+            for k, islot in self.inputs.items():
+                if islot.partner is not None:
+                    op.inputs[k].connect(islot.partner)
+    
+            for k, oslot in self.outputs.items():
+                for p in oslot.partners:
+                    op.outputs[k]._connect(p)
                     
     def notifyDirty(self, slot, key):
         pass
@@ -1476,7 +1483,7 @@ class OperatorWrapper(Operator):
         maxLen = numMax
         for name, islot in self.inputs.items():
             assert isinstance(islot, MultiInputSlot)
-            maxLen = max(len(islot), maxLen)
+            maxLen = max(islot._requiredLength(), maxLen)
                 
         while maxLen > len(self.innerOperators):
             newop = self.createInnerOperator()
@@ -1513,6 +1520,9 @@ class OperatorWrapper(Operator):
             assert len(mslot) == len(self.innerOperators) == maxLen, "%d, %d" % (len(mslot), len(self.innerOperators))        
 
     
+    def notifyConnectAll(self):
+        self._ensureInputSize()
+    
     def notifySubConnect(self, slots, indexes):
         #print "OperatorWrapper notifySubConnect", self.name, slots, indexes
         numMax = self._ensureInputSize(len(slots[0]))
@@ -1529,6 +1539,7 @@ class OperatorWrapper(Operator):
                 self.innerOperators[indexes[0]].inputs[slots[0].name].connect(slots[1].partner)
         elif slots[1]._value is not None:
             if not isinstance(self.innerOperators[indexes[0]], OperatorWrapper):
+                self.innerOperators[indexes[0]].inputs[slots[0].name].disconnect()
                 self.innerOperators[indexes[0]].inputs[slots[0].name].setValue(slots[1]._value)
             
         else:            
@@ -1577,10 +1588,12 @@ class OperatorWrapper(Operator):
             self.removeInnerOperator(op)
 
     def notifySubSlotRemove(self, slots, indexes):
-        print "OperatorWrapper notifySubSlotRemove", slots, indexes, self.name
+        pass
+        #if self._actOnRemove:
         if len(indexes) == 1:
-            op = self.innerOperators[indexes[0]]
-            self.removeInnerOperator(op)
+            if len(self.innerOperators) > indexes[0]:
+                op = self.innerOperators[indexes[0]]
+                self.removeInnerOperator(op)
         else:
             self.innerOperators[indexes[0]].notifySubSlotRemove(slots[1:], indexes[1:])
     
