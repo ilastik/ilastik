@@ -710,6 +710,9 @@ class MultiInputSlot(object):
                     self.partner[index]._connect(islot)
             else:
                 self.partner._connect(islot)
+        if self._value is not None:
+            islot.setValue(self._value)
+
         return islot 
 
     def _insertNew(self, index):
@@ -1315,6 +1318,8 @@ class OperatorWrapper(Operator):
                 self.operator.inputs[islot.name] = ii
                 if partner is not None:
                     partner._connect(ii)
+                if islot._value is not None:
+                    ii.setValue(islot._value)
                     
             self._connectInnerOutputs()
     
