@@ -89,3 +89,22 @@ sum1 = numpy.sum(dummypred[2:5, 2:5, 0])
 if (abs((sum2-sum1)/16 - res[3, 3, 1])>1E-5):
     print "res[3, 3, 1] wrong:", (sum2-sum1)/16, res[3, 3, 1]
 
+
+
+
+dummypred = numpy.arange(5*6*2)+1
+#dummypred = numpy.arange(nx*ny*nc)
+dummypred = dummypred.reshape((5, 6, 2))
+dummypred = dummypred.astype(numpy.float32)
+
+dummy = vigra.VigraArray(dummypred.shape, axistags=vigra.VigraArray.defaultAxistags(3)).astype(dummypred.dtype)
+dummy[:]=dummypred[:]
+#print dummypred[:, :, 0]
+
+res = vigra.VigraArray((5,6,2), axistags=vigra.VigraArray.defaultAxistags(3)).astype(numpy.float32)
+
+context.integralImage(dummy,res)
+
+print res.shape
+print dummy[:,:,1]
+print res[:,:,1]
