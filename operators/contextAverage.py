@@ -16,7 +16,7 @@ class OpAverageContext2D(Operator):
     
     def notifyConnectAll(self):
         print
-        print "calling notifyConnectAll"
+        print "********************************************************************* calling notifyConnectAll",self.inputs["PMaps"].shape
         print
         nclasses=self.inputs["ClassesCount"].value
         radii=self.inputs["Radii"].value

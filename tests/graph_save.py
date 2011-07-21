@@ -75,15 +75,18 @@ if __name__=="__main__":
     ##################Prediction
     opPredict=OpPredictRandomForest(g)
     
+    
+    classCountProvider=OpArrayPiper(g)
+    classCountProvider.inputs["Input"].setValue(2) 
+    opPredict.inputs['LabelsCount'].connect(classCountProvider.outputs["Output"])
 
     opPredict.inputs['Classifier'].connect(acache.outputs['Output'])    
     opPredict.inputs['Image'].connect(stacker.outputs['Output'])
 
     
-    classCountProvider=OpArrayPiper(g)
-    classCountProvider.inputs["Input"].setValue(2) 
     
-    opPredict.inputs['LabelsCount'].connect(classCountProvider.outputs["Output"])
+    print "////////////////////////////////////",classCountProvider.outputs["Output"].shape
+    print "////////////////////////////////////",opPredict.outputs["PMaps"][0].shape
     
     vigra.impex.writeImage(opPredict.outputs["PMaps"][0][:].allocate().wait()[:,:,0],"images/test_ostrich_0.png")
     vigra.impex.writeImage(opPredict.outputs["PMaps"][1][:].allocate().wait()[:,:,0],"images/test_ostrich_1.png")
@@ -99,6 +102,22 @@ if __name__=="__main__":
     myPersonalEasyGraphNames["predict"] = opPredict
     myPersonalEasyGraphNames["nclasses"] = classCountProvider
     myPersonalEasyGraphNames["labelReader"] = labelsReader
+    myPersonalEasyGraphNames["opa"] = opa
+    
+    
+ 
+            
+            
+            
+            
+    print "----------", classCountProvider.inputs["Input"].shape
+    
+    #vimageReader.inputs["Filename"].connect(listMerger.outputs["Items"])    
+    
+    
+    
+    
+    
     
     import h5py
     f = h5py.File("graph_ostrich_gs_only.h5","w")
