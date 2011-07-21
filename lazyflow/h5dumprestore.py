@@ -133,7 +133,6 @@ def dumpObjectToH5G(self, thing, patchBoard = {}):
                 for i in range(view.shape[0]):
                     g = self.create_group(str(i))
                     g.dumpObject(view[i], patchBoard)
-                    print "MOTHERFUCKER SAVE", i, g.attrs["className"], view[i]
                     
         elif isinstance(thing, (list,tuple)):
             self.attrs["len"] = len(thing)
@@ -153,7 +152,7 @@ def dumpObjectToH5G(self, thing, patchBoard = {}):
         elif isinstance(thing, type):
             pass
         else:          
-            if not isinstance(thing, (float, int, str)):
+            if not isinstance(thing, (float, int, str, True.__class__)):
                 print "h5serialize.py: UNKNOWN CLASS", thing, thing.__class__
             self.attrs["value"] = thing
 
@@ -206,7 +205,6 @@ def reconstructObjectFromH5G(self, patchBoard = None):
                 view = arr.ravel()
                 for i,g in self.items():
                     view[int(i)] = g.reconstructObject(patchBoard)
-                    print "MOTHERFUCKER LOAD", i, view[int(i)]
             result = arr
             patchBoard[self.attrs["id"]] = result
 
@@ -236,6 +234,8 @@ def reconstructObjectFromH5G(self, patchBoard = None):
             result = numpy.__dict__[self.attrs["name"]]
         elif cls == type:
             result = numpy.__dict__[self.attrs["name"]]
+        elif cls == True.__class__:
+            result = self.attrs["value"]
         else:
             print "ERROR", self.attrs["className"], cls
     

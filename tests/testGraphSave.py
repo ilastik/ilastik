@@ -8,6 +8,7 @@ from lazyflow.operators.vigraOperators import *
 from lazyflow.operators.valueProviders import *
 from lazyflow.operators.classifierOperators import *
 from lazyflow.operators.generic import *
+from lazyflow import operators
 
 #from OptionsProviders import *
 #from VigraFilters import *
@@ -17,7 +18,7 @@ from lazyflow.operators.generic import *
 if __name__=="__main__":
     
    
-    filename='ostrich.jpg'
+    filenames = ['ostrich.jpg','ostrich.jpg']
     
     
     
@@ -25,7 +26,11 @@ if __name__=="__main__":
 
             
     vimageReader = OpImageReader(g)
-    vimageReader.inputs["Filename"].setValue(filename)
+    
+    listSplitter = operators.ListToMultiOperator(g)
+    listSplitter.inputs["List"].setValue(filenames)
+    
+    vimageReader.inputs["Filename"].connect(listSplitter.outputs["Items"])
 
     
     #Sigma provider 0.9
@@ -158,18 +163,21 @@ if __name__=="__main__":
    
     
     #####Get the labels###
-    filenamelabels='labels_ostrich.png'
+    filenamelabels=['labels_ostrich.png', None]
     
+    listSplitter2 = operators.ListToMultiOperator(g)
+    listSplitter2.inputs["List"].setValue(filenamelabels)
     
     labelsReader = OpImageReader(g)
-    labelsReader.inputs["Filename"].setValue(filenamelabels)
+    labelsReader.inputs["Filename"].connect(listSplitter2.outputs["Items"])
 
         
     #######Training
     
     opTrain = OpTrainRandomForest(g)
-    opTrain.inputs['Labels'].connectAdd(labelsReader.outputs["Image"])
-    opTrain.inputs['Images'].connectAdd(stacker.outputs["Output"])
+    opTrain.inputs['Labels'].connect(labelsReader.outputs["Image"])
+    opTrain.inputs['Images'].connect(stacker.outputs["Output"])
+    opTrain.inputs['fixClassifier'].setValue(False)
     
     opcacheC = OpArrayCache(g)    
     opcacheC.inputs["Input"].connect(opTrain.outputs['Classifier'])
@@ -197,7 +205,7 @@ if __name__=="__main__":
     selector.inputs["Index"].setValue(1)
     selector.inputs["Input"].connect(opcache.outputs['Output'])
     
-    result =  opcache.outputs["Output"][:].allocate().wait()
+    result =  opcache.outputs["Output"][0][:].allocate().wait()
     
     
     import h5py
@@ -212,7 +220,7 @@ if __name__=="__main__":
     g2 = group.reconstructObject()
     
         
-    result2 = group.patchBoard[outId][:].allocate().wait()
+    result2 = group.patchBoard[outId][0][:].allocate().wait()
     
     
     assert (result2 == result).all()

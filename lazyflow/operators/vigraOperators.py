@@ -17,7 +17,7 @@ class OpMultiArrayStacker(Operator):
 
     name = "Multi Array Stacker"
     category = "Misc"
-    
+
     def notifySubConnect(self, slots, indexes):
         dtypeDone = False        
         c = 0
@@ -369,7 +369,11 @@ class OpGaussianSmoothing(OpBaseVigraFilter):
 
     def resultingChannels(self):
         return 1
+
     
+    def notifyConnectAll(self):
+        OpBaseVigraFilter.notifyConnectAll(self)
+
     
 class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
     name = "HessianOfGaussianEigenvalues"
@@ -471,17 +475,25 @@ class OpImageReader(Operator):
     
     def notifyConnectAll(self):
         filename = self.inputs["Filename"].value
-        info = vigra.impex.ImageInfo(filename)
-        
-        oslot = self.outputs["Image"]
-        oslot._shape = info.getShape()
-        oslot._dtype = info.getDtype()
-        oslot._axistags = info.getAxisTags()
+
+        if filename is not None:
+            info = vigra.impex.ImageInfo(filename)
+            
+            oslot = self.outputs["Image"]
+            oslot._shape = info.getShape()
+            oslot._dtype = info.getDtype()
+            oslot._axistags = info.getAxisTags()
+        else:
+            oslot = self.outputs["Image"]
+            oslot._shape = None
+            oslot._dtype = None
+            oslot._axistags = None
+            
     
     def getOutSlot(self, slot, key, result):
         filename = self.inputs["Filename"].value
         temp = vigra.impex.readImage(filename)
-        
+
         result[:] = temp[key]
         #self.outputs["Image"][:]=temp[:]
     

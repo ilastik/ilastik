@@ -80,7 +80,7 @@ class OpMultiArrayPiper(Operator):
         pass
 
     def notifySubSlotDirty(self,slots,indexes,key):
-        self.outputs["Output"][indexes[0]].setDirty(key)
+        self.outputs["MultiOutput"][indexes[0]].setDirty(key)
 
 class OpMultiMultiArrayPiper(Operator):
     name = "MultiMultiArrayPiper"
@@ -127,7 +127,12 @@ class OpMultiMultiArrayPiper(Operator):
 
 
 
-from  lazyflow import drtile
+try:
+    from  lazyflow.drtile import drtile
+except:
+    print "Error importing drtile, please use cmake to compile lazyflow.drtile !"
+    import sys    
+    sys.exit(1)
 
 class BlockQueue(object):
     __slots__ = ["queue","lock"]
@@ -199,6 +204,11 @@ class OpArrayCache(OpArrayPiper):
         if blockShape == None:
             blockShape = 128
         self._origBlockShape = blockShape
+        self._blockShape = None
+        self._dirtyShape = None
+        self._blockState = None
+        self._dirtyState = None
+        self._cache = None
         self._immediateAlloc = immediateAlloc
         self._lock = threading.Lock()
         
@@ -460,8 +470,5 @@ class OpArrayCache(OpArrayPiper):
                 },patchBoard)    
 
         setattr(op, "_blockQuery", numpy.ndarray(op._dirtyShape, dtype = object))
-
-        if op.dtype == object:
-            print op._cache
 
         return op        
