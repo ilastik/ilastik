@@ -17,7 +17,7 @@ class OpMultiArrayStacker(Operator):
 
     name = "Multi Array Stacker"
     category = "Misc"
-    
+
     def notifySubConnect(self, slots, indexes):
         dtypeDone = False        
         c = 0
@@ -369,7 +369,11 @@ class OpGaussianSmoothing(OpBaseVigraFilter):
 
     def resultingChannels(self):
         return 1
+
     
+    def notifyConnectAll(self):
+        OpBaseVigraFilter.notifyConnectAll(self)
+
     
 class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
     name = "HessianOfGaussianEigenvalues"
