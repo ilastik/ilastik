@@ -291,7 +291,7 @@ class InputSlot(object):
         """
         assert self.partner == None, "InputSlot %s (%r): Cannot dot setValue, because it is connected !" %(self.name, self)
         self._value = value
-        self.notifyConnect()
+        self._checkNotifyConnect()
 
     @property
     def value(self):
@@ -333,7 +333,11 @@ class InputSlot(object):
                "InputSlot(name=%s, operator=%s).connect: partner has type %r" \
                % (self.name, self.operator, type(partner))
         
-        if self.partner == partner:
+        if partner is None:
+            self.disconnect()
+            return        
+        
+        if self.partner == partner and partner.level == self.level:
             return
         self.disconnect()
         if partner.level > 0:
@@ -342,15 +346,20 @@ class InputSlot(object):
             print "-> Wrapping operator because own level is 0 and partner is", partner.level
             newop = OperatorWrapper(self.operator)
             partner._connect(newop.inputs[self.name])
+            
         else:
             self.partner = partner
             partner._connect(self)
             # do a type check
             self.connectOk(self.partner)
             if self.shape is not None:
-                self.notifyConnect()
-        
-    def notifyConnect(self):
+                self._checkNotifyConnect()
+    
+    def _checkNotifyConnect(self):
+        if self.operator is not None:
+            self._checkNotifyConnectAll()
+            
+    def _checkNotifyConnectAll(self):
         """
         notify operator of connection
         the operator may do a compatibility
@@ -359,12 +368,10 @@ class InputSlot(object):
         """
         if self.operator is not None:
             self.operator.notifyConnect(self)
-            
             # check wether all slots are connected and notify operator            
             if isinstance(self.operator,Operator):
                 allConnected = True
                 for slot in self.operator.inputs.values():
-                    print "IIIIIIII", self.operator.name, slot.name, slot._value
                     if slot.connected() is False:
                         allConnected = False
                         break
@@ -525,12 +532,31 @@ class OutputSlot(object):
         self.operator = operator
         if not hasattr(self, "_dtype"):
             self._dtype = None
-        if not hasattr(self, "_shape"):
-            self._shape = None
+        if not hasattr(self, "_secretshape"):
+            self._secretshape = None
         if not hasattr(self, "_axistags"):
             self._axistags = None
         self.partners = []
         self.stype = stype
+    
+    @property
+    def _shape(self):
+        return self._secretshape
+        
+    @_shape.setter
+    def _shape(self, value):
+        if value is not None:
+            if value != self._secretshape:
+                self._secretshape = value
+                for p in self.partners:
+                    p._checkNotifyConnectAll()
+            else:
+                self.setDirty(slice(None,None,None)) #set everything to dirty! BEWARE; DANGER;
+        else:
+            self._secretshape = None
+            for p in self.partners:
+                p._checkNotifyConnectAll()
+    
     
     def _connect(self, partner):
         if partner not in self.partners:
@@ -546,8 +572,9 @@ class OutputSlot(object):
     def disconnectSlot(self, partner):
         if partner in self.partners:
             self.partners.remove(partner)
-            partner.disconnect()
-        
+           
+            
+            
     def setDirty(self, key):
         """
         This method can be called by an operator
@@ -648,7 +675,7 @@ class OutputSlot(object):
             "name" : "name",
             "level" : "level",
             "operator" : "operator",
-            "shape" : "_shape",
+            "shape" : "_secretshape",
             "axistags" : "_axistags",
             "dtype" : "_dtype",
             "partners" : "partners",
@@ -683,6 +710,7 @@ class MultiInputSlot(object):
         self._value = value
         for i,s in enumerate(self.inputSlots):
             s.setValue(self._value)
+        self._checkNotifyConnectAll()
     
     def __getitem__(self, key):
         return self.inputSlots[key]
@@ -725,14 +753,33 @@ class MultiInputSlot(object):
             isl.name = self.name
         if self.partner is not None:
             if len(self.partner) > index:
-                islot.connect(self.partner[index])                    
+                islot.connect(self.partner[index])
+        elif self._value is not None:
+            islot.setValue(self._value)                
         return islot
+    
+    
+    def _checkNotifyConnectAll(self):
+        # check wether all slots are connected and eventuall notify operator            
+        if isinstance(self.operator, Operator):
+            allConnected = True
+            for slot in self.operator.inputs.values():
+                if slot.partner is None and slot._value is None:
+                    allConnected = False
+                    break
+            if allConnected:
+                self.operator.notifyConnectAll()
+        
     
     def cloneConnectionsFrom(self, otherInputSlot):
         self.resize(len(otherInputSlot))
         for i, slot in enumerate(otherInputSlot):
             if slot.level == 0:
-                self[i].connect(slot.partner)
+                if slot.partner is not None:
+                    self[i].connect(slot.partner)
+                elif slot._value is not None:
+                    self[i].setValue(slot._value)
+                    
             else:
                 self[i].cloneConnectionsFrom(slot)
     
@@ -781,11 +828,17 @@ class MultiInputSlot(object):
 
         
     def connect(self,partner):
-        if self.partner == partner:
+        if partner is None:
+            self.disconnect()
             return
+            
+        if self.partner == partner and partner.level == self.level:
+            return
+        
         if partner is not None:
             if partner.level == self.level:
-                self.disconnect()
+                if self.partner is not None:
+                    self.partner.disconnectSlot(self)
                 self.partner = partner
                 partner._connect(self)
                 # do a type check
@@ -800,25 +853,20 @@ class MultiInputSlot(object):
                     self.partner[i]._connect(self[i])
 
                 self.operator.notifyConnect(self)
-
-                # check wether all slots are connected and notify operator            
-                if isinstance(self.operator, Operator):
-                    allConnected = True
-                    for slot in self.operator.inputs.values():
-                        if slot.partner is None and slot._value is None:
-                            allConnected = False
-                            break
-                    if allConnected:
-                        self.operator.notifyConnectAll()
-
+                self._checkNotifyConnectAll()
                 
             elif partner.level < self.level:
+                #if self.partner is not None:
+                #    self.partner.disconnectSlot(self)                
                 self.partner = partner
                 for i, slot in enumerate(self):                
                     slot.connect(partner)
                     if self.operator is not None:
                         self.operator.notifySubConnect((self,slot), (i,))
+                self._checkNotifyConnectAll()
             elif partner.level > self.level:
+                #if self.partner is not None:
+                #    self.partner.disconnectSlot(self)
                 partner.disconnectSlot(self)
                 #print "MultiInputSlot", self.name, "of op", self.operator.name, self.operator
                 print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
@@ -893,7 +941,7 @@ class MultiInputSlot(object):
             
     def setDirty(self, key = None):
         assert self.operator is not None, "Slot %s cannot be set dirty, slot not belonging to any actual operator instance" % self.name
-        self.operator.setDirty(self, key)
+        self.operator.notifyDirty(self, key)
 
     def notifyDirty(self, slot, key):
         index = self.inputSlots.index(slot)
@@ -1359,7 +1407,8 @@ class OperatorWrapper(Operator):
                     #print op, op.name
                 op.operator.outputs = op.origOutputs
                 op.operator.inputs = op.origInputs
-                
+                op = op.operator
+                 
                 for k, islot in self.inputs.items():
                     if islot.partner is not None:
                         op.inputs[k].connect(islot.partner)
@@ -1368,6 +1417,11 @@ class OperatorWrapper(Operator):
                     for p in oslot.partners:
                         op.outputs[k]._connect(p)
                     
+    def notifyDirty(self, slot, key):
+        pass
+
+    def notifySubSlotDirty(self, slots, indexes, key):
+        pass
 
     
     def disconnect(self):
@@ -1377,12 +1431,7 @@ class OperatorWrapper(Operator):
             s.disconnect()
         self.testRestoreOriginalOperator()
 
-    def setDirty(self, inputSlot = None):
-        # simple default implementation
-        # -> set all outputs dirty    
-        for os in self.outputs.values():
-            os.setDirty()
-
+    
     def createInnerOperator(self):
         if self.operator.__class__ is not OperatorWrapper:
             opcopy = self.operator.__class__(self.graph)
@@ -1558,6 +1607,7 @@ class OperatorWrapper(Operator):
 
     def dumpToH5G(self, h5g, patchBoard):
         h5g.dumpSubObjects({
+                    "graph" : self.graph,
                     "operator": self.operator,
                     "origInputs": self.origInputs,
                     "origOutputs": self.origOutputs,
@@ -1576,6 +1626,7 @@ class OperatorWrapper(Operator):
         patchBoard[h5g.attrs["id"]] = op
         
         h5g.reconstructSubObjects(op, {
+                    "graph" : "graph",
                     "operator" : "operator",
                     "origInputs": "origInputs",
                     "origOutputs": "origOutputs",

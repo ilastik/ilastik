@@ -80,7 +80,7 @@ class OpMultiArrayPiper(Operator):
         pass
 
     def notifySubSlotDirty(self,slots,indexes,key):
-        self.outputs["Output"][indexes[0]].setDirty(key)
+        self.outputs["MultiOutput"][indexes[0]].setDirty(key)
 
 class OpMultiMultiArrayPiper(Operator):
     name = "MultiMultiArrayPiper"
