@@ -106,6 +106,6 @@ res1 = opd.outputs["Output"][0][:].allocate().wait()
 res2 = opGA.outputs["MultiOutput"][0][:].allocate().wait()
 
 
-print g.saveSubGraph({},{"Out": opGA.outputs["MultiOutput"]})
+#print g.saveSubGraph({},{"Out": opGA.outputs["MultiOutput"]})
 
 g.finalize()
