@@ -1,9 +1,17 @@
-
-
 from lazyflow.graph import *
+from lazyflow import roi 
 
 
-
+def axisTagObjectFromFlag(flag):
+    
+    if flag in ['x','y','z']:
+        type=vigra.AxisType.Space
+    elif flag=='c':
+        type=vigra.AxisType.Space
+    else:
+        raise
+    
+    return vigra.AxisTags(vigra.AxisInfo(flag,type)) 
 
 
 class OpMultiArraySlicer(Operator):
