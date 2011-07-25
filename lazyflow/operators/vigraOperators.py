@@ -169,7 +169,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         elif self.inputs.has_key("sigma1"):
             sigma = self.inputs["sigma1"].value
             
-        largestSigma = sigma
+        largestSigma = sigma*3.5 #ensure enough context for the vigra operators
                 
         shape = self.outputs["Output"].shape
         

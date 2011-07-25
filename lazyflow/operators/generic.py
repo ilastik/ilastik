@@ -1,6 +1,83 @@
-
-
 from lazyflow.graph import *
+from lazyflow import roi 
+
+
+def axisTagObjectFromFlag(flag):
+    
+    if flag in ['x','y','z']:
+        type=vigra.AxisType.Space
+    elif flag=='c':
+        type=vigra.AxisType.Space
+    else:
+        raise
+    
+    return vigra.AxisTags(vigra.AxisInfo(flag,type)) 
+
+
+class OpMultiArraySlicer(Operator):
+    inputSlots = [InputSlot("Input"),InputSlot('AxisFlag')]
+    outputSlots = [MultiOutputSlot("Slices",level=1)]
+
+    name = "Multi Array Slicer"
+    category = "Misc"
+    
+    def notifyConnectAll(self):
+        
+        dtype=self.inputs["Input"].dtype
+        flag=self.inputs["AxisFlag"].value
+        
+        indexAxis=self.inputs["Input"].axistags.index(flag)
+        outshape=list(self.inputs["Input"].shape)
+        n=outshape.pop(indexAxis)
+        outshape=tuple(outshape)
+        
+        outaxistags=copy.copy(self.inputs["Input"].axistags) 
+        
+        del outaxistags[flag]
+    
+        self.outputs["Slices"].resize(n)
+        
+        for o in self.outputs["Slices"]:
+            o._dtype=dtype
+            o._axistags=copy.copy(outaxistags)
+            o._shape=outshape 
+        
+            
+    def getSubOutSlot(self, slots, indexes, key, result):
+        start,stop=roi.sliceToRoi(key,self.outputs["Slices"][indexes[0]].shape)
+        
+        
+        oldstart,oldstop=start,stop
+        
+        start=list(start)
+        stop=list(stop)
+        
+        flag=self.inputs["AxisFlag"].value
+        indexAxis=self.inputs["Input"].axistags.index(flag)
+        
+        start.insert(indexAxis,indexes[0])
+        stop.insert(indexAxis,indexes[0])
+        
+        #print "WHAT ATTATATTATATTATA ", start,stop,oldstart,oldstop
+        
+        newKey=roi.roiToSlice(numpy.array(start),numpy.array(stop))
+        
+        
+        
+        writeKey=roi.roiToSlice(oldstart,oldstop)
+        writeKey=list(writeKey)
+        writeKey.insert(indexAxis,0)
+        writeKey=tuple(writeKey)
+        
+        ttt = self.inputs["Input"][newKey].allocate().wait()
+        
+        
+        result[:]=ttt[writeKey ]#+ (0,)]
+
+
+
+
+
 
 
 class OpSingleChannelSelector(Operator):
@@ -31,6 +108,10 @@ class OpSingleChannelSelector(Operator):
         
         result=im[...,index]
         
+
+
+
+
         
         
 class OpSubRegion(Operator):
