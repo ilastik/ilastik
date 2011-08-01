@@ -49,7 +49,7 @@ class OpMultiArrayPiper(Operator):
     
     def notifyConnectAll(self):
         inputSlot = self.inputs["MultiInput"]
-        print "OpMultiArrayPiper notifyConnect"
+        #print "OpMultiArrayPiper notifyConnect"
         self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
         for i,islot in enumerate(self.inputs["MultiInput"]):
             oslot = self.outputs["MultiOutput"][i]
@@ -59,7 +59,7 @@ class OpMultiArrayPiper(Operator):
                 oslot._axistags = islot.axistags
     
     def notifySubConnect(self, slots, indexes):
-        print "OpMultiArrayPiper notifySubConnect"
+        #print "OpMultiArrayPiper notifySubConnect"
         self.notifyConnectAll()
 
     def notifySubSlotRemove(self, slots, indexes):
@@ -254,7 +254,7 @@ class OpArrayCache(OpArrayPiper):
             
 
     def notifyDirty(self, slot, key):
-        print "OpArrayCache : DIRTY", key
+        #print "OpArrayCache : DIRTY", key
         start, stop = sliceToRoi(key, self.shape)
         
         self._lock.acquire()
@@ -413,7 +413,7 @@ class OpArrayCache(OpArrayPiper):
         
         
     def setInSlot(self, slot, key, value):
-        print "OpArrayCache : SetInSlot", key
+        #print "OpArrayCache : SetInSlot", key
         
         start, stop = sliceToRoi(key, self.shape)
         blockStart = numpy.ceil(1.0 * start / self._blockShape)

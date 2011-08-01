@@ -79,36 +79,13 @@ class OpMultiArrayStacker(Operator):
             r.wait()
 
 
-class Op5Stacker(Operator):
-    name = "5 Array Stacker"
-    category = "Misc"
-
-    
-    inputSlots = [InputSlot("Image1"),InputSlot("Image2"),InputSlot("Image3"),InputSlot("Image4"),InputSlot("Image5")]
-    outputSlots = [MultiOutputSlot("Output")]
-
-    
-    def __init__(self, graph):
-        Operator.__init__(self, graph)
-        self.op = OpMultiArrayStacker(graph)
-        
-    def notifyConnect(self, slot):
-        self.op.inputs["Images"].disconnect()
-        
-        for slot in self.inputs.values():
-            if slot.partner is not None:
-                self.op.inputs["Images"].connectAdd(slot.partner)
-        
-        self.outputs["Output"] = self.op.outputs["Output"]
-
-
-class Op5Slotter(Operator):
+class Op5ToMulti(Operator):
     name = "5 Elements to Multislot"
     category = "Misc"
 
     
-    inputSlots = [InputSlot("Image1"),InputSlot("Image2"),InputSlot("Image3"),InputSlot("Image4"),InputSlot("Image5")]
-    outputSlots = [MultiOutputSlot("Images")]
+    inputSlots = [InputSlot("Input1"),InputSlot("Input2"),InputSlot("Input3"),InputSlot("Input4"),InputSlot("Input5")]
+    outputSlots = [MultiOutputSlot("Outputs")]
         
     def notifyConnect(self, slot):
         
@@ -117,19 +94,24 @@ class Op5Slotter(Operator):
             if slot.partner is not None:
                 length += 1                
 
-        self.outputs["Images"].resize(length)
+        self.outputs["Outputs"].resize(length)
 
         i = 0
-        for slot in self.inputs.values():
+        for sname in sorted(self.inputs.keys()):
+            slot = self.inputs[sname]
             if slot.partner is not None:
-                self.outputs["Images"][i]._shape = slot.shape
-                self.outputs["Images"][i]._dtype = slot.dtype
-                self.outputs["Images"][i]._axistags = copy.copy(slot.axistags)
+                self.outputs["Outputs"][i]._shape = slot.shape
+                self.outputs["Outputs"][i]._dtype = slot.dtype
+                self.outputs["Outputs"][i]._axistags = copy.copy(slot.axistags)
                 i += 1       
-                        
+
+    def notifyDisonnect(self, slot):
+        self.notifyConnect(None)                        
+        
     def getSubOutSlot(self, slots, indexes, key, result):
         i = 0
-        for slot in self.inputs.values():
+        for sname in sorted(self.inputs.keys()):
+            slot = self.inputs[sname]
             if slot.partner is not None:
                 if i == indexes[0]:
                     result[:] = slot[key].allocate().wait()
