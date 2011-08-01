@@ -84,7 +84,7 @@ class Op5ToMulti(Operator):
     category = "Misc"
 
     
-    inputSlots = [InputSlot("Input1"),InputSlot("Input2"),InputSlot("Input3"),InputSlot("Input4"),InputSlot("Input5")]
+    inputSlots = [InputSlot("Input0"),InputSlot("Input1"),InputSlot("Input2"),InputSlot("Input3"),InputSlot("Input4")]
     outputSlots = [MultiOutputSlot("Outputs")]
         
     def notifyConnect(self, slot):
@@ -118,8 +118,20 @@ class Op5ToMulti(Operator):
                     break
                 i += 1                
 
+class Op10ToMulti(Op5ToMulti):
+    name = "10 Elements to Multislot"
+    category = "Misc"
+
+    inputSlots = [InputSlot("Input0"), InputSlot("Input1"),InputSlot("Input2"),InputSlot("Input3"),InputSlot("Input4"),InputSlot("Input5"), InputSlot("Input6"),InputSlot("Input7"),InputSlot("Input8"),InputSlot("Input9")]
+    outputSlots = [MultiOutputSlot("Outputs")]
 
 
+class Op20ToMulti(Op5ToMulti):
+    name = "20 Elements to Multislot"
+    category = "Misc"
+
+    inputSlots = [InputSlot("Input00"), InputSlot("Input01"),InputSlot("Input02"),InputSlot("Input03"),InputSlot("Input04"),InputSlot("Input05"), InputSlot("Input06"),InputSlot("Input07"),InputSlot("Input08"),InputSlot("Input09"),InputSlot("Input10"), InputSlot("Input11"),InputSlot("Input12"),InputSlot("Input13"),InputSlot("Input14"),InputSlot("Input15"), InputSlot("Input16"),InputSlot("Input17"),InputSlot("Input18"),InputSlot("Input19")]
+    outputSlots = [MultiOutputSlot("Outputs")]
 
 class OpBaseVigraFilter(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("sigma", stype = "float")]
