@@ -9,6 +9,8 @@ from lazyflow.operators.valueProviders import *
 from lazyflow.operators.classifierOperators import *
 from lazyflow.operators.generic import *
 
+from lazyflow import operators
+
 #from OptionsProviders import *
 #from VigraFilters import *
 #from SourcesAndSinks import *
@@ -140,19 +142,22 @@ if __name__=="__main__":
     #########################################
     stacker=OpMultiArrayStacker(g)
     
-    stacker.inputs["Images"].connectAdd(opa.outputs["Output"])
-    stacker.inputs["Images"].connectAdd(opgg.outputs["Output"])
-    stacker.inputs["Images"].connectAdd(olg.outputs["Output"])
-    stacker.inputs["Images"].connectAdd(dg.outputs["Output"])
-    stacker.inputs["Images"].connectAdd(coher.outputs["Output"])
-    stacker.inputs["Images"].connectAdd(hog.outputs["Output"])
+    opMulti = operators.Op20ToMulti(g)    
+    opMulti.inputs["Input00"].connect(opa.outputs["Output"])
+    opMulti.inputs["Input01"].connect(opgg.outputs["Output"])
+    opMulti.inputs["Input02"].connect(olg.outputs["Output"])
+    opMulti.inputs["Input03"].connect(dg.outputs["Output"])
+    opMulti.inputs["Input04"].connect(coher.outputs["Output"])
+    opMulti.inputs["Input05"].connect(hog.outputs["Output"])
     
-    stacker.inputs["Images"].connectAdd(opa2.outputs["Output"])
-    stacker.inputs["Images"].connectAdd(opgg2.outputs["Output"])
-    stacker.inputs["Images"].connectAdd(olg2.outputs["Output"])
-    stacker.inputs["Images"].connectAdd(dg2.outputs["Output"])
-    stacker.inputs["Images"].connectAdd(coher2.outputs["Output"])
-    stacker.inputs["Images"].connectAdd(hog2.outputs["Output"])
+    opMulti.inputs["Input06"].connect(opa2.outputs["Output"])
+    opMulti.inputs["Input07"].connect(opgg2.outputs["Output"])
+    opMulti.inputs["Input08"].connect(olg2.outputs["Output"])
+    opMulti.inputs["Input09"].connect(dg2.outputs["Output"])
+    opMulti.inputs["Input10"].connect(coher2.outputs["Output"])
+    opMulti.inputs["Input11"].connect(hog2.outputs["Output"]) 
+    
+    stacker.inputs["Images"].connect(opMulti.outputs["Outputs"])
     
     
    
@@ -167,9 +172,14 @@ if __name__=="__main__":
         
     #######Training
     
+    opMultiL = operators.Op5ToMulti(g)    
+    opMultiI = operators.Op5ToMulti(g)    
+    
+    opMultiL.inputs["Input0"].connect(labelsReader.outputs["Image"])
+    opMultiI.inputs["Input0"].connect(stacker.outputs["Output"])
     opTrain = OpTrainRandomForest(g)
-    opTrain.inputs['Labels'].connectAdd(labelsReader.outputs["Image"])
-    opTrain.inputs['Images'].connectAdd(stacker.outputs["Output"])
+    opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
+    opTrain.inputs['Images'].connect(opMultiI.outputs["Outputs"])
     opTrain.inputs['fixClassifier'].setValue(False)
     
     #print "Here ########################", opTrain.outputs['Classifier'][:].allocate().wait()    
