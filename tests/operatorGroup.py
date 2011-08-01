@@ -5,8 +5,11 @@ import gc
 from lazyflow import roi
 import threading
 
+
 from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
 from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
+
+from lazyflow import operators
 
 __testing__ = False
 
@@ -36,8 +39,13 @@ class OperatorGroupA(OperatorGroup):
         opa1.inputs["Input"].connect(source0.outputs["Output"])
         opa2.inputs["Input"].connect(source0.outputs["Output"])
 
-        opb.inputs["MultiInput"].connectAdd(opa1.outputs["Output"])
-        opb.inputs["MultiInput"].connectAdd(opa2.outputs["Output"])
+
+        opMulti = operators.Op5ToMulti(g)
+        opMulti.inputs["Input1"].connect(opa1.outputs["Output"])
+        opMulti.inputs["Input2"].connect(opa2.outputs["Output"])
+        
+        opb.inputs["MultiInput"].connect(opMulti.outputs["Outputs"])
+
         
         opc.inputs["Input"].connect(opb.outputs["MultiOutput"])
         opd.inputs["Input"].connect(opc.outputs["Output"])
@@ -78,8 +86,11 @@ ope = OpMultiArrayPiper(g)
 opa1.inputs["Input"].connect(source0.outputs["Output"])
 opa2.inputs["Input"].connect(source0.outputs["Output"])
 
-opb.inputs["MultiInput"].connectAdd(opa1.outputs["Output"])
-opb.inputs["MultiInput"].connectAdd(opa2.outputs["Output"])
+opMulti = operators.Op5ToMulti(g)
+opMulti.inputs["Input1"].connect(opa1.outputs["Output"])
+opMulti.inputs["Input2"].connect(opa2.outputs["Output"])
+
+opb.inputs["MultiInput"].connect(opMulti.outputs["Outputs"])
 
 opc.inputs["Input"].connect(opb.outputs["MultiOutput"])
 opd.inputs["Input"].connect(opc.outputs["Output"])
