@@ -80,7 +80,6 @@ class OpTrainRandomForest(Operator):
             self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
     def notifySubSlotDirty(self, slots, indexes, key):
-        zzzzzzzzz
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(0,1,None),))    
 

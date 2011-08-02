@@ -60,28 +60,29 @@ g4.inputs["sigma"].setValue(float(3)) #connect(sigmaProvider)
 print "JJJJJJJJJJ4", g4.outputs["Output"].shape
 
 
-g2 = Op5Stacker(graph)
-g2.inputs["Image1"].connect(g1.outputs["Output"])
-g2.inputs["Image2"].connect(g4.outputs["Output"])
+g2 = Op5ToMulti(graph)
+g2.inputs["Input0"].connect(ostrichProvider.outputs["Image"])
+g2.inputs["Input1"].connect(g4.outputs["Output"])
 
-g2.outputs["Output"][:,:,:].allocate().wait()
+g2.outputs["Outputs"][0][:,:,:].allocate().wait()
 
-print "JJJJJJJJJJ2", g2.outputs["Output"].shape
+print "JJJJJJJJJJ1", g2.outputs["Outputs"][0].shape
+print "JJJJJJJJJJ2", g2.outputs["Outputs"][1].shape
 
 g3 = OpGaussianSmoothing(graph)
-g3.inputs["Input"].connect(g2.outputs["Output"])
+g3.inputs["Input"].connect(g2.outputs["Outputs"])
 g3.inputs["sigma"].setValue(float(3)) #connect(sigmaProvider)
 
-g3.outputs["Output"][:,:,:].allocate().wait()
+g3.outputs["Output"][0][:,:,:].allocate().wait()
 
-print "JJJJJJJJJJ3", g3.outputs["Output"].shape
+print "JJJJJJJJJJ3", g3.outputs["Output"][0].shape
 
 print "Assert that stacker does not change features"
 for i in range(1,2):
     print "Checking slice",i
     time.sleep(1)
     r1  = g4.outputs["Output"][:,:,1].allocate().wait()
-    r2 = g2.outputs["Output"][:,:,1].allocate().wait()
+    r2 = g3.outputs["Output"][0][:,:,1].allocate().wait()
     
     assert (r1[:] == r2[:]).all(), i
 
