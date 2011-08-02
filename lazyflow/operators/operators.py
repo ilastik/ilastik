@@ -291,16 +291,17 @@ class OpArrayCache(OpArrayPiper):
         tileWeights = numpy.where(cond == True, 0, 1)       
         trueDirtyIndices = numpy.nonzero(numpy.where(cond, 1,0))
         
-        axistags = vigra.VigraArray.defaultAxistags(tileWeights.ndim)
+        #axistags = vigra.VigraArray.defaultAxistags(tileWeights.ndim)
 
-        tileWeights = tileWeights.view(vigra.VigraArray)
-        tileWeights.axistags = axistags
+        #tileWeights = tileWeights.view(vigra.VigraArray)
+        #tileWeights.axistags = axistags
         
         
         #tileWeights = vigra.VigraArray(tileWeights, dtype = numpy.uint32, axistags = axistags)
                     
-#        print "calling drtile..."
-        tileArray = drtile.test_DRTILE(tileWeights, 1)
+        tileWeights = tileWeights.astype(numpy.uint32)
+#        print "calling drtile...", tileWeights.dtype
+        tileArray = drtile.test_DRTILE(tileWeights, 1).swapaxes(0,1)
                 
 #        print "finished calling drtile."
         dirtyRois = []
@@ -315,9 +316,8 @@ class OpArrayCache(OpArrayPiper):
 
             #drStart2 = (tileArray[half-1::-1,i] + blockStart)
             #drStop2 = (tileArray[half*2:half-1:-1,i] + blockStart)
-            drStart2 = numpy.flipud(tileArray[:half,i] + blockStart)
-            drStop2 = numpy.flipud(tileArray[half:,i] + blockStart)
-            
+            drStart2 = tileArray[:half,i] + blockStart
+            drStop2 = tileArray[half:,i] + blockStart
             
             drStart = drStart2*self._blockShape
             drStop = drStop2*self._blockShape

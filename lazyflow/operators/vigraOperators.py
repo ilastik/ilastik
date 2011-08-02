@@ -450,8 +450,7 @@ class OpImageReader(Operator):
             oslot._shape = None
             oslot._dtype = None
             oslot._axistags = None
-            
-    
+
     def getOutSlot(self, slot, key, result):
         filename = self.inputs["Filename"].value
         temp = vigra.impex.readImage(filename)
@@ -531,7 +530,7 @@ class OpImageWriter(Operator):
         def closure(result):
             dtype = imSlot.dtype
             vimage = vigra.VigraArray(image, dtype = dtype, axistags = axistags)
-            vigra.impex.writeImage(vimage, filename)
+            vigra.impex.writeImage(image, filename)
 
         self.inputs["Image"][:].writeInto(image).notify(closure)
     

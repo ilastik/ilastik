@@ -38,7 +38,7 @@ class OpTrainRandomForest(Operator):
         
         featMatrix=[]
         labelsMatrix=[]
-        
+
         for i,labels in enumerate(self.inputs["Labels"]):
             if labels.shape is not None:
                 labels=labels[:].allocate().wait()
@@ -56,7 +56,7 @@ class OpTrainRandomForest(Operator):
                 featMatrix.append(features)
                 labelsMatrix.append(labels)
         
-        print features.shape
+
         featMatrix=numpy.concatenate(featMatrix,axis=0)
         labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
         
