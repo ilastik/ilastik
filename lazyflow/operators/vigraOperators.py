@@ -79,36 +79,13 @@ class OpMultiArrayStacker(Operator):
             r.wait()
 
 
-class Op5Stacker(Operator):
-    name = "5 Array Stacker"
-    category = "Misc"
-
-    
-    inputSlots = [InputSlot("Image1"),InputSlot("Image2"),InputSlot("Image3"),InputSlot("Image4"),InputSlot("Image5")]
-    outputSlots = [MultiOutputSlot("Output")]
-
-    
-    def __init__(self, graph):
-        Operator.__init__(self, graph)
-        self.op = OpMultiArrayStacker(graph)
-        
-    def notifyConnect(self, slot):
-        self.op.inputs["Images"].disconnect()
-        
-        for slot in self.inputs.values():
-            if slot.partner is not None:
-                self.op.inputs["Images"].connectAdd(slot.partner)
-        
-        self.outputs["Output"] = self.op.outputs["Output"]
-
-
-class Op5Slotter(Operator):
+class Op5ToMulti(Operator):
     name = "5 Elements to Multislot"
     category = "Misc"
 
     
-    inputSlots = [InputSlot("Image1"),InputSlot("Image2"),InputSlot("Image3"),InputSlot("Image4"),InputSlot("Image5")]
-    outputSlots = [MultiOutputSlot("Images")]
+    inputSlots = [InputSlot("Input0"),InputSlot("Input1"),InputSlot("Input2"),InputSlot("Input3"),InputSlot("Input4")]
+    outputSlots = [MultiOutputSlot("Outputs")]
         
     def notifyConnect(self, slot):
         
@@ -117,27 +94,44 @@ class Op5Slotter(Operator):
             if slot.partner is not None:
                 length += 1                
 
-        self.outputs["Images"].resize(length)
+        self.outputs["Outputs"].resize(length)
 
         i = 0
-        for slot in self.inputs.values():
+        for sname in sorted(self.inputs.keys()):
+            slot = self.inputs[sname]
             if slot.partner is not None:
-                self.outputs["Images"][i]._shape = slot.shape
-                self.outputs["Images"][i]._dtype = slot.dtype
-                self.outputs["Images"][i]._axistags = copy.copy(slot.axistags)
+                self.outputs["Outputs"][i]._shape = slot.shape
+                self.outputs["Outputs"][i]._dtype = slot.dtype
+                self.outputs["Outputs"][i]._axistags = copy.copy(slot.axistags)
                 i += 1       
-                        
+
+    def notifyDisonnect(self, slot):
+        self.notifyConnect(None)                        
+        
     def getSubOutSlot(self, slots, indexes, key, result):
         i = 0
-        for slot in self.inputs.values():
+        for sname in sorted(self.inputs.keys()):
+            slot = self.inputs[sname]
             if slot.partner is not None:
                 if i == indexes[0]:
                     result[:] = slot[key].allocate().wait()
                     break
                 i += 1                
 
+class Op10ToMulti(Op5ToMulti):
+    name = "10 Elements to Multislot"
+    category = "Misc"
+
+    inputSlots = [InputSlot("Input0"), InputSlot("Input1"),InputSlot("Input2"),InputSlot("Input3"),InputSlot("Input4"),InputSlot("Input5"), InputSlot("Input6"),InputSlot("Input7"),InputSlot("Input8"),InputSlot("Input9")]
+    outputSlots = [MultiOutputSlot("Outputs")]
 
 
+class Op20ToMulti(Op5ToMulti):
+    name = "20 Elements to Multislot"
+    category = "Misc"
+
+    inputSlots = [InputSlot("Input00"), InputSlot("Input01"),InputSlot("Input02"),InputSlot("Input03"),InputSlot("Input04"),InputSlot("Input05"), InputSlot("Input06"),InputSlot("Input07"),InputSlot("Input08"),InputSlot("Input09"),InputSlot("Input10"), InputSlot("Input11"),InputSlot("Input12"),InputSlot("Input13"),InputSlot("Input14"),InputSlot("Input15"), InputSlot("Input16"),InputSlot("Input17"),InputSlot("Input18"),InputSlot("Input19")]
+    outputSlots = [MultiOutputSlot("Outputs")]
 
 class OpBaseVigraFilter(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("sigma", stype = "float")]

@@ -33,8 +33,12 @@ ope = OpMultiArrayPiper(g)
 opa1.inputs["Input"].connect(source0.outputs["Output"])
 opa2.inputs["Input"].connect(source0.outputs["Output"])
 
-opb.inputs["MultiInput"].connectAdd(opa1.outputs["Output"])
-opb.inputs["MultiInput"].connectAdd(opa2.outputs["Output"])
+opMulti = operators.Op5ToMulti(g)
+opMulti.inputs["Input1"].connect(opa1.outputs["Output"])
+opMulti.inputs["Input2"].connect(opa2.outputs["Output"])
+
+opb.inputs["MultiInput"].connect(opMulti.outputs["Outputs"])
+
 
 opc.inputs["Input"].connect(opb.outputs["MultiOutput"])
 opd.inputs["Input"].connect(opc.outputs["Output"])
@@ -61,7 +65,7 @@ assert len(opc.outputs["Output"]) == 2, len(opc.outputs["Output"])
 assert len(opd.outputs["Output"]) == 2, len(opd.outputs["Output"])
 assert len(ope.outputs["MultiOutput"]) == 2, len(ope.outputs["MultiOutput"])
 
-opb.inputs["MultiInput"].connectAdd(source0.outputs["Output"])
+opMulti.inputs["Input3"].connect(source0.outputs["Output"])
 
 print "Added other input"
 print "inputs:"
@@ -122,86 +126,6 @@ g.finalize()
 
 
 
-g = Graph(numThreads = 2)
-
-source0 = OpArrayPiper(g)
-source0.inputs["Input"].setValue(numpy.zeros(shape = (200,100), dtype=numpy.uint8))
-
-opb = OpMultiMultiArrayPiper(g)
-
-for i in range(7):
-    opas = []
-    opas.append(OpA(g))
-    opas.append(OpB(g))
-    opb0 = OpMultiArrayPiper(g)
-    
-    opas[0].inputs["Input"].connect(source0.outputs["Output"])
-    opas[1].inputs["Input"].connect(source0.outputs["Output"])
-    0
-    opb0.inputs["MultiInput"].connectAdd(opas[i % 2].outputs["Output"])
-    opb0.inputs["MultiInput"].connectAdd(opas[(i + 1) % 2].outputs["Output"])
-    
-    opb.inputs["MultiInput"].connectAdd(opb0.outputs["MultiOutput"])
-
-print opb.inputs["MultiInput"].level, len(opb.inputs["MultiInput"])
-
-opb2 = OpMultiArrayPiper(g)
-opc = OpB(g)
-opd = OpArrayCache(g)
-ope = OpMultiArrayPiper(g)
-
-opb2.inputs["MultiInput"].connect(opb.outputs["MultiOutput"])
-
-print "B2in: ",opb2.inputs["MultiInput"].level, len(opb2.inputs["MultiInput"])
-print "B2Out: ", opb2.outputs["MultiOutput"].level, len(opb2.outputs["MultiOutput"])
-
-opc.inputs["Input"].connect(opb.outputs["MultiOutput"])
-print "Done connecting C"
-
-opd.inputs["Input"].connect(opc.outputs["Output"])
-ope.inputs["MultiInput"].connect(opd.outputs["Output"])
-
-
-print "Bin: ",opb.inputs["MultiInput"].level, len(opb.inputs["MultiInput"])
-print "BOut: ", opb.outputs["MultiOutput"].level, len(opb.outputs["MultiOutput"])
-
-print "Cin: ",opc.inputs["Input"].level, len(opc.inputs["Input"])
-print "COut: ", opc.outputs["Output"].level, len(opc.outputs["Output"])
-
-print "Din: ",opd.inputs["Input"].level, len(opd.inputs["Input"])
-print "DOut: ", opd.outputs["Output"].level, len(opd.outputs["Output"])
-
-print "Ein: ",ope.inputs["MultiInput"].level, len(ope.inputs["MultiInput"])
-print "EOut: ", ope.outputs["MultiOutput"].level, len(ope.outputs["MultiOutput"])
-
-for i in range(7):
-    print "Checking b2, ", i
-    assert (opb2.outputs["MultiOutput"][i][i % 2][:].allocate().wait() == 0).all()
-    assert (opb2.outputs["MultiOutput"][i][(i + 1) % 2][:].allocate().wait() == 1).all()
-    #assert (ope.outputs["MultiOutput"][i][0][:,:] == 1).all()
-    #assert (ope.outputs["MultiOutput"][i][0][:,:] == 2).all()    
-
-for i in range(7):
-    print "Checking", i
-    assert (ope.outputs["MultiOutput"][i][i % 2][:].allocate().wait() == 1).all()
-    assert (ope.outputs["MultiOutput"][i][(i + 1) % 2][:].allocate().wait() == 2).all()
-
-for i in range(7):
-    print "Checking", i
-    assert (ope.outputs["MultiOutput"][i][i % 2][:].allocate().wait() == 1).all()
-    assert (ope.outputs["MultiOutput"][i][(i + 1) % 2][:].allocate().wait() == 2).all()
-
-
-opd.inputs["Input"].disconnect()
-
-assert not isinstance(opd.inputs["Input"], MultiInputSlot), opd.inputs["Input"].level
-assert not isinstance(opd.outputs["Output"], MultiOutputSlot), opd.outputs["Output"].level
-
-
-
-g.finalize()
-
-
 
 g = Graph(numThreads = 2)
 
@@ -219,19 +143,45 @@ opRead.inputs["Filename"].connect(opList2.outputs["Items"])
 
 opRead.outputs["Image"][0][:].allocate().wait()
 
+
+
+opGauss = operators.OpGaussianSmoothing(g)
+opGauss.inputs["sigma"].setValue(2.0)
+opGauss.inputs["Input"].connect(opRead.outputs["Image"])
+
+opGauss2 = operators.OpGaussianSmoothing(g)
+opGauss2.inputs["sigma"].setValue(2.0)
+opGauss2.inputs["Input"].connect(opGauss.outputs["Output"])
+
+opMulti = operators.Op5ToMulti(g)
+opMulti.inputs["Input1"].connect(opGauss.outputs["Output"])
+
+opStack = operators.OpMultiArrayStacker(g)
+opStack.inputs["Images"].connect(opMulti.outputs["Outputs"])
+
+assert len(opGauss.outputs["Output"]) == 2
 assert len(opRead.outputs["Image"]) == 2
+assert len(opStack.outputs["Output"]) == 2
 
 opRead.inputs["Filename"].connect(opList1.outputs["Items"])
-assert len(opRead.outputs["Image"]) == 1
 
+assert len(opRead.outputs["Image"]) == 1, len(opRead.outputs["Image"])
+assert len(opGauss.outputs["Output"]) == 1, len(opGauss.outputs["Output"])
+assert len(opGauss2.outputs["Output"]) == 1, len(opGauss2.outputs["Output"])
+print "XXXXXXXXXX", len(opStack.inputs["Images"])
+assert len(opStack.outputs["Output"]) == 1, len(opStack.outputs["Output"])
+
+print "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU"
 opRead.inputs["Filename"].connect(opList3.outputs["Items"])
-assert len(opRead.outputs["Image"]) == 3
-
-
 print "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU"
-opRead.inputs["Filename"].disconnect()
-print "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU"
-opRead.inputs["Filename"].setValue("ostrich.jpg")
-assert opRead.outputs["Image"].level == 0, opRead.outputs["Image"].level
+
+assert len(opRead.outputs["Image"]) == 3,len(opRead.outputs["Image"])
+assert len(opStack.inputs["Images"]) == 3,len(opStack.Inputs["Images"])
+assert len(opStack.outputs["Output"]) == 3,len(opStack.outputs["Output"])
+
+#opRead.inputs["Filename"].disconnect()
+#
+#opRead.inputs["Filename"].setValue("ostrich.jpg")
+#assert opRead.outputs["Image"].level == 0, opRead.outputs["Image"].level
 
 g.finalize()

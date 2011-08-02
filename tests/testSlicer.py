@@ -9,6 +9,8 @@ from lazyflow.operators.valueProviders import *
 from lazyflow.operators.classifierOperators import *
 from lazyflow.operators.generic import *
 
+from lazyflow import operators
+
 from numpy.testing import *
 
 #from OptionsProviders import *
@@ -132,12 +134,13 @@ if __name__=="__main__":
     ########################################
     #########################################
     stacker=OpMultiArrayStacker(g)
+
+
+    opMulti = operators.Op5ToMulti(g)
+    opMulti.inputs["Input1"].connect(opa.outputs["Output"])
+    opMulti.inputs["Input2"].connect(opgg.outputs["Output"])
     
-    stacker.inputs["Images"].connectAdd(opa.outputs["Output"])
-    
-    stacker.inputs["Images"].connectAdd(opgg.outputs["Output"])
-    
- 
+    stacker.inputs["Images"].connect(opMulti.outputs["Outputs"])
 
     
     
