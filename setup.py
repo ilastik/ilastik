@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import vigra
 
 build='build'
 context='context'
@@ -17,9 +18,9 @@ os.mkdir(build)
 do('cmake ..')
 do(' make ')
 
-#if os.path.exists(os.path.join(build,context)):os.rmdir(os.path.join(build,context))
-
-do('cp -rf ../src/context .')
+if os.path.exists(os.path.join(build,context)):os.rmdir(os.path.join(build,context))
+do('mkdir context')
+do('cp -rf ../src/contextmodule/* context/.')
 do('mv *.so context/ ')
 
 

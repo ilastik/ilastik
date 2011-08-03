@@ -12,6 +12,7 @@ from lazyflow.operators.generic import *
 from lazyflow.operators import OpStarContext2D
 from lazyflow.operators import OpAverageContext2D
 
+from lazyflow import operators
 
 #from OptionsProviders import *
 #from VigraFilters import *
@@ -20,12 +21,19 @@ from lazyflow.operators import OpAverageContext2D
 
 if __name__=="__main__":
     
-    filename='ostrich.jpg'
+    filename='ostrich_cropped.jpeg'
     
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
             
+    
+    listMerger1 = operators.ListToMultiOperator(g)
+    listMerger1.inputs["List"].setValue([filename])
+
+            
+            
+            
     vimageReader = OpImageReader(g)
-    vimageReader.inputs["Filename"].setValue(filename)
+    vimageReader.inputs["Filename"].connect(listMerger1.outputs["Items"])
     
     #Sigma provider 0.9
     sigmaProvider = OpArrayPiper(g)
@@ -135,7 +143,11 @@ if __name__=="__main__":
     #########################################
     stacker=OpMultiArrayStacker(g)
     
-    stacker.inputs["Images"].connectAdd(opa.outputs["Output"])
+    opMulti = operators.Op5ToMulti(g)
+    opMulti.inputs["Input0"].connect(opa.outputs["Output"])
+    
+    stacker.inputs["Images"].connect(opMulti.outputs["Outputs"])
+    
     """
     stacker.inputs["Images"].connectAdd(opgg.outputs["Output"])
     stacker.inputs["Images"].connectAdd(olg.outputs["Output"])
@@ -154,18 +166,20 @@ if __name__=="__main__":
    
     
     #####Get the labels###
-    filenamelabels='labels_ostrich.png'
+    filenamelabels='labels_ostrich_cropped.png'
     
+    listMerger2 = operators.ListToMultiOperator(g)
+    listMerger2.inputs["List"].setValue([filenamelabels])
     
     labelsReader = OpImageReader(g)
-    labelsReader.inputs["Filename"].setValue(filenamelabels)
+    labelsReader.inputs["Filename"].connect(listMerger2.outputs["Items"])
 
         
     #######Training
     
     opTrain = OpTrainRandomForest(g)
-    opTrain.inputs['Labels'].connectAdd(labelsReader.outputs["Image"])
-    opTrain.inputs['Images'].connectAdd(stacker.outputs["Output"])
+    opTrain.inputs['Labels'].connect(labelsReader.outputs["Image"])
+    opTrain.inputs['Images'].connect(stacker.outputs["Output"])
     opTrain.inputs["fixClassifier"].setValue(False)
     
     
@@ -188,7 +202,7 @@ if __name__=="__main__":
     opPredict.inputs['LabelsCount'].connect(classCountProvider.outputs["Output"])
     
     
-    vigra.impex.writeImage(opPredict.outputs["PMaps"][:].allocate().wait()[:,:,0],"images/test_00000000.png")
+    vigra.impex.writeImage(opPredict.outputs["PMaps"][0][:].allocate().wait()[:,:,0],"images/test_00000000.png")
     
  
     contOp=OpAverageContext2D(g)
@@ -197,7 +211,7 @@ if __name__=="__main__":
     contOp.inputs["ClassesCount"].connect(classCountProvider.outputs["Output"])
     
     
-    print "dsjaflkjflksajflkfjsakjdfkla", stacker.outputs["Output"][:].allocate().wait().shape
+    print "dsjaflkjflksajflkfjsakjdfkla", stacker.outputs["Output"][0][:].allocate().wait().shape
     print "jlkhsajkhfjkhfjkhfjhafsjahdfjahdsjkahfsd"
     #print contOp.outputs["Output"][:].allocate().wait().shape 
     
@@ -206,20 +220,31 @@ if __name__=="__main__":
     contexts = [contOp]
     predictions=[opPredict]
     
-    for numStage in range(0,5):
+    for numStage in range(0,2):
         
         stacker2=OpMultiArrayStacker(g)
         
-        stacker2.inputs["Images"].connectAdd(stacker.outputs["Output"])
-        stacker2.inputs["Images"].connectAdd(contexts[-1].outputs["Output"])
+        opMulti1 = operators.Op5ToMulti(g)
+        opMulti1.inputs["Input0"].connect(stacker.outputs["Output"])
+        opMulti1.inputs["Input1"].connect(contexts[-1].outputs["Output"])
+        
+        stacker2.inputs["Images"].connect(opMulti1.outputs["Outputs"])
         
     
         #######Training2
         
         opTrain2 = OpTrainRandomForest(g)
         opTrain2.inputs["fixClassifier"].setValue(False)
-        opTrain2.inputs['Labels'].connectAdd(labelsReader.outputs["Image"])
-        opTrain2.inputs['Images'].connectAdd(stacker2.outputs["Output"])
+        
+        #opMulti1 = operators.Op5ToMulti(g)
+        #opMulti1.inputs["Input0"].connect(labelsReader.outputs["Image"])
+        
+        #opMulti2 = operators.Op5ToMulti(g)
+        #opMulti2.inputs["Input0"].connect(stacker2.outputs["Output")
+        
+        
+        opTrain2.inputs['Labels'].connect(labelsReader.outputs["Image"])
+        opTrain2.inputs['Images'].connect(stacker2.outputs["Output"])
         
         #print "Here ########################", opTrain.outputs['Classifier'][:].allocate().wait()    
         
@@ -247,8 +272,9 @@ if __name__=="__main__":
         contOp2.inputs["ClassesCount"].connect(classCountProvider.outputs["Output"])
         
         contexts.append(contOp2)
+        answer = predictions[-1].outputs["PMaps"][0][:].allocate(axistags = True).wait()
 
-        vigra.impex.writeImage(predictions[-1].outputs["PMaps"][:].allocate().wait()[:,:,0],"images/test4_" + str(numStage) + ".png")
+        vigra.impex.writeImage(answer,"images/test4_" + str(numStage) + ".png")
         
         #imwriter2=OpImageWriter(g)
         #imwriter2.inputs["Filename"].setValue("res_"+str(numStage)+".png")

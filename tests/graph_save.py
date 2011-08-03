@@ -9,8 +9,10 @@ from lazyflow.operators.valueProviders import *
 from lazyflow.operators.classifierOperators import *
 from lazyflow.operators.generic import *
 
-from lazyflow.operators import OpStarContext2D
-from lazyflow.operators import OpAverageContext2D
+#from lazyflow.operators import OpStarContext2D
+#from lazyflow.operators import OpAverageContext2D
+
+from lazyflow import operators
 
 #this test creates a graph for classifying two images (labels only on one)
 #and saves it to a file. graph_load.py test then loads the graph and 
@@ -48,7 +50,11 @@ if __name__=="__main__":
     #########################################
     stacker=OpMultiArrayStacker(g)
     
-    stacker.inputs["Images"].connectAdd(opa.outputs["Output"])
+    opMulti = operators.Op5ToMulti(g)
+    
+    opMulti.inputs["Input0"].connect(opa.outputs["Output"])
+    
+    stacker.inputs["Images"].connect(opMulti.outputs["Outputs"])
     
     #####Get the labels###
     filenamelabels='labels_ostrich.png'
