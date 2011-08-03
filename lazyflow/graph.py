@@ -1427,15 +1427,15 @@ class OperatorWrapper(Operator):
         self._testRestoreOriginalOperator()
 
     
-    def createInnerOperator(self):
+    def _createInnerOperator(self):
         if self.operator.__class__ is not OperatorWrapper:
             opcopy = self.operator.__class__(self.graph)
         else:
             print "creatInnerOperator OperatorWrapper"
-            opcopy = OperatorWrapper(self.operator.createInnerOperator())
+            opcopy = OperatorWrapper(self.operator._createInnerOperator())
         return opcopy
     
-    def removeInnerOperator(self, op):
+    def _removeInnerOperator(self, op):
         index = self.innerOperators.index(op)
         self.innerOperators.remove(op)
         for name, oslot in self.outputs.items():
@@ -1474,13 +1474,13 @@ class OperatorWrapper(Operator):
             maxLen = max(islot._requiredLength(), maxLen)
                 
         while maxLen > len(self.innerOperators):
-            newop = self.createInnerOperator()
+            newop = self._createInnerOperator()
             self.innerOperators.append(newop)
             newInnerOps.append(newop)
 
         while maxLen < len(self.innerOperators):
             op = self.innerOperators[-1]
-            self.removeInnerOperator(op)
+            self._removeInnerOperator(op)
 
         for k,mslot in self.inputs.items():
             mslot.resize(maxLen)
@@ -1579,19 +1579,19 @@ class OperatorWrapper(Operator):
         
         while len(self.innerOperators) > maxLen:
             op = self.innerOperators[-1]
-            self.removeInnerOperator(op)
+            self._removeInnerOperator(op)
 
     def notifySubSlotRemove(self, slots, indexes):
         if len(indexes) == 1:
             if len(self.innerOperators) > indexes[0]:
                 op = self.innerOperators[indexes[0]]
-                self.removeInnerOperator(op)
+                self._removeInnerOperator(op)
         else:
             if slots[0].partner is not None: #normal connect case
                 self.innerOperators[indexes[0]].notifySubSlotRemove(slots[1:], indexes[1:])
             else: #connectAdd case
                 op = self.innerOperators[indexes[0]]
-                self.removeInnerOperator(op)
+                self._removeInnerOperator(op)
         self._connectInnerOutputs()
                 
     def getOutSlot(self, slot, key, result):
@@ -1655,7 +1655,7 @@ class OperatorGroup(Operator):
         self._visibleOutputs = None
         self._visibleInputs = None
         
-    def createInnerOperators(self):
+    def _createInnerOperators(self):
         # this method must setup the
         # inner operators and connect them (internally)
         pass
@@ -1699,7 +1699,7 @@ class OperatorGroup(Operator):
    
    
     def notifyConnectAll(self):
-        self.createInnerOperators()
+        self._createInnerOperators()
         self.setupInputSlots()
         self._connectInnerOutputs()
     
