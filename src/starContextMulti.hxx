@@ -124,8 +124,30 @@ void starFeatures3Dvar(std::vector<IND>& xvars,
     typename std::vector<IND>::iterator xit;
     typename std::vector<IND>::iterator yit;
     typename std::vector<IND>::iterator zit;
+    //the neighborhoods are always symmetric
+    //find the original x, y, z point to remove it later
+    IND x = xvars[xvars.size()/2];
+    IND y = yvars[yvars.size()/2];
+    IND z = zvars[zvars.size()/2];
+    //std::cout<<"neighbors size: "<<neighbors.size()<<std::endl;
+    //std::cout<<"center point: "<<x<<" , "<<y<<" , "<<z<<std::endl;
+    /*
+    for (int i=0; i<xvars.size(); ++i){
+        std::cout<<" "<<xvars[i]<<" "<<std::endl;
+    }
+    std::cout<<std::endl;
+    for (int i=0; i<yvars.size(); ++i){
+        std::cout<<" "<<yvars[i]<<" "<<std::endl;
+    }
+    std::cout<<std::endl;
+    for (int i=0; i<zvars.size(); ++i){
+        std::cout<<" "<<zvars[i]<<" "<<std::endl;
+    }
+    std::cout<<std::endl;
+    */
     int iflat = 0;
     for (xit=xvars.begin(); xit!=xvars.end(); ++xit){
+        //std::cout<<"x = "<<(*xit)<<std::endl;
         if ((*xit)==std::numeric_limits<IND>::max()){
             //x too big or too small, set all to equal probability
             for (yit=yvars.begin(); yit!=yvars.end(); ++yit){
@@ -134,28 +156,42 @@ void starFeatures3Dvar(std::vector<IND>& xvars,
                     iflat++;
                 }
             }
+            //std::cout<<"1. iflat="<<iflat<<std::endl;
         } else {
             for (yit=yvars.begin(); yit!=yvars.end(); ++yit){
+                //std::cout<<"y = "<<(*yit)<<std::endl;
                 if ((*yit)==std::numeric_limits<IND>::max()){
                     for (zit=zvars.begin(); zit!=zvars.end(); ++zit){
                         neighbors[iflat]=1./nclasses;
                         iflat++;
                     }
+                    //std::cout<<"2. iflat="<<iflat<<std::endl;
                 } else {
                     for (zit=zvars.begin(); zit!=zvars.end(); ++zit){
+                        //std::cout<<"z = "<<(*zit)<<std::endl;
                         if ((*zit)==std::numeric_limits<IND>::max()){
                             neighbors[iflat]=1./nclasses;
                             iflat++;
                         } else {
+                            if ((*xit)==x && (*yit)==y && (*zit)==z){
+                                
+                                continue;
+                            }
+                            
                             neighbors[iflat]=predictions((*xit), (*yit), (*zit), c);
+                            iflat++;
                         }
+                    //std::cout<<"3. iflat= "<<iflat<<std::endl;
                     }
                 }
             }
         }
     }
     
-    
+    //for (int i =0; i<neighbors.size(); ++i){
+      //  std::cout<<" "<<neighbors[i]<<" ";
+    //}
+    //std::cout<<std::endl;
     return;
     
 }
@@ -202,54 +238,59 @@ void starContext3Dvar(MultiArrayView<1, IND, S>& radii_x,
                       MultiArrayView<4, T, S>& predictions,
                       MultiArrayView<4, T, S>& res)
 {
-    
     std::cout<<"stride order: "<<predictions.strideOrdering()<<std::endl;
     std::cout<<"strides: "<<predictions.stride()<<std::endl;
+    std::cout<<"predictions shape: "<<predictions.shape()<<std::endl;
     int nx = predictions.shape()[0];
     int ny = predictions.shape()[1];
     int nz = predictions.shape()[2];
     int nclasses = predictions.shape()[3];
+    std::cout<<"radii shape:"<<radii_x.shape()<<" "<<radii_y.shape()<<" "<<radii_z.shape()<<std::endl;
     int nrx = radii_x.shape()[0];
     int nry = radii_y.shape()[0];
     int nrz = radii_z.shape()[0];
     //each radius gives 3 points: xminus, x, xplus
-    //FIXME: but we have to subtract 1 for the point itself
     //only predictions for now, no averages
-    int nnewfeatures = nrx*nry*nrz*27;
+    int nnewfeatures = nrx*nry*nrz*26;
     std::vector<IND> xvars(nrx*3);
     std::vector<IND> yvars(nry*3);
     std::vector<IND> zvars(nrz*3);
+    std::cout<<"nrx= "<<nrx<<std::endl;
+    std::cout<<"starting the loop..."<<std::endl;
     for (IND x=0; x<nx; ++x){
-        //std::cout<<"class "<<c<<std::endl;
         int ixvar=0;
-        for (IND irx=0; irx<nrx; ++x){
-            xvars[ixvar] = (x<irx) ? std::numeric_limits<IND>::max() : x-irx;
+        for (IND irx=0; irx<nrx; ++irx){
+            xvars[ixvar] = (x<radii_x(irx)) ? std::numeric_limits<IND>::max() : x-radii_x(irx);
             xvars[ixvar+1] = x;
-            xvars[ixvar+2] = (x+irx>=nx) ? std::numeric_limits<IND>::max() : x+irx;
+            xvars[ixvar+2] = (x+radii_x(irx)>=nx) ? std::numeric_limits<IND>::max() : x+radii_x(irx);
             ixvar+=3;
         }
         for (IND y=0; y<ny; ++y){
             int iyvar = 0;
-            for (IND iry=0; iry<nry; ++y){
-                yvars[iyvar] = (y<iry) ? std::numeric_limits<IND>::max() : y-iry;
+            for (IND iry=0; iry<nry; ++iry){
+                yvars[iyvar] = (y<radii_y(iry)) ? std::numeric_limits<IND>::max() : y-radii_y(iry);
                 yvars[iyvar+1] = y;
-                yvars[iyvar+2] = (y+iry>=ny) ? std::numeric_limits<IND>::max() : y+iry;
+                yvars[iyvar+2] = (y+radii_y(iry)>=ny) ? std::numeric_limits<IND>::max() : y+radii_y(iry);
                 iyvar+=3;
             }
-            for (IND z=0; y<nz; ++z){
+            for (IND z=0; z<nz; ++z){
                 int izvar = 0;
-                for (IND irz=0; irz<nrz; ++z){
-                    zvars[izvar] = (z<irz) ? std::numeric_limits<IND>::max() : z-irz;
+                for (IND irz=0; irz<nrz; ++irz){
+                    zvars[izvar] = (z<radii_z(irz)) ? std::numeric_limits<IND>::max() : z-radii_z(irz);
                     zvars[izvar+1] = z;
-                    zvars[izvar+2] = (z+irz>=nz) ? std::numeric_limits<IND>::max() : z+irz;
+                    zvars[izvar+2] = (z+radii_z(irz)>=nz) ? std::numeric_limits<IND>::max() : z+radii_z(irz);
                     izvar+=3;
                 }
                 for (IND c=0; c<nclasses; ++c){
+                    //std::cout<<"x= "<<x<<", y= "<<y<<", z= "<<z<<", c= "<<c<<std::endl;
                     std::vector<T> neighbors(nnewfeatures);
                     starFeatures3Dvar(xvars, yvars, zvars, c, predictions, neighbors);
                     for (IND ii=0; ii<nnewfeatures; ++ii){
-                        res(x, y, z, c*nnewfeatures+ii) = neighbors[ii];
+                        //std::cout<<"ii= "<<ii<<", index= "<<c*nnewfeatures+ii<<" ,res.shape: "<<res.shape()
+                        //<<", neighbors.size: "<<neighbors.size()<<std::endl;
+                        res(x, y, z, c*(nnewfeatures-1)+ii) = neighbors[ii];
                     }
+                    //std::cout<<"lkdjflsjdflsjdflsjdf"<<std::endl;
                 }
             }
         }

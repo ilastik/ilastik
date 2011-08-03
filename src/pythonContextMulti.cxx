@@ -1,3 +1,5 @@
+#define PY_ARRAY_UNIQUE_SYMBOL context_multi_PyArray_API
+
 //#include <Python.h>
 #include <iostream>
 #include <boost/python.hpp>
@@ -38,6 +40,8 @@ NumpyAnyArray pythonStarContext3Dvar(NumpyArray<1, Singleband<IND> > radii_x,
                             NumpyArray<4, Multiband<T> > res)
 {
     {PyAllowThreads _pythread;
+    std::cout<<"calling function"<<std::endl;
+    std::cout<<"shapes: "<<radii_x.shape()<<" "<<radii_y.shape()<<" "<<radii_z.shape()<<" "<<predictions.shape()<<std::endl;
     starContext3Dvar(radii_x, radii_y, radii_z, predictions, res);
     }
     return res;
