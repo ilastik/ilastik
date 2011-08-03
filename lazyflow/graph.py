@@ -1385,7 +1385,7 @@ class OperatorWrapper(Operator):
             op = self.operator
         return op
                     
-    def testRestoreOriginalOperator(self):
+    def _testRestoreOriginalOperator(self):
         #TODO: only restore to the level that is needed, not to the most upper one !
         needWrapping = False
         for iname, islot in self.inputs.items():
@@ -1424,7 +1424,7 @@ class OperatorWrapper(Operator):
             s.disconnect()
         for s in self.inputs.values():
             s.disconnect()
-        self.testRestoreOriginalOperator()
+        self._testRestoreOriginalOperator()
 
     
     def createInnerOperator(self):
@@ -1569,7 +1569,7 @@ class OperatorWrapper(Operator):
 
 
     def notifyDisconnect(self, slot):
-        self.testRestoreOriginalOperator()
+        self._testRestoreOriginalOperator()
         
     def notifySubDisconnect(self, slots, indexes):
         return
