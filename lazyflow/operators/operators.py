@@ -313,8 +313,6 @@ class OpArrayCache(OpArrayPiper):
 #        print self._blockState[blockKey][trueDirtyIndices]
 #        print "Ranges:"
 #        print "TileArray:", tileArray
-        
-        print "FFFFFFFFFFF", tileArray.shape
 
         for i in range(tileArray.shape[1]):
 

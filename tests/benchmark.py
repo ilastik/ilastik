@@ -13,7 +13,7 @@ __testing__ = False
 from tests.mockOperators import OpA, OpB, OpC
 
 
-def runBenchmark(numThreads, cacheClass, shape, requests):    
+def runBenchmark(numThreads, cacheClass, shape, requests, repeatCount=200):    
     g = Graph(numThreads = numThreads)
     provider = OpArrayPiper(g)
     provider.inputs["Input"].setValue(numpy.zeros(shape,dtype = numpy.uint8))
@@ -46,9 +46,10 @@ def runBenchmark(numThreads, cacheClass, shape, requests):
             continue
         key = roi.roiToSlice(numpy.array(r[0]), numpy.array(r[1]))
         t1 = time.time()
-        res1 = opc4.outputs["Output"][key].allocate().wait()
+        for i in range(repeatCount):
+            res1 = opc4.outputs["Output"][key].allocate().wait()
         t2 = time.time()
-        print "%s request %r runtime:" % (cacheClass.__name__,key) , t2-t1
+        print "%s request %r runtime:" % (cacheClass.__name__,key) , (t2-t1)/repeatCount
         assert (res1 == 1).all(), res1
     tg2 = time.time()
     g.finalize()
@@ -63,6 +64,7 @@ requests = [[[30,30,30],[100,100,31]],
             [[50,50,50],[150,150,150]],
             [[50,50,50],[150,150,150]],
             [[0,0,0],[200,200,200]],
+            [[0,0,0],[11,11,11]],
             "setDirty",
             [[0,0,0],[200,200,200]]
             ]

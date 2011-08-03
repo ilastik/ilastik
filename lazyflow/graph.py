@@ -1778,7 +1778,7 @@ class Worker(Thread):
     def run(self):
         while self.graph.running:
             self.graph.freeWorkers.append(self)
-            self.workAvailableEvent.wait(1.0)
+            self.workAvailableEvent.wait(0.2)
             self.graph.freeWorkers.remove(self)
             self.workAvailableEvent.clear()
             
