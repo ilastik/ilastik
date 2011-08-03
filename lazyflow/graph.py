@@ -150,7 +150,7 @@ class GetItemWriterObject(object):
         the same size/shape/dimension as the slot will
         return in reponse to the requested key
         """
-        return self._slot.fireRequest(self._key, destination)     
+        return self._slot._fireRequest(self._key, destination)     
     
     def allocate(self, axistags = False):
         """
@@ -206,7 +206,7 @@ class GetItemRequestObject(object):
                 self.requestLevel = 1
                 self.thread = graph.workers[0]
             
-            self.func = partner.fireRequest
+            self.func = partner._fireRequest
             
             graph.putTask(self)
 
@@ -421,7 +421,7 @@ class InputSlot(object):
         """
         return GetItemWriterObject(self, key)
         
-    def fireRequest(self, key, destination):
+    def _fireRequest(self, key, destination):
         assert self.partner is not None or self._value is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
         #print "GUGA", self.name, self.operator.name, self.operator, key
                                         
@@ -611,7 +611,7 @@ class OutputSlot(object):
     def __getitem__(self, key):
         return GetItemWriterObject(self,key)
 
-    def fireRequest(self, key, destination):
+    def _fireRequest(self, key, destination):
         assert self.operator is not None, "cannot do __getitem__ on Slot %s, of %r -> now operator !!" % (self.name,self.operator) 
         
         start, stop = sliceToRoi(key, self.shape)

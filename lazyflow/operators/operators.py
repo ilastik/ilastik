@@ -303,7 +303,7 @@ class OpArrayCache(OpArrayPiper):
                     
         tileWeights = tileWeights.astype(numpy.uint32)
 #        print "calling drtile...", tileWeights.dtype
-        tileArray = drtile.test_DRTILE(tileWeights, 1).swapaxes(0,1)
+        tileArray = drtile.test_DRTILE(tileWeights, 1)
                 
 #        print "finished calling drtile."
         dirtyRois = []
@@ -318,6 +318,7 @@ class OpArrayCache(OpArrayPiper):
 
             #drStart2 = (tileArray[half-1::-1,i] + blockStart)
             #drStop2 = (tileArray[half*2:half-1:-1,i] + blockStart)
+            print tileArray.shape, blockStart.shape
             drStart2 = tileArray[:half,i] + blockStart
             drStop2 = tileArray[half:,i] + blockStart
             
