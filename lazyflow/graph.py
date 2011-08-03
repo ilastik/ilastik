@@ -281,7 +281,7 @@ class InputSlot(object):
         self.partner = None
         self.level = 0
         self._value = None
-        self.stype = stype
+        self._stype = stype
 
     def setValue(self, value):
         """
@@ -390,7 +390,7 @@ class InputSlot(object):
     #TODO RENAME? createInstance
     # def __copy__ ?, clone ?
     def getInstance(self, operator):
-        s = InputSlot(self.name, operator, stype = self.stype)
+        s = InputSlot(self.name, operator, stype = self._stype)
         return s
             
     def setDirty(self, key):
@@ -485,7 +485,7 @@ class InputSlot(object):
             "operator" : self.operator,
             "partner" : self.partner,
             "value" : self._value,
-            "stype" : self.stype
+            "stype" : self._stype
             
         },patchBoard)
     
@@ -534,7 +534,7 @@ class OutputSlot(object):
         if not hasattr(self, "_axistags"):
             self._axistags = None
         self.partners = []
-        self.stype = stype
+        self._stype = stype
     
     @property
     def _shape(self):
@@ -593,7 +593,7 @@ class OutputSlot(object):
 
     #FIXME __copy__ ?
     def getInstance(self, operator):
-        s = OutputSlot(self.name, operator, stype = self.stype)
+        s = OutputSlot(self.name, operator, stype = self._stype)
         s._shape = self._shape
         s._dtype = self._dtype
         s._axistags = self._axistags
@@ -665,7 +665,7 @@ class OutputSlot(object):
             "axistags" : self._axistags,
             "dtype" : self._dtype,
             "partners" : self.partners,
-            "stype" : self.stype
+            "stype" : self._stype
             
         },patchBoard)
     
@@ -704,7 +704,7 @@ class MultiInputSlot(object):
         self.partner = None
         self.inputSlots = []
         self.level = level
-        self.stype = stype
+        self._stype = stype
         self._value = None
     
     @property
@@ -734,9 +734,9 @@ class MultiInputSlot(object):
                     
     def _appendNew(self):
         if self.level <= 1:
-            islot = InputSlot(self.name ,self, stype = self.stype)
+            islot = InputSlot(self.name ,self, stype = self._stype)
         else:
-            islot = MultiInputSlot(self.name,self, stype = self.stype, level = self.level - 1)
+            islot = MultiInputSlot(self.name,self, stype = self._stype, level = self.level - 1)
         index = len(self) - 1
         self.inputSlots.append(islot)
         if self.partner is not None:
@@ -752,9 +752,9 @@ class MultiInputSlot(object):
     
     def _insertNew(self, index):
         if self.level == 1:
-            islot = InputSlot(self.name,self, self.stype)
+            islot = InputSlot(self.name,self, self._stype)
         else:
-            islot = MultiInputSlot(self.name,self, stype = self.stype, level = self.level - 1)
+            islot = MultiInputSlot(self.name,self, stype = self._stype, level = self.level - 1)
         self.inputSlots.insert(index,islot)
         for i, isl in enumerate(self.inputSlots[index+1:]):
             isl.name = self.name
@@ -934,7 +934,7 @@ class MultiInputSlot(object):
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
-        s = MultiInputSlot(self.name, operator, stype = self.stype, level = self.level)
+        s = MultiInputSlot(self.name, operator, stype = self._stype, level = self.level)
         return s
             
     def setDirty(self, key = None):
@@ -967,7 +967,7 @@ class MultiInputSlot(object):
             "level" : self.level,
             "operator" : self.operator,
             "partner" : self.partner,
-            "stype" : self.stype,
+            "stype" : self._stype,
             "inputSlots": self.inputSlots
             
         },patchBoard)
@@ -1006,7 +1006,7 @@ class MultiOutputSlot(object):
         self.partners = []   
         self.outputSlots = []
         self.level = level
-        self.stype = stype
+        self._stype = stype
     
     def __getitem__(self, key):
         return self.outputSlots[key]
@@ -1077,9 +1077,9 @@ class MultiOutputSlot(object):
     def resize(self, size):
         while len(self) < size:
             if self.level == 1:
-                slot = OutputSlot(self.name,self, stype = self.stype)
+                slot = OutputSlot(self.name,self, stype = self._stype)
             else:
-                slot = MultiOutputSlot(self.name,self, stype = self.stype, level = self.level - 1)
+                slot = MultiOutputSlot(self.name,self, stype = self._stype, level = self.level - 1)
             index = len(self)
             self.outputSlots.append(slot)
 
@@ -1107,7 +1107,7 @@ class MultiOutputSlot(object):
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
-        s = MultiOutputSlot(self.name, operator, stype = self.stype, level = self.level)
+        s = MultiOutputSlot(self.name, operator, stype = self._stype, level = self.level)
         return s
             
     def setDirty(self, key):
@@ -1135,7 +1135,7 @@ class MultiOutputSlot(object):
             "level" : self.level,
             "operator" : self.operator,
             "partners" : self.partners,
-            "stype" : self.stype,
+            "stype" : self._stype,
             "outputSlots" : self.outputSlots
             
         },patchBoard)
@@ -1329,18 +1329,18 @@ class OperatorWrapper(Operator):
             # replicate input slot definitions
             for islot in self.operator.inputSlots:
                 level = islot.level + 1
-                self._inputSlots.append(MultiInputSlot(islot.name, stype = islot.stype, level = level))
+                self._inputSlots.append(MultiInputSlot(islot.name, stype = islot._stype, level = level))
     
             # replicate output slot definitions
             for oslot in self.outputSlots:
                 level = oslot.level + 1
-                self._outputSlots.append(MultiOutputSlot(oslot.name, stype = oslot.stype, level = level))
+                self._outputSlots.append(MultiOutputSlot(oslot.name, stype = oslot._stype, level = level))
     
                     
             # replicate input slots for the instance
             for islot in self.operator.inputs.values():
                 level = islot.level + 1
-                ii = MultiInputSlot(islot.name, self, stype = islot.stype, level = level)
+                ii = MultiInputSlot(islot.name, self, stype = islot._stype, level = level)
                 self.inputs[islot.name] = ii
                 op = self.operator
                 while isinstance(op.operator, (Operator, MultiInputSlot)):
@@ -1350,7 +1350,7 @@ class OperatorWrapper(Operator):
             # replicate output slots for the instance
             for oslot in self.operator.outputs.values():
                 level = oslot.level + 1
-                oo = MultiOutputSlot(oslot.name, self, stype = oslot.stype, level = level)
+                oo = MultiOutputSlot(oslot.name, self, stype = oslot._stype, level = level)
                 self.outputs[oslot.name] = oo
                 op = self.operator
                 while isinstance(op.operator, (Operator, MultiOutputSlot)):
