@@ -1,7 +1,7 @@
 import numpy, vigra
 from numpy.lib.stride_tricks import as_strided as ast
 
-def sliceToRoi(s, shape=None):
+def sliceToRoi(s, shape=None, extendSingleton = True):
     """Args:
             slice: slice object (1D) or list of slice objects (N-D)
        Returns:
@@ -21,7 +21,10 @@ def sliceToRoi(s, shape=None):
     s = list(s)    
     for i,k in enumerate(s):
         if type(k) is not slice:
-            s[i] = slice(k,k+1,None)
+            if extendSingleton is True:
+                s[i] = slice(k,k+1,None)
+            else:
+                s[i] = slice(k,k,None)
         else:
             if k.stop is None:
                 if shape is not None:
@@ -29,8 +32,10 @@ def sliceToRoi(s, shape=None):
                 else:
                     s[i] = slice(0,-1,None)
             elif k.start == k.stop:
-                s[i] = slice(k.start,k.start+1,None)
-                    
+                if extendSingleton is True:
+                    s[i] = slice(k.start,k.start+1,None)
+                else:
+                    s[i] = k.start
     start = numpy.array([k.start for k in s])
     stop = numpy.array([k.stop for k in s])
     return start, stop
@@ -48,7 +53,7 @@ def roiToSlice(start, stop, hardBind=False):
     if hardBind:
         res = []
         for sta, stp in zip(start,stop):
-            if stp == sta + 1:
+            if stp == sta + 1 or stp == sta:
                 res.append(sta)
             else:
                 res.append(slice(sta,stp))

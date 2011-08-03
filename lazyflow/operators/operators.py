@@ -508,6 +508,7 @@ class OpDenseSparseArray(Operator):
             self._sparseNZ =  blist.sorteddict()            
             
     def getOutSlot(self, slot, key, result):
+        self.lock.acquire()
         assert(self.inputs["eraser"].connected() == True and self.inputs["shape"].connected() == True), "OpDenseSparseArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % (self.inputs["eraser"].connected(), self.inputs["shape"].connected())
         if slot.name == "Output":
             result[:] = self._denseArray[key]
@@ -515,46 +516,64 @@ class OpDenseSparseArray(Operator):
             result[0] = numpy.array(self._sparseNZ.values())
         elif slot.name == "nonzeroCoordinates":
             result[0] = numpy.array(self._sparseNZ.keys())
+        self.lock.release()
         return result
 
     def setInSlot(self, slot, key, value):
-        print "FUCK THE WORLD", key, value
         shape = self.inputs["shape"].value
         eraseLabel = self.inputs["eraser"].value
+        neutralElement = 0
         
         self.lock.acquire()
 
-        self._denseArray[key] = value
 
         #fix slicing of single dimensions:
-        start, stop = sliceToRoi(key, shape)
+        start, stop = sliceToRoi(key, shape, extendSingleton = False)
         start = start.astype(numpy.int32)
         stop = stop.astype(numpy.int32)
+        
+        tempKey = roiToSlice(start-start, stop-start, hardBind = True)
         
         stop += numpy.where(stop-start == 0,1,0)
         key = roiToSlice(start,stop)
 
-        update = self._denseArray[key]
+        updateShape = tuple(stop-start)
+
+        update = self._denseArray[key].copy()
+
+        update[tempKey] = value
         
         startRavel = numpy.ravel_multi_index(start,shape)
         
         #insert values into dict
-        updateNZ = numpy.nonzero(update)
-        print updateNZ, shape
+        updateNZ = numpy.nonzero(numpy.where(update != neutralElement,1,0))
+        updateNZRavelSmall = numpy.ravel_multi_index(updateNZ, updateShape)
+        
+        if isinstance(value, numpy.ndarray):
+            valuesNZ = value.ravel()[updateNZRavelSmall]
+        else:
+            valuesNZ = value
+
         updateNZRavel = numpy.ravel_multi_index(updateNZ, shape)
-        updateNZRavel += startRavel
+        updateNZRavel += startRavel        
+
+        self._denseArray.ravel()[updateNZRavel] = valuesNZ        
+        
         valuesNZ = self._denseArray.ravel()[updateNZRavel]
+        
+        self._denseArray.ravel()[updateNZRavel] =  valuesNZ       
+
+        
         td = blist.sorteddict(zip(updateNZRavel.tolist(),valuesNZ.tolist()))
+   
         self._sparseNZ.update(td)
         
-
         #remove values to be deleted
         updateNZ = numpy.nonzero(numpy.where(update == eraseLabel,1,0))
         if len(updateNZ)>0:
-            print updateNZ, shape
             updateNZRavel = numpy.ravel_multi_index(updateNZ, shape)
             updateNZRavel += startRavel    
-            self._denseArray.ravel()[updateNZRavel] = 0
+            self._denseArray.ravel()[updateNZRavel] = neutralElement
             for index in updateNZRavel:
                 self._sparseNZ.pop(index)
         
