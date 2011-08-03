@@ -1219,7 +1219,7 @@ class Operator(object):
             # of the partner operators are created       
         self.graph.registerOperator(self)
          
-    def getOriginalOperator(self):
+    def _getOriginalOperator(self):
         return self
         
     def disconnect(self):
@@ -1379,7 +1379,7 @@ class OperatorWrapper(Operator):
                 for p in partners:         
                     oo._connect(p)
 
-    def getOriginalOperator(self):
+    def _getOriginalOperator(self):
         op = self.operator
         while isinstance(op, OperatorWrapper):
             op = self.operator
@@ -1885,7 +1885,7 @@ class Graph(object):
             # if an operator has no outputs but inputs
             # it belongs to the graph and is an endpoint
             if olength == 0 and ilength > 0:
-                ooooo = o.getOriginalOperator()
+                ooooo = o._getOriginalOperator()
                 if ooooo not in endPoints:
                     endPoints.append(ooooo)                
                 
@@ -1907,7 +1907,7 @@ class Graph(object):
                     p = i.partner
                     # we use the metaParent to allow for operatorGroups and operatorWrappers
                     assert p._metaParent is not None, "%r, %r" % (p.name, p.operator)
-                    partnerOp = p._metaParent.getOriginalOperator()
+                    partnerOp = p._metaParent._getOriginalOperator()
                     if partnerOp not in queue and partnerOp not in doneQueue:
                         queue.append(partnerOp)
         
@@ -1935,7 +1935,7 @@ class Graph(object):
                 #save a connection
                 val = inslot.value
                 if inslot.partner is not None:
-                    partnerOp = inslot.partner.operator.getOriginalOperator()
+                    partnerOp = inslot.partner.operator._getOriginalOperator()
                     partnerSlotName = inslot.partner.name
                     connections.append(["connect", [str(id(op)),key,str(id(partnerOp)), partnerSlotName]])                    
                 elif val is not None:

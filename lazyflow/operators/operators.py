@@ -313,14 +313,15 @@ class OpArrayCache(OpArrayPiper):
 #        print self._blockState[blockKey][trueDirtyIndices]
 #        print "Ranges:"
 #        print "TileArray:", tileArray
+        
+        print "FFFFFFFFFFF", tileArray.shape
 
         for i in range(tileArray.shape[1]):
 
             #drStart2 = (tileArray[half-1::-1,i] + blockStart)
             #drStop2 = (tileArray[half*2:half-1:-1,i] + blockStart)
-            print tileArray.shape, blockStart.shape
-            drStart2 = tileArray[:half,i] + blockStart
-            drStop2 = tileArray[half:,i] + blockStart
+            drStart2 = numpy.flipud(tileArray[:half,i]) + blockStart
+            drStop2 = numpy.flipud(tileArray[half:,i]) + blockStart
             
             drStart = drStart2*self._blockShape
             drStop = drStop2*self._blockShape
