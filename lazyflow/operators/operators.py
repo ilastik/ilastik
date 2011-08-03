@@ -518,6 +518,7 @@ class OpDenseSparseArray(Operator):
         return result
 
     def setInSlot(self, slot, key, value):
+        print "FUCK THE WORLD", key, value
         shape = self.inputs["shape"].value
         eraseLabel = self.inputs["eraser"].value
         
@@ -527,11 +528,13 @@ class OpDenseSparseArray(Operator):
 
         #fix slicing of single dimensions:
         start, stop = sliceToRoi(key, shape)
+        start = start.astype(numpy.int32)
+        stop = stop.astype(numpy.int32)
+        
         stop += numpy.where(stop-start == 0,1,0)
         key = roiToSlice(start,stop)
 
         update = self._denseArray[key]
-        
         
         startRavel = numpy.ravel_multi_index(start,shape)
         

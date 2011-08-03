@@ -35,13 +35,15 @@ obc.inputs["Input0"].connect(opa1.outputs["Output"])
 
 print "FFFFFFFFFFFFFFFF", obc.outputs["Outputs"], len(obc.outputs["Outputs"])
 
+req = opa1.outputs["Output"][:].allocate()
 def closure(result, fuchs):
+    req.wait() 
     print "...notify request finished"
     print "Result:", result
     print "Fuchs:", fuchs
 
 print "Starting notify request..."
-opa1.outputs["Output"][:].allocate().notify(closure, fuchs = "Foxxy")
+req.notify(closure, fuchs = "Foxxy")
 print "other stuff in mainthread"
 import time
 time.sleep(3)

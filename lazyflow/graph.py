@@ -1764,8 +1764,11 @@ class Worker(Thread):
         reqObject.lock.acquire()
         reqObject.event.set()
         if reqObject.closure is not None:
+            reqObject.lock.release()
             reqObject.closure(result = reqObject.destination, **reqObject.kwargs)
-        reqObject.lock.release()
+        else:
+            reqObject.lock.release()
+            
         
         #append 
         if reqObject.greenlet is not None:
