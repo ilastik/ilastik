@@ -161,7 +161,7 @@ class GetItemWriterObject(object):
         a destination array of required size,shape,dtype will
         be constructed in which the results will be written.
         """
-        destination, key = self._slot.allocateStorage(self._key, axistags)
+        destination, key = self._slot._allocateStorage(self._key, axistags)
         self._key = key
         return self.writeInto(destination)
     
@@ -429,7 +429,7 @@ class InputSlot(object):
             
         return reqObject
 
-    def allocateStorage(self, key, axistags = True):
+    def _allocateStorage(self, key, axistags = True):
         start, stop = sliceToRoi(key, self.shape)
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
         if axistags is True:
@@ -599,7 +599,7 @@ class OutputSlot(object):
         s._axistags = self._axistags
         return s
 
-    def allocateStorage(self, key, axistags = True):
+    def _allocateStorage(self, key, axistags = True):
         start, stop = sliceToRoi(key, self.shape)
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
         if axistags is True:
