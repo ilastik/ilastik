@@ -9,6 +9,8 @@ import greenlet, threading
 import vigra
 import copy
 
+import blist
+
 class OpArrayPiper(Operator):
     name = "ArrayPiper"
     description = "simple piping operator"
@@ -472,3 +474,87 @@ class OpArrayCache(OpArrayPiper):
         setattr(op, "_blockQuery", numpy.ndarray(op._dirtyShape, dtype = object))
 
         return op        
+        
+        
+class OpDenseSparseArray(Operator):
+    name = "SparseArray"
+    description = "simple cache for sparse arrays"
+       
+    inputSlots = [InputSlot("Input"), InputSlot("shape"), InputSlot("eraser")]
+    outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates")]    
+    
+    def __init__(self, graph):
+        Operator.__init__(self, graph)
+        self.lock = threading.Lock()
+        self._denseArray = None
+        self._sparseNZ = None
+        
+    def notifyConnect(self, slot):
+        if slot.name == "shape":
+            shape = self.inputs["shape"].value
+            self.outputs["Output"]._dtype = numpy.uint8
+            self.outputs["Output"]._shape = shape
+            self.outputs["Output"]._axistags = vigra.defaultAxistags(len(shape))
+    
+            self.outputs["nonzeroValues"]._dtype = object
+            self.outputs["nonzeroValues"]._shape = (1,)
+            self.outputs["nonzeroValues"]._axistags = vigra.defaultAxistags(1)
+            
+            self.outputs["nonzeroCoordinates"]._dtype = object
+            self.outputs["nonzeroCoordinates"]._shape = (1,)
+            self.outputs["nonzeroCoordinates"]._axistags = vigra.defaultAxistags(1)
+
+            self._denseArray = numpy.zeros(shape, numpy.uint8)
+            self._sparseNZ =  blist.sorteddict()            
+            
+    def getOutSlot(self, slot, key, result):
+        assert(self.inputs["eraser"].connected() == True and self.inputs["shape"].connected() == True), "OpDenseSparseArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % (self.inputs["eraser"].connected(), self.inputs["shape"].connected())
+        if slot.name == "Output":
+            result[:] = self._denseArray[key]
+        elif slot.name == "nonzeroValues":
+            result[0] = numpy.array(self._sparseNZ.values())
+        elif slot.name == "nonzeroCoordinates":
+            result[0] = numpy.array(self._sparseNZ.keys())
+        return result
+
+    def setInSlot(self, slot, key, value):
+        shape = self.inputs["shape"].value
+        eraseLabel = self.inputs["eraser"].value
+        
+        self.lock.acquire()
+
+        self._denseArray[key] = value
+
+        #fix slicing of single dimensions:
+        start, stop = sliceToRoi(key, shape)
+        stop += numpy.where(stop-start == 0,1,0)
+        key = roiToSlice(start,stop)
+
+        update = self._denseArray[key]
+        
+        
+        startRavel = numpy.ravel_multi_index(start,shape)
+        
+        #insert values into dict
+        updateNZ = numpy.nonzero(update)
+        print updateNZ, shape
+        updateNZRavel = numpy.ravel_multi_index(updateNZ, shape)
+        updateNZRavel += startRavel
+        valuesNZ = self._denseArray.ravel()[updateNZRavel]
+        td = blist.sorteddict(zip(updateNZRavel.tolist(),valuesNZ.tolist()))
+        self._sparseNZ.update(td)
+        
+
+        #remove values to be deleted
+        updateNZ = numpy.nonzero(numpy.where(update == eraseLabel,1,0))
+        if len(updateNZ)>0:
+            print updateNZ, shape
+            updateNZRavel = numpy.ravel_multi_index(updateNZ, shape)
+            updateNZRavel += startRavel    
+            self._denseArray.ravel()[updateNZRavel] = 0
+            for index in updateNZRavel:
+                self._sparseNZ.pop(index)
+        
+        self.lock.release()
+        
+        self.outputs["Output"].setDirty(key)
