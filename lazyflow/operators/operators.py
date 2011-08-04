@@ -147,8 +147,8 @@ class FakeGetItemRequestObject(object):
     def __init__(self,gr):
         self.greenlet = gr
         self.lock = threading.Lock()
-
         self.thread = threading.current_thread()
+        self.requestID = self.thread.runningRequestID
         
         if hasattr(self.thread, "currentRequestLevel"):
             self.requestLevel = self.thread.currentRequestLevel + 1
