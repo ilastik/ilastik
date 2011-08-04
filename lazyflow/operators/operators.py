@@ -543,10 +543,8 @@ class OpSparseLabelArray(Operator):
         shape = self.inputs["shape"].value
         eraseLabel = self.inputs["eraser"].value
         neutralElement = 0
-        
+
         self.lock.acquire()
-
-
         #fix slicing of single dimensions:
         start, stop = sliceToRoi(key, shape, extendSingleton = False)
         start = start.astype(numpy.int32)

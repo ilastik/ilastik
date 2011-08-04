@@ -84,7 +84,8 @@ class OpTrainRandomForest(Operator):
             self.outputs["Classifier"].setDirty((slice(0,1,None),))    
 
     def notifyDirty(self, slot, key):
-        kkkkkkkkkkkkkkkk
+        if self.inputs["fixClassifier"].value == False:
+            self.outputs["Classifier"].setDirty((slice(0,1,None),))            
 
 class OpPredictRandomForest(Operator):
     name = "PredictRandomForest"
@@ -110,6 +111,7 @@ class OpPredictRandomForest(Operator):
         """
         oslot = self.outputs["PMaps"]
         islot=self.inputs["Image"]
+
         oslot._dtype = numpy.float32
         oslot._shape = islot.shape[:-1]+(nlabels,)
         oslot._axistags = islot.axistags
@@ -125,7 +127,7 @@ class OpPredictRandomForest(Operator):
         nlabels=self.inputs["LabelsCount"].value
 
         RF=self.inputs["Classifier"].value
-        assert RF.labelCount() == nlabels, "ERROR: OpPredictRandomForest, labelCount differs from true labelCount!"        
+        assert RF.labelCount() == nlabels, "ERROR: OpPredictRandomForest, labelCount differs from true labelCount! %r vs. %r" % (RF.labelCount(), nlabels)        
                 
         newKey = key[:-1]
         newKey += (slice(0,self.inputs["Image"].shape[-1],None),)
