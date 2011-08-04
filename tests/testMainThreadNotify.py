@@ -33,7 +33,13 @@ obc = operators.Op5ToMulti(g)
 obc.inputs["Input0"].connect(opa1.outputs["Output"])
 
 
-print "FFFFFFFFFFFFFFFF", obc.outputs["Outputs"], len(obc.outputs["Outputs"])
+def dirtyCallback(key, fuchs):
+    print "i am a ", fuchs, "and region became dirty in area", key
+
+source0.outputs["Output"].registerDirtyCallback(dirtyCallback,fuchs = "fox")
+source0.inputs["Input"][10:20,5:15] = 17
+
+
 
 def closure(result, req, fuchs):
     req.wait() 

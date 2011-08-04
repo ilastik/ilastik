@@ -546,6 +546,8 @@ class OutputSlot(object):
             self._axistags = None
         self.partners = []
         self._stype = stype
+        
+        self._dirtyCallbacks = []
     
     @property
     def _shape(self):
@@ -586,7 +588,16 @@ class OutputSlot(object):
         if partner in self.partners:
             self.partners.remove(partner)
            
-            
+    def registerDirtyCallback(self, function, **kwargs):
+        self._dirtyCallbacks.append([function, kwargs])
+    
+    def unregisterDirtyCallback(self, function):
+        element = None
+        for e in self._dirtyCallbacks:
+            if e[0] == function:
+                element = e
+        if element is not None:
+            self._dirtyCallbacks.remove(element)
             
     def setDirty(self, key):
         """
@@ -601,6 +612,9 @@ class OutputSlot(object):
         key = roiToSlice(start,stop)
         for p in self.partners:
             p.setDirty(key) #set everything dirty
+            
+        for cb in self._dirtyCallbacks:
+            cb[0](key, **cb[1])
 
     #FIXME __copy__ ?
     def getInstance(self, operator):
