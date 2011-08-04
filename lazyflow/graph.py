@@ -185,7 +185,7 @@ class GetItemRequestObject(object):
     InputSlot and OutputSlot) 
     """
         
-    __slots__ = ["func", "slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure",  "kwargs"]
+    #__slots__ = ["func", "slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure",  "kwargs"]
 
     def __init__(self, slot, graph, partner, key, destination):
         self.key = key
@@ -219,24 +219,26 @@ class GetItemRequestObject(object):
         the  result area.
         """
         if self.slot is None or self.slot.partner is not None:
-            self.lock.acquire()
+            #self.lock.acquire()
             if not self.event.isSet():
                 # --> wait until results are ready
                 if greenlet.getcurrent().parent != None: #TODO: use other test as in __init__  
                     self.greenlet = greenlet.getcurrent()
-                    self.lock.release()
+                    #self.lock.release()
                     self.greenlet.parent.switch(None)
                     self.greenlet = None
                 else:
-                    self.lock.release()
+                    #self.lock.release()
                     # loop to allow ctrl-c signal !
                     if timeout == 0:
-                        while not self.event.isSet():
-                            self.event.wait(timeout = 0.25) #in seconds
+                        self.event.wait()
+                        #while not self.event.isSet():
+                        #    self.event.wait(timeout = 0.25) #in seconds
                     else:
                         self.event.wait(timeout = timeout) #in seconds
             else:
-                self.lock.release()
+                #self.lock.release()
+                pass
         else:
             if isinstance(self.slot._value, numpy.ndarray):
                 self.destination[:] = self.slot._value[self.key]
@@ -254,9 +256,9 @@ class GetItemRequestObject(object):
         self.kwargs = kwargs
         
         if isinstance(self.thread, Worker):
-            self.lock.acquire()
+            #self.lock.acquire()
             self.closure = closure
-            self.lock.release()
+            #self.lock.release()
         else:
             print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
             result = self.wait()
@@ -604,7 +606,9 @@ class OutputSlot(object):
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
         if axistags is True:
             storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
-        
+            #storage = storage.view(vigra.VigraArray)
+            #storage.axistags = copy.copy(self.axistags)
+
         key = roiToSlice(start,stop)
         return storage, key
 
@@ -1761,14 +1765,14 @@ class Worker(Thread):
         
     def processReqObject(self, reqObject):
         reqObject.func(reqObject.key, reqObject.destination)
-        reqObject.lock.acquire()
+        #reqObject.lock.acquire()
         reqObject.event.set()
         if reqObject.closure is not None:
-            reqObject.lock.release()
+            #reqObject.lock.release()
             reqObject.closure(result = reqObject.destination, **reqObject.kwargs)
         else:
-            reqObject.lock.release()
-            
+            #reqObject.lock.release()
+            pass
         
         #append 
         if reqObject.greenlet is not None:
@@ -1778,17 +1782,17 @@ class Worker(Thread):
     def run(self):
         while self.graph.running:
             self.graph.freeWorkers.append(self)
-            self.workAvailableEvent.wait(0.2)
+            self.workAvailableEvent.wait()#(0.2)
             self.graph.freeWorkers.remove(self)
             self.workAvailableEvent.clear()
             
             while not self.graph.tasks.empty() or len(self.finishedRequests) > 0:
                 while len(self.finishedRequests) > 0:
                     reqObject = self.finishedRequests.popleft()
-                    reqObject.lock.acquire()
+                    #reqObject.lock.acquire()
                     tgr = reqObject.greenlet
                     reqObject.greenlet = None
-                    reqObject.lock.release()
+                    #reqObject.lock.release()
                     if tgr is not None:
                         self.currentRequestLevel = reqObject.requestLevel
                         task = tgr.switch()
@@ -1843,6 +1847,7 @@ class Graph(object):
         print "Finalizing Graph..."
         self.running = False
         for w in self.workers:
+            w.signalWorkAvailable()
             w.join()
     
     def registerOperator(self, op):

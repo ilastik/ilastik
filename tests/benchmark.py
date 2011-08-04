@@ -68,7 +68,7 @@ requests = [[[30,30,30],[100,100,31]],
             "setDirty",
             [[0,0,0],[200,200,200]]
             ]
-numThreads = 2
+numThreads = 1
 #runBenchmark(numThreads,OpArrayBlockCache, shape, requests)
 #runBenchmark(1,OpArrayBlockCache, shape, requests)
 import cProfile
@@ -79,9 +79,9 @@ stats = pstats.Stats("benchmark.cprof")
 print "##################################################################"
 print "                  C U M U L A T I V E"
 print "##################################################################"
-stats.sort_stats("cumulative").print_stats(100) 
+stats.sort_stats("cumulative").print_stats(20) 
 print "##################################################################"
 print "                  T I M E"
 print "##################################################################"
 
-stats.sort_stats("time").print_stats(100) 
+stats.sort_stats("time").print_stats(20) 
