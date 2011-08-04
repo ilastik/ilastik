@@ -476,11 +476,11 @@ class OpArrayCache(OpArrayPiper):
         return op        
         
         
-class OpDenseSparseArray(Operator):
-    name = "SparseArray"
-    description = "simple cache for sparse arrays"
+class OpSparseLabelArray(Operator):
+    name = "Sparse Label Array"
+    description = "simple cache for sparse label arrays"
        
-    inputSlots = [InputSlot("Input"), InputSlot("shape"), InputSlot("eraser")]
+    inputSlots = [InputSlot("Input"), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel")]
     outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates")]    
     
     def __init__(self, graph):
@@ -505,7 +505,27 @@ class OpDenseSparseArray(Operator):
             self.outputs["nonzeroCoordinates"]._axistags = vigra.defaultAxistags(1)
 
             self._denseArray = numpy.zeros(shape, numpy.uint8)
-            self._sparseNZ =  blist.sorteddict()            
+            self._sparseNZ =  blist.sorteddict()  
+        if slot.name == "deleteLabel":
+            labelNr = slot.value
+            if labelNr is not -1:
+                neutralElement = 0
+                slot.setValue(-1) #reset state of inputslot
+                self.lock.acquire()
+
+                #remove values to be deleted
+                updateNZ = numpy.nonzero(numpy.where(self._denseArray == labelNr,1,0))
+                if len(updateNZ)>0:
+                    updateNZRavel = numpy.ravel_multi_index(updateNZ, self._denseArray.shape)
+                    self._denseArray.ravel()[updateNZRavel] = neutralElement
+                    for index in updateNZRavel:
+                        self._sparseNZ.pop(index)
+                self._denseArray[:] = numpy.where(self._denseArray > labelNr, self._denseArray - 1, self._denseArray)
+                self.lock.release()
+                self.outputs["nonzeroValues"][0] = numpy.array(self._sparseNZ.values())
+                self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
+                self.outputs["Output"][:] = self._denseArray #set output dirty
+                
             
     def getOutSlot(self, slot, key, result):
         self.lock.acquire()
