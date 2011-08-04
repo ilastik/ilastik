@@ -38,6 +38,7 @@ import time
 import gc
 import ConfigParser
 import string
+import itertools
 
 from h5dumprestore import instanceClassToString, stringToClass
 from helpers import itersubclasses
@@ -198,14 +199,17 @@ class GetItemRequestObject(object):
         self.slot = slot
         self.func = None
         self.kwargs = {}
-        
+        self.cancelled = False
+        self.graph = graph
         if slot is None or slot.partner is not None:
             if hasattr(self.thread, "currentRequestLevel"): #TODO: use more self explaining test
                 self.requestLevel = self.thread.currentRequestLevel + 1
+                self.requestID = self.thread.runningRequestID
             else:
                 self.requestLevel = 1
                 self.thread = graph.workers[0]
-            
+                self.requestID = graph.lastRequestID.next()
+                
             self.func = partner._fireRequest
             
             graph.putTask(self)
@@ -255,15 +259,20 @@ class GetItemRequestObject(object):
         """
         self.kwargs = kwargs
         
-        if isinstance(self.thread, Worker):
+        #if isinstance(self.thread, Worker):
             #self.lock.acquire()
-            self.closure = closure
+        self.closure = closure
             #self.lock.release()
-        else:
-            print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
-            result = self.wait()
-            closure(result = result, **self.kwargs)
-            
+        #else:
+        #    print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
+        #    result = self.wait()
+        #    closure(result = result, **self.kwargs)
+    
+    def cancel(self):
+        self.closure = None
+        self.cancelled = True
+        self.graph.cancelRequestID(self.requestID)        
+        
     def __call__(self):
         #TODO: remove this convenience function when
         #      everything is ported ?
@@ -1758,8 +1767,23 @@ class Worker(Thread):
         self.number =  len(self.graph.workers)
         self.workAvailableEvent = Event()
         self.workAvailableEvent.clear()
+        self.runningRequestID = 0
         print "Initializing Worker #%d" % self.number
-
+        
+    def cancelRequestID(self, requestID):
+        temp = deque()                
+        while len(self.finishedRequests) > 0:
+            try:
+                reqObject = self.finishedRequests.popleft()
+            except IndexError:
+                pass
+            if reqObject.requestID != requestID:
+                temp.append(reqObject)
+        
+        while len(temp) > 0:
+            elem = temp.popleft()            
+            self.finishedRequests.append(elem)
+    
     def signalWorkAvailable(self):
         self.workAvailableEvent.set()
         
@@ -1786,7 +1810,7 @@ class Worker(Thread):
             self.graph.freeWorkers.remove(self)
             self.workAvailableEvent.clear()
             
-            while not self.graph.tasks.empty() or len(self.finishedRequests) > 0:
+            while not len(self.graph.tasks)==0 or len(self.finishedRequests) > 0:
                 while len(self.finishedRequests) > 0:
                     reqObject = self.finishedRequests.popleft()
                     #reqObject.lock.acquire()
@@ -1795,11 +1819,12 @@ class Worker(Thread):
                     #reqObject.lock.release()
                     if tgr is not None:
                         self.currentRequestLevel = reqObject.requestLevel
+                        self.runningRequestID = reqObject.requestID
                         task = tgr.switch()
                 task = None
                 try:
-                    task = self.graph.tasks.get(False)#timeout = 1.0)
-                except Empty:
+                    task = self.graph.tasks.pop()#timeout = 1.0)
+                except IndexError:
                     pass
                 if task is not None:
                     prio, reqObject = task
@@ -1808,6 +1833,7 @@ class Worker(Thread):
                     if reqObject.requestLevel > 1 or self.process.get_memory_info().rss < self.graph.maxMem:
                         gr = greenlet.greenlet(self.processReqObject)
                         self.currentRequestLevel = reqObject.requestLevel
+                        self.runningRequestID = reqObject.requestID
                         gr.switch( reqObject)
                     else:
                         self.graph.tasks.put(task) #move task back to task queue
@@ -1821,12 +1847,13 @@ class Worker(Thread):
 class Graph(object):
     def __init__(self, numThreads = 3, softMaxMem =  500*1024*1024):
         self.operators = []
-        self.tasks = LifoQueue() #Lifo <-> depth first, fifo <-> breath first
+        self.tasks = deque() #Lifo <-> depth first, fifo <-> breath first
         self.workers = []
         self.freeWorkers = deque()
         self.running = True
         self.numThreads = numThreads
         self.maxMem = softMaxMem # in bytes
+        self.lastRequestID = itertools.count()
         
         for i in xrange(self.numThreads):
             w = Worker(self)
@@ -1836,13 +1863,34 @@ class Graph(object):
     
     def putTask(self, reqObject):
         task = [-reqObject.requestLevel, reqObject]
-        self.tasks.put(task)
+        self.tasks.append(task)
         
         if len(self.freeWorkers) > 0:
             w = self.freeWorkers.pop()
             self.freeWorkers.appendleft(w)
             w.signalWorkAvailable()
-    
+            
+            
+    def cancelRequestID(self, requestID):
+        for w in self.workers:
+            w.cancelRequestID(requestID)
+
+        temp = deque()                
+        while len(self.tasks) > 0:
+            try:
+                prio, reqObject = self.tasks.popleft()
+            except IndexError:
+                pass
+            if reqObject.requestID != requestID:
+                temp.append([prio,reqObject])
+        
+        while len(temp) > 0:
+            elem = temp.popleft()            
+            self.tasks.append(elem)
+        
+        for w in self.workers:
+            w.cancelRequestID(requestID)        
+        
     def finalize(self):
         print "Finalizing Graph..."
         self.running = False
