@@ -47,7 +47,7 @@ class OpTrainRandomForest(Operator):
     
                 #Maybe later request only part of the region?
                 image=self.inputs["Images"][i][:].allocate().wait()
-                print image.shape, labels.shape
+                #print "OpTrainRandomForest:", image.shape, labels.shape
                 
                 features=image[indexes]
                 labels=labels[indexes]
@@ -146,7 +146,7 @@ class OpPredictRandomForest(Operator):
         prediction=RF.predictProbabilities(features.astype(numpy.float32))        
         
         prediction = prediction.reshape(*(shape[:-1] + (RF.labelCount(),)))
-                
+        
         result[:]=prediction[...,key[-1]]
 
             

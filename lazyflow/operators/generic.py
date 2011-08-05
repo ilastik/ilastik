@@ -106,7 +106,7 @@ class OpSingleChannelSelector(Operator):
         im=self.inputs["Input"][newKey].allocate().wait()
         
         
-        result=im[...,index]
+        result[...,0]=im[...,index]
         
 
 
