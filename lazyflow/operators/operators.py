@@ -214,7 +214,7 @@ class OpArrayCache(OpArrayPiper):
     def __init__(self, graph, blockShape = None, immediateAlloc = True):
         OpArrayPiper.__init__(self, graph)
         if blockShape == None:
-            blockShape = 128
+            blockShape = 64
         self._origBlockShape = blockShape
         self._blockShape = None
         self._dirtyShape = None
@@ -273,8 +273,7 @@ class OpArrayCache(OpArrayPiper):
         blockStart = numpy.floor(1.0 * start / self._blockShape)
         blockStop = numpy.ceil(1.0 * stop / self._blockShape)
         blockKey = roiToSlice(blockStart,blockStop)
-        self._blockState[blockKey] = 1     #FIXME: should be =1 ????? !!!!!!!
-        self._blockState = numpy.where(self._blockState < 0, 0, self._blockState)
+        self._blockState[blockKey] = 1
         #FIXEM: we should recalculate results for which others are waiting and notify them...
         self._lock.release()
         
@@ -288,34 +287,17 @@ class OpArrayCache(OpArrayPiper):
         blockStop = numpy.ceil(1.0 * stop / self._blockShape)
         blockKey = roiToSlice(blockStart,blockStop)
                 
-        #blockInd =  self._blockNumbers[blockKey].ravel()
-        #blockInd = blockInd.reshape(blockInd.size/blockInd.shape[-1],blockInd.shape[-1],)
-        #dirtyBlockIndicator = numpy.where(self._blockState[blockKey] != self._dirtyState and self._blockState[blockKey] != 0, 0, 1)        
+        inProcessQueries = numpy.unique(numpy.extract(self._blockState[blockKey] == 0, self._blockQuery[blockKey]))         
         
-        inProcessIndicator = numpy.where(self._blockState[blockKey] == 0, 1, 0)
-        
-        inProcessQueries = numpy.unique(numpy.extract(inProcessIndicator == 1, self._blockQuery[blockKey]))
-
-        # calculate the blockIndices of dirty elements
-        cond = (self._blockState[blockKey] != self._dirtyState) * (self._blockState[blockKey] != 0)
-        #dirtyBlockNums = numpy.extract(cond.ravel(), self._blockNumbers[blockKey].ravel())
-        #dirtyBlockInd = self._flatBlockIndices[dirtyBlockNums,:]
-        tileWeights = numpy.where(cond == True, 0, 1)       
+        cond = (self._blockState[blockKey] == 1)
+        tileWeights = numpy.where(cond, 1, 128**3)       
         trueDirtyIndices = numpy.nonzero(numpy.where(cond, 1,0))
-        
-        #axistags = vigra.VigraArray.defaultAxistags(tileWeights.ndim)
-
-        #tileWeights = tileWeights.view(vigra.VigraArray)
-        #tileWeights.axistags = axistags
-        
-        
-        #tileWeights = vigra.VigraArray(tileWeights, dtype = numpy.uint32, axistags = axistags)
                     
         tileWeights = tileWeights.astype(numpy.uint32)
-#        print "calling drtile...", tileWeights.dtype
-        tileArray = drtile.test_DRTILE(tileWeights, 1).swapaxes(0,1)
+        #print "calling drtile...", tileWeights.dtype
+        tileArray = drtile.test_DRTILE(tileWeights, 128**3).swapaxes(0,1)
                 
-#        print "finished calling drtile."
+        #print "finished calling drtile."
         dirtyRois = []
         half = tileArray.shape[0]/2
         dirtyRequests = []
@@ -324,87 +306,76 @@ class OpArrayCache(OpArrayPiper):
 #        print "Ranges:"
 #        print "TileArray:", tileArray
 
+        bq = BlockQueue()
+        bq.queue = deque()
+                
         for i in range(tileArray.shape[1]):
 
             #drStart2 = (tileArray[half-1::-1,i] + blockStart)
             #drStop2 = (tileArray[half*2:half-1:-1,i] + blockStart)
-            drStart2 = numpy.flipud(tileArray[:half,i]) + blockStart
-            drStop2 = numpy.flipud(tileArray[half:,i]) + blockStart
-
+            drStart2 = tileArray[:half,i] + blockStart
+            drStop2 = tileArray[half:,i] + blockStart
             drStart = drStart2*self._blockShape
             drStop = drStop2*self._blockShape
+
             drStop = numpy.minimum(drStop, self.shape)
-        
+            drStart = numpy.minimum(drStart, self.shape)
+            
             key2 = roiToSlice(drStart2,drStop2)
-            if (self._blockState[key2] != self._dirtyState).any():
-                #set up a new block query object
-                bq = BlockQueue()
-                bq.queue = deque()
-                key = roiToSlice(drStart,drStop)
-                dirtyRois.append([drStart,drStop])
-    #            print "Request %d: %r" %(i,key)
-    
-                
-                self._blockQuery[key2] = bq
-                if (self._blockState[key2] == self._dirtyState).any() or (self._blockState[key2] == 0).any():
-                    print "original condition", cond  
-                    print "original tilearray", tileArray
-                    import h5py
-                    f = h5py.File("test.h5", "w")
-                    f.create_dataset("data",data = tileWeights)
-                    print "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights)
-                    assert 1 == 2
-                
-    #            assert(self._blockState[key2] != 0).all(), "%r, %r, %r, %r, %r,%r" % (key2, blockKey, self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey], tileWeights)
-                dirtyRequests.append((bq,key,drStart,drStop))
+
+            key = roiToSlice(drStart,drStop)
+            dirtyRois.append([drStart,drStop])
+            #print drStart2, drStop2, blockStart, self._blockShape
+            #print "Request %d: %r" %(i,key)
+
+            dirtyRequests.append((key,drStart,drStop))   
+
+            #sanity check:
+            if (self._blockState[key2] != 1).any():
+                print "original condition", cond                    
+                print "original tilearray", tileArray, tileArray.shape
+                print "original tileWeights", tileWeights, tileWeights.shape
+                print "sub condition", self._blockState[key2] == 1 
+                print "START, STOP", drStart2, drStop2
+                import h5py
+                f = h5py.File("test.h5", "w")
+                f.create_dataset("data",data = tileWeights)
+                print "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights)
+                assert 1 == 2
             
 #        # indicate the inprocessing state, by setting array to 0        
         self._blockState[blockKey] = numpy.where(cond, 0, self._blockState[blockKey])
-                
+        self._blockQuery[blockKey] = numpy.where(cond, bq, self._blockQuery[blockKey])               
         self._lock.release()
         
         
         requests = []
         #fire off requests
         for r in dirtyRequests:
-            bq, key, reqStart, reqStop = r
+            key, reqStart, reqStop = r
             req = self.inputs["Input"][key].writeInto(self._cache[key])
             requests.append(req)
             
-        #print "requests fired"
-        
-        
-#        if len(requests)>0:
-#            print "number of fired requests:", len(requests)
         #wait for all requests to finish
         for req in requests:
             req.wait()
 
-        #print "requests finished"
-
         # indicate the finished inprocess state        
         self._lock.acquire()
-        self._blockState[blockKey] = numpy.where(cond, self._dirtyState, self._blockState[blockKey])
+        self._blockState[blockKey] = numpy.where(cond, 2, self._blockState[blockKey])
+        self._blockQuery[blockKey] = numpy.where(cond, None, self._blockQuery[blockKey])                       
         self._lock.release()
 
         
         #notify eventual waiters
-        for r in dirtyRequests:
-            bq, key, reqStart, reqStop = r
-            bq.lock.acquire()
-            for w in bq.queue:
-                #[None, gr,event,thread]
-                w[1].finishedRequests.append(FakeGetItemRequestObject(w[0]))
-                w[1].signalWorkAvailable()
-            bq.queue = None
-            bq.lock.release()
+        bq.lock.acquire()
+        for w in bq.queue:
+            w[1].finishedRequests.append(FakeGetItemRequestObject(w[0]))
+            w[1].signalWorkAvailable()
+        bq.queue = None
+        bq.lock.release()
         
-        # indicate to all workers that there might be something to do
-        # i.e. continuing after the finished requests
-        
-        
-        
-        
+
         #wait for all in process queries
         for q in inProcessQueries:
             q.lock.acquire()
@@ -416,7 +387,7 @@ class OpArrayCache(OpArrayPiper):
                 greenlet.getcurrent().parent.switch(None)
             else:
                 q.lock.release()
-        
+                pass
         
         # finally, store results in result area
         #print "Oparraycache debug",result.shape,self._cache[roiToSlice(start, stop)].shape
