@@ -150,7 +150,13 @@ class OpPredictRandomForest(Operator):
         result[:]=prediction[...,key[-1]]
 
             
-            
+    def notifyDirty(self, slot, key):
+        if slot == self.inputs["Classifier"]:
+            print "OpPredict: Classifier changed, setting dirty"
+            self.outputs["PMaps"].setDirty(slice(None,None,None))     
+        elif slot == self.inputs["Image"]:
+            nlabels=self.inputs["LabelsCount"].value
+            self.outputs["PMaps"].setDirty(key[:-1] + (slice(0,nlabels,None),))
             
             
             
