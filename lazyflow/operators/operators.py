@@ -9,8 +9,18 @@ import greenlet, threading
 import vigra
 import copy
 
-import blist
-
+try:
+    import blist
+    has_blist = True
+except:
+    has_blist = False
+    print "##############################################################"
+    print "#                                                            #"
+    print "#           please install blist (easy_install blist)        #"
+    print "#           otherwise OpSparseLabelArray will be missing     #"
+    print "#                                                            #"
+    print "##############################################################"
+    
 class OpArrayPiper(Operator):
     name = "ArrayPiper"
     description = "simple piping operator"
@@ -303,7 +313,7 @@ class OpArrayCache(OpArrayPiper):
                     
         tileWeights = tileWeights.astype(numpy.uint32)
 #        print "calling drtile...", tileWeights.dtype
-        tileArray = drtile.test_DRTILE(tileWeights, 1)
+        tileArray = drtile.test_DRTILE(tileWeights, 1).swapaxes(0,1)
                 
 #        print "finished calling drtile."
         dirtyRois = []
@@ -320,7 +330,7 @@ class OpArrayCache(OpArrayPiper):
             #drStop2 = (tileArray[half*2:half-1:-1,i] + blockStart)
             drStart2 = numpy.flipud(tileArray[:half,i]) + blockStart
             drStop2 = numpy.flipud(tileArray[half:,i]) + blockStart
-            
+
             drStart = drStart2*self._blockShape
             drStop = drStop2*self._blockShape
             drStop = numpy.minimum(drStop, self.shape)
@@ -475,126 +485,126 @@ class OpArrayCache(OpArrayPiper):
 
         return op        
         
+if has_blist:       
+    class OpSparseLabelArray(Operator):
+        name = "Sparse Label Array"
+        description = "simple cache for sparse label arrays"
+           
+        inputSlots = [InputSlot("Input"), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel")]
+        outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates")]    
         
-class OpSparseLabelArray(Operator):
-    name = "Sparse Label Array"
-    description = "simple cache for sparse label arrays"
-       
-    inputSlots = [InputSlot("Input"), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel")]
-    outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates")]    
-    
-    def __init__(self, graph):
-        Operator.__init__(self, graph)
-        self.lock = threading.Lock()
-        self._denseArray = None
-        self._sparseNZ = None
-        
-    def notifyConnect(self, slot):
-        if slot.name == "shape":
-            shape = self.inputs["shape"].value
-            self.outputs["Output"]._dtype = numpy.uint8
-            self.outputs["Output"]._shape = shape
-            self.outputs["Output"]._axistags = vigra.defaultAxistags(len(shape))
-    
-            self.outputs["nonzeroValues"]._dtype = object
-            self.outputs["nonzeroValues"]._shape = (1,)
-            self.outputs["nonzeroValues"]._axistags = vigra.defaultAxistags(1)
+        def __init__(self, graph):
+            Operator.__init__(self, graph)
+            self.lock = threading.Lock()
+            self._denseArray = None
+            self._sparseNZ = None
             
-            self.outputs["nonzeroCoordinates"]._dtype = object
-            self.outputs["nonzeroCoordinates"]._shape = (1,)
-            self.outputs["nonzeroCoordinates"]._axistags = vigra.defaultAxistags(1)
-
-            self._denseArray = numpy.zeros(shape, numpy.uint8)
-            self._sparseNZ =  blist.sorteddict()  
-        if slot.name == "deleteLabel":
-            labelNr = slot.value
-            if labelNr is not -1:
-                neutralElement = 0
-                slot.setValue(-1) #reset state of inputslot
-                self.lock.acquire()
-
-                #remove values to be deleted
-                updateNZ = numpy.nonzero(numpy.where(self._denseArray == labelNr,1,0))
-                if len(updateNZ)>0:
-                    updateNZRavel = numpy.ravel_multi_index(updateNZ, self._denseArray.shape)
-                    self._denseArray.ravel()[updateNZRavel] = neutralElement
-                    for index in updateNZRavel:
-                        self._sparseNZ.pop(index)
-                self._denseArray[:] = numpy.where(self._denseArray > labelNr, self._denseArray - 1, self._denseArray)
-                self.lock.release()
-                self.outputs["nonzeroValues"][0] = numpy.array(self._sparseNZ.values())
-                self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
-                self.outputs["Output"][:] = self._denseArray #set output dirty
+        def notifyConnect(self, slot):
+            if slot.name == "shape":
+                shape = self.inputs["shape"].value
+                self.outputs["Output"]._dtype = numpy.uint8
+                self.outputs["Output"]._shape = shape
+                self.outputs["Output"]._axistags = vigra.defaultAxistags(len(shape))
+        
+                self.outputs["nonzeroValues"]._dtype = object
+                self.outputs["nonzeroValues"]._shape = (1,)
+                self.outputs["nonzeroValues"]._axistags = vigra.defaultAxistags(1)
                 
+                self.outputs["nonzeroCoordinates"]._dtype = object
+                self.outputs["nonzeroCoordinates"]._shape = (1,)
+                self.outputs["nonzeroCoordinates"]._axistags = vigra.defaultAxistags(1)
+    
+                self._denseArray = numpy.zeros(shape, numpy.uint8)
+                self._sparseNZ =  blist.sorteddict()  
+            if slot.name == "deleteLabel":
+                labelNr = slot.value
+                if labelNr is not -1:
+                    neutralElement = 0
+                    slot.setValue(-1) #reset state of inputslot
+                    self.lock.acquire()
+    
+                    #remove values to be deleted
+                    updateNZ = numpy.nonzero(numpy.where(self._denseArray == labelNr,1,0))
+                    if len(updateNZ)>0:
+                        updateNZRavel = numpy.ravel_multi_index(updateNZ, self._denseArray.shape)
+                        self._denseArray.ravel()[updateNZRavel] = neutralElement
+                        for index in updateNZRavel:
+                            self._sparseNZ.pop(index)
+                    self._denseArray[:] = numpy.where(self._denseArray > labelNr, self._denseArray - 1, self._denseArray)
+                    self.lock.release()
+                    self.outputs["nonzeroValues"][0] = numpy.array(self._sparseNZ.values())
+                    self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
+                    self.outputs["Output"][:] = self._denseArray #set output dirty
+                    
+                
+        def getOutSlot(self, slot, key, result):
+            self.lock.acquire()
+            assert(self.inputs["eraser"].connected() == True and self.inputs["shape"].connected() == True), "OpDenseSparseArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % (self.inputs["eraser"].connected(), self.inputs["shape"].connected())
+            if slot.name == "Output":
+                result[:] = self._denseArray[key]
+            elif slot.name == "nonzeroValues":
+                result[0] = numpy.array(self._sparseNZ.values())
+            elif slot.name == "nonzeroCoordinates":
+                result[0] = numpy.array(self._sparseNZ.keys())
+            self.lock.release()
+            return result
+    
+        def setInSlot(self, slot, key, value):
+            shape = self.inputs["shape"].value
+            eraseLabel = self.inputs["eraser"].value
+            neutralElement = 0
+    
+            self.lock.acquire()
+            #fix slicing of single dimensions:
+            start, stop = sliceToRoi(key, shape, extendSingleton = False)
+            start = start.astype(numpy.int32)
+            stop = stop.astype(numpy.int32)
             
-    def getOutSlot(self, slot, key, result):
-        self.lock.acquire()
-        assert(self.inputs["eraser"].connected() == True and self.inputs["shape"].connected() == True), "OpDenseSparseArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % (self.inputs["eraser"].connected(), self.inputs["shape"].connected())
-        if slot.name == "Output":
-            result[:] = self._denseArray[key]
-        elif slot.name == "nonzeroValues":
-            result[0] = numpy.array(self._sparseNZ.values())
-        elif slot.name == "nonzeroCoordinates":
-            result[0] = numpy.array(self._sparseNZ.keys())
-        self.lock.release()
-        return result
-
-    def setInSlot(self, slot, key, value):
-        shape = self.inputs["shape"].value
-        eraseLabel = self.inputs["eraser"].value
-        neutralElement = 0
-
-        self.lock.acquire()
-        #fix slicing of single dimensions:
-        start, stop = sliceToRoi(key, shape, extendSingleton = False)
-        start = start.astype(numpy.int32)
-        stop = stop.astype(numpy.int32)
-        
-        tempKey = roiToSlice(start-start, stop-start, hardBind = True)
-        
-        stop += numpy.where(stop-start == 0,1,0)
-        key = roiToSlice(start,stop)
-
-        updateShape = tuple(stop-start)
-
-        update = self._denseArray[key].copy()
-
-        update[tempKey] = value
-        
-        startRavel = numpy.ravel_multi_index(start,shape)
-        
-        #insert values into dict
-        updateNZ = numpy.nonzero(numpy.where(update != neutralElement,1,0))
-        updateNZRavelSmall = numpy.ravel_multi_index(updateNZ, updateShape)
-        
-        if isinstance(value, numpy.ndarray):
-            valuesNZ = value.ravel()[updateNZRavelSmall]
-        else:
-            valuesNZ = value
-
-        updateNZRavel = numpy.ravel_multi_index(updateNZ, shape)
-        updateNZRavel += startRavel        
-
-        self._denseArray.ravel()[updateNZRavel] = valuesNZ        
-        
-        valuesNZ = self._denseArray.ravel()[updateNZRavel]
-        
-        self._denseArray.ravel()[updateNZRavel] =  valuesNZ       
-
-        
-        td = blist.sorteddict(zip(updateNZRavel.tolist(),valuesNZ.tolist()))
-   
-        self._sparseNZ.update(td)
-        
-        #remove values to be deleted
-        updateNZ = numpy.nonzero(numpy.where(update == eraseLabel,1,0))
-        if len(updateNZ)>0:
+            tempKey = roiToSlice(start-start, stop-start, hardBind = True)
+            
+            stop += numpy.where(stop-start == 0,1,0)
+            key = roiToSlice(start,stop)
+    
+            updateShape = tuple(stop-start)
+    
+            update = self._denseArray[key].copy()
+    
+            update[tempKey] = value
+            
+            startRavel = numpy.ravel_multi_index(start,shape)
+            
+            #insert values into dict
+            updateNZ = numpy.nonzero(numpy.where(update != neutralElement,1,0))
+            updateNZRavelSmall = numpy.ravel_multi_index(updateNZ, updateShape)
+            
+            if isinstance(value, numpy.ndarray):
+                valuesNZ = value.ravel()[updateNZRavelSmall]
+            else:
+                valuesNZ = value
+    
             updateNZRavel = numpy.ravel_multi_index(updateNZ, shape)
-            updateNZRavel += startRavel    
-            self._denseArray.ravel()[updateNZRavel] = neutralElement
-            for index in updateNZRavel:
-                self._sparseNZ.pop(index)
-        
-        self.lock.release()
-        
-        self.outputs["Output"].setDirty(key)
+            updateNZRavel += startRavel        
+    
+            self._denseArray.ravel()[updateNZRavel] = valuesNZ        
+            
+            valuesNZ = self._denseArray.ravel()[updateNZRavel]
+            
+            self._denseArray.ravel()[updateNZRavel] =  valuesNZ       
+    
+            
+            td = blist.sorteddict(zip(updateNZRavel.tolist(),valuesNZ.tolist()))
+       
+            self._sparseNZ.update(td)
+            
+            #remove values to be deleted
+            updateNZ = numpy.nonzero(numpy.where(update == eraseLabel,1,0))
+            if len(updateNZ)>0:
+                updateNZRavel = numpy.ravel_multi_index(updateNZ, shape)
+                updateNZRavel += startRavel    
+                self._denseArray.ravel()[updateNZRavel] = neutralElement
+                for index in updateNZRavel:
+                    self._sparseNZ.pop(index)
+            
+            self.lock.release()
+            
+            self.outputs["Output"].setDirty(key)
