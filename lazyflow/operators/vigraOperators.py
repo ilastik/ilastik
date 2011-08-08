@@ -91,7 +91,7 @@ class Op5ToMulti(Operator):
         
         length = 0
         for slot in self.inputs.values():
-            if slot.partner is not None:
+            if slot.connected():
                 length += 1                
 
         self.outputs["Outputs"].resize(length)
@@ -99,7 +99,7 @@ class Op5ToMulti(Operator):
         i = 0
         for sname in sorted(self.inputs.keys()):
             slot = self.inputs[sname]
-            if slot.partner is not None:
+            if slot.connected():
                 self.outputs["Outputs"][i]._shape = slot.shape
                 self.outputs["Outputs"][i]._dtype = slot.dtype
                 self.outputs["Outputs"][i]._axistags = copy.copy(slot.axistags)
@@ -112,7 +112,7 @@ class Op5ToMulti(Operator):
         i = 0
         for sname in sorted(self.inputs.keys()):
             slot = self.inputs[sname]
-            if slot.partner is not None:
+            if slot.connected():
                 if i == indexes[0]:
                     result[:] = slot[key].allocate().wait()
                     break
