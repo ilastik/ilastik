@@ -11,7 +11,7 @@ from operators import OpArrayPiper, OpMultiArrayPiper
 
 
 
-class OpMultiArrayStacker(Operator):
+class OpMultiArrayStackerOld(Operator):
     inputSlots = [MultiInputSlot("Images")]
     outputSlots = [OutputSlot("Output")]
 
@@ -88,7 +88,6 @@ class Op5ToMulti(Operator):
     outputSlots = [MultiOutputSlot("Outputs")]
         
     def notifyConnect(self, slot):
-        
         length = 0
         for slot in self.inputs.values():
             if slot.connected():

@@ -13,6 +13,15 @@ def axisTagObjectFromFlag(flag):
     
     return vigra.AxisTags(vigra.AxisInfo(flag,type)) 
 
+def axisType(flag):
+    if flag in ['x','y','z']:
+        return vigra.AxisType.Space
+    elif flag=='c':
+        return vigra.AxisType.Channels
+    else:
+        raise
+
+
 
 class OpMultiArraySlicer(Operator):
     inputSlots = [InputSlot("Input"),InputSlot('AxisFlag')]
@@ -74,10 +83,108 @@ class OpMultiArraySlicer(Operator):
         
         result[:]=ttt[writeKey ]#+ (0,)]
 
+class OpMultiArrayStackerNew(Operator):
+    inputSlots = [MultiInputSlot("Images"), InputSlot("AxisFlag"), InputSlot("AxisIndex")]
+    outputSlots = [OutputSlot("Output")]
+
+    name = "Multi Array Stacker"
+    category = "Misc"
+
+    def notifySubConnect(self, slots, indexes):
+        
+        if self.inputs["AxisFlag"].partner is None or self.inputs["AxisIndex"].partner is None:
+            return
+        else :
+            self.setRightShape()
+        
+    def notifyConnectAll(self):
+        #This function is needed so that we don't depend on the order of connections.
+        #If axis flag or axis index is connected after the input images, the shape is calculated
+        #here
+        self.setRightShape()
+        
+    def setRightShape(self):
+        c = 0
+        flag = self.inputs["AxisFlag"].value
+        axistype = axisType(flag)
+        axisindex = self.inputs["AxisIndex"].value
+        
+        for inSlot in self.inputs["Images"]:
+            inTagKeys = [ax.key for ax in inSlot.axistags]
+            if inSlot.partner is not None:
+                self.outputs["Output"]._dtype = inSlot.dtype
+                self.outputs["Output"]._axistags = copy.copy(inSlot.axistags)
+                #indexAxis=inSlot.axistags.index(flag)
+               
+                outTagKeys = [ax.key for ax in self.outputs["Output"]._axistags]
+                
+                if not flag in outTagKeys:
+                    self.outputs["Output"]._axistags.insert(axisindex, vigra.AxisInfo(flag))
+                if flag in inTagKeys:
+                    c += inSlot.shape[inSlot.axistags.index(flag)]
+                else:
+                    c += 1
+                    
+            newshape = list(inSlot.shape)
+            if flag in inTagKeys:
+                #here we assume that all axis are present
+                newshape[axisindex]=c
+            else:
+                newshape.insert(axisindex, c)
+            self.outputs["Output"]._shape=tuple(newshape)    
 
 
-
-
+    def getOutSlot(self, slot, key, result):
+        cnt = 0
+        written = 0
+        start, stop = roi.sliceToRoi(key, self.outputs["Output"].shape)
+        axisindex = self.inputs["AxisIndex"].value
+        flag = self.inputs["AxisFlag"].value
+        #ugly-ugly-ugly
+        oldkey = list(key)
+        oldkey.pop(axisindex)
+        
+        requests = []
+        for i, inSlot in enumerate(self.inputs['Images']):
+            if inSlot.partner is not None:
+                req = None
+                inTagKeys = [ax.key for ax in inSlot.axistags]
+                if flag in inTagKeys:
+                    slices = inSlot.shape[axisindex]
+                    if cnt + slices >= start[axisindex] and start[axisindex]-cnt<slices and start[axisindex]+written<stop[axisindex]:
+                        begin = 0
+                        if cnt < start[axisindex]:
+                            begin = start[axisindex] - cnt
+                        end = slices
+                        if cnt + end > stop[axisindex]:
+                            end -= cnt + end - stop[axisindex]
+                        key_ = copy.copy(oldkey)
+                        key_.insert(axisindex, slice(begin, end, None))
+                        reskey = copy.copy(oldkey)
+                        reskey.insert(axisindex, slice(written, written+end-begin, None))
+                        
+                        #assert (end <= numpy.array(inSlot.shape)).all(), "end: %r, shape: %r" % (end, inSlot.shape)
+                        #assert (begin < numpy.array(inSlot.shape)).all(), "begin:  %r, shape: %r" % (begin, inSlot.shape)
+                        req = inSlot[tuple(key_)].writeInto(result[tuple(reskey)])
+                        written += end - begin
+                    cnt += slices
+                else:
+                    print cnt, start[axisindex], stop[axisindex]
+                    if cnt>=start[axisindex] and start[axisindex] + written < stop[axisindex]:
+                        reskey = copy.copy(oldkey)
+                        reskey.insert(axisindex, cnt)
+                        #print "STACKER: res shape: ", result.shape, "requesting with key: ", oldkey, "inSlot shape: ", inSlot.shape, reskey
+                        #print "oldkey", oldkey, "res key: ", reskey
+                        #print "WTF", result[tuple(reskey)].sh
+                        req = inSlot[tuple(oldkey)].writeInto(result[tuple(reskey)])
+                        written += 1
+                    cnt += 1
+                
+                if req is not None:
+                   requests.append(req)
+        
+        for r in requests:
+            r.wait()
 
 
 class OpSingleChannelSelector(Operator):
