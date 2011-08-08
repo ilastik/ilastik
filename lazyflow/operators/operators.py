@@ -8,6 +8,7 @@ from lazyflow.h5dumprestore import stringToClass
 import greenlet, threading
 import vigra
 import copy
+from threading import current_thread
 
 try:
     import blist
@@ -211,6 +212,9 @@ class OpArrayCache(OpArrayPiper):
     description = "numpy.ndarray caching class"
     category = "misc"
     
+    inputSlots = [InputSlot("Input"), InputSlot("blockShape")]
+    outputSlots = [OutputSlot("Output")]    
+    
     def __init__(self, graph, blockShape = None, immediateAlloc = True):
         OpArrayPiper.__init__(self, graph)
         if blockShape == None:
@@ -224,45 +228,50 @@ class OpArrayCache(OpArrayPiper):
         self._immediateAlloc = immediateAlloc
         self._lock = threading.Lock()
         
-    def notifyConnectAll(self):
-        inputSlot = self.inputs["Input"]
-        OpArrayPiper.notifyConnectAll(self)
-        self._cache = numpy.ndarray(self.shape, dtype = self.dtype)
-        
-        if type(self._origBlockShape) != tuple:
-            self._blockShape = (self._origBlockShape,)*len(self.shape)
-        
-        self._blockShape = numpy.minimum(self._blockShape, self.shape)
-
-        self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
-        
-        print "Reconfigured OpArrayCache with ", self.shape, self._blockShape, self._dirtyShape
-
-        # if the entry in _dirtyArray differs from _dirtyState
-        # the entry is considered dirty
-        self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
-        self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
-
-        _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
-        _blockNumbers.shape = self._dirtyShape
-
-        _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
-        _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
-
-         
-        self._blockNumbers = _blockNumbers
-        self._blockIndices = _blockIndices
-        
-                            #TODO: introduce constants for readability
-                            #0 is "in process"
-        self._blockState[:]= 1 #this is the dirty state
-        self._dirtyState = 2 #this is the clean state
-        
-        # allocate queryArray object
-        self._flatBlockIndices =  self._blockIndices[:]
-        self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
-#        for p in self._flatBlockIndices:
-#            self._blockQuery[p] = BlockQueue()
+    def notifyConnect(self, slot):
+        if self.inputs["blockShape"].connected():
+            self._origBlockShape = self.inputs["blockShape"].value
+        if self.inputs["Input"].connected():
+            inputSlot = self.inputs["Input"]
+            OpArrayPiper.notifyConnectAll(self)
+            self._cache = numpy.ndarray(self.shape, dtype = self.dtype)
+            
+            if type(self._origBlockShape) != tuple:
+                self._blockShape = (self._origBlockShape,)*len(self.shape)
+            else:
+                self._blockShape = self._origBlockShape
+                
+            self._blockShape = numpy.minimum(self._blockShape, self.shape)
+    
+            self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+            
+            print "Reconfigured OpArrayCache with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
+    
+            # if the entry in _dirtyArray differs from _dirtyState
+            # the entry is considered dirty
+            self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
+            self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+    
+            _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
+            _blockNumbers.shape = self._dirtyShape
+    
+            _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
+            _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
+    
+             
+            self._blockNumbers = _blockNumbers
+            self._blockIndices = _blockIndices
+            
+                                #TODO: introduce constants for readability
+                                #0 is "in process"
+            self._blockState[:]= 1 #this is the dirty state
+            self._dirtyState = 2 #this is the clean state
+            
+            # allocate queryArray object
+            self._flatBlockIndices =  self._blockIndices[:]
+            self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+    #        for p in self._flatBlockIndices:
+    #            self._blockQuery[p] = BlockQueue()
             
 
     def notifyDirty(self, slot, key):
@@ -281,6 +290,7 @@ class OpArrayCache(OpArrayPiper):
         
     def getOutSlot(self,slot,key,result):
         start, stop = sliceToRoi(key, self.shape)
+        
         
         self._lock.acquire()
         blockStart = numpy.floor(1.0 * start / self._blockShape)
@@ -353,13 +363,15 @@ class OpArrayCache(OpArrayPiper):
         #fire off requests
         for r in dirtyRequests:
             key, reqStart, reqStop = r
-            req = self.inputs["Input"][key].writeInto(self._cache[key])
-            requests.append(req)
+            #req = self.inputs["Input"][key].writeInto(self._cache[key])
+            req = self.inputs["Input"][key].allocate() #this is safer for cancelled requests
+            requests.append((req, key))
             
         #wait for all requests to finish
-        for req in requests:
-            req.wait()
-
+        for req,key in requests:
+            res = req.wait()
+            self._cache[key] = res            
+            
         # indicate the finished inprocess state        
         self._lock.acquire()
         self._blockState[blockKey] = numpy.where(cond, 2, self._blockState[blockKey])
