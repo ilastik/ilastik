@@ -1782,10 +1782,13 @@ class Worker(Thread):
         self.workAvailableEvent = Event()
         self.workAvailableEvent.clear()
         self.runningRequestID = 0
+        self.cancelledRequestID = -1
         print "Initializing Worker #%d" % self.number
         
     def cancelRequestID(self, requestID):
-        temp = deque()                
+        self.cancelledRequestID  = requestID
+
+        temp = deque()             
         while len(self.finishedRequests) > 0:
             try:
                 reqObject = self.finishedRequests.popleft()
@@ -1803,19 +1806,21 @@ class Worker(Thread):
         
     def processReqObject(self, reqObject):
         reqObject.func(reqObject.key, reqObject.destination)
-        #reqObject.lock.acquire()
-        reqObject.event.set()
-        if reqObject.closure is not None:
-            #reqObject.lock.release()
-            reqObject.closure(result = reqObject.destination, **reqObject.kwargs)
-        else:
-            #reqObject.lock.release()
-            pass
         
-        #append 
-        if reqObject.greenlet is not None:
-            reqObject.thread.finishedRequests.append(reqObject)
-            reqObject.thread.signalWorkAvailable()
+        if self.runningRequestID != self.cancelledRequestID :
+            #reqObject.lock.acquire()
+            reqObject.event.set()
+            if reqObject.closure is not None:
+                #reqObject.lock.release()
+                reqObject.closure(result = reqObject.destination, **reqObject.kwargs)
+            else:
+                #reqObject.lock.release()
+                pass
+            
+            #append 
+            if reqObject.greenlet is not None:
+                reqObject.thread.finishedRequests.append(reqObject)
+                reqObject.thread.signalWorkAvailable()
         
     def run(self):
         while self.graph.running:
