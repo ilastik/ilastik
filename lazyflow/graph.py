@@ -38,6 +38,7 @@ import time
 import gc
 import ConfigParser
 import string
+import itertools
 
 from h5dumprestore import instanceClassToString, stringToClass
 from helpers import itersubclasses
@@ -150,9 +151,9 @@ class GetItemWriterObject(object):
         the same size/shape/dimension as the slot will
         return in reponse to the requested key
         """
-        return self._slot.fireRequest(self._key, destination)     
+        return self._slot._fireRequest(self._key, destination)     
     
-    def allocate(self):
+    def allocate(self, axistags = False):
         """
         if the user does not want lazyflow to write calculation
         results into a specific numpy array he can use
@@ -161,7 +162,7 @@ class GetItemWriterObject(object):
         a destination array of required size,shape,dtype will
         be constructed in which the results will be written.
         """
-        destination, key = self._slot.allocateStorage(self._key)
+        destination, key = self._slot._allocateStorage(self._key, axistags)
         self._key = key
         return self.writeInto(destination)
     
@@ -185,7 +186,7 @@ class GetItemRequestObject(object):
     InputSlot and OutputSlot) 
     """
         
-    __slots__ = ["func", "slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure",  "kwargs"]
+    #__slots__ = ["func", "slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure",  "kwargs"]
 
     def __init__(self, slot, graph, partner, key, destination):
         self.key = key
@@ -198,15 +199,18 @@ class GetItemRequestObject(object):
         self.slot = slot
         self.func = None
         self.kwargs = {}
-        
+        self.cancelled = False
+        self.graph = graph
         if slot is None or slot.partner is not None:
             if hasattr(self.thread, "currentRequestLevel"): #TODO: use more self explaining test
                 self.requestLevel = self.thread.currentRequestLevel + 1
+                self.requestID = self.thread.runningRequestID
             else:
                 self.requestLevel = 1
                 self.thread = graph.workers[0]
-            
-            self.func = partner.fireRequest
+                self.requestID = graph.lastRequestID.next()
+                
+            self.func = partner._fireRequest
             
             graph.putTask(self)
 
@@ -219,24 +223,26 @@ class GetItemRequestObject(object):
         the  result area.
         """
         if self.slot is None or self.slot.partner is not None:
-            self.lock.acquire()
+            #self.lock.acquire()
             if not self.event.isSet():
                 # --> wait until results are ready
                 if greenlet.getcurrent().parent != None: #TODO: use other test as in __init__  
                     self.greenlet = greenlet.getcurrent()
-                    self.lock.release()
+                    #self.lock.release()
                     self.greenlet.parent.switch(None)
                     self.greenlet = None
                 else:
-                    self.lock.release()
+                    #self.lock.release()
                     # loop to allow ctrl-c signal !
                     if timeout == 0:
-                        while not self.event.isSet():
-                            self.event.wait(timeout = 0.25) #in seconds
+                        self.event.wait()
+                        #while not self.event.isSet():
+                        #    self.event.wait(timeout = 0.25) #in seconds
                     else:
                         self.event.wait(timeout = timeout) #in seconds
             else:
-                self.lock.release()
+                #self.lock.release()
+                pass
         else:
             if isinstance(self.slot._value, numpy.ndarray):
                 self.destination[:] = self.slot._value[self.key]
@@ -253,15 +259,20 @@ class GetItemRequestObject(object):
         """
         self.kwargs = kwargs
         
-        if isinstance(self.thread, Worker):
-            self.lock.acquire()
-            self.closure = closure
-            self.lock.release()
-        else:
-            print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
-            result = self.wait()
-            closure(result = result, **self.kwargs)
-            
+        #if isinstance(self.thread, Worker):
+            #self.lock.acquire()
+        self.closure = closure
+            #self.lock.release()
+        #else:
+        #    print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
+        #    result = self.wait()
+        #    closure(result = result, **self.kwargs)
+    
+    def cancel(self):
+        self.closure = None
+        self.cancelled = True
+        self.graph.cancelRequestID(self.requestID)        
+        
     def __call__(self):
         #TODO: remove this convenience function when
         #      everything is ported ?
@@ -281,7 +292,7 @@ class InputSlot(object):
         self.partner = None
         self.level = 0
         self._value = None
-        self.stype = stype
+        self._stype = stype
 
     def setValue(self, value):
         """
@@ -390,7 +401,7 @@ class InputSlot(object):
     #TODO RENAME? createInstance
     # def __copy__ ?, clone ?
     def getInstance(self, operator):
-        s = InputSlot(self.name, operator, stype = self.stype)
+        s = InputSlot(self.name, operator, stype = self._stype)
         return s
             
     def setDirty(self, key):
@@ -421,7 +432,7 @@ class InputSlot(object):
         """
         return GetItemWriterObject(self, key)
         
-    def fireRequest(self, key, destination):
+    def _fireRequest(self, key, destination):
         assert self.partner is not None or self._value is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
         #print "GUGA", self.name, self.operator.name, self.operator, key
                                         
@@ -429,9 +440,11 @@ class InputSlot(object):
             
         return reqObject
 
-    def allocateStorage(self, key):
+    def _allocateStorage(self, key, axistags = True):
         start, stop = sliceToRoi(key, self.shape)
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
+        if axistags is True:
+            storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
         key = roiToSlice(start,stop) #we need a fully specified key e.g. not [:] but [0:10,0:17] !!
         return storage, key
             
@@ -483,7 +496,7 @@ class InputSlot(object):
             "operator" : self.operator,
             "partner" : self.partner,
             "value" : self._value,
-            "stype" : self.stype
+            "stype" : self._stype
             
         },patchBoard)
     
@@ -532,7 +545,9 @@ class OutputSlot(object):
         if not hasattr(self, "_axistags"):
             self._axistags = None
         self.partners = []
-        self.stype = stype
+        self._stype = stype
+        
+        self._dirtyCallbacks = []
     
     @property
     def _shape(self):
@@ -573,7 +588,16 @@ class OutputSlot(object):
         if partner in self.partners:
             self.partners.remove(partner)
            
-            
+    def registerDirtyCallback(self, function, **kwargs):
+        self._dirtyCallbacks.append([function, kwargs])
+    
+    def unregisterDirtyCallback(self, function):
+        element = None
+        for e in self._dirtyCallbacks:
+            if e[0] == function:
+                element = e
+        if element is not None:
+            self._dirtyCallbacks.remove(element)
             
     def setDirty(self, key):
         """
@@ -588,25 +612,33 @@ class OutputSlot(object):
         key = roiToSlice(start,stop)
         for p in self.partners:
             p.setDirty(key) #set everything dirty
+            
+        for cb in self._dirtyCallbacks:
+            cb[0](key, **cb[1])
 
     #FIXME __copy__ ?
     def getInstance(self, operator):
-        s = OutputSlot(self.name, operator, stype = self.stype)
+        s = OutputSlot(self.name, operator, stype = self._stype)
         s._shape = self._shape
         s._dtype = self._dtype
         s._axistags = self._axistags
         return s
 
-    def allocateStorage(self, key):
+    def _allocateStorage(self, key, axistags = True):
         start, stop = sliceToRoi(key, self.shape)
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
+        if axistags is True:
+            storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
+            #storage = storage.view(vigra.VigraArray)
+            #storage.axistags = copy.copy(self.axistags)
+
         key = roiToSlice(start,stop)
         return storage, key
 
     def __getitem__(self, key):
         return GetItemWriterObject(self,key)
 
-    def fireRequest(self, key, destination):
+    def _fireRequest(self, key, destination):
         assert self.operator is not None, "cannot do __getitem__ on Slot %s, of %r -> now operator !!" % (self.name,self.operator) 
         
         start, stop = sliceToRoi(key, self.shape)
@@ -660,7 +692,7 @@ class OutputSlot(object):
             "axistags" : self._axistags,
             "dtype" : self._dtype,
             "partners" : self.partners,
-            "stype" : self.stype
+            "stype" : self._stype
             
         },patchBoard)
     
@@ -699,7 +731,7 @@ class MultiInputSlot(object):
         self.partner = None
         self.inputSlots = []
         self.level = level
-        self.stype = stype
+        self._stype = stype
         self._value = None
     
     @property
@@ -729,9 +761,9 @@ class MultiInputSlot(object):
                     
     def _appendNew(self):
         if self.level <= 1:
-            islot = InputSlot(self.name ,self, stype = self.stype)
+            islot = InputSlot(self.name ,self, stype = self._stype)
         else:
-            islot = MultiInputSlot(self.name,self, stype = self.stype, level = self.level - 1)
+            islot = MultiInputSlot(self.name,self, stype = self._stype, level = self.level - 1)
         index = len(self) - 1
         self.inputSlots.append(islot)
         if self.partner is not None:
@@ -747,9 +779,9 @@ class MultiInputSlot(object):
 
     def _insertNew(self, index):
         if self.level == 1:
-            islot = InputSlot(self.name,self, self.stype)
+            islot = InputSlot(self.name,self, self._stype)
         else:
-            islot = MultiInputSlot(self.name,self, stype = self.stype, level = self.level - 1)
+            islot = MultiInputSlot(self.name,self, stype = self._stype, level = self.level - 1)
         self.inputSlots.insert(index,islot)
         for i, isl in enumerate(self.inputSlots[index+1:]):
             isl.name = self.name
@@ -929,7 +961,7 @@ class MultiInputSlot(object):
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
-        s = MultiInputSlot(self.name, operator, stype = self.stype, level = self.level)
+        s = MultiInputSlot(self.name, operator, stype = self._stype, level = self.level)
         return s
             
     def setDirty(self, key = None):
@@ -962,7 +994,7 @@ class MultiInputSlot(object):
             "level" : self.level,
             "operator" : self.operator,
             "partner" : self.partner,
-            "stype" : self.stype,
+            "stype" : self._stype,
             "inputSlots": self.inputSlots
             
         },patchBoard)
@@ -1001,7 +1033,7 @@ class MultiOutputSlot(object):
         self.partners = []   
         self.outputSlots = []
         self.level = level
-        self.stype = stype
+        self._stype = stype
     
     def __getitem__(self, key):
         return self.outputSlots[key]
@@ -1072,9 +1104,9 @@ class MultiOutputSlot(object):
     def resize(self, size):
         while len(self) < size:
             if self.level == 1:
-                slot = OutputSlot(self.name,self, stype = self.stype)
+                slot = OutputSlot(self.name,self, stype = self._stype)
             else:
-                slot = MultiOutputSlot(self.name,self, stype = self.stype, level = self.level - 1)
+                slot = MultiOutputSlot(self.name,self, stype = self._stype, level = self.level - 1)
             index = len(self)
             self.outputSlots.append(slot)
 
@@ -1102,7 +1134,7 @@ class MultiOutputSlot(object):
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
-        s = MultiOutputSlot(self.name, operator, stype = self.stype, level = self.level)
+        s = MultiOutputSlot(self.name, operator, stype = self._stype, level = self.level)
         return s
             
     def setDirty(self, key):
@@ -1130,7 +1162,7 @@ class MultiOutputSlot(object):
             "level" : self.level,
             "operator" : self.operator,
             "partners" : self.partners,
-            "stype" : self.stype,
+            "stype" : self._stype,
             "outputSlots" : self.outputSlots
             
         },patchBoard)
@@ -1214,7 +1246,7 @@ class Operator(object):
             # of the partner operators are created       
         self.graph.registerOperator(self)
          
-    def getOriginalOperator(self):
+    def _getOriginalOperator(self):
         return self
         
     def disconnect(self):
@@ -1324,18 +1356,18 @@ class OperatorWrapper(Operator):
             # replicate input slot definitions
             for islot in self.operator.inputSlots:
                 level = islot.level + 1
-                self._inputSlots.append(MultiInputSlot(islot.name, stype = islot.stype, level = level))
+                self._inputSlots.append(MultiInputSlot(islot.name, stype = islot._stype, level = level))
     
             # replicate output slot definitions
             for oslot in self.outputSlots:
                 level = oslot.level + 1
-                self._outputSlots.append(MultiOutputSlot(oslot.name, stype = oslot.stype, level = level))
+                self._outputSlots.append(MultiOutputSlot(oslot.name, stype = oslot._stype, level = level))
     
                     
             # replicate input slots for the instance
             for islot in self.operator.inputs.values():
                 level = islot.level + 1
-                ii = MultiInputSlot(islot.name, self, stype = islot.stype, level = level)
+                ii = MultiInputSlot(islot.name, self, stype = islot._stype, level = level)
                 self.inputs[islot.name] = ii
                 op = self.operator
                 while isinstance(op.operator, (Operator, MultiInputSlot)):
@@ -1345,7 +1377,7 @@ class OperatorWrapper(Operator):
             # replicate output slots for the instance
             for oslot in self.operator.outputs.values():
                 level = oslot.level + 1
-                oo = MultiOutputSlot(oslot.name, self, stype = oslot.stype, level = level)
+                oo = MultiOutputSlot(oslot.name, self, stype = oslot._stype, level = level)
                 self.outputs[oslot.name] = oo
                 op = self.operator
                 while isinstance(op.operator, (Operator, MultiOutputSlot)):
@@ -1374,13 +1406,13 @@ class OperatorWrapper(Operator):
                 for p in partners:         
                     oo._connect(p)
 
-    def getOriginalOperator(self):
+    def _getOriginalOperator(self):
         op = self.operator
         while isinstance(op, OperatorWrapper):
             op = self.operator
         return op
                     
-    def testRestoreOriginalOperator(self):
+    def _testRestoreOriginalOperator(self):
         #TODO: only restore to the level that is needed, not to the most upper one !
         needWrapping = False
         for iname, islot in self.inputs.items():
@@ -1419,18 +1451,18 @@ class OperatorWrapper(Operator):
             s.disconnect()
         for s in self.inputs.values():
             s.disconnect()
-        self.testRestoreOriginalOperator()
+        self._testRestoreOriginalOperator()
 
     
-    def createInnerOperator(self):
+    def _createInnerOperator(self):
         if self.operator.__class__ is not OperatorWrapper:
             opcopy = self.operator.__class__(self.graph)
         else:
             print "creatInnerOperator OperatorWrapper"
-            opcopy = OperatorWrapper(self.operator.createInnerOperator())
+            opcopy = OperatorWrapper(self.operator._createInnerOperator())
         return opcopy
     
-    def removeInnerOperator(self, op):
+    def _removeInnerOperator(self, op):
         index = self.innerOperators.index(op)
         self.innerOperators.remove(op)
         for name, oslot in self.outputs.items():
@@ -1469,13 +1501,13 @@ class OperatorWrapper(Operator):
             maxLen = max(islot._requiredLength(), maxLen)
                 
         while maxLen > len(self.innerOperators):
-            newop = self.createInnerOperator()
+            newop = self._createInnerOperator()
             self.innerOperators.append(newop)
             newInnerOps.append(newop)
 
         while maxLen < len(self.innerOperators):
             op = self.innerOperators[-1]
-            self.removeInnerOperator(op)
+            self._removeInnerOperator(op)
 
         for k,mslot in self.inputs.items():
             mslot.resize(maxLen)
@@ -1564,7 +1596,7 @@ class OperatorWrapper(Operator):
 
 
     def notifyDisconnect(self, slot):
-        self.testRestoreOriginalOperator()
+        self._testRestoreOriginalOperator()
         
     def notifySubDisconnect(self, slots, indexes):
         return
@@ -1574,19 +1606,19 @@ class OperatorWrapper(Operator):
         
         while len(self.innerOperators) > maxLen:
             op = self.innerOperators[-1]
-            self.removeInnerOperator(op)
+            self._removeInnerOperator(op)
 
     def notifySubSlotRemove(self, slots, indexes):
         if len(indexes) == 1:
             if len(self.innerOperators) > indexes[0]:
                 op = self.innerOperators[indexes[0]]
-                self.removeInnerOperator(op)
+                self._removeInnerOperator(op)
         else:
             if slots[0].partner is not None: #normal connect case
                 self.innerOperators[indexes[0]].notifySubSlotRemove(slots[1:], indexes[1:])
             else: #connectAdd case
                 op = self.innerOperators[indexes[0]]
-                self.removeInnerOperator(op)
+                self._removeInnerOperator(op)
         self._connectInnerOutputs()
                 
     def getOutSlot(self, slot, key, result):
@@ -1650,7 +1682,7 @@ class OperatorGroup(Operator):
         self._visibleOutputs = None
         self._visibleInputs = None
         
-    def createInnerOperators(self):
+    def _createInnerOperators(self):
         # this method must setup the
         # inner operators and connect them (internally)
         pass
@@ -1694,7 +1726,7 @@ class OperatorGroup(Operator):
    
    
     def notifyConnectAll(self):
-        self.createInnerOperators()
+        self._createInnerOperators()
         self.setupInputSlots()
         self._connectInnerOutputs()
     
@@ -1749,18 +1781,36 @@ class Worker(Thread):
         self.number =  len(self.graph.workers)
         self.workAvailableEvent = Event()
         self.workAvailableEvent.clear()
+        self.runningRequestID = 0
         print "Initializing Worker #%d" % self.number
-
+        
+    def cancelRequestID(self, requestID):
+        temp = deque()                
+        while len(self.finishedRequests) > 0:
+            try:
+                reqObject = self.finishedRequests.popleft()
+            except IndexError:
+                pass
+            if reqObject.requestID != requestID:
+                temp.append(reqObject)
+        
+        while len(temp) > 0:
+            elem = temp.popleft()            
+            self.finishedRequests.append(elem)
+    
     def signalWorkAvailable(self):
         self.workAvailableEvent.set()
         
     def processReqObject(self, reqObject):
         reqObject.func(reqObject.key, reqObject.destination)
-        reqObject.lock.acquire()
+        #reqObject.lock.acquire()
         reqObject.event.set()
         if reqObject.closure is not None:
+            #reqObject.lock.release()
             reqObject.closure(result = reqObject.destination, **reqObject.kwargs)
-        reqObject.lock.release()
+        else:
+            #reqObject.lock.release()
+            pass
         
         #append 
         if reqObject.greenlet is not None:
@@ -1770,24 +1820,25 @@ class Worker(Thread):
     def run(self):
         while self.graph.running:
             self.graph.freeWorkers.append(self)
-            self.workAvailableEvent.wait(1.0)
+            self.workAvailableEvent.wait()#(0.2)
             self.graph.freeWorkers.remove(self)
             self.workAvailableEvent.clear()
             
-            while not self.graph.tasks.empty() or len(self.finishedRequests) > 0:
+            while not len(self.graph.tasks)==0 or len(self.finishedRequests) > 0:
                 while len(self.finishedRequests) > 0:
                     reqObject = self.finishedRequests.popleft()
-                    reqObject.lock.acquire()
+                    #reqObject.lock.acquire()
                     tgr = reqObject.greenlet
                     reqObject.greenlet = None
-                    reqObject.lock.release()
+                    #reqObject.lock.release()
                     if tgr is not None:
                         self.currentRequestLevel = reqObject.requestLevel
+                        self.runningRequestID = reqObject.requestID
                         task = tgr.switch()
                 task = None
                 try:
-                    task = self.graph.tasks.get(False)#timeout = 1.0)
-                except Empty:
+                    task = self.graph.tasks.pop()#timeout = 1.0)
+                except IndexError:
                     pass
                 if task is not None:
                     prio, reqObject = task
@@ -1796,9 +1847,10 @@ class Worker(Thread):
                     if reqObject.requestLevel > 1 or self.process.get_memory_info().rss < self.graph.maxMem:
                         gr = greenlet.greenlet(self.processReqObject)
                         self.currentRequestLevel = reqObject.requestLevel
+                        self.runningRequestID = reqObject.requestID
                         gr.switch( reqObject)
                     else:
-                        self.graph.tasks.put(task) #move task back to task queue
+                        self.graph.tasks.append(task) #move task back to task queue
                         print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
                         gc.collect()
                         time.sleep(1.0)
@@ -1809,12 +1861,13 @@ class Worker(Thread):
 class Graph(object):
     def __init__(self, numThreads = 3, softMaxMem =  500*1024*1024):
         self.operators = []
-        self.tasks = LifoQueue() #Lifo <-> depth first, fifo <-> breath first
+        self.tasks = deque() #Lifo <-> depth first, fifo <-> breath first
         self.workers = []
         self.freeWorkers = deque()
         self.running = True
         self.numThreads = numThreads
         self.maxMem = softMaxMem # in bytes
+        self.lastRequestID = itertools.count()
         
         for i in xrange(self.numThreads):
             w = Worker(self)
@@ -1824,17 +1877,39 @@ class Graph(object):
     
     def putTask(self, reqObject):
         task = [-reqObject.requestLevel, reqObject]
-        self.tasks.put(task)
+        self.tasks.append(task)
         
         if len(self.freeWorkers) > 0:
             w = self.freeWorkers.pop()
             self.freeWorkers.appendleft(w)
             w.signalWorkAvailable()
-    
+            
+            
+    def cancelRequestID(self, requestID):
+        for w in self.workers:
+            w.cancelRequestID(requestID)
+
+        temp = deque()                
+        while len(self.tasks) > 0:
+            try:
+                prio, reqObject = self.tasks.popleft()
+            except IndexError:
+                pass
+            if reqObject.requestID != requestID:
+                temp.append([prio,reqObject])
+        
+        while len(temp) > 0:
+            elem = temp.popleft()            
+            self.tasks.append(elem)
+        
+        for w in self.workers:
+            w.cancelRequestID(requestID)        
+        
     def finalize(self):
         print "Finalizing Graph..."
         self.running = False
         for w in self.workers:
+            w.signalWorkAvailable()
             w.join()
     
     def registerOperator(self, op):
@@ -1877,7 +1952,7 @@ class Graph(object):
             # if an operator has no outputs but inputs
             # it belongs to the graph and is an endpoint
             if olength == 0 and ilength > 0:
-                ooooo = o.getOriginalOperator()
+                ooooo = o._getOriginalOperator()
                 if ooooo not in endPoints:
                     endPoints.append(ooooo)                
                 
@@ -1899,7 +1974,7 @@ class Graph(object):
                     p = i.partner
                     # we use the metaParent to allow for operatorGroups and operatorWrappers
                     assert p._metaParent is not None, "%r, %r" % (p.name, p.operator)
-                    partnerOp = p._metaParent.getOriginalOperator()
+                    partnerOp = p._metaParent._getOriginalOperator()
                     if partnerOp not in queue and partnerOp not in doneQueue:
                         queue.append(partnerOp)
         
@@ -1927,7 +2002,7 @@ class Graph(object):
                 #save a connection
                 val = inslot.value
                 if inslot.partner is not None:
-                    partnerOp = inslot.partner.operator.getOriginalOperator()
+                    partnerOp = inslot.partner.operator._getOriginalOperator()
                     partnerSlotName = inslot.partner.name
                     connections.append(["connect", [str(id(op)),key,str(id(partnerOp)), partnerSlotName]])                    
                 elif val is not None:

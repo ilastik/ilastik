@@ -106,10 +106,12 @@ class OpSingleChannelSelector(Operator):
         im=self.inputs["Input"][newKey].allocate().wait()
         
         
-        result=im[...,index]
+        result[...,0]=im[...,index]
         
 
-
+    def notifyDirty(self, slot, key):
+        key = key[:-1] + (slice(0,1,None),)
+        self.outputs["Output"].setDirty(key)   
 
 
         

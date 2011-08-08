@@ -7,6 +7,7 @@
 #include <iostream>
 #include <limits>
 
+//#define DEBUG_PRINTING=1
 
 //http://en.wikibooks.org/wiki/C%2B%2B_Programming/Templates/Template_Meta-Programming#Example:_Compile-time_.22If.22
 template <bool Condition, typename TrueResult, typename FalseResult>
@@ -234,7 +235,7 @@ struct detail {
                         #ifdef DEBUG_PRINTING
                         std::cout << "RECURSE" << std::endl;
                         #endif
-                        detail<N,M-1,vigra::UnstridedArrayTag>::drtileImpl(Abar, w, t, currentShape);
+                        detail<N,M-1,vigra::StridedArrayTag>::drtileImpl(Abar, w, t, currentShape);
                     }
                     
                     Abar.init(0);
