@@ -20,12 +20,18 @@ def runBenchmark(numThreads, cacheClass, shape, requests, repeatCount=200):
 
     opa = OpA(g)
     opb = OpB(g)
-    opc1 = cacheClass(g,5)
-    opc2 = cacheClass(g,11)
+    opc1 = cacheClass(g)
+    opc1.inputs["blockShape"].setValue(5)
+    opc2 = cacheClass(g)
+    opc2.inputs["blockShape"].setValue(11)
     opfull = OpC(g)
-    opc3 = cacheClass(g,7)
-    opc4 = cacheClass(g,11)
+    opc3 = cacheClass(g)
+    opc3.inputs["blockShape"].setValue(7)
+    opc4 = cacheClass(g)
+    opc4.inputs["blockShape"].setValue(11)
+    
     opf = OpArrayCache(g)
+    opf.inputs["blockShape"].setValue(64)
     
     opa.inputs["Input"].connect(provider.outputs["Output"])
     opb.inputs["Input"].connect(opa.outputs["Output"])
