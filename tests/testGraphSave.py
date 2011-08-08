@@ -161,6 +161,8 @@ if __name__=="__main__":
     opMulti.inputs["Input11"].connect(hog2.outputs["Output"]) 
     
     stacker.inputs["Images"].connect(opMulti.outputs["Outputs"])
+    stacker.inputs["AxisFlag"].setValue('c')
+    stacker.inputs["AxisIndex"].setValue(2)
    
     
     #####Get the labels###

@@ -67,12 +67,8 @@ class OpMultiArraySlicer(Operator):
         start.insert(indexAxis,indexes[0])
         stop.insert(indexAxis,indexes[0])
         
-        #print "WHAT ATTATATTATATTATA ", start,stop,oldstart,oldstop
-        
         newKey=roi.roiToSlice(numpy.array(start),numpy.array(stop))
-        
-        
-        
+
         writeKey=roi.roiToSlice(oldstart,oldstop)
         writeKey=list(writeKey)
         writeKey.insert(indexAxis,0)
@@ -83,11 +79,12 @@ class OpMultiArraySlicer(Operator):
         
         result[:]=ttt[writeKey ]#+ (0,)]
 
-class OpMultiArrayStackerNew(Operator):
+class OpMultiArrayStacker(Operator):
     inputSlots = [MultiInputSlot("Images"), InputSlot("AxisFlag"), InputSlot("AxisIndex")]
     outputSlots = [OutputSlot("Output")]
 
     name = "Multi Array Stacker"
+    description = "Stack inputs on any axis, including the ones which are not there yet"
     category = "Misc"
 
     def notifySubConnect(self, slots, indexes):
@@ -119,7 +116,7 @@ class OpMultiArrayStackerNew(Operator):
                 outTagKeys = [ax.key for ax in self.outputs["Output"]._axistags]
                 
                 if not flag in outTagKeys:
-                    self.outputs["Output"]._axistags.insert(axisindex, vigra.AxisInfo(flag))
+                    self.outputs["Output"]._axistags.insert(axisindex, vigra.AxisInfo(flag, axisType(flag)))
                 if flag in inTagKeys:
                     c += inSlot.shape[inSlot.axistags.index(flag)]
                 else:
@@ -131,7 +128,8 @@ class OpMultiArrayStackerNew(Operator):
                 newshape[axisindex]=c
             else:
                 newshape.insert(axisindex, c)
-            self.outputs["Output"]._shape=tuple(newshape)    
+            self.outputs["Output"]._shape=tuple(newshape)
+
 
 
     def getOutSlot(self, slot, key, result):
@@ -144,12 +142,14 @@ class OpMultiArrayStackerNew(Operator):
         oldkey = list(key)
         oldkey.pop(axisindex)
         
+        #print "requesting an outslot from stacker:", key, result.shape
         requests = []
         for i, inSlot in enumerate(self.inputs['Images']):
             if inSlot.partner is not None:
                 req = None
                 inTagKeys = [ax.key for ax in inSlot.axistags]
                 if flag in inTagKeys:
+                    #print "axis there...", axisindex
                     slices = inSlot.shape[axisindex]
                     if cnt + slices >= start[axisindex] and start[axisindex]-cnt<slices and start[axisindex]+written<stop[axisindex]:
                         begin = 0
@@ -160,22 +160,21 @@ class OpMultiArrayStackerNew(Operator):
                             end -= cnt + end - stop[axisindex]
                         key_ = copy.copy(oldkey)
                         key_.insert(axisindex, slice(begin, end, None))
-                        reskey = copy.copy(oldkey)
-                        reskey.insert(axisindex, slice(written, written+end-begin, None))
-                        
+                        reskey = [slice(None, None, None) for x in range(len(result.shape))]
+                        reskey[axisindex] = slice(written, written+end-begin, None)
+                        #reskey.insert(axisindex, slice(written, written+end-begin, None))
+                        #print "key_", key_
+                        #print "reskey", reskey
                         #assert (end <= numpy.array(inSlot.shape)).all(), "end: %r, shape: %r" % (end, inSlot.shape)
                         #assert (begin < numpy.array(inSlot.shape)).all(), "begin:  %r, shape: %r" % (begin, inSlot.shape)
+                        
                         req = inSlot[tuple(key_)].writeInto(result[tuple(reskey)])
                         written += end - begin
                     cnt += slices
                 else:
-                    print cnt, start[axisindex], stop[axisindex]
                     if cnt>=start[axisindex] and start[axisindex] + written < stop[axisindex]:
                         reskey = copy.copy(oldkey)
                         reskey.insert(axisindex, cnt)
-                        #print "STACKER: res shape: ", result.shape, "requesting with key: ", oldkey, "inSlot shape: ", inSlot.shape, reskey
-                        #print "oldkey", oldkey, "res key: ", reskey
-                        #print "WTF", result[tuple(reskey)].sh
                         req = inSlot[tuple(oldkey)].writeInto(result[tuple(reskey)])
                         written += 1
                     cnt += 1

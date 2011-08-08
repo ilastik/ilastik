@@ -141,6 +141,8 @@ if __name__=="__main__":
     ########################################
     #########################################
     stacker=OpMultiArrayStacker(g)
+    stacker.inputs["AxisFlag"].setValue('c')
+    stacker.inputs["AxisIndex"].setValue(2)
     
     opMulti = operators.Op20ToMulti(g)    
     opMulti.inputs["Input00"].connect(opa.outputs["Output"])

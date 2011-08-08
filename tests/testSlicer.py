@@ -23,7 +23,7 @@ if __name__=="__main__":
     filename='ostrich.jpg'
     
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
-            
+           
     vimageReader = OpImageReader(g)
     vimageReader.inputs["Filename"].setValue(filename)
     
@@ -133,15 +133,32 @@ if __name__=="__main__":
     ##################################
     ########################################
     #########################################
+    
+    '''
+    #stack = numpy.random.rand(100, 100, 3)
+    #stack2 = numpy.random.rand(100, 100, 2)
+    stack = numpy.array(range(10))
+    stack2 = numpy.array(range(10, 20))
+    stack = stack.reshape((5, 2, 1))
+    stack2 = stack2.reshape((5, 2, 1))
+    print stack.shape
+    print stack2.shape
+    
+    '''
     stacker=OpMultiArrayStacker(g)
 
 
     opMulti = operators.Op5ToMulti(g)
     opMulti.inputs["Input1"].connect(opa.outputs["Output"])
     opMulti.inputs["Input2"].connect(opgg.outputs["Output"])
+    #opMulti.inputs["Input0"].setValue(stack)
+    #opMulti.inputs["Input1"].setValue(stack2)
+    
     
     stacker.inputs["Images"].connect(opMulti.outputs["Outputs"])
-
+    stacker.inputs["AxisFlag"].setValue('c')
+    stacker.inputs["AxisIndex"].setValue(2)
+    
     
     
     print "TESTING C DIMENSION"
@@ -150,8 +167,9 @@ if __name__=="__main__":
     slicer.inputs["AxisFlag"].setValue('c')
     
     
-    for index in range(6):
+    for index in range(stacker.outputs["Output"].shape[2]):
         print "------------------------------------------------",index
+        
         paa=slicer.outputs["Slices"][index][:].allocate().wait()
         desired=stacker.outputs["Output"][:,:,index].allocate().wait()
         desired=numpy.squeeze(desired)
@@ -164,11 +182,12 @@ if __name__=="__main__":
     slicer2.inputs["AxisFlag"].setValue('x')
     
     
+    
+    
+    #for index in range(stacker.outputs["Output"].shape[0]):
     for index in range(6):
-       
         print "------------------------------------------------",index
         desired=stacker.outputs["Output"][index,:,:].allocate().wait()
-        
         desired=desired[0,:,:]
         paa=slicer2.outputs["Slices"][index][:].allocate().wait()
         assert_array_equal(paa,desired, "shit at index %r"%(index))
@@ -180,6 +199,7 @@ if __name__=="__main__":
     slicer3.inputs["AxisFlag"].setValue('y')
     
     
+    #for index in range(stacker.outputs["Output"].shape[1]):
     for index in range(6):
         print "------------------------------------------------",index
         
