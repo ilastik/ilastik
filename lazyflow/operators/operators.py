@@ -315,9 +315,6 @@ class OpArrayCache(OpArrayPiper):
 #        print self._blockState[blockKey][trueDirtyIndices]
 #        print "Ranges:"
 #        print "TileArray:", tileArray
-
-        bq = BlockQueue()
-        bq.queue = deque()
                 
         for i in range(tileArray.shape[1]):
 
@@ -338,8 +335,12 @@ class OpArrayCache(OpArrayPiper):
             #print drStart2, drStop2, blockStart, self._blockShape
             #print "Request %d: %r" %(i,key)
 
-            dirtyRequests.append((key,drStart,drStop))   
+            req = self.inputs["Input"][key].writeInto(self._cache[key])
+            
+            dirtyRequests.append(req)   
 
+            self._blockQuery[key2] = req
+            
             #sanity check:
             if (self._blockState[key2] != 1).any():
                 print "original condition", cond                    
@@ -355,22 +356,20 @@ class OpArrayCache(OpArrayPiper):
             
 #        # indicate the inprocessing state, by setting array to 0        
         self._blockState[blockKey] = numpy.where(cond, 0, self._blockState[blockKey])
-        self._blockQuery[blockKey] = numpy.where(cond, bq, self._blockQuery[blockKey])               
         self._lock.release()
         
         
-        requests = []
-        #fire off requests
-        for r in dirtyRequests:
-            key, reqStart, reqStop = r
-            #req = self.inputs["Input"][key].writeInto(self._cache[key])
-            req = self.inputs["Input"][key].allocate() #this is safer for cancelled requests
-            requests.append((req, key))
+        def onCancel():
+            # indicate the finished inprocess state        
+            self._lock.acquire()
+            self._blockState[blockKey] = numpy.where(cond, 1, self._blockState[blockKey])
+            self._blockQuery[blockKey] = numpy.where(cond, None, self._blockQuery[blockKey])                       
+            self._lock.release()            
             
         #wait for all requests to finish
-        for req,key in requests:
-            res = req.wait()
-            self._cache[key] = res            
+        for req in dirtyRequests:
+            req.onCancel(onCancel)
+            res = req.wait()          
             
         # indicate the finished inprocess state        
         self._lock.acquire()
@@ -378,28 +377,10 @@ class OpArrayCache(OpArrayPiper):
         self._blockQuery[blockKey] = numpy.where(cond, None, self._blockQuery[blockKey])                       
         self._lock.release()
 
-        
-        #notify eventual waiters
-        bq.lock.acquire()
-        for w in bq.queue:
-            w[1].finishedRequests.append(FakeGetItemRequestObject(w[0]))
-            w[1].signalWorkAvailable()
-        bq.queue = None
-        bq.lock.release()
-        
 
         #wait for all in process queries
-        for q in inProcessQueries:
-            q.lock.acquire()
-            if q.queue is not None:
-                gr = greenlet.getcurrent()
-                task = [gr,threading.current_thread()]
-                q.queue.append(task)
-                q.lock.release()
-                greenlet.getcurrent().parent.switch(None)
-            else:
-                q.lock.release()
-                pass
+        for req in inProcessQueries:
+            req.wait()
         
         # finally, store results in result area
         #print "Oparraycache debug",result.shape,self._cache[roiToSlice(start, stop)].shape

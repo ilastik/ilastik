@@ -190,25 +190,28 @@ class GetItemRequestObject(object):
 
     def __init__(self, slot, graph, partner, key, destination):
         self.key = key
-        self.greenlet = None
         self.destination = destination
-        self.closure = None
         self.event = Event()
         self.lock = Lock()
         self.thread = current_thread()
         self.slot = slot
         self.func = None
-        self.kwargs = {}
-        self.cancelled = False
+        self.canceled = False
+        self.finished = False
+        self.parentRequest = None
+        self.childRequests = {}
+        self.requestID = graph.lastRequestID.next()
         self.graph = graph
+        self.waitQueue = deque()
+        self.notifyQueue = deque()
+        self.cancelQueue = deque()
         if slot is None or slot.partner is not None:
-            if hasattr(self.thread, "currentRequestLevel"): #TODO: use more self explaining test
-                self.requestLevel = self.thread.currentRequestLevel + 1
-                self.requestID = self.thread.runningRequestID
+            if hasattr(self.thread, "currentRequest"): #TODO: use more self explaining test
+                self.parentRequest = self.thread.currentRequest
+                self.parentRequest.childRequests[self] = self
+                self.requestLevel = self.parentRequest.requestLevel + 1
             else:
                 self.requestLevel = 1
-                self.thread = graph.workers[0]
-                self.requestID = graph.lastRequestID.next()
                 
             self.func = partner._fireRequest
             
@@ -226,11 +229,12 @@ class GetItemRequestObject(object):
             #self.lock.acquire()
             if not self.event.isSet():
                 # --> wait until results are ready
-                if greenlet.getcurrent().parent != None: #TODO: use other test as in __init__  
-                    self.greenlet = greenlet.getcurrent()
+                tr = current_thread()
+                if hasattr(tr, "currentRequest"): #TODO: use other test as in __init__  
+                    gr = greenlet.getcurrent()
+                    self.waitQueue.append((tr, tr.currentRequest, gr))
                     #self.lock.release()
-                    self.greenlet.parent.switch(None)
-                    self.greenlet = None
+                    gr.parent.switch(None)
                 else:
                     #self.lock.release()
                     # loop to allow ctrl-c signal !
@@ -257,21 +261,60 @@ class GetItemRequestObject(object):
         once the results are calculated and stored in the result
         are, the provided someFunction will be called by lazyflow.
         """
-        self.kwargs = kwargs
+        if self.finished is False:
+            self.notifyQueue.append((closure, kwargs))
+        else:
+            closure(self.destination, **kwargs)
+
+    def onCancel(self, closure, **kwargs):
+        if not self.canceled:
+            self.cancelQueue.append((closure, kwargs))
+        else:
+            closure(**kwargs)
+
+    def _finalize(self):
+        self.finished = True
+        self.event.set()
+        if self.canceled is False:
+            while len(self.notifyQueue) > 0:
+                func, kwargs = self.notifyQueue.popleft()
+                func(self.destination, **kwargs)
+
+            while len(self.waitQueue) > 0:
+                tr, req, gr = self.waitQueue.popleft()
+                tr.finishedRequestGreenlets.append((req, gr))
+                tr.workAvailableEvent.set()
+        self.parentRequest = None
+        self.childRequests = {}
+        self.cancelQueue = deque()
+        self.notifyQueue = deque()
+        self.waitQueue = deque()
         
-        #if isinstance(self.thread, Worker):
-            #self.lock.acquire()
-        self.closure = closure
-            #self.lock.release()
-        #else:
-        #    print "GetItemRequestObject: notify possible only from within worker thread -> waiting for result instead..."
-        #    result = self.wait()
-        #    closure(result = result, **self.kwargs)
-    
+    def _cancel(self):
+        if not self.finished:
+            self.canceled = True
+            while len(self.cancelQueue) > 0:
+                closure, kwargs = self.cancelQueue.popleft()
+                closure(**kwargs)
+
+    def _cancelChildren(self):
+        if not self.finished:
+            for r in self.childRequests.values():
+                r._cancelChildren()
+            self._cancel()
+
+    def _cancelParents(self):
+        if not self.finished:
+            self._cancel()
+            if self.parentRequest is not None:
+                self.parentRequest._cancelParents()
+
+
     def cancel(self):
-        self.closure = None
-        self.cancelled = True
-        self.graph.cancelRequestID(self.requestID)        
+        if not self.finished:
+            self.canceled = True
+            self._cancelChildren()
+            self._cancelParents()
         
     def __call__(self):
         #TODO: remove this convenience function when
@@ -1774,53 +1817,22 @@ class Worker(Thread):
         self.graph = graph
         self.working = False
         self.daemon = True # kill automatically on application exit!
-        self.finishedRequests = deque()
+        self.finishedRequestGreenlets = deque()
+        self.currentRequest = None
         self.requests = deque()
-        self.currentRequestLevel = 0
         self.process = psutil.Process(os.getpid())
         self.number =  len(self.graph.workers)
         self.workAvailableEvent = Event()
         self.workAvailableEvent.clear()
-        self.runningRequestID = 0
-        self.cancelledRequestID = -1
         print "Initializing Worker #%d" % self.number
         
-    def cancelRequestID(self, requestID):
-        self.cancelledRequestID  = requestID
-
-        temp = deque()             
-        while len(self.finishedRequests) > 0:
-            try:
-                reqObject = self.finishedRequests.popleft()
-            except IndexError:
-                pass
-            if reqObject.requestID != requestID:
-                temp.append(reqObject)
-        
-        while len(temp) > 0:
-            elem = temp.popleft()            
-            self.finishedRequests.append(elem)
     
     def signalWorkAvailable(self):
         self.workAvailableEvent.set()
         
     def processReqObject(self, reqObject):
         reqObject.func(reqObject.key, reqObject.destination)
-        
-        if self.runningRequestID != self.cancelledRequestID :
-            #reqObject.lock.acquire()
-            reqObject.event.set()
-            if reqObject.closure is not None:
-                #reqObject.lock.release()
-                reqObject.closure(result = reqObject.destination, **reqObject.kwargs)
-            else:
-                #reqObject.lock.release()
-                pass
-            
-            #append 
-            if reqObject.greenlet is not None:
-                reqObject.thread.finishedRequests.append(reqObject)
-                reqObject.thread.signalWorkAvailable()
+        reqObject._finalize()
         
     def run(self):
         while self.graph.running:
@@ -1829,17 +1841,12 @@ class Worker(Thread):
             self.graph.freeWorkers.remove(self)
             self.workAvailableEvent.clear()
             
-            while not len(self.graph.tasks)==0 or len(self.finishedRequests) > 0:
-                while len(self.finishedRequests) > 0:
-                    reqObject = self.finishedRequests.popleft()
-                    #reqObject.lock.acquire()
-                    tgr = reqObject.greenlet
-                    reqObject.greenlet = None
-                    #reqObject.lock.release()
-                    if tgr is not None:
-                        self.currentRequestLevel = reqObject.requestLevel
-                        self.runningRequestID = reqObject.requestID
-                        task = tgr.switch()
+            while not len(self.graph.tasks)==0 or len(self.finishedRequestGreenlets) > 0:
+                while len(self.finishedRequestGreenlets) > 0:
+                    req, gr = self.finishedRequestGreenlets.popleft()
+                    self.currentRequest = req                 
+                    gr.switch()
+                    
                 task = None
                 try:
                     task = self.graph.tasks.pop()#timeout = 1.0)
@@ -1851,8 +1858,7 @@ class Worker(Thread):
                     # then against 1 ? ...
                     if reqObject.requestLevel > 1 or self.process.get_memory_info().rss < self.graph.maxMem:
                         gr = greenlet.greenlet(self.processReqObject)
-                        self.currentRequestLevel = reqObject.requestLevel
-                        self.runningRequestID = reqObject.requestID
+                        self.currentRequest = reqObject
                         gr.switch( reqObject)
                     else:
                         self.graph.tasks.append(task) #move task back to task queue
