@@ -1718,12 +1718,15 @@ class OperatorWrapper(Operator):
                 },patchBoard)    
 
         return op
-
 class OperatorGroup(Operator):
     def __init__(self, graph):
         Operator.__init__(self,graph)
         self._visibleOutputs = None
         self._visibleInputs = None
+
+        self._createInnerOperators()
+        self._connectInnerInputs()
+        self._connectInnerOutputs()
         
     def _createInnerOperators(self):
         # this method must setup the
@@ -1742,21 +1745,15 @@ class OperatorGroup(Operator):
         pass
     
     def _connectInnerOutputs(self):
-        self.setupOutputSlots()
+        outputs = self.getInnerOutputs()
         
-        for key, value in self.outputs.items():
-            self._recurseOutputs(value, self._visibleOutputs[key])
-   
-    def _recurseOutputs(self, outer, inner):
-        if not isinstance(inner, MultiOutputSlot):
-            assert not isinstance(outer, MultiOutputSlot)
-            outer._dtype = inner._dtype
-            outer._shape = inner._shape
-            outer._axistags = inner._axistags
-        else:
-            outer.resize(len(inner))
-            for i, innerSlot in enumerate(inner):
-                self._recurseOutputs(outer[i], inner[i])
+        for key, value in outputs.items():
+            self.outputs[key] = value
+
+    def _connectInnerInputs(self):
+        inputs = self.getInnerInputs()
+        for k,v in inputs.items():
+            self.inputs[k] = v
                    
     def getSubOutSlot(self, slots, indexes, key, result):               
         slot = self._visibleOutputs[slots[0].name]
@@ -1769,9 +1766,7 @@ class OperatorGroup(Operator):
    
    
     def notifyConnectAll(self):
-        self._createInnerOperators()
-        self.setupInputSlots()
-        self._connectInnerOutputs()
+        pass
     
     def notifyConnect(self, inputSlot):
         if self._visibleInputs is not None:
