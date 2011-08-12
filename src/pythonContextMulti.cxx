@@ -48,6 +48,18 @@ NumpyAnyArray pythonStarContext3Dvar(NumpyArray<1, Singleband<IND> > radii_x,
 }
 
 template <class IND, class T>
+NumpyAnyArray pythonStarContext3Dnew(NumpyArray<2, Singleband<IND> > radii_triplets,
+                                        NumpyArray<4, Multiband<T> > predictions,
+                                        NumpyArray<4, Multiband<T> > res)
+{
+    { PyAllowThreads _pythread;
+    starContext3Dnew(radii_triplets, predictions, res);
+    std::cout<<"c++ done"<<std::endl;
+    }
+    return res;
+}
+
+template <class IND, class T>
 NumpyAnyArray pythonAvContext2Dmulti(NumpyArray<1, Singleband<IND> > sizes,
                                      NumpyArray<3, Multiband<T> > predictions,
                                      NumpyArray<3, Multiband<T> > res)
@@ -202,6 +214,11 @@ void defineContext() {
                                                                                       arg("predictions"), arg("out")=python::object()));
     def("starContext3Dvar", registerConverters(&pythonStarContext3Dvar<unsigned int, float>), (arg("radii_x"), arg("radii_y"), arg("radii_z"),
                                                                                       arg("predictions"), arg("out")=python::object()));
+    def("starContext3Dnew", registerConverters(&pythonStarContext3Dnew<int, float>), (arg("radii_triplets"), arg("predictions"),
+                                                                                      arg("out")=python::object()));
+    def("starContext3Dnew", registerConverters(&pythonStarContext3Dnew<unsigned int, float>), (arg("radii_triplets"), arg("predictions"),
+                                                                                      arg("out")=python::object()));                                                                                  
+                                                                                      
                                                                                       //we define for floats because we want to use it on probability maps                                                                                  
     def("integralImage", registerConverters(&pythonIntegralImage<float>), (arg("image"), arg("out")=python::object()));
     def("integralImage2", registerConverters(&pythonIntegralImage2<float>), (arg("image"), arg("out")=python::object()));

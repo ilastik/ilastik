@@ -112,6 +112,80 @@ void new_features(MultiArrayView<1, IND, S>& radii,
         
 }
 
+template <class IND, class T, class S>
+void starFeatures3DvarNew(IND x, IND y, IND z, IND c,
+                          MultiArrayView<2, IND, S>& triplets,
+                          MultiArrayView<4, T, S>& predictions,
+                          std::vector<T>& neighbors)
+{
+    int nx = predictions.shape()[0];
+    int ny = predictions.shape()[1];
+    int nz = predictions.shape()[2];
+    int nclasses = predictions.shape()[3];
+    
+    int nr = triplets.shape()[0];
+    //order: x-, y-, z-; x-,y-,z; x-,y-,z+; 
+    //       x-, y, z-; x-,y, z, x-,y,z+;
+    //       x-, y+,z-; x-,y+,z; x-,y+,z+;
+    //       ...
+    
+    bool xminus, xplus, yminus, yplus, zminus, zplus;
+    for (int r=0; r<nr; ++r) {
+        IND rx = triplets(r, 0);
+        IND ry = triplets(r, 1);
+        IND rz = triplets(r, 2);
+        
+        xminus = (x>=rx);
+        xplus = (x+rx<nx);
+        yminus = (y>=ry);
+        yplus = (y+ry<ny);
+        zminus = (z>=rz);
+        zplus = (z+rz<nz);
+        
+        neighbors[r*26 + 0] =  (xminus && yminus && zminus) ?   predictions(x-rx, y-ry, z-rz, c) : 1./nclasses;
+        neighbors[r*26 +1] =  (xminus && yminus) ?              predictions(x-rx, y-ry, z, c) : 1./nclasses;
+        neighbors[r*26 +2] =  (xminus && yminus && zplus) ?     predictions(x-rx, y-ry, z+rz, c) : 1./nclasses;
+        
+        neighbors[r*26 +3] =  (xminus && zminus) ?            predictions(x-rx, y, z-rz, c) : 1./nclasses;
+        neighbors[r*26 +4] =  (xminus) ?                      predictions(x-rx, y, z, c) : 1./nclasses;
+        neighbors[r*26 +5] =  (xminus && zplus) ?             predictions(x-rx, y, z+rz, c) : 1./nclasses;
+        
+        neighbors[r*26 +6] =  (xminus && yplus && zminus) ? predictions(x-rx, y+ry, z-rz, c) : 1./nclasses;
+        neighbors[r*26 +7] =  (xminus && yplus) ?           predictions(x-rx, y+ry, z, c) : 1./nclasses;
+        neighbors[r*26 +8] =  (xminus && yplus && zplus) ?  predictions(x-rx, y+ry, z+rz, c) : 1./nclasses;
+        /////////////////////////////
+        neighbors[r*26 +9] =  (yminus && zminus) ?          predictions(x, y-ry, z-rz, c) : 1./nclasses;
+        neighbors[r*26 +10] =  (yminus) ?                   predictions(x, y-ry, z, c) : 1./nclasses;
+        neighbors[r*26 +11] =  (yminus && zplus) ?          predictions(x, y-ry, z+rz, c) : 1./nclasses;
+        
+        neighbors[r*26 +12] =  (zminus) ?                   predictions(x, y, z-rz, c) : 1./nclasses;
+        //neighbors[13] =  (xminus) ?                       predictions(x, y, z, c) : 1./nclasses;
+        neighbors[r*26 +13] =  (zplus) ?                    predictions(x, y, z+rz, c) : 1./nclasses;
+        
+        neighbors[r*26 +14] =  (yplus && zminus) ?          predictions(x, y+ry, z-rz, c) : 1./nclasses;
+        neighbors[r*26 +15] =  (yplus) ?                    predictions(x, y+ry, z, c) : 1./nclasses;
+        neighbors[r*26 +16] =  (yplus && zplus) ?           predictions(x, y+ry, z+rz, c) : 1./nclasses;
+        ////////////////////////////
+        neighbors[r*26 +17] =  (xplus && yminus && zminus) ?predictions(x+rx, y-ry, z-rz, c) : 1./nclasses;
+        neighbors[r*26 +18] =  (xplus && yminus) ?          predictions(x+rx, y-ry, z, c) : 1./nclasses;
+        neighbors[r*26 +19] =  (xplus && yminus && zplus) ? predictions(x+rx, y-ry, z+rz, c) : 1./nclasses;
+        
+        neighbors[r*26 +20] =  (xplus && zminus) ?          predictions(x+rx, y, z-rz, c) : 1./nclasses;
+        neighbors[r*26 +21] =  (xplus) ?                    predictions(x+rx, y, z, c) : 1./nclasses;
+        neighbors[r*26 +22] =  (xplus && zplus) ?           predictions(x+rx, y, z+rz, c) : 1./nclasses;
+        
+        neighbors[r*26 +23] =  (xplus && yplus && zminus) ? predictions(x+rx, y+ry, z-rz, c) : 1./nclasses;
+        neighbors[r*26 +24] =  (xplus && yplus) ?           predictions(x+rx, y+ry, z, c) : 1./nclasses;
+        neighbors[r*26 +25] =  (xplus && yplus && zplus) ?  predictions(x+rx, y+ry, z+rz, c) : 1./nclasses;
+ 
+    }
+        
+    
+    
+    
+    return;
+}
+
 template <class IND, class T, class S1>
 void starFeatures3Dvar(std::vector<IND>& xvars,
                        std::vector<IND>& yvars,
@@ -129,25 +203,8 @@ void starFeatures3Dvar(std::vector<IND>& xvars,
     IND x = xvars[xvars.size()/2];
     IND y = yvars[yvars.size()/2];
     IND z = zvars[zvars.size()/2];
-    //std::cout<<"neighbors size: "<<neighbors.size()<<std::endl;
-    //std::cout<<"center point: "<<x<<" , "<<y<<" , "<<z<<std::endl;
-    /*
-    for (int i=0; i<xvars.size(); ++i){
-        std::cout<<" "<<xvars[i]<<" "<<std::endl;
-    }
-    std::cout<<std::endl;
-    for (int i=0; i<yvars.size(); ++i){
-        std::cout<<" "<<yvars[i]<<" "<<std::endl;
-    }
-    std::cout<<std::endl;
-    for (int i=0; i<zvars.size(); ++i){
-        std::cout<<" "<<zvars[i]<<" "<<std::endl;
-    }
-    std::cout<<std::endl;
-    */
     int iflat = 0;
     for (xit=xvars.begin(); xit!=xvars.end(); ++xit){
-        //std::cout<<"x = "<<(*xit)<<std::endl;
         if ((*xit)==std::numeric_limits<IND>::max()){
             //x too big or too small, set all to equal probability
             for (yit=yvars.begin(); yit!=yvars.end(); ++yit){
@@ -156,19 +213,15 @@ void starFeatures3Dvar(std::vector<IND>& xvars,
                     iflat++;
                 }
             }
-            //std::cout<<"1. iflat="<<iflat<<std::endl;
         } else {
             for (yit=yvars.begin(); yit!=yvars.end(); ++yit){
-                //std::cout<<"y = "<<(*yit)<<std::endl;
                 if ((*yit)==std::numeric_limits<IND>::max()){
                     for (zit=zvars.begin(); zit!=zvars.end(); ++zit){
                         neighbors[iflat]=1./nclasses;
                         iflat++;
                     }
-                    //std::cout<<"2. iflat="<<iflat<<std::endl;
                 } else {
                     for (zit=zvars.begin(); zit!=zvars.end(); ++zit){
-                        //std::cout<<"z = "<<(*zit)<<std::endl;
                         if ((*zit)==std::numeric_limits<IND>::max()){
                             neighbors[iflat]=1./nclasses;
                             iflat++;
@@ -181,17 +234,12 @@ void starFeatures3Dvar(std::vector<IND>& xvars,
                             neighbors[iflat]=predictions((*xit), (*yit), (*zit), c);
                             iflat++;
                         }
-                    //std::cout<<"3. iflat= "<<iflat<<std::endl;
                     }
                 }
             }
         }
     }
     
-    //for (int i =0; i<neighbors.size(); ++i){
-      //  std::cout<<" "<<neighbors[i]<<" ";
-    //}
-    //std::cout<<std::endl;
     return;
     
 }
@@ -230,6 +278,44 @@ T average_pred(IND x, IND y, IND c, int nav, MultiArrayView<3, T, S>& prediction
     }
     return sum/n;
 }
+
+template <class IND, class T, class S>
+void starContext3Dnew(MultiArrayView<2, IND, S>& radii_triplets,
+                      MultiArrayView<4, T, S>& predictions,
+                      MultiArrayView<4, T, S>& res)
+{
+    std::cout<<"stride order: "<<predictions.strideOrdering()<<std::endl;
+    std::cout<<"strides: "<<predictions.stride()<<std::endl;
+    std::cout<<"predictions shape: "<<predictions.shape()<<std::endl;
+    std::cout<<"radii triplets: "<<radii_triplets.shape()<<std::endl;
+    int nx = predictions.shape()[0];
+    int ny = predictions.shape()[1];
+    int nz = predictions.shape()[2];
+    int nclasses = predictions.shape()[3];
+    int ntr = radii_triplets.shape()[0];
+    int nnewfeatures = ntr*26;
+    //std::cout<<"nnewfeatures: "<<nnewfeatures<<std::endl;
+    std::vector<T> neighbors(nnewfeatures);
+    for (IND x=0; x<nx; ++x){
+        //std::cout<<"x="<<x<<std::endl;
+        for (IND y=0; y<ny; ++y){
+            //std::cout<<"y="<<y<<std::endl;
+            for (IND z=0; z<nz; ++z){
+                //std::cout<<"z="<<z<<std::endl;
+                for (IND c=0; c<nclasses; ++c){
+                   //std::cout<<"c="<<c<<std::endl;
+                   starFeatures3DvarNew(x, y, z, c, radii_triplets, predictions, neighbors);
+                   //std::cout<<"function called"<<std::endl;
+                   for (int ii=0; ii<ntr*26; ++ii) {
+                       res(x, y, z, c*(nnewfeatures-1)+ii) = neighbors[ii];
+                   }
+                   //std::cout<<"result filled"<<std::endl;
+                }
+            }
+        }
+    }
+}
+                
 
 template <class IND, class T, class S>
 void starContext3Dvar(MultiArrayView<1, IND, S>& radii_x,
