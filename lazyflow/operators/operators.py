@@ -205,8 +205,16 @@ class OpRequestSplitter(OpArrayPiper):
         req1.wait()
         req2.wait()
         
-
-
+def fastWhere(cond, A, B, dtype):
+    nonz = numpy.nonzero(cond)
+    res = numpy.ndarray(cond.shape, dtype)
+    res[:] = B
+    if isinstance(A,numpy.ndarray):
+        res[nonz] = A[nonz]
+    else:
+        res[nonz] = A
+    return res
+    
 class OpArrayCache(OpArrayPiper):
     name = "ArrayCache"
     description = "numpy.ndarray caching class"
@@ -289,21 +297,21 @@ class OpArrayCache(OpArrayPiper):
         self.outputs["Output"].setDirty(key)
         
     def getOutSlot(self,slot,key,result):
+        #return       
         start, stop = sliceToRoi(key, self.shape)
         
-        
         self._lock.acquire()
-        blockStart = numpy.floor(1.0 * start / self._blockShape)
-        blockStop = numpy.ceil(1.0 * stop / self._blockShape)
+        blockStart = (1.0 * start / self._blockShape).floor()
+        blockStop = (1.0 * stop / self._blockShape).ceil()
         blockKey = roiToSlice(blockStart,blockStop)
                 
         inProcessQueries = numpy.unique(numpy.extract(self._blockState[blockKey] == 0, self._blockQuery[blockKey]))         
         
         cond = (self._blockState[blockKey] == 1)
-        tileWeights = numpy.where(cond, 1, 128**3)       
-        trueDirtyIndices = numpy.nonzero(numpy.where(cond, 1,0))
+        tileWeights = fastWhere(cond, 1, 128**3, numpy.uint32)       
+        trueDirtyIndices = numpy.nonzero(cond)
                     
-        tileWeights = tileWeights.astype(numpy.uint32)
+        #tileWeights = tileWeights.astype(numpy.uint32)
         #print "calling drtile...", tileWeights.dtype
         tileArray = drtile.test_DRTILE(tileWeights, 128**3).swapaxes(0,1)
                 
@@ -320,14 +328,17 @@ class OpArrayCache(OpArrayPiper):
 
             #drStart2 = (tileArray[half-1::-1,i] + blockStart)
             #drStop2 = (tileArray[half*2:half-1:-1,i] + blockStart)
-            drStart2 = tileArray[:half,i] + blockStart
-            drStop2 = tileArray[half:,i] + blockStart
+            drStart3 = tileArray[:half,i]
+            drStop3 = tileArray[half:,i]
+            drStart2 = drStart3 + blockStart
+            drStop2 = drStop3 + blockStart
             drStart = drStart2*self._blockShape
             drStop = drStop2*self._blockShape
 
             drStop = numpy.minimum(drStop, self.shape)
             drStart = numpy.minimum(drStart, self.shape)
             
+            key3 = roiToSlice(drStart3,drStop3)
             key2 = roiToSlice(drStart2,drStop2)
 
             key = roiToSlice(drStart,drStop)
@@ -337,7 +348,7 @@ class OpArrayCache(OpArrayPiper):
 
             req = self.inputs["Input"][key].writeInto(self._cache[key])
             
-            dirtyRequests.append(req)   
+            dirtyRequests.append((req,key2, key3))   
 
             self._blockQuery[key2] = req
             
@@ -355,26 +366,28 @@ class OpArrayCache(OpArrayPiper):
                 assert 1 == 2
             
 #        # indicate the inprocessing state, by setting array to 0        
-        self._blockState[blockKey] = numpy.where(cond, 0, self._blockState[blockKey])
+        self._blockState[blockKey] = fastWhere(cond, 0, self._blockState[blockKey], numpy.uint8)
         self._lock.release()
         
-        
-        def onCancel():
-            # indicate the finished inprocess state        
-            self._lock.acquire()
-            self._blockState[blockKey] = numpy.where(cond, 1, self._blockState[blockKey])
-            self._blockQuery[blockKey] = numpy.where(cond, None, self._blockQuery[blockKey])                       
-            self._lock.release()            
+        def onCancel(cancelled, reqBlockKey, reqSubBlockKey):
+            if not cancelled[0]:
+                cancelled[0] = True
+                self._lock.acquire()
+                self._blockState[blockKey] = fastWhere(cond, 1, self._blockState[blockKey], numpy.uint8)
+                self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)                       
+                self._lock.release()            
+            
+        temp = [False]            
             
         #wait for all requests to finish
-        for req in dirtyRequests:
-            req.onCancel(onCancel)
+        for req, reqBlockKey, reqSubBlockKey in dirtyRequests:
+            req.onCancel(onCancel, cancelled = temp, reqBlockKey = reqBlockKey, reqSubBlockKey = reqSubBlockKey)
             res = req.wait()          
-            
+
         # indicate the finished inprocess state        
         self._lock.acquire()
-        self._blockState[blockKey] = numpy.where(cond, 2, self._blockState[blockKey])
-        self._blockQuery[blockKey] = numpy.where(cond, None, self._blockQuery[blockKey])                       
+        self._blockState[blockKey] = fastWhere(cond, 2, self._blockState[blockKey], numpy.uint8)
+        self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)                       
         self._lock.release()
 
 
@@ -521,21 +534,24 @@ if has_blist:
             self.lock.acquire()
             #fix slicing of single dimensions:
             start, stop = sliceToRoi(key, shape, extendSingleton = False)
-            start = start.astype(numpy.int32)
-            stop = stop.astype(numpy.int32)
+            start = start.floor()
+            stop = stop.floor()
             
             tempKey = roiToSlice(start-start, stop-start, hardBind = True)
             
             stop += numpy.where(stop-start == 0,1,0)
+
+            print stop, start
+
             key = roiToSlice(start,stop)
-    
+
             updateShape = tuple(stop-start)
     
             update = self._denseArray[key].copy()
     
             update[tempKey] = value
-            
-            startRavel = numpy.ravel_multi_index(start,shape)
+
+            startRavel = numpy.ravel_multi_index(numpy.array(start, numpy.int32),shape)
             
             #insert values into dict
             updateNZ = numpy.nonzero(numpy.where(update != neutralElement,1,0))

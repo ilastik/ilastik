@@ -120,6 +120,36 @@ class Operators(object):
         #+cls.operators.pop("Operator")
 
 
+class CopyOnWriteView(object):
+    
+    def __init__(self, shape, dtype):
+        self._data = None
+        self._allocated = False
+        self.shape = shape
+        self.dtype = dtype
+        
+    def __setitem__(self,key, value):
+        if key == slice(None,None):
+            if isinstance(value, numpy.ndarray):
+                self._data = value
+                self._allocated = False
+                return value
+        if self._allocated is False:
+            temp = None
+            if self._data is not None:
+                temp = self._data
+            self._data = numpy.ndarray(self.shape, self.dtype)
+            if temp is not None:
+                self._data[:] = temp
+            self._allocated = True
+        self._data[key] = value
+        return value
+    
+    def __getitem__(self,key):
+        return self._data[key]
+
+      
+      
 class GetItemWriterObject(object):
     """
     Enables the syntax:
@@ -133,12 +163,11 @@ class GetItemWriterObject(object):
     method call of any InputSlot or OutputSlot.
     """
     
-    __slots__ = ["_key", "_slot"]
+    __slots__ = ["_key", "_start", "_stop","_slot"]
     
     def __init__(self, slot, key):
-        start, stop = sliceToRoi(key, slot.shape)
-        key = roiToSlice(start,stop)        
-        self._key = key
+        self._start, self._stop = sliceToRoi(key, slot.shape)
+        self._key = roiToSlice(self._start,self._stop)        
         self._slot = slot
     
     def writeInto(self, destination):
@@ -162,8 +191,8 @@ class GetItemWriterObject(object):
         a destination array of required size,shape,dtype will
         be constructed in which the results will be written.
         """
-        destination, key = self._slot._allocateStorage(self._key, axistags)
-        self._key = key
+        destination = self._slot._allocateStorage(self._start, self._stop, axistags)
+        #destination = CopyOnWriteView(self._slot.shape, self._slot.dtype)
         return self.writeInto(destination)
     
     def __call__(self):
@@ -171,6 +200,18 @@ class GetItemWriterObject(object):
         #      everything is ported ?
         return self.allocate()
 
+      
+class CustomGreenlet(greenlet.greenlet):
+    
+    def __init__(self, func):
+        self.lastRequest = None
+        self.currentRequest = None
+        greenlet.greenlet.__init__(self, func)
+        self.thread = None
+
+setattr(current_thread(), "finishedRequestGreenlets", deque())
+setattr(current_thread(), "workAvailableEvent", Event())
+setattr(current_thread(), "process", psutil.Process(os.getpid()))
 
 class GetItemRequestObject(object):
     """ 
@@ -188,35 +229,53 @@ class GetItemRequestObject(object):
         
     #__slots__ = ["func", "slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure",  "kwargs"]
 
-    def __init__(self, slot, graph, partner, key, destination):
+    def __init__(self, slot, graph, key, destination):
         self.key = key
         self.destination = destination
-        self.event = Event()
-        self.lock = Lock()
-        self.thread = current_thread()
         self.slot = slot
         self.func = None
         self.canceled = False
         self.finished = False
+        self.inProcess = False
         self.parentRequest = None
         self.childRequests = {}
-        self.requestID = graph.lastRequestID.next()
+        #self.requestID = graph.lastRequestID.next()
         self.graph = graph
         self.waitQueue = deque()
         self.notifyQueue = deque()
         self.cancelQueue = deque()
-        if slot is None or slot.partner is not None:
-            if hasattr(self.thread, "currentRequest"): #TODO: use more self explaining test
-                self.parentRequest = self.thread.currentRequest
-                self.parentRequest.childRequests[self] = self
-                self.requestLevel = self.parentRequest.requestLevel + 1
-            else:
-                self.requestLevel = 1
+        
+        
+        if isinstance(slot, InputSlot) and self.slot._value is None:
+            if slot.partner is not None:
+                self.func = slot.partner.operator.getOutSlot
+                self.arg1 = slot.partner            
+        elif isinstance(slot, OutputSlot):
+            self.func =  slot.operator.getOutSlot
+            self.arg1 = slot
+        else:
+            # we are in the ._value case of an inputSlot
+            self.wait() #this sets self.finished and copies the results over
+        if not self.finished:
+            self.lock = Lock()
+            gr = greenlet.getcurrent()
+            if hasattr(gr, "lastRequest"):
+                # we delay the firing of an request until
+                # another one arrives 
+                # by this we make sure that one call path
+                # through the graph is done in one greenlet/thread
                 
-            self.func = partner._fireRequest
-            
-            graph.putTask(self)
+                lr = gr.lastRequest
+                if lr is not None:
+                    lr._putOnTaskQueue()
+                gr.lastRequest = self
+                self.parentRequest = gr.currentRequest
+                gr.currentRequest.childRequests[self] = self
 
+
+    def _putOnTaskQueue(self):
+        self.inProcess = True
+        self.graph.putTask(self)
     
     def wait(self, timeout = 0):
         """
@@ -225,35 +284,62 @@ class GetItemRequestObject(object):
         of a requested Slot are calculated and stored in
         the  result area.
         """
-        if self.slot is None or self.slot.partner is not None:
-            #self.lock.acquire()
-            if not self.event.isSet():
-                # --> wait until results are ready
-                tr = current_thread()
-                if hasattr(tr, "currentRequest"): #TODO: use other test as in __init__  
-                    gr = greenlet.getcurrent()
-                    self.waitQueue.append((tr, tr.currentRequest, gr))
-                    #self.lock.release()
-                    gr.parent.switch(None)
-                else:
-                    #self.lock.release()
-                    # loop to allow ctrl-c signal !
-                    if timeout == 0:
-                        self.event.wait()
-                        #while not self.event.isSet():
-                        #    self.event.wait(timeout = 0.25) #in seconds
+        if isinstance(self.slot, OutputSlot) or self.slot._value is None:
+            self.lock.acquire()
+            if not self.finished:
+                gr = greenlet.getcurrent()
+                if self.inProcess:   
+                    if hasattr(gr, "lastRequest"):                         
+                        self.waitQueue.append((gr.thread, gr.currentRequest, gr))
+                        self.lock.release()                    
+                        gr.parent.switch(None)
                     else:
-                        self.event.wait(timeout = timeout) #in seconds
+                        assert 1 == 2
+                else:
+                    if hasattr(gr, "lastRequest"):
+                        if gr.lastRequest == self:
+                            gr.lastRequest = None
+                        self.inProcess = True
+                        self.lock.release()
+                        gr.currentRequest = self
+                        self.func(self.arg1,self.key, self.destination)
+                        self._finalize()
+                    else:
+                        tr = current_thread()                    
+                        cgr = CustomGreenlet(self.wait)
+                        cgr.currentRequest = self
+                        cgr.thread = tr                        
+                        self.lock.release()
+                        cgr.switch(self)
+                        self._waitFor(cgr,tr) #do some work while waiting
             else:
-                #self.lock.release()
+                self.lock.release()
                 pass
         else:
             if isinstance(self.slot._value, numpy.ndarray):
                 self.destination[:] = self.slot._value[self.key]
             else:
                 self.destination[:] = self.slot._value
+            self.finished = True
         return self.destination   
-         
+  
+      
+    def processReqObject(self,reqObject):
+        reqObject.func(reqObject.arg1, reqObject.key, reqObject.destination)
+        reqObject._finalize()
+      
+    def _waitFor(self, cgr, tr):
+        while not cgr.dead:
+            tr.workAvailableEvent.wait()
+            tr.workAvailableEvent.clear()
+            while len(tr.finishedRequestGreenlets) > 0:
+                req, gr = tr.finishedRequestGreenlets.popleft()
+                gr.currentRequest = req                 
+                gr.switch()
+
+
+
+       
     def notify(self, closure, **kwargs): 
         """
         calling .notify(someFunction) on an RequestObject is a NON-blocking
@@ -261,47 +347,70 @@ class GetItemRequestObject(object):
         once the results are calculated and stored in the result
         are, the provided someFunction will be called by lazyflow.
         """
-        if self.finished is False:
-            self.notifyQueue.append((closure, kwargs))
-        else:
+        self.lock.acquire()
+        if self.finished is True:
+            self.lock.release()
             closure(self.destination, **kwargs)
+        else:
+            self.notifyQueue.append((closure, kwargs))
+            self.lock.release()
+            if not self.inProcess:
+                self._putOnTaskQueue()
 
     def onCancel(self, closure, **kwargs):
-        if not self.canceled:
-            self.cancelQueue.append((closure, kwargs))
-        else:
+        self.lock.acquire()       
+        if self.canceled:
+            self.lock.release()
             closure(**kwargs)
+        else:
+            self.cancelQueue.append((closure, kwargs))
+            self.lock.release()
 
     def _finalize(self):
+        self.lock.acquire()
         self.finished = True
-        self.event.set()
+        self.lock.release()
         if self.canceled is False:
             while len(self.notifyQueue) > 0:
-                func, kwargs = self.notifyQueue.popleft()
+                func, kwargs = self.notifyQueue.pop()
                 func(self.destination, **kwargs)
 
             while len(self.waitQueue) > 0:
-                tr, req, gr = self.waitQueue.popleft()
-                tr.finishedRequestGreenlets.append((req, gr))
-                tr.workAvailableEvent.set()
+                tr, req, gr = self.waitQueue.pop()
+                req.lock.acquire()
+                if not req.canceled:
+                    tr.finishedRequestGreenlets.append((req, gr))
+                    tr.workAvailableEvent.set()
+                req.lock.release()
+        
         self.parentRequest = None
         self.childRequests = {}
-        self.cancelQueue = deque()
-        self.notifyQueue = deque()
-        self.waitQueue = deque()
+
         
     def _cancel(self):
+        self.lock.acquire()
         if not self.finished:
             self.canceled = True
+            self.lock.release()
             while len(self.cancelQueue) > 0:
-                closure, kwargs = self.cancelQueue.popleft()
+                closure, kwargs = self.cancelQueue.pop()
                 closure(**kwargs)
+        else:
+            self.lock.release()
+            pass
+        self._finalize()
+#            while len(self.waitQueue) > 0:
+#                tr, req, gr = self.waitQueue.popleft()
+#                if req.canceled is False:
+#                    tr.finishedRequestGreenlets.append((req, gr))
+#                    tr.workAvailableEvent.set()
 
     def _cancelChildren(self):
         if not self.finished:
-            for r in self.childRequests.values():
-                r._cancelChildren()
             self._cancel()
+            for r in self.childRequests.values():
+                r._cancelChildren()            
+            self.childRequests = {}
 
     def _cancelParents(self):
         if not self.finished:
@@ -314,7 +423,7 @@ class GetItemRequestObject(object):
         if not self.finished:
             self.canceled = True
             self._cancelChildren()
-            self._cancelParents()
+            #self._cancelParents()
         
     def __call__(self):
         #TODO: remove this convenience function when
@@ -336,6 +445,9 @@ class InputSlot(object):
         self.level = 0
         self._value = None
         self._stype = stype
+        self.axistags = None
+        self.shape = None
+        self.dtype = None
 
     def setValue(self, value):
         """
@@ -345,6 +457,17 @@ class InputSlot(object):
         """
         assert self.partner == None, "InputSlot %s (%r): Cannot dot setValue, because it is connected !" %(self.name, self)
         self._value = value
+        if isinstance(value, numpy.ndarray):
+            self.shape = value.shape
+            self.dtype = value.dtype
+            if hasattr(value, "axistags"):
+                self.axistags = value.axistags
+            else:
+                self.axistags = vigra.defaultAxistags(len(value.shape))
+        else:
+            self.shape = (1,)
+            self.dtype = object
+            self.axistags = vigra.defaultAxistags(1)
         self._checkNotifyConnect()
 
     @property
@@ -396,6 +519,9 @@ class InputSlot(object):
             
         else:
             self.partner = partner
+            self.dtype = partner.dtype
+            self.axistags = partner.axistags
+            self.shape = partner.shape
             partner._connect(self)
             # do a type check
             self.connectOk(self.partner)
@@ -440,6 +566,9 @@ class InputSlot(object):
         if self.partner is not None:
             self.partner.disconnectSlot(self)
         self.partner = None
+        self.dtype = None
+        self.axistags = None
+        self.shape = None
     
     #TODO RENAME? createInstance
     # def __copy__ ?, clone ?
@@ -479,17 +608,16 @@ class InputSlot(object):
         assert self.partner is not None or self._value is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
         #print "GUGA", self.name, self.operator.name, self.operator, key
                                         
-        reqObject = GetItemRequestObject(self, self.graph, self.partner, key, destination)
+        reqObject = GetItemRequestObject(self, self.graph, key, destination)
             
         return reqObject
 
-    def _allocateStorage(self, key, axistags = True):
-        start, stop = sliceToRoi(key, self.shape)
+    def _allocateStorage(self, start, stop, axistags = True):
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
-        if axistags is True:
-            storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
-        key = roiToSlice(start,stop) #we need a fully specified key e.g. not [:] but [0:10,0:17] !!
-        return storage, key
+#        if axistags is True:
+#            storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
+#        key = roiToSlice(start,stop) #we need a fully specified key e.g. not [:] but [0:10,0:17] !!
+        return storage
             
     def __setitem__(self, key, value):
         assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"
@@ -501,36 +629,6 @@ class InputSlot(object):
     @property
     def graph(self):
         return self.operator.graph
-
-    @property
-    def dtype(self):
-        if self.partner is not None:
-            return self.partner.dtype
-        elif self._value is not None:
-            if isinstance(self._value, numpy.ndarray):
-                return self._value.dtype
-            else:
-                return object
-            
-    @property
-    def shape(self):
-        if self.partner is not None:
-            return self.partner.shape
-        elif self._value is not None:
-            if isinstance(self._value, numpy.ndarray):
-                return self._value.shape
-            else:
-                return (1,)
-
-    @property
-    def axistags(self):
-        if self.partner is not None:
-            return self.partner.axistags
-        elif self._value is not None:
-            if isinstance(self._value, vigra.VigraArray):
-                return copy.copy(self._value.axistags)
-            else:
-                return vigra.VigraArray.defaultAxistags(len(self.shape))
 
     def dumpToH5G(self, h5g, patchBoard):
         h5g.dumpSubObjects({
@@ -581,12 +679,12 @@ class OutputSlot(object):
         self._metaParent = operator
         self.level = 0
         self.operator = operator
-        if not hasattr(self, "_dtype"):
-            self._dtype = None
-        if not hasattr(self, "_secretshape"):
-            self._secretshape = None
-        if not hasattr(self, "_axistags"):
-            self._axistags = None
+        if not hasattr(self, "dtype"):
+            self.dtype = None
+        if not hasattr(self, "shape"):
+            self.shape = None
+        if not hasattr(self, "axistags"):
+            self.axistags = None
         self.partners = []
         self._stype = stype
         
@@ -594,28 +692,50 @@ class OutputSlot(object):
     
     @property
     def _shape(self):
-        return self._secretshape
+        return self.shape
         
     @_shape.setter
     def _shape(self, value):
         if value is not None:
-            if value != self._secretshape:
-                self._secretshape = value
+            if value != self.shape:
+                self.shape = value
                 for p in self.partners:
                     #p._checkNotifyConnectAll()
                     #p.disconnect()
                     #p.connect(self)
+                    
                     p.operator.notifyConnect(p)
                     p._checkNotifyConnectAll()
             #else:
             #    self.setDirty(slice(None,None,None)) #set everything to dirty! BEWARE; DANGER;
         else:
-            self._secretshape = None
+            self.shape = None
             #for p in self.partners:
                 #p.operator.notifyConnect(p)
                 #p._checkNotifyConnectAll()
     
-    
+    @property
+    def _axistags(self):
+        return self.axistags
+        
+    @_axistags.setter
+    def _axistags(self, value):
+        if value is not None:
+            if value != self.axistags:
+                self.axistags = value
+                for p in self.partners:
+                    p.axistags = value
+        else:
+            self.axistags = None
+
+    @property
+    def _dtype(self):
+        return self.dtype
+
+    @_dtype.setter
+    def _dtype(self, value):
+        self.dtype = value
+                
     def _connect(self, partner):
         if partner not in self.partners:
             self.partners.append(partner)
@@ -662,41 +782,33 @@ class OutputSlot(object):
     #FIXME __copy__ ?
     def getInstance(self, operator):
         s = OutputSlot(self.name, operator, stype = self._stype)
-        s._shape = self._shape
-        s._dtype = self._dtype
-        s._axistags = self._axistags
+        s.shape = self.shape
+        s.dtype = self.dtype
+        s.axistags = self.axistags
         return s
 
-    def _allocateStorage(self, key, axistags = True):
-        start, stop = sliceToRoi(key, self.shape)
+    def _allocateStorage(self, start, stop, axistags = True):
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
         if axistags is True:
             storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
             #storage = storage.view(vigra.VigraArray)
             #storage.axistags = copy.copy(self.axistags)
-
-        key = roiToSlice(start,stop)
-        return storage, key
+        return storage
 
     def __getitem__(self, key):
         return GetItemWriterObject(self,key)
 
     def _fireRequest(self, key, destination):
-        assert self.operator is not None, "cannot do __getitem__ on Slot %s, of %r -> now operator !!" % (self.name,self.operator) 
-        
-        start, stop = sliceToRoi(key, self.shape)
-        
-        assert numpy.min(start) >= 0, "Somebody is requesting shit from slot %s of operator %s (%r)" %(self.name, self.operator.name, self.operator)
-        assert (stop <= numpy.array(self.shape)).all(), "Somebody is requesting shit from slot %s of operator %s (%r) :  start: %r, stop %r, shape %r" %(self.name, self.operator.name, self.operator, start, stop, self.shape)
-        
-        gr = greenlet.getcurrent()
-        
-        if gr.parent == None: #FIXME: this is a bad test for a end user call ?!
-            reqObject = GetItemRequestObject(None, self.graph, self, key, destination)
-            return reqObject
-        else:
-            self.getOutSlotFromOp(key, destination)
-            return destination
+#        assert self.operator is not None, "cannot do __getitem__ on Slot %s, of %r -> now operator !!" % (self.name,self.operator) 
+#        
+#        start, stop = sliceToRoi(key, self.shape)
+#        
+#        assert numpy.min(start) >= 0, "Somebody is requesting shit from slot %s of operator %s (%r)" %(self.name, self.operator.name, self.operator)
+#        assert (stop <= numpy.array(self.shape)).all(), "Somebody is requesting shit from slot %s of operator %s (%r) :  start: %r, stop %r, shape %r" %(self.name, self.operator.name, self.operator, start, stop, self.shape)
+                
+        reqObject = GetItemRequestObject(self, self.graph, key, destination)
+        return reqObject
+
     
     def getOutSlotFromOp(self, key, destination):
         self.operator.getOutSlot(self, key, destination)
@@ -710,30 +822,14 @@ class OutputSlot(object):
     def graph(self):
         return self.operator.graph
     
-    @property
-    def dtype(self):
-        #assert self._dtype is not None, "cannot access dtype on Slot %s, of %r - operator did not provide the info !" % (self.name,self.operator)
-        return self._dtype
-        
-    @property
-    def shape(self):
-        #assert self._shape is not None, "cannot access shape on Slot %s, of %r - operator did not provide the info !" % (self.name,self.operator)
-        return self._shape
-
-    @property
-    def axistags(self):
-        #assert self._axistags is not None, "cannot access axistags on Slot %s, of %r Not Connected !" % (self.name,self.operator)
-        return self._axistags
-
-
     def dumpToH5G(self, h5g, patchBoard):
         h5g.dumpSubObjects({
             "name" : self.name,
             "level" : self.level,
             "operator" : self.operator,
-            "shape" : self._shape,
-            "axistags" : self._axistags,
-            "dtype" : self._dtype,
+            "shape" : self.shape,
+            "axistags" : self.axistags,
+            "dtype" : self.dtype,
             "partners" : self.partners,
             "stype" : self._stype
             
@@ -750,9 +846,9 @@ class OutputSlot(object):
             "name" : "name",
             "level" : "level",
             "operator" : "operator",
-            "shape" : "_secretshape",
-            "axistags" : "_axistags",
-            "dtype" : "_dtype",
+            "shape" : "shape",
+            "axistags" : "axistags",
+            "dtype" : "dtype",
             "partners" : "partners",
             "stype" : "stype"
             
@@ -1819,27 +1915,28 @@ class Worker(Thread):
         self.number =  len(self.graph.workers)
         self.workAvailableEvent = Event()
         self.workAvailableEvent.clear()
-        print "Initializing Worker #%d" % self.number
+        #print "Initializing Worker #%d" % self.number
         
     
-    def signalWorkAvailable(self):
+    def signalWorkAvailable(self): 
         self.workAvailableEvent.set()
         
     def processReqObject(self, reqObject):
-        reqObject.func(reqObject.key, reqObject.destination)
+        reqObject.func(reqObject.arg1, reqObject.key, reqObject.destination)
         reqObject._finalize()
         
     def run(self):
+        ct = current_thread()
         while self.graph.running:
             self.graph.freeWorkers.append(self)
             self.workAvailableEvent.wait()#(0.2)
             self.graph.freeWorkers.remove(self)
             self.workAvailableEvent.clear()
-            
-            while not len(self.graph.tasks)==0 or len(self.finishedRequestGreenlets) > 0:
+                
+            while not len(self.graph.tasks)==0 or len(self.finishedRequestGreenlets) > 0:       
                 while len(self.finishedRequestGreenlets) > 0:
                     req, gr = self.finishedRequestGreenlets.popleft()
-                    self.currentRequest = req                 
+                    gr.currentRequest = req                 
                     gr.switch()
                     
                 task = None
@@ -1848,20 +1945,22 @@ class Worker(Thread):
                 except IndexError:
                     pass
                 if task is not None:
-                    prio, reqObject = task
-                    #TODO: isnt a comparison against currentRequestLevel better 
-                    # then against 1 ? ...
-                    if reqObject.requestLevel > 1 or self.process.get_memory_info().rss < self.graph.maxMem:
-                        gr = greenlet.greenlet(self.processReqObject)
-                        self.currentRequest = reqObject
-                        gr.switch( reqObject)
-                    else:
-                        self.graph.tasks.append(task) #move task back to task queue
-                        print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
-                        gc.collect()
-                        time.sleep(1.0)
-                    
-        print "Finalized Worker"
+                    reqObject = task
+                    if reqObject.canceled is False:
+                        #TODO: isnt a comparison against currentRequestLevel better 
+                        # then against 1 ? ...
+                        if self.process.get_memory_info().rss < self.graph.maxMem:
+                            gr = CustomGreenlet(self.processReqObject)
+                            gr.currentRequest = reqObject
+                            gr.thread = self
+                            gr.switch( reqObject)
+                        else:
+                            self.graph.tasks.append(task) #move task back to task queue
+                            print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
+                            gc.collect()
+                            time.sleep(1.0)
+    
+        #print "Finalized Worker"
                 
     
 class Graph(object):
@@ -1882,7 +1981,7 @@ class Graph(object):
             self.freeWorkers.append(w)
     
     def putTask(self, reqObject):
-        task = [-reqObject.requestLevel, reqObject]
+        task = reqObject
         self.tasks.append(task)
         
         if len(self.freeWorkers) > 0:
@@ -1898,11 +1997,11 @@ class Graph(object):
         temp = deque()                
         while len(self.tasks) > 0:
             try:
-                prio, reqObject = self.tasks.popleft()
+                reqObject = self.tasks.popleft()
             except IndexError:
                 pass
             if reqObject.requestID != requestID:
-                temp.append([prio,reqObject])
+                temp.append(reqObject)
         
         while len(temp) > 0:
             elem = temp.popleft()            

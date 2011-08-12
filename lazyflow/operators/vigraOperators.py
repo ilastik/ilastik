@@ -266,7 +266,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         subkey = key[0:-1]
 
         oldstart, oldstop = roi.sliceToRoi(key, shape)
-        start, stop = roi.sliceToRoi(subkey,shape)
+        start, stop = roi.sliceToRoi(subkey,shape[:-1])
         newStart, newStop = roi.extendSlice(start, stop, shape[:-1], largestSigma)
         
         

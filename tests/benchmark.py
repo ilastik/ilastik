@@ -30,8 +30,8 @@ def runBenchmark(numThreads, cacheClass, shape, requests, repeatCount=200):
     opc4 = cacheClass(g)
     opc4.inputs["blockShape"].setValue(11)
     
-    opf = OpArrayCache(g)
-    opf.inputs["blockShape"].setValue(64)
+    opPiper1 = OpArrayPiper(g)
+    opPiper2 = OpArrayPiper(g)
     
     opa.inputs["Input"].connect(provider.outputs["Output"])
     opb.inputs["Input"].connect(opa.outputs["Output"])
@@ -40,7 +40,8 @@ def runBenchmark(numThreads, cacheClass, shape, requests, repeatCount=200):
     opfull.inputs["Input"].connect(opc2.outputs["Output"])
     opc3.inputs["Input"].connect(opfull.outputs["Output"])
     opc4.inputs["Input"].connect(opc3.outputs["Output"])
-    opf.inputs["Input"].connect(opc1.outputs["Output"])
+    opPiper1.inputs["Input"].connect(opc4.outputs["Output"])
+    opPiper2.inputs["Input"].connect(opPiper1.outputs["Output"])
     
 
     tg1 = time.time()
@@ -53,10 +54,10 @@ def runBenchmark(numThreads, cacheClass, shape, requests, repeatCount=200):
         key = roi.roiToSlice(numpy.array(r[0]), numpy.array(r[1]))
         t1 = time.time()
         for i in range(repeatCount):
-            res1 = opc4.outputs["Output"][key].allocate().wait()
+            res1 = opPiper2.outputs["Output"][key].allocate().wait()
         t2 = time.time()
         print "%s request %r runtime:" % (cacheClass.__name__,key) , (t2-t1)/repeatCount
-        assert (res1 == 1).all(), res1
+        #assert (res1 == 1).all(), res1
     tg2 = time.time()
     g.finalize()
     print "%s Total runtime:" % cacheClass.__name__, tg2-tg1    
@@ -74,9 +75,10 @@ requests = [[[30,30,30],[100,100,31]],
             "setDirty",
             [[0,0,0],[200,200,200]]
             ]
-numThreads = 1
-#runBenchmark(numThreads,OpArrayBlockCache, shape, requests)
-#runBenchmark(1,OpArrayBlockCache, shape, requests)
+numThreads = 2
+#runBenchmark(numThreads,OpArrayCache, shape, requests)
+
+
 import cProfile
 cProfile.run("runBenchmark(numThreads,OpArrayCache, shape, requests)", filename="benchmark.cprof")
 

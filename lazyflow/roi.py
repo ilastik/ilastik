@@ -1,44 +1,185 @@
 import numpy, vigra
 from numpy.lib.stride_tricks import as_strided as ast
+from math import ceil, floor
 
+class TinyVector(list):
+    __slots__ = []
+    def __init__(self, data=None):
+        list.__init__(self, data)
+        
+    def __add__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y: x + y ,self,other))
+        else:
+            return TinyVector(map(lambda x: x + other ,self))
+
+    def __iadd__(self, other):
+        if hasattr(other, "__iter__"):
+            self =  TinyVector(map(lambda x,y: x + y ,self,other))
+            return self
+        else:
+            self = TinyVector(map(lambda x: x + other ,self))
+            return self
+            
+    def __sub__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y: x - y ,self,other))
+        else:
+            return TinyVector(map(lambda x: x - other ,self))
+
+    def __rsub__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y: y - x ,self,other))
+        else:
+            return TinyVector(map(lambda x: other - x ,self))
+            
+    def __mul__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y: x * y ,self,other))
+        else:
+            return TinyVector(map(lambda x: x * other ,self))
+
+    def __div__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y: x / y ,self,other))
+        else:
+            return TinyVector(map(lambda x: x / other ,self))
+
+    def __rdiv__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y:  y / x,self,other))
+        else:
+            return TinyVector(map(lambda x:  other / x ,self))
+
+    def __eq__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y:  x == y,self,other))
+        else:
+            return TinyVector(map(lambda x:  x == other ,self))
+
+    def __ne__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y:  x != y,self,other))
+        else:
+            return TinyVector(map(lambda x:  x != other ,self))
+
+    def __ge__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y:  x >= y,self,other))
+        else:
+            return TinyVector(map(lambda x:  x >= other ,self))
+
+    def __le__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y:  x <= y,self,other))
+        else:
+            return TinyVector(map(lambda x:  x <= other ,self))
+
+    def __gt__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y:  x > y,self,other))
+        else:
+            return TinyVector(map(lambda x:  x > other ,self))
+
+    def __lt__(self, other):
+        if hasattr(other, "__iter__"):
+            return TinyVector(map(lambda x,y:  x < y,self,other))
+        else:
+            return TinyVector(map(lambda x:  x < other ,self))
+            
+    def ceil(self):
+        return TinyVector(map(lambda x:  ceil(x) ,self))
+        #return numpy.ceil(numpy.array(self))
+
+    def floor(self):
+        return TinyVector(map(lambda x:  floor(x) ,self))
+        #return numpy.floor(numpy.array(self))
+            
+    def all(self):
+        answer = True
+        for e in self:
+            if not e:
+                answer = False
+                break
+        return answer
+                      
+    def any(self):
+        answer = False
+        for e in self:
+            if e:
+                answer = True
+                break
+        return answer                      
+                      
+TinyVector.__radd__ = TinyVector.__add__
+TinyVector.__rmul__ = TinyVector.__mul__   
+
+
+            
 def sliceToRoi(s, shape=None, extendSingleton = True):
     """Args:
             slice: slice object (1D) or list of slice objects (N-D)
        Returns:
             ROI instance corresponding to slice
     """
-    assert type(s) == list or type(s) == slice or type(s) == tuple or type(s) == int
-    
-    if not isinstance(s, (list,tuple)):
-        #special case for the [:] getall access
-        if s == slice(None,None,None):
-            s2 = []
-            for i in range(len(shape)):
-                s2.append(s)    
-            s = s2 
-        else:
-            s = [s]
-    s = list(s)    
-    for i,k in enumerate(s):
-        if type(k) is not slice:
-            if extendSingleton is True:
-                s[i] = slice(k,k+1,None)
-            else:
-                s[i] = slice(k,k,None)
-        else:
-            if k.stop is None:
-                if shape is not None:
-                    s[i] = slice(0,shape[i],None)
-                else:
-                    s[i] = slice(0,-1,None)
-            elif k.start == k.stop:
-                if extendSingleton is True:
-                    s[i] = slice(k.start,k.start+1,None)
-                else:
-                    s[i] = k.start
-    start = numpy.array([k.start for k in s])
-    stop = numpy.array([k.stop for k in s])
-    return start, stop
+    start = [0]*len(shape)
+    stop = list(shape)
+    try:
+        for k in xrange(len(s)):
+            try:
+                if s[k].start is not None:
+                    start[k] = s[k].start
+                if s[k].stop is not None:
+                    stop[k] = s[k].stop
+            except:
+                start[k] = s[k]
+                stop[k] = s[k]
+    except:
+        try:
+            if s.start is not None:
+                start[0] = s.start
+            if s.stop is not None:
+                stop[0] = s.stop
+        except:
+            start[0] = s
+            stop[0] = s
+    if extendSingleton:
+        stop = map(lambda x,y: y + 1 if x == y else y,start,stop)
+    return TinyVector(start), TinyVector(stop)
+
+#this method uses numpy arrays and is slower then the new one
+def sliceToRoiOld(s, shape=None, extendSingleton = True):
+    """Args:
+            slice: slice object (1D) or list of slice objects (N-D)
+       Returns:
+            ROI instance corresponding to slice
+    """
+    start = numpy.zeros((len(shape),), dtype=numpy.int32)
+    stop = numpy.array(shape)
+
+    try:
+        for k in xrange(len(s)):
+            try:
+                if s[k].start is not None:
+                    start[k] = s[k].start
+                if s[k].stop is not None:
+                    stop[k] = s[k].stop
+            except:
+                start[k] = s[k]
+                stop[k] = s[k]
+    except:
+        try:
+            if s.start is not None:
+                start[0] = s.start
+            if s.stop is not None:
+                stop[0] = s.stop
+        except:
+            start[0] = s
+            stop[0] = s
+    if extendSingleton and (stop - start == 0).any():
+        temp = 1 - numpy.minimum(start - start + 1, stop - start)
+        stop += temp
+    return start, stop 
 
 
 def roiToSlice(start, stop, hardBind=False):
