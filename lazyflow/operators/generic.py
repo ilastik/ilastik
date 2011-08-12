@@ -55,7 +55,6 @@ class OpMultiArraySlicer(Operator):
     def getSubOutSlot(self, slots, indexes, key, result):
         start,stop=roi.sliceToRoi(key,self.outputs["Slices"][indexes[0]].shape)
         
-        
         oldstart,oldstop=start,stop
         
         start=list(start)
