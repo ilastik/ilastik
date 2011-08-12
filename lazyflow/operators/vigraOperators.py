@@ -7,6 +7,7 @@ import copy
 
 from operators import OpArrayPiper, OpMultiArrayPiper
 
+from generic import OpMultiArrayStacker
 
 
 
@@ -99,9 +100,9 @@ class Op5ToMulti(Operator):
         for sname in sorted(self.inputs.keys()):
             slot = self.inputs[sname]
             if slot.connected():
-                self.outputs["Outputs"][i]._shape = slot.shape
                 self.outputs["Outputs"][i]._dtype = slot.dtype
                 self.outputs["Outputs"][i]._axistags = copy.copy(slot.axistags)
+                self.outputs["Outputs"][i]._shape = slot.shape
                 i += 1       
 
     def notifyDisonnect(self, slot):
@@ -131,6 +132,101 @@ class Op20ToMulti(Op5ToMulti):
 
     inputSlots = [InputSlot("Input00"), InputSlot("Input01"),InputSlot("Input02"),InputSlot("Input03"),InputSlot("Input04"),InputSlot("Input05"), InputSlot("Input06"),InputSlot("Input07"),InputSlot("Input08"),InputSlot("Input09"),InputSlot("Input10"), InputSlot("Input11"),InputSlot("Input12"),InputSlot("Input13"),InputSlot("Input14"),InputSlot("Input15"), InputSlot("Input16"),InputSlot("Input17"),InputSlot("Input18"),InputSlot("Input19")]
     outputSlots = [MultiOutputSlot("Outputs")]
+
+
+
+
+
+
+
+class OpPixelFeatures(OperatorGroup):
+    name="OpPixelFeatures"
+    category = "Vigra filter"
+    
+    inputSlots = [InputSlot("Input"), InputSlot("Matrix"), InputSlot("Scales")]
+    outputSlots = [OutputSlot("Output")]
+    
+    def _createInnerOperators(self):
+        # this method must setup the
+        # inner operators and connect them (internally)
+        
+        self.source = OpArrayPiper(self.graph)
+        
+        self.stacker = OpMultiArrayStacker(self.graph)
+        
+        self.multi = Op20ToMulti(self.graph)
+        
+        
+        self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
+        
+        
+    def notifyConnectAll(self):
+        if self.inputs["Scales"].connected() and self.inputs["Matrix"].connected():
+            
+            self.stacker.inputs["Images"].disconnect()
+            self.scales = self.inputs["Scales"].value
+            self.matrix = self.inputs["Matrix"].value 
+            
+            dimCol = len(self.scales)
+            dimRow = len(self.matrix)
+            for i in range(dimRow):
+                if not dimCol == len(self.matrix[i]):
+                    return
+    
+            oparray = []
+            for j in range(dimCol):
+                oparray.append([])
+    
+            
+            i = 0
+            for j in range(dimCol):
+                oparray[i].append(OpGaussianSmoothing(self.graph))
+                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["sigma"].setValue(self.scales[j])
+            i = 1
+            for j in range(dimCol):
+                oparray[i].append(OpLaplacianOfGaussian(self.graph))
+                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["scale"].setValue(self.scales[j])
+            i = 2
+            for j in range(dimCol):
+                oparray[i].append(OpHessianOfGaussian(self.graph))
+                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["sigma"].setValue(self.scales[j])
+            i = 3
+            for j in range(dimCol):
+                oparray[i].append(OpHessianOfGaussianEigenvalues(self.graph))
+                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["scale"].setValue(self.scales[j])
+                
+            
+            for i in range(dimRow):
+                for j, val in enumerate(self.matrix[i]):
+                    print (i*dimRow+j)
+                    if val:
+                        self.multi.inputs["Input%02d" %(i*dimRow+j)].connect(oparray[i][j].outputs["Output"])
+                    else:
+                        self.multi.inputs["Input%02d" %(i*dimRow+j)].disconnect()
+            
+            index = len(self.source.outputs["Output"].shape) - 1
+            self.stacker.inputs["AxisFlag"].setValue('c')
+            self.stacker.inputs["AxisIndex"].setValue(index)
+            self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
+                
+    def getInnerInputs(self):
+        inputs = {}
+        inputs["Input"] = self.source.inputs["Input"]
+        return inputs
+        
+    def getInnerOutputs(self):
+        outputs = {}
+        outputs["Output"] = self.stacker.outputs["Output"]
+        return outputs
+
+
+
+
+
 
 class OpBaseVigraFilter(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("sigma", stype = "float")]
@@ -170,7 +266,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         subkey = key[0:-1]
 
         oldstart, oldstop = roi.sliceToRoi(key, shape)
-        start, stop = roi.sliceToRoi(subkey,shape)
+        start, stop = roi.sliceToRoi(subkey,shape[:-1])
         newStart, newStop = roi.extendSlice(start, stop, shape[:-1], largestSigma)
         
         

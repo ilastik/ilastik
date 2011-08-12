@@ -253,7 +253,7 @@ class OpSubRegion(Operator):
         stop = self.inputs["Stop"].value
         temp = tuple(numpy.array(stop) - numpy.array(start))
         
-        readStart, readStop = sliceToRoi(key)
+        readStart, readStop = sliceToRoi(key, temp)
         
         newKey = ()
         i = 0

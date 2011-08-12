@@ -159,7 +159,7 @@ opMulti.inputs["Input1"].connect(opGauss.outputs["Output"])
 opStack = operators.OpMultiArrayStacker(g)
 opStack.inputs["Images"].connect(opMulti.outputs["Outputs"])
 opStack.inputs["AxisFlag"].setValue('c')
-opStack.inputs["AxisIndex"].setIndex(2)
+opStack.inputs["AxisIndex"].setValue(2)
 
 assert len(opGauss.outputs["Output"]) == 2
 assert len(opRead.outputs["Image"]) == 2
