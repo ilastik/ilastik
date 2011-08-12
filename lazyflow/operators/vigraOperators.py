@@ -149,7 +149,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         self.supportsOut = False
         
     def getOutSlot(self, slot, key, result):
-
+        
         kwparams = {}        
         for islot in self.inputs.values():
             if islot.name != "Input":
