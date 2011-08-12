@@ -12,6 +12,8 @@ from lazyflow.operators.generic import *
 #from lazyflow.operators import OpStarContext2D
 from lazyflow.operators import OpAverageContext2D
 
+from lazyflow import operators
+
 #this is the second part of graph_save.py test. It loads the graph elements, saved
 #in graph_save.py, attaches a context operator to them and processes the images.
 
@@ -125,39 +127,38 @@ if __name__=="__main__":
         opMulti.inputs["Input0"].connect(stacker.outputs["Output"])
         opMulti.inputs["Input1"].connect(contexts[-1].outputs["Output"])
         
-        stacker2=OpMultiArrayStacker(g)
+        stacker2 = operators.OpMultiArrayStacker(g)
         
         stacker2.inputs["Images"].connect(opMulti.outputs["Outputs"])
-        
+        stacker2.inputs["AxisFlag"].setValue('c')
+        stacker2.inputs["AxisIndex"].setValue(2)
       
         #######Training2
         
-        opTrain2 = OpTrainRandomForest(g)
+        opTrain2 = operators.OpTrainRandomForest(g)
         opTrain2.inputs['Labels'].connect(labelReader.outputs["Image"])
         opTrain2.inputs['Images'].connect(stacker2.outputs["Output"])
         opTrain2.inputs['fixClassifier'].setValue(False)
         
+        acache2 = operators.OpArrayCache(g)
+        acache2.inputs["Input"].connect(opTrain2.outputs['Classifier'])
+  
+        classifiers.append(acache2)
+        
         #print "Here ########################", opTrain.outputs['Classifier'][:].allocate().wait()    
         
         ##################Prediction
-        opPredict2=OpPredictRandomForest(g)
-        
-        acache2 = OpArrayCache(g)
-        acache2.inputs["Input"].connect(opTrain2.outputs['Classifier'])
-        
-        
-        
-        classifiers.append(acache2)
-        classifiers.append(acache2)
+        opPredict2 = operators.OpPredictRandomForest(g)
+ 
         opPredict2.inputs['Classifier'].connect(acache2.outputs['Output'])
-            
         
         opPredict2.inputs['Image'].connect(stacker2.outputs['Output'])
+        print "nclasses:", classCountProvider.outputs["Output"][:].allocate().wait()
         opPredict2.inputs['LabelsCount'].connect(classCountProvider.outputs["Output"])
         
         predictions.append(opPredict2)
         
-        contOp2=OpAverageContext2D(g)
+        contOp2 = operators.OpAverageContext2D(g)
         contOp2.inputs["Radii"].setValue([2,5,10, 12, 15, 20, 25, 30, 35, 40])
         contOp2.inputs["PMaps"].connect(predictions[-1].outputs["PMaps"])
         contOp2.inputs["ClassesCount"].connect(classCountProvider.outputs["Output"])

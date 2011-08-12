@@ -18,6 +18,8 @@ from lazyflow import operators
 #and saves it to a file. graph_load.py test then loads the graph and 
 #tests that everything was saved correctly and the operators can be used again.
 
+import signal
+signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 if __name__=="__main__":
     
@@ -42,6 +44,9 @@ if __name__=="__main__":
     opa.inputs["Input"].connect(vimageReader.outputs["Image"])
     opa.inputs["sigma"].connect(sigmaProvider.outputs["Output"])
     
+    opa2 = OpGaussianSmoothing(g)
+    opa2.inputs["Input"].connect(vimageReader.outputs["Image"])
+    opa2.inputs["sigma"].setValue(2)
     
     ###################################
     #Merge the stuff together
@@ -50,11 +55,15 @@ if __name__=="__main__":
     #########################################
     stacker=OpMultiArrayStacker(g)
     
+    
     opMulti = operators.Op5ToMulti(g)
     
     opMulti.inputs["Input0"].connect(opa.outputs["Output"])
+    opMulti.inputs["Input1"].connect(opa2.outputs["Output"])
     
     stacker.inputs["Images"].connect(opMulti.outputs["Outputs"])
+    stacker.inputs["AxisFlag"].setValue('c')
+    stacker.inputs["AxisIndex"].setValue(2)
     
     #####Get the labels###
     filenamelabels='labels_ostrich.png'

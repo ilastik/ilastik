@@ -24,12 +24,14 @@ shape3d = ((im0.shape[0], im0.shape[1], nslices))
 data = numpy.zeros(shape = shape3d, dtype = numpy.uint8)
 labels = numpy.zeros(shape = shape3d, dtype = numpy.uint8)
 
+
 for i in range(nslices):
     fDir, fFile = os.path.split(rawfiles[i])
     im = vigra.readImage(rawfiles[i])
     #print "image:", im.shape
     #print "data:", data[:, :, i].shape
     data[:, :, i] = im.squeeze()
+    
     templabname = labdir + fFile
     if templabname in labfilescolor:
         #this slice is labeled, add to the labels array
