@@ -23,7 +23,7 @@ from lazyflow.operators.generic import *
 
 
 class OpArrayShifter2(Operator):
-    name = "ArrayShifter_ND"
+    name = "OpArrayShifter2"
     description = "simple shifting operator in n dimensions"
     #change values for other shifts
     shift = ([50,60,0,0,0,9678,76])

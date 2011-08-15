@@ -25,7 +25,7 @@ from lazyflow.operators.generic import *
 
 
 class OpArrayShifter3(Operator):
-    name = "ArrayShifter_ND_2_InputSlot"
+    name = "OpArrayShifter3"
     description = "simple shifting operator in n dimensions"
     #create Input and Output Slots (objects) of the operator
     #the different InputSlots and OutputSlot are saved in the dictionaries
