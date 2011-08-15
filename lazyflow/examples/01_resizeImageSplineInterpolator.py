@@ -24,7 +24,7 @@ from lazyflow.operators.generic import *
 
 
 class OpImageResizer(Operator):
-    name = "ResizeImageSplineInterpolation"
+    name = "OpImageResizer"
     description = "Resizes an Image using Spline Interpolation "
  
     #create Input and Output Slots (objects) of the operator
@@ -36,11 +36,9 @@ class OpImageResizer(Operator):
     #this method is called when all InputSlots, 
     #are set or connected with an OutputSlot or a value is set.
     def notifyConnectAll(self):
-        #new name for the InputSlot("Input")
+
         inputSlot = self.inputs["Input"]
-        
         self.scaleFactor = self.inputs["ScaleFactor"].value        
-      
         shape =  self.inputs["Input"].shape
         
         #define the type, shape and axistags of the Output-Slot
@@ -56,25 +54,58 @@ class OpImageResizer(Operator):
         #get start and stop coordinates of the requested OutputSlot area
         start, stop = sliceToRoi(key, self.shape) 
         
+        print "Start/Stop"
+        print start
+        print stop
+        print "________"
+        
+        #additional edge, necessary for the SplineInterpolation to work properly
+        edge = 3        
+        
         #calculate reading start and stop coordinates(of InputSlot)
-        rstart = numpy.hstack((start[:-1] / self.scaleFactor, start[-1]))
-        rstop = numpy.hstack((stop[:-1] / self.scaleFactor, stop[-1]))
+        rstart = numpy.maximum(start / self.scaleFactor - edge * self.scaleFactor, start-start )
+        rstart[-1] = start[-1] # do not enlarge channel dimension
+        rstop = numpy.minimum(stop / self.scaleFactor + edge * self.scaleFactor, self.inputs["Input"].shape)
+        rstop[-1] = stop[-1]# do not enlarge channel dimension
         #create reading key        
         rkey = roiToSlice(rstart,rstop)
         
         #get the data of the InputSlot
         img = numpy.ndarray(rstop-rstart,dtype=self.dtype)
         img = self.inputs["Input"][rkey].allocate().wait()
+         
+        #create result array
+        tmp_result = numpy.ndarray(tuple(numpy.hstack(((rstop-rstart)[:-1] * self.scaleFactor, (rstop-rstart)[-1]))), dtype=numpy.float32)
+     
+        #apply SplineInterpolation
+        res = vigra.sampling.resizeImageSplineInterpolation(image = img.astype(numpy.float32), out = tmp_result)
+              
+        #calculate correction for interpolated edge
+        corr = numpy.maximum(numpy.minimum(start / self.scaleFactor - edge * self.scaleFactor, start-start ) , - edge * self.scaleFactor)        
+        print "corr", corr
+
+        #calculate SubKey for interpolated array without interpolated edge
+        subStart = (edge*self.scaleFactor+corr)*self.scaleFactor
+        subStart[-1] = start[-1]
+        subStop = numpy.minimum(stop - start + subStart, res.shape)
+        subStop[-1] = stop[-1]
         
-        img = vigra.Image(img) 
+        subKey = roiToSlice(subStart, subStop)
         
-        res = vigra.Image(result)        
-    
-        #for the scaling a vigra function is used        
-        vigra.sampling.resizeImageSplineInterpolation(image = img, out = res)
+        print "rstart/rstop"
+        print "rstart", rstart
+        print "rstop", rstop
+        print "__________"
+        print "Subkey", subKey
+        print subStart
+        print subStop
+        print "________"
+        print "result", result.shape
+        print "res", res.shape
+        print "res[subKey].shape", res[subKey].shape       
         
         #write rescaled image into result
-        result[:] = res
+        result[:] = res[subKey]
         
 
     def notifyDirty(self,slot,key):
@@ -100,7 +131,7 @@ vimageReader.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow
 resizer = OpImageResizer(g)
 
 #set ScaleFactor
-resizer.inputs["ScaleFactor"].setValue(0.25)
+resizer.inputs["ScaleFactor"].setValue(2)
 
 #connect Resizer-Input with Image Reader Output
 #because now all the InputSlot are set or connected,
@@ -114,14 +145,10 @@ resizer.inputs["Input"].connect(vimageReader.outputs["Image"])
 #the "getOutSlot" method of our operator.
 #The wait() function blocks other activities and waits till the results
 # of the requested Slot are calculated and stored in the result area.
-resizer.outputs["Output"][25:75,20:80,:].allocate().wait()
 
-#create Image Writer
-vimageWriter = OpImageWriter(g)
-#set writing path
-vimageWriter.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/resize_result.jpg")
-#connect Writer-Input with Resizer Operator-Output
-vimageWriter.inputs["Image"].connect(resizer.outputs["Output"])
-
+dest = resizer.outputs["Output"][17:99,10:99,:].allocate().wait()
+#dest = resizer.outputs["Output"][:].allocate().wait()
+#write Image
+vigra.impex.writeImage(dest,"/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/resize_result_2.jpg")
 #write resized image on disk
 g.finalize()
