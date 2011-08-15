@@ -39,9 +39,7 @@ class OpArrayShifter1(Operator):
         shape =  self.inputs["Input"].shape     
         
         #get N-D coordinate out of slice
-        ostart, ostop = sliceToRoi(key, shape)    
-        #copy original array        
-        rstart, rstop = ostart.copy(), ostop.copy()
+        rstart, rstop = sliceToRoi(key, shape)    
       
         #shift the reading scope
         #change value '-2' for shifting another dimension
@@ -126,9 +124,7 @@ class OpArrayShifter2(Operator):
         #make shape of the input known
         shape = self.inputs["Input"].shape
         #get N-D coordinate out of slice
-        ostart, ostop = sliceToRoi(key, shape)    
-        #copy original array        
-        rstart, rstop = ostart.copy(), ostop.copy()
+        rstart, rstop = sliceToRoi(key, shape)    
       
         #shift the reading scope 
         rstart -=  self.shift
@@ -210,9 +206,7 @@ class OpArrayShifter3(Operator):
         #make shape of the input known
         shape = self.inputs["Input"].shape        
         #get N-D coordinate out of slice
-        ostart, ostop = sliceToRoi(key, shape)    
-        #copy original array        
-        rstart, rstop = ostart.copy(), ostop.copy()
+        rstart, rstop = sliceToRoi(key, shape)    
       
         #shift the reading scope 
         rstart -=  self.shift
@@ -285,11 +279,6 @@ class OpImageResizer(Operator):
         #get start and stop coordinates of the requested OutputSlot area
         start, stop = sliceToRoi(key, self.shape) 
         
-        print "Start/Stop"
-        print start
-        print stop
-        print "________"
-        
         #additional edge, necessary for the SplineInterpolation to work properly
         edge = 3        
         
@@ -313,7 +302,6 @@ class OpImageResizer(Operator):
               
         #calculate correction for interpolated edge
         corr = numpy.maximum(numpy.minimum(start / self.scaleFactor - edge * self.scaleFactor, start-start ) , - edge * self.scaleFactor)        
-        print "corr", corr
 
         #calculate SubKey for interpolated array without interpolated edge
         subStart = (edge*self.scaleFactor+corr)*self.scaleFactor
@@ -321,19 +309,7 @@ class OpImageResizer(Operator):
         subStop = numpy.minimum(stop - start + subStart, res.shape)
         subStop[-1] = stop[-1]
         
-        subKey = roiToSlice(subStart, subStop)
-        
-        print "rstart/rstop"
-        print "rstart", rstart
-        print "rstop", rstop
-        print "__________"
-        print "Subkey", subKey
-        print subStart
-        print subStop
-        print "________"
-        print "result", result.shape
-        print "res", res.shape
-        print "res[subKey].shape", res[subKey].shape       
+        subKey = roiToSlice(subStart, subStop)     
         
         #write rescaled image into result
         result[:] = res[subKey]

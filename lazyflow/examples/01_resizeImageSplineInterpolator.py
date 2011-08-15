@@ -54,11 +54,6 @@ class OpImageResizer(Operator):
         #get start and stop coordinates of the requested OutputSlot area
         start, stop = sliceToRoi(key, self.shape) 
         
-        print "Start/Stop"
-        print start
-        print stop
-        print "________"
-        
         #additional edge, necessary for the SplineInterpolation to work properly
         edge = 3        
         
@@ -82,7 +77,6 @@ class OpImageResizer(Operator):
               
         #calculate correction for interpolated edge
         corr = numpy.maximum(numpy.minimum(start / self.scaleFactor - edge * self.scaleFactor, start-start ) , - edge * self.scaleFactor)        
-        print "corr", corr
 
         #calculate SubKey for interpolated array without interpolated edge
         subStart = (edge*self.scaleFactor+corr)*self.scaleFactor
@@ -91,18 +85,6 @@ class OpImageResizer(Operator):
         subStop[-1] = stop[-1]
         
         subKey = roiToSlice(subStart, subStop)
-        
-        print "rstart/rstop"
-        print "rstart", rstart
-        print "rstop", rstop
-        print "__________"
-        print "Subkey", subKey
-        print subStart
-        print subStop
-        print "________"
-        print "result", result.shape
-        print "res", res.shape
-        print "res[subKey].shape", res[subKey].shape       
         
         #write rescaled image into result
         result[:] = res[subKey]

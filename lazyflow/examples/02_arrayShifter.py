@@ -56,10 +56,8 @@ class OpArrayShifter2(Operator):
         #make shape of the input known
         shape = self.inputs["Input"].shape
         #get N-D coordinate out of slice
-        ostart, ostop = sliceToRoi(key, shape)    
-        #copy original array        
-        rstart, rstop = ostart.copy(), ostop.copy()
-      
+        rstart, rstop = sliceToRoi(key, shape)    
+    
         #shift the reading scope 
         rstart -=  self.shift
         rstop  -=  self.shift
