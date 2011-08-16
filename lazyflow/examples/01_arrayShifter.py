@@ -23,7 +23,7 @@ from lazyflow.operators.generic import *
 
 
 class OpArrayShifter1(Operator):
-    name = "ArrayShifter_1D"
+    name = "OpArrayShifter1"
     description = "simple shifting operator"
     #change value for another shift
     shift = 50   
@@ -50,9 +50,7 @@ class OpArrayShifter1(Operator):
         shape =  self.inputs["Input"].shape     
         
         #get N-D coordinate out of slice
-        ostart, ostop = sliceToRoi(key, shape)    
-        #copy original array        
-        rstart, rstop = ostart.copy(), ostop.copy()
+        rstart, rstop = sliceToRoi(key, shape)    
       
         #shift the reading scope
         #change value '-2' for shifting another dimension

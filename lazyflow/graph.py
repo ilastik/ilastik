@@ -294,7 +294,13 @@ class GetItemRequestObject(object):
                         self.lock.release()                    
                         gr.parent.switch(None)
                     else:
-                        assert 1 == 2
+                        tr = current_thread()                    
+                        cgr = CustomGreenlet(self.wait)
+                        cgr.currentRequest = self
+                        cgr.thread = tr                        
+                        self.lock.release()
+                        cgr.switch(self)
+                        self._waitFor(cgr,tr) #do some work while waiting
                 else:
                     if hasattr(gr, "lastRequest"):
                         if gr.lastRequest == self:

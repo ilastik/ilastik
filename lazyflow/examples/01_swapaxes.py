@@ -23,7 +23,7 @@ from lazyflow.operators.generic import *
 
 
 class OpSwapAxes(Operator):
-    name = "SwapAxes Operator"
+    name = "OpSwapAxes"
     description = "swaps the axes of two InputSlots"
 
     #create Input and Output Slots (objects) of the operator
