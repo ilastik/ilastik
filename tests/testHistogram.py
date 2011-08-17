@@ -191,6 +191,6 @@ def TestHistContext():
 if __name__=="__main__":
     TestHistContext()
     TestIntegralHistogram()
-    #TestSimpleHistogram()
-    #TestOverlappingHistogram()
+    TestSimpleHistogram()
+    TestOverlappingHistogram()
     

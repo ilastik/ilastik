@@ -62,16 +62,22 @@ void histogram2D(const MultiArrayView<3, T, S1>& image, int nbins,
 
 	MultiArrayShape<3>::type p(0, 0, 0);
 
-	int index;
+	int x,y,c,index;
 
-	for (p[2] = 0; p[2] < nc; p[2]++) {
-		for (p[1] = 0; p[1] < height; p[1]++) {
-			for (p[0] = 0; p[0] < width; p[0]++) {
-				index = getIndex(image[p], nc,0,1);
+	for (c = 0; c < nc; c++) {
+		for (y = 0; y < height; y++) {
+			for (x = 0; x < width; x++) {
 
-				index = index + nbins * p[2];
+				T value=image(x,y,c);
 
-				++Hist(p[0], p[1], index);
+				if (value<0 | value>1)
+					throw std::runtime_error("allowed only values between 0 and 1");
+
+				index = getIndex(value, nbins,0,1);
+
+				index = index + nbins * c;
+
+				Hist(x, y, index)+=1;
 
 			}
 
@@ -160,7 +166,7 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 
 
 
-
+	std::cerr << "inside c++" << std::endl;
 	//For all the channels do the same
 	for (c=0;c<nc;c++)
 	{
