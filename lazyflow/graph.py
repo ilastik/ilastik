@@ -48,7 +48,7 @@ from Queue import Queue, LifoQueue, Empty
 from threading import Thread, Event, current_thread, Lock
 import greenlet
 import weakref
-
+import threading
 
 greenlet.GREENLET_USE_GC # use garbage collection
 
@@ -213,6 +213,7 @@ setattr(current_thread(), "finishedRequestGreenlets", deque())
 setattr(current_thread(), "workAvailableEvent", Event())
 setattr(current_thread(), "process", psutil.Process(os.getpid()))
 
+
 class GetItemRequestObject(object):
     """ 
     Enables the syntax
@@ -266,11 +267,15 @@ class GetItemRequestObject(object):
                 # through the graph is done in one greenlet/thread
                 
                 lr = gr.lastRequest
-                if lr is not None:
-                    lr._putOnTaskQueue()
-                gr.lastRequest = self
                 self.parentRequest = gr.currentRequest
                 gr.currentRequest.childRequests[self] = self
+                gr.lastRequest = self
+                if lr is not None:
+                    lr._putOnTaskQueue()
+
+            else:
+                # we are in main thread
+                self._putOnTaskQueue()
 
 
     def _putOnTaskQueue(self):
@@ -303,7 +308,7 @@ class GetItemRequestObject(object):
                         cgr.thread = tr                        
                         self.lock.release()
                         cgr.switch(self)
-                        self._waitFor(cgr,tr) #do some work while waiting
+                        self._waitFor(cgr,tr) #wait for finish
                 else:
                     if hasattr(gr, "lastRequest"):
                         lr = gr.lastRequest
@@ -323,7 +328,7 @@ class GetItemRequestObject(object):
                         cgr.thread = tr                        
                         self.lock.release()
                         cgr.switch(self)
-                        self._waitFor(cgr,tr) #do some work while waiting
+                        self._waitFor(cgr,tr) #wait for finish
             else:
                 self.lock.release()
                 pass
@@ -348,6 +353,8 @@ class GetItemRequestObject(object):
                 req, gr = tr.finishedRequestGreenlets.popleft()
                 gr.currentRequest = req                 
                 gr.switch()
+                #if cgr.dead:
+                #    break
 
 
 
@@ -2030,7 +2037,7 @@ class Worker(Thread):
                     
                 task = None
                 try:
-                    task = self.graph.tasks.pop()#timeout = 1.0)
+                    task = self.graph.tasks.popleft()#timeout = 1.0)
                 except IndexError:
                     pass
                 if task is not None:
