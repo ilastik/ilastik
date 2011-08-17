@@ -34,6 +34,11 @@ if __name__=="__main__":
     imageReader = myPersonalEasyGraphNames["reader"]
     opa = myPersonalEasyGraphNames["opa"]
         
+        
+    print "allocate features:", opa.outputs["Output"][0][:].allocate().wait()    
+    print "NCLASSES: ", classCountProvider.outputs["Output"][:].allocate().wait()
+    
+    
     opTrain.inputs["fixClassifier"].setValue(True)
     acache = OpArrayCache(g)
     acache.inputs["Input"].connect(opTrain.outputs['Classifier'])
@@ -120,7 +125,7 @@ if __name__=="__main__":
 
     print "==============================================",stacker.outputs["Output"][0].shape
 
-    for numStage in range(0,3):
+    for numStage in range(0,1):
         
         opMulti = operators.Op5ToMulti(g)
     

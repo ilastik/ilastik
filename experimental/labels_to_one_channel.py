@@ -11,9 +11,12 @@ lfiles = sorted(lfiles, key=str.lower)
 
 
 for fname in lfiles:
+    if 'bw' in fname:
+        continue
     im = vigra.readImage(fname)
     imnew = numpy.zeros((im.shape[0], im.shape[1]), dtype = numpy.uint8)
     
+    print im.shape
     imflat = im[:, :, 0] + 1000*im[:, :, 1] + 1000000*im[:, :, 2]
     indred = numpy.where(imflat[:, :]==255)
     indgreen = numpy.where(imflat[:, :]==255000)

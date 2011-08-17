@@ -14,9 +14,6 @@ class OpContextStar3D(Operator):
     outputSlots = [OutputSlot("Output")]    
     
     def notifyConnectAll(self):
-        print
-        print "***** calling notifyConnectAll",self.inputs["PMaps"].shape
-        print
         
         nclasses=self.inputs["ClassesCount"].value
         radii_triplets = self.inputs["Radii_triplets"].value

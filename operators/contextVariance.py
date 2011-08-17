@@ -1,15 +1,10 @@
-import numpy
-from lazyflow.graph import Operators, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
-from lazyflow.roi import sliceToRoi, roiToSlice, block_view
-from Queue import Empty
-from collections import deque
-import greenlet, threading
-import copy
+from lazyflow.graph import *
 import context
 
-class OpAverageContext2D(Operator):
-    name = "AverageContext2D"
-    description = ""
+
+class OpVarianceContext2D(Operator):
+    name = "VarianceContext2D"
+    description = "Compute averages and variances in the neighborhoods of different sizes"
        
     inputSlots = [InputSlot("PMaps"),InputSlot("Radii"),InputSlot("ClassesCount")]
     outputSlots = [OutputSlot("Output")]    
@@ -27,7 +22,7 @@ class OpAverageContext2D(Operator):
         
         h,w,c=self.inputs["PMaps"].shape
         
-        self.outputs["Output"]._shape = (h,w,nclasses*len(radii))
+        self.outputs["Output"]._shape = (h,w,2*nclasses*len(radii))
         
         self.outputs["Output"]._axistags = copy.copy(self.inputs["PMaps"].axistags)
 
@@ -39,5 +34,4 @@ class OpAverageContext2D(Operator):
         radii=numpy.array(radii,dtype=numpy.uint32)
         print "We are in the business"
         print radii, radii.dtype
-        context.avContext2Dmulti(radii,pmaps,result)
-        
+        context.varContext2Dmulti(radii,pmaps,result)

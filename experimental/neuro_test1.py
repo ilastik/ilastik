@@ -20,7 +20,7 @@ fileraw = "/home/akreshuk/data/context/TEM_raw/50slices_down5.h5"
 filelabels = "/home/akreshuk/data/context/TEM_labels/50slices_down5.h5"
 resdir = "/home/akreshuk/data/context/TEM_results/"
 resproject = "50slices_down5.ilp"
-graphfile = "/home/akreshuk/data/context/50slices_down5_graph.h5"
+graphfile = "/home/akreshuk/data/context/50slices_down5_graph_1.h5"
 h5path = "/volume/data"
 nclasses = 5
 
@@ -51,7 +51,7 @@ print "THE SLICER:", slicer.outputs["Slices"][0].shape
 
 #Sigma provider 0.9
 sigmaProvider = operators.OpArrayPiper(g)
-sigmaProvider.inputs["Input"].setValue(0.9) 
+sigmaProvider.inputs["Input"].setValue(0.3) 
 
 #Gaussian Smoothing     
 opa = operators.OpGaussianSmoothing(g)   
@@ -74,10 +74,9 @@ print "THE GAUSSIAN STACKER:", stacker_opa.outputs["Output"].shape, stacker_opa.
 #blaopa = stacker_opa.outputs["Output"][:].allocate().wait()
 
 
-
-#Sigma provider 0.9
+#Sigma provider
 sigmaProvider2 = operators.OpArrayPiper(g)
-sigmaProvider2.inputs["Input"].setValue(0.9)
+sigmaProvider2.inputs["Input"].setValue(0.7)
 #Hessian
 hog = operators.OpHessianOfGaussianEigenvalues(g)
 hog.inputs["Input"].connect(slicer.outputs["Slices"])
@@ -87,6 +86,7 @@ stacker_hog = operators.OpMultiArrayStacker(g)
 stacker_hog.inputs["Images"].connect(hog.outputs["Output"])
 stacker_hog.inputs["AxisFlag"].setValue('z')
 stacker_hog.inputs["AxisIndex"].setValue(2)
+
 
 #stacker_hog.outputs["Output"]._axistags = axistags
 print "THE HESSIAN STACKER:", stacker_hog.outputs["Output"].shape, stacker_hog.outputs["Output"].axistags
@@ -144,8 +144,8 @@ print
 #Prediction
 opPredict = operators.OpPredictRandomForest(g)
 opPredict.inputs['Classifier'].connect(acache.outputs['Output'])    
-opPredict.inputs['Image'].connect(opMultiS.outputs['Outputs'])
-#opPredict.inputs['Image'].connect(stacker.outputs['Output'])
+#opPredict.inputs['Image'].connect(opMultiS.outputs['Outputs'])
+opPredict.inputs['Image'].connect(stacker.outputs['Output'])
 
 classCountProvider = operators.OpArrayPiper(g)
 classCountProvider.inputs["Input"].setValue(nclasses) 
@@ -154,7 +154,7 @@ opPredict.inputs['LabelsCount'].connect(classCountProvider.outputs["Output"])
 
 #print "prediction output:", opPredict.outputs["PMaps"]
 #Predict and save without context first
-pmaps = opPredict.outputs["PMaps"][0][:].allocate().wait()[:]
+pmaps = opPredict.outputs["PMaps"][:].allocate().wait()[:]
 print "shape of pmaps: ", pmaps.shape
 #for i in range(pmaps.shape[2]):
     #for c in range(nclasses):

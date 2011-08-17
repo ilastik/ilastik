@@ -41,8 +41,8 @@ for i in range(nslices):
         
 fraw = h5py.File("/home/akreshuk/data/context/TEM_raw/"+str(nslices)+"slices.h5", "w")
 flabels = h5py.File("/home/akreshuk/data/context/TEM_labels/"+str(nslices)+"slices.h5", "w")
-dr = fraw.create_dataset("data", data.shape, data.dtype, data=data)
-dl = flabels.create_dataset("data", labels.shape, labels.dtype, data=labels)
+dr = fraw.create_dataset("/volume/data", data.shape, data.dtype, data=data)
+dl = flabels.create_dataset("/volume/data", labels.shape, labels.dtype, data=labels)
 fraw.close()
 flabels.close()
     

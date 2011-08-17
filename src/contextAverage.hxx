@@ -50,6 +50,26 @@ void average_features_2(MultiArrayView<1, IND, S1>& radii,
     }
     return;
 }
+
+/*
+template <class IND, class T, class S>
+void replicate_z(IND x, IND y, IND z, IND c,
+                 MultiArrayView<4, T, S>& res,
+                 MultiArrayView<1, IND, S>& sizes, 
+                 std::vector<T>& neighbors)
+{
+    int ns = sizes.shape()[0];
+    int nx = res.shape()[0];
+    int ny = res.shape()[1];
+    int nz = res.shape()[2];
+    int nnewf = neighbors.size()
+    for (int is=0; is<ns; ++is) {
+        //reflect
+        for (int ii=0; ii<nnewf; ++ii) {
+            res(x, y, z, nnewf+is*(nnewf-1)) = res(x, y, std::abs(z-is), 
+    
+*/    
+
 template <class IND, class T, class S>
 void avContext2Dmulti(MultiArrayView<1, IND, S>& sizes,
                       MultiArrayView<3, T, S>& predictions,
@@ -81,7 +101,52 @@ void avContext2Dmulti(MultiArrayView<1, IND, S>& sizes,
     }
     return;
 }
+/*
+template <class IND, class T, class S>
+void avContext3Dslices(MultiArrayView<1, IND, S>& radii,
+                       MultiArrayView<1, IND, S>& z_values,
+                 MultiArrayView<4, T, S>& predictions,
+                 MultiArrayView<4, T, S>& res)
+{
+    // this function does _not_ compute real 3d averages
+    // instead it computes 2d averages in neighborhoods of sizes passed in radii
+    // and then adds as features such averages at +- z_values
     
+    int nx = predicitons.shape()[0];
+    int ny = predictions.shape()[1];
+    int nz = predictions.shape()[2];
+    int nclasses = predictions.shape()[3];
+    int nnewf_slice = radii.shape()[0];
+    int nnewf_total = nnewf*z_values.shape()[0];
+    MultiArrayShape<3>::type intShp(nx, ny, nclasses);
+    MultiArray<3, T> integral(intShp);
+    std::vector<T> newf(nnewf_slice);
+    
+    for (IND z=0; z<nz; ++z){
+        MultiArrayView<3, T, StridedArrayTag> pred_slice = predictions.bindAt(2, z);
+        integralImage(pred_slice, integral);
+        for (IND x=0; x<nx; ++x){
+            for (IND y=0; y<ny; ++y){
+                for (IND c=0; c<nclasses; ++c){
+                    average_features_2(radii, x, y, c, integral, newf);
+                    for (IND ii=0; ii<nnewf_slice; ++ii){
+                        res(x, y, z, c*nnewf_slice+ii) = newf[ii];
+                    }
+                }
+            }
+        }
+    }
+    
+    for (IND x=0; x<nx; ++x){
+        for (IND y=0; y<ny; ++y){
+            for (IND z=0; z<nz; ++z){
+                replicate_z(res, z_values);
+            }
+        }
+    }
+}
+*/
+
 template <class IND, class T, class S>
 void varContext2Dmulti(MultiArrayView<1, IND, S>&sizes,
                        MultiArrayView<3, T, S>& predictions,
