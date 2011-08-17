@@ -22,7 +22,7 @@ class OperatorGroupA(OperatorGroup):
     inputSlots = [InputSlot("Input")]
     outputSlots = [MultiOutputSlot("MultiOutput")]
     
-    def createInnerOperators(self):
+    def _createInnerOperators(self):
         # this method must setup the
         # inner operators and connect them (internally)
         
@@ -51,20 +51,20 @@ class OperatorGroupA(OperatorGroup):
         opd.inputs["Input"].connect(opc.outputs["Output"])
         self.ope.inputs["MultiInput"].connect(opd.outputs["Output"])        
         
-    def setupInputSlots(self):
+    def getInnerInputs(self):
         # this method must return a hash that
         # contains the inner slots corresponding
         # to the slotname
         inputs = {}
         inputs["Input"] = self.source0.inputs["Input"]
-        self._visibleInputs = inputs
+        return  inputs
 
 
     
-    def setupOutputSlots(self):
-        self._visibleOutputs = {}
-        self._visibleOutputs["MultiOutput"] = self.ope.outputs["MultiOutput"]
-
+    def getInnerOutputs(self):
+        outputs = {}
+        outputs["MultiOutput"] = self.ope.outputs["MultiOutput"]
+        return outputs
 
 
 Operators.registerOperatorSubclasses()
