@@ -177,7 +177,7 @@ class OpRequestSplitter(OpArrayPiper):
         
         diff = stop-start
         
-        splitDim = numpy.argmax(diff)
+        splitDim = numpy.argmax(diff[:-1])
         splitPos = start[splitDim] + diff[splitDim] / 2
         
         stop2 = stop.copy()
