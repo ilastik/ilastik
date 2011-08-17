@@ -144,7 +144,7 @@ class OpPixelFeatures(OperatorGroup):
     category = "Vigra filter"
     
     inputSlots = [InputSlot("Input"), InputSlot("Matrix"), InputSlot("Scales")]
-    outputSlots = [OutputSlot("Output")]
+    outputSlots = [OutputSlot("Output"), OutputSlot("ArrayOfOperators")]
     
     def _createInnerOperators(self):
         # this method must setup the
@@ -198,7 +198,8 @@ class OpPixelFeatures(OperatorGroup):
                 oparray[i].append(OpHessianOfGaussianEigenvalues(self.graph))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["scale"].setValue(self.scales[j])
-                
+            
+            self.outputs["ArrayOfOperators"]= oparray
             
             for i in range(dimRow):
                 for j, val in enumerate(self.matrix[i]):
@@ -245,7 +246,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         self.supportsOut = False
         
     def getOutSlot(self, slot, key, result):
-
+        
         kwparams = {}        
         for islot in self.inputs.values():
             if islot.name != "Input":
