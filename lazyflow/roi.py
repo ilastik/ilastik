@@ -6,7 +6,10 @@ class TinyVector(list):
     __slots__ = []
     def __init__(self, data=None):
         list.__init__(self, data)
-        
+    
+    def copy(self):
+        return TinyVector(self)
+    
     def __add__(self, other):
         if hasattr(other, "__iter__"):
             return TinyVector(map(lambda x,y: x + y ,self,other))
