@@ -466,7 +466,7 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
         temp = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
         return temp
     
-class OpGaussinaGradientMagnitude(OpBaseVigraFilter):
+class OpGaussianGradientMagnitude(OpBaseVigraFilter):
     name = "GaussianGradientMagnitude"
     vigraFilter = staticmethod(vigra.filters.gaussianGradientMagnitude)
     outputDtype = numpy.float32 
