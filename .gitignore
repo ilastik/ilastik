@@ -1,6 +1,7 @@
 build
 tests/*.h5
 *.pyc
+*/*.pyc
 *.*~
 tests/*.png
 tests/images

@@ -9,13 +9,17 @@ from lazyflow.operators.valueProviders import *
 from lazyflow.operators.classifierOperators import *
 from lazyflow.operators.generic import *
 
-from lazyflow.operators import OpStarContext2D
-from lazyflow.operators import OpAverageContext2D
+#from lazyflow.operators import OpStarContext2D
+#from lazyflow.operators import OpAverageContext2D
+
+from lazyflow import operators
 
 #this test creates a graph for classifying two images (labels only on one)
 #and saves it to a file. graph_load.py test then loads the graph and 
 #tests that everything was saved correctly and the operators can be used again.
 
+import signal
+signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 if __name__=="__main__":
     
@@ -40,6 +44,9 @@ if __name__=="__main__":
     opa.inputs["Input"].connect(vimageReader.outputs["Image"])
     opa.inputs["sigma"].connect(sigmaProvider.outputs["Output"])
     
+    opa2 = OpGaussianSmoothing(g)
+    opa2.inputs["Input"].connect(vimageReader.outputs["Image"])
+    opa2.inputs["sigma"].setValue(2)
     
     ###################################
     #Merge the stuff together
@@ -48,7 +55,15 @@ if __name__=="__main__":
     #########################################
     stacker=OpMultiArrayStacker(g)
     
-    stacker.inputs["Images"].connectAdd(opa.outputs["Output"])
+    
+    opMulti = operators.Op5ToMulti(g)
+    
+    opMulti.inputs["Input0"].connect(opa.outputs["Output"])
+    opMulti.inputs["Input1"].connect(opa2.outputs["Output"])
+    
+    stacker.inputs["Images"].connect(opMulti.outputs["Outputs"])
+    stacker.inputs["AxisFlag"].setValue('c')
+    stacker.inputs["AxisIndex"].setValue(2)
     
     #####Get the labels###
     filenamelabels='labels_ostrich.png'
@@ -75,15 +90,18 @@ if __name__=="__main__":
     ##################Prediction
     opPredict=OpPredictRandomForest(g)
     
+    
+    classCountProvider=OpArrayPiper(g)
+    classCountProvider.inputs["Input"].setValue(2) 
+    opPredict.inputs['LabelsCount'].connect(classCountProvider.outputs["Output"])
 
     opPredict.inputs['Classifier'].connect(acache.outputs['Output'])    
     opPredict.inputs['Image'].connect(stacker.outputs['Output'])
 
     
-    classCountProvider=OpArrayPiper(g)
-    classCountProvider.inputs["Input"].setValue(2) 
     
-    opPredict.inputs['LabelsCount'].connect(classCountProvider.outputs["Output"])
+    print "////////////////////////////////////",classCountProvider.outputs["Output"].shape
+    print "////////////////////////////////////",opPredict.outputs["PMaps"][0].shape
     
     vigra.impex.writeImage(opPredict.outputs["PMaps"][0][:].allocate().wait()[:,:,0],"images/test_ostrich_0.png")
     vigra.impex.writeImage(opPredict.outputs["PMaps"][1][:].allocate().wait()[:,:,0],"images/test_ostrich_1.png")
@@ -99,6 +117,22 @@ if __name__=="__main__":
     myPersonalEasyGraphNames["predict"] = opPredict
     myPersonalEasyGraphNames["nclasses"] = classCountProvider
     myPersonalEasyGraphNames["labelReader"] = labelsReader
+    myPersonalEasyGraphNames["opa"] = opa
+    
+    
+ 
+            
+            
+            
+            
+    print "----------", classCountProvider.inputs["Input"].shape
+    
+    #vimageReader.inputs["Filename"].connect(listMerger.outputs["Items"])    
+    
+    
+    
+    
+    
     
     import h5py
     f = h5py.File("graph_ostrich_gs_only.h5","w")
