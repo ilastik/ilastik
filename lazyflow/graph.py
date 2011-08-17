@@ -290,6 +290,9 @@ class GetItemRequestObject(object):
                 gr = greenlet.getcurrent()
                 if self.inProcess:   
                     if hasattr(gr, "lastRequest"):                         
+                        lr = gr.lastRequest
+                        if lr is not None:
+                            lr._putOnTaskQueue()
                         self.waitQueue.append((gr.thread, gr.currentRequest, gr))
                         self.lock.release()                    
                         gr.parent.switch(None)
@@ -303,8 +306,11 @@ class GetItemRequestObject(object):
                         self._waitFor(cgr,tr) #do some work while waiting
                 else:
                     if hasattr(gr, "lastRequest"):
-                        if gr.lastRequest == self:
+                        lr = gr.lastRequest
+                        if lr == self:
                             gr.lastRequest = None
+                        elif lr is not None:
+                            lr._putOnTaskQueue()
                         self.inProcess = True
                         self.lock.release()
                         gr.currentRequest = self
@@ -1615,7 +1621,7 @@ class OperatorWrapper(Operator):
     
     def _createInnerOperator(self):
         if self.operator.__class__ is not OperatorWrapper:
-
+            print self.operator.__class__
             opcopy = self.operator.__class__(self.graph, register = False)
         else:
             print "creatInnerOperator OperatorWrapper"
