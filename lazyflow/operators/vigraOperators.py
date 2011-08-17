@@ -241,8 +241,8 @@ class OpBaseVigraFilter(OpArrayPiper):
     inputDtype = numpy.float32
     supportsOut = True
     
-    def __init__(self, graph):
-        OpArrayPiper.__init__(self, graph)
+    def __init__(self, graph, register = True):
+        OpArrayPiper.__init__(self, graph, register = register)
         self.supportsOut = False
         
     def getOutSlot(self, slot, key, result):

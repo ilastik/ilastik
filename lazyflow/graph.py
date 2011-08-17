@@ -290,6 +290,9 @@ class GetItemRequestObject(object):
                 gr = greenlet.getcurrent()
                 if self.inProcess:   
                     if hasattr(gr, "lastRequest"):                         
+                        lr = gr.lastRequest
+                        if lr is not None:
+                            lr._putOnTaskQueue()
                         self.waitQueue.append((gr.thread, gr.currentRequest, gr))
                         self.lock.release()                    
                         gr.parent.switch(None)
@@ -303,8 +306,11 @@ class GetItemRequestObject(object):
                         self._waitFor(cgr,tr) #do some work while waiting
                 else:
                     if hasattr(gr, "lastRequest"):
-                        if gr.lastRequest == self:
+                        lr = gr.lastRequest
+                        if lr == self:
                             gr.lastRequest = None
+                        elif lr is not None:
+                            lr._putOnTaskQueue()
                         self.inProcess = True
                         self.lock.release()
                         gr.currentRequest = self
@@ -737,6 +743,9 @@ class OutputSlot(object):
                 self.axistags = value
                 for p in self.partners:
                     p.axistags = value
+                    # check for connect propagation 
+                    #p.operator.notifyConnect(p)
+                    #p._checkNotifyConnectAll()                    
         else:
             self.axistags = None
 
@@ -1372,11 +1381,12 @@ class Operator(object):
     description = ""
     category = "lazyflow"
     
-    def __init__(self, graph):
+    def __init__(self, graph, register = True):
         self.operator = None
         self.inputs = {}
         self.outputs = {}
         self.graph = graph
+        self.register = register
         #provide simple default name for lazy users
         if self.name == "": 
             self.name = type(self).__name__
@@ -1394,8 +1404,9 @@ class Operator(object):
             self.outputs[o.name] = oo         
             # output slots are connected
             # when the corresponding input slots
-            # of the partner operators are created       
-        self.graph.registerOperator(self)
+            # of the partner operators are created  
+        if self.register:
+            self.graph.registerOperator(self)
          
     def _getOriginalOperator(self):
         return self
@@ -1487,13 +1498,15 @@ class OperatorWrapper(Operator):
     def outputSlots(self):
         return self._outputSlots
     
-    def __init__(self, operator):
+    def __init__(self, operator, register = False):
         self.inputs = {}
         self.outputs = {}
         self.operator = operator
+        self.register = False
         if operator is not None:
             self.graph = operator.graph
             self.name = operator.name
+            
             self.comprehensionSlots = 1
             self.innerOperators = []
             self.comprehensionCount = 0
@@ -1556,7 +1569,8 @@ class OperatorWrapper(Operator):
                 oslot.disconnect()
                 for p in partners:         
                     oo._connect(p)
-
+            
+            
     def _getOriginalOperator(self):
         op = self.operator
         while isinstance(op, OperatorWrapper):
@@ -1607,7 +1621,8 @@ class OperatorWrapper(Operator):
     
     def _createInnerOperator(self):
         if self.operator.__class__ is not OperatorWrapper:
-            opcopy = self.operator.__class__(self.graph)
+            print self.operator.__class__
+            opcopy = self.operator.__class__(self.graph, register = False)
         else:
             print "creatInnerOperator OperatorWrapper"
             opcopy = OperatorWrapper(self.operator._createInnerOperator())
@@ -1826,15 +1841,77 @@ class OperatorWrapper(Operator):
                 },patchBoard)    
 
         return op
+        
+        
+        
+        
+        
+class OperatorGroupGraph(object):
+    def __init__(self, originalGraph):
+        self._originalGraph = originalGraph
+        self.operators = []
+        
+    def putTask(self, reqObject):
+        self._originalGraph.putTask(reqObject)
+            
+            
+    def cancelRequestID(self, requestID):
+        self._originalGraph.cancelRequestID(requestID)
+        
+    def finalize(self):
+        self._originalGraph.finalize()
+    
+    def registerOperator(self, op):
+        self.operators.append(op)
+    
+    def removeOperator(self, op):
+        assert op in self.operators, "Operator %r not a registered Operator" % op
+        self.operators.remove(op)
+        op.disconnect()
+ 
+    def dumpToH5G(self, h5g, patchBoard):
+        h5op = h5g.create_group("operators")
+        h5op.dumpObject(self.operators, patchBoard)
+        h5graph = h5g.create_group("originalGraph")
+        h5graph.dumpObject(self._originalGraph, patchBoard)
+
+    
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        h5graph = h5g["originalGraph"]        
+        ograph = h5graph.reconstructObject(patchBoard)               
+        g = OperatorGroupGraph(ograph)
+        patchBoard[h5g.attrs["id"]] = g 
+        h5ops = h5g["operators"]        
+        g.operators = h5ops.reconstructObject(patchBoard)
+ 
+        return g        
+        
+        
+        
+        
+        
+        
 class OperatorGroup(Operator):
-    def __init__(self, graph):
-        Operator.__init__(self,graph)
+    def __init__(self, graph, register = True):
+
+        # we use a fake graph, so that the sub operators
+        # of the group operator are not visible in the 
+        # operator list of the original graph
+        self._originalGraph = graph
+        fakeGraph = OperatorGroupGraph(graph)
+        
+        Operator.__init__(self,fakeGraph, register = register)
+
         self._visibleOutputs = None
         self._visibleInputs = None
 
         self._createInnerOperators()
         self._connectInnerInputs()
         self._connectInnerOutputs()
+
+        if self.register:
+            self._originalGraph.registerOperator(self)
         
     def _createInnerOperators(self):
         # this method must setup the
