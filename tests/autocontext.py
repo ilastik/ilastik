@@ -147,6 +147,8 @@ if __name__=="__main__":
     opMulti.inputs["Input0"].connect(opa.outputs["Output"])
     
     stacker.inputs["Images"].connect(opMulti.outputs["Outputs"])
+    stacker.inputs["AxisFlag"].setValue('c')
+    stacker.inputs["AxisIndex"].setValue(2)
     
     """
     stacker.inputs["Images"].connectAdd(opgg.outputs["Output"])
@@ -186,7 +188,7 @@ if __name__=="__main__":
     acache = OpArrayCache(g)
     acache.inputs["Input"].connect(opTrain.outputs['Classifier'])
     
-    #print "Here ########################", opTrain.outputs['Classifier'][:].allocate().wait()    
+    print "Here ########################", opTrain.outputs['Classifier'][:].allocate().wait()    
     
     ##################Prediction
     opPredict=OpPredictRandomForest(g)
@@ -229,7 +231,8 @@ if __name__=="__main__":
         opMulti1.inputs["Input1"].connect(contexts[-1].outputs["Output"])
         
         stacker2.inputs["Images"].connect(opMulti1.outputs["Outputs"])
-        
+        stacker2.inputs["AxisFlag"].setValue('c')
+        stacker2.inputs["AxisIndex"].setValue(2)
     
         #######Training2
         
