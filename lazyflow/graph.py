@@ -643,7 +643,10 @@ class InputSlot(object):
             "operator" : self.operator,
             "partner" : self.partner,
             "value" : self._value,
-            "stype" : self._stype
+            "stype" : self._stype,
+            "dtype" : self.dtype,
+            "axistags" : self.axistags,
+            "shape" : self.shape
             
         },patchBoard)
     
@@ -660,7 +663,10 @@ class InputSlot(object):
             "operator" : "operator",
             "partner" : "partner",
             "value" : "_value",
-            "stype" : "stype"
+            "stype" : "stype",
+            "dtype" : "dtype",
+            "axistags" : "axistags",
+            "shape" : "shape"
             
         },patchBoard)
 

@@ -207,7 +207,22 @@ def reconstructObjectFromH5G(self, patchBoard = None):
                     view[int(i)] = g.reconstructObject(patchBoard)
             result = arr
             patchBoard[self.attrs["id"]] = result
-
+        elif cls == vigra.VigraArray:
+            try:
+                dtype = numpy.__dict__[self.attrs["dtype"]]
+            except:
+                #assume that otherwise the dtype has been an object ?! correct ??
+                dtype = object
+            if dtype != object:
+                arr = self["ndarray"][:]
+            else:
+                arr = vigra.VigraArray(self.attrs["shape"], dtype = object)
+                view = arr.ravel()
+                for i,g in self.items():
+                    view[int(i)] = g.reconstructObject(patchBoard)
+            result = arr
+            patchBoard[self.attrs["id"]] = result
+            
         elif cls == list or cls == tuple:
             length = self.attrs["len"]
             temp = range(0,length)
