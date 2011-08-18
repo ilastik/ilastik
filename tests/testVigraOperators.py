@@ -92,8 +92,15 @@ for i in range(100):
     r = g3.outputs["Output"][0][:,:,:].allocate()
     requests.append(r)
     
-for i,r in enumerate(requests):
+import gc
+
+i= 0
+while len(requests) > 0:
+    r = requests.pop(0)
     r.wait()
+    del r
+    gc.collect()
     print "request", i, "finished"
+    i += 1
 
 graph.finalize()

@@ -44,14 +44,13 @@ from h5dumprestore import instanceClassToString, stringToClass
 from helpers import itersubclasses
 from roi import sliceToRoi, roiToSlice
 from collections import deque
-from Queue import Queue, LifoQueue, Empty
+from Queue import Queue, LifoQueue, Empty, PriorityQueue
 from threading import Thread, Event, current_thread, Lock
 import greenlet
 import weakref
 import threading
 
-greenlet.GREENLET_USE_GC # use garbage collection
-
+greenlet.GREENLET_USE_GC = True #use garbage collection
 
 class DefaultConfigParser(ConfigParser.SafeConfigParser):
     """
@@ -267,14 +266,16 @@ class GetItemRequestObject(object):
                 # through the graph is done in one greenlet/thread
                 
                 lr = gr.lastRequest
-                self.parentRequest = gr.currentRequest
+                #self.parentRequest = gr.currentRequest
                 gr.currentRequest.childRequests[self] = self
+                self._requestLevel = gr.currentRequest._requestLevel + 1
                 gr.lastRequest = self
                 if lr is not None:
                     lr._putOnTaskQueue()
 
             else:
                 # we are in main thread
+                self._requestLevel = 0
                 self._putOnTaskQueue()
 
 
@@ -355,8 +356,7 @@ class GetItemRequestObject(object):
                 gr.switch()
                 #if cgr.dead:
                 #    break
-
-
+        self._finalize()
 
        
     def notify(self, closure, **kwargs): 
@@ -2029,7 +2029,7 @@ class Worker(Thread):
             self.graph.freeWorkers.remove(self)
             self.workAvailableEvent.clear()
                 
-            while not len(self.graph.tasks)==0 or len(self.finishedRequestGreenlets) > 0:       
+            while not self.graph.tasks.empty() or len(self.finishedRequestGreenlets) > 0:       
                 while len(self.finishedRequestGreenlets) > 0:
                     req, gr = self.finishedRequestGreenlets.popleft()
                     gr.currentRequest = req                 
@@ -2037,8 +2037,8 @@ class Worker(Thread):
                     
                 task = None
                 try:
-                    task = self.graph.tasks.popleft()#timeout = 1.0)
-                except IndexError:
+                    prio,task = self.graph.tasks.get(block = False)#timeout = 1.0)
+                except Empty:
                     pass
                 if task is not None:
                     reqObject = task
@@ -2051,7 +2051,7 @@ class Worker(Thread):
                             gr.thread = self
                             gr.switch( reqObject)
                         else:
-                            self.graph.tasks.append(task) #move task back to task queue
+                            self.graph.tasks.append((prio,task)) #move task back to task queue
                             print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
                             gc.collect()
                             time.sleep(1.0)
@@ -2062,7 +2062,7 @@ class Worker(Thread):
 class Graph(object):
     def __init__(self, numThreads = 3, softMaxMem =  500*1024*1024):
         self.operators = []
-        self.tasks = deque() #Lifo <-> depth first, fifo <-> breath first
+        self.tasks = PriorityQueue() #Lifo <-> depth first, fifo <-> breath first
         self.workers = []
         self.freeWorkers = deque()
         self.running = True
@@ -2078,7 +2078,7 @@ class Graph(object):
     
     def putTask(self, reqObject):
         task = reqObject
-        self.tasks.append(task)
+        self.tasks.put((-task._requestLevel,task))
         
         if len(self.freeWorkers) > 0:
             w = self.freeWorkers.pop()
