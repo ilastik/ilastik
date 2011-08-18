@@ -31,7 +31,10 @@ import string
 import types
 import copy
 import numpy
-
+try:
+    import cPickle as pickle
+except:
+    import pickle
 
 
 class H5Dumpable(object):
@@ -151,10 +154,11 @@ def dumpObjectToH5G(self, thing, patchBoard = {}):
             self.attrs["name"] =  thing.__name__
         elif isinstance(thing, type):
             pass
-        else:          
-            if not isinstance(thing, (float, int, str, True.__class__)):
-                print "h5serialize.py: UNKNOWN CLASS", thing, thing.__class__
+        elif isinstance(thing, (float, int, str)):
             self.attrs["value"] = thing
+        else:
+            #try pickling the thing
+            self.attrs["picklevalue"] = pickle.dumps(thing)
 
 
 
@@ -252,7 +256,13 @@ def reconstructObjectFromH5G(self, patchBoard = None):
         elif cls == True.__class__:
             result = self.attrs["value"]
         else:
-            print "ERROR", self.attrs["className"], cls
+            try:
+                pickles = self.attrs["picklevalue"]
+            except:
+                print "ERROR restoring object from file: classname ", self.attrs["className"], cls
+                assert 1 == 2                
+            result = pickle.loads(pickles)
+
     
     if not resultIsNone:
         return result
@@ -373,8 +383,11 @@ if __name__ == '__main__':
     at = vigra.VigraArray.defaultAxistags(4)
     
     at.dropChannelAxis()
-
-    testObjects = [ numpy.zeros((100,20,7),numpy.uint8), at,[at,numpy.zeros((100,20,7),numpy.uint8)], {"pups" : at}, [at, "test", 42, 42.0, {"42" : 42,"test" : ["test"]}]]    
+    import svm
+    
+    svmmod = svm.svm_model()    
+    
+    testObjects = [ numpy.zeros((100,20,7),numpy.uint8), at,[at,numpy.zeros((100,20,7),numpy.uint8)], {"pups" : at}, [at, "test", 42, 42.0, {"42" : 42,"test" : ["test"]}], svmmod]    
     
     for o in testObjects:
         f = h5py.File("/tmp/test.h5","w")
