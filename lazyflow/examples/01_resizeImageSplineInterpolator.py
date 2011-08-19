@@ -101,36 +101,37 @@ class OpImageResizer(Operator):
     def dtype(self):
         return self.outputs["Output"]._dtype
 
-#create new Graphobject
-g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
+if __name__=="__main__":
+    #create new Graphobject
+    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
 
-#create ImageReader-Operator      
-vimageReader = OpImageReader(g)
-#read an image 
-vimageReader.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/tests/ostrich.jpg")
+    #create ImageReader-Operator      
+    vimageReader = OpImageReader(g)
+    #read an image 
+    vimageReader.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/tests/ostrich.jpg")
 
-#create Resizer-Operator with Graph-Objekt as argument
-resizer = OpImageResizer(g)
+    #create Resizer-Operator with Graph-Objekt as argument
+    resizer = OpImageResizer(g)
 
-#set ScaleFactor
-resizer.inputs["ScaleFactor"].setValue(2)
+    #set ScaleFactor
+    resizer.inputs["ScaleFactor"].setValue(2)
 
-#connect Resizer-Input with Image Reader Output
-#because now all the InputSlot are set or connected,
-#the "notifyConnectAll" method is executed
-resizer.inputs["Input"].connect(vimageReader.outputs["Image"])
+    #connect Resizer-Input with Image Reader Output
+    #because now all the InputSlot are set or connected,
+    #the "notifyConnectAll" method is executed
+    resizer.inputs["Input"].connect(vimageReader.outputs["Image"])
 
-#resizer.outputs["Output"][:]returns an "GetItemWriterObject" object.
-#its method "allocate" will be executed, this method call the "writeInto"
-#method which calls the "fireRequest" method of the, in this case, 
-#"OutputSlot" object which calls another method in "OutputSlot and finally
-#the "getOutSlot" method of our operator.
-#The wait() function blocks other activities and waits till the results
-# of the requested Slot are calculated and stored in the result area.
+    #resizer.outputs["Output"][:]returns an "GetItemWriterObject" object.
+    #its method "allocate" will be executed, this method call the "writeInto"
+    #method which calls the "fireRequest" method of the, in this case, 
+    #"OutputSlot" object which calls another method in "OutputSlot and finally
+    #the "getOutSlot" method of our operator.
+    #The wait() function blocks other activities and waits till the results
+    # of the requested Slot are calculated and stored in the result area.
 
-dest = resizer.outputs["Output"][17:99,10:99,:].allocate().wait()
-#dest = resizer.outputs["Output"][:].allocate().wait()
-#write Image
-vigra.impex.writeImage(dest,"/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/resize_result_2.jpg")
-#write resized image on disk
-g.finalize()
+    dest = resizer.outputs["Output"][17:99,10:99,:].allocate().wait()
+    #dest = resizer.outputs["Output"][:].allocate().wait()
+    #write Image
+    vigra.impex.writeImage(dest,"/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/resize_result_2.jpg")
+    #write resized image on disk
+    g.finalize()
