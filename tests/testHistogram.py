@@ -20,9 +20,54 @@ def hR(upperLeft,lowerRight,H):
     
     return res.astype(numpy.uint32)
 
+
+def TestSimplestHistogram():
+    print
+    print "TestSimplestHistogram------------"
+    data = numpy.ones((5, 5, 1), dtype = (numpy.float32))
+    data = data.view(vigra.VigraArray)
+    data.axistags = vigra.VigraArray.defaultAxistags(3)
+    nbins = 4
+    integral = intHistogram2D(data, nbins)
+    newshape = (data.shape[0], data.shape[1], nbins)
+    assert newshape==integral.shape, "shape mismatch"
+
+    #print integral
+
+    newhist = getHistOfRegion((0, 0), (2, 2), integral)
+    subset = data[0:2, 0:2, :].squeeze()
+    truehist = numpy.histogram(subset, bins=nbins, range=(0, 1))[0]
+    equal(newhist,truehist)
+    print "first good"
+    print
+    
+    newhist = getHistOfRegion((1, 1), (4, 4), integral)
+    subset = data[1:4, 1:4, :].squeeze()
+    truehist = numpy.histogram(subset, bins=nbins, range=(0, 1))[0]
+    equal(newhist,truehist)
+    print "second good"
+    print
+    newhist = getHistOfRegion((0, 1), (5, 5), integral)
+    #print newhist
+    subset = data[0:5, 1:5, :].squeeze()
+    truehist = numpy.histogram(subset, bins=nbins, range=(0, 1))[0]
+    #print truehist
+    equal(newhist, truehist)
+    print "third good"
+    print
+    
+    newhist = getHistOfRegion((1, 1), (5, 5), integral)
+    #print newhist
+    subset = data[1:5, 1:5, :].squeeze()
+    truehist = numpy.histogram(subset, bins=nbins, range=(0, 1))[0]
+    #print truehist
+    equal(newhist, truehist)
+    print "last good"
+
 def TestIntegralHistogram():
     
-    
+    print
+    print "TestIntegralHistogram---------------"
     data=numpy.reshape(numpy.arange(50),(5,10)).astype(numpy.float32).T
     data=data-data.min()
     data=data/data.max()
@@ -86,8 +131,11 @@ def TestIntegralHistogram():
     h=getHistOfRegion((8,8),(13,13),res).view(numpy.ndarray)
     equal(h,numpy.histogram(reduced[8:13,8:13],3,(0,1))[0])
 
+    print "good"
 
 def TestSimpleHistogram():
+    print
+    print "TestSimpleHistogram---------------"
     data=vigra.impex.readImage('ostrich.jpg')
     data=data.view(numpy.ndarray).astype(numpy.float32)
     data=data-data.min()
@@ -110,7 +158,7 @@ def TestSimpleHistogram():
     equal(hist(data,(10,20),3,(0,1)),res[20,10])
     equal(hist(data,(11,12),3,(0,1)),res[12,11])
     equal(hist(data,(9,100),3,(0,1)),res[100,9])
-    
+    print "good"
 
 def TestOverlappingHistogram():
     
@@ -189,8 +237,9 @@ def TestHistContext():
  
  
 if __name__=="__main__":
-    TestHistContext()
+    TestSimplestHistogram()
+    #TestHistContext()
     TestIntegralHistogram()
     TestSimpleHistogram()
-    TestOverlappingHistogram()
+    #TestOverlappingHistogram()
     

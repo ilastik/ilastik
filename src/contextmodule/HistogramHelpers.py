@@ -1,51 +1,46 @@
 import numpy
-"""
-def getHistOfRegion(upperLeft,lowerRight,H):
-    """"""
-    This function extracts the actual histogram of 
-    a region from the integral histogram
-    """"""
+import vigra
+#"""
+#def getHistOfRegion(upperLeft,lowerRight,H):
+    #""""""
+    #This function extracts the actual histogram of 
+    #a region from the integral histogram
+    #""""""
     
-    h,w,nc=H.shape    
-    p1m,p2m=upperLeft
-    p1p,p2p=lowerRight
-    p1p-=1
-    p2p-=1
-    print p1p,p2p,H.shape
-    res=H[p1p,p2p,:].copy()#-H[p1m,p2p]-H[p1p,p2m]+H[p1m,p2m] 
-    #print "here",res
-    #res+=H[0,p2p,:]+H[p1p,0,:]-H[p1m,0,:]-H[p1m,0,:]+H[0,0]
-    if p1m >0 and p2m>0:
-        res=H[p1p,p2p,:]-H[p1m-1,p2p,:]-H[p1p,p2m-1,:]+H[p1m-1,p2m-1,:] 
+    #h,w,nc=H.shape    
+    #p1m,p2m=upperLeft
+    #p1p,p2p=lowerRight
+    #p1p-=1
+    #p2p-=1
+    #print p1p,p2p,H.shape
+    #res=H[p1p,p2p,:].copy()#-H[p1m,p2p]-H[p1p,p2m]+H[p1m,p2m] 
+    ##print "here",res
+    ##res+=H[0,p2p,:]+H[p1p,0,:]-H[p1m,0,:]-H[p1m,0,:]+H[0,0]
+    #if p1m >0 and p2m>0:
+        #res=H[p1p,p2p,:]-H[p1m-1,p2p,:]-H[p1p,p2m-1,:]+H[p1m-1,p2m-1,:] 
             
     
-    return res.astype(numpy.uint32)
-"""
+    #return res.astype(numpy.uint32)
+#"""
 
 def getHistOfRegion(upperLeft,lowerRight,H):
     """This function extracts the actual histogram of 
-    a region from the integral histogram"""
+    a region from the integral histogram. The range is exlusive on lowerRight"""
     
-    h,w,nc=H.shape    
-    p1m,p2m=upperLeft
-    p1p,p2p=lowerRight
+    H = H.view(numpy.ndarray)
+    p1x, p1y = upperLeft
+    p2x, p2y = lowerRight
     
-    p1m=max(p1m,0)
-    p2m=max(p2m,0)
-    p1p=min(p1p,h)
-    p2p=min(p2p,w)
-      
-    p1p-=1
-    p2p-=1
+    nx = p2x-p1x
+    ny = p2y-p2x
+    res = numpy.zeros(H[p1x, p1y, :].shape, H.dtype)
     
-    res=numpy.zeros(H[p1p,p2p,:].shape,H.dtype)
+    lr = H[p2x-1, p2y-1, :]
+    ll = H[p1x-1, p2y-1, :] if p1x>0 else numpy.zeros((H.shape[2],))
+    ur = H[p2x-1, p1y-1, :] if p1y>0 else numpy.zeros((H.shape[2],))
+    ul = H[p1x-1, p1y-1, :] if p1x>0 and p1y>0 else numpy.zeros((H.shape[2],))
     
-    res[:]=H[p1p,p2p,:]#-H[p1m,p2p]-H[p1p,p2m]+H[p1m,p2m] 
-    #print "here",res
-    #res+=H[0,p2p,:]+H[p1p,0,:]-H[p1m,0,:]-H[p1m,0,:]+H[0,0]
-    if p1m >0 and p2m>0:
-        res[:]=H[p1p,p2p,:]-H[p1m-1,p2p,:]-H[p1p,p2m-1,:]+H[p1m-1,p2m-1,:]
-            
+    res[:] = lr[:]-ll[:]-ur[:]+ul[:]
     
     return res.astype(numpy.uint32)
 
