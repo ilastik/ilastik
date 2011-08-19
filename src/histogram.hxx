@@ -219,7 +219,82 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 
 }
 
+template<class IND, class T1,class T2, class S1, class S2>
+void contextHistogram2D(MultiArrayView<1, IND, S1>&radii, int nbins, 
+                        MultiArrayView<3, T1, S1>& image, 
+                        MultiArrayView<3, T2, S2>& res) 
+{
+    //this function computes histograms of the image. 
+    //the histograms are computed in concentric squares of size radii,
+    //where  for each r_i the middle of the square of size r_i-1 is removed
+    //for multichannel images, histogramming is done channel-wise
+    
+    int nx = image.shape()[0];
+    int ny = image.shape()[1];
+    int nchannels = image.shape()[2];
+    int nr = radii.shape()[0];
+    
+    int nctb = nchannels*nbins;
+    int nnewfeatures = nr*nctb;
+    MultiArrayShape<3>::type resShp(nx, ny, nctb);
+    MultiArray<3, T1> integral(resShp);
+    integralHistogram2D(image, nbins, integral);
+    
+    std::vector<T1> flathisto(nnewfeatures);
+    //just to avoid allocating these vectors at each iteration
+    std::vector<T1> lr(nctb);
+    std::vector<T1> ur(nctb);
+    std::vector<T1> ll(nctb);
+    std::vector<T1> ul(nctb);
+    
+    for (int ix=0; ix<nx; ++ix){
+        for (int iy=0; iy<ny; ++iy){
+            contextHistogramFeatures(ix, iy, nchannels, lr, ll, ur, ul, radii, integral, flathisto);
+            for (int ii=0; ii<nnewfeatures; ++ii){
+                res(ix, iy, ii) = flathisto[ii];
+            }
+        }
+    }
+}
 
+template <class IND, class T1, class S1, class S2>
+void contextHistogramFeatures(int x, int y, int nclasses,
+                              std::vector<T1>& lr, std::vector<T1>& ll,
+                              std::vector<T1>& ur, std::vector<T1>& ul,
+                              MultiArrayView<1, IND, S1>& radii,
+                              MultiArrayView<3, T1, S2>& integral,
+                              std::vector<T1>& flathisto)
+{
+
+    
+    int nr = radii.shape()[0];
+    int nctb = integral.shape()[2];
+    
+    
+    for (int ir=0; ir<nr; ++ir){
+        if (x<radii[ir] || y<radii[ir] || x+radii[ir]>integral.shape()[0]-1 || y+radii[ir]>integral.shape()[1]-1){
+            //FIXME: later, use reflection for out-of-bounds stuff
+            for (int ibin=0; ibin<nctb; ++ibin){
+                flathisto[ir*nctb + ibin] = 1./nclasses;
+            }
+            continue;
+        } 
+        for (int ibin=0; ibin<nctb; ++ibin){
+            ul[ibin] = (x==radii[ir] || y==radii[ir]) ? 0 : integral(x-radii[ir]-1, y-radii[ir]-1, ibin);
+            ll[ibin] = (y==radii[ir]) ? 0 : integral(x+radii[ir], y-radii[ir]-1, ibin);
+            ur[ibin] = (x==radii[ir]) ? 0 : integral(x-radii[ir]-1, y+radii[ir], ibin);
+            lr[ibin] = integral(x+radii[ir], y+radii[ir], ibin);
+    
+            flathisto[ir*nctb + ibin] = lr[ibin]-ll[ibin]-ur[ibin]+ul[ibin];
+            if (ir>0){
+                flathisto[ir*nctb + ibin]-=flathisto[(ir-1)*nctb + ibin];
+            }
+        }
+    }
+            
+        
+    return;
+}
 
 
 

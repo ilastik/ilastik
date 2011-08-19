@@ -66,7 +66,7 @@ NumpyAnyArray pythonAvContext2Dmulti(NumpyArray<1, Singleband<IND> > sizes,
 {
 	{ PyAllowThreads _pythread;
     avContext2Dmulti(sizes, predictions, res);
-    std::cout<<"back at glue function"<<std::endl;
+//     std::cout<<"back at glue function"<<std::endl;
 	}
     return res;
 }
@@ -78,7 +78,7 @@ NumpyAnyArray pythonVarContext2Dmulti(NumpyArray<1, Singleband<IND> > sizes,
 {
     { PyAllowThreads _pythread;
     varContext2Dmulti(sizes, predictions, res);
-    std::cout<<"back at glue function"<<std::endl;
+//     std::cout<<"back at glue function"<<std::endl;
     }
     return res;
 }
@@ -89,7 +89,7 @@ NumpyAnyArray pythonIntegralImage(NumpyArray<3, Multiband<T> > image,
 {
 	{ PyAllowThreads _pythread;
     integralImage(image, res);
-    std::cout<<"back at glue function"<<std::endl;
+//     std::cout<<"back at glue function"<<std::endl;
 	}
     return res;
 }
@@ -101,7 +101,7 @@ pythonIntegralImage2(NumpyArray<3, Multiband<T> > image,
                                   NumpyArray<3, Multiband<T> > res)
 {
     integralImage2(image, res);
-    std::cout<<"back at glue function"<<std::endl;
+//     std::cout<<"back at glue function"<<std::endl;
     return res;
 }
 
@@ -193,6 +193,20 @@ pythonIntegralHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 
 }
 
+template <class IND, class T>
+NumpyAnyArray pythonContextHistogram2D(NumpyArray<1, Singleband<IND> > radii, int nbins,
+                                       NumpyArray<3, Multiband<T> > predictions,
+                                       NumpyArray<3, Multiband<T> > res)
+{
+    //assume that the result array is allocated outside
+    
+    {
+        PyAllowThreads _pythread;
+        contextHistogram2D(radii, nbins, predictions, res);
+    }
+    return res;
+}
+
 
 void defineContext() {
     using namespace python;
@@ -234,6 +248,11 @@ void defineContext() {
 
     def("intHistogram2D",registerConverters(&pythonIntegralHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4));
                                                                                                     //arg("out")=python::object()));
+    def("contextHistogram2D", registerConverters(&pythonContextHistogram2D<int, float>), (arg("radii"), arg("nbins"), arg("predictions"),
+                                                                                         arg("out")=python::object()));
+    def("contextHistogram2D", registerConverters(&pythonContextHistogram2D<unsigned int, float>), (arg("radii"), arg("nbins"), arg("predictions"),
+                                                                                         arg("out")=python::object()));
+
 }
 //} //namespace vigra
 
