@@ -10,7 +10,7 @@ from lazyflow.operators.classifierOperators import *
 from lazyflow.operators.generic import *
 
 
-from lazyflow import operators
+#from lazyflow import operators
 
 from OperatorCollection import *
 
@@ -157,5 +157,5 @@ def operatorTest(operator_name, sync = False, cache = False):
     
     g.finalize()
 
-    
-operatorTest("OpSwapAxes", sync = False, cache = False)
+if __name__=="__main__":    
+    operatorTest("OpSwapAxes", sync = False, cache = False)

@@ -104,38 +104,38 @@ class OpArrayShifter2(Operator):
     def dtype(self):
         return self.outputs["Output"]._dtype
 
+if __name__=="__main__":
+    #create new Graphobject
+    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
 
-#create new Graphobject
-g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
+    #create Image Reader       
+    vimageReader = OpImageReader(g)
+    #read an image 
+    vimageReader.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/tests/ostrich.jpg")
 
-#create Image Reader       
-vimageReader = OpImageReader(g)
-#read an image 
-vimageReader.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/tests/ostrich.jpg")
+    #create Shifter_Operator with Graph-Objekt as argument
+    shifter = OpArrayShifter2(g)
 
-#create Shifter_Operator with Graph-Objekt as argument
-shifter = OpArrayShifter2(g)
+    #connect Shifter-Input with Image Reader Output
+    #because the Operator has only one Input Slot in this example,
+    #the "notifyConnectAll" method is executed
+    shifter.inputs["Input"].connect(vimageReader.outputs["Image"])
 
-#connect Shifter-Input with Image Reader Output
-#because the Operator has only one Input Slot in this example,
-#the "notifyConnectAll" method is executed
-shifter.inputs["Input"].connect(vimageReader.outputs["Image"])
+    #shifter.outputs["Output"][:]returns an "GetItemWriterObject" object.
+    #its method "allocate" will be executed, this method call the "writeInto"
+    #method which calls the "fireRequest" method of the, in this case, 
+    #"OutputSlot" object which calls another method in "OutputSlot and finally
+    #the "getOutSlot" method of our operator.
+    #The wait() function blocks other activities and waits till the results
+    # of the requested Slot are calculated and stored in the result area.
+    shifter.outputs["Output"][:].allocate().wait()
 
-#shifter.outputs["Output"][:]returns an "GetItemWriterObject" object.
-#its method "allocate" will be executed, this method call the "writeInto"
-#method which calls the "fireRequest" method of the, in this case, 
-#"OutputSlot" object which calls another method in "OutputSlot and finally
-#the "getOutSlot" method of our operator.
-#The wait() function blocks other activities and waits till the results
-# of the requested Slot are calculated and stored in the result area.
-shifter.outputs["Output"][:].allocate().wait()
+    #create Image Writer
+    vimageWriter = OpImageWriter(g)
+    #set writing path
+    vimageWriter.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/shift_result.jpg")
+    #connect Writer-Input with Shifter Operator-Output
+    vimageWriter.inputs["Image"].connect(shifter.outputs["Output"])
 
-#create Image Writer
-vimageWriter = OpImageWriter(g)
-#set writing path
-vimageWriter.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/shift_result.jpg")
-#connect Writer-Input with Shifter Operator-Output
-vimageWriter.inputs["Image"].connect(shifter.outputs["Output"])
-
-#write shifted image on disk
-g.finalize()
+    #write shifted image on disk
+    g.finalize()

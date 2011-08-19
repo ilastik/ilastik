@@ -38,14 +38,15 @@ class OpTrainRandomForest(Operator):
         
         featMatrix=[]
         labelsMatrix=[]
-
         for i,labels in enumerate(self.inputs["Labels"]):
             if labels.shape is not None:
                 labels=labels[:].allocate().wait()
+                
                 indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
                 #Maybe later request only part of the region?
+                
                 image=self.inputs["Images"][i][:].allocate().wait()
-                #print "OpTrainRandomForest:", image.shape, labels.shape
+                print "OpTrainRandomForest:", image.shape, labels.shape
                 
                 features=image[indexes]
                 labels=labels[indexes]
@@ -56,6 +57,9 @@ class OpTrainRandomForest(Operator):
 
         featMatrix=numpy.concatenate(featMatrix,axis=0)
         labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
+        
+        print "featMatrix.shape:", featMatrix.shape
+        print "labelsMatrix.shape:", labelsMatrix.shape
         
         RF=vigra.learning.RandomForest(100)        
         try:
@@ -94,7 +98,8 @@ class OpPredictRandomForest(Operator):
     
     def notifyConnectAll(self):
         inputSlot = self.inputs["Image"]    
-        nlabels=self.inputs["LabelsCount"].value        
+        nlabels=self.inputs["LabelsCount"].value
+        
         
         """
         self.outputs["PMaps"].resize(len(inputSlot)) #clearAllSlots()
@@ -110,8 +115,9 @@ class OpPredictRandomForest(Operator):
         islot=self.inputs["Image"]
 
         oslot._dtype = numpy.float32
-        oslot._shape = islot.shape[:-1]+(nlabels,)
+        
         oslot._axistags = islot.axistags
+        oslot._shape = islot.shape[:-1]+(nlabels,)
     """    
     def notifySubConnect(self, slots, indexes):
         print "OpClassifier notifySubConnect"

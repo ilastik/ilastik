@@ -90,40 +90,40 @@ class OpSwapAxes(Operator):
     def dtype(self):
         return self.outputs["Output"]._dtype
 
+if __name__=="__main__":
+    #create new Graphobject
+    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
 
-#create new Graphobject
-g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
+    #create ImageReader-Operator
+    vimageReader = OpImageReader(g)
+    #read an image 
+    vimageReader.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/tests/ostrich.jpg")
 
-#create ImageReader-Operator
-vimageReader = OpImageReader(g)
-#read an image 
-vimageReader.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/tests/ostrich.jpg")
+    #create SwapAxes_Operator with Graph-Objekt as argument
+    swapaxes = OpSwapAxes(g)
 
-#create SwapAxes_Operator with Graph-Objekt as argument
-swapaxes = OpSwapAxes(g)
+    #connect SwapAxes-Input with Image Reader Output
+    swapaxes.inputs["Input"].connect(vimageReader.outputs["Image"])
+    #set values for the InputSlots, after this, the "notifyConnectAll" method is executed
+    #because now all the InputSlot are set or connected
+    swapaxes.inputs["Axis1"].setValue(0)
+    swapaxes.inputs["Axis2"].setValue(1)
 
-#connect SwapAxes-Input with Image Reader Output
-swapaxes.inputs["Input"].connect(vimageReader.outputs["Image"])
-#set values for the InputSlots, after this, the "notifyConnectAll" method is executed
-#because now all the InputSlot are set or connected
-swapaxes.inputs["Axis1"].setValue(0)
-swapaxes.inputs["Axis2"].setValue(1)
+    #swapaxes.outputs["Output"][:]returns an "GetItemWriterObject" object.
+    #its method "allocate" will be executed, this method call the "writeInto"
+    #method which calls the "fireRequest" method of the, in this case, 
+    #"OutputSlot" object which calls another method in "OutputSlot and finally
+    #the "getOutSlot" method of our operator.
+    #The wait() function blocks other activities and waits till the results
+    # of the requested Slot are calculated and stored in the result area.
+    swapaxes.outputs["Output"][:].allocate().wait()
 
-#swapaxes.outputs["Output"][:]returns an "GetItemWriterObject" object.
-#its method "allocate" will be executed, this method call the "writeInto"
-#method which calls the "fireRequest" method of the, in this case, 
-#"OutputSlot" object which calls another method in "OutputSlot and finally
-#the "getOutSlot" method of our operator.
-#The wait() function blocks other activities and waits till the results
-# of the requested Slot are calculated and stored in the result area.
-swapaxes.outputs["Output"][:].allocate().wait()
+    #create Image Writer
+    vimageWriter = OpImageWriter(g)
+    #set writing path
+    vimageWriter.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/swapaxes_result.jpg")
+    #connect Writer-Input with SwapAxes Operator-Output
+    vimageWriter.inputs["Image"].connect(swapaxes.outputs["Output"])
 
-#create Image Writer
-vimageWriter = OpImageWriter(g)
-#set writing path
-vimageWriter.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/swapaxes_result.jpg")
-#connect Writer-Input with SwapAxes Operator-Output
-vimageWriter.inputs["Image"].connect(swapaxes.outputs["Output"])
-
-#write image on disk
-g.finalize()
+    #write image on disk
+    g.finalize()
