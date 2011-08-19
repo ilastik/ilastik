@@ -177,7 +177,7 @@ class OpRequestSplitter(OpArrayPiper):
         
         diff = stop-start
         
-        splitDim = numpy.argmax(diff)
+        splitDim = numpy.argmax(diff[:-1])
         splitPos = start[splitDim] + diff[splitDim] / 2
         
         stop2 = stop.copy()
@@ -223,8 +223,8 @@ class OpArrayCache(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("blockShape")]
     outputSlots = [OutputSlot("Output")]    
     
-    def __init__(self, graph, blockShape = None, immediateAlloc = True):
-        OpArrayPiper.__init__(self, graph)
+    def __init__(self, graph, register = True, blockShape = None, immediateAlloc = True):
+        OpArrayPiper.__init__(self, graph, register = register)
         if blockShape == None:
             blockShape = 64
         self._origBlockShape = blockShape

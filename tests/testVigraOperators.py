@@ -46,14 +46,14 @@ for op in operators:
 
 g1 = OpHessianOfGaussian(graph)
 g1.inputs["Input"].connect(ostrichProvider.outputs["Image"])
-g1.inputs["sigma"].setValue(float(3)) #connect(sigmaProvider)
+g1.inputs["sigma"].setValue(float(30)) #connect(sigmaProvider)
 
 print "JJJJJJJJJJ1", g1.outputs["Output"].shape
 
 
 g4 = OpGaussianSmoothing(graph)
 g4.inputs["Input"].connect(ostrichProvider.outputs["Image"])
-g4.inputs["sigma"].setValue(float(3)) #connect(sigmaProvider)
+g4.inputs["sigma"].setValue(float(30)) #connect(sigmaProvider)
 
 #g4.outputs["Output"][:,:,:].allocate().wait()
 
@@ -71,7 +71,7 @@ print "JJJJJJJJJJ2", g2.outputs["Outputs"][1].shape
 
 g3 = OpGaussianSmoothing(graph)
 g3.inputs["Input"].connect(g2.outputs["Outputs"])
-g3.inputs["sigma"].setValue(float(3)) #connect(sigmaProvider)
+g3.inputs["sigma"].setValue(float(30)) #connect(sigmaProvider)
 
 g3.outputs["Output"][0][:,:,:].allocate().wait()
 
@@ -87,6 +87,20 @@ for i in range(1,2):
     assert (r1[:] == r2[:]).all(), i
 
 
+requests = []
+for i in range(100):
+    r = g3.outputs["Output"][0][:,:,:].allocate()
+    requests.append(r)
+    
+import gc
 
+i= 0
+while len(requests) > 0:
+    r = requests.pop(0)
+    r.wait()
+    del r
+    gc.collect()
+    print "request", i, "finished"
+    i += 1
 
 graph.finalize()
