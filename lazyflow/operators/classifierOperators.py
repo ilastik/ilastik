@@ -38,34 +38,14 @@ class OpTrainRandomForest(Operator):
         
         featMatrix=[]
         labelsMatrix=[]
-        print "outslot of training operator", len(self.inputs["Labels"])
         for i,labels in enumerate(self.inputs["Labels"]):
-            print "labels...", i, labels.shape
             if labels.shape is not None:
-                print "labels processing..."
                 labels=labels[:].allocate().wait()
-                print "labels read"
                 
                 indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
-                #print "checking number of labels:"
-                #tmpind = numpy.where(labels==1)
-                #print "label1: ", len(tmpind[0])
-                #tmpind = numpy.where(labels==2)
-                #print "label1: ", len(tmpind[0])
-                #tmpind = numpy.where(labels==3)
-                #print "label1: ", len(tmpind[0])
-                #tmpind = numpy.where(labels==4)
-                #print "label1: ", len(tmpind[0])
-                #tmpind = numpy.where(labels==5)
-                #print "label1: ", len(tmpind[0])
-                
-                
-                #indexes=numpy.nonzero(labels.view(numpy.ndarray))
-                print "length of index array: ", len(indexes), len(indexes[0])
                 #Maybe later request only part of the region?
                 
                 image=self.inputs["Images"][i][:].allocate().wait()
-                print "features read"
                 print "OpTrainRandomForest:", image.shape, labels.shape
                 
                 features=image[indexes]
@@ -133,8 +113,6 @@ class OpPredictRandomForest(Operator):
         """
         oslot = self.outputs["PMaps"]
         islot=self.inputs["Image"]
-
-        print "OPPREDICTRANDOMFOREST: ", nlabels, islot.shape
 
         oslot._dtype = numpy.float32
         
