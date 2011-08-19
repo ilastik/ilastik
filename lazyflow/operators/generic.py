@@ -270,4 +270,46 @@ class OpSubRegion(Operator):
         
         resultArea[:] = res.squeeze()[:]
         
+ 
+ 
+ 
+class OpMultiArrayMerger(Operator):
+    inputSlots = [MultiInputSlot("Inputs"),InputSlot('MergingFunction')]
+    outputSlots = [OutputSlot("Output")]
+
+    name = "Merge Multi Arrays based on a variadic merging function"
+    category = "Misc"
+    
+    def notifyConnectAll(self):
+        
+        shape=self.inputs["Inputs"][0].shape
+        axistags=copy.copy(self.inputs["Inputs"][0].axistags)
+        
+        
+        self.outputs["Output"]._shape = shape
+        self.outputs["Output"]._axistags = axistags
+        self.outputs["Output"]._dtype = self.inputs["Inputs"][0].dtype
+        
+        
+        
+        for input in self.inputs["Inputs"]:
+            assert input.shape==shape, "Only possible merging consistent shapes"
+            assert input.axistags==axistags, "Only possible merging same axistags"
+                       
+        
+            
+    def getOutSlot(self, slot, key, result):
+        
+        requests=[]
+        for input in self.inputs["Inputs"]:
+            requests.append(input[key].allocate())
+        
+        data=[]
+        for req in requests:
+            data.append(req.wait())
+        
+        fun=self.inputs["MergingFunction"].value
+        
+        result[:]=fun(data)
+        
         
