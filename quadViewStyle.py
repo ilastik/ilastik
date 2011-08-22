@@ -392,6 +392,9 @@ class imageView2D(QGraphicsView):
     grayScaleChanged = pyqtSignal(int)
     def __init__(self):
         QGraphicsView.__init__(self)
+        
+        self._isRubberBandZoom = False
+        
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
         self.layout.setContentsMargins(0, 0, 0, 0)  
@@ -416,19 +419,34 @@ class imageView2D(QGraphicsView):
         self.grscene.removeItem(self.pixmapImage)
         pixmapImage = QPixmap(qimage2ndarray.array2qimage((numpy.random.rand(400,400)*256).astype(numpy.uint8)))
         self.pixmapImage = self.grscene.addPixmap(pixmapImage)
-        
-        
+    
+    
     def keyPressEvent(self, event):
         cursor = QCursor()
         mousePosition = cursor.pos()
         if event.key() == Qt.Key_Left and self.underMouse():
             cursor.setPos(mousePosition.x()-1, mousePosition.y())
-        if event.key() == Qt.Key_Right and self.underMouse():
+        elif event.key() == Qt.Key_Right and self.underMouse():
             cursor.setPos(mousePosition.x()+1, mousePosition.y())
-        if event.key() == Qt.Key_Up and self.underMouse():
+        elif event.key() == Qt.Key_Up and self.underMouse():
             cursor.setPos(mousePosition.x(), mousePosition.y()-1)
-        if event.key() == Qt.Key_Down and self.underMouse():
+        elif event.key() == Qt.Key_Down and self.underMouse():
             cursor.setPos(mousePosition.x(), mousePosition.y()+1)
+        #todo testing
+        elif event.key() == Qt.Key_S and self.underMouse():
+            self.fitInView(self.sceneRect(), Qt.KeepAspectRatio)
+        elif event.key() == Qt.Key_D and self.underMouse():
+            self.centerOn(self.sceneRect().width()/2 + self.sceneRect().x(), self.sceneRect().height()/2 + self.sceneRect().y())
+        elif event.key() == Qt.Key_A and self.underMouse(): 
+            self.resetTransform()
+        elif event.key() == Qt.Key_F and self.underMouse() and event.isAutoRepeat(): 
+            self._isRubberBandZoom = True
+            
+#    def keyReleaseEvent(self, event):
+#        if event.key() == Qt.Key_F:
+#            self._isRubberBandZoom = False
+        
+            
     
     def eventFilter(self, object, event):
         if event.type() == QEvent.MouseMove and self.underMouse():
@@ -438,15 +456,28 @@ class imageView2D(QGraphicsView):
             gray = random.randrange(255)
             self.mouseCoordsChanged.emit(x, y, z)
             self.grayScaleChanged.emit(gray)
+            
+        if(event.type()==QEvent.MouseButtonPress):
+            if event.button() == Qt.LeftButton and self._isRubberBandZoom:
+                self.setDragMode(QGraphicsView.RubberBandDrag)
+                self._rubberBandStart = event.pos()
+        if(event.type()==QEvent.MouseButtonRelease):
+            if event.button() == Qt.LeftButton and self._isRubberBandZoom:
+                self.setDragMode(QGraphicsView.ScrollHandDrag)
+                rect = QRectF(self.mapToScene(self._rubberBandStart), self.mapToScene(event.pos()))
+                self.fitInView(rect, Qt.KeepAspectRatio)
+                self._isRubberBandZoom = False
+        if event.type() == QEvent.MouseMove and self.underMouse():
+            x = random.randrange(500)
+            y = random.randrange(9999)
+            z = random.randrange(100)
+            gray = random.randrange(255)
+            self.mouseCoordsChanged.emit(x, y, z)
+            self.grayScaleChanged.emit(gray)
+            
+                
         return False
-#    def mouseMoveEvent(self, event):
-#        if self.underMouse():
-#            x = random.randrange(500)
-#            y = random.randrange(9999)
-#            z = random.randrange(100)
-#            gray = random.randrange(255)
-#            self.mouseCoordsChanged.emit(x, y, z)
-#            self.grayScaleChanged.emit(gray)
+
             
 class GraphicsViewWindow(QWidget):
     onCloseClick = pyqtSignal()
