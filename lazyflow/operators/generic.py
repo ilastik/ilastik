@@ -339,7 +339,7 @@ class OpPixelOperator(Operator):
         matrix = self.inputs["Input"][key].allocate().wait()
         matrix = self.function(matrix)
         
-        result = matrix[:]
+        result[:] = matrix[:]
 
 
     def notifyDirty(selfut,slot,key):
