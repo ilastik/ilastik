@@ -90,14 +90,13 @@ if __name__ == "__main__":
             red   = QColor(255,0,0)
             green = QColor(0,255,0)
             black = QColor(0,0,0,0)
+            
             self.labellayer = ColortableLayer(labelsrc, colorTable = [black.rgba(), red.rgba(), green.rgba()] )
             self.labellayer.name = "Labels"
             self.layerstack.append(self.labellayer)        
             
-            
-            
             self.editor = VolumeEditor(shape, self.layerstack, labelsink=labelsrc, useGL=useGL)
-            #self.editor = VolumeEditor(shape, self.layerstack, useGL=useGL)
+            
             self.editor.setDrawingEnabled(True)
 
             self.widget = VolumeEditorWidget( self.editor )
@@ -105,51 +104,29 @@ if __name__ == "__main__":
             self.editor.posModel.slicingPos = [5,10,2]
            
             self.fitToViewButton   = QPushButton("fitToView")
-            self.layerWidgetButton = QPushButton("Layers")
-            self.layerWidgetButton.setCheckable(True)
+            #self.layerWidgetButton = QPushButton("Layers")
+            #self.layerWidgetButton.setCheckable(True)
             
+            
+            #add label stuff
             self.labelList = LabelListView()
             
             model = LabelListModel([Label("Label 1", red), Label("Label 2", green)])
             self.labelList.setModel(model)
-            
-
- 
-            #self.labelList.selectionModel().selectionChanged.connect(PrintSomething)
-            #self.connect(self.labelList.selectionModel(), QtCore.SIGNAL('selectionChanged()'), PrintSomething)
             self.labelList.clicked.connect(self.switchLabel)
             self.labelList.doubleClicked.connect(self.switchColor)
             
             
             
-            h = QHBoxLayout()
-            h.addWidget(self.widget)
-            
-            v = QVBoxLayout()
-            v.addWidget(self.fitToViewButton)
-            v.addWidget(self.layerWidgetButton)
-            v.addWidget(self.labelList)
-            v.addStretch()
-            
-            h.addLayout(v)
-            
-            self.centralWidget = QWidget()
-            self.centralWidget.setLayout(h)
-            self.setCentralWidget(self.centralWidget)
-
-            def fit():
-                for i in range(3):
-                    self.editor.imageViews[i].changeViewPort(QRectF(0,0,30,30))
-            self.fitToViewButton.toggled.connect(fit)       
-
+            #the layer stuff is now here
             #show rudimentary layer widget
             model = self.editor.layerStack
             ######################################################################
-            view = LayerWidget(model)
+            self.view = LayerWidget(model)
 
-            w = QWidget()
-            lh = QHBoxLayout(w)
-            lh.addWidget(view)
+            
+            lh = QHBoxLayout()
+            lh.addWidget(self.view)
             
             up   = QPushButton('Up')
             down = QPushButton('Down')
@@ -163,7 +140,7 @@ if __name__ == "__main__":
             lv.addWidget(delete)
             lv.addWidget(add)
             
-            w.setGeometry(100, 100, 800,600)
+            #w.setGeometry(100, 100, 800,600)
             
             up.clicked.connect(model.moveSelectedUp)
             model.canMoveSelectedUp.connect(up.setEnabled)
@@ -172,6 +149,30 @@ if __name__ == "__main__":
             delete.clicked.connect(model.deleteSelected)
             model.canDeleteSelected.connect(delete.setEnabled)
 
+                        
+            
+            h = QHBoxLayout()
+            h.addWidget(self.widget)
+            
+            v = QVBoxLayout()
+            v.addWidget(self.fitToViewButton)
+            #v.addWidget(self.layerWidgetButton)
+            v.addWidget(self.labelList)
+            v.addLayout(lh)
+            v.addStretch()
+            
+            h.addLayout(v)
+            
+            self.centralWidget = QWidget()
+            self.centralWidget.setLayout(h)
+            self.setCentralWidget(self.centralWidget)
+
+            def fit():
+                for i in range(3):
+                    self.editor.imageViews[i].changeViewPort(QRectF(0,0,30,30))
+            self.fitToViewButton.toggled.connect(fit)       
+
+            
 
 
  
@@ -185,13 +186,13 @@ if __name__ == "__main__":
             add.clicked.connect(addConstantLayer)
             ######################################################################
             
-            def layers(toggled):
-                if toggled:
-                    w.show()
-                    w.raise_()
-                else:
-                    w.hide()
-            self.layerWidgetButton.toggled.connect(layers)
+#            def layers(toggled):
+#                if toggled:
+#                    w.show()
+#                    w.raise_()
+#                else:
+#                    w.hide()
+#            self.layerWidgetButton.toggled.connect(layers)
     
         
         def switchLabel(self, modelIndex):

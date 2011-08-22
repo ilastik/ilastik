@@ -75,3 +75,5 @@ class LabelListModel(QAbstractTableModel):
         self._labels.remove(value)     
         self.endRemoveRows()
         return True
+    
+    

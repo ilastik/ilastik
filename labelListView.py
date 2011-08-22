@@ -16,6 +16,7 @@ class LabelListView(QTableView):
         QTableView.__init__(self, parent)
         self.clicked.connect(self.tableViewCellClicked)
         self.doubleClicked.connect(self.tableViewCellDoubleClicked)
+       
         self.verticalHeader().sectionMoved.connect(self.rowMovedTest)
         
     def tableViewCellDoubleClicked(self, modelIndex):
@@ -35,7 +36,8 @@ class LabelListView(QTableView):
         self.setColumnWidth(2, 30)
         self.horizontalHeader().hide()
         self.verticalHeader().hide()
-        self.setSelectionMode(QAbstractItemView.NoSelection)
+        #WTF? Why no selection?
+        self.setSelectionMode(QAbstractItemView.SingleSelection)
     
     def setModel(self, model):
         QTableView.setModel(self, model)
@@ -68,8 +70,7 @@ class LabelListView(QTableView):
     def tableViewCellClicked(self, modelIndex):
         if modelIndex.column() == 2:
             self.model().removeRow(modelIndex.row())
-            
-
+    
 
 if __name__ == '__main__':
     import numpy
