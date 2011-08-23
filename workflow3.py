@@ -25,6 +25,8 @@ from labelListModel import LabelListModel
 
 from PyQt4 import QtCore, QtGui, uic
 
+import  numpy
+
 
 class Main(QMainWindow):
      def __init__(self, useGL, argv):
@@ -33,7 +35,6 @@ class Main(QMainWindow):
          
      def initUic(self):
         #get the absolute path of the 'ilastik' module
-        
         uic.loadUi("designerElements/MainWindow.ui", self) 
         fn = os.path.split(os.path.abspath(__file__))[0] +"/5d.npy"
         raw = np.load(fn)
@@ -51,29 +52,44 @@ class Main(QMainWindow):
         layer2.name = "Nuclei"
         layer2.opacity = 0.5
         
-     
+        model = LabelListModel()
+        self.labelListView.setModel(model)
+        self.labelListModel=model
+        
+
         
         self.layerstack.append(layer2)
         
         shape = raw.shape
         labelsrc = self.createLabelSource(shape)
-        red   = QColor(255,0,0)
-        green = QColor(0,255,0)
-        black = QColor(0,0,0,0)
         
-        self.labellayer = ColortableLayer(labelsrc, colorTable = [black.rgba(), red.rgba(), green.rgba()] )
+        transparent = QColor(0,0,0,0)
+        self.labellayer = ColortableLayer(labelsrc, colorTable = [transparent.rgba()] )
         self.labellayer.name = "Labels"
         self.layerstack.append(self.labellayer)        
         
-        
+        self.labelListView.clicked.connect(self.switchLabel)
+        self.labelListView.doubleClicked.connect(self.switchColor)
         
         self.editor = VolumeEditor(shape, self.layerstack, labelsink=labelsrc, useGL=useGL)  
         self.editor.setDrawingEnabled(True)
         
         self.volumeEditorWidget.init(self.editor)
         model = self.editor.layerStack
-        self.layerWidget.init(model)        
-     
+        self.layerWidget.init(model)
+        
+        self.UpButton.clicked.connect(model.moveSelectedUp)
+        model.canMoveSelectedUp.connect(self.UpButton.setEnabled)
+        self.DownButton.clicked.connect(model.moveSelectedDown)
+        model.canMoveSelectedDown.connect(self.DownButton.setEnabled)
+        self.DeleteButton.clicked.connect(model.deleteSelected)
+        model.canDeleteSelected.connect(self.DeleteButton.setEnabled)        
+        
+        
+        #connections
+        self.AddLabelButton.clicked.connect(self.addLabel)
+        
+        
      def switchLabel(self, modelIndex):
          self.editor.brushingModel.setDrawnNumber(modelIndex.row()+1)
          
@@ -81,10 +97,16 @@ class Main(QMainWindow):
          if modelIndex.column()>0:
              return
          #FIXME: we shouldn't pass the role like that, some object should know it
-         newcolor = self.labelList.model().data(modelIndex, Qt.EditRole)
+         newcolor = self.labelListView.model().data(modelIndex, Qt.EditRole)
+         # +1 because the first entry of the color table is transparent
          self.labellayer.colorTable[modelIndex.row()+1]=newcolor.rgba()
-
+         self.editor.invalidateAllSlices()
      
+     def addLabel(self):
+         color = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
+         self.labellayer.colorTable.append(color.rgba())
+         self.labelListModel.insertRow(self.labelListModel.rowCount(), Label("Label %d" % (self.labelListModel.rowCount() + 1), color))
+        
      def createLabelSource(self, shape):
          from lazyflow import operators
          g = Graph()
