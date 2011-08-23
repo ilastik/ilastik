@@ -25,6 +25,8 @@ from labelListModel import LabelListModel
 
 from PyQt4 import QtCore, QtGui, uic
 
+from featureDlg import *
+
 import  numpy
 
 
@@ -34,34 +36,120 @@ class Main(QMainWindow):
          self.initUic()
          
      def initUic(self):
+         
+        self.g=g=Graph() 
+         
         #get the absolute path of the 'ilastik' module
         uic.loadUi("designerElements/MainWindow.ui", self) 
+        
+        self.layerstack = LayerStackModel()
+        
         fn = os.path.split(os.path.abspath(__file__))[0] +"/5d.npy"
         raw = np.load(fn)
-
-        self.layerstack = LayerStackModel()
-        useGL=False
-        nucleisrc = ArraySource(raw[...,0:1]/20)
-        membranesrc = ArraySource(raw[...,0:1]/20)
         
-        layer1 = GrayscaleLayer( membranesrc )
-        layer1.name = "Membranes"
+        op1 = OpDataProvider(g, raw[:,:,:,:,0:1]/20)
+        op2 = OpDelay(g, 0.00000)
+        op2.inputs["Input"].connect(op1.outputs["Data"])
+        nucleisrc = LazyflowSource(op2.outputs["Output"])
+        op3 = OpDataProvider(g, raw[:,:,:,:,1:2]/10)
+        op4 = OpDelay(g, 0.00000)
+        op4.inputs["Input"].connect(op3.outputs["Data"])
+        membranesrc = LazyflowSource(op4.outputs["Output"])
+        
+        tint = np.zeros(shape=raw.shape, dtype=np.uint8)
+        tint[:] = 255
+        tintsrc = ArraySource(tint)
+        
+        #new shit
+        from lazyflow import operators
+        opLabels = operators.OpSparseLabelArray(g)                                
+        opLabels.inputs["shape"].setValue(raw.shape[:-1] + (1,))
+        opLabels.inputs["eraser"].setValue(100)                
+        opLabels.inputs["Input"][0,0,0,0,0] = 1                    
+        opLabels.inputs["Input"][0,0,0,1,0] = 2                    
+        
+        labelsrc = LazyflowSinkSource(opLabels, opLabels.outputs["Output"], opLabels.inputs["Input"])
+        
+        layer1 = RGBALayer( green = membranesrc, red = nucleisrc )
+        layer1.name = "Membranes/Nuclei"
+        
+        
         self.layerstack.append(layer1)
         
-        layer2 = RGBALayer( red = nucleisrc )
-        layer2.name = "Nuclei"
-        layer2.opacity = 0.5
+        
+        opImage  = operators.OpArrayPiper(g)
+        opImage.inputs["Input"].setValue(raw[:,:,:,:,0:1]/20)
+        opImage2  = operators.OpArrayPiper(g)
+        opImage2.inputs["Input"].setValue(raw[:,:,:,:,1:2]/10)
+        
+        opImageList = operators.Op5ToMulti(g)    
+        opImageList.inputs["Input0"].connect(opImage.outputs["Output"])
+        opImageList.inputs["Input1"].connect(opImage2.outputs["Output"])
+        
+        
+        opFeatureList = operators.Op5ToMulti(g)    
+        opFeatureList.inputs["Input0"].connect(opImageList.outputs["Outputs"])
+        
+        #                
+        stacker=operators.OpMultiArrayStacker(g)
+        #                
+        #                opMulti = operators.Op20ToMulti(g)    
+        #                opMulti.inputs["Input00"].connect(opG.outputs["Output"])
+        stacker.inputs["Images"].connect(opFeatureList.outputs["Outputs"])
+        stacker.inputs["AxisFlag"].setValue('c')
+        stacker.inputs["AxisIndex"].setValue(4)
+        
+        ################## Training
+        opMultiL = operators.Op5ToMulti(g)    
+        
+        opMultiL.inputs["Input0"].connect(opLabels.outputs["Output"])
+        
+        opTrain = operators.OpTrainRandomForest(g)
+        opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
+        opTrain.inputs['Images'].connect(stacker.outputs["Output"])
+        opTrain.inputs['fixClassifier'].setValue(False)                
+        
+        opClassifierCache = operators.OpArrayCache(g)
+        opClassifierCache.inputs["Input"].connect(opTrain.outputs['Classifier'])
+        
+        ################## Prediction
+        opPredict=operators.OpPredictRandomForest(g)
+        opPredict.inputs['LabelsCount'].setValue(2)
+        opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output'])    
+        opPredict.inputs['Image'].connect(stacker.outputs['Output'])            
+        
+        
+        
+        selector=operators.OpSingleChannelSelector(g)
+        selector.inputs["Input"].connect(opPredict.outputs['PMaps'])
+        selector.inputs["Index"].setValue(1)
+        
+        opSelCache = operators.OpArrayCache(g)
+        opSelCache.inputs["blockShape"].setValue((1,5,5,5,1))
+        opSelCache.inputs["Input"].connect(selector.outputs["Output"])                
+        
+        predictsrc = LazyflowSource(opSelCache.outputs["Output"][0])
+        
+        layer2 = GrayscaleLayer( predictsrc, normalize = (0.0,1.0) )
+        layer2.name = "Prediction"
+        self.layerstack.append( layer2 )
+                      
+        source = nucleisrc        
+        
+        
+        
+        
+        
+        
+
+        
+        useGL=False
         
         model = LabelListModel()
         self.labelListView.setModel(model)
         self.labelListModel=model
         
-
-        
-        self.layerstack.append(layer2)
-        
         shape = raw.shape
-        labelsrc = self.createLabelSource(shape)
         
         transparent = QColor(0,0,0,0)
         self.labellayer = ColortableLayer(labelsrc, colorTable = [transparent.rgba()] )
@@ -89,7 +177,17 @@ class Main(QMainWindow):
         #connections
         self.AddLabelButton.clicked.connect(self.addLabel)
         
+        self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
         
+     def onFeatureButtonClicked(self):
+         ex2 = FeatureDlg()
+         ex2.createFeatureTable({"Color": [SimpleObject("Banananananaana")], "Edge": [SimpleObject("Mango"), SimpleObject("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
+         ex2.setWindowTitle("ex2")
+         ex2.setImageToPreView((numpy.random.rand(100,100)*256).astype(numpy.uint8))
+         
+         
+         self.featureDlg=ex2
+         ex2.show()     
      def switchLabel(self, modelIndex):
          self.editor.brushingModel.setDrawnNumber(modelIndex.row()+1)
          
@@ -108,14 +206,12 @@ class Main(QMainWindow):
          self.labelListModel.insertRow(self.labelListModel.rowCount(), Label("Label %d" % (self.labelListModel.rowCount() + 1), color))
         
      def createLabelSource(self, shape):
+         pass
          from lazyflow import operators
-         g = Graph()
-         self.g=g
-         opLabels = operators.OpSparseLabelArray(g)                                
-         opLabels.inputs["shape"].setValue(shape[:-1] + (1,))
-         opLabels.inputs["eraser"].setValue(100)                
-         #opLabels.inputs["Input"][0,0,0,0,0] = 1                    
-         #opLabels.inputs["Input"][0,0,0,1,0] = 2                    
+               
+         
+         
+         
          
          labelsrc = LazyflowSinkSource(opLabels, opLabels.outputs["Output"], opLabels.inputs["Input"])
          return labelsrc
