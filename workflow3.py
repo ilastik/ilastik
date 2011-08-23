@@ -47,14 +47,7 @@ class Main(QMainWindow):
         fn = os.path.split(os.path.abspath(__file__))[0] +"/5d.npy"
         raw = np.load(fn)
         
-        op1 = OpDataProvider(g, raw[:,:,:,:,0:1]/20)
-        op2 = OpDelay(g, 0.00000)
-        op2.inputs["Input"].connect(op1.outputs["Data"])
-        nucleisrc = LazyflowSource(op2.outputs["Output"])
-        op3 = OpDataProvider(g, raw[:,:,:,:,1:2]/10)
-        op4 = OpDelay(g, 0.00000)
-        op4.inputs["Input"].connect(op3.outputs["Data"])
-        membranesrc = LazyflowSource(op4.outputs["Output"])
+        
         
         tint = np.zeros(shape=raw.shape, dtype=np.uint8)
         tint[:] = 255
@@ -70,6 +63,17 @@ class Main(QMainWindow):
         
         labelsrc = LazyflowSinkSource(opLabels, opLabels.outputs["Output"], opLabels.inputs["Input"])
         
+        
+        
+        opImage  = operators.OpArrayPiper(g)
+        opImage.inputs["Input"].setValue(raw[:,:,:,:,0:1]/20)
+        opImage2  = operators.OpArrayPiper(g)
+        opImage2.inputs["Input"].setValue(raw[:,:,:,:,1:2]/10)
+        
+        nucleisrc = LazyflowSource(opImage.outputs["Output"])
+        membranesrc = LazyflowSource(opImage2.outputs["Output"])
+        
+        
         layer1 = RGBALayer( green = membranesrc, red = nucleisrc )
         layer1.name = "Membranes/Nuclei"
         
@@ -77,10 +81,7 @@ class Main(QMainWindow):
         self.layerstack.append(layer1)
         
         
-        opImage  = operators.OpArrayPiper(g)
-        opImage.inputs["Input"].setValue(raw[:,:,:,:,0:1]/20)
-        opImage2  = operators.OpArrayPiper(g)
-        opImage2.inputs["Input"].setValue(raw[:,:,:,:,1:2]/10)
+        
         
         opImageList = operators.Op5ToMulti(g)    
         opImageList.inputs["Input0"].connect(opImage.outputs["Output"])
