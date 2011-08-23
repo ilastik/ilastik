@@ -35,6 +35,7 @@
 #    e65f5bad2cd9fdaefbe7ceaafa0cce0e071b56e4
 
 if __name__ == "__main__":
+    
     #make the program quit on Ctrl+C
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -60,7 +61,7 @@ if __name__ == "__main__":
     from labelListView import LabelListView, Label
     from labelListModel import LabelListModel
     
-    from PyQt4 import QtCore
+    from PyQt4 import QtCore, QtGui
 
     app = QApplication(sys.argv)
 
@@ -70,6 +71,8 @@ if __name__ == "__main__":
             
             self.layerstack = LayerStackModel()
             
+              
+       
             fn = os.path.split(os.path.abspath(__file__))[0] +"/5d.npy"
             raw = np.load(fn)
 
@@ -83,6 +86,9 @@ if __name__ == "__main__":
             layer2 = RGBALayer( red = nucleisrc )
             layer2.name = "Nuclei"
             layer2.opacity = 0.5
+            
+         
+            
             self.layerstack.append(layer2)
             
             shape = raw.shape
@@ -95,15 +101,23 @@ if __name__ == "__main__":
             self.labellayer.name = "Labels"
             self.layerstack.append(self.labellayer)        
             
-            self.editor = VolumeEditor(shape, self.layerstack, labelsink=labelsrc, useGL=useGL)
             
+            
+            self.editor = VolumeEditor(shape, self.layerstack, labelsink=labelsrc, useGL=useGL)  
             self.editor.setDrawingEnabled(True)
-
-            self.widget = VolumeEditorWidget( self.editor )
+            
+            self.MainSplitter = QSplitter()
+            self.MainSplitter.setContentsMargins(0,0,0,0)
+            
+            
+            widget = VolumeEditorWidget( self.editor )
+            self.MainSplitter.addWidget(widget)
+            
             
             self.editor.posModel.slicingPos = [5,10,2]
            
-            self.fitToViewButton   = QPushButton("fitToView")
+            
+            
             #self.layerWidgetButton = QPushButton("Layers")
             #self.layerWidgetButton.setCheckable(True)
             
@@ -122,6 +136,13 @@ if __name__ == "__main__":
             #show rudimentary layer widget
             model = self.editor.layerStack
             ######################################################################
+            
+            self.fitToViewButton   = QPushButton("fitToView")
+            self.startClassification   = QPushButton("Start")
+            
+            
+            
+            
             self.view = LayerWidget(model)
 
             
@@ -149,19 +170,32 @@ if __name__ == "__main__":
             delete.clicked.connect(model.deleteSelected)
             model.canDeleteSelected.connect(delete.setEnabled)
 
-                        
             
-            h = QHBoxLayout()
-            h.addWidget(self.widget)
             
+            
+            #Left Part
             v = QVBoxLayout()
+            v.addWidget(self.startClassification)
             v.addWidget(self.fitToViewButton)
+            
             #v.addWidget(self.layerWidgetButton)
             v.addWidget(self.labelList)
             v.addLayout(lh)
             v.addStretch()
             
-            h.addLayout(v)
+            
+            
+            
+            h = QHBoxLayout()
+            h.addWidget(self.MainSplitter)
+            dummy=QWidget()
+            dummy.setLayout(v)
+            self.MainSplitter.addWidget(dummy)
+            
+            
+            
+            
+            
             
             self.centralWidget = QWidget()
             self.centralWidget.setLayout(h)
@@ -195,6 +229,8 @@ if __name__ == "__main__":
 #            self.layerWidgetButton.toggled.connect(layers)
     
         
+        
+        
         def switchLabel(self, modelIndex):
             self.editor.brushingModel.setDrawnNumber(modelIndex.row()+1)
             
@@ -209,14 +245,18 @@ if __name__ == "__main__":
         def createLabelSource(self, shape):
             from lazyflow import operators
             g = Graph()
+            self.g=g
             opLabels = operators.OpSparseLabelArray(g)                                
             opLabels.inputs["shape"].setValue(shape[:-1] + (1,))
             opLabels.inputs["eraser"].setValue(100)                
-            opLabels.inputs["Input"][0,0,0,0,0] = 1                    
-            opLabels.inputs["Input"][0,0,0,1,0] = 2                    
+            #opLabels.inputs["Input"][0,0,0,0,0] = 1                    
+            #opLabels.inputs["Input"][0,0,0,1,0] = 2                    
             
             labelsrc = LazyflowSinkSource(opLabels, opLabels.outputs["Output"], opLabels.inputs["Input"])
             return labelsrc
+        
+        def startClassification():
+          self.g
         
     t = Test(False, [])
     t.show()
