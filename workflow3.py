@@ -37,7 +37,7 @@ class Main(QMainWindow):
          
      def initUic(self):
          
-        self.g=g=Graph() 
+        self.g=g=Graph(softMaxMem = 15000*1024**2) 
          
         #get the absolute path of the 'ilastik' module
         uic.loadUi("designerElements/MainWindow.ui", self) 
@@ -88,10 +88,37 @@ class Main(QMainWindow):
         opImageList.inputs["Input1"].connect(opImage2.outputs["Output"])
         
         
-        opFeatureList = operators.Op5ToMulti(g)    
-        opFeatureList.inputs["Input0"].connect(opImageList.outputs["Outputs"])
         
-        #                
+        
+       
+        
+        
+        
+        OpG = operators.OpPixelFeatures(g)
+        OpG.inputs["Input"].setValue(raw[:,:,:,:,0:1]/20)
+        #OpG.inputs["Input"].setValue(numpy.random.rand(60,60,60,10,10).astype(numpy.float32))
+        OpG.inputs["Matrix"].setValue([[1,1,0,0],[0,1,0,0],[0,1,0,0],[1,0,0,1]])
+        OpG.inputs["Scales"].setValue([1,.20,0.30,0.40])
+        
+        
+        
+        
+        
+        #print OpG.outputs["Output"][:].allocate().wait()
+        
+        
+        opFeatureList = operators.Op5ToMulti(g)    
+        opFeatureList.inputs["Input0"].connect(OpG.outputs["Output"])
+        
+        #print OpG.outputs["Output"][:].allocate().wait()
+        #sys.exit()
+        ################## Training
+        
+        opMultiL = operators.Op5ToMulti(g)    
+        opMultiL.inputs["Input0"].connect(opLabels.outputs["Output"])
+        
+        
+        """"               
         stacker=operators.OpMultiArrayStacker(g)
         #                
         #                opMulti = operators.Op20ToMulti(g)    
@@ -99,15 +126,11 @@ class Main(QMainWindow):
         stacker.inputs["Images"].connect(opFeatureList.outputs["Outputs"])
         stacker.inputs["AxisFlag"].setValue('c')
         stacker.inputs["AxisIndex"].setValue(4)
-        
-        ################## Training
-        opMultiL = operators.Op5ToMulti(g)    
-        
-        opMultiL.inputs["Input0"].connect(opLabels.outputs["Output"])
+        """
         
         opTrain = operators.OpTrainRandomForest(g)
         opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
-        opTrain.inputs['Images'].connect(stacker.outputs["Output"])
+        opTrain.inputs['Images'].connect(opFeatureList.outputs["Outputs"])
         opTrain.inputs['fixClassifier'].setValue(False)                
         
         opClassifierCache = operators.OpArrayCache(g)
@@ -117,13 +140,16 @@ class Main(QMainWindow):
         opPredict=operators.OpPredictRandomForest(g)
         opPredict.inputs['LabelsCount'].setValue(2)
         opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output'])    
-        opPredict.inputs['Image'].connect(stacker.outputs['Output'])            
+        opPredict.inputs['Image'].connect(opFeatureList.outputs["Outputs"])            
         
         
         
         selector=operators.OpSingleChannelSelector(g)
         selector.inputs["Input"].connect(opPredict.outputs['PMaps'])
         selector.inputs["Index"].setValue(1)
+        
+        
+        
         
         opSelCache = operators.OpArrayCache(g)
         opSelCache.inputs["blockShape"].setValue((1,5,5,5,1))
