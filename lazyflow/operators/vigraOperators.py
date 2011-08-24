@@ -203,7 +203,7 @@ class OpPixelFeatures(OperatorGroup):
             
             for i in range(dimRow):
                 for j, val in enumerate(self.matrix[i]):
-                    print (i*dimRow+j)
+                    #print (i*dimRow+j)
                     if val:
                         self.multi.inputs["Input%02d" %(i*dimRow+j)].connect(oparray[i][j].outputs["Output"])
                     else:
@@ -316,7 +316,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                 resultArea = result[...,i2]
 
             if not fullResult or not self.supportsOut:
-                print "OOOOOOOOOOOOOOOOOOOOO",t.shape, type(t)
+                #print "OOOOOOOOOOOOOOOOOOOOO",t.shape, type(t)
                 #FIXME: Make More General
                 if t.axistags.axisTypeCount(vigra.AxisType.Time) > 0:
                     ntimesteps=t.shape[-1]
@@ -366,10 +366,10 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         channelsPerChannel = self.resultingChannels()
         self.outputs["Output"]._shape = inShapeWithoutChannels + (numChannels * channelsPerChannel,)
-        print "HEREEEEEEEEEEEEEE", self.inputs["Input"].shape ,self.outputs["Output"]._shape
-        print self.resultingChannels(), self.name
+        #print "HEREEEEEEEEEEEEEE", self.inputs["Input"].shape ,self.outputs["Output"]._shape
+        #print self.resultingChannels(), self.name
         
-        print self.outputs["Output"]._axistags
+        #print self.outputs["Output"]._axistags
         if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
             self.outputs["Output"]._axistags.insertChannelAxis()
 
