@@ -313,3 +313,44 @@ class OpMultiArrayMerger(Operator):
         result[:]=fun(data)
         
         
+        
+class OpPixelOperator(Operator):
+    name = "OpPixelOperator"
+    description = "simple pixel operations"
+
+    inputSlots = [InputSlot("Input"), InputSlot("Function")]
+    outputSlots = [OutputSlot("Output")]    
+    
+    def notifyConnectAll(self):
+
+        inputSlot = self.inputs["Input"]
+
+        self.function = self.inputs["Function"].value
+   
+        self.outputs["Output"]._shape = inputSlot.shape
+        self.outputs["Output"]._dtype = inputSlot.dtype
+        self.outputs["Output"]._axistags = inputSlot.axistags
+        
+
+        
+    def getOutSlot(self, slot, key, result):
+        
+        
+        matrix = self.inputs["Input"][key].allocate().wait()
+        matrix = self.function(matrix)
+        
+        result[:] = matrix[:]
+
+
+    def notifyDirty(selfut,slot,key):
+        self.outputs["Output"].setDirty(key)
+
+    @property
+    def shape(self):
+        return self.outputs["Output"]._shape
+    
+    @property
+    def dtype(self):
+        return self.outputs["Output"]._dtype
+        
+        
