@@ -128,9 +128,16 @@ class Main(QMainWindow):
         stacker.inputs["AxisIndex"].setValue(4)
         """
         
+        opFeatureCache = operators.OpArrayCache(g)
+        opFeatureCache.inputs["blockShape"].setValue((1,5,5,5,1))
+        opFeatureCache.inputs["Input"].connect(opFeatureList.outputs["Outputs"])   
+        
+        
+        
+        
         opTrain = operators.OpTrainRandomForest(g)
         opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
-        opTrain.inputs['Images'].connect(opFeatureList.outputs["Outputs"])
+        opTrain.inputs['Images'].connect(opFeatureCache.outputs["Output"])
         opTrain.inputs['fixClassifier'].setValue(False)                
         
         opClassifierCache = operators.OpArrayCache(g)
@@ -140,7 +147,7 @@ class Main(QMainWindow):
         opPredict=operators.OpPredictRandomForest(g)
         opPredict.inputs['LabelsCount'].setValue(2)
         opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output'])    
-        opPredict.inputs['Image'].connect(opFeatureList.outputs["Outputs"])            
+        opPredict.inputs['Image'].connect(opFeatureCache.outputs["Output"])            
         
         
         
