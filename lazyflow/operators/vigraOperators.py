@@ -263,9 +263,9 @@ class OpBaseVigraFilter(OpArrayPiper):
                 
         shape = self.outputs["Output"].shape
         
-
+        
         subkey = key[0:-1]
-
+        
         oldstart, oldstop = roi.sliceToRoi(key, shape)
         start, stop = roi.sliceToRoi(subkey,shape[:-1])
         newStart, newStop = roi.extendSlice(start, stop, shape[:-1], largestSigma)
@@ -293,6 +293,7 @@ class OpBaseVigraFilter(OpArrayPiper):
             
             req = self.inputs["Input"][readKey + (slice(i,i+1,None),)].allocate()
             t = req.wait()
+            #print "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHELP", type(t),t.shape,readKey
             t = numpy.require(t, dtype=self.inputDtype)
             
             t = t.view(vigra.VigraArray)
@@ -315,13 +316,31 @@ class OpBaseVigraFilter(OpArrayPiper):
                 resultArea = result[...,i2]
 
             if not fullResult or not self.supportsOut:
-                temp = self.vigraFilter(t, **kwparams)
+                print "OOOOOOOOOOOOOOOOOOOOO",t.shape, type(t)
+                #FIXME: Make More General
+                if t.axistags.axisTypeCount(vigra.AxisType.Time) > 0:
+                    ntimesteps=t.shape[-1]
+                    res=numpy.zeros(t.shape+(channelsPerChannel,),t.dtype)
+                    for l in xrange(ntimesteps):
+                        print res.shape,numpy.squeeze(self.vigraFilter(t[...,l].view(numpy.ndarray), **kwparams)).view(numpy.ndarray).shape,"0000000000000"
+                        res[...,l,:]=self.vigraFilter(t[...,l].view(numpy.ndarray), **kwparams).view(numpy.ndarray)
+                    
+                    if channelsPerChannel==1:
+                        res=numpy.squeeze(res)
+                    temp=res
+                
+                else:
+                    temp = self.vigraFilter(t, **kwparams)
+                
+                
+                
                 if channelsPerChannel>1:
                     try:
                         resultArea[:] = temp[writeKey + (slice(sourceBegin,sourceEnd,None),)]
                     except:
                         print "ERROR: destination and request shapes differ !", resultArea.shape, temp.shape, writeKey, destBegin, destEnd, sourceBegin, sourceEnd
                 else:
+                    
                     resultArea[:] = temp[writeKey]
             else:
                 #resultArea = resultArea.view(vigra.VigraArray)
@@ -347,6 +366,10 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         channelsPerChannel = self.resultingChannels()
         self.outputs["Output"]._shape = inShapeWithoutChannels + (numChannels * channelsPerChannel,)
+        print "HEREEEEEEEEEEEEEE", self.inputs["Input"].shape ,self.outputs["Output"]._shape
+        print self.resultingChannels(), self.name
+        
+        print self.outputs["Output"]._axistags
         if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
             self.outputs["Output"]._axistags.insertChannelAxis()
 
