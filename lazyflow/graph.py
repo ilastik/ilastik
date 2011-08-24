@@ -2053,7 +2053,7 @@ class Worker(Thread):
                             gr.thread = self
                             gr.switch( reqObject)
                         else:
-                            self.graph.tasks.append((prio,task)) #move task back to task queue
+                            self.graph.tasks.put((prio,task)) #move task back to task queue
                             print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
                             gc.collect()
                             time.sleep(1.0)
