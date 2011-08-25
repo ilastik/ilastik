@@ -780,7 +780,7 @@ class OpH5Reader(Operator):
         d = f[hdf5Path]
         
         
-        self.outputs["Image"]._dtyoe = d.dtype
+        self.outputs["Image"]._dtype = d.dtype
         self.outputs["Image"]._shape = d.shape
         
         if len(d.shape) == 2:

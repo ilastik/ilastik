@@ -16,7 +16,7 @@ class OpLabelToImage(Operator):
         shape =  self.inputs["Input"].shape      
         
         self.outputs["Output"]._dtype = inputSlot.dtype
-        self.outputs["Output"]._shape = numpy.array(shape) * self.patchWidth 
+        self.outputs["Output"]._shape = tuple(numpy.array(shape) * self.patchWidth) 
         self.outputs["Output"]._axistags = inputSlot.axistags
 
         assert self.patchWidth > 0, "OpLabelToImage: input'PatchWidth' must be positive number !"
