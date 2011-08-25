@@ -20,7 +20,8 @@ class OpLabelToImage(Operator):
         self.outputs["Output"]._axistags = inputSlot.axistags
 
         assert self.patchWidth > 0, "OpLabelToImage: input'PatchWidth' must be positive number !"
- 
+        assert len(shape)==2, "The imput shape should be 2"
+        
     def getOutSlot(self, slot, key, result):
         
         inputShape = self.inputs["Input"].shape
