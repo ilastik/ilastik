@@ -135,6 +135,7 @@ class OpMultiArrayStacker(Operator):
         cnt = 0
         written = 0
         start, stop = roi.sliceToRoi(key, self.outputs["Output"].shape)
+        assert (stop<=self.outputs["Output"].shape).all()
         axisindex = self.inputs["AxisIndex"].value
         flag = self.inputs["AxisFlag"].value
         #ugly-ugly-ugly

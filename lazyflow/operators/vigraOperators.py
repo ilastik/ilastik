@@ -225,6 +225,115 @@ class OpPixelFeatures(OperatorGroup):
         return outputs
 
 
+#FIXME: There's a problem with disconneting the operators. The disconnection doesn't work in any case,
+#FIXME: but only if there's a connection afterwards. This problem came up by changing the InputSlot["Matrix"]. 
+#FIXME: Operators that should have been disconnected have been still connected. This could be proofed
+#FIXME: by checking the OutputShape of this operator
+#FIXME: Here we fixed it by disconnecting all op's before, and connecting the individual op's afterwards
+#FIXME: in case no operator should be connected, we check, if InputSlot["Matrix"] equals zero and
+#FIXME: introduce an fakeOp which we connect. Then we set the output shape to zero.
+class OpPixelFeatures2(OperatorGroup):
+    name="OpPixelFeatures2"
+    category = "Vigra filter"
+    
+    inputSlots = [InputSlot("Input"), InputSlot("Matrix"), InputSlot("Scales")]
+    outputSlots = [OutputSlot("Output"), OutputSlot("ArrayOfOperators")]
+    
+    def _createInnerOperators(self):
+        # this method must setup the
+        # inner operators and connect them (internally)
+        
+        self.source = OpArrayPiper(self.graph)
+        
+        self.stacker = OpMultiArrayStacker(self.graph)
+        
+        self.multi = Op20ToMulti(self.graph)
+        
+        
+        self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
+        
+        
+    def notifyConnectAll(self):
+        if self.inputs["Scales"].connected() and self.inputs["Matrix"].connected():
+
+            self.stacker.inputs["Images"].disconnect()
+            self.scales = self.inputs["Scales"].value
+            self.matrix = self.inputs["Matrix"].value 
+            
+            dimCol = len(self.scales)
+            dimRow = self.matrix.shape[0]
+            
+            assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same"
+            assert dimRow==4, "Right now the features are fixed"
+    
+            oparray = []
+            for j in range(dimCol):
+                oparray.append([])
+    
+            i = 0
+            for j in range(dimCol):
+                oparray[i].append(OpGaussianSmoothing(self.graph))
+                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["sigma"].setValue(self.scales[j])
+            i = 1
+            for j in range(dimCol):
+                oparray[i].append(OpLaplacianOfGaussian(self.graph))
+                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["scale"].setValue(self.scales[j])
+            i = 2
+            for j in range(dimCol):
+                oparray[i].append(OpHessianOfGaussian(self.graph))
+                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["sigma"].setValue(self.scales[j])
+            i = 3
+            for j in range(dimCol):   
+                oparray[i].append(OpHessianOfGaussianEigenvalues(self.graph))
+                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["scale"].setValue(self.scales[j])
+            
+            self.outputs["ArrayOfOperators"]= oparray
+            
+            #disconnecting all Operators
+            for i in range(dimRow):
+                for j in range(dimCol):
+                    #print "Disconnect", (i*dimRow+j)
+                    self.multi.inputs["Input%02d" %(i*dimRow+j)].disconnect() 
+            
+            #connect individual operators
+            for i in range(dimRow):
+                for j in range(dimCol):
+                    val=self.matrix[i,j]
+                    if val:
+                        #print "Connect", (i*dimRow+j)
+                        self.multi.inputs["Input%02d" %(i*dimRow+j)].connect(oparray[i][j].outputs["Output"])
+            
+            #additional connection with FakeOperator
+            if (self.matrix==0).all():
+                fakeOp = OpGaussianSmoothing(self.graph)
+                fakeOp.inputs["Input"].connect(self.source.outputs["Output"])
+                fakeOp.inputs["sigma"].setValue(10)
+                self.multi.inputs["Input%02d" %(i*dimRow+j+1)].connect(fakeOp.outputs["Output"])
+                self.multi.inputs["Input%02d" %(i*dimRow+j+1)].disconnect() 
+                self.stacker.outputs["Output"].shape=()
+                return
+         
+            
+            index = len(self.source.outputs["Output"].shape) - 1
+            self.stacker.inputs["AxisFlag"].setValue('c')
+            self.stacker.inputs["AxisIndex"].setValue(index)
+            self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
+            
+    
+    def getInnerInputs(self):
+        inputs = {}
+        inputs["Input"] = self.source.inputs["Input"]
+        return inputs
+        
+    def getInnerOutputs(self):
+        outputs = {}
+        outputs["Output"] = self.stacker.outputs["Output"]
+        return outputs
+
 
 
 
