@@ -97,10 +97,13 @@ class Main(QMainWindow):
         OpG = operators.OpPixelFeatures(g)
         OpG.inputs["Input"].setValue(raw[:,:,:,:,0:1]/20)
         #OpG.inputs["Input"].setValue(numpy.random.rand(60,60,60,10,10).astype(numpy.float32))
-        OpG.inputs["Matrix"].setValue([[1,1,0,0],[0,1,0,0],[0,1,0,0],[1,0,0,1]])
+        OpG.inputs["Matrix"].setValue([[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0]])
         OpG.inputs["Scales"].setValue([1,.20,0.30,0.40])
+        self.OpG=OpG
         
-        
+        for i in range(10):
+            print "!HAPPY" 
+        print self.OpG.outputs["Output"].shape
         
         
         
@@ -134,10 +137,10 @@ class Main(QMainWindow):
         
         
         
-        
         opTrain = operators.OpTrainRandomForest(g)
         opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
-        opTrain.inputs['Images'].connect(opFeatureCache.outputs["Output"])
+        #opTrain.inputs['Images'].connect(opFeatureCache.outputs["Output"])
+        opTrain.inputs['Images'].connect(opFeatureList.outputs["Outputs"])
         opTrain.inputs['fixClassifier'].setValue(False)                
         
         opClassifierCache = operators.OpArrayCache(g)
@@ -147,7 +150,7 @@ class Main(QMainWindow):
         opPredict=operators.OpPredictRandomForest(g)
         opPredict.inputs['LabelsCount'].setValue(2)
         opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output'])    
-        opPredict.inputs['Image'].connect(opFeatureCache.outputs["Output"])            
+        opPredict.inputs['Image'].connect(opFeatureList.outputs["Outputs"])            
         
         
         
@@ -162,7 +165,7 @@ class Main(QMainWindow):
         opSelCache.inputs["blockShape"].setValue((1,5,5,5,1))
         opSelCache.inputs["Input"].connect(selector.outputs["Output"])                
         
-        predictsrc = LazyflowSource(opSelCache.outputs["Output"][0])
+        predictsrc = LazyflowSource(selector.outputs["Output"][0])
         
         layer2 = GrayscaleLayer( predictsrc, normalize = (0.0,1.0) )
         layer2.name = "Prediction"
@@ -215,13 +218,25 @@ class Main(QMainWindow):
         
      def onFeatureButtonClicked(self):
          ex2 = FeatureDlg()
-         ex2.createFeatureTable({"Color": [SimpleObject("Banananananaana")], "Edge": [SimpleObject("Mango"), SimpleObject("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
+         ex2.createFeatureTable({"Features": [SimpleObject("Gaussian smoothing"), SimpleObject("Laplacian of Gaussian"), SimpleObject("Hessian of Gaussian"), SimpleObject("Hessian of Gaussian EV")]}, [1,.20,0.30,0.40])
          ex2.setWindowTitle("ex2")
          ex2.setImageToPreView((numpy.random.rand(100,100)*256).astype(numpy.uint8))
          
          
          self.featureDlg=ex2
-         ex2.show()     
+         ex2.show()
+         
+         def okFeat():
+             selectedFeatures = ex2.featureTableWidget.createSelectedFeaturesBoolMatrix()
+             print "******", selectedFeatures
+             for i in range(10):
+                 print "!HAPPY2" 
+                 print self.OpG.outputs["Output"].shape
+            
+             self.OpG.inputs['Matrix'].setValue(selectedFeatures)
+         
+         ex2.accepted.connect(okFeat)
+              
      def switchLabel(self, modelIndex):
          self.editor.brushingModel.setDrawnNumber(modelIndex.row()+1)
          
