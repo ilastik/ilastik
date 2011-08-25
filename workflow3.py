@@ -54,10 +54,12 @@ class Main(QMainWindow):
        self.dataReadyToView.connect(self.initEditor)
 
        self.layerstack = LayerStackModel()
+       
        model = LabelListModel()
        self.labelListView.setModel(model)
        self.labelListModel=model
        
+       self.labelListModel.rowsAboutToBeRemoved.connect(self.onLabelAboutToBeRemoved)
        self.labelListView.clicked.connect(self.switchLabel)
        self.labelListView.doubleClicked.connect(self.switchColor)
        
@@ -96,8 +98,23 @@ class Main(QMainWindow):
         self.labelListModel.insertRow(self.labelListModel.rowCount(), Label("Label %d" % (self.labelListModel.rowCount() + 1), color))
         nlabels = self.labelListModel.rowCount()
         if self.opPredict is not None:
+            print "Label added, changing predictions"
+            #re-train the forest now that we have more labels
+            self.opTrain.notifyDirty(None, None)
             self.opPredict.inputs['LabelsCount'].setValue(nlabels)
-            self.updatePredictionLayers()
+            self.addPredictionLayer(nlabels-1, self.labelListModel._labels[nlabels-1])
+    
+    def onLabelAboutToBeRemoved(self, parent, start, end):
+        #the user deleted a label, reshape prediction and remove the layer
+        #the interface only allows to remove one label at a time?
+        
+        nout = start-end+1
+        ncurrent = self.labelListModel.rowCount()
+        print "removing", nout, "out of ", ncurrent
+        self.opPredict.inputs['LabelsCount'].setValue(ncurrent-nout)
+        for il in range(start, end+1):
+            labelvalue = self.labelListModel._labels[il]
+            self.removePredictionLayer(labelvalue)
     
     def startClassification(self):
         if self.opTrain is None:
@@ -118,39 +135,42 @@ class Main(QMainWindow):
             self.opPredict=operators.OpPredictRandomForest(self.g)
             nclasses = self.labelListModel.rowCount()
             self.opPredict.inputs['LabelsCount'].setValue(nclasses)
-            self.opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output'])    
+            self.opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output']) 
+            #self.opPredict.inputs['Classifier'].connect(self.opTrain.outputs['Classifier'])       
             self.opPredict.inputs['Image'].connect(self.featureStacker.outputs['Output'])  
             
             #add prediction results for all classes as separate channels
-            self.updatePredictionLayers()
+            for icl in range(nclasses):
+                self.addPredictionLayer(icl, self.labelListModel._labels[icl])
+                
+            #self.updatePredictionLayers()
             
-    def updatePredictionLayers(self):
-            nclasses = self.labelListModel.rowCount()
-            #FIXME: remove the layers by name: how else?
-            
-            predictionlayers = [layer for layer in self.layerstack if "Prediction" in layer.name]
-            if (len(predictionlayers)>0):
-                print "already have prediction layers:", len(predictionlayers)
-                print "don't know what to do now :("
-                return 
-            
-            for icl in range(nclasses):          
-                selector=operators.OpSingleChannelSelector(self.g)
-                selector.inputs["Input"].connect(self.opPredict.outputs['PMaps'])
-                selector.inputs["Index"].setValue(1)
-            
-                opSelCache = operators.OpArrayCache(self.g)
-                opSelCache.inputs["blockShape"].setValue((1,5,5,5,1))
-                opSelCache.inputs["Input"].connect(selector.outputs["Output"])                
-            
-                predictsrc = LazyflowSource(opSelCache.outputs["Output"][0])
-            
-                layer2 = GrayscaleLayer(predictsrc, normalize = (0.0,1.0) )
-                layer2.name = "Prediction for label %d"%icl
-                self.layerstack.append( layer2 )
                                     
-           
-            
+    def addPredictionLayer(self, icl, ref_label):
+        
+        selector=operators.OpSingleChannelSelector(self.g)
+        selector.inputs["Input"].connect(self.opPredict.outputs['PMaps'])
+        selector.inputs["Index"].setValue(icl)
+        
+        #opSelCache = operators.OpArrayFixableCache(self.g)
+        opSelCache = operators.OpArrayCache(self.g)
+        opSelCache.inputs["blockShape"].setValue((1,5,5,5,1))
+        #opSelCache.inputs["fixAtCurrent"].setValue(False)
+        opSelCache.inputs["Input"].connect(selector.outputs["Output"])                
+        
+        predictsrc = LazyflowSource(opSelCache.outputs["Output"][0])
+        
+        layer2 = GrayscaleLayer(predictsrc, normalize = (0.0,1.0) )
+        layer2.name = "Prediction for " + ref_label.name
+        layer2.ref_object = ref_label
+        self.layerstack.append( layer2 )
+               
+    def removePredictionLayer(self, ref_label):
+        for il, layer in enumerate(self.layerstack):
+            if layer.ref_object==ref_label:
+                print "found the prediction", layer.ref_object, ref_label
+                self.layerstack.removeRows(il, 1)
+                break
     
     def openFile(self):
         #FIXME: only take one file for now, more to come
@@ -194,6 +214,7 @@ class Main(QMainWindow):
             print "only 1,2 or 3 channels supported so far"
             return
         layer1.name = "Input data"
+        layer1.ref_object = None
         self.layerstack.append(layer1)
         
 #        op1 = OpDataProvider(self.g, self.raw[:,:,:,:,0:1]/20)
@@ -236,6 +257,7 @@ class Main(QMainWindow):
         transparent = QColor(0,0,0,0)
         self.labellayer = ColortableLayer(self.labelsrc, colorTable = [transparent.rgba()] )
         self.labellayer.name = "Labels"
+        self.labellayer.ref_object = None
         self.layerstack.append(self.labellayer)    
     
     def initEditor(self):
