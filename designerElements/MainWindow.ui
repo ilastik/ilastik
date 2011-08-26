@@ -30,7 +30,7 @@
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
-          <widget class="VolumeEditorWidget" name="volumeEditorWidget"/>
+          <widget class="VolumeEditorWidget" name="volumeEditorWidget" native="true"/>
           <widget class="QWidget" name="layoutWidget">
            <layout class="QVBoxLayout" name="verticalLayout_2">
             <item>
@@ -46,7 +46,7 @@
             <item>
              <widget class="QPushButton" name="StartClassificationButton">
               <property name="text">
-               <string>Start Classification</string>
+               <string>Create Classifier</string>
               </property>
              </widget>
             </item>
@@ -170,7 +170,7 @@
      <x>0</x>
      <y>0</y>
      <width>825</width>
-     <height>24</height>
+     <height>27</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -267,8 +267,6 @@
    <header>labelListView</header>
   </customwidget>
  </customwidgets>
- <resources>
-  <include location="../widgets.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>
