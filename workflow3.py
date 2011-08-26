@@ -76,7 +76,22 @@ class Main(QMainWindow):
         
         self.g = Graph()
        
+       self.fixableOperators = []
+       self.checkInteractive.toggled.connect(self.toggleInteractive)
+        
  
+    def toggleInteractive(self, checked):
+        print "checked = ", checked
+        if checked==True:
+            self.AddLabelButton.setEnabled(False)
+            self.SelectFeaturesButton.setEnabled(False)
+            for o in self.fixableOperators:
+                o.inputs["fixAtCurrent"].setValue(False)
+        else:
+            self.AddLabelButton.setEnabled(True)
+            self.SelectFeaturesButton.setEnabled(True)
+            for o in self.fixableOperators:
+                o.inputs["fixAtCurrent"].setValue(True)
        
     def onFeatureButtonClicked(self):
         ex2 = FeatureDlg()
@@ -106,7 +121,7 @@ class Main(QMainWindow):
         if self.opPredict is not None:
             print "Label added, changing predictions"
             #re-train the forest now that we have more labels
-            self.opTrain.notifyDirty(None, None)
+            #self.opTrain.notifyDirty(None, None)
             self.opPredict.inputs['LabelsCount'].setValue(nlabels)
             self.addPredictionLayer(nlabels-1, self.labelListModel._labels[nlabels-1])
     
@@ -158,10 +173,14 @@ class Main(QMainWindow):
         selector.inputs["Input"].connect(self.opPredict.outputs['PMaps'])
         selector.inputs["Index"].setValue(icl)
         
-        #opSelCache = operators.OpArrayFixableCache(self.g)
-        opSelCache = operators.OpArrayCache(self.g)
+        opSelCache = operators.OpArrayFixableCache(self.g)
+        #opSelCache = operators.OpArrayCache(self.g)
         opSelCache.inputs["blockShape"].setValue((1,5,5,5,1))
-        #opSelCache.inputs["fixAtCurrent"].setValue(False)
+        if self.checkInteractive.isChecked():
+            opSelCache.inputs["fixAtCurrent"].setValue(False)
+        else:
+            opSelCache.inputs["fixAtCurrent"].setValue(True)
+            
         opSelCache.inputs["Input"].connect(selector.outputs["Output"])                
         
         predictsrc = LazyflowSource(opSelCache.outputs["Output"][0])
@@ -170,6 +189,7 @@ class Main(QMainWindow):
         layer2.name = "Prediction for " + ref_label.name
         layer2.ref_object = ref_label
         self.layerstack.append( layer2 )
+        self.fixableOperators.append(opSelCache)
                
     def removePredictionLayer(self, ref_label):
         for il, layer in enumerate(self.layerstack):
