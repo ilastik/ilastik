@@ -38,10 +38,17 @@ class Main(QMainWindow):
         
     def __init__(self, argv):
         QMainWindow.__init__(self)
-        self.initUic()
+        
         self.opPredict = None
         self.opTrain = None
         
+        
+        self.g = Graph()
+        self.fixableOperators = []
+        
+        
+        
+        self.initUic()
         #
         # if the filename was specified on command line, load it
         #
@@ -49,6 +56,8 @@ class Main(QMainWindow):
             def loadFile():
                 self._openFile(sys.argv[1])
             QTimer.singleShot(0, loadFile)
+        
+
         
     def initUic(self):
         #get the absolute path of the 'ilastik' module
@@ -74,10 +83,9 @@ class Main(QMainWindow):
         self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
         self.StartClassificationButton.clicked.connect(self.startClassification)
         
-        self.g = Graph()
-       
-       self.fixableOperators = []
-       self.checkInteractive.toggled.connect(self.toggleInteractive)
+        self.checkInteractive.toggled.connect(self.toggleInteractive)
+        
+        
         
  
     def toggleInteractive(self, checked):
