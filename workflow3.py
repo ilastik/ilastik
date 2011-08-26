@@ -103,6 +103,25 @@ class Main(QMainWindow):
  
     def toggleInteractive(self, checked):
         print "checked = ", checked
+        
+        #Check if the number of lables in the layer stack is equals to the number of Painted labels
+        #FIXME: Solve the proble of the two arbitrary initialized labels for the classifier
+        if checked==True:
+           labels =numpy.unique(numpy.asarray(self.opLabels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
+           nPaintedLabels=labels.shape[0]
+           nLabelsLayers = self.labelListModel.rowCount()
+           if nPaintedLabels!=nLabelsLayers:
+               self.checkInteractive.setCheckState(0)
+               mexBox=QtGui.QMessageBox()
+               mexBox.setText("Did you forget to paint some labels?")
+               mexBox.setInformativeText("Painted Labels %d \nNumber Active Labels Layers %d"%(nPaintedLabels,self.labelListModel.rowCount()))
+               mexBox.exec_()
+               #print "Painted Labels: ", labels
+               #print "nPainted Labels: " , nPaintedLabels
+               #print "nLabelsLayers", self.labelListModel.rowCount()
+               return
+        
+        
         if checked==True:
             self.AddLabelButton.setEnabled(False)
             self.SelectFeaturesButton.setEnabled(False)
@@ -201,7 +220,7 @@ class Main(QMainWindow):
         
         opSelCache = operators.OpArrayFixableCache(self.g)
         #opSelCache = operators.OpArrayCache(self.g)
-        opSelCache.inputs["blockShape"].setValue((1,5,5,5,1))
+        opSelCache.inputs["blockShape"].setValue((1,128,128,128,1))
         opSelCache.inputs["Input"].connect(selector.outputs["Output"])  
         if self.checkInteractive.isChecked():
             opSelCache.inputs["fixAtCurrent"].setValue(False)
@@ -308,6 +327,9 @@ class Main(QMainWindow):
         self.opLabels.inputs["eraser"].setValue(100)                
         self.opLabels.inputs["Input"][0,0,0,0,0] = 1                    
         self.opLabels.inputs["Input"][0,0,0,1,0] = 2                    
+        
+        
+        
         
         self.labelsrc = LazyflowSinkSource(self.opLabels, self.opLabels.outputs["Output"], self.opLabels.inputs["Input"])
         transparent = QColor(0,0,0,0)
