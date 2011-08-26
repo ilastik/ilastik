@@ -31,12 +31,6 @@
            <enum>Qt::Horizontal</enum>
           </property>
           <widget class="VolumeEditorWidget" name="volumeEditorWidget">
-           <property name="toolTip">
-            <string>The current time</string>
-           </property>
-           <property name="whatsThis">
-            <string>The analog clock widget displays the current time.</string>
-           </property>
           </widget>
           <widget class="QWidget" name="layoutWidget">
            <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -56,12 +50,6 @@
             </item>
             <item>
              <widget class="LabelListView" name="labelListView">
-              <property name="toolTip">
-               <string>The current time</string>
-              </property>
-              <property name="whatsThis">
-               <string>The analog clock widget displays the current time.</string>
-              </property>
              </widget>
             </item>
             <item>
@@ -75,12 +63,6 @@
              <layout class="QHBoxLayout" name="horizontalLayout">
               <item>
                <widget class="LayerWidget" name="layerWidget">
-                <property name="toolTip">
-                 <string>The current time</string>
-                </property>
-                <property name="whatsThis">
-                 <string>The analog clock widget displays the current time.</string>
-                </property>
                </widget>
               </item>
               <item>
