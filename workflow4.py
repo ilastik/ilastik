@@ -49,7 +49,18 @@ class Main(QMainWindow):
          #The scales at which features are computed
         
         
+        
         self.initUic()
+        
+        if "5d.npy" in argv:
+            self.raw = np.load("5d.npy")
+            self.inputProvider = operators.OpArrayPiper(self.g)
+            self.inputProvider.inputs["Input"].setValue(self.raw)
+            self.haveData.emit()
+        
+        
+        
+        
     def initUic(self):
        #Init the graphical elements of the workflow 
        
@@ -317,9 +328,12 @@ class Main(QMainWindow):
         model.canMoveSelectedDown.connect(self.DownButton.setEnabled)
         self.DeleteButton.clicked.connect(model.deleteSelected)
         model.canDeleteSelected.connect(self.DeleteButton.setEnabled)           
+
+
+
         
 app = QApplication(sys.argv)        
-t = Main(False, [])
+t = Main(False, sys.argv[1:])
 t.show()
 
 app.exec_()
