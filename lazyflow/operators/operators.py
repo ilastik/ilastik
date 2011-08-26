@@ -488,10 +488,16 @@ class OpArrayFixableCache(OpArrayPiper):
         self._immediateAlloc = immediateAlloc
         self._lock = threading.Lock()
         
+    
     def notifyConnect(self, slot):
         fixed = False
+        
         if self.inputs['fixAtCurrent'].connected():
             fixed = self.inputs['fixAtCurrent'].value
+            if fixed and self._blockShape is None:
+                fixed = False
+            
+                
         if not fixed:
             if self.inputs["blockShape"].connected():
                 self._origBlockShape = self.inputs["blockShape"].value
@@ -537,7 +543,7 @@ class OpArrayFixableCache(OpArrayPiper):
         #        for p in self._flatBlockIndices:
         #            self._blockQuery[p] = BlockQueue()
             
-
+        
     def notifyDirty(self, slot, key):
         #print
         #print "OpArrayCache : DIRTY", key
@@ -665,7 +671,7 @@ class OpArrayFixableCache(OpArrayPiper):
             req.wait()
         
         # finally, store results in result area
-        print "Oparraycache debug",result.shape,self._cache[roiToSlice(start, stop)].shape
+        #print "Oparraycache debug",result.shape,self._cache[roiToSlice(start, stop)].shape
         result[:] = self._cache[roiToSlice(start, stop)]
         
         
