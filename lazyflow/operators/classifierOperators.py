@@ -218,7 +218,47 @@ class OpSegmentation(Operator):
     
     @property
     def dtype(self):
-        return self.outputs["Output"]._dtype            
+        return self.outputs["Output"]._dtype        
+        
+        
+class OpAreas(Operator):
+    name = "OpAreas"
+    description = "counting pixel areas"
+
+    inputSlots = [InputSlot("Input"), InputSlot("NumberOfChannels")]
+    outputSlots = [OutputSlot("Areas")]    
+       
+    def notifyConnectAll(self):
+        
+        self.outputs["Areas"]._shape = (self.inputs["NumberOfChannels"].value,)
+ 
+    def getOutSlot(self, slot, key, result):
+         
+        img = self.inputs["Input"][:].allocate().wait()   
+        
+        numC = self.inputs["NumberOfChannels"].value
+        
+        areas = []
+        for i in range(numC):
+            areas.append(0)
+         
+        for i in img.flat:
+            areas[int(i)] +=1
+
+        result[:] = numpy.array(areas)
+            
+
+
+    def notifyDirty(selfut,slot,key):
+        self.outputs["Output"].setDirty(key)
+
+    @property
+    def shape(self):
+        return self.outputs["Output"]._shape
+    
+    @property
+    def dtype(self):
+        return self.outputs["Output"]._dtype  
             
 
         
