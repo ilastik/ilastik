@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
+    <width>825</width>
     <height>600</height>
    </rect>
   </property>
@@ -30,16 +30,19 @@
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
-          <widget class="VolumeEditorWidget" name="volumeEditorWidget">
-           <property name="toolTip">
-            <string>The current time</string>
-           </property>
-           <property name="whatsThis">
-            <string>The analog clock widget displays the current time.</string>
-           </property>
-          </widget>
+          <widget class="VolumeEditorWidget" name="volumeEditorWidget"/>
           <widget class="QWidget" name="layoutWidget">
            <layout class="QVBoxLayout" name="verticalLayout_2">
+            <item>
+             <widget class="QCheckBox" name="checkInteractive">
+              <property name="enabled">
+               <bool>true</bool>
+              </property>
+              <property name="text">
+               <string>Interactive updating</string>
+              </property>
+             </widget>
+            </item>
             <item>
              <widget class="QPushButton" name="StartClassificationButton">
               <property name="text">
@@ -55,14 +58,7 @@
              </widget>
             </item>
             <item>
-             <widget class="LabelListView" name="labelListView">
-              <property name="toolTip">
-               <string>The current time</string>
-              </property>
-              <property name="whatsThis">
-               <string>The analog clock widget displays the current time.</string>
-              </property>
-             </widget>
+             <widget class="LabelListView" name="labelListView"/>
             </item>
             <item>
              <widget class="QPushButton" name="AddLabelButton">
@@ -74,36 +70,50 @@
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout">
               <item>
-               <widget class="LayerWidget" name="layerWidget">
-                <property name="toolTip">
-                 <string>The current time</string>
-                </property>
-                <property name="whatsThis">
-                 <string>The analog clock widget displays the current time.</string>
-                </property>
-               </widget>
+               <widget class="LayerWidget" name="layerWidget"/>
               </item>
               <item>
                <widget class="QWidget" name="widget" native="true">
                 <layout class="QVBoxLayout" name="verticalLayout">
                  <item>
-                  <widget class="QPushButton" name="UpButton">
+                  <widget class="QToolButton" name="UpButton">
+                   <property name="toolTip">
+                    <string>move layer up</string>
+                   </property>
                    <property name="text">
                     <string>Up</string>
                    </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QPushButton" name="DownButton">
-                   <property name="text">
-                    <string>Down</string>
+                   <property name="icon">
+                    <iconset>
+                     <normaloff>../icons/go-up.png</normaloff>../icons/go-up.png</iconset>
                    </property>
                   </widget>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="DeleteButton">
+                  <widget class="QToolButton" name="DownButton">
+                   <property name="toolTip">
+                    <string>move layer down</string>
+                   </property>
+                   <property name="text">
+                    <string>Down</string>
+                   </property>
+                   <property name="icon">
+                    <iconset>
+                     <normaloff>../icons/go-down.png</normaloff>../icons/go-down.png</iconset>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QToolButton" name="DeleteButton">
+                   <property name="toolTip">
+                    <string>delete layer</string>
+                   </property>
                    <property name="text">
                     <string>Delete</string>
+                   </property>
+                   <property name="icon">
+                    <iconset>
+                     <normaloff>../icons/list-remove.png</normaloff>../icons/list-remove.png</iconset>
                    </property>
                   </widget>
                  </item>
@@ -121,9 +131,16 @@
                   </spacer>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="AddLayOutButton">
+                  <widget class="QToolButton" name="AddLayOutButton">
+                   <property name="toolTip">
+                    <string>add new layer</string>
+                   </property>
                    <property name="text">
                     <string>Add Layout</string>
+                   </property>
+                   <property name="icon">
+                    <iconset>
+                     <normaloff>../icons/list-add.png</normaloff>../icons/list-add.png</iconset>
                    </property>
                   </widget>
                  </item>
@@ -152,8 +169,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
-     <height>25</height>
+     <width>825</width>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -250,6 +267,8 @@
    <header>labelListView</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../widgets.qrc"/>
+ </resources>
  <connections/>
 </ui>

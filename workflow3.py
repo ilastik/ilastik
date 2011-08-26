@@ -5,7 +5,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 import os, sys
 
 import numpy as np
-from PyQt4.QtCore import QObject, QRectF, QTime, Qt, pyqtSignal
+from PyQt4.QtCore import QObject, QRectF, QTime, Qt, pyqtSignal, QTimer
 from PyQt4.QtGui import QColor, QApplication, QSplitter, QPushButton, \
                         QVBoxLayout, QWidget, QHBoxLayout, QMainWindow
 
@@ -28,7 +28,7 @@ from PyQt4 import QtCore, QtGui, uic
 
 from featureDlg import *
 
-import  numpy
+import numpy, sys
 
 
 class Main(QMainWindow):
@@ -36,41 +36,62 @@ class Main(QMainWindow):
     haveData = pyqtSignal()
     dataReadyToView = pyqtSignal()
         
-    def __init__(self, useGL, argv):
+    def __init__(self, argv):
         QMainWindow.__init__(self)
         self.initUic()
         self.opPredict = None
         self.opTrain = None
         
-    def initUic(self):
+        #
+        # if the filename was specified on command line, load it
+        #
+        if len(sys.argv) == 2:
+            def loadFile():
+                self._openFile(sys.argv[1])
+            QTimer.singleShot(0, loadFile)
         
+    def initUic(self):
+        #get the absolute path of the 'ilastik' module
+        uic.loadUi("designerElements/MainWindow.ui", self) 
+        #connect the window and graph creation to the opening of the file
+        self.actionOpen.triggered.connect(self.openFile)
+        
+        self.haveData.connect(self.initGraph)
+        self.dataReadyToView.connect(self.initEditor)
+        
+        self.layerstack = LayerStackModel()
+        
+        model = LabelListModel()
+        self.labelListView.setModel(model)
+        self.labelListModel=model
+        
+        self.labelListModel.rowsAboutToBeRemoved.connect(self.onLabelAboutToBeRemoved)
+        self.labelListView.clicked.connect(self.switchLabel)
+        self.labelListView.doubleClicked.connect(self.switchColor)
+        
+        self.AddLabelButton.clicked.connect(self.addLabel)
+        
+        self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
+        self.StartClassificationButton.clicked.connect(self.startClassification)
+        
+        self.g = Graph()
        
-       #get the absolute path of the 'ilastik' module
-       uic.loadUi("designerElements/MainWindow.ui", self) 
-       #connect the window and graph creation to the opening of the file
-       self.actionOpen.triggered.connect(self.openFile)
-       
-       self.haveData.connect(self.initGraph)
-       self.dataReadyToView.connect(self.initEditor)
-
-       self.layerstack = LayerStackModel()
-       
-       model = LabelListModel()
-       self.labelListView.setModel(model)
-       self.labelListModel=model
-       
-       self.labelListModel.rowsAboutToBeRemoved.connect(self.onLabelAboutToBeRemoved)
-       self.labelListView.clicked.connect(self.switchLabel)
-       self.labelListView.doubleClicked.connect(self.switchColor)
-       
-       self.AddLabelButton.clicked.connect(self.addLabel)
-       
-       self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
-       self.StartClassificationButton.clicked.connect(self.startClassification)
-       
-       self.g = Graph()
-       
+       self.fixableOperators = []
+       self.checkInteractive.toggled.connect(self.toggleInteractive)
+        
  
+    def toggleInteractive(self, checked):
+        print "checked = ", checked
+        if checked==True:
+            self.AddLabelButton.setEnabled(False)
+            self.SelectFeaturesButton.setEnabled(False)
+            for o in self.fixableOperators:
+                o.inputs["fixAtCurrent"].setValue(False)
+        else:
+            self.AddLabelButton.setEnabled(True)
+            self.SelectFeaturesButton.setEnabled(True)
+            for o in self.fixableOperators:
+                o.inputs["fixAtCurrent"].setValue(True)
        
     def onFeatureButtonClicked(self):
         ex2 = FeatureDlg()
@@ -100,7 +121,7 @@ class Main(QMainWindow):
         if self.opPredict is not None:
             print "Label added, changing predictions"
             #re-train the forest now that we have more labels
-            self.opTrain.notifyDirty(None, None)
+            #self.opTrain.notifyDirty(None, None)
             self.opPredict.inputs['LabelsCount'].setValue(nlabels)
             self.addPredictionLayer(nlabels-1, self.labelListModel._labels[nlabels-1])
     
@@ -152,10 +173,14 @@ class Main(QMainWindow):
         selector.inputs["Input"].connect(self.opPredict.outputs['PMaps'])
         selector.inputs["Index"].setValue(icl)
         
-        #opSelCache = operators.OpArrayFixableCache(self.g)
-        opSelCache = operators.OpArrayCache(self.g)
+        opSelCache = operators.OpArrayFixableCache(self.g)
+        #opSelCache = operators.OpArrayCache(self.g)
         opSelCache.inputs["blockShape"].setValue((1,5,5,5,1))
-        #opSelCache.inputs["fixAtCurrent"].setValue(False)
+        if self.checkInteractive.isChecked():
+            opSelCache.inputs["fixAtCurrent"].setValue(False)
+        else:
+            opSelCache.inputs["fixAtCurrent"].setValue(True)
+            
         opSelCache.inputs["Input"].connect(selector.outputs["Output"])                
         
         predictsrc = LazyflowSource(opSelCache.outputs["Output"][0])
@@ -164,6 +189,7 @@ class Main(QMainWindow):
         layer2.name = "Prediction for " + ref_label.name
         layer2.ref_object = ref_label
         self.layerstack.append( layer2 )
+        self.fixableOperators.append(opSelCache)
                
     def removePredictionLayer(self, ref_label):
         for il, layer in enumerate(self.layerstack):
@@ -176,6 +202,9 @@ class Main(QMainWindow):
         #FIXME: only take one file for now, more to come
         #fileName = QtGui.QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Image Files (*.png *.jpg *.bmp *.tif *.tiff *.gif *.h5)")
         fileName = QtGui.QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Numpy files (*.npy)")
+        self._openFile(fileName)
+        
+    def _openFile(self, fileName):
         fName, fExt = os.path.splitext(str(fileName))
         self.inputProvider = None
         if fExt=='.npy':
@@ -276,7 +305,7 @@ class Main(QMainWindow):
         model.canDeleteSelected.connect(self.DeleteButton.setEnabled)           
         
 app = QApplication(sys.argv)        
-t = Main(False, [])
+t = Main(sys.argv)
 t.show()
 
 app.exec_()
