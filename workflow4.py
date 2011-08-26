@@ -38,12 +38,20 @@ class Main(QMainWindow):
         
     def __init__(self, useGL, argv):
         QMainWindow.__init__(self)
-        self.initUic()
+        
         self.opPredict = None
         self.opTrain = None
+        self.g = Graph()
         
+        
+        self.featureDlg=None
+        self.featScalesList=[.1,.2,1,2]
+         #The scales at which features are computed
+        
+        
+        self.initUic()
     def initUic(self):
-        
+       #Init the graphical elements of the workflow 
        
        #get the absolute path of the 'ilastik' module
        uic.loadUi("designerElements/MainWindow.ui", self) 
@@ -68,17 +76,40 @@ class Main(QMainWindow):
        self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
        self.StartClassificationButton.clicked.connect(self.startClassification)
        
-       self.g = Graph()
+       self.initTheFeatureDlg()
        
- 
-       
+    
+    def initTheFeatureDlg(self):
+        dlg = FeatureDlg()
+        self.featureDlg=dlg
+        dlg.setWindowTitle("Features")
+        dlg.accepted.connect(self.choosenDifferrentFeatSet)
+        
+        
+        
+          
     def onFeatureButtonClicked(self):
-        ex2 = FeatureDlg()
-        ex2.createFeatureTable({"Color": [SimpleObject("Banananananaana")], "Edge": [SimpleObject("Mango"), SimpleObject("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
-        ex2.setWindowTitle("ex2")
-        ex2.setImageToPreView((numpy.random.rand(100,100)*256).astype(numpy.uint8))
-        self.featureDlg=ex2
-        ex2.show()     
+        
+        dlg=self.featureDlg
+        dlg.createFeatureTable({"Features": [SimpleObject("Gaussian smoothing"), SimpleObject("Laplacian of Gaussian"), SimpleObject("Hessian of Gaussian"), SimpleObject("Hessian of Gaussian EV")]}, self.featScalesList)
+        dlg.setImageToPreView((numpy.random.rand(100,100)*256).astype(numpy.uint8))
+        dlg.show()
+    
+    
+    def choosenDifferrentFeatSet(self):
+        dlg=self.featureDlg
+        selectedFeatures = dlg.featureTableWidget.createSelectedFeaturesBoolMatrix()
+        print "******", selectedFeatures
+        
+        for i in range(100):
+            print "!HAPPY2", 
+        
+        print self.OpPF.outputs["Output"].shape
+        
+        self.OpPF.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
+ 
+         
+         
         
     def switchLabel(self, modelIndex):
         self.editor.brushingModel.setDrawnNumber(modelIndex.row()+1)
@@ -117,6 +148,11 @@ class Main(QMainWindow):
             self.removePredictionLayer(labelvalue)
     
     def startClassification(self):
+        
+        if not self.OpPF.inputs["Matrix"].connected():
+            print "Please Before Select Some Features"
+            return
+        
         if self.opTrain is None:
             #initialize all classification operators
             print "initializing classification..."
@@ -125,7 +161,7 @@ class Main(QMainWindow):
             
             self.opTrain = operators.OpTrainRandomForest(self.g)
             self.opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
-            self.opTrain.inputs['Images'].connect(self.featureStacker.outputs["Output"])
+            self.opTrain.inputs['Images'].connect(self.OpFeatureCache.outputs["Output"])
             self.opTrain.inputs['fixClassifier'].setValue(False)                
             
             opClassifierCache = operators.OpArrayCache(self.g)
@@ -137,7 +173,7 @@ class Main(QMainWindow):
             self.opPredict.inputs['LabelsCount'].setValue(nclasses)
             self.opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output']) 
             #self.opPredict.inputs['Classifier'].connect(self.opTrain.outputs['Classifier'])       
-            self.opPredict.inputs['Image'].connect(self.featureStacker.outputs['Output'])  
+            self.opPredict.inputs['Image'].connect(self.OpFeatureCache.outputs["Output"])  
             
             #add prediction results for all classes as separate channels
             for icl in range(nclasses):
@@ -188,11 +224,14 @@ class Main(QMainWindow):
         self.haveData.emit()
        
     def initGraph(self):
+        
+        g=self.g
         print "going to init the graph"
         
         shape = self.inputProvider.outputs["Output"].shape
         print "data block shape: ", shape
         srcs = []
+        
         #create a layer for each channel of the input:
         nchannels = shape[-1]
         for ich in range(nchannels):
@@ -217,32 +256,36 @@ class Main(QMainWindow):
         layer1.ref_object = None
         self.layerstack.append(layer1)
         
-#        op1 = OpDataProvider(self.g, self.raw[:,:,:,:,0:1]/20)
-#        op2 = OpDelay(self.g, 0.00000)
-#        op2.inputs["Input"].connect(op1.outputs["Data"])
-#        nucleisrc = LazyflowSource(op2.outputs["Output"])
-#        
-#        op3 = OpDataProvider(self.g, self.raw[:,:,:,:,1:2]/10)
-#        op4 = OpDelay(self.g, 0.00000)
-#        op4.inputs["Input"].connect(op3.outputs["Data"])
-#        membranesrc = LazyflowSource(op4.outputs["Output"])
-#        
-#        layer1 = RGBALayer( green = membranesrc, red = nucleisrc )
-#        layer1.name = "Membranes/Nuclei"
-#        self.layerstack.append(layer1)
+
         
         opImageList = operators.Op5ToMulti(self.g)    
         opImageList.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
         
-        #init the features with just the intensity
-        opFeatureList = operators.Op5ToMulti(self.g)    
-        opFeatureList.inputs["Input0"].connect(opImageList.outputs["Outputs"])
-
-        self.featureStacker=operators.OpMultiArrayStacker(self.g)
-        self.featureStacker.inputs["Images"].connect(opFeatureList.outputs["Outputs"])
-        self.featureStacker.inputs["AxisFlag"].setValue('c')
-        self.featureStacker.inputs["AxisIndex"].setValue(4)
         
+        #Operator of the pixel features
+        OpPF = operators.OpPixelFeatures2(g)
+        
+        print "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH"
+        print self.inputProvider.outputs["Output"].shape
+        OpPF.inputs["Input"].setValue(self.inputProvider.outputs["Output"])
+        OpPF.inputs["Scales"].setValue(self.featScalesList)
+        #OpPF.inputs["Input"].setValue(numpy.random.rand(60,60,60,10,10).astype(numpy.float32))
+        #OpPF.inputs["Matrix"].setValue([[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0]])
+        
+        self.OpPF=OpPF
+        
+        
+        #init the features with just the intensity
+        opFeatureList = operators.Op5ToMulti(g)    
+        opFeatureList.inputs["Input0"].connect(OpPF.outputs["Output"])
+        
+        #Caching the computed Features
+        opFeatureCache = operators.OpArrayCache(g)
+        opFeatureCache.inputs["blockShape"].setValue((1,64,64,64,1))
+        opFeatureCache.inputs["Input"].connect(opFeatureList.outputs["Outputs"])  
+        self.OpFeatureCache=opFeatureCache
+        
+                
         self.initLabels()
         self.dataReadyToView.emit()
         
