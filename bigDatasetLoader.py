@@ -40,7 +40,7 @@ class Main(QMainWindow):
          
      def initUic(self):
          
-        self.g=g=Graph(4,softMaxMem = 15000*1024**2) 
+        self.g=g=Graph(8,softMaxMem = 15000*1024**2) 
          
         #get the absolute path of the 'ilastik' module
         uic.loadUi("designerElements/MainWindow.ui", self) 
@@ -50,8 +50,13 @@ class Main(QMainWindow):
         
         Reader=op.OpH5Reader(g)
         
-        Reader.inputs["Filename"].setValue("Knott_compressed_swapped.h5")
+        Reader.inputs["Filename"].setValue("scripts/Knott_compressed_oldshape.h5")
         Reader.inputs["hdf5Path"].setValue("volume/data")
+        
+        
+        opFeatureCache = op.OpArrayCache(g)
+        opFeatureCache.inputs["blockShape"].setValue((1,128,128,128,1))
+        opFeatureCache.inputs["Input"].connect(Reader.outputs["Image"]) 
         
         """
         import h5py
@@ -63,8 +68,8 @@ class Main(QMainWindow):
         opImage.inputs["Input"].setValue(d)
         """
       
+        #datasrc = LazyflowSource(opFeatureCache.outputs["Output"])
         datasrc = LazyflowSource(Reader.outputs["Image"])
-        
         
         
         #datasrc = LazyflowSource(opImage.outputs["Output"])
