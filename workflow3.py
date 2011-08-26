@@ -43,32 +43,30 @@ class Main(QMainWindow):
         self.opTrain = None
         
     def initUic(self):
+        #get the absolute path of the 'ilastik' module
+        uic.loadUi("designerElements/MainWindow.ui", self) 
+        #connect the window and graph creation to the opening of the file
+        self.actionOpen.triggered.connect(self.openFile)
         
-       
-       #get the absolute path of the 'ilastik' module
-       uic.loadUi("designerElements/MainWindow.ui", self) 
-       #connect the window and graph creation to the opening of the file
-       self.actionOpen.triggered.connect(self.openFile)
-       
-       self.haveData.connect(self.initGraph)
-       self.dataReadyToView.connect(self.initEditor)
-
-       self.layerstack = LayerStackModel()
-       
-       model = LabelListModel()
-       self.labelListView.setModel(model)
-       self.labelListModel=model
-       
-       self.labelListModel.rowsAboutToBeRemoved.connect(self.onLabelAboutToBeRemoved)
-       self.labelListView.clicked.connect(self.switchLabel)
-       self.labelListView.doubleClicked.connect(self.switchColor)
-       
-       self.AddLabelButton.clicked.connect(self.addLabel)
-       
-       self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
-       self.StartClassificationButton.clicked.connect(self.startClassification)
-       
-       self.g = Graph()
+        self.haveData.connect(self.initGraph)
+        self.dataReadyToView.connect(self.initEditor)
+        
+        self.layerstack = LayerStackModel()
+        
+        model = LabelListModel()
+        self.labelListView.setModel(model)
+        self.labelListModel=model
+        
+        self.labelListModel.rowsAboutToBeRemoved.connect(self.onLabelAboutToBeRemoved)
+        self.labelListView.clicked.connect(self.switchLabel)
+        self.labelListView.doubleClicked.connect(self.switchColor)
+        
+        self.AddLabelButton.clicked.connect(self.addLabel)
+        
+        self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
+        self.StartClassificationButton.clicked.connect(self.startClassification)
+        
+        self.g = Graph()
        
  
        
