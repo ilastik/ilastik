@@ -5,7 +5,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 import os, sys
 
 import numpy as np
-from PyQt4.QtCore import QObject, QRectF, QTime, Qt, pyqtSignal
+from PyQt4.QtCore import QObject, QRectF, QTime, Qt, pyqtSignal, QTimer
 from PyQt4.QtGui import QColor, QApplication, QSplitter, QPushButton, \
                         QVBoxLayout, QWidget, QHBoxLayout, QMainWindow
 
@@ -28,7 +28,7 @@ from PyQt4 import QtCore, QtGui, uic
 
 from featureDlg import *
 
-import  numpy
+import numpy, sys
 
 
 class Main(QMainWindow):
@@ -36,11 +36,19 @@ class Main(QMainWindow):
     haveData = pyqtSignal()
     dataReadyToView = pyqtSignal()
         
-    def __init__(self, useGL, argv):
+    def __init__(self, argv):
         QMainWindow.__init__(self)
         self.initUic()
         self.opPredict = None
         self.opTrain = None
+        
+        #
+        # if the filename was specified on command line, load it
+        #
+        if len(sys.argv) == 2:
+            def loadFile():
+                self._openFile(sys.argv[1])
+            QTimer.singleShot(0, loadFile)
         
     def initUic(self):
         #get the absolute path of the 'ilastik' module
@@ -174,6 +182,9 @@ class Main(QMainWindow):
         #FIXME: only take one file for now, more to come
         #fileName = QtGui.QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Image Files (*.png *.jpg *.bmp *.tif *.tiff *.gif *.h5)")
         fileName = QtGui.QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Numpy files (*.npy)")
+        self._openFile(fileName)
+        
+    def _openFile(self, fileName):
         fName, fExt = os.path.splitext(str(fileName))
         self.inputProvider = None
         if fExt=='.npy':
@@ -274,7 +285,7 @@ class Main(QMainWindow):
         model.canDeleteSelected.connect(self.DeleteButton.setEnabled)           
         
 app = QApplication(sys.argv)        
-t = Main(False, [])
+t = Main(sys.argv)
 t.show()
 
 app.exec_()
