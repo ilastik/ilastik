@@ -1,5 +1,5 @@
 from PyQt4.QtGui import QColor, QPixmap, QIcon
-from PyQt4.QtCore import QAbstractTableModel, Qt, QModelIndex
+from PyQt4.QtCore import QAbstractTableModel, Qt, QModelIndex, pyqtSignal
 
 class LabelListModel(QAbstractTableModel):
     def __init__(self, labels = [], parent = None):
@@ -72,6 +72,7 @@ class LabelListModel(QAbstractTableModel):
     def removeRow(self, position, parent = QModelIndex()):
         self.beginRemoveRows(parent, position, position)
         value = self._labels[position]
+        print "removing row: ", value
         self._labels.remove(value)     
         self.endRemoveRows()
         return True
