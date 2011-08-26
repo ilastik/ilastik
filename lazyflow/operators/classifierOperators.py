@@ -162,7 +162,63 @@ class OpPredictRandomForest(Operator):
             self.outputs["PMaps"].setDirty(key[:-1] + (slice(0,nlabels,None),))
             
             
+class OpSegmentation(Operator):
+    name = "OpSegmentation"
+    description = "displaying highest probability class for each pixel"
+
+    inputSlots = [InputSlot("Input")]
+    outputSlots = [OutputSlot("Output")]    
+    
+    def notifyConnectAll(self):
+
+        inputSlot = self.inputs["Input"]
+        
+        self.outputs["Output"]._shape = inputSlot.shape[:-1]
+        self.outputs["Output"]._dtype = inputSlot.dtype
+        self.outputs["Output"]._axistags = inputSlot.axistags
+        
+          
+    def getOutSlot(self, slot, key, result):
+        
+        shape = self.inputs["Input"].shape
+        rstart, rstop = sliceToRoi(key, shape)  
+        rstop[-1] = shape[-1]
+        rkey = roiToSlice(rstart,rstop)
+        img = self.inputs["Input"][rkey].allocate().wait()       
+        
+        stop = img.size
+    
+        seg = []
+          
+        for i in range(0,stop,img.shape[-1]):
+            curr_prob = -1
+            highest_class = -1
+            for c in range(img.shape[-1]):
+                prob = img.ravel()[i+c] 
+                if prob > curr_prob:
+                    curr_prob = prob
+                    highest_class = c
+            assert highest_class != -1, "OpSegmentation: Strange classes/probabilities"
+
+            seg.append(highest_class)
+    
+        seg = numpy.array(seg)
+        seg.resize(img.shape[:-1])
+
+        result[:] = seg[:]            
             
+
+
+    def notifyDirty(selfut,slot,key):
+        self.outputs["Output"].setDirty(key)
+
+    @property
+    def shape(self):
+        return self.outputs["Output"]._shape
+    
+    @property
+    def dtype(self):
+        return self.outputs["Output"]._dtype            
             
 
         
