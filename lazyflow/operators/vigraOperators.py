@@ -260,6 +260,10 @@ class OpPixelFeatures2(OperatorGroup):
             self.scales = self.inputs["Scales"].value
             self.matrix = self.inputs["Matrix"].value 
             
+            if type(self.matrix)!=numpy.ndarray:
+              print "Please input a numpy ndarray"
+              raise
+            
             dimCol = len(self.scales)
             dimRow = self.matrix.shape[0]
             
