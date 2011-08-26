@@ -1,11 +1,42 @@
-from PyQt4.QtGui import QColor, QPixmap, QIcon
+from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel
 from PyQt4.QtCore import QAbstractTableModel, Qt, QModelIndex, pyqtSignal
 
+class Label:
+    def __init__(self, name, color):
+        self.name = name
+        self.color = color
+    def __repr__(self):
+        return "<Label name=%s, color=%r>" % (self.name, self.color)
+
 class LabelListModel(QAbstractTableModel):
+    orderChanged = pyqtSignal()
+    labelSelected = pyqtSignal(int)
+    
     def __init__(self, labels = [], parent = None):
         QAbstractTableModel.__init__(self, parent)
         self._labels = labels
-
+        self._selectionModel = QItemSelectionModel(self)
+        
+        def onSelectionChanged(selected, deselected):
+            self.labelSelected.emit(selected[0].indexes()[0].row())
+        self._selectionModel.selectionChanged.connect(onSelectionChanged)
+    
+    def __getitem__(self, i):
+        return self._labels[i]
+     
+    def selectedRow(self):
+        selected = self._selectionModel.selectedRows()
+        if len(selected) == 1:
+            return selected[0].row()
+        return -1
+    
+    def selectedIndex(self):
+        row = self.selectedRow()
+        if row >= 0:
+            return self.index(self.selectedRow())
+        else:
+            return QModelIndex()
+            
     def rowCount(self, parent=None):
         return len(self._labels)
     

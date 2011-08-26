@@ -75,8 +75,21 @@ class Main(QMainWindow):
         self.labelListModel=model
         
         self.labelListModel.rowsAboutToBeRemoved.connect(self.onLabelAboutToBeRemoved)
-        self.labelListView.clicked.connect(self.switchLabel)
-        self.labelListView.doubleClicked.connect(self.switchColor)
+        self.labelListModel.labelSelected.connect(self.switchLabel)
+        
+        def onDataChanged(topLeft, bottomRight):
+            firstRow = topLeft.row()
+            lastRow  = bottomRight.row()
+            assert firstRow == lastRow
+            firstCol = topLeft.column()
+            lastCol  = bottomRight.column()
+            if 0 in range(firstCol, lastCol+1):
+                self.switchColor(firstRow+1, self.labelListModel[firstRow].color)
+                self.editor.scheduleSlicesRedraw()
+            #self.onColorChanged()
+            
+            
+        self.labelListModel.dataChanged.connect(onDataChanged)
         
         self.AddLabelButton.clicked.connect(self.addLabel)
         
@@ -109,17 +122,19 @@ class Main(QMainWindow):
         self.featureDlg=ex2
         ex2.show()     
         
-    def switchLabel(self, modelIndex):
-        self.editor.brushingModel.setDrawnNumber(modelIndex.row()+1)
+    def switchLabel(self, row):
+        print "switching to label=%r" % (self.labelListModel[row])
+        #+1 because first is transparent
         
-    def switchColor(self, modelIndex):
-        if modelIndex.column()>0:
-            return
-        #FIXME: we shouldn't pass the role like that, some object should know it
-        newcolor = self.labelListView.model().data(modelIndex, Qt.EditRole)
-        # +1 because the first entry of the color table is transparent
-        self.labellayer.colorTable[modelIndex.row()+1]=newcolor.rgba()
-        self.editor.invalidateAllSlices()
+        #FIXME: shouldn't be just row+1 here
+        self.editor.brushingModel.setDrawnNumber(row+1)
+        self.editor.brushingModel.setBrushColor(self.labelListModel[row].color)
+        
+    def switchColor(self, row, color):
+        print "label=%d changes color to %r" % (row, color)
+        self.labellayer.colorTable[row]=color.rgba()
+        self.editor.brushingModel.setBrushColor(color)
+        self.editor.scheduleSlicesRedraw()
     
     def addLabel(self):
         color = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
@@ -132,6 +147,10 @@ class Main(QMainWindow):
             #self.opTrain.notifyDirty(None, None)
             self.opPredict.inputs['LabelsCount'].setValue(nlabels)
             self.addPredictionLayer(nlabels-1, self.labelListModel._labels[nlabels-1])
+        
+        #FIXME: this should watch for model changes   
+        #drawing will be enabled when the first label is added  
+        self.editor.setDrawingEnabled(True)
     
     def onLabelAboutToBeRemoved(self, parent, start, end):
         #the user deleted a label, reshape prediction and remove the layer
@@ -173,7 +192,6 @@ class Main(QMainWindow):
                 self.addPredictionLayer(icl, self.labelListModel._labels[icl])
                 
             #self.updatePredictionLayers()
-            
                                     
     def addPredictionLayer(self, icl, ref_label):
         
@@ -184,12 +202,13 @@ class Main(QMainWindow):
         opSelCache = operators.OpArrayFixableCache(self.g)
         #opSelCache = operators.OpArrayCache(self.g)
         opSelCache.inputs["blockShape"].setValue((1,5,5,5,1))
+        opSelCache.inputs["Input"].connect(selector.outputs["Output"])  
         if self.checkInteractive.isChecked():
             opSelCache.inputs["fixAtCurrent"].setValue(False)
         else:
             opSelCache.inputs["fixAtCurrent"].setValue(True)
             
-        opSelCache.inputs["Input"].connect(selector.outputs["Output"])                
+                      
         
         predictsrc = LazyflowSource(opSelCache.outputs["Output"][0])
         
@@ -300,8 +319,9 @@ class Main(QMainWindow):
     def initEditor(self):
         print "going to init editor"
         useGL = False
-        self.editor = VolumeEditor(self.raw.shape, self.layerstack, labelsink=self.labelsrc, useGL=useGL)  
-        self.editor.setDrawingEnabled(True)
+        self.editor = VolumeEditor(self.raw.shape, self.layerstack, labelsink=self.labelsrc, useGL=useGL)
+        #drawing will be enabled when the first label is added  
+        self.editor.setDrawingEnabled(False)
         self.volumeEditorWidget.init(self.editor)
         model = self.editor.layerStack
         self.layerWidget.init(model)

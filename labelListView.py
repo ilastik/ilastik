@@ -1,22 +1,13 @@
 from PyQt4.QtGui import QTableView, QColorDialog, QAbstractItemView, QGroupBox, QHBoxLayout, QVBoxLayout, QPushButton, QColor, QWidget
 from PyQt4.QtCore import Qt, QSize
-from labelListModel import LabelListModel
+from labelListModel import LabelListModel, Label
 import sys
-        
-                             
-class Label:
-    def __init__(self, name, color):
-        self.name = name
-        self.color = color  
-
-
 
 class LabelListView(QTableView):        
     def __init__(self, parent = None):
         QTableView.__init__(self, parent)
         self.clicked.connect(self.tableViewCellClicked)
         self.doubleClicked.connect(self.tableViewCellDoubleClicked)
-       
         self.verticalHeader().sectionMoved.connect(self.rowMovedTest)
         
     def tableViewCellDoubleClicked(self, modelIndex):
@@ -43,6 +34,7 @@ class LabelListView(QTableView):
         QTableView.setModel(self, model)
         self._setPushButtonToColumn2(None, 0, model.rowCount())
         model.rowsInserted.connect(self._setPushButtonToColumn2)
+        self.setSelectionModel(model._selectionModel)
         
     def _setPushButtonToColumn2(self, parent, start, end):
         if end == start:
