@@ -87,23 +87,35 @@
                <widget class="QWidget" name="widget" native="true">
                 <layout class="QVBoxLayout" name="verticalLayout">
                  <item>
-                  <widget class="QPushButton" name="UpButton">
+                  <widget class="QToolButton" name="UpButton">
                    <property name="text">
                     <string>Up</string>
                    </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QPushButton" name="DownButton">
-                   <property name="text">
-                    <string>Down</string>
+                   <property name="icon">
+                    <iconset>
+                     <normaloff>../icons/go-up.png</normaloff>../icons/go-up.png</iconset>
                    </property>
                   </widget>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="DeleteButton">
+                  <widget class="QToolButton" name="DownButton">
+                   <property name="text">
+                    <string>Down</string>
+                   </property>
+                   <property name="icon">
+                    <iconset>
+                     <normaloff>../icons/go-down.png</normaloff>../icons/go-down.png</iconset>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QToolButton" name="DeleteButton">
                    <property name="text">
                     <string>Delete</string>
+                   </property>
+                   <property name="icon">
+                    <iconset>
+                     <normaloff>../icons/list-remove.png</normaloff>../icons/list-remove.png</iconset>
                    </property>
                   </widget>
                  </item>
@@ -121,9 +133,13 @@
                   </spacer>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="AddLayOutButton">
+                  <widget class="QToolButton" name="AddLayOutButton">
                    <property name="text">
                     <string>Add Layout</string>
+                   </property>
+                   <property name="icon">
+                    <iconset>
+                     <normaloff>../icons/list-add.png</normaloff>../icons/list-add.png</iconset>
                    </property>
                   </widget>
                  </item>
@@ -153,7 +169,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>25</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -250,6 +266,8 @@
    <header>labelListView</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../widgets.qrc"/>
+ </resources>
  <connections/>
 </ui>
