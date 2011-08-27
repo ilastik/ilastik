@@ -318,8 +318,7 @@ class Main(QMainWindow):
     
     def initEditor(self):
         print "going to init editor"
-        useGL = False
-        self.editor = VolumeEditor(self.raw.shape, self.layerstack, labelsink=self.labelsrc, useGL=useGL)
+        self.editor = VolumeEditor(self.raw.shape, self.layerstack, labelsink=self.labelsrc)
         #drawing will be enabled when the first label is added  
         self.editor.setDrawingEnabled(False)
         self.volumeEditorWidget.init(self.editor)
