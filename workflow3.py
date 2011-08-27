@@ -55,6 +55,9 @@ class Main(QMainWindow):
         #connect the window and graph creation to the opening of the file
         self.actionOpen.triggered.connect(self.openFile)
         self.actionQuit.triggered.connect(qApp.quit)
+        def toggleDebugPatches(show):
+            self.editor.showDebugPatches = show
+        self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
         
         self.haveData.connect(self.initGraph)
         self.dataReadyToView.connect(self.initEditor)

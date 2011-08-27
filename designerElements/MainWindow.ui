@@ -190,6 +190,7 @@
      <string>View</string>
     </property>
     <addaction name="actionFit_to_The_Screen"/>
+    <addaction name="actionShowDebugPatches"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -253,6 +254,14 @@
   <action name="actionQuit">
    <property name="text">
     <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionShowDebugPatches">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Debug Patches</string>
    </property>
   </action>
  </widget>
