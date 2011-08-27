@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>825</width>
+    <width>829</width>
     <height>600</height>
    </rect>
   </property>
@@ -30,7 +30,7 @@
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
-          <widget class="VolumeEditorWidget" name="volumeEditorWidget" native="true"/>
+          <widget class="VolumeEditorWidget" name="volumeEditorWidget"/>
           <widget class="QWidget" name="layoutWidget">
            <layout class="QVBoxLayout" name="verticalLayout_2">
             <item>
@@ -169,8 +169,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>825</width>
-     <height>27</height>
+     <width>829</width>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -178,6 +178,7 @@
      <string>File</string>
     </property>
     <addaction name="actionOpen"/>
+    <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
@@ -247,6 +248,11 @@
   <action name="actionFit_to_The_Screen">
    <property name="text">
     <string>Fit to The Screen</string>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
    </property>
   </action>
  </widget>

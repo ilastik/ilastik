@@ -1,24 +1,21 @@
-from PyQt4 import QtGui, QtDesigner
-from labelListView import *
-from labelListModel import *
+from PyQt4.QtDesigner import QPyDesignerCustomWidgetPlugin
+from PyQt4.QtGui import QPixmap, QIcon, QColor
 
-class PyLabelListViewPlugin(QtDesigner.QPyDesignerCustomWidgetPlugin):
+from labelListView import LabelListView
+from labelListModel import Label, LabelListModel
+
+class PyLabelListViewPlugin(QPyDesignerCustomWidgetPlugin):
 
     def __init__(self, parent = None):
-    
-        QtDesigner.QPyDesignerCustomWidgetPlugin.__init__(self)
-
+        QPyDesignerCustomWidgetPlugin.__init__(self)
         self.initialized = False
         
     def initialize(self, core):
-
         if self.initialized:
             return
-
         self.initialized = True
 
     def isInitialized(self):
-
         return self.initialized
     
     def createWidget(self, parent):
@@ -38,6 +35,15 @@ class PyLabelListViewPlugin(QtDesigner.QPyDesignerCustomWidgetPlugin):
     def group(self):
         return "ilastik widgets"
     
+    def icon(self):
+        return QIcon(QPixmap(16,16))
+                           
+    def toolTip(self):
+        return ""
+    
+    def whatsThis(self):
+        return ""
+    
     def isContainer(self):
         return False
     
@@ -49,5 +55,4 @@ class PyLabelListViewPlugin(QtDesigner.QPyDesignerCustomWidgetPlugin):
     
     def includeFile(self):
         return "labelListView"
-    
-    
+ 

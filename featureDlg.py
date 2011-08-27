@@ -33,7 +33,6 @@ import qimage2ndarray
 import tableWidget
 import preView
 
-
 class FeatureDlg(QDialog):
     def __init__(self, parent=None):
         QDialog.__init__(self, parent)
@@ -127,7 +126,7 @@ class FeatureDlg(QDialog):
         self.reject()
         
         
-class SimpleObject:
+class FeatureEntry:
     def __init__(self, name):
         self.name = name
         
@@ -147,7 +146,7 @@ if __name__ == "__main__":
 #    app.setStyle("cleanlooks")
     
     ex1 = FeatureDlg()
-    ex1.createFeatureTable({"Color": [SimpleObject("Banana")], "Edge": [SimpleObject("Mango"), SimpleObject("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
+    ex1.createFeatureTable({"Color": [FeatureEntry("Banana")], "Edge": [FeatureEntry("Mango"), FeatureEntry("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
     ex1.setWindowTitle("ex1")
     ex1.setImageToPreView((numpy.random.rand(200,200)*256).astype(numpy.uint8))
     ex1.setIconsToTableWidget("icons/CheckboxFull.png", "icons/CheckboxPartially.png", "icons/CheckboxEmpty.png")
@@ -164,7 +163,7 @@ if __name__ == "__main__":
     ex1.raise_()
     
     ex2 = FeatureDlg()
-    ex2.createFeatureTable({"Color": [SimpleObject("Banananananaana")], "Edge": [SimpleObject("Mango"), SimpleObject("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
+    ex2.createFeatureTable({"Color": [FeatureEntry("Banananananaana")], "Edge": [FeatureEntry("Mango"), FeatureEntry("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
     ex2.setWindowTitle("ex2")
     ex2.setImageToPreView((numpy.random.rand(100,100)*256).astype(numpy.uint8))
     ex2.show()

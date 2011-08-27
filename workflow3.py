@@ -2,38 +2,32 @@
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-import os, sys
+import os, sys, numpy
 
-import numpy as np
-from PyQt4.QtCore import QObject, QRectF, QTime, Qt, pyqtSignal, QTimer
-from PyQt4.QtGui import QColor, QApplication, QSplitter, QPushButton, \
-                        QVBoxLayout, QWidget, QHBoxLayout, QMainWindow
+from PyQt4.QtCore import pyqtSignal, QTimer
+from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
+                        QMessageBox, qApp
+from PyQt4 import uic
 
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
-from lazyflow import operators
-from volumeeditor.pixelpipeline.datasources import LazyflowSource, ConstantSource
+from lazyflow.graph import Graph
+from lazyflow.operators import Op5ToMulti, OpArrayCache, OpArrayFixableCache, \
+                               OpArrayPiper, OpPredictRandomForest, \
+                               OpSingleChannelSelector, OpSparseLabelArray, \
+                               OpMultiArrayStacker, OpTrainRandomForest
+from volumeeditor.pixelpipeline.datasources import LazyflowSource
 from volumeeditor.pixelpipeline._testing import OpDataProvider
-from volumeeditor._testing.from_lazyflow import OpDataProvider5D, OpDelay
 from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer
-from volumeeditor.layerwidget.layerwidget import LayerWidget
 from volumeeditor.layerstack import LayerStackModel
 from volumeeditor.volumeEditor import VolumeEditor
-from volumeeditor.volumeEditorWidget import VolumeEditorWidget
-from volumeeditor.pixelpipeline.datasources import ArraySource, LazyflowSinkSource
+from volumeeditor.pixelpipeline.datasources import LazyflowSinkSource
 
-from labelListView import LabelListView, Label
+from labelListView import Label
 from labelListModel import LabelListModel
 
-from PyQt4 import QtCore, QtGui, uic
+from featureDlg import FeatureDlg, FeatureEntry
 
-from featureDlg import *
-
-import numpy, sys
-
-
-class Main(QMainWindow):
-    
-    haveData = pyqtSignal()
+class Main(QMainWindow):    
+    haveData        = pyqtSignal()
     dataReadyToView = pyqtSignal()
         
     def __init__(self, argv):
@@ -42,13 +36,11 @@ class Main(QMainWindow):
         self.opPredict = None
         self.opTrain = None
         
-        
         self.g = Graph()
         self.fixableOperators = []
         
-        
-        
         self.initUic()
+        
         #
         # if the filename was specified on command line, load it
         #
@@ -57,13 +49,12 @@ class Main(QMainWindow):
                 self._openFile(sys.argv[1])
             QTimer.singleShot(0, loadFile)
         
-
-        
     def initUic(self):
         #get the absolute path of the 'ilastik' module
         uic.loadUi("designerElements/MainWindow.ui", self) 
         #connect the window and graph creation to the opening of the file
         self.actionOpen.triggered.connect(self.openFile)
+        self.actionQuit.triggered.connect(qApp.quit)
         
         self.haveData.connect(self.initGraph)
         self.dataReadyToView.connect(self.initEditor)
@@ -112,7 +103,7 @@ class Main(QMainWindow):
            nLabelsLayers = self.labelListModel.rowCount()
            if nPaintedLabels!=nLabelsLayers:
                self.checkInteractive.setCheckState(0)
-               mexBox=QtGui.QMessageBox()
+               mexBox=QMessageBox()
                mexBox.setText("Did you forget to paint some labels?")
                mexBox.setInformativeText("Painted Labels %d \nNumber Active Labels Layers %d"%(nPaintedLabels,self.labelListModel.rowCount()))
                mexBox.exec_()
@@ -135,7 +126,7 @@ class Main(QMainWindow):
        
     def onFeatureButtonClicked(self):
         ex2 = FeatureDlg()
-        ex2.createFeatureTable({"Color": [SimpleObject("Banananananaana")], "Edge": [SimpleObject("Mango"), SimpleObject("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
+        ex2.createFeatureTable({"Color": [FeatureEntry("Banananananaana")], "Edge": [FeatureEntry("Mango"), FeatureEntry("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
         ex2.setWindowTitle("ex2")
         ex2.setImageToPreView((numpy.random.rand(100,100)*256).astype(numpy.uint8))
         self.featureDlg=ex2
@@ -187,19 +178,19 @@ class Main(QMainWindow):
         if self.opTrain is None:
             #initialize all classification operators
             print "initializing classification..."
-            opMultiL = operators.Op5ToMulti(self.g)    
+            opMultiL = Op5ToMulti(self.g)    
             opMultiL.inputs["Input0"].connect(self.opLabels.outputs["Output"])
             
-            self.opTrain = operators.OpTrainRandomForest(self.g)
+            self.opTrain = OpTrainRandomForest(self.g)
             self.opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
             self.opTrain.inputs['Images'].connect(self.featureStacker.outputs["Output"])
             self.opTrain.inputs['fixClassifier'].setValue(False)                
             
-            opClassifierCache = operators.OpArrayCache(self.g)
+            opClassifierCache = OpArrayCache(self.g)
             opClassifierCache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
            
             ################## Prediction
-            self.opPredict=operators.OpPredictRandomForest(self.g)
+            self.opPredict=OpPredictRandomForest(self.g)
             nclasses = self.labelListModel.rowCount()
             self.opPredict.inputs['LabelsCount'].setValue(nclasses)
             self.opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output']) 
@@ -214,12 +205,12 @@ class Main(QMainWindow):
                                     
     def addPredictionLayer(self, icl, ref_label):
         
-        selector=operators.OpSingleChannelSelector(self.g)
+        selector=OpSingleChannelSelector(self.g)
         selector.inputs["Input"].connect(self.opPredict.outputs['PMaps'])
         selector.inputs["Index"].setValue(icl)
         
-        opSelCache = operators.OpArrayFixableCache(self.g)
-        #opSelCache = operators.OpArrayCache(self.g)
+        opSelCache = OpArrayFixableCache(self.g)
+        #opSelCache = OpArrayCache(self.g)
         opSelCache.inputs["blockShape"].setValue((1,128,128,128,1))
         opSelCache.inputs["Input"].connect(selector.outputs["Output"])  
         if self.checkInteractive.isChecked():
@@ -235,7 +226,7 @@ class Main(QMainWindow):
         layer2.name = "Prediction for " + ref_label.name
         layer2.ref_object = ref_label
         self.layerstack.append( layer2 )
-        self.fixableOperators.append(opSelCache)
+        self.fixableappend(opSelCache)
                
     def removePredictionLayer(self, ref_label):
         for il, layer in enumerate(self.layerstack):
@@ -246,16 +237,16 @@ class Main(QMainWindow):
     
     def openFile(self):
         #FIXME: only take one file for now, more to come
-        #fileName = QtGui.QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Image Files (*.png *.jpg *.bmp *.tif *.tiff *.gif *.h5)")
-        fileName = QtGui.QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Numpy files (*.npy)")
+        #fileName = QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Image Files (*.png *.jpg *.bmp *.tif *.tiff *.gif *.h5)")
+        fileName = QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Numpy files (*.npy)")
         self._openFile(fileName)
         
     def _openFile(self, fileName):
         fName, fExt = os.path.splitext(str(fileName))
         self.inputProvider = None
         if fExt=='.npy':
-            self.raw = np.load(str(fileName))
-            self.inputProvider = operators.OpArrayPiper(self.g)
+            self.raw = numpy.load(str(fileName))
+            self.inputProvider = OpArrayPiper(self.g)
             self.inputProvider.inputs["Input"].setValue(self.raw)
         else:
             print "not supported yet"
@@ -272,9 +263,7 @@ class Main(QMainWindow):
         nchannels = shape[-1]
         for ich in range(nchannels):
             op1 = OpDataProvider(self.g, self.raw[..., ich:ich+1])
-            op2 = OpDelay(self.g, 0.0000)
-            op2.inputs["Input"].connect(op1.outputs["Data"])
-            layersrc = LazyflowSource(op2.outputs["Output"])
+            layersrc = LazyflowSource(op1.outputs["Data"])
             srcs.append(layersrc)
             
         #FIXME: we shouldn't merge channels automatically, but for now it's prettier
@@ -306,14 +295,14 @@ class Main(QMainWindow):
 #        layer1.name = "Membranes/Nuclei"
 #        self.layerstack.append(layer1)
         
-        opImageList = operators.Op5ToMulti(self.g)    
+        opImageList = Op5ToMulti(self.g)    
         opImageList.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
         
         #init the features with just the intensity
-        opFeatureList = operators.Op5ToMulti(self.g)    
+        opFeatureList = Op5ToMulti(self.g)    
         opFeatureList.inputs["Input0"].connect(opImageList.outputs["Outputs"])
 
-        self.featureStacker=operators.OpMultiArrayStacker(self.g)
+        self.featureStacker=OpMultiArrayStacker(self.g)
         self.featureStacker.inputs["Images"].connect(opFeatureList.outputs["Outputs"])
         self.featureStacker.inputs["AxisFlag"].setValue('c')
         self.featureStacker.inputs["AxisIndex"].setValue(4)
@@ -322,7 +311,7 @@ class Main(QMainWindow):
         self.dataReadyToView.emit()
         
     def initLabels(self):
-        self.opLabels = operators.OpSparseLabelArray(self.g)                                
+        self.opLabels = OpSparseLabelArray(self.g)                                
         self.opLabels.inputs["shape"].setValue(self.raw.shape[:-1] + (1,))
         self.opLabels.inputs["eraser"].setValue(100)                
         self.opLabels.inputs["Input"][0,0,0,0,0] = 1                    
