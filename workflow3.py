@@ -95,23 +95,22 @@ class Main(QMainWindow):
     def toggleInteractive(self, checked):
         print "checked = ", checked
         
-        #Check if the number of lables in the layer stack is equals to the number of Painted labels
-        #FIXME: Solve the proble of the two arbitrary initialized labels for the classifier
+        #Check if the number of labels in the layer stack is equals to the number of Painted labels
+        #FIXME: Solve the problem of the two arbitrary initialized labels for the classifier
         if checked==True:
-           labels =numpy.unique(numpy.asarray(self.opLabels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
-           nPaintedLabels=labels.shape[0]
-           nLabelsLayers = self.labelListModel.rowCount()
-           if nPaintedLabels!=nLabelsLayers:
-               self.checkInteractive.setCheckState(0)
-               mexBox=QMessageBox()
-               mexBox.setText("Did you forget to paint some labels?")
-               mexBox.setInformativeText("Painted Labels %d \nNumber Active Labels Layers %d"%(nPaintedLabels,self.labelListModel.rowCount()))
-               mexBox.exec_()
-               #print "Painted Labels: ", labels
-               #print "nPainted Labels: " , nPaintedLabels
-               #print "nLabelsLayers", self.labelListModel.rowCount()
-               return
-        
+            labels =numpy.unique(numpy.asarray(self.opLabels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
+            nPaintedLabels=labels.shape[0]
+            nLabelsLayers = self.labelListModel.rowCount()
+            if nPaintedLabels!=nLabelsLayers:
+                self.checkInteractive.setCheckState(0)
+                mexBox=QMessageBox()
+                mexBox.setText("Did you forget to paint some labels?")
+                mexBox.setInformativeText("Painted Labels %d \nNumber Active Labels Layers %d"%(nPaintedLabels,self.labelListModel.rowCount()))
+                mexBox.exec_()
+                #print "Painted Labels: ", labels
+                #print "nPainted Labels: " , nPaintedLabels
+                #print "nLabelsLayers", self.labelListModel.rowCount()
+                return
         
         if checked==True:
             self.AddLabelButton.setEnabled(False)
