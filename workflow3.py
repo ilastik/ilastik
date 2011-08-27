@@ -245,6 +245,7 @@ class Main(QMainWindow):
         self.inputProvider = None
         if fExt=='.npy':
             self.raw = numpy.load(str(fileName))
+            self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
             self.inputProvider = OpArrayPiper(self.g)
             self.inputProvider.inputs["Input"].setValue(self.raw)
         else:
@@ -257,42 +258,45 @@ class Main(QMainWindow):
         
         shape = self.inputProvider.outputs["Output"].shape
         print "data block shape: ", shape
-        srcs = []
+        srcs    = []
+        minMax = []
+        
+        print "* Data has shape=%r", (self.raw.shape,)
+        
         #create a layer for each channel of the input:
         nchannels = shape[-1]
         for ich in range(nchannels):
             op1 = OpDataProvider(self.g, self.raw[..., ich:ich+1])
+            #find the minimum and maximum value for normalization
+            mm = (numpy.min(self.raw[..., ich:ich+1]), numpy.max(self.raw[..., ich:ich+1]))
+            print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
+            if mm == (0.0, 255.0):
+                #do not normalize in this case
+                mm = None
+            minMax.append(mm)
             layersrc = LazyflowSource(op1.outputs["Data"])
             srcs.append(layersrc)
             
         #FIXME: we shouldn't merge channels automatically, but for now it's prettier
         layer1 = None
         if nchannels == 1:
-            layer1 = GrayscaleLayer(srcs[0])
+            layer1 = GrayscaleLayer(srcs[0], normalize=minMax[0])
+            print "  - showing raw data as grayscale"
         elif nchannels==2:
-            layer1 = RGBALayer(green = srcs[0], red = srcs[1])
+            layer1 = RGBALayer(red  = srcs[0], normalizeR=minMax[0],
+                               green = srcs[1], normalizeG=minMax[1])
+            print "  - showing channel 1 as red, channel 2 as green"
         elif nchannels==3:
-            layer1 = RGBALayer(green = srcs[0], red = srcs[1], blue = srcs[2])
+            layer1 = RGBALayer(red   = srcs[0], normalizeR=minMax[0],
+                               green = srcs[1], normalizeG=minMax[1],
+                               blue  = srcs[2], normalizeB=minMax[2])
+            print "  - showing channel 1 as red, channel 2 as green, channel 3 as blue"
         else:
             print "only 1,2 or 3 channels supported so far"
             return
         layer1.name = "Input data"
         layer1.ref_object = None
         self.layerstack.append(layer1)
-        
-#        op1 = OpDataProvider(self.g, self.raw[:,:,:,:,0:1]/20)
-#        op2 = OpDelay(self.g, 0.00000)
-#        op2.inputs["Input"].connect(op1.outputs["Data"])
-#        nucleisrc = LazyflowSource(op2.outputs["Output"])
-#        
-#        op3 = OpDataProvider(self.g, self.raw[:,:,:,:,1:2]/10)
-#        op4 = OpDelay(self.g, 0.00000)
-#        op4.inputs["Input"].connect(op3.outputs["Data"])
-#        membranesrc = LazyflowSource(op4.outputs["Output"])
-#        
-#        layer1 = RGBALayer( green = membranesrc, red = nucleisrc )
-#        layer1.name = "Membranes/Nuclei"
-#        self.layerstack.append(layer1)
         
         opImageList = Op5ToMulti(self.g)    
         opImageList.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
