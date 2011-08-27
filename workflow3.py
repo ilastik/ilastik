@@ -16,7 +16,8 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpArrayFixableCache, \
                                OpMultiArrayStacker, OpTrainRandomForest
 from volumeeditor.pixelpipeline.datasources import LazyflowSource
 from volumeeditor.pixelpipeline._testing import OpDataProvider
-from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer
+from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer, \
+                               AlphaModulatedLayer
 from volumeeditor.layerstack import LayerStackModel
 from volumeeditor.volumeEditor import VolumeEditor
 from volumeeditor.pixelpipeline.datasources import LazyflowSinkSource
@@ -35,6 +36,7 @@ class Main(QMainWindow):
         
         self.opPredict = None
         self.opTrain = None
+        self._colorTable16 = self._createDefault16ColorColorTable()
         
         self.g = Graph()
         self.fixableOperators = []
@@ -147,7 +149,11 @@ class Main(QMainWindow):
     
     def addLabel(self):
         color = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
+        numLabels = len(self.labelListModel)
+        if numLabels < len(self._colorTable16):
+            color = self._colorTable16[numLabels]
         self.labellayer.colorTable.append(color.rgba())
+        
         self.labelListModel.insertRow(self.labelListModel.rowCount(), Label("Label %d" % (self.labelListModel.rowCount() + 1), color))
         nlabels = self.labelListModel.rowCount()
         if self.opPredict is not None:
@@ -216,16 +222,15 @@ class Main(QMainWindow):
             opSelCache.inputs["fixAtCurrent"].setValue(False)
         else:
             opSelCache.inputs["fixAtCurrent"].setValue(True)
-            
-                      
         
         predictsrc = LazyflowSource(opSelCache.outputs["Output"][0])
         
-        layer2 = GrayscaleLayer(predictsrc, normalize = (0.0,1.0) )
+        layer2 = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color, normalize = (0.0,1.0) )
         layer2.name = "Prediction for " + ref_label.name
         layer2.ref_object = ref_label
-        self.layerstack.append( layer2 )
-        self.fixableappend(opSelCache)
+        #make sure that labels (index = 0) stay on top!
+        self.layerstack.insert(1, layer2 )
+        self.fixableOperators.append(opSelCache)
                
     def removePredictionLayer(self, ref_label):
         for il, layer in enumerate(self.layerstack):
@@ -320,9 +325,6 @@ class Main(QMainWindow):
         self.opLabels.inputs["Input"][0,0,0,0,0] = 1                    
         self.opLabels.inputs["Input"][0,0,0,1,0] = 2                    
         
-        
-        
-        
         self.labelsrc = LazyflowSinkSource(self.opLabels, self.opLabels.outputs["Output"], self.opLabels.inputs["Input"])
         transparent = QColor(0,0,0,0)
         self.labellayer = ColortableLayer(self.labelsrc, colorTable = [transparent.rgba()] )
@@ -344,7 +346,27 @@ class Main(QMainWindow):
         model.canMoveSelectedDown.connect(self.DownButton.setEnabled)
         self.DeleteButton.clicked.connect(model.deleteSelected)
         model.canDeleteSelected.connect(self.DeleteButton.setEnabled)           
-        
+    
+    def _createDefault16ColorColorTable(self):
+        c = []
+        c.append(QColor(255, 0, 0))
+        c.append(QColor(0, 255, 0))
+        c.append(QColor(0, 0, 255))
+        c.append(QColor(255, 255, 0))
+        c.append(QColor(0, 255, 255))
+        c.append(QColor(255, 0, 255))
+        c.append(QColor(255, 105, 180)) #hot pink
+        c.append(QColor(102, 205, 170)) #dark aquamarine
+        c.append(QColor(165,  42,  42)) #brown        
+        c.append(QColor(0, 0, 128))     #navy
+        c.append(QColor(255, 165, 0))   #orange
+        c.append(QColor(173, 255,  47)) #green-yellow
+        c.append(QColor(128,0, 128))    #purple
+        c.append(QColor(192, 192, 192)) #silver
+        c.append(QColor(240, 230, 140)) #khaki
+        c.append(QColor(69, 69, 69))    # dark grey
+        return c
+    
 app = QApplication(sys.argv)        
 t = Main(sys.argv)
 t.show()

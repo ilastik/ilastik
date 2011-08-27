@@ -21,6 +21,9 @@ class LabelListModel(QAbstractTableModel):
             self.labelSelected.emit(selected[0].indexes()[0].row())
         self._selectionModel.selectionChanged.connect(onSelectionChanged)
     
+    def __len__(self):
+        return len(self._labels)
+    
     def __getitem__(self, i):
         return self._labels[i]
      
