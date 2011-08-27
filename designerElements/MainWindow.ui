@@ -220,11 +220,6 @@
     <addaction name="actionOpen"/>
     <addaction name="actionQuit"/>
    </widget>
-   <widget class="QMenu" name="menuEdit">
-    <property name="title">
-     <string>Edit</string>
-    </property>
-   </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>View</string>
@@ -233,7 +228,6 @@
     <addaction name="actionShowDebugPatches"/>
    </widget>
    <addaction name="menuFile"/>
-   <addaction name="menuEdit"/>
    <addaction name="menuView"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -282,16 +276,28 @@
    </attribute>
   </widget>
   <action name="actionOpen">
+   <property name="icon">
+    <iconset>
+     <normaloff>../icons/document-open.png</normaloff>../icons/document-open.png</iconset>
+   </property>
    <property name="text">
     <string>Open</string>
    </property>
   </action>
   <action name="actionFit_to_The_Screen">
+   <property name="icon">
+    <iconset>
+     <normaloff>../icons/view-fullscreen.png</normaloff>../icons/view-fullscreen.png</iconset>
+   </property>
    <property name="text">
     <string>Fit to The Screen</string>
    </property>
   </action>
   <action name="actionQuit">
+   <property name="icon">
+    <iconset>
+     <normaloff>../icons/process-stop.png</normaloff>../icons/process-stop.png</iconset>
+   </property>
    <property name="text">
     <string>Quit</string>
    </property>
