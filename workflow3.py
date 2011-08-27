@@ -90,10 +90,7 @@ class Main(QMainWindow):
         self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
         self.StartClassificationButton.clicked.connect(self.startClassification)
         
-        self.checkInteractive.toggled.connect(self.toggleInteractive)
-        
-        
-        
+        self.checkInteractive.toggled.connect(self.toggleInteractive)   
  
     def toggleInteractive(self, checked):
         print "checked = ", checked
