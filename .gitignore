@@ -1,3 +1,4 @@
+*.backup
 *.pyc
 .settings/org.eclipse.core.resources.prefs
 
