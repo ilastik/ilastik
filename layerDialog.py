@@ -1,49 +1,42 @@
 from PyQt4 import uic
-
+from PyQt4.QtCore import pyqtSignal
 from PyQt4.QtGui import QDialog
 
-class LayerDialog(QDialog):
+import os
+
+class GrayscaleLayerDialog(QDialog):
     def __init__(self, parent=None):
         QDialog.__init__(self, parent)
-        uic.loadUi("designerElements/layerDialog.ui", self)
-        self.setRange(0,255)
+        p = os.path.split(os.path.abspath(__file__))[0]
+        uic.loadUi(p+"/designerElements/grayLayerDialog.ui", self)
         self.setLayername("testname")
-                    
-        self._minSlider.valueChanged.connect(self._onMinSliderMoved)
-        self._maxSlider.valueChanged.connect(self._onMaxSliderMoved)
+    def setLayername(self, n):
+        self._layerLabel.setText("<b>%s</b>" % n)
     
-    def _onMinSliderMoved(self, v):
-        if v >= self._maxSlider.value():
-            if v < self._maxSlider.maximum():
-                self._maxSlider.setValue(v+1)
-            else:
-                self._minSlider.setValue(v-1)
+    #grayChannelThresholdingWidget
+
+class RGBALayerDialog(QDialog):
+    def __init__(self, parent=None):
+        QDialog.__init__(self, parent)
+        p = os.path.split(os.path.abspath(__file__))[0]
+        uic.loadUi(p+"/designerElements/rgbaLayerDialog.ui", self)
+        self.setLayername("testname")
     
-    def _onMaxSliderMoved(self, v):
-        if v <= self._minSlider.value():
-            if self._minSlider.value() >= 1:
-                self._minSlider.setValue(v-1)
-            else:
-                self._maxSlider.setValue(1)
+    def showRedThresholds(self, show):
+        self.redChannel.setVisible(show)
+    def showGreenThresholds(self, show):
+        self.greenChannel.setVisible(show)
+    def showBlueThresholds(self, show):
+        self.blueChannel.setVisible(show)
+    def showAlphaThresholds(self, show):
+        self.alphaChannel.setVisible(show)
     
     def setLayername(self, n):
-        self._layerLabel.setText("Layer <b>%s</b>" % n)
-        
-    def setRange(self, minimum, maximum):
-        self._minSlider.setRange(minimum, maximum)
-        self._minSpin.setRange(minimum, maximum)
-        self._maxSlider.setRange(minimum, maximum)
-        self._maxSpin.setRange(minimum, maximum)
-        self._minSpin.setSuffix("/%d" % maximum)
-        self._maxSpin.setSuffix("/%d" % maximum)
-        self._minSlider.setValue(minimum)
-        self._maxSlider.setValue(maximum)
-        self._minSpin.setValue(minimum)
-        self._maxSpin.setValue(maximum)
+        self._layerLabel.setText("<b>%s</b>" % n)
         
 if __name__ == "__main__":
     from PyQt4.QtGui import QApplication
     app = QApplication([])
-    l = LayerDialog()
+    l = RGBALayerDialog()
     l.show()
     app.exec_()
