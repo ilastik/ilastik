@@ -920,11 +920,18 @@ class MultiInputSlot(object):
         return len(self.inputSlots)
         
     def resize(self, size):
+        oldsize = len(self)
+        
         while size > len(self):
             self._appendNew()
             
         while size < len(self):
             self._removeInputSlot(self[-1])
+
+        if oldsize < size:
+            for index in range(oldsize-1,size):
+                islot = self.inputSlots[index]
+        
                     
     def _appendNew(self):
         if self.level <= 1:
@@ -933,6 +940,7 @@ class MultiInputSlot(object):
             islot = MultiInputSlot(self.name,self, stype = self._stype, level = self.level - 1)
         index = len(self) - 1
         self.inputSlots.append(islot)
+    
         if self.partner is not None:
             if self.partner.level > 0:
                 if len(self.partner) >= len(self):
@@ -940,7 +948,7 @@ class MultiInputSlot(object):
             else:
                 self.partner._connect(islot)
         if self._value is not None:
-            islot.setValue(self._value)
+            islot.setValue(self._value)    
 
         return islot 
 
@@ -1641,16 +1649,25 @@ class OperatorWrapper(Operator):
         for name, oslot in self.outputs.items():
             oslot.pop(index)
         op.disconnect()
+
+    def _connectInnerOutputsForIndex(self, index):
+        for k,mslot in self.outputs.items():
+            #assert isinstance(mslot,MultiOutputSlot)
+            mslot.resize(len(self.innerOperators))
+
+        innerOp = self.innerOperators[index]
+        for key,mslot in self.outputs.items():            
+            mslot[index] = innerOp.outputs[key]
+
             
     def _connectInnerOutputs(self):
         for k,mslot in self.outputs.items():
-            assert isinstance(mslot,MultiOutputSlot)
-                        
+            #assert isinstance(mslot,MultiOutputSlot)
             mslot.resize(len(self.innerOperators))
 
-        for index, innerOp in enumerate(self.innerOperators):
-            for key,mslot in self.outputs.items():
-                    mslot[index] = innerOp.outputs[key]
+        for key,mslot in self.outputs.items():
+            for index, innerOp in enumerate(self.innerOperators):
+                mslot[index] = innerOp.outputs[key]
 
 #    def _recuresSetOutputs(self, outer, inner):
 #        if not isinstance(inner, MultiOutputSlot):
@@ -1764,7 +1781,7 @@ class OperatorWrapper(Operator):
                         self.innerOperators[indexes[0]].inputs[slots[0].name].connect(slots[1].partner)
                     elif slots[1]._value is not None:
                         self.innerOperators[indexes[0]].inputs[slots[0].name].setValue(slots[1]._value)                        
-        self._connectInnerOutputs()
+        self._connectInnerOutputsForIndex(indexes[0])
         return
 
 
