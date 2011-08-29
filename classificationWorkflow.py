@@ -123,6 +123,8 @@ class Main(QMainWindow):
             self.SelectFeaturesButton.setEnabled(True)
             for o in self.fixableOperators:
                 o.inputs["fixAtCurrent"].setValue(True)
+                
+        self.editor.scheduleSlicesRedraw()
        
     def onFeatureButtonClicked(self):
         ex2 = FeatureDlg()
