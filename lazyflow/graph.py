@@ -258,6 +258,8 @@ class GetItemRequestObject(object):
             self.wait() #this sets self.finished and copies the results over
         if not self.finished:
             self.lock = Lock()
+            #self._putOnTaskQueue()
+            #return
             gr = greenlet.getcurrent()
             if hasattr(gr, "lastRequest"):
                 # we delay the firing of an request until
@@ -827,12 +829,12 @@ class OutputSlot(object):
         return GetItemWriterObject(self,key)
 
     def _fireRequest(self, key, destination):
-#        assert self.operator is not None, "cannot do __getitem__ on Slot %s, of %r -> now operator !!" % (self.name,self.operator) 
-#        
-#        start, stop = sliceToRoi(key, self.shape)
-#        
-#        assert numpy.min(start) >= 0, "Somebody is requesting shit from slot %s of operator %s (%r)" %(self.name, self.operator.name, self.operator)
-#        assert (stop <= numpy.array(self.shape)).all(), "Somebody is requesting shit from slot %s of operator %s (%r) :  start: %r, stop %r, shape %r" %(self.name, self.operator.name, self.operator, start, stop, self.shape)
+        #assert self.operator is not None, "cannot do __getitem__ on Slot %s, of %r -> now operator !!" % (self.name,self.operator) 
+
+        #start, stop = sliceToRoi(key, self.shape)
+
+        #assert numpy.min(start) >= 0, "Somebody is requesting shit from slot %s of operator %s (%r)" %(self.name, self.operator.name, self.operator)
+        #assert (stop <= numpy.array(self.shape)).all(), "Somebody is requesting shit from slot %s of operator %s (%r) :  start: %r, stop %r, shape %r" %(self.name, self.operator.name, self.operator, start, stop, self.shape)
                 
         reqObject = GetItemRequestObject(self, self.graph, key, destination)
         return reqObject
@@ -2068,7 +2070,7 @@ class Worker(Thread):
                             gr.thread = self
                             gr.switch( reqObject)
                         else:
-                            self.graph.tasks.append((prio,task)) #move task back to task queue
+                            self.graph.tasks.put((prio,task)) #move task back to task queue
                             print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
                             gc.collect()
                             time.sleep(1.0)

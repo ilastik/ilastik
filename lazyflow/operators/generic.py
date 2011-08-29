@@ -135,20 +135,23 @@ class OpMultiArrayStacker(Operator):
         cnt = 0
         written = 0
         start, stop = roi.sliceToRoi(key, self.outputs["Output"].shape)
+        assert (stop<=self.outputs["Output"].shape).all()
         axisindex = self.inputs["AxisIndex"].value
         flag = self.inputs["AxisFlag"].value
         #ugly-ugly-ugly
         oldkey = list(key)
         oldkey.pop(axisindex)
-        
+        #print "STACKER: ", flag, axisindex
         #print "requesting an outslot from stacker:", key, result.shape
+        #print "input slots total: ", len(self.inputs['Images'])
         requests = []
+        
+        
         for i, inSlot in enumerate(self.inputs['Images']):
-            if inSlot.partner is not None:
+            if inSlot.connected():
                 req = None
                 inTagKeys = [ax.key for ax in inSlot.axistags]
                 if flag in inTagKeys:
-                    #print "axis there...", axisindex
                     slices = inSlot.shape[axisindex]
                     if cnt + slices >= start[axisindex] and start[axisindex]-cnt<slices and start[axisindex]+written<stop[axisindex]:
                         begin = 0
@@ -161,11 +164,6 @@ class OpMultiArrayStacker(Operator):
                         key_.insert(axisindex, slice(begin, end, None))
                         reskey = [slice(None, None, None) for x in range(len(result.shape))]
                         reskey[axisindex] = slice(written, written+end-begin, None)
-                        #reskey.insert(axisindex, slice(written, written+end-begin, None))
-                        #print "key_", key_
-                        #print "reskey", reskey
-                        #assert (end <= numpy.array(inSlot.shape)).all(), "end: %r, shape: %r" % (end, inSlot.shape)
-                        #assert (begin < numpy.array(inSlot.shape)).all(), "begin:  %r, shape: %r" % (begin, inSlot.shape)
                         
                         req = inSlot[tuple(key_)].writeInto(result[tuple(reskey)])
                         written += end - begin
@@ -173,8 +171,11 @@ class OpMultiArrayStacker(Operator):
                 else:
                     if cnt>=start[axisindex] and start[axisindex] + written < stop[axisindex]:
                         reskey = copy.copy(oldkey)
-                        reskey.insert(axisindex, cnt)
-                        req = inSlot[tuple(oldkey)].writeInto(result[tuple(reskey)])
+                        reskey.insert(axisindex, written)
+                        #print "key: ", key, "reskey: ", reskey, "oldkey: ", oldkey
+                        #print "result: ", result.shape, "inslot:", inSlot.shape
+                        destArea = result[tuple(reskey)]
+                        req = inSlot[tuple(oldkey)].writeInto(destArea)
                         written += 1
                     cnt += 1
                 
@@ -269,5 +270,88 @@ class OpSubRegion(Operator):
         res = self.inputs["Input"][newKey].allocate().wait()
         
         resultArea[:] = res.squeeze()[:]
+        
+ 
+ 
+ 
+class OpMultiArrayMerger(Operator):
+    inputSlots = [MultiInputSlot("Inputs"),InputSlot('MergingFunction')]
+    outputSlots = [OutputSlot("Output")]
+
+    name = "Merge Multi Arrays based on a variadic merging function"
+    category = "Misc"
+    
+    def notifyConnectAll(self):
+        
+        shape=self.inputs["Inputs"][0].shape
+        axistags=copy.copy(self.inputs["Inputs"][0].axistags)
+        
+        
+        self.outputs["Output"]._shape = shape
+        self.outputs["Output"]._axistags = axistags
+        self.outputs["Output"]._dtype = self.inputs["Inputs"][0].dtype
+        
+        
+        
+        for input in self.inputs["Inputs"]:
+            assert input.shape==shape, "Only possible merging consistent shapes"
+            assert input.axistags==axistags, "Only possible merging same axistags"
+                       
+        
+            
+    def getOutSlot(self, slot, key, result):
+        
+        requests=[]
+        for input in self.inputs["Inputs"]:
+            requests.append(input[key].allocate())
+        
+        data=[]
+        for req in requests:
+            data.append(req.wait())
+        
+        fun=self.inputs["MergingFunction"].value
+        
+        result[:]=fun(data)
+        
+        
+        
+class OpPixelOperator(Operator):
+    name = "OpPixelOperator"
+    description = "simple pixel operations"
+
+    inputSlots = [InputSlot("Input"), InputSlot("Function")]
+    outputSlots = [OutputSlot("Output")]    
+    
+    def notifyConnectAll(self):
+
+        inputSlot = self.inputs["Input"]
+
+        self.function = self.inputs["Function"].value
+   
+        self.outputs["Output"]._shape = inputSlot.shape
+        self.outputs["Output"]._dtype = inputSlot.dtype
+        self.outputs["Output"]._axistags = inputSlot.axistags
+        
+
+        
+    def getOutSlot(self, slot, key, result):
+        
+        
+        matrix = self.inputs["Input"][key].allocate().wait()
+        matrix = self.function(matrix)
+        
+        result[:] = matrix[:]
+
+
+    def notifyDirty(selfut,slot,key):
+        self.outputs["Output"].setDirty(key)
+
+    @property
+    def shape(self):
+        return self.outputs["Output"]._shape
+    
+    @property
+    def dtype(self):
+        return self.outputs["Output"]._dtype
         
         

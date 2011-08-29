@@ -38,14 +38,15 @@ class OpTrainRandomForest(Operator):
         
         featMatrix=[]
         labelsMatrix=[]
-
         for i,labels in enumerate(self.inputs["Labels"]):
             if labels.shape is not None:
                 labels=labels[:].allocate().wait()
+                
                 indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
                 #Maybe later request only part of the region?
+                
                 image=self.inputs["Images"][i][:].allocate().wait()
-                #print "OpTrainRandomForest:", image.shape, labels.shape
+                print "OpTrainRandomForest:", image.shape, labels.shape
                 
                 features=image[indexes]
                 labels=labels[indexes]
@@ -56,6 +57,9 @@ class OpTrainRandomForest(Operator):
 
         featMatrix=numpy.concatenate(featMatrix,axis=0)
         labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
+        
+        print "featMatrix.shape:", featMatrix.shape
+        print "labelsMatrix.shape:", labelsMatrix.shape
         
         RF=vigra.learning.RandomForest(100)        
         try:
@@ -94,7 +98,8 @@ class OpPredictRandomForest(Operator):
     
     def notifyConnectAll(self):
         inputSlot = self.inputs["Image"]    
-        nlabels=self.inputs["LabelsCount"].value        
+        nlabels=self.inputs["LabelsCount"].value
+        
         
         """
         self.outputs["PMaps"].resize(len(inputSlot)) #clearAllSlots()
@@ -110,8 +115,9 @@ class OpPredictRandomForest(Operator):
         islot=self.inputs["Image"]
 
         oslot._dtype = numpy.float32
-        oslot._shape = islot.shape[:-1]+(nlabels,)
+        
         oslot._axistags = islot.axistags
+        oslot._shape = islot.shape[:-1]+(nlabels,)
     """    
     def notifySubConnect(self, slots, indexes):
         print "OpClassifier notifySubConnect"
@@ -156,7 +162,103 @@ class OpPredictRandomForest(Operator):
             self.outputs["PMaps"].setDirty(key[:-1] + (slice(0,nlabels,None),))
             
             
+class OpSegmentation(Operator):
+    name = "OpSegmentation"
+    description = "displaying highest probability class for each pixel"
+
+    inputSlots = [InputSlot("Input")]
+    outputSlots = [OutputSlot("Output")]    
+    
+    def notifyConnectAll(self):
+
+        inputSlot = self.inputs["Input"]
+        
+        self.outputs["Output"]._shape = inputSlot.shape[:-1]
+        self.outputs["Output"]._dtype = inputSlot.dtype
+        self.outputs["Output"]._axistags = inputSlot.axistags
+        
+          
+    def getOutSlot(self, slot, key, result):
+        
+        shape = self.inputs["Input"].shape
+        rstart, rstop = sliceToRoi(key, shape)  
+        rstop[-1] = shape[-1]
+        rkey = roiToSlice(rstart,rstop)
+        img = self.inputs["Input"][rkey].allocate().wait()       
+        
+        stop = img.size
+    
+        seg = []
+          
+        for i in range(0,stop,img.shape[-1]):
+            curr_prob = -1
+            highest_class = -1
+            for c in range(img.shape[-1]):
+                prob = img.ravel()[i+c] 
+                if prob > curr_prob:
+                    curr_prob = prob
+                    highest_class = c
+            assert highest_class != -1, "OpSegmentation: Strange classes/probabilities"
+
+            seg.append(highest_class)
+    
+        seg = numpy.array(seg)
+        seg.resize(img.shape[:-1])
+
+        result[:] = seg[:]            
             
+
+
+    def notifyDirty(selfut,slot,key):
+        self.outputs["Output"].setDirty(key)
+
+    @property
+    def shape(self):
+        return self.outputs["Output"]._shape
+    
+    @property
+    def dtype(self):
+        return self.outputs["Output"]._dtype        
+        
+        
+class OpAreas(Operator):
+    name = "OpAreas"
+    description = "counting pixel areas"
+
+    inputSlots = [InputSlot("Input"), InputSlot("NumberOfChannels")]
+    outputSlots = [OutputSlot("Areas")]    
+       
+    def notifyConnectAll(self):
+        
+        self.outputs["Areas"]._shape = (self.inputs["NumberOfChannels"].value,)
+ 
+    def getOutSlot(self, slot, key, result):
+         
+        img = self.inputs["Input"][:].allocate().wait()   
+        
+        numC = self.inputs["NumberOfChannels"].value
+        
+        areas = []
+        for i in range(numC):
+            areas.append(0)
+         
+        for i in img.flat:
+            areas[int(i)] +=1
+
+        result[:] = numpy.array(areas)
+            
+
+
+    def notifyDirty(selfut,slot,key):
+        self.outputs["Output"].setDirty(key)
+
+    @property
+    def shape(self):
+        return self.outputs["Output"]._shape
+    
+    @property
+    def dtype(self):
+        return self.outputs["Output"]._dtype  
             
 
         
