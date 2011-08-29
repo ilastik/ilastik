@@ -4,7 +4,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import os, sys, numpy
 
-from PyQt4.QtCore import pyqtSignal, QTimer
+from PyQt4.QtCore import pyqtSignal, QTimer, QString
 from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
                         QMessageBox, qApp, QItemSelectionModel
 from PyQt4 import uic
@@ -23,6 +23,7 @@ from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer, \
                                AlphaModulatedLayer
 from volumeeditor.layerstack import LayerStackModel
 from volumeeditor.volumeEditor import VolumeEditor
+from volumeeditor.volumeEditorWidget import VolumeEditorWidget
 from volumeeditor.pixelpipeline.datasources import LazyflowSinkSource
 
 from labelListView import Label
@@ -57,7 +58,7 @@ class Main(QMainWindow):
         
     def initUic(self):
         #get the absolute path of the 'ilastik' module
-        uic.loadUi("designerElements/MainWindow.ui", self) 
+        uic.loadUi("designerElements/MainWindow_multifile.ui", self) 
         #connect the window and graph creation to the opening of the file
         self.actionOpen.triggered.connect(self.openFile)
         self.actionQuit.triggered.connect(qApp.quit)
@@ -66,7 +67,10 @@ class Main(QMainWindow):
         self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
         
         self.haveData.connect(self.initGraph)
+        self.haveData.connect(self.fillFileList)
         self.dataReadyToView.connect(self.initEditor)
+        
+        self.fileListWidget.itemSelectionChanged.connect(self.switchImage)
         
         self.layerstack = LayerStackModel()
         
@@ -279,6 +283,7 @@ class Main(QMainWindow):
     def _openFile(self, fileNames):
         self.totalInputProvider = None        
         self.inputProviders = []
+        self.fileList = []
         self.currentInputProviderIndex = 0
         for fname in fileNames: 
             fName, fExt = os.path.splitext(str(fname))
@@ -292,7 +297,8 @@ class Main(QMainWindow):
                 ip.inputs["Input"].setValue(self.raw)
                 self.inputProviders.append(ip)
                 self.totalInputProvider.inputs["MultiInput"].connect(ip.outputs["Output"])
-                self.currentInputProviderIndex = 0                    
+                self.currentInputProviderIndex = 0     
+                self.fileList.append(str(fname))               
                 #self.inputProvider = OpArrayPiper(self.g)
                 #self.inputProvider.inputs["Input"].setValue(self.raw)
             else:
@@ -404,9 +410,13 @@ class Main(QMainWindow):
     
     def initEditor(self):
         print "going to init editor"
+        print "raw shape:", self.raw.shape
+        print "layer stack: ", len(self.layerstack)
+        
         self.editor = VolumeEditor(self.raw.shape, self.layerstack, labelsink=self.labelsrc)
         #drawing will be enabled when the first label is added  
         self.editor.setDrawingEnabled(False)
+        
         self.volumeEditorWidget.init(self.editor)
         model = self.editor.layerStack
         self.layerWidget.init(model)
@@ -416,6 +426,24 @@ class Main(QMainWindow):
         model.canMoveSelectedDown.connect(self.DownButton.setEnabled)
         self.DeleteButton.clicked.connect(model.deleteSelected)
         model.canDeleteSelected.connect(self.DeleteButton.setEnabled)           
+    
+    def fillFileList(self):
+        for f in self.fileList:
+            self.fileListWidget.addItem(QString(f))
+        self.fileListWidget.setCurrentRow(self.currentInputProviderIndex)
+        
+    def switchImage(self):
+        print
+        print "switching image..."
+        self.layerstack = LayerStackModel()
+        newindex = self.fileListWidget.currentRow()
+        self.currentInputProviderIndex = newindex
+        self.initDataLayers(newindex)
+        self.initLabelLayer(newindex)
+        nclasses = self.labelListModel.rowCount()
+        for icl in range(nclasses):
+            self.addPredictionLayer(self.currentInputProviderIndex, icl, self.labelListModel._labels[icl])
+        self.initEditor()
     
     def _createDefault16ColorColorTable(self):
         c = []
