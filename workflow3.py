@@ -178,11 +178,15 @@ class Main(QMainWindow):
         nout = start-end+1
         ncurrent = self.labelListModel.rowCount()
         print "removing", nout, "out of ", ncurrent
+        
         if self.opPredict is not None:
             self.opPredict.inputs['LabelsCount'].setValue(ncurrent-nout)
         for il in range(start, end+1):
             labelvalue = self.labelListModel._labels[il]
             self.removePredictionLayer(labelvalue)
+            self.opLabels.inputs["deleteLabel"].setValue(il+1)
+            self.editor.scheduleSlicesRedraw()
+            
     
     def startClassification(self):
         if self.opTrain is None:
