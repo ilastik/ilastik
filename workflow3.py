@@ -225,11 +225,22 @@ class Main(QMainWindow):
         
         predictsrc = LazyflowSource(opSelCache.outputs["Output"][0])
         
-        layer2 = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color, normalize = (0.0,1.0) )
-        layer2.name = "Prediction for " + ref_label.name
-        layer2.ref_object = ref_label
+        predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color, normalize = (0.0,1.0) )
+        
+        def setLayerColor(c):
+            print "as the color of label '%s' has changed, setting layer's '%s' tint color to %r" % (ref_label.name, predictLayer.name, c)
+            predictLayer.tintColor = c
+        ref_label.colorChanged.connect(setLayerColor)
+        def setLayerName(n):
+            newName = "Prediction for %s" % ref_label.name
+            print "as the name of label '%s' has changed, setting layer's '%s' name to '%s'" % (ref_label.name, predictLayer.name, newName)
+            predictLayer.name = newName
+        setLayerName(ref_label.name)
+        ref_label.nameChanged.connect(setLayerName)
+        
+        predictLayer.ref_object = ref_label
         #make sure that labels (index = 0) stay on top!
-        self.layerstack.insert(1, layer2 )
+        self.layerstack.insert(1, predictLayer )
         self.fixableOperators.append(opSelCache)
                
     def removePredictionLayer(self, ref_label):

@@ -1,10 +1,36 @@
 from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel
-from PyQt4.QtCore import QAbstractTableModel, Qt, QModelIndex, pyqtSignal
+from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal
 
-class Label:
-    def __init__(self, name, color):
-        self.name = name
-        self.color = color
+class Label(QObject):
+    changed      = pyqtSignal()
+    colorChanged = pyqtSignal(QColor)
+    nameChanged  = pyqtSignal(object)
+    
+    def __init__(self, name, color, parent = None):
+        QObject.__init__(self, parent)
+        self._name = name
+        self._color = color
+    
+    @property
+    def color(self):
+        return self._color
+    @color.setter
+    def color(self, c):
+        if self._color != c:
+            print "Label '%s' has new color %r" % (self._name, c)
+            self._color = c
+            self.colorChanged.emit(c)
+    
+    @property
+    def name(self):
+        return self._name
+    @name.setter
+    def name(self, n):
+        if self._name != n:
+            print "Label '%s' has new name '%s'" % (self._name, n)
+            self._name = n
+            self.nameChanged.emit(n)
+    
     def __repr__(self):
         return "<Label name=%s, color=%r>" % (self.name, self.color)
 
@@ -92,7 +118,7 @@ class LabelListModel(QAbstractTableModel):
         if role == Qt.EditRole  and index.column() == 1:
             row = index.row()
             name = value
-            self._labels[row].name = name
+            self._labels[row].name = str(name.toString())
             self.dataChanged.emit(index, index)
             return True
         return False
