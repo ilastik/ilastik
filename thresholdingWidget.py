@@ -19,7 +19,6 @@ class ThresholdingWidget(QWidget):
         self._maxSlider.valueChanged.connect(self._onMaxSliderMoved)
     
     def _onMinSliderMoved(self, v):
-        #FIXME: assumes lower bound is 0
         if v >= self._maxSlider.value():
             if v < self._maxSlider.maximum():
                 self._maxSlider.setValue(v+1)
@@ -28,12 +27,11 @@ class ThresholdingWidget(QWidget):
         self.rangeChanged.emit(self._minSlider.value(), self._maxSlider.value())
     
     def _onMaxSliderMoved(self, v):
-        #FIXME: assumes lower bound is 0
         if v <= self._minSlider.value():
-            if self._minSlider.value() >= 1:
+            if v > self._minSlider.minimum():
                 self._minSlider.setValue(v-1)
             else:
-                self._maxSlider.setValue(1)
+                self._maxSlider.setValue(self._minSlider.minimum()+1)
         self.rangeChanged.emit(self._minSlider.value(), self._maxSlider.value())
     
     def setLayername(self, n):

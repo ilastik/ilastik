@@ -56,7 +56,7 @@ class LabelListView(QTableView):
             box.setLayout(layout)
             
             self.setIndexWidget(self.model().index(start+row,2), box)
-            print start + row
+            #print start + row
         self._setListViewLook()
             
     def tableViewCellClicked(self, modelIndex):

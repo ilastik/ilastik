@@ -6,7 +6,7 @@ import os, sys, numpy
 
 from PyQt4.QtCore import pyqtSignal, QTimer
 from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
-                        QMessageBox, qApp
+                        QMessageBox, qApp, QItemSelectionModel
 from PyQt4 import uic
 
 from lazyflow.graph import Graph
@@ -14,6 +14,9 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpArrayFixableCache, \
                                OpArrayPiper, OpPredictRandomForest, \
                                OpSingleChannelSelector, OpSparseLabelArray, \
                                OpMultiArrayStacker, OpTrainRandomForest
+
+from lazyflow import operators
+
 from volumeeditor.pixelpipeline.datasources import LazyflowSource
 from volumeeditor.pixelpipeline._testing import OpDataProvider
 from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer, \
@@ -40,6 +43,7 @@ class Main(QMainWindow):
         
         self.g = Graph()
         self.fixableOperators = []
+        self.predictionSources = []
         
         self.initUic()
         
@@ -90,7 +94,7 @@ class Main(QMainWindow):
         self.AddLabelButton.clicked.connect(self.addLabel)
         
         self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
-        self.StartClassificationButton.clicked.connect(self.startClassification)
+        self.StartClassificationButton.clicked.connect(self.initClassification)
         
         self.checkInteractive.toggled.connect(self.toggleInteractive)   
  
@@ -98,10 +102,12 @@ class Main(QMainWindow):
         print "checked = ", checked
         
         #Check if the number of labels in the layer stack is equals to the number of Painted labels
-        #FIXME: Solve the problem of the two arbitrary initialized labels for the classifier
         if checked==True:
-            labels =numpy.unique(numpy.asarray(self.opLabels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
-            nPaintedLabels=labels.shape[0]
+            nPaintedLabels = 0
+            for opl in self.opLabelList:
+                labels =numpy.unique(numpy.asarray(opl.outputs["nonzeroValues"][:].allocate().wait()[0]))
+                nPaintedLabels = labels.shape[0] if labels.shape[0]>nPaintedLabels else nPaintedLabels
+            #nPaintedLabels=labels.shape[0]
             nLabelsLayers = self.labelListModel.rowCount()
             if nPaintedLabels!=nLabelsLayers:
                 self.checkInteractive.setCheckState(0)
@@ -163,6 +169,11 @@ class Main(QMainWindow):
             self.opPredict.inputs['LabelsCount'].setValue(nlabels)
             self.addPredictionLayer(nlabels-1, self.labelListModel._labels[nlabels-1])
         
+        #make the new label selected
+        index = self.labelListModel.index(nlabels-1, 1)
+        self.labelListModel._selectionModel.select(index, QItemSelectionModel.ClearAndSelect)
+        
+        
         #FIXME: this should watch for model changes   
         #drawing will be enabled when the first label is added  
         self.editor.setDrawingEnabled(True)
@@ -174,20 +185,25 @@ class Main(QMainWindow):
         nout = start-end+1
         ncurrent = self.labelListModel.rowCount()
         print "removing", nout, "out of ", ncurrent
-        self.opPredict.inputs['LabelsCount'].setValue(ncurrent-nout)
+        
+        if self.opPredict is not None:
+            self.opPredict.inputs['LabelsCount'].setValue(ncurrent-nout)
         for il in range(start, end+1):
             labelvalue = self.labelListModel._labels[il]
             self.removePredictionLayer(labelvalue)
+            self.opLabels.inputs["deleteLabel"].setValue(il+1)
+            self.editor.scheduleSlicesRedraw()
+            
     
-    def startClassification(self):
+    def initClassification(self):
         if self.opTrain is None:
             #initialize all classification operators
             print "initializing classification..."
-            opMultiL = Op5ToMulti(self.g)    
-            opMultiL.inputs["Input0"].connect(self.opLabels.outputs["Output"])
+            #opMultiL = Op5ToMulti(self.g)    
+            #opMultiL.inputs["Input0"].connect(self.opLabels.outputs["Output"])
             
             self.opTrain = OpTrainRandomForest(self.g)
-            self.opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
+            self.opTrain.inputs['Labels'].connect(self.opMultiL.outputs["Outputs"])
             self.opTrain.inputs['Images'].connect(self.featureStacker.outputs["Output"])
             self.opTrain.inputs['fixClassifier'].setValue(False)                
             
@@ -199,16 +215,15 @@ class Main(QMainWindow):
             nclasses = self.labelListModel.rowCount()
             self.opPredict.inputs['LabelsCount'].setValue(nclasses)
             self.opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output']) 
-            #self.opPredict.inputs['Classifier'].connect(self.opTrain.outputs['Classifier'])       
             self.opPredict.inputs['Image'].connect(self.featureStacker.outputs['Output'])  
             
             #add prediction results for all classes as separate channels
             for icl in range(nclasses):
-                self.addPredictionLayer(icl, self.labelListModel._labels[icl])
-                
-            #self.updatePredictionLayers()
-                                    
-    def addPredictionLayer(self, icl, ref_label):
+                self.addPredictionSourceOperators(icl)
+                self.addPredictionLayer(self.currentInputProviderIndex, icl, self.labelListModel._labels[icl])
+    
+    def addPredictionSourceOperators(self, icl):
+        #init the operators for displaying the prediction results
         
         selector=OpSingleChannelSelector(self.g)
         selector.inputs["Input"].connect(self.opPredict.outputs['PMaps'])
@@ -223,12 +238,17 @@ class Main(QMainWindow):
         else:
             opSelCache.inputs["fixAtCurrent"].setValue(True)
         
-        predictsrc = LazyflowSource(opSelCache.outputs["Output"][0])
+        self.predictionSources.append(opSelCache)
+        self.fixableOperators.append(opSelCache)
+    
+    def addPredictionLayer(self, inputSourceIndex, icl, ref_label):
+        
+        predictsrc = LazyflowSource(self.predictionSources[icl].outputs["Output"][inputSourceIndex])
         
         predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color, normalize = (0.0,1.0) )
         
         def setLayerColor(c):
-            print "as the color of label '%s' has changed, setting layer's '%s' tint color to %r" % (ref_label.name, predictLayer.name, c)
+            print "as the color of label '%s'  has changed, setting layer's '%s' tint color to %r" % (ref_label.name, predictLayer.name, c)
             predictLayer.tintColor = c
         ref_label.colorChanged.connect(setLayerColor)
         def setLayerName(n):
@@ -241,7 +261,7 @@ class Main(QMainWindow):
         predictLayer.ref_object = ref_label
         #make sure that labels (index = 0) stay on top!
         self.layerstack.insert(1, predictLayer )
-        self.fixableOperators.append(opSelCache)
+        #self.fixableOperators.append(opSelCache)
                
     def removePredictionLayer(self, ref_label):
         for il, layer in enumerate(self.layerstack):
@@ -251,39 +271,74 @@ class Main(QMainWindow):
                 break
     
     def openFile(self):
-        #FIXME: only take one file for now, more to come
-        #fileName = QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Image Files (*.png *.jpg *.bmp *.tif *.tiff *.gif *.h5)")
-        fileName = QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Numpy files (*.npy)")
-        self._openFile(fileName)
         
-    def _openFile(self, fileName):
-        fName, fExt = os.path.splitext(str(fileName))
-        self.inputProvider = None
-        if fExt=='.npy':
-            self.raw = numpy.load(str(fileName))
-            self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
-            self.inputProvider = OpArrayPiper(self.g)
-            self.inputProvider.inputs["Input"].setValue(self.raw)
-        else:
-            print "not supported yet"
-            return
+        fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy files (*.npy)")
+        print "files selected:", fileNames
+        self._openFile(fileNames)
+        
+    def _openFile(self, fileNames):
+        self.totalInputProvider = None        
+        self.inputProviders = []
+        self.currentInputProviderIndex = 0
+        for fname in fileNames: 
+            fName, fExt = os.path.splitext(str(fname))
+            if fExt=='.npy':
+                self.raw = numpy.load(str(fname))
+                self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
+                if self.totalInputProvider is None:
+                    self.totalInputProvider = operators.OpMultiArrayPiper(self.g)
+                    self.totalInputProvider.inputs["MultiInput"].resize(len(fileNames))
+                ip = OpArrayPiper(self.g)
+                ip.inputs["Input"].setValue(self.raw)
+                self.inputProviders.append(ip)
+                self.totalInputProvider.inputs["MultiInput"].connect(ip.outputs["Output"])
+                self.currentInputProviderIndex = 0                    
+                #self.inputProvider = OpArrayPiper(self.g)
+                #self.inputProvider.inputs["Input"].setValue(self.raw)
+            else:
+                print "not supported yet"
+                return
         self.haveData.emit()
        
     def initGraph(self):
         print "going to init the graph"
         
-        shape = self.inputProvider.outputs["Output"].shape
+
+        
+        #opImageList = Op5ToMulti(self.g)    
+        #opImageList.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
+        
+        #init the features with just the intensity
+        opFeatureList = Op5ToMulti(self.g)    
+        opFeatureList.inputs["Input0"].connect(self.totalInputProvider.outputs["MultiOutput"])
+
+        self.featureStacker=OpMultiArrayStacker(self.g)
+        self.featureStacker.inputs["Images"].connect(opFeatureList.outputs["Outputs"])
+        self.featureStacker.inputs["AxisFlag"].setValue('c')
+        self.featureStacker.inputs["AxisIndex"].setValue(4)
+        
+        self.initDataLayers(0)
+        self.initLabels()
+        self.dataReadyToView.emit()
+    
+    def initDataLayers(self, inputSourceIndex):
+        #init the layers to display the input data for the source number inputSourceIndex
+        
+        shape = self.inputProviders[inputSourceIndex].outputs["Output"].shape
         print "data block shape: ", shape
         srcs    = []
         minMax = []
         
-        print "* Data has shape=%r", (self.raw.shape,)
-        
         #create a layer for each channel of the input:
         nchannels = shape[-1]
+        #DANGERDANGER: allocate the whole thing until something better comes up
+        self.raw = self.inputProviders[inputSourceIndex].outputs["Output"][:].allocate().wait()
+        
         for ich in range(nchannels):
             op1 = OpDataProvider(self.g, self.raw[..., ich:ich+1])
+
             #find the minimum and maximum value for normalization
+            #FIXME: this reads the whole data in memory. OK for 5d.npy, not ok in general
             mm = (numpy.min(self.raw[..., ich:ich+1]), numpy.max(self.raw[..., ich:ich+1]))
             print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
             if mm == (0.0, 255.0):
@@ -321,34 +376,31 @@ class Main(QMainWindow):
         layer1.ref_object = None
         self.layerstack.append(layer1)
         
-        opImageList = Op5ToMulti(self.g)    
-        opImageList.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
-        
-        #init the features with just the intensity
-        opFeatureList = Op5ToMulti(self.g)    
-        opFeatureList.inputs["Input0"].connect(opImageList.outputs["Outputs"])
-
-        self.featureStacker=OpMultiArrayStacker(self.g)
-        self.featureStacker.inputs["Images"].connect(opFeatureList.outputs["Outputs"])
-        self.featureStacker.inputs["AxisFlag"].setValue('c')
-        self.featureStacker.inputs["AxisIndex"].setValue(4)
-        
-        self.initLabels()
-        self.dataReadyToView.emit()
-        
     def initLabels(self):
-        self.opLabels = OpSparseLabelArray(self.g)                                
-        self.opLabels.inputs["shape"].setValue(self.raw.shape[:-1] + (1,))
-        self.opLabels.inputs["eraser"].setValue(100)                
-        self.opLabels.inputs["Input"][0,0,0,0,0] = 1                    
-        self.opLabels.inputs["Input"][0,0,0,1,0] = 2                    
-        
-        self.labelsrc = LazyflowSinkSource(self.opLabels, self.opLabels.outputs["Output"], self.opLabels.inputs["Input"])
+        #Add the layer to draw the labels, but don't add any labels
+        self.opLabelList = []
+        #FIXME: limited to 10 images for now
+        self.opMultiL = operators.Op10ToMulti(self.g)
+        nsources = len(self.inputProviders)
+        for nip, ip in enumerate(self.inputProviders):
+            opl = operators.OpSparseLabelArray(self.g)
+            opl.inputs["shape"].setValue(ip.outputs["Output"].shape[:-1] + (1,))
+            opl.inputs["eraser"].setValue(100)
+            #ugly-ugly-ugly
+            ipname = "Input"+str(nip)
+            self.opMultiL.inputs[ipname].connect(opl.outputs["Output"])
+            self.opLabelList.append(opl)     
+        self.initLabelLayer(0)
+    
+    def initLabelLayer(self, inputSourceIndex):
+        self.labelsrc = LazyflowSinkSource(self.opLabelList[inputSourceIndex], \
+                                           self.opLabelList[inputSourceIndex].outputs["Output"], \
+                                           self.opLabelList[inputSourceIndex].inputs["Input"])
         transparent = QColor(0,0,0,0)
         self.labellayer = ColortableLayer(self.labelsrc, colorTable = [transparent.rgba()] )
         self.labellayer.name = "Labels"
         self.labellayer.ref_object = None
-        self.layerstack.append(self.labellayer)    
+        self.layerstack.append(self.labellayer)
     
     def initEditor(self):
         print "going to init editor"
@@ -382,7 +434,7 @@ class Main(QMainWindow):
         c.append(QColor(128,0, 128))    #purple
         c.append(QColor(192, 192, 192)) #silver
         c.append(QColor(240, 230, 140)) #khaki
-        c.append(QColor(69, 69, 69))    # dark grey
+        c.append(QColor(69, 69, 69))    #dark grey
         return c
     
 app = QApplication(sys.argv)        
