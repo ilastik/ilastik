@@ -551,7 +551,7 @@ class InputSlot(object):
     
     def _checkNotifyConnect(self):
         if self.operator is not None:
-            self.operator.notifyConnect(self)
+            self.operator._notifyConnect(self)
             self._checkNotifyConnectAll()
             
     def _checkNotifyConnectAll(self):
@@ -562,7 +562,7 @@ class InputSlot(object):
         more then one slot
         """
         if self.operator is not None:
-            self.operator.notifyConnect(self)
+            ####self.operator.notifyConnect(self)
             # check wether all slots are connected and notify operator            
             if isinstance(self.operator,Operator):
                 allConnected = True
@@ -571,7 +571,7 @@ class InputSlot(object):
                         allConnected = False
                         break
                 if allConnected:
-                    self.operator.notifyConnectAll()
+                    self.operator._notifyConnectAll()
                 
         else:
             print "BBBBBBBBBBBBBBBBBBBBBBB operator is NONE", self.name
@@ -583,7 +583,7 @@ class InputSlot(object):
         Disconnect a InputSlot from its partner
         """
         #TODO: also reset ._value ??
-        self.operator.notifyDisconnect(self)
+        self.operator._notifyDisconnect(self)
         if self.partner is not None:
             self.partner.disconnectSlot(self)
         self.partner = None
@@ -730,8 +730,8 @@ class OutputSlot(object):
                     #p._checkNotifyConnectAll()
                     #p.disconnect()
                     #p.connect(self)
-                    
-                    p.operator.notifyConnect(p)
+                    p.shape = value
+                    p.operator._notifyConnect(p)
                     p._checkNotifyConnectAll()
             #else:
             #    self.setDirty(slice(None,None,None)) #set everything to dirty! BEWARE; DANGER;
@@ -912,7 +912,7 @@ class MultiInputSlot(object):
         for i,s in enumerate(self.inputSlots):
             s.disconnect()
             s.setValue(self._value)
-        self.operator.notifyConnect(self)
+        self.operator._notifyConnect(self)
         self._checkNotifyConnectAll()
     
     def __getitem__(self, key):
@@ -980,7 +980,7 @@ class MultiInputSlot(object):
                     allConnected = False
                     break
             if allConnected:
-                self.operator.notifyConnectAll()
+                self.operator._notifyConnectAll()
         else: #the .operator is a MultiInputSlot itself
             self.operator._checkNotifyConnectAll()
         
@@ -1046,7 +1046,7 @@ class MultiInputSlot(object):
                 for i,p in enumerate(self.partner):
                     self.partner[i]._connect(self[i])
 
-                self.operator.notifyConnect(self)
+                self.operator._notifyConnect(self)
                 self._checkNotifyConnectAll()
                 
             elif partner.level < self.level:
@@ -1056,7 +1056,7 @@ class MultiInputSlot(object):
                 for i, slot in enumerate(self):                
                     slot.connect(partner)
                     if self.operator is not None:
-                        self.operator.notifySubConnect((self,slot), (i,))
+                        self.operator._notifySubConnect((self,slot), (i,))
                 self._checkNotifyConnectAll()
             elif partner.level > self.level:
                 #if self.partner is not None:
@@ -1073,34 +1073,35 @@ class MultiInputSlot(object):
             else:
                 pass
 
-    def notifyConnect(self, slot):
+    def _notifyConnect(self, slot):
         index = self.inputSlots.index(slot)
-        self.operator.notifySubConnect((self,slot), (index,))
+        self.operator._notifySubConnect((self,slot), (index,))
+                
     
-    def notifySubConnect(self, slots, indexes):      
+    def _notifySubConnect(self, slots, indexes):      
         index = self.inputSlots.index(slots[0])
-        self.operator.notifySubConnect( (self,) + slots, (index,) +indexes)
+        self.operator._notifySubConnect( (self,) + slots, (index,) +indexes)
 
-    def notifyDisconnect(self, slot):
+    def _notifyDisconnect(self, slot):
         index = self.inputSlots.index(slot)
-        self.operator.notifySubDisconnect((self, slot), (index,))
+        self.operator._notifySubDisconnect((self, slot), (index,))
     
-    def notifySubDisconnect(self, slots, indexes):
+    def _notifySubDisconnect(self, slots, indexes):
         index = self.inputSlots.index(slots[0])
-        self.operator.notifySubDisconnect((self,) + slots, (index,) + indexes)
+        self.operator._notifySubDisconnect((self,) + slots, (index,) + indexes)
         
-    def notifySubSlotRemove(self, slots, indexes):
+    def _notifySubSlotRemove(self, slots, indexes):
         if len(slots)>0:
             index = self.inputSlots.index(slots[0])
             indexes = (index,) + indexes
-        self.operator.notifySubSlotRemove((self,) + slots, indexes)
+        self.operator._notifySubSlotRemove((self,) + slots, indexes)
             
         
     def disconnect(self):
         for slot in self.inputSlots:
             slot.disconnect()
         if self.partner is not None:
-            self.operator.notifyDisconnect(self)
+            self.operator._notifyDisconnect(self)
             self.partner.disconnectSlot(self)
             self.inputSlots = []
             self.partner = None
@@ -1124,7 +1125,7 @@ class MultiInputSlot(object):
         # index is the number of the slots while it
         # was still there
         if notify:
-            self.notifySubSlotRemove((),(index,))
+            self._notifySubSlotRemove((),(index,))
         self.inputSlots.remove(inputSlot)
         for i, slot in enumerate(self[index:]):
             slot.name = self.name+"3%d" % (index + i)
@@ -1446,6 +1447,19 @@ class Operator(object):
         for os in self.outputs.values():
             os.setDirty(slice(None,None,None))
 
+    def _notifyConnect(self, inputSlot):
+        self.notifyConnect(inputSlot)
+    
+    def _notifyConnectAll(self):
+        self.notifyConnectAll()
+
+    def _notifySubConnect(self, slots, indexes):
+        self.notifySubConnect(slots,indexes)
+
+    def _notifySubSlotRemove(self, slots, indexes):
+        self.notifySubSlotRemove(slots, indexes)
+        
+
     def notifyConnect(self, inputSlot):
         pass
     
@@ -1469,6 +1483,13 @@ class Operator(object):
 
     def setSubInSlot(self,slots,indexes, key,value):
         pass
+
+    def _notifyDisconnect(self, slot):
+        self.notifyDisconnect(slot)
+    
+    def _notifySubDisconnect(self, slots, indexes):
+        self.notifySubDisconnect(slots,indexes)
+
 
     def notifyDisconnect(self, slot):
         pass
@@ -1709,7 +1730,7 @@ class OperatorWrapper(Operator):
 #                    slot.partner._connect(self.innerOperators[i].inputs[mslot.name])
         return maxLen
 
-    def notifyConnect(self, inputSlot):
+    def _notifyConnect(self, inputSlot):
         
         maxLen = self._ensureInputSize(len(inputSlot))
         for i,islot in enumerate(inputSlot):
@@ -1726,7 +1747,7 @@ class OperatorWrapper(Operator):
             assert len(mslot) == len(self.innerOperators) == maxLen, "%d, %d" % (len(mslot), len(self.innerOperators))        
 
     
-    def notifyConnectAll(self):
+    def _notifyConnectAll(self):
         maxLen = self._ensureInputSize()
         for o in self.outputs.values():
             o.resize(maxLen)
@@ -1734,7 +1755,7 @@ class OperatorWrapper(Operator):
         while len(self.innerOperators) > maxLen:
             self.innerOperators.pop()
             
-    def notifySubConnect(self, slots, indexes):
+    def _notifySubConnect(self, slots, indexes):
         numMax = self._ensureInputSize(len(slots[0]))
         
         if slots[1].partner is not None:
@@ -1756,9 +1777,9 @@ class OperatorWrapper(Operator):
             if isinstance(self.innerOperators[indexes[0]], OperatorWrapper):
                 
                 if len(indexes)>1:
-                    self.innerOperators[indexes[0]].notifySubConnect(slots[1:],indexes[1:])
+                    self.innerOperators[indexes[0]]._notifySubConnect(slots[1:],indexes[1:])
                 else:
-                    self.innerOperators[indexes[0]].notifyConnect(slots[1],indexes[0])
+                    self.innerOperators[indexes[0]]._notifyConnect(slots[1],indexes[0])
 
 #                # check wether all slots are connected and notify operator            
 #                op = self.innerOperators[indexes[0]]
@@ -1787,10 +1808,10 @@ class OperatorWrapper(Operator):
         return
 
 
-    def notifyDisconnect(self, slot):
+    def _notifyDisconnect(self, slot):
         self._testRestoreOriginalOperator()
         
-    def notifySubDisconnect(self, slots, indexes):
+    def _notifySubDisconnect(self, slots, indexes):
         return
         maxLen = 0
         for name, islot in self.inputs.items():
@@ -1807,7 +1828,7 @@ class OperatorWrapper(Operator):
                 self._removeInnerOperator(op)
         else:
             if slots[0].partner is not None: #normal connect case
-                self.innerOperators[indexes[0]].notifySubSlotRemove(slots[1:], indexes[1:])
+                self.innerOperators[indexes[0]]._notifySubSlotRemove(slots[1:], indexes[1:])
             else: #connectAdd case
                 op = self.innerOperators[indexes[0]]
                 self._removeInnerOperator(op)
@@ -1933,7 +1954,6 @@ class OperatorGroup(Operator):
         self._visibleInputs = None
 
         self._createInnerOperators()
-        self._connectInnerInputs()
         self._connectInnerOutputs()
 
         if self.register:
@@ -1961,10 +1981,12 @@ class OperatorGroup(Operator):
         for key, value in outputs.items():
             self.outputs[key] = value
 
-    def _connectInnerInputs(self):
-        inputs = self.getInnerInputs()
-        for k,v in inputs.items():
-            self.inputs[k] = v
+    def _getInnerInputs(self):
+        opInputs = self.getInnerInputs()
+        inputs = dict(self.inputs)
+        inputs.update(opInputs)
+        return inputs
+        
                    
     def getSubOutSlot(self, slots, indexes, key, result):               
         slot = self._visibleOutputs[slots[0].name]
@@ -1976,44 +1998,17 @@ class OperatorGroup(Operator):
         self._visibleOutputs[slot.name][key].writeInto(result)
    
    
-    def notifyConnectAll(self):
+    def _notifyConnectAll(self):
         pass
     
-    def notifyConnect(self, inputSlot):
-        if self._visibleInputs is not None:
-            innerIns = self._visibleInputs
-            innerIns[inputSlot.name].connect(inputSlot.partner)
-            self._connectInnerOutputs()
-
-    
-    def notifySubConnect(self, slots, indexes):
-        if self._visibleInputs is not None:            
-            innerIns = self._visibleInputs
-            
-            innerSlot = innerIns[indexes[0].name]
-    
-            for i in range(len(slots)-1):
-                if slots[i].partner is not None:
-                    innerSlot.connect(slots[i+1].partner)
-                    break 
-                else:
-                    innerSlot.resize(len( slots[i] ) )
-                innerSlot = innerSlot[indexes[i]]
-            
-            self._connectInnerOutputs()
-            
-                            
-            
-            
-            
-    def notifyDisconnect(self, slot):
-        pass
-    
-    def notifySubDisconnect(self, slots, indexes):
-        pass
-    
-    def notifySubSlotRemove(self, slots, indexes):
-        pass
+    def _notifyConnect(self, inputSlot):
+        inputs = self._getInnerInputs()
+        if inputSlot != inputs[inputSlot.name]:
+            if inputSlot.partner is not None and inputs[inputSlot.name].partner != inputSlot.partner:
+                inputs[inputSlot.name].connect(inputSlot.partner)
+            elif inputSlot._value is not None and inputs[inputSlot.name]._value != inputSlot._value:
+                inputs[inputSlot.name].setValue(inputSlot._value)
+        self.notifyConnect(inputSlot)
 
    
                         
