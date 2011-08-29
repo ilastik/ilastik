@@ -63,6 +63,7 @@ class Main(QMainWindow):
         
         def toggleDebugPatches(show):
             self.editor.showDebugPatches = show
+        
         self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
         
         self.haveData.connect(self.initGraph)
@@ -107,6 +108,8 @@ class Main(QMainWindow):
             labels =numpy.unique(numpy.asarray(self.opLabels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
             nPaintedLabels=labels.shape[0]
             nLabelsLayers = self.labelListModel.rowCount()
+            selectedFeatures = numpy.asarray(self.featureDlg.featureTableWidget.createSelectedFeaturesBoolMatrix())
+            
             if nPaintedLabels!=nLabelsLayers:
                 self.checkInteractive.setCheckState(0)
                 mexBox=QMessageBox()
@@ -117,6 +120,13 @@ class Main(QMainWindow):
                 #print "nPainted Labels: " , nPaintedLabels
                 #print "nLabelsLayers", self.labelListModel.rowCount()
                 return
+            if (selectedFeatures==0).all():
+                self.checkInteractive.setCheckState(0)
+                mexBox=QMessageBox()
+                mexBox.setText("The are no features selected ")
+                mexBox.exec_()
+                return
+                
         
         if checked==True:
             self.AddLabelButton.setEnabled(False)
@@ -130,14 +140,6 @@ class Main(QMainWindow):
                 o.inputs["fixAtCurrent"].setValue(True)
                 
         self.editor.scheduleSlicesRedraw()
-       
-    def onFeatureButtonClicked(self):
-        dlg = FeatureDlg()
-        dlg.createFeatureTable({"Color": [FeatureEntry("Banananananaana")], "Edge": [FeatureEntry("Mango"), FeatureEntry("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
-        dlg.setWindowTitle("ex2")
-        dlg.setImageToPreView((numpy.random.rand(100,100)*256).astype(numpy.uint8))
-        self.featureDlg=dlg
-        dlg.show()     
         
     def switchLabel(self, row):
         print "switching to label=%r" % (self.labelListModel[row])
@@ -285,7 +287,8 @@ class Main(QMainWindow):
         self.haveData.emit()
        
     def initGraph(self):
-        print "going to init the graph"
+        
+        print "I'm going to init the graph"
         
         shape = self.inputProvider.outputs["Output"].shape
         print "data block shape: ", shape
@@ -406,17 +409,13 @@ class Main(QMainWindow):
     
     
     def onFeatureButtonClicked(self):
-        
         dlg=self.featureDlg
-        
-        
         dlg.show()
     
     def choosenDifferrentFeatSet(self):
         dlg=self.featureDlg
         selectedFeatures = dlg.featureTableWidget.createSelectedFeaturesBoolMatrix()
         print "******", selectedFeatures
-        
         self.opPF.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
     
     def initTheFeatureDlg(self):
