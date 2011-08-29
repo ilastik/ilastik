@@ -98,7 +98,6 @@ class Main(QMainWindow):
         print "checked = ", checked
         
         #Check if the number of labels in the layer stack is equals to the number of Painted labels
-        #FIXME: Solve the problem of the two arbitrary initialized labels for the classifier
         if checked==True:
             labels =numpy.unique(numpy.asarray(self.opLabels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
             nPaintedLabels=labels.shape[0]
@@ -174,7 +173,8 @@ class Main(QMainWindow):
         nout = start-end+1
         ncurrent = self.labelListModel.rowCount()
         print "removing", nout, "out of ", ncurrent
-        self.opPredict.inputs['LabelsCount'].setValue(ncurrent-nout)
+        if self.opPredict is not None:
+            self.opPredict.inputs['LabelsCount'].setValue(ncurrent-nout)
         for il in range(start, end+1):
             labelvalue = self.labelListModel._labels[il]
             self.removePredictionLayer(labelvalue)
@@ -199,7 +199,6 @@ class Main(QMainWindow):
             nclasses = self.labelListModel.rowCount()
             self.opPredict.inputs['LabelsCount'].setValue(nclasses)
             self.opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output']) 
-            #self.opPredict.inputs['Classifier'].connect(self.opTrain.outputs['Classifier'])       
             self.opPredict.inputs['Image'].connect(self.featureStacker.outputs['Output'])  
             
             #add prediction results for all classes as separate channels
@@ -340,8 +339,6 @@ class Main(QMainWindow):
         self.opLabels = OpSparseLabelArray(self.g)                                
         self.opLabels.inputs["shape"].setValue(self.raw.shape[:-1] + (1,))
         self.opLabels.inputs["eraser"].setValue(100)                
-        self.opLabels.inputs["Input"][0,0,0,0,0] = 1                    
-        self.opLabels.inputs["Input"][0,0,0,1,0] = 2                    
         
         self.labelsrc = LazyflowSinkSource(self.opLabels, self.opLabels.outputs["Output"], self.opLabels.inputs["Input"])
         transparent = QColor(0,0,0,0)
