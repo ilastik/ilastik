@@ -1365,6 +1365,12 @@ class MultiOutputSlot(object):
         return s
 
 
+class OutputDict(dict):
+    
+    def __setitem__(self, key, value):
+        assert isinstance(value, (OutputSlot, MultiOutputSlot)), "ERROR: all elements of .outputs must be of type OutputSlot or MultiOutputSlot, you provided %r !" % (value,)
+        return dict.__setitem__(self, key, value)
+
 class Operator(object):
     """
     The base class for all Operators.
@@ -1402,7 +1408,7 @@ class Operator(object):
     def __init__(self, graph, register = True):
         self.operator = None
         self.inputs = {}
-        self.outputs = {}
+        self.outputs = OutputDict()
         self.graph = graph
         self.register = register
         #provide simple default name for lazy users
@@ -1538,7 +1544,7 @@ class OperatorWrapper(Operator):
     
     def __init__(self, operator, register = False):
         self.inputs = {}
-        self.outputs = {}
+        self.outputs = OutputDict()
         self.operator = operator
         self.register = False
         if operator is not None:
