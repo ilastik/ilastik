@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>829</width>
-    <height>600</height>
+    <width>1019</width>
+    <height>667</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -93,7 +93,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QWidget" name="" native="true">
+             <widget class="QWidget" name="widget" native="true">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
                 <horstretch>0</horstretch>
@@ -101,10 +101,13 @@
                </sizepolicy>
               </property>
               <layout class="QHBoxLayout" name="horizontalLayout">
+               <property name="margin">
+                <number>0</number>
+               </property>
                <item>
                 <widget class="LayerWidget" name="layerWidget">
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
@@ -114,6 +117,9 @@
                <item>
                 <widget class="QWidget" name="widget" native="true">
                  <layout class="QVBoxLayout" name="verticalLayout">
+                  <property name="margin">
+                   <number>0</number>
+                  </property>
                   <item>
                    <widget class="QToolButton" name="UpButton">
                     <property name="toolTip">
@@ -209,7 +215,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>829</width>
+     <width>1019</width>
      <height>24</height>
     </rect>
    </property>
