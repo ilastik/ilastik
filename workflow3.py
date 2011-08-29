@@ -6,7 +6,7 @@ import os, sys, numpy
 
 from PyQt4.QtCore import pyqtSignal, QTimer
 from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
-                        QMessageBox, qApp
+                        QMessageBox, qApp, QItemSelectionModel
 from PyQt4 import uic
 
 from lazyflow.graph import Graph
@@ -161,6 +161,11 @@ class Main(QMainWindow):
             #self.opTrain.notifyDirty(None, None)
             self.opPredict.inputs['LabelsCount'].setValue(nlabels)
             self.addPredictionLayer(nlabels-1, self.labelListModel._labels[nlabels-1])
+        
+        #make the new label selected
+        index = self.labelListModel.index(nlabels-1, 1)
+        self.labelListModel._selectionModel.select(index, QItemSelectionModel.ClearAndSelect)
+        
         
         #FIXME: this should watch for model changes   
         #drawing will be enabled when the first label is added  
@@ -336,6 +341,8 @@ class Main(QMainWindow):
         self.dataReadyToView.emit()
         
     def initLabels(self):
+        #Add the layer to draw the labels, but don't add any labels
+        
         self.opLabels = OpSparseLabelArray(self.g)                                
         self.opLabels.inputs["shape"].setValue(self.raw.shape[:-1] + (1,))
         self.opLabels.inputs["eraser"].setValue(100)                
