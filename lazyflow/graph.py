@@ -507,7 +507,7 @@ class InputSlot(object):
 
     def connected(self):
         answer = True
-        if self._value is None and self.partner is None:
+        if self._value is None and self.partner is None or (self.partner is not None and self.partner.shape is None):
             answer = False
         return answer
 
@@ -1064,7 +1064,7 @@ class MultiInputSlot(object):
                 partner.disconnectSlot(self)
                 #print "MultiInputSlot", self.name, "of op", self.operator.name, self.operator
                 print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
-                if isinstance(self.operator,(OperatorWrapper, Operator)):
+                if isinstance(self.operator,(OperatorWrapper, Operator, OperatorGroup)):
                     newop = OperatorWrapper(self.operator)
                     partner._connect(newop.inputs[self.name])
                     #assert newop.inputs[self.name].level == self.level + 1, "%r, %s, %s, %d, %d" % (self.operator, self.operator.name, self.name, newop.inputs[self.name].level, self.level) 
@@ -1997,10 +1997,6 @@ class OperatorGroup(Operator):
     def getOutSlot(self, slot, key, result):
         self._visibleOutputs[slot.name][key].writeInto(result)
    
-   
-    def _notifyConnectAll(self):
-        pass
-    
     def _notifyConnect(self, inputSlot):
         inputs = self._getInnerInputs()
         if inputSlot != inputs[inputSlot.name]:

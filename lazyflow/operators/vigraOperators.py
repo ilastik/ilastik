@@ -295,7 +295,7 @@ class OpPixelFeatures2(OperatorGroup):
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["scale"].setValue(self.scales[j])
             
-            self.outputs["ArrayOfOperators"]= oparray
+            self.outputs["ArrayOfOperators"][0] = oparray
             
             #disconnecting all Operators
             for i in range(dimRow):
