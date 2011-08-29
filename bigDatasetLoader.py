@@ -19,7 +19,7 @@ from volumeeditor.layerstack import LayerStackModel
 from volumeeditor.volumeEditor import VolumeEditor
 from volumeeditor.volumeEditorWidget import VolumeEditorWidget
 from volumeeditor.pixelpipeline.datasources import ArraySource, LazyflowSinkSource
-from volumeeditor._testing.from_lazyflow import OpThorbenHack 
+
 
 
 from labelListView import LabelListView, Label
@@ -74,22 +74,17 @@ class Main(QMainWindow):
         
         #datasrc = LazyflowSource(opImage.outputs["Output"])
         
-        layer1 = GrayscaleLayer( datasrc,normalize = (0.0,255.0) )
+        layer1 = GrayscaleLayer( datasrc )
         layer1.name = "Big Data"
         
         
         self.layerstack.append(layer1)
-        
-        
-        
-
-        
-        useGL=False
+    
         
         
         shape=Reader.outputs["Image"].shape
         print shape
-        self.editor = VolumeEditor(shape, self.layerstack,useGL=useGL,showDebugTiles=True)  
+        self.editor = VolumeEditor(shape, self.layerstack)  
         self.editor.setDrawingEnabled(True)
         
         self.volumeEditorWidget.init(self.editor)
