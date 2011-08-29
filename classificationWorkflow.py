@@ -13,7 +13,7 @@ from lazyflow.graph import Graph
 from lazyflow.operators import Op5ToMulti, OpArrayCache, OpArrayFixableCache, \
                                OpArrayPiper, OpPredictRandomForest, \
                                OpSingleChannelSelector, OpSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForest
+                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures2
 from volumeeditor.pixelpipeline.datasources import LazyflowSource
 from volumeeditor.pixelpipeline._testing import OpDataProvider
 from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer, \
@@ -38,8 +38,11 @@ class Main(QMainWindow):
         self.opTrain = None
         self._colorTable16 = self._createDefault16ColorColorTable()
         
-        self.g = Graph()
+        self.g = Graph(4, 2048*1024**2*5)
         self.fixableOperators = []
+        
+        self.featureDlg=None
+        self.featScalesList=[.1,.2,1,2]
         
         self.initUic()
         
@@ -57,6 +60,7 @@ class Main(QMainWindow):
         #connect the window and graph creation to the opening of the file
         self.actionOpen.triggered.connect(self.openFile)
         self.actionQuit.triggered.connect(qApp.quit)
+        
         def toggleDebugPatches(show):
             self.editor.showDebugPatches = show
         self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
@@ -93,7 +97,8 @@ class Main(QMainWindow):
         self.StartClassificationButton.clicked.connect(self.startClassification)
         
         self.checkInteractive.toggled.connect(self.toggleInteractive)   
- 
+        self.initTheFeatureDlg()
+        
     def toggleInteractive(self, checked):
         print "checked = ", checked
         
@@ -127,12 +132,12 @@ class Main(QMainWindow):
         self.editor.scheduleSlicesRedraw()
        
     def onFeatureButtonClicked(self):
-        ex2 = FeatureDlg()
-        ex2.createFeatureTable({"Color": [FeatureEntry("Banananananaana")], "Edge": [FeatureEntry("Mango"), FeatureEntry("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
-        ex2.setWindowTitle("ex2")
-        ex2.setImageToPreView((numpy.random.rand(100,100)*256).astype(numpy.uint8))
-        self.featureDlg=ex2
-        ex2.show()     
+        dlg = FeatureDlg()
+        dlg.createFeatureTable({"Color": [FeatureEntry("Banananananaana")], "Edge": [FeatureEntry("Mango"), FeatureEntry("Cherry")]}, [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
+        dlg.setWindowTitle("ex2")
+        dlg.setImageToPreView((numpy.random.rand(100,100)*256).astype(numpy.uint8))
+        self.featureDlg=dlg
+        dlg.show()     
         
     def switchLabel(self, row):
         print "switching to label=%r" % (self.labelListModel[row])
@@ -199,7 +204,7 @@ class Main(QMainWindow):
             
             self.opTrain = OpTrainRandomForest(self.g)
             self.opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
-            self.opTrain.inputs['Images'].connect(self.featureStacker.outputs["Output"])
+            self.opTrain.inputs['Images'].connect(self.opFeatureCache.outputs["Output"])
             self.opTrain.inputs['fixClassifier'].setValue(False)                
             
             opClassifierCache = OpArrayCache(self.g)
@@ -210,7 +215,7 @@ class Main(QMainWindow):
             nclasses = self.labelListModel.rowCount()
             self.opPredict.inputs['LabelsCount'].setValue(nclasses)
             self.opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output']) 
-            self.opPredict.inputs['Image'].connect(self.featureStacker.outputs['Output'])  
+            self.opPredict.inputs['Image'].connect(self.opFeatureCache.outputs["Output"])  
             
             #add prediction results for all classes as separate channels
             for icl in range(nclasses):
@@ -334,14 +339,18 @@ class Main(QMainWindow):
         opImageList = Op5ToMulti(self.g)    
         opImageList.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
         
-        #init the features with just the intensity
-        opFeatureList = Op5ToMulti(self.g)    
-        opFeatureList.inputs["Input0"].connect(opImageList.outputs["Outputs"])
-
-        self.featureStacker=OpMultiArrayStacker(self.g)
-        self.featureStacker.inputs["Images"].connect(opFeatureList.outputs["Outputs"])
-        self.featureStacker.inputs["AxisFlag"].setValue('c')
-        self.featureStacker.inputs["AxisIndex"].setValue(4)
+        #init the features operator
+        opPF = OpPixelFeatures2(self.g)
+        opPF.inputs["Input"].connect(opImageList.outputs["Outputs"])
+        opPF.inputs["Scales"].setValue(self.featScalesList)
+        self.opPF=opPF
+        
+        #Caches the features
+        opFeatureCache = OpArrayCache(self.g)
+        opFeatureCache.inputs["blockShape"].setValue((1,64,64,64,1))
+        opFeatureCache.inputs["Input"].connect(opPF.outputs["Output"])  
+        self.opFeatureCache=opFeatureCache
+        
         
         self.initLabels()
         self.dataReadyToView.emit()
@@ -394,6 +403,29 @@ class Main(QMainWindow):
         c.append(QColor(240, 230, 140)) #khaki
         c.append(QColor(69, 69, 69))    # dark grey
         return c
+    
+    
+    def onFeatureButtonClicked(self):
+        
+        dlg=self.featureDlg
+        
+        
+        dlg.show()
+    
+    def choosenDifferrentFeatSet(self):
+        dlg=self.featureDlg
+        selectedFeatures = dlg.featureTableWidget.createSelectedFeaturesBoolMatrix()
+        print "******", selectedFeatures
+        
+        self.opPF.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
+    
+    def initTheFeatureDlg(self):
+        dlg = FeatureDlg()
+        self.featureDlg=dlg
+        dlg.setWindowTitle("Features")
+        dlg.createFeatureTable({"Features": [FeatureEntry("Gaussian smoothing"), FeatureEntry("Laplacian of Gaussian"), FeatureEntry("Hessian of Gaussian"), FeatureEntry("Hessian of Gaussian EV")]}, self.featScalesList)
+        dlg.setImageToPreView((numpy.random.rand(100,100)*256).astype(numpy.uint8))
+        dlg.accepted.connect(self.choosenDifferrentFeatSet)
     
 app = QApplication(sys.argv)        
 t = Main(sys.argv)
