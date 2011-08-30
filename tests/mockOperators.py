@@ -16,13 +16,13 @@ import sys
 class OpA(OpArrayPiper):
     def getOutSlot(self,slot,key,result):
         v = self.inputs["Input"][key].writeInto(result)
-        v()
+        v.wait()
 
 class OpB(OpArrayPiper):    
     def getOutSlot(self,slot,key,result):
         t = numpy.ndarray(result.shape, result.dtype)
         v = self.inputs["Input"][key].writeInto(t)
-        v()
+        v.wait()
         
         result[:] = t[:] + 1
     
@@ -30,6 +30,6 @@ class OpB(OpArrayPiper):
 class OpC(OpArrayPiper):
     def getOutSlot(self,slot,key,result):
         v = self.inputs["Input"][:].allocate()
-        t = v()
+        t = v.wait()
         result[:] = t[key]
         self.outputs["Output"][:] = t

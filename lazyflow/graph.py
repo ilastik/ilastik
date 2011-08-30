@@ -260,6 +260,7 @@ class GetItemRequestObject(object):
             self.lock = Lock()
             #self._putOnTaskQueue()
             #return
+            
             gr = greenlet.getcurrent()
             if hasattr(gr, "lastRequest"):
                 # we delay the firing of an request until
@@ -278,8 +279,6 @@ class GetItemRequestObject(object):
             else:
                 # we are in main thread
                 self._requestLevel = 0
-                self._putOnTaskQueue()
-
 
     def _putOnTaskQueue(self):
         self.inProcess = True
@@ -447,9 +446,7 @@ class GetItemRequestObject(object):
             #self._cancelParents()
         
     def __call__(self):
-        #TODO: remove this convenience function when
-        #      everything is ported ?
-        return self.wait()
+        assert 1==2, "Please use the .wait() method, () is deprecated !"
 
 class InputSlot(object):
     """
@@ -635,13 +632,13 @@ class InputSlot(object):
 
     def _allocateStorage(self, start, stop, axistags = True):
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
-#        if axistags is True:
-#            storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
+        if axistags is True:
+           storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
 #        key = roiToSlice(start,stop) #we need a fully specified key e.g. not [:] but [0:10,0:17] !!
         return storage
             
     def __setitem__(self, key, value):
-        assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"
+        assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"     
         if self._value is not None:
             self._value[key] = value
             self.setDirty(key) # only propagate the dirty key at the very beginning of the chain
@@ -826,6 +823,9 @@ class OutputSlot(object):
         return storage
 
     def __getitem__(self, key):
+        if self.shape is None:
+            print "______________________", self.name, self.operator
+            print self.shape
         return GetItemWriterObject(self,key)
 
     def _fireRequest(self, key, destination):
@@ -1578,7 +1578,7 @@ class OperatorWrapper(Operator):
                 ii = MultiInputSlot(islot.name, self, stype = islot._stype, level = level)
                 self.inputs[islot.name] = ii
                 op = self.operator
-                while isinstance(op.operator, (Operator, MultiInputSlot)):
+                while isinstance(op.operator, (Operator, MultiInputSlot, OperatorGroup)):
                     op = op.operator
                 op.inputs[islot.name] = ii
             
@@ -1842,7 +1842,7 @@ class OperatorWrapper(Operator):
                 
     def getOutSlot(self, slot, key, result):
         #this should never be called !!!        
-        pass
+        assert 1==2
 
 
     def getSubOutSlot(self, slots, indexes, key, result):
@@ -1854,11 +1854,11 @@ class OperatorWrapper(Operator):
         
     def setInSlot(self, slot, key, value):
         #TODO: code this
-        pass
+        assert 1==2
 
     def setSubInSlot(self,multislot,slot,index, key,value):
         #TODO: code this
-        pass
+        assert 1==2
 
 
     def dumpToH5G(self, h5g, patchBoard):
