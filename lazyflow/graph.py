@@ -284,6 +284,11 @@ class GetItemRequestObject(object):
         self.inProcess = True
         self.graph.putTask(self)
     
+    def getResult(self):
+        assert self.finished, "Please make sure the request is completed before calling getResult()!"
+        return self.destination
+    
+    
     def wait(self, timeout = 0):
         """
         calling .wait() on an RequestObject is a blocking
