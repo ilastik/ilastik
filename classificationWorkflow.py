@@ -13,7 +13,7 @@ from lazyflow.graph import Graph
 from lazyflow.operators import Op5ToMulti, OpArrayCache, OpArrayFixableCache, \
                                OpArrayPiper, OpPredictRandomForest, \
                                OpSingleChannelSelector, OpSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures2,OpMultiArraySlicer2
+                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures2,OpMultiArraySlicer2,OpH5Reader
 from volumeeditor.pixelpipeline.datasources import LazyflowSource
 from volumeeditor.pixelpipeline._testing import OpDataProvider
 from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer, \
@@ -286,7 +286,7 @@ class Main(QMainWindow):
         
         elif fExt=='.h5':
             
-            Reader=op.OpH5Reader(self.g)
+            Reader=OpH5Reader(self.g)
             print str(fileName),'*+++++++++++++++++++++++++'
             Reader.inputs["Filename"].setValue(str(fileName))
             Reader.inputs["hdf5Path"].setValue("volume/data")
@@ -322,8 +322,7 @@ class Main(QMainWindow):
         nchannels = shape[-1]
         for ich in xrange(nchannels):
             data=slicer.outputs['Slices'][ich][:].allocate().wait()
-            print data
-            
+        
             #find the minimum and maximum value for normalization
             mm = (numpy.min(data), numpy.max(data))
             print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
@@ -331,15 +330,14 @@ class Main(QMainWindow):
                 #do not normalize in this case
                 mm = None
             minMax.append(mm)
-            #slicer.outputs['Slices'][ich].shape=slicer.outputs['Slices'][ich].shape+(1,)
-            print "HHHHHHHHHHHHHHHHHHHHHHHHHHHH", slicer.outputs['Slices'][ich].shape
+            
             layersrc = LazyflowSource(slicer.outputs['Slices'][ich])
             srcs.append(layersrc)
             
         #FIXME: we shouldn't merge channels automatically, but for now it's prettier
         layer1 = None
         if nchannels == 1:
-            layer1 = GrayscaleLayer(srcs[0], normalize=minMax[0])
+            layer1 = GrayscaleLayer(srcs[0], thresholding=minMax[0])
             layer1.rangeRed   = minMax[0]
             print "  - showing raw data as grayscale"
         elif nchannels==2:
