@@ -260,6 +260,7 @@ class GetItemRequestObject(object):
             self.lock = Lock()
             #self._putOnTaskQueue()
             #return
+            
             gr = greenlet.getcurrent()
             if hasattr(gr, "lastRequest"):
                 # we delay the firing of an request until
@@ -278,8 +279,6 @@ class GetItemRequestObject(object):
             else:
                 # we are in main thread
                 self._requestLevel = 0
-                self._putOnTaskQueue()
-
 
     def _putOnTaskQueue(self):
         self.inProcess = True
@@ -447,9 +446,7 @@ class GetItemRequestObject(object):
             #self._cancelParents()
         
     def __call__(self):
-        #TODO: remove this convenience function when
-        #      everything is ported ?
-        return self.wait()
+        assert 1==2, "Please use the .wait() method, () is deprecated !"
 
 class InputSlot(object):
     """

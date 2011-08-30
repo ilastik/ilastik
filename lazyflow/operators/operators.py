@@ -38,7 +38,7 @@ class OpArrayPiper(Operator):
 
     def getOutSlot(self, slot, key, result):
         req = self.inputs["Input"][key].writeInto(result)
-        res = req()
+        res = req.wait()
         return res
 
     def notifyDirty(self,slot,key):
@@ -84,7 +84,7 @@ class OpMultiArrayPiper(Operator):
 
     def getSubOutSlot(self, slots, indexes, key, result):
         req = self.inputs["MultiInput"][indexes[0]][key].writeInto(result)
-        res = req()
+        res = req.wait()
         return res
      
     def setInSlot(self, slot, key, value):
@@ -325,8 +325,6 @@ class OpArrayCache(OpArrayPiper):
         #tileWeights = numpy.where(cond, 1, 128**3)       
         trueDirtyIndices = numpy.nonzero(cond)
 
-#        self._lock.release()
-#        return
                     
         #tileWeights = tileWeights.astype(numpy.uint32)
         #print "calling drtile...", tileWeights.dtype
