@@ -119,9 +119,9 @@ class OpMultiArraySlicer2(Operator):
         
         outshape = self.outputs["Slices"][indexes[0]].shape
             
-        print "BEGIN", outshape, key
+        
         start,stop=roi.sliceToRoi(key,outshape)
-        print start, stop
+        
         
         
         oldstart,oldstop=start,stop
