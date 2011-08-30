@@ -78,6 +78,84 @@ class OpMultiArraySlicer(Operator):
         
         result[:]=ttt[writeKey ]#+ (0,)]
 
+
+class OpMultiArraySlicer2(Operator):
+    #FIXME: This operator return a sigleton in the sliced direction
+    #Should be integrated with the above one to have a more consistent notation
+    inputSlots = [InputSlot("Input"),InputSlot('AxisFlag')]
+    outputSlots = [MultiOutputSlot("Slices",level=1)]
+
+    name = "Multi Array Slicer"
+    category = "Misc"
+    
+    def notifyConnectAll(self):
+        
+        dtype=self.inputs["Input"].dtype
+        flag=self.inputs["AxisFlag"].value
+        
+        indexAxis=self.inputs["Input"].axistags.index(flag)
+        outshape=list(self.inputs["Input"].shape)
+        n=outshape.pop(indexAxis)
+        
+        
+        outshape.insert(indexAxis, 1)
+        outshape=tuple(outshape)
+        
+        outaxistags=copy.copy(self.inputs["Input"].axistags) 
+        
+        del outaxistags[flag]
+    
+        self.outputs["Slices"].resize(n)
+        
+        for o in self.outputs["Slices"]:
+            o._dtype=dtype
+            o._axistags=copy.copy(outaxistags)
+            o._shape=outshape 
+        
+            
+    def getSubOutSlot(self, slots, indexes, key, result):
+        
+                
+        
+        outshape = self.outputs["Slices"][indexes[0]].shape
+            
+        print "BEGIN", outshape, key
+        start,stop=roi.sliceToRoi(key,outshape)
+        print start, stop
+        
+        
+        oldstart,oldstop=start,stop
+        
+        start=list(start)
+        stop=list(stop)
+        
+        flag=self.inputs["AxisFlag"].value
+        indexAxis=self.inputs["Input"].axistags.index(flag)
+        
+        start.pop(indexAxis)
+        stop.pop(indexAxis)
+        
+        start.insert(indexAxis,indexes[0])
+        stop.insert(indexAxis,indexes[0])
+        
+        
+        newKey=roi.roiToSlice(numpy.array(start),numpy.array(stop))
+        
+        
+        
+        
+        
+        writeKey=roi.roiToSlice(oldstart,oldstop)
+        writeKey=list(writeKey)
+        #writeKey.insert(indexAxis,0)
+        writeKey=tuple(writeKey)
+        
+      
+        ttt = self.inputs["Input"][newKey].allocate().wait()
+        
+
+        result[:]=ttt[:]
+
 class OpMultiArrayStacker(Operator):
     inputSlots = [MultiInputSlot("Images"), InputSlot("AxisFlag"), InputSlot("AxisIndex")]
     outputSlots = [OutputSlot("Output")]
