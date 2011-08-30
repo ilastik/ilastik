@@ -121,13 +121,17 @@ class OpMultiArrayStacker(Operator):
                 else:
                     c += 1
                     
-            newshape = list(inSlot.shape)
+        if len(self.inputs["Images"]) > 0:
+            newshape = list(self.inputs["Images"][0].shape)
             if flag in inTagKeys:
                 #here we assume that all axis are present
                 newshape[axisindex]=c
             else:
                 newshape.insert(axisindex, c)
+            print "UUUUUUUUUUUUUUUUUU", newshape
             self.outputs["Output"]._shape=tuple(newshape)
+        else:
+            self.outputs["Output"]._shape = None
 
 
 
