@@ -57,7 +57,7 @@ def runBenchmark(numThreads, cacheClass, shape, requests, repeatCount=200):
             res1 = opPiper2.outputs["Output"][key].allocate().wait()
         t2 = time.time()
         print "%s request %r runtime:" % (cacheClass.__name__,key) , (t2-t1)/repeatCount
-        #assert (res1 == 1).all(), res1
+        assert (res1 == 1).all(), res1
     tg2 = time.time()
     g.finalize()
     print "%s Total runtime:" % cacheClass.__name__, tg2-tg1    
