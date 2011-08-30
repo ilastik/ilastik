@@ -34,6 +34,15 @@ class Main(QMainWindow):
     def __init__(self, argv):
         QMainWindow.__init__(self)
         
+        #Normalize the data if true
+        self._normalize_data=True
+        arguments=sys.argv
+        
+        if 'notnormalize' in arguments:
+            self._normalize_data=False
+            arguments.remove('notnormalize')
+        
+        
         self.opPredict = None
         self.opTrain = None
         self._colorTable16 = self._createDefault16ColorColorTable()
@@ -44,12 +53,20 @@ class Main(QMainWindow):
         self.featureDlg=None
         self.featScalesList=[.1,.2,1,2]
         
+        
+        
+        
+        
+        
+        
         self.initUic()
         
         #
         # if the filename was specified on command line, load it
         #
-        if len(sys.argv) == 2:
+        arguments=sys.argv
+
+        if len(arguments) == 2:
             def loadFile():
                 self._openFile(sys.argv[1])
             QTimer.singleShot(0, loadFile)
@@ -321,16 +338,19 @@ class Main(QMainWindow):
         
         nchannels = shape[-1]
         for ich in xrange(nchannels):
-            data=slicer.outputs['Slices'][ich][:].allocate().wait()
+            #FIXME: This will not scale to large datasets, 
+            #it was done before like this but it needs to be adpted to a better solution
+            if self._normalize_data:
+                data=slicer.outputs['Slices'][ich][:].allocate().wait()
         
-            #find the minimum and maximum value for normalization
-            mm = (numpy.min(data), numpy.max(data))
-            print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
-            if mm == (0.0, 255.0):
-                #do not normalize in this case
-                mm = None
-            minMax.append(mm)
-            
+                #find the minimum and maximum value for normalization
+                mm = (numpy.min(data), numpy.max(data))
+                print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
+                
+                minMax.append(mm)
+            else:
+                minMax.append(None)
+                
             layersrc = LazyflowSource(slicer.outputs['Slices'][ich])
             srcs.append(layersrc)
             
