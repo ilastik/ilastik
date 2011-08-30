@@ -435,7 +435,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                     ntimesteps=t.shape[-1]
                     res=numpy.zeros(t.shape+(channelsPerChannel,),t.dtype)
                     for l in xrange(ntimesteps):
-                        print res.shape,numpy.squeeze(self.vigraFilter(t[...,l].view(numpy.ndarray), **kwparams)).view(numpy.ndarray).shape,"0000000000000"
+                        #print res.shape,numpy.squeeze(self.vigraFilter(t[...,l].view(numpy.ndarray), **kwparams)).view(numpy.ndarray).shape,"0000000000000"
                         res[...,l,:]=self.vigraFilter(t[...,l].view(numpy.ndarray), **kwparams).view(numpy.ndarray)
                     
                     if channelsPerChannel==1:

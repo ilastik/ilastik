@@ -384,7 +384,7 @@ class OpArrayCache(OpArrayPiper):
                 assert 1 == 2
             
 #        # indicate the inprocessing state, by setting array to 0        
-        blockSet = fastWhere(cond, 0, blockSet, numpy.uint8)
+        blockSet[:]  = fastWhere(cond, 0, blockSet, numpy.uint8)
         self._lock.release()
         
         def onCancel(cancelled, reqBlockKey, reqSubBlockKey):
@@ -404,7 +404,7 @@ class OpArrayCache(OpArrayPiper):
 
         # indicate the finished inprocess state        
         self._lock.acquire()
-        blockSet = fastWhere(cond, 2, blockSet, numpy.uint8)
+        blockSet[:] = fastWhere(cond, 2, blockSet, numpy.uint8)
         self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)                       
         self._lock.release()
 
@@ -421,7 +421,6 @@ class OpArrayCache(OpArrayPiper):
         
     def setInSlot(self, slot, key, value):
         #print "OpArrayCache : SetInSlot", key
-        
         start, stop = sliceToRoi(key, self.shape)
         blockStart = numpy.ceil(1.0 * start / self._blockShape)
         blockStop = numpy.floor(1.0 * stop / self._blockShape)
@@ -581,6 +580,15 @@ class OpArrayFixableCache(OpArrayPiper):
         blockStart = (1.0 * start / self._blockShape).floor()
         blockStop = (1.0 * stop / self._blockShape).ceil()
         blockKey = roiToSlice(blockStart,blockStop)
+        
+
+        # this is a little optimization to shortcut
+        # many lines of python code when all data is
+        # is already in the cache:
+        if (self._blockState[blockKey] == 2).all():
+            self._lock.release()
+            result[:] = self._cache[roiToSlice(start, stop)]
+            return
                 
         inProcessQueries = numpy.unique(numpy.extract(self._blockState[blockKey] == 0, self._blockQuery[blockKey]))         
         
