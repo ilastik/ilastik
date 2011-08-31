@@ -338,8 +338,7 @@ class Main(QMainWindow):
         
         nchannels = shape[-1]
         for ich in xrange(nchannels):
-            #FIXME: This will not scale to large datasets, 
-            #it was done before like this but it needs to be adpted to a better solution
+
             if self._normalize_data:
                 data=slicer.outputs['Slices'][ich][:].allocate().wait()
         

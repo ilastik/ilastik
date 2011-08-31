@@ -86,7 +86,9 @@ class Main(QMainWindow):
         shape=Reader.outputs["Image"].shape
         print shape
         self.editor = VolumeEditor(shape, self.layerstack)  
-        self.editor.setDrawingEnabled(True)
+        self.editor.setDrawingEnabled(False)
+        self.editor.showDebugPatches = True
+        
         
         self.volumeEditorWidget.init(self.editor)
         model = self.editor.layerStack
