@@ -417,7 +417,13 @@ class Main(QMainWindow):
         #drawing will be enabled when the first label is added  
         self.editor.setDrawingEnabled(False)
         
-        self.volumeEditorWidget.init(self.editor)
+        newVolumeEditorWidget = VolumeEditorWidget(self, self.editor)
+        index = self.mainSplitter.indexOf(self.volumeEditorWidget)
+        self.tab1.layout().removeWidget(self.volumeEditorWidget)
+        self.mainSplitter.insertWidget(index, newVolumeEditorWidget)
+        self.volumeEditorWidget = newVolumeEditorWidget
+        #self.volumeEditorWidget.init(self.editor)
+        
         model = self.editor.layerStack
         self.layerWidget.init(model)
         self.UpButton.clicked.connect(model.moveSelectedUp)

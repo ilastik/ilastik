@@ -13,7 +13,10 @@ from lazyflow.graph import Graph
 from lazyflow.operators import Op5ToMulti, OpArrayCache, OpArrayFixableCache, \
                                OpArrayPiper, OpPredictRandomForest, \
                                OpSingleChannelSelector, OpSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures,OpMultiArraySlicer2,OpH5Reader
+                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures, \
+                               OpMultiArraySlicer2,OpH5Reader, OpBlockedSparseLabelArray, \
+                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures
+
 from volumeeditor.pixelpipeline.datasources import LazyflowSource
 from volumeeditor.pixelpipeline._testing import OpDataProvider
 from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer, \
@@ -405,9 +408,9 @@ class Main(QMainWindow):
         #Add the layer to draw the labels, but don't add any labels
         shape=self.inputProvider.outputs["Output"].shape
         
-        
-        self.opLabels = OpSparseLabelArray(self.g)                                
+        self.opLabels = OpBlockedSparseLabelArray(self.g)                                
         self.opLabels.inputs["shape"].setValue(shape[:-1] + (1,))
+        self.opLabels.inputs["blockShape"].setValue((1, 10, 10, 2, 1))
         self.opLabels.inputs["eraser"].setValue(100)                
         
         self.labelsrc = LazyflowSinkSource(self.opLabels, self.opLabels.outputs["Output"], self.opLabels.inputs["Input"])
