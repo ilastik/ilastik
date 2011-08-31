@@ -24,7 +24,7 @@ def test_OpPixelFeatures__T1():
     
     OpG = operators.OpPixelFeatures(g)
     
-    inputImage = vigra.impex.readImage("../../tests/ostrich.jpg")
+    inputImage = vigra.impex.readImage("ostrich.jpg")
     
     OpG.inputs["Input"].setValue(inputImage)
     OpG.inputs["Scales"].setValue([1,20,30,40])
@@ -111,7 +111,7 @@ def test_OpPixelFeatures__T2():
 
     OpG = operators.OpPixelFeatures(g)
     
-    inputImage = vigra.impex.readImage("../../tests/ostrich.jpg")
+    inputImage = vigra.impex.readImage("ostrich.jpg")
 
     OpG.inputs["Input"].setValue(numpy.random.rand(60,60,60,10,10).astype(numpy.float32))
     OpG.inputs["Matrix"].setValue(numpy.array([[1,1,0,0],[0,1,0,0],[0,1,0,0],[1,0,0,1]]))

@@ -1,7 +1,7 @@
 import numpy
 
 from lazyflow.graph import Operators, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
-from lazyflow.roi import sliceToRoi, roiToSlice, block_view
+from lazyflow.roi import sliceToRoi, roiToSlice, block_view, TinyVector
 from Queue import Empty
 from collections import deque
 from lazyflow.h5dumprestore import stringToClass
@@ -10,6 +10,7 @@ import vigra
 import copy
 from threading import current_thread, Lock
 
+from lazyflow.graph import OperatorGroup
 
 try:
     import blist
@@ -479,7 +480,6 @@ class OpArrayCache(OpArrayPiper):
 
         return op        
 
-
 class OpArrayFixableCache(OpArrayPiper):
     name = "ArrayFixableCache"
     description = "numpy.ndarray caching class"
@@ -501,10 +501,16 @@ class OpArrayFixableCache(OpArrayPiper):
         self._immediateAlloc = immediateAlloc
         self._lock = threading.Lock()
         
+    
     def notifyConnect(self, slot):
         fixed = False
+        
         if self.inputs['fixAtCurrent'].connected():
             fixed = self.inputs['fixAtCurrent'].value
+            if fixed and self._blockShape is None:
+                fixed = False
+            
+                
         if not fixed:
             if self.inputs["blockShape"].connected():
                 self._origBlockShape = self.inputs["blockShape"].value
@@ -550,7 +556,7 @@ class OpArrayFixableCache(OpArrayPiper):
         #        for p in self._flatBlockIndices:
         #            self._blockQuery[p] = BlockQueue()
             
-
+        
     def notifyDirty(self, slot, key):
         #print
         #print "OpArrayCache : DIRTY", key
@@ -687,7 +693,7 @@ class OpArrayFixableCache(OpArrayPiper):
             req.wait()
         
         # finally, store results in result area
-        print "Oparraycache debug",result.shape,self._cache[roiToSlice(start, stop)].shape
+        #print "Oparraycache debug",result.shape,self._cache[roiToSlice(start, stop)].shape
         result[:] = self._cache[roiToSlice(start, stop)]
         
         
@@ -834,7 +840,7 @@ if has_blist:
             
             stop += numpy.where(stop-start == 0,1,0)
 
-            print stop, start
+            #print stop, start
 
             key = roiToSlice(start,stop)
 
@@ -881,3 +887,187 @@ if has_blist:
             self.lock.release()
             
             self.outputs["Output"].setDirty(key)
+    
+    class OpBlockedSparseLabelArray(OperatorGroup):
+        name = "Blocked Sparse Label Array"
+        description = "simple cache for sparse label arrays"
+           
+        inputSlots = [InputSlot("Input"), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel"), InputSlot("blockShape")]
+        outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates")]
+        
+        def __init__(self, graph):
+            OperatorGroup.__init__(self, graph)
+            self.lock = threading.Lock()
+            
+            self._sparseNZ = None
+            self._labelers = {}
+            self.shape = None
+            
+            
+        def _createInnerOperators(self):
+            #Inner operators are created on demand            
+            pass
+            
+        def notifyConnect(self, slot):
+            if slot.name == "shape":
+                self.shape = self.inputs["shape"].value
+                self.outputs["Output"]._dtype = numpy.uint8
+                self.outputs["Output"]._shape = self.shape
+                self.outputs["Output"]._axistags = vigra.defaultAxistags(len(self.shape))
+        
+                self.outputs["nonzeroValues"]._dtype = object
+                self.outputs["nonzeroValues"]._shape = (1,)
+                self.outputs["nonzeroValues"]._axistags = vigra.defaultAxistags(1)
+                
+                self.outputs["nonzeroCoordinates"]._dtype = object
+                self.outputs["nonzeroCoordinates"]._shape = (1,)
+                self.outputs["nonzeroCoordinates"]._axistags = vigra.defaultAxistags(1)
+    
+                #Filled on request
+                self._sparseNZ =  blist.sorteddict()
+                
+            if slot.name == "blockShape":
+                self._origBlockShape = self.inputs["blockShape"].value
+                
+                if type(self._origBlockShape) != tuple:
+                    self._blockShape = (self._origBlockShape,)*len(self.shape)
+                else:
+                    self._blockShape = self._origBlockShape
+                    
+                self._blockShape = numpy.minimum(self._blockShape, self.shape)
+        
+                self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+                
+                print "Reconfigured Sparse labels with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
+                #FIXME: we don't really need this blockState thing
+                self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+                
+                _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
+                _blockNumbers.shape = self._dirtyShape
+        
+                _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
+                _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
+        
+                 
+                self._blockNumbers = _blockNumbers
+                self._blockIndices = _blockIndices
+                
+                # allocate queryArray object
+                self._flatBlockIndices =  self._blockIndices[:]
+                self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+            
+                
+            if slot.name == "deleteLabel":
+                print "not there yet"
+                return
+                labelNr = slot.value
+                if labelNr is not -1:
+                    neutralElement = 0
+                    slot.setValue(-1) #reset state of inputslot
+                    self.lock.acquire()
+    
+                    #remove values to be deleted
+                    updateNZ = numpy.nonzero(numpy.where(self._denseArray == labelNr,1,0))
+                    if len(updateNZ)>0:
+                        updateNZRavel = numpy.ravel_multi_index(updateNZ, self._denseArray.shape)
+                        self._denseArray.ravel()[updateNZRavel] = neutralElement
+                        for index in updateNZRavel:
+                            self._sparseNZ.pop(index)
+                    self._denseArray[:] = numpy.where(self._denseArray > labelNr, self._denseArray - 1, self._denseArray)
+                    self.lock.release()
+                    self.outputs["nonzeroValues"][0] = numpy.array(self._sparseNZ.values())
+                    self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
+                    self.outputs["Output"][:] = self._denseArray #set output dirty
+                    
+        def getOutSlot(self, slot, key, result):
+            self.lock.acquire()
+            #print "AAAAAAAAAAAAAAAAAAAA, request ", key, "from blocked labels", len(self._labelers), "filled so far"
+            assert(self.inputs["eraser"].connected() == True and self.inputs["shape"].connected() == True and self.inputs["blockShape"].connected()==True), \
+            "OpDenseSparseArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % \
+            (self.inputs["eraser"].connected(), self.inputs["shape"].connected())
+            if slot.name == "Output":
+                #result[:] = self._denseArray[key]
+                #find the block key
+                start, stop = sliceToRoi(key, self.shape)
+                blockStart = (1.0 * start / self._blockShape).floor()
+                blockStop = (1.0 * stop / self._blockShape).ceil()
+                blockKey = roiToSlice(blockStart,blockStop)
+                innerBlocks = self._blockNumbers[blockKey]
+                for b_ind in innerBlocks.ravel():
+                    
+                    #which part of the original key does this block fill?
+                    offset = self._blockShape*self._flatBlockIndices[b_ind]
+                    bigstart = numpy.maximum(offset, start)
+                    bigstop = numpy.minimum(offset + self._blockShape, stop)
+                
+                    smallstart = bigstart-offset
+                    smallstop = bigstop - offset
+                    
+                    bigkey = roiToSlice(bigstart-start, bigstop-start)
+                    smallkey = roiToSlice(smallstart, smallstop)
+                    if not b_ind in self._labelers:
+                        #print "returning zeros from block ", b_ind, "for key ", bigkey
+                        result[bigkey]=0
+                    else:
+                        result[bigkey]=self._labelers[b_ind]._denseArray[smallkey]
+            
+            elif slot.name == "nonzeroValues":
+                nzvalues = set()
+                for l in self._labelers.values():
+                    nzvalues |= set(l._sparseNZ.values())
+                result[0] = numpy.array(list(nzvalues))
+            elif slot.name == "nonzeroCoordinates":
+                print "not supported yet"
+                #result[0] = numpy.array(self._sparseNZ.keys())
+            self.lock.release()
+            return result
+            
+        def setInSlot(self, slot, key, value):              
+            start, stop = sliceToRoi(key, self.shape)
+            #print "start, stop:", start, stop, "blockshape:", self._blockShape
+            blockStart = (1.0 * start / self._blockShape).floor()
+            blockStop = (1.0 * stop / self._blockShape).ceil()
+            blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
+            blockKey = roiToSlice(blockStart,blockStop)
+            #print "blockStop:", blockStop
+            #blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
+            #print "blockStop2:", blockStop
+            #blockKey = roiToSlice(blockStart,blockStop)
+            
+            innerBlocks = self._blockNumbers[blockKey]
+            #print "innerBlocks:"
+            for b_ind in innerBlocks.ravel():
+                #print
+                #print "block index:", b_ind
+                
+                offset = self._blockShape*self._flatBlockIndices[b_ind]
+                #print "offset:", offset
+                bigstart = numpy.maximum(offset, start)
+                bigstop = numpy.minimum(offset + self._blockShape, stop)
+                #print "bigstart:", bigstart, "bigstop:", bigstop
+                smallstart = bigstart-offset
+                smallstop = bigstop - offset
+                #print "smallstart:", smallstart, "smallstop", smallstop
+                
+                smallkey = roiToSlice(smallstart, smallstop)
+                #print smallkey
+                if not b_ind in self._labelers:
+                    #print "allocating labeler for b_ind", b_ind
+                    self._labelers[b_ind]=OpSparseLabelArray(self.graph)
+                    self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
+                    self._labelers[b_ind].inputs["eraser"].setValue(self.inputs["eraser"])
+                    self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"])
+                    
+                self._labelers[b_ind].inputs["Input"][smallkey] = value
+            #self.outputs["Output"].setDirty(key)
+            
+        def getInnerInputs(self):
+            inputs = {}
+            return inputs
+        
+        def getInnerOutputs(self):
+            outputs = {}
+            return outputs
+        
+                   
+        

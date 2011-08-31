@@ -2013,7 +2013,7 @@ class OperatorGroup(Operator):
         if inputSlot != inputs[inputSlot.name]:
             if inputSlot.partner is not None and inputs[inputSlot.name].partner != inputSlot.partner:
                 inputs[inputSlot.name].connect(inputSlot.partner)
-            elif inputSlot._value is not None and inputs[inputSlot.name]._value != inputSlot._value:
+            elif inputSlot._value is not None and id(inputs[inputSlot.name]._value) != id(inputSlot._value):
                 inputs[inputSlot.name].setValue(inputSlot._value)
         self.notifyConnect(inputSlot)
 
