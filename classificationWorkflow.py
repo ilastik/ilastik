@@ -13,7 +13,7 @@ from lazyflow.graph import Graph
 from lazyflow.operators import Op5ToMulti, OpArrayCache, OpArrayFixableCache, \
                                OpArrayPiper, OpPredictRandomForest, \
                                OpSingleChannelSelector, OpSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures2
+                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures,OpMultiArraySlicer2,OpH5Reader
 from volumeeditor.pixelpipeline.datasources import LazyflowSource
 from volumeeditor.pixelpipeline._testing import OpDataProvider
 from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer, \
@@ -34,6 +34,15 @@ class Main(QMainWindow):
     def __init__(self, argv):
         QMainWindow.__init__(self)
         
+        #Normalize the data if true
+        self._normalize_data=True
+        arguments=sys.argv
+        
+        if 'notnormalize' in arguments:
+            self._normalize_data=False
+            arguments.remove('notnormalize')
+        
+        
         self.opPredict = None
         self.opTrain = None
         self._colorTable16 = self._createDefault16ColorColorTable()
@@ -44,12 +53,20 @@ class Main(QMainWindow):
         self.featureDlg=None
         self.featScalesList=[.1,.2,1,2]
         
+        
+        
+        
+        
+        
+        
         self.initUic()
         
         #
         # if the filename was specified on command line, load it
         #
-        if len(sys.argv) == 2:
+        arguments=sys.argv
+
+        if len(arguments) == 2:
             def loadFile():
                 self._openFile(sys.argv[1])
             QTimer.singleShot(0, loadFile)
@@ -274,6 +291,8 @@ class Main(QMainWindow):
         self._openFile(fileName)
         
     def _openFile(self, fileName):
+        
+        
         fName, fExt = os.path.splitext(str(fileName))
         self.inputProvider = None
         if fExt=='.npy':
@@ -281,9 +300,20 @@ class Main(QMainWindow):
             self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
             self.inputProvider = OpArrayPiper(self.g)
             self.inputProvider.inputs["Input"].setValue(self.raw)
+        
+        elif fExt=='.h5':
+            
+            Reader=OpH5Reader(self.g)
+            print str(fileName),'*+++++++++++++++++++++++++'
+            Reader.inputs["Filename"].setValue(str(fileName))
+            Reader.inputs["hdf5Path"].setValue("volume/data")
+            self.inputProvider = OpArrayPiper(self.g)
+            self.inputProvider.inputs["Input"].connect(Reader.outputs["Image"])
+        
         else:
             print "not supported yet"
             return
+        
         self.haveData.emit()
        
     def initGraph(self):
@@ -295,26 +325,39 @@ class Main(QMainWindow):
         srcs    = []
         minMax = []
         
-        print "* Data has shape=%r", (self.raw.shape,)
+        print "* Data has shape=%r", (shape,)
         
         #create a layer for each channel of the input:
+        
+        slicer=OpMultiArraySlicer2(self.g)
+        slicer.inputs["Input"].connect(self.inputProvider.outputs["Output"])
+        slicer.inputs["AxisFlag"].setValue('c')
+       
+        
+        
+        
         nchannels = shape[-1]
-        for ich in range(nchannels):
-            op1 = OpDataProvider(self.g, self.raw[..., ich:ich+1])
-            #find the minimum and maximum value for normalization
-            mm = (numpy.min(self.raw[..., ich:ich+1]), numpy.max(self.raw[..., ich:ich+1]))
-            print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
-            if mm == (0.0, 255.0):
-                #do not normalize in this case
-                mm = None
-            minMax.append(mm)
-            layersrc = LazyflowSource(op1.outputs["Data"])
+        for ich in xrange(nchannels):
+            #FIXME: This will not scale to large datasets, 
+            #it was done before like this but it needs to be adpted to a better solution
+            if self._normalize_data:
+                data=slicer.outputs['Slices'][ich][:].allocate().wait()
+        
+                #find the minimum and maximum value for normalization
+                mm = (numpy.min(data), numpy.max(data))
+                print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
+                
+                minMax.append(mm)
+            else:
+                minMax.append(None)
+                
+            layersrc = LazyflowSource(slicer.outputs['Slices'][ich])
             srcs.append(layersrc)
             
         #FIXME: we shouldn't merge channels automatically, but for now it's prettier
         layer1 = None
         if nchannels == 1:
-            layer1 = GrayscaleLayer(srcs[0], normalize=minMax[0])
+            layer1 = GrayscaleLayer(srcs[0], thresholding=minMax[0])
             layer1.rangeRed   = minMax[0]
             print "  - showing raw data as grayscale"
         elif nchannels==2:
@@ -343,7 +386,7 @@ class Main(QMainWindow):
         opImageList.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
         
         #init the features operator
-        opPF = OpPixelFeatures2(self.g)
+        opPF = OpPixelFeatures(self.g)
         opPF.inputs["Input"].connect(opImageList.outputs["Outputs"])
         opPF.inputs["Scales"].setValue(self.featScalesList)
         self.opPF=opPF
@@ -360,9 +403,11 @@ class Main(QMainWindow):
         
     def initLabels(self):
         #Add the layer to draw the labels, but don't add any labels
+        shape=self.inputProvider.outputs["Output"].shape
+        
         
         self.opLabels = OpSparseLabelArray(self.g)                                
-        self.opLabels.inputs["shape"].setValue(self.raw.shape[:-1] + (1,))
+        self.opLabels.inputs["shape"].setValue(shape[:-1] + (1,))
         self.opLabels.inputs["eraser"].setValue(100)                
         
         self.labelsrc = LazyflowSinkSource(self.opLabels, self.opLabels.outputs["Output"], self.opLabels.inputs["Input"])
@@ -374,7 +419,10 @@ class Main(QMainWindow):
     
     def initEditor(self):
         print "going to init editor"
-        self.editor = VolumeEditor(self.raw.shape, self.layerstack, labelsink=self.labelsrc)
+        
+        shape=self.inputProvider.outputs["Output"].shape
+        
+        self.editor = VolumeEditor(shape, self.layerstack, labelsink=self.labelsrc)
         #drawing will be enabled when the first label is added  
         self.editor.setDrawingEnabled(False)
         self.volumeEditorWidget.init(self.editor)
