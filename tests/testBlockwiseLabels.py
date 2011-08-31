@@ -47,11 +47,10 @@ def test(shape, blockshape):
     opLabelBlocked.inputs["eraser"].setValue(100)        
     
     niter = 10
-    
-    for i in range(niter):
 
+    for i in range(niter):
         
-        value = numpy.random.randint(0, 10)
+        value = numpy.random.randint(1, 10)
         key = randomKey(shape)
         print i, key
         opLabel.setInSlot(opLabel.inputs["Input"], key, value)
@@ -63,6 +62,16 @@ def test(shape, blockshape):
         assert_array_equal(out, outblocked)
         #print out
         #print outblocked
+    
+    nz1 = opLabel.outputs["nonzeroValues"][0].allocate().wait()
+    
+    nz2 = opLabelBlocked.outputs["nonzeroValues"][0].allocate().wait()
+
+    for nz in nz1[0]:
+        assert nz in nz2[0], "%r value not in blocked set"%nz
+    
+    for nz in nz2[0]:
+        assert nz in nz1[0], "%r value not in non-blocked array"%nz
     
     print "done!"
 

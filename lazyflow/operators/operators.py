@@ -898,7 +898,7 @@ if has_blist:
         def __init__(self, graph):
             OperatorGroup.__init__(self, graph)
             self.lock = threading.Lock()
-            self._denseArray = None
+            
             self._sparseNZ = None
             self._labelers = {}
             self.shape = None
@@ -923,8 +923,8 @@ if has_blist:
                 self.outputs["nonzeroCoordinates"]._shape = (1,)
                 self.outputs["nonzeroCoordinates"]._axistags = vigra.defaultAxistags(1)
     
-                #self._denseArray = numpy.zeros(shape, numpy.uint8)
-                #self._sparseNZ =  blist.sorteddict()
+                #Filled on request
+                self._sparseNZ =  blist.sorteddict()
                 
             if slot.name == "blockShape":
                 self._origBlockShape = self.inputs["blockShape"].value
@@ -1005,7 +1005,16 @@ if has_blist:
                     if not b_ind in self._labelers:
                         result[bigkey]=0
                     else:
-                        result[bigkey]=self._labelers[b_ind].outputs["Output"][smallkey].allocate().wait()
+                        result[bigkey]=self._labelers[b_ind]._denseArray[smallkey]
+            
+            elif slot.name == "nonzeroValues":
+                nzvalues = set()
+                for l in self._labelers.values():
+                    nzvalues |= set(l._sparseNZ.values())
+                result[0] = numpy.array(list(nzvalues))
+            elif slot.name == "nonzeroCoordinates":
+                print "not supported yet"
+                #result[0] = numpy.array(self._sparseNZ.keys())
             self.lock.release()
             return result
             
