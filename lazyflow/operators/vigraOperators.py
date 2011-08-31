@@ -882,3 +882,88 @@ class OpH5Writer(Operator):
         f.close()
         
         result[0] = True
+        
+
+
+
+class OpH5ReaderBigDataset(Operator):
+    
+    name = "H5 File Reader For Big Datasets"
+    category = "Input"
+    
+    inputSlots = [InputSlot("Filenames"), InputSlot("hdf5Path", stype = "string")]
+    outputSlots = [OutputSlot("Output")]
+    
+        
+    def notifyConnectAll(self):
+        filename = self.inputs["Filenames"].value[0]
+        hdf5Path = self.inputs["hdf5Path"].value
+        
+        f = h5py.File(filename, 'r')
+    
+        d = f[hdf5Path]
+        
+        self.shape=d.shape
+        
+        self.outputs["Output"]._dtype = d.dtype
+        self.outputs["Output"]._shape = d.shape
+        
+        if len(d.shape) == 5:
+            axistags= vigra.VigraArray.defaultAxistags('txyzc')
+        else:
+            print "Not implemented"
+            raise
+        self.outputs["Output"]._axistags=axistags
+            
+        f.close()
+        
+        self.F=[]
+        self.D=[]
+        self.ChunkList=[]
+        
+        for filename in self.inputs["Filenames"].value:
+            f=h5py.File(filename, 'r')
+            d=f[hdf5Path]
+            
+            assert (numpy.array(self.shape)==numpy.array(self.shape)).all(), "Some files have a different shape, this is not allowed man!"
+            
+            
+            self.ChunkList.append(d.chunks)
+            self.F.append(f)
+            self.D.append(d)
+        
+    def getOutSlot(self, slot, key, result):
+        filenames = self.inputs["Filenames"].value
+        
+        hdf5Path = self.inputs["hdf5Path"].value
+        F=[]
+        D=[]
+        ChunkList=[]
+        
+        start,stop=sliceToRoi(key,self.shape)
+        diff=numpy.array(stop)-numpy.array(start)
+
+        maxError=sys.maxint
+        index=0
+
+        for i,chunks in enumerate(self.ChunkList):
+            cs = numpy.array(chunks)
+            
+            error = numpy.sum(numpy.abs(diff -cs))
+            #print error
+            if error<maxError:
+                index = i
+                maxError = error
+        
+#        print "best error", maxError
+#        print "selected chunking", self.ChunkList[index], "for request", diff
+        
+        
+        result[:]=self.D[index][key]
+    """
+    def notifyDisconnect(self, slot):
+        for f in self.F:
+            f.close()
+        self.D=[]
+        self.ChunkList=[]
+    """
