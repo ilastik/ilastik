@@ -351,7 +351,7 @@ class OpSubRegion(Operator):
             
         res = self.inputs["Input"][newKey].allocate().wait()
         
-        resultArea[:] = res.squeeze()[:]
+        resultArea[:] = res[:]
         
  
  
