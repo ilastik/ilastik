@@ -7,7 +7,7 @@ import os, sys
 import numpy as np
 from PyQt4.QtCore import QObject, QRectF, QTime, Qt
 from PyQt4.QtGui import QColor, QApplication, QSplitter, QPushButton, \
-                        QVBoxLayout, QWidget, QHBoxLayout, QMainWindow
+                        QVBoxLayout, QWidget, QHBoxLayout, QMainWindow, qApp
 
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from volumeeditor.pixelpipeline.datasources import LazyflowSource, ConstantSource
@@ -44,6 +44,11 @@ class Main(QMainWindow):
          
         #get the absolute path of the 'ilastik' module
         uic.loadUi("designerElements/MainWindow.ui", self) 
+        
+        self.actionQuit.triggered.connect(qApp.quit)
+        def toggleDebugPatches(show):
+            self.editor.showDebugPatches = show
+        self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
         
         self.layerstack = LayerStackModel()
         
