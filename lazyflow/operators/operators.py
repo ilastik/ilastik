@@ -1022,7 +1022,8 @@ if has_blist:
             self.lock.release()
             return result
             
-        def setInSlot(self, slot, key, value):              
+        def setInSlot(self, slot, key, value):
+                    
             start, stop = sliceToRoi(key, self.shape)
             #print "start, stop:", start, stop, "blockshape:", self._blockShape
             blockStart = (1.0 * start / self._blockShape).floor()
@@ -1034,12 +1035,12 @@ if has_blist:
             #print "blockStop2:", blockStop
             #blockKey = roiToSlice(blockStart,blockStop)
             
+            nonsingletons = [i for i in range(len(key)) if key[i]!=0]
+            
             innerBlocks = self._blockNumbers[blockKey]
             #print "innerBlocks:"
             for b_ind in innerBlocks.ravel():
-                #print
-                #print "block index:", b_ind
-                
+
                 offset = self._blockShape*self._flatBlockIndices[b_ind]
                 #print "offset:", offset
                 bigstart = numpy.maximum(offset, start)
@@ -1048,9 +1049,9 @@ if has_blist:
                 smallstart = bigstart-offset
                 smallstop = bigstop - offset
                 #print "smallstart:", smallstart, "smallstop", smallstop
-                
+                bigkey = roiToSlice(bigstart-start, bigstop-start)
                 smallkey = roiToSlice(smallstart, smallstop)
-                #print smallkey
+                shortbigkey = [bigkey[i] for i in nonsingletons]
                 if not b_ind in self._labelers:
                     #print "allocating labeler for b_ind", b_ind
                     self._labelers[b_ind]=OpSparseLabelArray(self.graph)
@@ -1058,7 +1059,8 @@ if has_blist:
                     self._labelers[b_ind].inputs["eraser"].setValue(self.inputs["eraser"])
                     self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"])
                     
-                self._labelers[b_ind].inputs["Input"][smallkey] = value
+                self._labelers[b_ind].inputs["Input"][smallkey] = value[tuple(shortbigkey)]
+                
             #self.outputs["Output"].setDirty(key)
             
         def getInnerInputs(self):
