@@ -13,7 +13,7 @@ from lazyflow.graph import Graph
 from lazyflow.operators import Op5ToMulti, OpArrayCache, OpArrayFixableCache, \
                                OpArrayPiper, OpPredictRandomForest, \
                                OpSingleChannelSelector, OpSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures2,OpMultiArraySlicer2,OpH5Reader
+                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures,OpMultiArraySlicer2,OpH5Reader
 from volumeeditor.pixelpipeline.datasources import LazyflowSource
 from volumeeditor.pixelpipeline._testing import OpDataProvider
 from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer, \
@@ -385,7 +385,7 @@ class Main(QMainWindow):
         opImageList.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
         
         #init the features operator
-        opPF = OpPixelFeatures2(self.g)
+        opPF = OpPixelFeatures(self.g)
         opPF.inputs["Input"].connect(opImageList.outputs["Outputs"])
         opPF.inputs["Scales"].setValue(self.featScalesList)
         self.opPF=opPF
