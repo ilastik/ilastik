@@ -893,7 +893,7 @@ if has_blist:
         description = "simple cache for sparse label arrays"
            
         inputSlots = [InputSlot("Input"), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel"), InputSlot("blockShape")]
-        outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates")]
+        outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates"), OutputSlot("nonzeroBlocks")]
         
         def __init__(self, graph):
             OperatorGroup.__init__(self, graph)
@@ -922,6 +922,10 @@ if has_blist:
                 self.outputs["nonzeroCoordinates"]._dtype = object
                 self.outputs["nonzeroCoordinates"]._shape = (1,)
                 self.outputs["nonzeroCoordinates"]._axistags = vigra.defaultAxistags(1)
+
+                self.outputs["nonzeroBlocks"]._dtype = object
+                self.outputs["nonzeroBlocks"]._shape = (1,)
+                self.outputs["nonzeroBlocks"]._axistags = vigra.defaultAxistags(1)
     
                 #Filled on request
                 self._sparseNZ =  blist.sorteddict()
@@ -1019,12 +1023,44 @@ if has_blist:
             elif slot.name == "nonzeroCoordinates":
                 print "not supported yet"
                 #result[0] = numpy.array(self._sparseNZ.keys())
+            elif slot.name == "nonzeroBlocks":
+                #we only return all non-zero blocks, no keys
+                slicelist = []
+                for b_ind in self._labelers.keys():
+                    print "labeler exists!", b_ind
+                    offset = self._blockShape*self._flatBlockIndices[b_ind]
+                    bigstart = offset
+                    bigstop = numpy.minimum(offset + self._blockShape, self.shape)                    
+                    bigkey = roiToSlice(bigstart, bigstop)
+                    slicelist.append(bigkey)
+                
+                
+#                slicelist = []
+#                print "requesting key", key
+#                start, stop = sliceToRoi(key, self.shape)
+#                blockStart = (1.0 * start / self._blockShape).floor()
+#                blockStop = (1.0 * stop / self._blockShape).ceil()
+#                blockKey = roiToSlice(blockStart,blockStop)
+#                innerBlocks = self._blockNumbers[blockKey]
+#                for b_ind in innerBlocks.ravel():
+#                    print "b_ind", b_ind
+#                    if b_ind in self._labelers:
+#                        print "labeler exists", b_ind
+#                        offset = self._blockShape*self._flatBlockIndices[b_ind]
+#                        bigstart = numpy.maximum(offset, start)
+#                        bigstop = numpy.minimum(offset + self._blockShape, stop)                    
+#                        bigkey = roiToSlice(bigstart, bigstop)
+#                        slicelist.append(bigkey)
+                result[0] = slicelist
+                
+                
             self.lock.release()
             return result
             
         def setInSlot(self, slot, key, value):
-                    
+            #print "setting inslot, key:", key, "value", value.shape
             start, stop = sliceToRoi(key, self.shape)
+            
             #print "start, stop:", start, stop, "blockshape:", self._blockShape
             blockStart = (1.0 * start / self._blockShape).floor()
             blockStop = (1.0 * stop / self._blockShape).ceil()
@@ -1035,8 +1071,12 @@ if has_blist:
             #print "blockStop2:", blockStop
             #blockKey = roiToSlice(blockStart,blockStop)
             
+            #FIXME: this assumes, that key passes 0 at singleton dimensions
+            #FIXME: like volumeeditor does.
             nonsingletons = [i for i in range(len(key)) if key[i]!=0]
             
+        
+            #print "good dimensions:", nonsingletons
             innerBlocks = self._blockNumbers[blockKey]
             #print "innerBlocks:"
             for b_ind in innerBlocks.ravel():
@@ -1052,6 +1092,7 @@ if has_blist:
                 bigkey = roiToSlice(bigstart-start, bigstop-start)
                 smallkey = roiToSlice(smallstart, smallstop)
                 shortbigkey = [bigkey[i] for i in nonsingletons]
+                #print shortbigkey
                 if not b_ind in self._labelers:
                     #print "allocating labeler for b_ind", b_ind
                     self._labelers[b_ind]=OpSparseLabelArray(self.graph)
