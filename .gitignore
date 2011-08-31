@@ -15,3 +15,5 @@ src/oli_quadViewSplitterOli.py
 src/oli_quadViewHUDandStatusBar.py
 
 oli_workflow2.py
+
+.DS_Store
