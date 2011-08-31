@@ -28,7 +28,7 @@ def randomKey(shape):
     if ndim==2:
         key = (slice(min(x1, x2), max(x1, x2)), slice(min(y1, y2), max(y1, y2)), slice(0, 1, None))
     if ndim==3:
-        key = (slice(min(x1, x2), max(x1, x2)), slice(min(y1, y2), max(y1, y2)), slice(min(z1, z2), max(z1, z2)), slice(0, 1, None))
+        key = (slice(min(x1, x2), shape[0]), slice(min(y1, y2), shape[1]), slice(min(z1, z2), shape[2]), slice(0, 1, None))
 
     return key
 
@@ -75,9 +75,44 @@ def test(shape, blockshape):
     
     print "done!"
 
+def veryRandomTest(shape, blockshape):
+    g = Graph()
+    opLabel = OpSparseLabelArray(g)
+    opLabelBlocked = OpBlockedSparseLabelArray(g)
+    
+    opLabel.inputs["shape"].setValue(shape[:-1] + (1,))
+    opLabelBlocked.inputs["shape"].setValue(shape[:-1] + (1,))
+    
+    opLabelBlocked.inputs["blockShape"].setValue(blockshape)
+    
+    opLabel.inputs["eraser"].setValue(100)
+    opLabelBlocked.inputs["eraser"].setValue(100)
+    niter = 10
+
+    for i in range(niter):
+        
+        value = numpy.random.randint(1, 10)
+        key = randomKey(shape)
+        
+        opLabel.setInSlot(opLabel.inputs["Input"], key, value)
+        opLabelBlocked.setInSlot(opLabelBlocked.inputs["Input"], key, value)
+        
+        key2 = randomKey(shape)
+        print i, key, key2
+        out = opLabel.outputs["Output"][key2].allocate().wait()
+        #print "first done"
+        outblocked = opLabelBlocked.outputs["Output"][key2].allocate().wait()
+        #print "second done"
+        assert_array_equal(out, outblocked)
+        #print out
+        #print outblocked
+    
+    
+            
 
 if __name__=="__main__":
-    shape = (50, 50, 50, 1)
-    blockshape = (10, 10, 2, 1)
+    shape = (50, 50, 1)
+    blockshape = (10, 10, 1)
     test(shape, blockshape)
+    veryRandomTest(shape, blockshape)
     

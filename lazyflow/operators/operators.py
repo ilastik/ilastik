@@ -981,17 +981,20 @@ if has_blist:
                     
         def getOutSlot(self, slot, key, result):
             self.lock.acquire()
-            assert(self.inputs["eraser"].connected() == True and self.inputs["shape"].connected() == True), "OpDenseSparseArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % (self.inputs["eraser"].connected(), self.inputs["shape"].connected())
+            #print "AAAAAAAAAAAAAAAAAAAA, request ", key, "from blocked labels", len(self._labelers), "filled so far"
+            assert(self.inputs["eraser"].connected() == True and self.inputs["shape"].connected() == True and self.inputs["blockShape"].connected()==True), \
+            "OpDenseSparseArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % \
+            (self.inputs["eraser"].connected(), self.inputs["shape"].connected())
             if slot.name == "Output":
                 #result[:] = self._denseArray[key]
                 #find the block key
                 start, stop = sliceToRoi(key, self.shape)
-                blockStart = numpy.ceil(1.0 * start / self._blockShape)
-                blockStop = numpy.floor(1.0 * stop / self._blockShape)
-                blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
+                blockStart = (1.0 * start / self._blockShape).floor()
+                blockStop = (1.0 * stop / self._blockShape).ceil()
                 blockKey = roiToSlice(blockStart,blockStop)
                 innerBlocks = self._blockNumbers[blockKey]
                 for b_ind in innerBlocks.ravel():
+                    
                     #which part of the original key does this block fill?
                     offset = self._blockShape*self._flatBlockIndices[b_ind]
                     bigstart = numpy.maximum(offset, start)
@@ -1000,9 +1003,10 @@ if has_blist:
                     smallstart = bigstart-offset
                     smallstop = bigstop - offset
                     
-                    bigkey = roiToSlice(bigstart, bigstop)
+                    bigkey = roiToSlice(bigstart-start, bigstop-start)
                     smallkey = roiToSlice(smallstart, smallstop)
                     if not b_ind in self._labelers:
+                        #print "returning zeros from block ", b_ind, "for key ", bigkey
                         result[bigkey]=0
                     else:
                         result[bigkey]=self._labelers[b_ind]._denseArray[smallkey]
