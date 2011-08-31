@@ -14,107 +14,15 @@ import sys,signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 
-
-        
-
-def test_OpPixelFeatures1__T1():
+def test_OpPixelFeatures__T1():
     
     print "________________________________"
-    print "___TEST: test_OpPixelFeatures1__T1__"
+    print "__TEST: test_OpPixelFeatures__T1__"
     print "_____________"
     
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
     
     OpG = operators.OpPixelFeatures(g)
-    
-    inputImage = vigra.impex.readImage("../../tests/ostrich.jpg")
-    
-    OpG.inputs["Input"].setValue(inputImage)
-    OpG.inputs["Scales"].setValue([1,20,30,40])
-
-    listA = [[0,1,0,1],[0,0,0,0],[0,1,0,0],[0,1,0,0]]
-
-    OpG.inputs["Matrix"].setValue(listA)
-
-
-    dest1 = OpG.outputs["Output"][:,:,0:3].allocate().wait()
-    dest2= OpG.outputs["Output"][:,:,3:6].allocate().wait()
-    dest3 = OpG.outputs["Output"][:,:,6:9].allocate().wait()
- 
-    vigra.impex.writeImage(dest1,"F1_T1_resultOpT1G1.jpg") 
-    vigra.impex.writeImage(dest2,"F1_T1_resultOpT1G2.jpg") 
-    vigra.impex.writeImage(dest3,"F1_T1_resultOpT1G3.jpg")
-    
-    shape1 = OpG.outputs["Output"].shape 
-    
-    print "Shape 1"
-    print OpG.outputs["Output"].shape
-    print "_________"
-    
-    
-  
-    OpG.inputs["Matrix"].setValue([[1,1,0,0],[0,1,1,0],[1,0,1,0],[1,0,0,1]])  
-   
-    import gc
-    del dest1
-    del dest2
-    del dest3
-    gc.collect()  
-
-    dest1 = OpG.outputs["Output"][:,:,0:3].allocate().wait()
-    dest2= OpG.outputs["Output"][:,:,3:6].allocate().wait()
-    dest3 = OpG.outputs["Output"][:,:,6:9].allocate().wait()
-    
-    vigra.impex.writeImage(dest1,"F1_T1_resultOpT2G1.jpg") 
-    vigra.impex.writeImage(dest2,"F1_T1_resultOpT2G2.jpg") 
-    vigra.impex.writeImage(dest3,"F1_T1_resultOpT2G3.jpg")
-    
-    print "Shape 2"
-    print OpG.outputs["Output"].shape    
-    print "_________"
-
-
-    OpG.inputs["Matrix"].setValue(listA)
-    
-    
-    del dest1
-    del dest2
-    del dest3
-    gc.collect()    
-    
-    dest1 = OpG.outputs["Output"][:,:,0:3].allocate().wait()
-    dest2=  OpG.outputs["Output"][:,:,3:6].allocate().wait()
-    dest3 = OpG.outputs["Output"][:,:,6:9].allocate().wait()
-
-    vigra.impex.writeImage(dest1,"F1_T1_resultOpT3G1.jpg") 
-    vigra.impex.writeImage(dest2,"F1_T1_resultOpT3G2.jpg") 
-    vigra.impex.writeImage(dest3,"F1_T1_resultOpT3G3.jpg")
-    
-    print "Shape 3"
-    print OpG.outputs["Output"].shape    
-    print "_________"    
-    
-    shape3 = OpG.outputs["Output"].shape     
-    
-    if shape3 != shape1:
-        print "ERROR!!!!!!"
-    
-    print "______________________"
-
-    g.finalize()
-
-
-
-
-def test_OpPixelFeatures2__T1():
-    
-    print "________________________________"
-    print "__TEST: test_OpPixelFeatures2__T1__"
-    print "_____________"
-    
-    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
-    
-    OpG = operators.OpPixelFeatures2(g)
     
     inputImage = vigra.impex.readImage("../../tests/ostrich.jpg")
     
@@ -192,16 +100,16 @@ def test_OpPixelFeatures2__T1():
     g.finalize()
     
     
-def test_OpPixelFeatures2__T2():
+def test_OpPixelFeatures__T2():
     
     print "________________________________"
-    print "__TEST: test_OpPixelFeatures2__T2__"
+    print "__TEST: test_OpPixelFeatures__T2__"
     print "_____________"    
     
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
     
 
-    OpG = operators.OpPixelFeatures2(g)
+    OpG = operators.OpPixelFeatures(g)
     
     inputImage = vigra.impex.readImage("../../tests/ostrich.jpg")
 
@@ -234,6 +142,5 @@ def test_OpPixelFeatures2__T2():
     g.finalize()
 
 
-test_OpPixelFeatures2__T1()
-test_OpPixelFeatures2__T2()
-test_OpPixelFeatures1__T1()
+test_OpPixelFeatures__T1()
+test_OpPixelFeatures__T2()
