@@ -52,52 +52,19 @@ class Main(QMainWindow):
         
         self.layerstack = LayerStackModel()
         
-        
-        Reader=op.OpH5Reader(g)
-        
-        Reader.inputs["Filename"].setValue("scripts/CB_compressed_CubeX.h5")
-        #Reader.inputs["Filename"].setValue("scripts/Knott_compressed_oldshape.h5")
-        Reader.inputs["hdf5Path"].setValue("volume/data")
-        
-        
-        
-      
-        
         readerNew=op.OpH5ReaderBigDataset(g)
         readerNew.inputs["Filenames"].setValue(["scripts/CB_compressed_XY.h5","scripts/CB_compressed_XZ.h5","scripts/CB_compressed_YZ.h5"])
         readerNew.inputs["hdf5Path"].setValue("volume/data")
         
-        opFeatureCache = op.OpArrayCache(g)
-        opFeatureCache.inputs["blockShape"].setValue((1,128,128,128,1))
-        opFeatureCache.inputs["Input"].connect(Reader.outputs["Image"]) 
-        
-        """
-        import h5py
-        f=h5py.File("Knott_compressed.h5",'r')
-        d=f["volume/data"].value
-        
-        #Try
-        opImage  = op.OpArrayPiper(g)
-        opImage.inputs["Input"].setValue(d)
-        """
-      
-        #datasrc = LazyflowSource(opFeatureCache.outputs["Output"])
-        #datasrc = LazyflowSource(Reader.outputs["Image"])
-        
         datasrc = LazyflowSource(readerNew.outputs["Output"])
-        
-        
-        #datasrc = LazyflowSource(opImage.outputs["Output"])
         
         layer1 = GrayscaleLayer( datasrc )
         layer1.name = "Big Data"
         
         
         self.layerstack.append(layer1)
-    
         
-        
-        shape=Reader.outputs["Image"].shape
+        shape=readerNew.outputs["Output"].shape
         print shape
         self.editor = VolumeEditor(shape, self.layerstack)  
         self.editor.setDrawingEnabled(False)
