@@ -85,7 +85,7 @@ class OpArrayShifter1(Operator):
         #object will be creating the "putTask" method of the graph object 
         #will be called
         req = self.inputs["Input"][rkey].writeInto(result[wkey])
-        res = req()
+        res = req.wait()
         return res
 
     def notifyDirty(self,slot,key):
