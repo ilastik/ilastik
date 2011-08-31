@@ -479,7 +479,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         channelsPerChannel = self.resultingChannels()
         self.outputs["Output"]._shape = inShapeWithoutChannels + (numChannels * channelsPerChannel,)
-        #print "HEREEEEEEEEEEEEEE", self.inputs["Input"].shape ,self.outputs["Output"]._shape
+        print "HEREEEEEEEEEEEEEE", self.inputs["Input"].shape ,self.outputs["Output"]._shape
         #print self.resultingChannels(), self.name
         
         #print self.outputs["Output"]._axistags
@@ -792,20 +792,41 @@ class OpH5Reader(Operator):
         else:
             axistags= vigra.VigraArray.defaultAxistags(len(d.shape))
         self.outputs["Image"]._axistags=axistags
-            
-        f.close()
+        self.f=f
+        self.d=self.f[hdf5Path]    
+        
+        
+        #f.close()
+        
+        #FOR DEBUG DUMPING REQUEST TO A FILE
+        #import os
+        #logfile='readerlog.txt'
+        #if os.path.exists(logfile): os.remove(logfile)
+        
+        #self.ff=open(logfile,'a')
+        
         
     def getOutSlot(self, slot, key, result):
         filename = self.inputs["Filename"].value
         hdf5Path = self.inputs["hdf5Path"].value
         
-        f = h5py.File(filename, 'r')
+        #f = h5py.File(filename, 'r')
     
-        d = f[hdf5Path]
+        #d = f[hdf5Path]
         
-        result[:] = d[key]
-        f.close()
-
+        
+        
+        
+        
+        result[:] = self.d[key]
+        #f.close()
+        
+        #Debug DUMPING REQUEST TO FILE
+        #start,stop=roi.sliceToRoi(key,self.d.shape)
+        #dif=numpy.array(stop)-numpy.array(start)
+        
+        #self.ff.write(str(start)+'   '+str(stop)+'   ***  '+str(dif)+' \n')
+        
 
         
 class OpH5Writer(Operator):
