@@ -84,7 +84,7 @@ class OpArrayShifter3(Operator):
         result[:] = 0
         #write the shifted scope to the output 
         req = self.inputs["Input"][rkey].writeInto(result[wkey])
-        res = req()
+        res = req.wait()
         return res
 
     def notifyDirty(selfut,slot,key):
