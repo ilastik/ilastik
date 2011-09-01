@@ -9,7 +9,7 @@ import greenlet, threading
 import vigra
 import copy
 from threading import current_thread, Lock
-
+import generic
 from lazyflow.graph import OperatorGroup
 
 try:
@@ -1113,6 +1113,111 @@ if has_blist:
         def getInnerOutputs(self):
             outputs = {}
             return outputs
+            
+            
+            
+            
+class OpBlockedArrayCache(OperatorGroup):
+    name = "OpBlockedArrayCache"
+    description = ""
+
+    inputSlots = [InputSlot("Input"),InputSlot("blockShape")]
+    outputSlots = [OutputSlot("Output")]    
+
+    def _createInnerOperators(self):
+        
+        self.source = OpArrayPiper(self.graph)
+        
+
+    def notifyConnectAll(self):
+
+        inputSlot = self.inputs["Input"]
+
+        self.outputs["Output"]._dtype = inputSlot.dtype
+        self.outputs["Output"]._shape = inputSlot.shape
+        self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
+        
+        self._blockShape = self.inputs["blockShape"].value
+        self.shape = self.inputs["Input"].shape
+        
+        self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
+        
+        assert numpy.array(self._blockShape).min != 0, "ERROR in OpBlockedArrayCache: invalid blockShape"
+        
+        self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))        
+        
+        self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)        
+        
+        _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
+        _blockNumbers.shape = self._dirtyShape
+        
+        _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))  
+        _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
+        
+        self._blockNumbers = _blockNumbers
+        self._blockIndices = _blockIndices
+
+        # allocate queryArray object
+        self._flatBlockIndices =  self._blockIndices[:]
+        self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)     
+        
+        self._opSub_list = []
+        self._cache_list = []
+        
+        for b_num in self._blockNumbers.ravel():
+            
+                self._opSub_list.append(generic.OpSubRegion(self.graph))
+                self._opSub_list[b_num].inputs["Input"].connect(self.source.outputs["Output"])
+                
+                start = self._blockShape*self._flatBlockIndices[b_num]
+                stop = numpy.minimum((self._flatBlockIndices[b_num]+numpy.ones(self._flatBlockIndices[b_num].shape, numpy.uint8))*self._blockShape, self.shape)                
+                
+                self._opSub_list[b_num].inputs["Start"].setValue(tuple(start))
+                self._opSub_list[b_num].inputs["Stop"].setValue(tuple(stop))
+
+                self._cache_list.append(OpArrayCache(self.graph))
+                self._cache_list[b_num].inputs["Input"].connect(self._opSub_list[b_num].outputs["Output"])
+            
+    def getOutSlot(self, slot, key, result):
+
+        if slot.name == "Output":
+
+            #find the block key
+            start, stop = sliceToRoi(key, self.shape)
+            blockStart = numpy.floor(1.0 * start / self._blockShape)
+            blockStop = numpy.ceil(1.0 * stop / self._blockShape)
+            blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
+            blockKey = roiToSlice(blockStart,blockStop)
+            innerBlocks = self._blockNumbers[blockKey]
+            
+            for b_ind in innerBlocks.ravel():
+                
+                #which part of the original key does this block fill?
+                offset = self._blockShape*self._flatBlockIndices[b_ind]
+                bigstart = numpy.maximum(offset, start)
+                bigstop = numpy.minimum(offset + self._blockShape, stop)
+            
+                smallstart = bigstart-offset
+                smallstop = bigstop - offset
+                    
+                smallkey = roiToSlice(smallstart, smallstop)
+                
+                bigkey = roiToSlice(bigstart-start, bigstop-start)                  
+            
+                req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
+                res = req.wait()
+
+            return result
+            
+            
+    def getInnerInputs(self):
+        inputs = {}
+        inputs["Input"] = self.source.inputs["Input"]
+        return inputs
+        
+    def getInnerOutputs(self):
+        outputs = {}
+        return outputs
         
                    
         
