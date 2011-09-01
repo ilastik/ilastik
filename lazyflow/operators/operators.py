@@ -886,7 +886,7 @@ if has_blist:
                 shortbigkey = [bigkey[i] for i in nonsingletons]
                 #print "smallkey", smallkey
                 #print "bigkey", bigkey
-                #print "shortbigkey", shortbigkey
+                #print "shortbigkey", shortbigkey, "value", value.shape
                 if not b_ind in self._labelers:
                     #print "allocating labeler for b_ind", b_ind
                     self._labelers[b_ind]=OpSparseLabelArray(self.graph)
@@ -894,9 +894,14 @@ if has_blist:
                     self._labelers[b_ind].inputs["eraser"].setValue(self.inputs["eraser"])
                     self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"])
                     
-                self._labelers[b_ind].inputs["Input"][smallkey] = value[tuple(shortbigkey)].squeeze()
-                
-            #self.outputs["Output"].setDirty(key)
+                self._labelers[b_ind].inputs["Input"][smallkey] = value[tuple(bigkey)].squeeze()
+            
+            self.outputs["Output"].setDirty(key)
+        
+        def notifyDirty(self, slot, key):
+            if slot == self.inputs["Input"]:
+                self.outputs["Output"].setDirty(key)
+        
             
         def getInnerInputs(self):
             inputs = {}

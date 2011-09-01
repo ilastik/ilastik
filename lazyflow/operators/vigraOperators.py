@@ -799,7 +799,7 @@ class OpH5ReaderBigDataset(Operator):
     
         
     def notifyConnectAll(self):
-        filename = self.inputs["Filenames"].value[0]
+        filename = str(self.inputs["Filenames"].value[0])
         hdf5Path = self.inputs["hdf5Path"].value
         
         f = h5py.File(filename, 'r')
@@ -825,6 +825,7 @@ class OpH5ReaderBigDataset(Operator):
         self.ChunkList=[]
         
         for filename in self.inputs["Filenames"].value:
+            filename = str(filename)
             f=h5py.File(filename, 'r')
             d=f[hdf5Path]
             
