@@ -40,6 +40,7 @@ def test1():
             shape = (random.randint(1,400), random.randint(1,400), 3)                      
             
             Op.inputs["blockShape"].setValue(shape)
+            Op.inputs["fixAtCurrent"].setValue(False)
             dest = Op.outputs["Output"][key].allocate().wait()
             assert (numpy.array(dest.shape) == numpy.array(stop -start)).all()
             
@@ -112,6 +113,7 @@ def operatorTest(blockShape, sync = False, cache = False):
     inputImage = vigra.impex.readImage("ostrich.jpg")
     op.inputs["Input"].setValue(inputImage)
     op.inputs["blockShape"].setValue(blockShape)
+    op.inputs["fixAtCurrent"].setValue(False)
        
     def notify(result, start, stop):
         tempKey = roiToSlice(start, stop)

@@ -1184,7 +1184,7 @@ class OpBlockedArrayCache(OperatorGroup):
     name = "OpBlockedArrayCache"
     description = ""
 
-    inputSlots = [InputSlot("Input"),InputSlot("blockShape")]
+    inputSlots = [InputSlot("Input"),InputSlot("blockShape"), InputSlot("fixAtCurrent")]
     outputSlots = [OutputSlot("Output")]    
 
     def _createInnerOperators(self):
@@ -1193,9 +1193,9 @@ class OpBlockedArrayCache(OperatorGroup):
         
 
     def notifyConnectAll(self):
-
+        
         inputSlot = self.inputs["Input"]
-
+        
         self.outputs["Output"]._dtype = inputSlot.dtype
         self.outputs["Output"]._shape = inputSlot.shape
         self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
@@ -1204,46 +1204,50 @@ class OpBlockedArrayCache(OperatorGroup):
         self.shape = self.inputs["Input"].shape
         
         self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
-        
+            
         assert numpy.array(self._blockShape).min != 0, "ERROR in OpBlockedArrayCache: invalid blockShape"
-        
+            
         self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))        
-        
+            
         self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)        
-        
+            
         _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
         _blockNumbers.shape = self._dirtyShape
-        
+            
         _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))  
         _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
-        
+            
         self._blockNumbers = _blockNumbers
         self._blockIndices = _blockIndices
-
+    
         # allocate queryArray object
         self._flatBlockIndices =  self._blockIndices[:]
         self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)     
-        
+            
         self._opSub_list = []
         self._cache_list = []
-        
+            
         for b_num in self._blockNumbers.ravel():
-            
-                self._opSub_list.append(generic.OpSubRegion(self.graph))
-                self._opSub_list[b_num].inputs["Input"].connect(self.source.outputs["Output"])
                 
-                start = self._blockShape*self._flatBlockIndices[b_num]
-                stop = numpy.minimum((self._flatBlockIndices[b_num]+numpy.ones(self._flatBlockIndices[b_num].shape, numpy.uint8))*self._blockShape, self.shape)                
-                
-                self._opSub_list[b_num].inputs["Start"].setValue(tuple(start))
-                self._opSub_list[b_num].inputs["Stop"].setValue(tuple(stop))
-
-                self._cache_list.append(OpArrayCache(self.graph))
-                self._cache_list[b_num].inputs["Input"].connect(self._opSub_list[b_num].outputs["Output"])
-            
+            self._opSub_list.append(generic.OpSubRegion(self.graph))
+            self._opSub_list[b_num].inputs["Input"].connect(self.source.outputs["Output"])
+                    
+            start = self._blockShape*self._flatBlockIndices[b_num]
+            stop = numpy.minimum((self._flatBlockIndices[b_num]+numpy.ones(self._flatBlockIndices[b_num].shape, numpy.uint8))*self._blockShape, self.shape)                
+                    
+            self._opSub_list[b_num].inputs["Start"].setValue(tuple(start))
+            self._opSub_list[b_num].inputs["Stop"].setValue(tuple(stop))
+    
+            self._cache_list.append(OpArrayCache(self.graph))
+            self._cache_list[b_num].inputs["Input"].connect(self._opSub_list[b_num].outputs["Output"])
+     
+           
     def getOutSlot(self, slot, key, result):
+        
 
-        if slot.name == "Output":
+        fixed = self.inputs["fixAtCurrent"].value
+        
+        if not fixed:
 
             #find the block key
             start, stop = sliceToRoi(key, self.shape)
@@ -1269,6 +1273,9 @@ class OpBlockedArrayCache(OperatorGroup):
             
                 req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
                 res = req.wait()
+        else:
+            
+            result[:] = numpy.zeros(self.shape)
 
             return result
             
