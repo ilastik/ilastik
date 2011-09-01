@@ -88,6 +88,97 @@ class OpTrainRandomForest(Operator):
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(0,1,None),))            
 
+class OpTrainRandomForestBlocked(Operator):
+    name = "TrainRandomForestBlocked"
+    description = "Train a random forest on multiple images"
+    category = "Learning"
+    
+    inputSlots = [MultiInputSlot("Images"),MultiInputSlot("Labels"), InputSlot("fixClassifier", stype="bool"), \
+                  MultiInputSlot("nonzeroLabelBlocks")]
+    outputSlots = [OutputSlot("Classifier")]
+    
+    def notifyConnectAll(self):
+        if self.inputs["fixClassifier"].value == False:
+            self.outputs["Classifier"]._dtype = object
+            self.outputs["Classifier"]._shape = (1,)
+            self.outputs["Classifier"]._axistags  = "classifier"
+            self.outputs["Classifier"].setDirty((slice(0,1,None),))            
+             
+    
+    def notifySubConnect(self, slots, indexes):
+        if self.inputs["fixClassifier"].connected():
+            if self.inputs["fixClassifier"].value == False:
+                self.outputs["Classifier"]._dtype = object
+                self.outputs["Classifier"]._shape = (1,)
+                self.outputs["Classifier"]._axistags  = "classifier"
+                self.outputs["Classifier"].setDirty((slice(0,1,None),))            
+             
+    def getOutSlot(self, slot, key, result):
+        
+        featMatrix=[]
+        labelsMatrix=[]
+        for i,labels in enumerate(self.inputs["Labels"]):
+            if labels.shape is not None:
+                #labels=labels[:].allocate().wait()
+                blocks = self.inputs["nonzeroLabelBlocks"][i][0].allocate().wait()
+                reqlistlabels = []
+                reqlistfeat = []
+                for b in blocks[0]:
+                    request = labels[b].allocate()
+                    request2 = self.inputs["Images"][i][b].allocate()
+                    reqlistlabels.append(request)
+                    reqlistfeat.append(request2)
+                    
+                for ir, req in enumerate(reqlistlabels):
+                    labblock = req.wait()
+                    image = reqlistfeat[ir].wait()
+                    
+                    indexes=numpy.nonzero(labblock[...,0].view(numpy.ndarray))
+                
+                    #image=self.inputs["Images"][i][:].allocate().wait()
+                    print "OpTrainRandomForest:", image.shape, labblock.shape
+                
+                    features=image[indexes]
+                    labbla=labblock[indexes]
+                
+                    featMatrix.append(features)
+                    labelsMatrix.append(labbla)
+        
+
+        featMatrix=numpy.concatenate(featMatrix,axis=0)
+        labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
+        
+        print "featMatrix.shape:", featMatrix.shape
+        print "labelsMatrix.shape:", labelsMatrix.shape
+        
+        RF=vigra.learning.RandomForest(100)        
+        try:
+            RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
+        except:
+            print "ERROR: couldnt learn classifier"
+            print featMatrix, labelsMatrix
+            print featMatrix.shape, featMatrix.dtype
+            print labelsMatrix.shape, labelsMatrix.dtype            
+            
+        result[0]=RF
+        
+    def setInSlot(self, slot, key, value):
+        if self.inputs["fixClassifier"].value == False:
+            self.outputs["Classifier"].setDirty((slice(0,1,None),))
+
+    def setSubInSlot(self,slots,indexes, key,value):
+        if self.inputs["fixClassifier"].value == False:
+            self.outputs["Classifier"].setDirty((slice(0,1,None),))
+
+    def notifySubSlotDirty(self, slots, indexes, key):
+        if self.inputs["fixClassifier"].value == False:
+            self.outputs["Classifier"].setDirty((slice(0,1,None),))    
+
+    def notifyDirty(self, slot, key):
+        if self.inputs["fixClassifier"].value == False:
+            self.outputs["Classifier"].setDirty((slice(0,1,None),))            
+
+
 class OpPredictRandomForest(Operator):
     name = "PredictRandomForest"
     description = "Predict on multiple images"

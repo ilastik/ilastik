@@ -382,7 +382,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         channelsPerChannel = self.resultingChannels()
         self.outputs["Output"]._shape = inShapeWithoutChannels + (numChannels * channelsPerChannel,)
-        #print "HEREEEEEEEEEEEEEE", self.inputs["Input"].shape ,self.outputs["Output"]._shape
+        print "HEREEEEEEEEEEEEEE", self.inputs["Input"].shape ,self.outputs["Output"]._shape
         #print self.resultingChannels(), self.name
         
         #print self.outputs["Output"]._axistags
@@ -695,20 +695,41 @@ class OpH5Reader(Operator):
         else:
             axistags= vigra.VigraArray.defaultAxistags(len(d.shape))
         self.outputs["Image"]._axistags=axistags
-            
-        f.close()
+        self.f=f
+        self.d=self.f[hdf5Path]    
+        
+        
+        #f.close()
+        
+        #FOR DEBUG DUMPING REQUEST TO A FILE
+        #import os
+        #logfile='readerlog.txt'
+        #if os.path.exists(logfile): os.remove(logfile)
+        
+        #self.ff=open(logfile,'a')
+        
         
     def getOutSlot(self, slot, key, result):
         filename = self.inputs["Filename"].value
         hdf5Path = self.inputs["hdf5Path"].value
         
-        f = h5py.File(filename, 'r')
+        #f = h5py.File(filename, 'r')
     
-        d = f[hdf5Path]
+        #d = f[hdf5Path]
         
-        result[:] = d[key]
-        f.close()
-
+        
+        
+        
+        
+        result[:] = self.d[key]
+        #f.close()
+        
+        #Debug DUMPING REQUEST TO FILE
+        #start,stop=roi.sliceToRoi(key,self.d.shape)
+        #dif=numpy.array(stop)-numpy.array(start)
+        
+        #self.ff.write(str(start)+'   '+str(stop)+'   ***  '+str(dif)+' \n')
+        
 
         
 class OpH5Writer(Operator):
@@ -764,3 +785,88 @@ class OpH5Writer(Operator):
         f.close()
         
         result[0] = True
+        
+
+
+
+class OpH5ReaderBigDataset(Operator):
+    
+    name = "H5 File Reader For Big Datasets"
+    category = "Input"
+    
+    inputSlots = [InputSlot("Filenames"), InputSlot("hdf5Path", stype = "string")]
+    outputSlots = [OutputSlot("Output")]
+    
+        
+    def notifyConnectAll(self):
+        filename = self.inputs["Filenames"].value[0]
+        hdf5Path = self.inputs["hdf5Path"].value
+        
+        f = h5py.File(filename, 'r')
+    
+        d = f[hdf5Path]
+        
+        self.shape=d.shape
+        
+        self.outputs["Output"]._dtype = d.dtype
+        self.outputs["Output"]._shape = d.shape
+        
+        if len(d.shape) == 5:
+            axistags= vigra.VigraArray.defaultAxistags('txyzc')
+        else:
+            print "Not implemented"
+            raise
+        self.outputs["Output"]._axistags=axistags
+            
+        f.close()
+        
+        self.F=[]
+        self.D=[]
+        self.ChunkList=[]
+        
+        for filename in self.inputs["Filenames"].value:
+            f=h5py.File(filename, 'r')
+            d=f[hdf5Path]
+            
+            assert (numpy.array(self.shape)==numpy.array(self.shape)).all(), "Some files have a different shape, this is not allowed man!"
+            
+            
+            self.ChunkList.append(d.chunks)
+            self.F.append(f)
+            self.D.append(d)
+        
+    def getOutSlot(self, slot, key, result):
+        filenames = self.inputs["Filenames"].value
+        
+        hdf5Path = self.inputs["hdf5Path"].value
+        F=[]
+        D=[]
+        ChunkList=[]
+        
+        start,stop=sliceToRoi(key,self.shape)
+        diff=numpy.array(stop)-numpy.array(start)
+
+        maxError=sys.maxint
+        index=0
+
+        for i,chunks in enumerate(self.ChunkList):
+            cs = numpy.array(chunks)
+            
+            error = numpy.sum(numpy.abs(diff -cs))
+            #print error
+            if error<maxError:
+                index = i
+                maxError = error
+        
+#        print "best error", maxError
+#        print "selected chunking", self.ChunkList[index], "for request", diff
+        
+        
+        result[:]=self.D[index][key]
+    """
+    def notifyDisconnect(self, slot):
+        for f in self.F:
+            f.close()
+        self.D=[]
+        self.ChunkList=[]
+    """
