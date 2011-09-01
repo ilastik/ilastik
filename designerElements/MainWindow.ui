@@ -230,7 +230,7 @@
     <property name="title">
      <string>View</string>
     </property>
-    <addaction name="actionFit_to_The_Screen"/>
+    <addaction name="actionFitToScreen"/>
     <addaction name="actionShowDebugPatches"/>
    </widget>
    <addaction name="menuFile"/>
@@ -290,13 +290,13 @@
     <string>Open</string>
    </property>
   </action>
-  <action name="actionFit_to_The_Screen">
+  <action name="actionFitToScreen">
    <property name="icon">
     <iconset>
      <normaloff>../icons/view-fullscreen.png</normaloff>../icons/view-fullscreen.png</iconset>
    </property>
    <property name="text">
-    <string>Fit to The Screen</string>
+    <string>Zoom to fit</string>
    </property>
   </action>
   <action name="actionQuit">
