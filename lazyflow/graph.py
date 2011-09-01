@@ -179,6 +179,8 @@ class GetItemWriterObject(object):
         the same size/shape/dimension as the slot will
         return in reponse to the requested key
         """
+        return  GetItemRequestObject(self, self._slot, self._key, destination)
+
         return self._slot._fireRequest(self._key, destination)     
     
     def allocate(self, axistags = False):
@@ -190,7 +192,7 @@ class GetItemWriterObject(object):
         a destination array of required size,shape,dtype will
         be constructed in which the results will be written.
         """
-        destination = self._slot._allocateStorage(self._start, self._stop, axistags)
+        destination = None #self._slot._allocateStorage(self._start, self._stop, axistags)
         #destination = CopyOnWriteView(self._slot.shape, self._slot.dtype)
         return self.writeInto(destination)
     
@@ -229,7 +231,8 @@ class GetItemRequestObject(object):
         
     #__slots__ = ["func", "slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure",  "kwargs"]
 
-    def __init__(self, slot, graph, key, destination):
+    def __init__(self, writer, slot, key, destination):
+        self._writer = writer        
         self.key = key
         self.destination = destination
         self.slot = slot
@@ -240,7 +243,7 @@ class GetItemRequestObject(object):
         self.parentRequest = None
         self.childRequests = {}
         #self.requestID = graph.lastRequestID.next()
-        self.graph = graph
+        self.graph = slot.graph
         self.waitQueue = deque()
         self.notifyQueue = deque()
         self.cancelQueue = deque()
@@ -281,6 +284,8 @@ class GetItemRequestObject(object):
                 self._requestLevel = 0
 
     def _execute(self, gr):
+        if self.destination is None:
+            self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, True)
         gr.currentRequest = self
         self.func(self.arg1,self.key, self.destination)
         self._finalize()        
@@ -629,15 +634,8 @@ class InputSlot(object):
         
         allows to call inputslot[0,:,3:11] 
         """
-        return GetItemWriterObject(self, key)
-        
-    def _fireRequest(self, key, destination):
         assert self.partner is not None or self._value is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
-        #print "GUGA", self.name, self.operator.name, self.operator, key
-                                        
-        reqObject = GetItemRequestObject(self, self.graph, key, destination)
-            
-        return reqObject
+        return GetItemWriterObject(self, key)
 
     def _allocateStorage(self, start, stop, axistags = True):
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
@@ -835,19 +833,13 @@ class OutputSlot(object):
         if self.shape is None:
             print "______________________", self.name, self.operator
             print self.shape
-        return GetItemWriterObject(self,key)
-
-    def _fireRequest(self, key, destination):
-        #assert self.operator is not None, "cannot do __getitem__ on Slot %s, of %r -> now operator !!" % (self.name,self.operator) 
 
         #start, stop = sliceToRoi(key, self.shape)
 
         #assert numpy.min(start) >= 0, "Somebody is requesting shit from slot %s of operator %s (%r)" %(self.name, self.operator.name, self.operator)
         #assert (stop <= numpy.array(self.shape)).all(), "Somebody is requesting shit from slot %s of operator %s (%r) :  start: %r, stop %r, shape %r" %(self.name, self.operator.name, self.operator, start, stop, self.shape)
                 
-        reqObject = GetItemRequestObject(self, self.graph, key, destination)
-        return reqObject
-
+        return GetItemWriterObject(self,key)
     
     def getOutSlotFromOp(self, key, destination):
         self.operator.getOutSlot(self, key, destination)
