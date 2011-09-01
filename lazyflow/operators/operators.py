@@ -332,21 +332,22 @@ class OpArrayCache(OpArrayPiper):
             
             
     def notifyDirty(self, slot, key):
-        #print
-        #print "OpArrayCache : DIRTY", key
-        #print
-        start, stop = sliceToRoi(key, self.shape)
-        
-        self._lock.acquire()
-        if self._cache is not None:        
-            blockStart = numpy.floor(1.0 * start / self._blockShape)
-            blockStop = numpy.ceil(1.0 * stop / self._blockShape)
-            blockKey = roiToSlice(blockStart,blockStop)
-            self._blockState[blockKey] = 1
-            #FIXME: we should recalculate results for which others are waiting and notify them...
-        self._lock.release()
-        
-        self.outputs["Output"].setDirty(key)
+        if not self._fixed:
+            #print
+            #print "OpArrayCache : DIRTY", key
+            #print
+            start, stop = sliceToRoi(key, self.shape)
+            
+            self._lock.acquire()
+            if self._cache is not None:        
+                blockStart = numpy.floor(1.0 * start / self._blockShape)
+                blockStop = numpy.ceil(1.0 * stop / self._blockShape)
+                blockKey = roiToSlice(blockStart,blockStop)
+                self._blockState[blockKey] = 1
+                #FIXME: we should recalculate results for which others are waiting and notify them...
+            self._lock.release()
+            
+            self.outputs["Output"].setDirty(key)
         
     def getOutSlot(self,slot,key,result):
         #return     
@@ -443,8 +444,9 @@ class OpArrayCache(OpArrayPiper):
                     assert 1 == 2
             else:
                 self._cache[key] = 0
-#        # indicate the inprocessing state, by setting array to 0        
-        blockSet[:]  = fastWhere(cond, 0, blockSet, numpy.uint8)
+#        # indicate the inprocessing state, by setting array to 0     
+        if not self._fixed:   
+            blockSet[:]  = fastWhere(cond, 0, blockSet, numpy.uint8)
         self._lock.release()
         
         def onCancel(cancelled, reqBlockKey, reqSubBlockKey):
@@ -462,11 +464,12 @@ class OpArrayCache(OpArrayPiper):
             req.onCancel(onCancel, cancelled = temp, reqBlockKey = reqBlockKey, reqSubBlockKey = reqSubBlockKey)
             res = req.wait()
 
-        # indicate the finished inprocess state        
-        self._lock.acquire()
-        blockSet[:] = fastWhere(cond, 2, blockSet, numpy.uint8)
-        self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)                       
-        self._lock.release()
+        # indicate the finished inprocess state
+        if not self._fixed:        
+            self._lock.acquire()
+            blockSet[:] = fastWhere(cond, 2, blockSet, numpy.uint8)
+            self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)                       
+            self._lock.release()
 
 
         #wait for all in process queries
