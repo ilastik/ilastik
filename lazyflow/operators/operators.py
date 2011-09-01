@@ -8,6 +8,8 @@ from lazyflow.h5dumprestore import stringToClass
 import greenlet, threading
 import vigra
 import copy
+import gc
+import weakref
 from threading import current_thread, Lock
 
 
@@ -234,16 +236,54 @@ class OpArrayCache(OpArrayPiper):
         self._blockState = None
         self._dirtyState = None
         self._cache = None
-        self._immediateAlloc = immediateAlloc
         self._lock = Lock()
+        self._cacheLock = Lock()
+        self._lazyAlloc = True
+        self._cacheHits = 0
+        self.graph._registerCache(self)
+        
+    def _memorySize(self):
+        if self._cache is not None:
+            return self._cache.nbytes        
+        else:
+            return 0
+
+    def _freeMemory(self):
+        self._cacheLock.acquire()
+        freed  = self._memorySize() 
+        if self._cache is not None: 
+            fshape = self._cache.shape
+            try:
+                self._cache.resize((1,))
+            except ValueError:
+                freed = 0
+                print "OpArrayCache: freeing failed due to view references"
+            if freed > 0:
+                print "OpArrayCache: freed cache of shape", fshape
+                #gc.collect()
+                #referrers = gc.get_referrers(self._cache)
+                #for r in referrers:
+                #    print "referrer: ", id(r), type(r)  
+                del self._cache
+                self._cache = None
+        self._cacheLock.release()   
+        return freed
+        
+        
+    def _allocateCache(self):
+        self._cacheLock.acquire()
+        print "OpArrayCache: Allocating cache"
+        inputSlot = self.inputs["Input"]
+        self._cache = numpy.ndarray(self.shape, dtype = self.dtype)
+        self._cacheLock.release()
         
     def notifyConnect(self, slot):
         if self.inputs["blockShape"].connected():
             self._origBlockShape = self.inputs["blockShape"].value
         if self.inputs["Input"].connected():
-            inputSlot = self.inputs["Input"]
+            self._lock.acquire()
             OpArrayPiper.notifyConnectAll(self)
-            self._cache = numpy.ndarray(self.shape, dtype = self.dtype)
+            inputSlot = self.inputs["Input"]
             
             if type(self._origBlockShape) != tuple:
                 self._blockShape = (self._origBlockShape,)*len(self.shape)
@@ -254,7 +294,7 @@ class OpArrayCache(OpArrayPiper):
     
             self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
             
-            print "Reconfigured OpArrayCache with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
+            print "Configured OpArrayCache with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
     
             # if the entry in _dirtyArray differs from _dirtyState
             # the entry is considered dirty
@@ -281,8 +321,12 @@ class OpArrayCache(OpArrayPiper):
             self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
     #        for p in self._flatBlockIndices:
     #            self._blockQuery[p] = BlockQueue()
-            
+            self._lock.release()
 
+            if not self._lazyAlloc:
+                self._allocateCache()
+            
+            
     def notifyDirty(self, slot, key):
         #print
         #print "OpArrayCache : DIRTY", key
@@ -290,20 +334,29 @@ class OpArrayCache(OpArrayPiper):
         start, stop = sliceToRoi(key, self.shape)
         
         self._lock.acquire()
-        blockStart = numpy.floor(1.0 * start / self._blockShape)
-        blockStop = numpy.ceil(1.0 * stop / self._blockShape)
-        blockKey = roiToSlice(blockStart,blockStop)
-        self._blockState[blockKey] = 1
-        #FIXME: we should recalculate results for which others are waiting and notify them...
+        if self._cache is not None:        
+            blockStart = numpy.floor(1.0 * start / self._blockShape)
+            blockStop = numpy.ceil(1.0 * stop / self._blockShape)
+            blockKey = roiToSlice(blockStart,blockStop)
+            self._blockState[blockKey] = 1
+            #FIXME: we should recalculate results for which others are waiting and notify them...
         self._lock.release()
         
         self.outputs["Output"].setDirty(key)
         
     def getOutSlot(self,slot,key,result):
         #return     
+  
         start, stop = sliceToRoi(key, self.shape)
         
         self._lock.acquire()
+
+        ch = self._cacheHits
+        ch += 1
+        self._cacheHits = ch
+        
+        if self._cache is None:
+            self._allocateCache()
         blockStart = (1.0 * start / self._blockShape).floor()
         blockStop = (1.0 * stop / self._blockShape).ceil()
         blockKey = roiToSlice(blockStart,blockStop)
@@ -400,7 +453,7 @@ class OpArrayCache(OpArrayPiper):
         #wait for all requests to finish
         for req, reqBlockKey, reqSubBlockKey in dirtyRequests:
             req.onCancel(onCancel, cancelled = temp, reqBlockKey = reqBlockKey, reqSubBlockKey = reqSubBlockKey)
-            res = req.wait()          
+            res = req.wait()
 
         # indicate the finished inprocess state        
         self._lock.acquire()
@@ -415,11 +468,17 @@ class OpArrayCache(OpArrayPiper):
         
         # finally, store results in result area
         #print "Oparraycache debug",result.shape,self._cache[roiToSlice(start, stop)].shape
-        result[:] = self._cache[roiToSlice(start, stop)]
-        
-        
+        self._lock.acquire()        
+        if self._cache is not None:        
+            result[:] = self._cache[roiToSlice(start, stop)]
+        else:
+            self.inputs["Input"][roiToSlice(start, stop)].writeInto(result).wait()
+        self._lock.release()
         
     def setInSlot(self, slot, key, value):
+        ch = self._cacheHits
+        ch += 1
+        self._cacheHits = ch
         #print "OpArrayCache : SetInSlot", key
         start, stop = sliceToRoi(key, self.shape)
         blockStart = numpy.ceil(1.0 * start / self._blockShape)
@@ -433,6 +492,8 @@ class OpArrayCache(OpArrayPiper):
             stop2 = numpy.minimum(stop2, self.shape)
             key2 = roiToSlice(start2,stop2)
             self._lock.acquire()
+            if self._cache is None:
+                self._allocateCache()
             self._cache[key2] = value[roiToSlice(start2-start,stop2-start)]
             self._blockState[blockKey] = self._dirtyState
             self._lock.release()
@@ -453,6 +514,8 @@ class OpArrayCache(OpArrayPiper):
                     "_blockState" : self._blockState,
                     "_dirtyState" : self._dirtyState,
                     "_cache" : self._cache,
+                    "_allocateCache" : self._allocateCache,
+                    "_cacheHits" : self._cacheHits
                 },patchBoard)    
                 
                 
@@ -473,6 +536,8 @@ class OpArrayCache(OpArrayPiper):
                     "_dirtyState" : "_dirtyState",
                     "_dirtyShape" : "_dirtyShape",
                     "_cache" : "_cache",
+                    "_allocateCache" : "_allocateCache",
+                    "_cacheHits" : "_cacheHits"
                 },patchBoard)    
 
         setattr(op, "_blockQuery", numpy.ndarray(op._dirtyShape, dtype = object))
@@ -834,7 +899,6 @@ if has_blist:
             
             stop += numpy.where(stop-start == 0,1,0)
 
-            print stop, start
 
             key = roiToSlice(start,stop)
 
