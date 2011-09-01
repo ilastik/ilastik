@@ -280,6 +280,11 @@ class GetItemRequestObject(object):
                 # we are in main thread
                 self._requestLevel = 0
 
+    def _execute(self, gr):
+        gr.currentRequest = self
+        self.func(self.arg1,self.key, self.destination)
+        self._finalize()        
+
     def _putOnTaskQueue(self):
         self.inProcess = True
         self.graph.putTask(self)
@@ -325,9 +330,7 @@ class GetItemRequestObject(object):
                             lr._putOnTaskQueue()
                         self.inProcess = True
                         self.lock.release()
-                        gr.currentRequest = self
-                        self.func(self.arg1,self.key, self.destination)
-                        self._finalize()
+                        self._execute(gr)
                     else:
                         tr = current_thread()                    
                         cgr = CustomGreenlet(self.wait)
@@ -378,10 +381,11 @@ class GetItemRequestObject(object):
             closure(self.destination, **kwargs)
         else:
             self.notifyQueue.append((closure, kwargs))
-            self.lock.release()
+            
             if not self.inProcess:
                 self._putOnTaskQueue()
-
+            self.lock.release()
+            
     def onCancel(self, closure, **kwargs):
         self.lock.acquire()       
         if self.canceled:
@@ -2038,9 +2042,6 @@ class Worker(Thread):
     def signalWorkAvailable(self): 
         self.workAvailableEvent.set()
         
-    def processReqObject(self, reqObject):
-        reqObject.func(reqObject.arg1, reqObject.key, reqObject.destination)
-        reqObject._finalize()
         
     def run(self):
         ct = current_thread()
@@ -2067,10 +2068,9 @@ class Worker(Thread):
                         #TODO: isnt a comparison against currentRequestLevel better 
                         # then against 1 ? ...
                         if self.process.get_memory_info().rss < self.graph.maxMem:
-                            gr = CustomGreenlet(self.processReqObject)
-                            gr.currentRequest = reqObject
+                            gr = CustomGreenlet(reqObject._execute)
                             gr.thread = self
-                            gr.switch( reqObject)
+                            gr.switch( gr)
                         else:
                             self.graph.tasks.put((prio,task)) #move task back to task queue
                             print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
