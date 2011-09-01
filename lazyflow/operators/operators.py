@@ -1200,6 +1200,8 @@ class OpBlockedArrayCache(OperatorGroup):
         self.outputs["Output"]._shape = inputSlot.shape
         self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
         
+        self._fixed = self.inputs["fixAtCurrent"].value
+        
         self._blockShape = self.inputs["blockShape"].value
         self.shape = self.inputs["Input"].shape
         
@@ -1238,46 +1240,38 @@ class OpBlockedArrayCache(OperatorGroup):
             self._opSub_list[b_num].inputs["Start"].setValue(tuple(start))
             self._opSub_list[b_num].inputs["Stop"].setValue(tuple(stop))
     
-            self._cache_list.append(OpArrayCache(self.graph))
+            self._cache_list.append(OpArrayFixableCache(self.graph))
             self._cache_list[b_num].inputs["Input"].connect(self._opSub_list[b_num].outputs["Output"])
-     
+            self._cache_list[b_num].inputs["fixAtCurrent"].setValue(self._fixed)
            
     def getOutSlot(self, slot, key, result):
-        
 
-        fixed = self.inputs["fixAtCurrent"].value
-        
-        if not fixed:
-
-            #find the block key
-            start, stop = sliceToRoi(key, self.shape)
-            blockStart = numpy.floor(1.0 * start / self._blockShape)
-            blockStop = numpy.ceil(1.0 * stop / self._blockShape)
-            blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
-            blockKey = roiToSlice(blockStart,blockStop)
-            innerBlocks = self._blockNumbers[blockKey]
+        #find the block key
+        start, stop = sliceToRoi(key, self.shape)
+        blockStart = numpy.floor(1.0 * start / self._blockShape)
+        blockStop = numpy.ceil(1.0 * stop / self._blockShape)
+        blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
+        blockKey = roiToSlice(blockStart,blockStop)
+        innerBlocks = self._blockNumbers[blockKey]
             
-            for b_ind in innerBlocks.ravel():
+        for b_ind in innerBlocks.ravel():
                 
-                #which part of the original key does this block fill?
-                offset = self._blockShape*self._flatBlockIndices[b_ind]
-                bigstart = numpy.maximum(offset, start)
-                bigstop = numpy.minimum(offset + self._blockShape, stop)
+            #which part of the original key does this block fill?
+            offset = self._blockShape*self._flatBlockIndices[b_ind]
+            bigstart = numpy.maximum(offset, start)
+            bigstop = numpy.minimum(offset + self._blockShape, stop)
             
-                smallstart = bigstart-offset
-                smallstop = bigstop - offset
+            smallstart = bigstart-offset
+            smallstop = bigstop - offset
                     
-                smallkey = roiToSlice(smallstart, smallstop)
+            smallkey = roiToSlice(smallstart, smallstop)
                 
-                bigkey = roiToSlice(bigstart-start, bigstop-start)                  
+            bigkey = roiToSlice(bigstart-start, bigstop-start)                  
             
-                req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
-                res = req.wait()
-        else:
-            
-            result[:] = numpy.zeros(self.shape)
+            req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
+            res = req.wait()
 
-            return result
+        return result
             
             
     def getInnerInputs(self):
