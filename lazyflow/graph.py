@@ -1901,6 +1901,9 @@ class OperatorGroupGraph(object):
     def __init__(self, originalGraph):
         self._originalGraph = originalGraph
         self.operators = []
+    
+    def _registerCache(self, op):    
+        self._originalGraph._registerCache(op)
         
     def putTask(self, reqObject):
         self._originalGraph.putTask(reqObject)
