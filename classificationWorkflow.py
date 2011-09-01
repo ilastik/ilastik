@@ -15,7 +15,7 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpArrayFixableCache, \
                                OpSingleChannelSelector, OpSparseLabelArray, \
                                OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures, \
                                OpMultiArraySlicer2,OpH5Reader, OpBlockedSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures
+                               OpMultiArrayStacker, OpTrainRandomForestBlocked, OpPixelFeatures
 
 from volumeeditor.pixelpipeline.datasources import LazyflowSource
 from volumeeditor.pixelpipeline._testing import OpDataProvider
@@ -116,6 +116,8 @@ class Main(QMainWindow):
         
         self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
         self.StartClassificationButton.clicked.connect(self.startClassification)
+        
+        self.StartClassificationButton.setEnabled(False)
         
         self.checkInteractive.toggled.connect(self.toggleInteractive)   
         self.initTheFeatureDlg()
@@ -224,9 +226,13 @@ class Main(QMainWindow):
             opMultiL = Op5ToMulti(self.g)    
             opMultiL.inputs["Input0"].connect(self.opLabels.outputs["Output"])
             
-            self.opTrain = OpTrainRandomForest(self.g)
+            opMultiLblocks = Op5ToMulti(self.g)
+            opMultiLblocks.inputs["Input0"].connect(self.opLabels.outputs["nonzeroBlocks"])
+            #self.opTrain = OpTrainRandomForest(self.g)
+            self.opTrain = OpTrainRandomForestBlocked(self.g)
             self.opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
             self.opTrain.inputs['Images'].connect(self.opFeatureCache.outputs["Output"])
+            self.opTrain.inputs["nonzeroLabelBlocks"].connect(opMultiLblocks.outputs["Outputs"])
             self.opTrain.inputs['fixClassifier'].setValue(False)                
             
             opClassifierCache = OpArrayCache(self.g)
@@ -460,8 +466,10 @@ class Main(QMainWindow):
     
     
     def onFeatureButtonClicked(self):
+        self.StartClassificationButton.setEnabled(True)
         dlg=self.featureDlg
         dlg.show()
+        
     
     def choosenDifferrentFeatSet(self):
         dlg=self.featureDlg
