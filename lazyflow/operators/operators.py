@@ -921,7 +921,7 @@ class OpBlockedArrayCache(OperatorGroup):
     name = "OpBlockedArrayCache"
     description = ""
 
-    inputSlots = [InputSlot("Input"),InputSlot("blockShape"), InputSlot("fixAtCurrent")]
+    inputSlots = [InputSlot("Input"),InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent")]
     outputSlots = [OutputSlot("Output")]    
 
     def _createInnerOperators(self):
@@ -937,9 +937,9 @@ class OpBlockedArrayCache(OperatorGroup):
         self.outputs["Output"]._shape = inputSlot.shape
         self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
         
-        self._fixed = self.inputs["fixAtCurrent"].value
+        self._fixed = self.inputs["fixAtCurrent"].value        
         
-        self._blockShape = self.inputs["blockShape"].value
+        self._blockShape = self.inputs["outerBlockShape"].value
         self.shape = self.inputs["Input"].shape
         
         self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
@@ -980,6 +980,7 @@ class OpBlockedArrayCache(OperatorGroup):
             self._cache_list.append(OpArrayCache(self.graph))
             self._cache_list[b_num].inputs["Input"].connect(self._opSub_list[b_num].outputs["Output"])
             self._cache_list[b_num].inputs["fixAtCurrent"].setValue(self._fixed)
+            self._cache_list[b_num].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
            
     def getOutSlot(self, slot, key, result):
 
