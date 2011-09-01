@@ -179,8 +179,8 @@ class GetItemWriterObject(object):
         the same size/shape/dimension as the slot will
         return in reponse to the requested key
         """
-        return self._slot._fireRequest(self._key, destination)     
-    
+        return  GetItemRequestObject(self, self._slot, self._key, destination)
+  
     def allocate(self, axistags = False):
         """
         if the user does not want lazyflow to write calculation
@@ -190,9 +190,9 @@ class GetItemWriterObject(object):
         a destination array of required size,shape,dtype will
         be constructed in which the results will be written.
         """
-        destination = self._slot._allocateStorage(self._start, self._stop, axistags)
+        #destination = self._slot._allocateStorage(self._start, self._stop, axistags)
         #destination = CopyOnWriteView(self._slot.shape, self._slot.dtype)
-        return self.writeInto(destination)
+        return self.writeInto(None)
     
     def __call__(self):
         #TODO: remove this convenience function when
@@ -229,7 +229,8 @@ class GetItemRequestObject(object):
         
     #__slots__ = ["func", "slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure",  "kwargs"]
 
-    def __init__(self, slot, graph, key, destination):
+    def __init__(self, writer, slot, key, destination):
+        self._writer = writer        
         self.key = key
         self.destination = destination
         self.slot = slot
@@ -240,11 +241,11 @@ class GetItemRequestObject(object):
         self.parentRequest = None
         self.childRequests = {}
         #self.requestID = graph.lastRequestID.next()
-        self.graph = graph
+        self.graph = slot.graph
         self.waitQueue = deque()
         self.notifyQueue = deque()
         self.cancelQueue = deque()
-        
+        self._requestLevel = -1
         
         if isinstance(slot, InputSlot) and self.slot._value is None:
             if slot.partner is not None:
@@ -255,6 +256,8 @@ class GetItemRequestObject(object):
             self.arg1 = slot
         else:
             # we are in the ._value case of an inputSlot
+            if self.destination is None:
+                self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)            
             self.wait() #this sets self.finished and copies the results over
         if not self.finished:
             self.lock = Lock()
@@ -281,6 +284,8 @@ class GetItemRequestObject(object):
                 self._requestLevel = 0
 
     def _execute(self, gr):
+        if self.destination is None:
+            self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
         gr.currentRequest = self
         self.func(self.arg1,self.key, self.destination)
         self._finalize()        
@@ -341,7 +346,6 @@ class GetItemRequestObject(object):
                         self._waitFor(cgr,tr) #wait for finish
             else:
                 self.lock.release()
-                pass
         else:
             if isinstance(self.slot._value, numpy.ndarray):
                 self.destination[:] = self.slot._value[self.key]
@@ -363,8 +367,8 @@ class GetItemRequestObject(object):
                 req, gr = tr.finishedRequestGreenlets.popleft()
                 gr.currentRequest = req                 
                 gr.switch()
-                #if cgr.dead:
-                #    break
+                del gr
+        del cgr
         self._finalize()
 
        
@@ -411,7 +415,6 @@ class GetItemRequestObject(object):
                     tr.finishedRequestGreenlets.append((req, gr))
                     tr.workAvailableEvent.set()
                 req.lock.release()
-        
         self.parentRequest = None
         self.childRequests = {}
 
@@ -629,15 +632,8 @@ class InputSlot(object):
         
         allows to call inputslot[0,:,3:11] 
         """
-        return GetItemWriterObject(self, key)
-        
-    def _fireRequest(self, key, destination):
         assert self.partner is not None or self._value is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
-        #print "GUGA", self.name, self.operator.name, self.operator, key
-                                        
-        reqObject = GetItemRequestObject(self, self.graph, key, destination)
-            
-        return reqObject
+        return GetItemWriterObject(self, key)
 
     def _allocateStorage(self, start, stop, axistags = True):
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
@@ -835,19 +831,13 @@ class OutputSlot(object):
         if self.shape is None:
             print "______________________", self.name, self.operator
             print self.shape
-        return GetItemWriterObject(self,key)
-
-    def _fireRequest(self, key, destination):
-        #assert self.operator is not None, "cannot do __getitem__ on Slot %s, of %r -> now operator !!" % (self.name,self.operator) 
 
         #start, stop = sliceToRoi(key, self.shape)
 
         #assert numpy.min(start) >= 0, "Somebody is requesting shit from slot %s of operator %s (%r)" %(self.name, self.operator.name, self.operator)
         #assert (stop <= numpy.array(self.shape)).all(), "Somebody is requesting shit from slot %s of operator %s (%r) :  start: %r, stop %r, shape %r" %(self.name, self.operator.name, self.operator, start, stop, self.shape)
                 
-        reqObject = GetItemRequestObject(self, self.graph, key, destination)
-        return reqObject
-
+        return GetItemWriterObject(self,key)
     
     def getOutSlotFromOp(self, key, destination):
         self.operator.getOutSlot(self, key, destination)
@@ -1674,7 +1664,6 @@ class OperatorWrapper(Operator):
     
     def _createInnerOperator(self):
         if self.operator.__class__ is not OperatorWrapper:
-            print self.operator.__class__
             opcopy = self.operator.__class__(self.graph, register = False)
         else:
             print "creatInnerOperator OperatorWrapper"
@@ -2028,6 +2017,7 @@ class Worker(Thread):
         Thread.__init__(self)
         self.graph = graph
         self.working = False
+        self._hasSlept = False
         self.daemon = True # kill automatically on application exit!
         self.finishedRequestGreenlets = deque()
         self.currentRequest = None
@@ -2056,7 +2046,7 @@ class Worker(Thread):
                     req, gr = self.finishedRequestGreenlets.popleft()
                     gr.currentRequest = req                 
                     gr.switch()
-                    
+                    del gr
                 task = None
                 try:
                     prio,task = self.graph.tasks.get(block = False)#timeout = 1.0)
@@ -2067,15 +2057,19 @@ class Worker(Thread):
                     if reqObject.canceled is False:
                         #TODO: isnt a comparison against currentRequestLevel better 
                         # then against 1 ? ...
-                        if self.process.get_memory_info().rss < self.graph.maxMem:
+                        if self._hasSlept or reqObject._requestLevel > 0 or self.process.get_memory_info().rss < self.graph.softMaxMem:
                             gr = CustomGreenlet(reqObject._execute)
                             gr.thread = self
                             gr.switch( gr)
+                            del gr
+                            self._hasSlept = False
                         else:
                             self.graph.tasks.put((prio,task)) #move task back to task queue
                             print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
+                            self.graph._freeMemory()                            
                             gc.collect()
-                            time.sleep(1.0)
+                            self._hasSlept = True
+                            time.sleep(4.0)
     
         #print "Finalized Worker"
                 
@@ -2088,15 +2082,48 @@ class Graph(object):
         self.freeWorkers = deque()
         self.running = True
         self.numThreads = numThreads
-        self.maxMem = softMaxMem # in bytes
+        self.softMaxMem = softMaxMem # in bytes
+        self.softCacheMem = softMaxMem * 0.5
         self.lastRequestID = itertools.count()
-        
+        self.registeredCaches = []
+        self.process = psutil.Process(os.getpid())
         for i in xrange(self.numThreads):
             w = Worker(self)
             self.workers.append(w)
             w.start()
             self.freeWorkers.append(w)
     
+    def _memoryUsage(self):
+        return self.process.get_memory_info().rss
+    
+    def _registerCache(self, op):
+        if op not in self.registeredCaches:
+            self.registeredCaches.append(op)
+    
+    def _freeMemory(self):
+        sortedCaches = sorted(self.registeredCaches, key=lambda x: x._cacheHits)
+
+        #usedMem = self.process.get_memory_info().rss
+        freedMem = 0
+        
+        usedMem = 0
+        for c in sortedCaches:        
+            usedMem += c._memorySize()
+        
+        if usedMem > self.softCacheMem:
+            for c in sortedCaches:
+                if usedMem - 0.5*freedMem > self.softCacheMem: 
+                    freedMem += c._freeMemory()
+                    
+                ch = c._cacheHits
+                ch = int(ch * 0.8)
+                c._cacheHits = ch
+            
+            gc.collect()
+            usedMem2 = self.process.get_memory_info().rss
+            print "GRAPH: freed memory", freedMem, "of ", usedMem
+            print "GRAPH: now truly using", usedMem2
+            
     def putTask(self, reqObject):
         task = reqObject
         self.tasks.put((-task._requestLevel,task))
@@ -2145,16 +2172,27 @@ class Graph(object):
     def dumpToH5G(self, h5g, patchBoard):
         h5op = h5g.create_group("operators")
         h5op.dumpObject(self.operators, patchBoard)
-        
-        h5g.attrs["numThreads"] = self.numThreads
-        h5g.attrs["softMaxMem"] = self.maxMem
+
+        h5g.dumpSubObjects({
+                    "operators" : self.operators,
+                    "numThreads": self.numThreads,
+                    "softMaxMem": self.softMaxMem,
+                    "registeredCaches": self.registeredCaches
+                },patchBoard)    
+
     
     @classmethod
     def reconstructFromH5G(cls, h5g, patchBoard):
         g = Graph(numThreads = h5g.attrs["numThreads"], softMaxMem = h5g.attrs["softMaxMem"])
         patchBoard[h5g.attrs["id"]] = g 
-        h5ops = h5g["operators"]        
-        g.operators = h5ops.reconstructObject(patchBoard)
+
+        patchBoard[h5g.attrs["id"]] = op
+        h5g.reconstructSubObjects(op, {
+                    "operators": "operators",
+                    "numThreads": "numThreads",
+                    "softMaxMem" : "softMaxMem",
+                    "registeredCaches": "registeredCaches"
+                },patchBoard)    
  
         return g
  
