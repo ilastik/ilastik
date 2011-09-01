@@ -1168,7 +1168,7 @@ class OpBlockedArrayCache(OperatorGroup):
                 self._opSub_list[b_num].inputs["Input"].connect(self.source.outputs["Output"])
                 
                 start = self._blockShape*self._flatBlockIndices[b_num]
-                stop = numpy.minimum((self._flatBlockIndices[b_num]+numpy.ones(self._flatBlockIndices[b_num].shape, numpy.int))*self._blockShape, self.shape)                
+                stop = numpy.minimum((self._flatBlockIndices[b_num]+numpy.ones(self._flatBlockIndices[b_num].shape, numpy.uint8))*self._blockShape, self.shape)                
                 
                 self._opSub_list[b_num].inputs["Start"].setValue(tuple(start))
                 self._opSub_list[b_num].inputs["Stop"].setValue(tuple(stop))
@@ -1201,8 +1201,9 @@ class OpBlockedArrayCache(OperatorGroup):
                 smallkey = roiToSlice(smallstart, smallstop)
                 
                 bigkey = roiToSlice(bigstart-start, bigstop-start)                  
-              
-                result[bigkey] = self._cache_list[b_ind].outputs["Output"][smallkey].allocate().wait()
+            
+                req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
+                res = req.wait()
 
             return result
             
