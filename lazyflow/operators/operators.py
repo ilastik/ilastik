@@ -831,7 +831,7 @@ if has_blist:
             neutralElement = 0
     
             self.lock.acquire()
-            #fix slicing of single dimensions:
+            #fix slicing of single dimensions:            
             start, stop = sliceToRoi(key, shape, extendSingleton = False)
             start = start.floor()
             stop = stop.floor()
@@ -847,7 +847,7 @@ if has_blist:
             updateShape = tuple(stop-start)
     
             update = self._denseArray[key].copy()
-    
+            
             update[tempKey] = value
 
             startRavel = numpy.ravel_multi_index(numpy.array(start, numpy.int32),shape)
@@ -1092,7 +1092,9 @@ if has_blist:
                 bigkey = roiToSlice(bigstart-start, bigstop-start)
                 smallkey = roiToSlice(smallstart, smallstop)
                 shortbigkey = [bigkey[i] for i in nonsingletons]
-                #print shortbigkey
+                #print "smallkey", smallkey
+                #print "bigkey", bigkey
+                #print "shortbigkey", shortbigkey
                 if not b_ind in self._labelers:
                     #print "allocating labeler for b_ind", b_ind
                     self._labelers[b_ind]=OpSparseLabelArray(self.graph)
@@ -1100,7 +1102,7 @@ if has_blist:
                     self._labelers[b_ind].inputs["eraser"].setValue(self.inputs["eraser"])
                     self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"])
                     
-                self._labelers[b_ind].inputs["Input"][smallkey] = value[tuple(shortbigkey)]
+                self._labelers[b_ind].inputs["Input"][smallkey] = value[tuple(shortbigkey)].squeeze()
                 
             #self.outputs["Output"].setDirty(key)
             
