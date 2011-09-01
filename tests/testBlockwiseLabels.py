@@ -55,9 +55,9 @@ def test(shape, blockshape):
     for i in range(niter):
         
         value = numpy.random.randint(1, 10)
-        #key = randomKey(shape)
+        key = randomKey(shape[:-1])
         #key = (slice(0, 1, None), slice(4, 39, None), 0)
-        key = (slice(25, 49, None), slice(19, 50, None), slice(37, 50, None), 0)
+        #key = (slice(25, 49, None), slice(19, 50, None), slice(37, 50, None), 0)
         start, stop = sliceToRoi(key, shape)
         diff = stop - start        
         valueshape = diff[:-1]
@@ -99,7 +99,7 @@ def veryRandomTest(shape, blockshape):
     
     opLabel.inputs["eraser"].setValue(100)
     opLabelBlocked.inputs["eraser"].setValue(100)
-    niter = 10
+    niter = 100
 
     for i in range(niter):
         
@@ -143,14 +143,35 @@ def testBlocks(shape, blockshape):
     
     opLabelBlocked.setInSlot(opLabelBlocked.inputs["Input"], key, value)
     
-    
     blocklist = opLabelBlocked.outputs["nonzeroBlocks"][:].allocate().wait()
     print blocklist
+    
+    offset = numpy.array(shape[:-1])/numpy.array(blockshape[:-1])
+    #offset = 0.5*step
+    
+    print offset
+    nsteps = min(offset)
+    for i in range(nsteps-1):
+        start = offset + i*numpy.array(blockshape[:-1])
+        stop = offset+(i+1)*numpy.array(blockshape[:-1])
+        print start, stop
+        key = roiToSlice(start, stop)
+        print key
+        valueshape = stop-start
+        value = numpy.zeros(tuple(valueshape), dtype=numpy.uint8)
+        value[:] = 33
+        newkey = [x for x in key]
+        newkey.append(0)
+        opLabelBlocked.setInSlot(opLabelBlocked.inputs["Input"], newkey, value)
+        blocklist = opLabelBlocked.outputs["nonzeroBlocks"][:].allocate().wait()
+        print blocklist
+    
+    
     
 if __name__=="__main__":
     shape = (50, 50, 50, 1)
     blockshape = (10, 10, 10, 1)
-    test(shape, blockshape)
+    #test(shape, blockshape)
     #veryRandomTest(shape, blockshape)
-    #testBlocks(shape, blockshape)
+    testBlocks(shape, blockshape)
     

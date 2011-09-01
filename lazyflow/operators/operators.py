@@ -1027,7 +1027,7 @@ if has_blist:
                 #we only return all non-zero blocks, no keys
                 slicelist = []
                 for b_ind in self._labelers.keys():
-                    print "labeler exists!", b_ind
+                    #print "labeler exists!", b_ind
                     offset = self._blockShape*self._flatBlockIndices[b_ind]
                     bigstart = offset
                     bigstop = numpy.minimum(offset + self._blockShape, self.shape)                    
