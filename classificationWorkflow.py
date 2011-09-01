@@ -2,9 +2,9 @@
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-import os, sys, numpy
+import os, sys, numpy, copy
 
-from PyQt4.QtCore import pyqtSignal, QTimer
+from PyQt4.QtCore import pyqtSignal, QTimer, QRectF
 from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
                         QMessageBox, qApp, QItemSelectionModel
 from PyQt4 import uic
@@ -83,8 +83,15 @@ class Main(QMainWindow):
         
         def toggleDebugPatches(show):
             self.editor.showDebugPatches = show
+        def fitToScreen():
+            shape = self.editor.posModel.shape
+            for i, v in enumerate(self.editor.imageViews):
+                s = list(copy.copy(shape))
+                del s[i]
+                v.changeViewPort(v.scene().data2scene.mapRect(QRectF(0,0,*s)))  
         
         self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
+        self.actionFitToScreen.triggered.connect(fitToScreen)
         
         self.haveData.connect(self.initGraph)
         self.dataReadyToView.connect(self.initEditor)
@@ -347,8 +354,7 @@ class Main(QMainWindow):
         
         nchannels = shape[-1]
         for ich in xrange(nchannels):
-            #FIXME: This will not scale to large datasets, 
-            #it was done before like this but it needs to be adpted to a better solution
+
             if self._normalize_data:
                 data=slicer.outputs['Slices'][ich][:].allocate().wait()
         
