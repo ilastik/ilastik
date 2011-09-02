@@ -284,7 +284,7 @@ class OpArrayCache(OpArrayPiper):
             self._fixed =  self.inputs["fixAtCurrent"].value
         if self.inputs["blockShape"].connected():
             self._origBlockShape = self.inputs["blockShape"].value
-        if self.inputs["Input"].connected():
+        if self.inputs["Input"].connected() and (slot != self.inputs["fixAtCurrent"] or self._blockState is None):
             self._lock.acquire()
             OpArrayPiper.notifyConnectAll(self)
             inputSlot = self.inputs["Input"]
@@ -479,7 +479,7 @@ class OpArrayCache(OpArrayPiper):
         # finally, store results in result area
         #print "Oparraycache debug",result.shape,self._cache[roiToSlice(start, stop)].shape
         self._lock.acquire()        
-        if self._cache is not None:        
+        if self._cache is not None:
             result[:] = self._cache[roiToSlice(start, stop)]
         else:
             self.inputs["Input"][roiToSlice(start, stop)].writeInto(result).wait()
@@ -915,6 +915,7 @@ if has_blist:
             return outputs
             
             
+locking = threading.Lock()          
             
             
 class OpBlockedArrayCache(OperatorGroup):
@@ -927,60 +928,63 @@ class OpBlockedArrayCache(OperatorGroup):
     def _createInnerOperators(self):
         
         self.source = OpArrayPiper(self.graph)
-        
+        self.fixerSource = OpArrayPiper(self.graph)
 
-    def notifyConnectAll(self):
-        
-        inputSlot = self.inputs["Input"]
-        
-        self.outputs["Output"]._dtype = inputSlot.dtype
-        self.outputs["Output"]._shape = inputSlot.shape
-        self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
-        
-        self._fixed = self.inputs["fixAtCurrent"].value        
-        
-        self._blockShape = self.inputs["outerBlockShape"].value
-        self.shape = self.inputs["Input"].shape
-        
-        self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
-            
-        assert numpy.array(self._blockShape).min != 0, "ERROR in OpBlockedArrayCache: invalid blockShape"
-            
-        self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))        
-            
-        self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)        
-            
-        _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
-        _blockNumbers.shape = self._dirtyShape
-            
-        _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))  
-        _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
-            
-        self._blockNumbers = _blockNumbers
-        self._blockIndices = _blockIndices
-    
-        # allocate queryArray object
-        self._flatBlockIndices =  self._blockIndices[:]
-        self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)     
-            
-        self._opSub_list = []
-        self._cache_list = []
-            
-        for b_num in self._blockNumbers.ravel():
+    def notifyConnect(self, slot):
+        if slot == self.inputs["fixAtCurrent"]:
+            self._fixed = self.inputs["fixAtCurrent"].value  
+        if self.inputs["Input"].connected() and self.inputs["fixAtCurrent"].connected() and self.inputs["innerBlockShape"].connected() and self.inputs["outerBlockShape"].connected():
+            if slot != self.inputs["fixAtCurrent"] or not hasattr(self,"_blockState"):
+                inputSlot = self.inputs["Input"]
                 
-            self._opSub_list.append(generic.OpSubRegion(self.graph))
-            self._opSub_list[b_num].inputs["Input"].connect(self.source.outputs["Output"])
+                self.outputs["Output"]._dtype = inputSlot.dtype
+                self.outputs["Output"]._shape = inputSlot.shape
+                self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
+                
+                self._fixed = self.inputs["fixAtCurrent"].value        
+                
+                self._blockShape = self.inputs["outerBlockShape"].value
+                self.shape = self.inputs["Input"].shape
+                
+                self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
                     
-            start = self._blockShape*self._flatBlockIndices[b_num]
-            stop = numpy.minimum((self._flatBlockIndices[b_num]+numpy.ones(self._flatBlockIndices[b_num].shape, numpy.uint8))*self._blockShape, self.shape)                
+                assert numpy.array(self._blockShape).min != 0, "ERROR in OpBlockedArrayCache: invalid blockShape"
                     
-            self._opSub_list[b_num].inputs["Start"].setValue(tuple(start))
-            self._opSub_list[b_num].inputs["Stop"].setValue(tuple(stop))
-    
-            self._cache_list.append(OpArrayCache(self.graph))
-            self._cache_list[b_num].inputs["Input"].connect(self._opSub_list[b_num].outputs["Output"])
-            self._cache_list[b_num].inputs["fixAtCurrent"].setValue(self._fixed)
-            self._cache_list[b_num].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
+                self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))        
+                    
+                self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)        
+                    
+                _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
+                _blockNumbers.shape = self._dirtyShape
+                    
+                _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))  
+                _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
+                    
+                self._blockNumbers = _blockNumbers
+                self._blockIndices = _blockIndices
+            
+                # allocate queryArray object
+                self._flatBlockIndices =  self._blockIndices[:]
+                self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)     
+                    
+                self._opSub_list = {}
+                self._cache_list = {}
+            
+#        for b_num in self._blockNumbers.ravel():
+#                
+#            self._opSub_list.append(generic.OpSubRegion(self.graph))
+#            self._opSub_list[b_num].inputs["Input"].connect(self.source.outputs["Output"])
+#                    
+#            start = self._blockShape*self._flatBlockIndices[b_num]
+#            stop = numpy.minimum((self._flatBlockIndices[b_num]+numpy.ones(self._flatBlockIndices[b_num].shape, numpy.uint8))*self._blockShape, self.shape)                
+#                    
+#            self._opSub_list[b_num].inputs["Start"].setValue(tuple(start))
+#            self._opSub_list[b_num].inputs["Stop"].setValue(tuple(stop))
+#    
+#            self._cache_list.append(OpArrayCache(self.graph))
+#            self._cache_list[b_num].inputs["Input"].connect(self._opSub_list[b_num].outputs["Output"])
+#            self._cache_list[b_num].inputs["fixAtCurrent"].setValue(self._fixed)
+#            self._cache_list[b_num].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
            
     def getOutSlot(self, slot, key, result):
 
@@ -991,7 +995,8 @@ class OpBlockedArrayCache(OperatorGroup):
         blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
         blockKey = roiToSlice(blockStart,blockStop)
         innerBlocks = self._blockNumbers[blockKey]
-            
+        result[:] = 0
+        
         for b_ind in innerBlocks.ravel():
                 
             #which part of the original key does this block fill?
@@ -999,22 +1004,47 @@ class OpBlockedArrayCache(OperatorGroup):
             bigstart = numpy.maximum(offset, start)
             bigstop = numpy.minimum(offset + self._blockShape, stop)
             
+
+            
             smallstart = bigstart-offset
             smallstop = bigstop - offset
-                    
+            
+            diff = smallstop - smallstart
+            minimum = numpy.min(diff)
             smallkey = roiToSlice(smallstart, smallstop)
                 
             bigkey = roiToSlice(bigstart-start, bigstop-start)                  
+            if not self._fixed:
+                if not self._cache_list.has_key(b_ind):
+                    self._opSub_list[b_ind] = generic.OpSubRegion(self.graph)
+                    self._opSub_list[b_ind].inputs["Input"].connect(self.source.outputs["Output"])
+                            
+                    tstart = self._blockShape*self._flatBlockIndices[b_ind]
+                    tstop = numpy.minimum((self._flatBlockIndices[b_ind]+numpy.ones(self._flatBlockIndices[b_ind].shape, numpy.uint8))*self._blockShape, self.shape)                
+                            
+                    self._opSub_list[b_ind].inputs["Start"].setValue(tuple(tstart))
+                    self._opSub_list[b_ind].inputs["Stop"].setValue(tuple(tstop))
             
-            req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
-            res = req.wait()
+                    self._cache_list[b_ind] = OpArrayCache(self.graph)
+                    self._cache_list[b_ind].inputs["Input"].connect(self._opSub_list[b_ind].outputs["Output"])
+                    self._cache_list[b_ind].inputs["fixAtCurrent"].connect(self.fixerSource.outputs["Output"])
+                    self._cache_list[b_ind].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
+            
+            if self._cache_list.has_key(b_ind):
+                req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
+                res = req.wait()
 
         return result
+
+    def notifyDirty(self, slot, key):
+        if slot == self.inputs["Input"]:
+            self.outputs["Output"].setDirty(key)
             
             
     def getInnerInputs(self):
         inputs = {}
         inputs["Input"] = self.source.inputs["Input"]
+        inputs["fixAtCurrent"] = self.fixerSource.inputs["Input"]
         return inputs
         
     def getInnerOutputs(self):
