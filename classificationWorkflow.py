@@ -51,7 +51,7 @@ class Main(QMainWindow):
         self.opTrain = None
         self._colorTable16 = self._createDefault16ColorColorTable()
         
-        self.g = Graph(4, 2048*1024**2*5)
+        self.g = Graph(7, 2048*1024**2*5)
         self.fixableOperators = []
         
         self.featureDlg=None
@@ -70,9 +70,9 @@ class Main(QMainWindow):
         #
         arguments=sys.argv
 
-        if len(arguments) == 2:
+        if len(arguments) >= 2:
             def loadFile():
-                self._openFile([sys.argv[1]])
+                self._openFile(sys.argv[1:])
             QTimer.singleShot(0, loadFile)
         
     def initUic(self):
@@ -125,7 +125,7 @@ class Main(QMainWindow):
         self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
         self.StartClassificationButton.clicked.connect(self.startClassification)
         
-        self.StartClassificationButton.setEnabled(False)
+        self.StartClassificationButton.setEnabled(True)
         
         self.checkInteractive.toggled.connect(self.toggleInteractive)   
         self.initTheFeatureDlg()
@@ -265,10 +265,12 @@ class Main(QMainWindow):
         selector.inputs["Input"].connect(self.opPredict.outputs['PMaps'])
         selector.inputs["Index"].setValue(icl)
         
-        opSelCache = OpArrayCache(self.g)
+        opSelCache = OpBlockedArrayCache(self.g)
         #opSelCache = OpArrayCache(self.g)
-        opSelCache.inputs["blockShape"].setValue((1,128,128,128,1))
-        opSelCache.inputs["Input"].connect(selector.outputs["Output"])  
+        opSelCache.inputs["innerBlockShape"].setValue((1,32,32,32,1))
+        opSelCache.inputs["outerBlockShape"].setValue((1,128,128,128,1))
+        opSelCache.inputs["Input"].connect(selector.outputs["Output"])
+        
         if self.checkInteractive.isChecked():
             opSelCache.inputs["fixAtCurrent"].setValue(False)
         else:
@@ -411,10 +413,15 @@ class Main(QMainWindow):
         opPF.inputs["Scales"].setValue(self.featScalesList)
         self.opPF=opPF
         
+        print "####################################"
+        
         #Caches the features
-        opFeatureCache = OpArrayCache(self.g)
-        opFeatureCache.inputs["blockShape"].setValue((1,64,64,64,1))
-        opFeatureCache.inputs["Input"].connect(opPF.outputs["Output"])  
+        opFeatureCache = OpBlockedArrayCache(self.g)
+        #opSelCache = OpArrayCache(self.g)
+        opFeatureCache.inputs["innerBlockShape"].setValue((1,32,32,32,16))
+        opFeatureCache.inputs["outerBlockShape"].setValue((1,128,128,128,16))        
+        opFeatureCache.inputs["Input"].connect(opPF.outputs["Output"])
+        opFeatureCache.inputs["fixAtCurrent"].setValue(False)  
         self.opFeatureCache=opFeatureCache
         
         
@@ -427,7 +434,7 @@ class Main(QMainWindow):
         
         self.opLabels = OpBlockedSparseLabelArray(self.g)                                
         self.opLabels.inputs["shape"].setValue(shape[:-1] + (1,))
-        self.opLabels.inputs["blockShape"].setValue((1, 10, 10, 2, 1))
+        self.opLabels.inputs["blockShape"].setValue((1, 32, 32, 32, 1))
         self.opLabels.inputs["eraser"].setValue(100)                
         
         self.labelsrc = LazyflowSinkSource(self.opLabels, self.opLabels.outputs["Output"], self.opLabels.inputs["Input"])
@@ -484,12 +491,17 @@ class Main(QMainWindow):
     
     def choosenDifferrentFeatSet(self):
         dlg=self.featureDlg
+        
         selectedFeatures = dlg.featureTableWidget.createSelectedFeaturesBoolMatrix()
         print "******", selectedFeatures
         self.opPF.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
     
     def initTheFeatureDlg(self):
         dlg = FeatureDlg()
+        
+        m = [[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0]]
+        dlg.featureTableWidget.setSelectedFeatureBoolMatrix(m)
+        
         self.featureDlg=dlg
         dlg.setWindowTitle("Features")
         dlg.createFeatureTable({"Features": [FeatureEntry("Gaussian smoothing"), FeatureEntry("Laplacian of Gaussian"), FeatureEntry("Hessian of Gaussian"), FeatureEntry("Hessian of Gaussian EV")]}, self.featScalesList)
