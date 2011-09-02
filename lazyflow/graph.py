@@ -2069,7 +2069,8 @@ class Worker(Thread):
                         else:
                             self.graph.tasks.put((prio,task)) #move task back to task queue
                             print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
-                            self.graph._freeMemory()                            
+                            freesize = abs(self.process.get_memory_info().rss  - self.graph.softMaxMem)
+                            self.graph._freeMemory(freesize * 3)                            
                             gc.collect()
                             self._hasSlept = True
                             time.sleep(4.0)
@@ -2085,11 +2086,16 @@ class Graph(object):
         self.freeWorkers = deque()
         self.running = True
         self.numThreads = numThreads
+        self.lastRequestID = itertools.count()
+        self.process = psutil.Process(os.getpid())
+        
+        self._memoryAccessCounter = itertools.count()
         self.softMaxMem = softMaxMem # in bytes
         self.softCacheMem = softMaxMem * 0.5
-        self.lastRequestID = itertools.count()
-        self.registeredCaches = []
-        self.process = psutil.Process(os.getpid())
+        self._registeredCaches = deque()
+        self._allocatedCaches = deque()
+        self._usedCacheMemory = 0
+        
         for i in xrange(self.numThreads):
             w = Worker(self)
             self.workers.append(w)
@@ -2100,32 +2106,51 @@ class Graph(object):
         return self.process.get_memory_info().rss
     
     def _registerCache(self, op):
-        if op not in self.registeredCaches:
-            self.registeredCaches.append(op)
+        if op not in self._registeredCaches:
+            self._registeredCaches.append(op)
     
-    def _freeMemory(self):
-        sortedCaches = sorted(self.registeredCaches, key=lambda x: x._cacheHits)
+    def _notifyMemoryAllocation(self, cache, size):
+        if self._usedCacheMemory + size > self.softCacheMem:
+            self._freeMemory(size*3) #leve a little room
+        
+        self._usedCacheMemory += size
+        self._allocatedCaches.append(cache)
+    
+    def _freeMemory(self, size):
 
-        #usedMem = self.process.get_memory_info().rss
+        freesize = size*3
+        freesize = min(self.softCacheMem*0.5, freesize)
+        freesize = max(freesize, self.softCacheMem * 0.2)
+
         freedMem = 0
         
-        usedMem = 0
-        for c in sortedCaches:        
-            usedMem += c._memorySize()
+        usedMem = self._usedCacheMemory
         
-        if usedMem > self.softCacheMem:
-            for c in sortedCaches:
-                if usedMem - 0.5*freedMem > self.softCacheMem: 
-                    freedMem += c._freeMemory()
-                    
+        while len(self._allocatedCaches) > 0:
+            if freedMem < freesize:
+                c = self._allocatedCaches.popleft()
+                freedMem += c._freeMemory()
+            else:
+                break
+        self._usedCacheMemory = usedMem - freedMem
+        gc.collect()
+        usedMem2 = self.process.get_memory_info().rss
+        print "GRAPH: freed memory", freedMem, "of ", usedMem
+        print "GRAPH: now truly using", usedMem2
+
+    def _notifyMemoryHit(self):
+        accesses = self._memoryAccessCounter.next()
+        if accesses > 100:
+            self._memoryAccessCounter = itertools.count() #reset counter
+            # calculate the exponential moving average for the caches            
+            nbytes = 0            
+            for c in self._registeredCaches:
                 ch = c._cacheHits
-                ch = int(ch * 0.8)
+                ch = ch * 0.8
                 c._cacheHits = ch
-            
-            gc.collect()
-            usedMem2 = self.process.get_memory_info().rss
-            print "GRAPH: freed memory", freedMem, "of ", usedMem
-            print "GRAPH: now truly using", usedMem2
+                nbytes += c._memorySize()
+            self._allocatedCaches = deque(sorted(self._allocatedCaches, key=lambda x: x._cacheHits))
+            self._usedCacheMemory = nbytes
             
     def putTask(self, reqObject):
         task = reqObject

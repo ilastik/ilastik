@@ -274,9 +274,11 @@ class OpArrayCache(OpArrayPiper):
         
     def _allocateCache(self):
         self._cacheLock.acquire()
-        print "OpArrayCache: Allocating cache"
+        mem = numpy.ndarray(self.shape, dtype = self.dtype)
+        print "OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes
+        self.graph._notifyMemoryAllocation(self, mem.nbytes)
         inputSlot = self.inputs["Input"]
-        self._cache = numpy.ndarray(self.shape, dtype = self.dtype)
+        self._cache = mem
         self._cacheLock.release()
         
     def notifyConnect(self, slot):
@@ -351,7 +353,8 @@ class OpArrayCache(OpArrayPiper):
         
     def getOutSlot(self,slot,key,result):
         #return     
-  
+        self.graph._notifyMemoryHit()
+        
         start, stop = sliceToRoi(key, self.shape)
         
         self._lock.acquire()
