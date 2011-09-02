@@ -10,12 +10,13 @@ from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
 from PyQt4 import uic
 
 from lazyflow.graph import Graph
-from lazyflow.operators import Op5ToMulti, OpArrayCache, OpArrayFixableCache, \
+from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
                                OpArrayPiper, OpPredictRandomForest, \
                                OpSingleChannelSelector, OpSparseLabelArray, \
                                OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures, \
                                OpMultiArraySlicer2,OpH5Reader, OpBlockedSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForestBlocked, OpPixelFeatures
+                               OpMultiArrayStacker, OpTrainRandomForestBlocked, OpPixelFeatures, \
+                               OpH5ReaderBigDataset
 
 from volumeeditor.pixelpipeline.datasources import LazyflowSource
 from volumeeditor.pixelpipeline._testing import OpDataProvider
@@ -71,7 +72,7 @@ class Main(QMainWindow):
 
         if len(arguments) == 2:
             def loadFile():
-                self._openFile(sys.argv[1])
+                self._openFile([sys.argv[1]])
             QTimer.singleShot(0, loadFile)
         
     def initUic(self):
@@ -264,7 +265,7 @@ class Main(QMainWindow):
         selector.inputs["Input"].connect(self.opPredict.outputs['PMaps'])
         selector.inputs["Index"].setValue(icl)
         
-        opSelCache = OpArrayFixableCache(self.g)
+        opSelCache = OpArrayCache(self.g)
         #opSelCache = OpArrayCache(self.g)
         opSelCache.inputs["blockShape"].setValue((1,128,128,128,1))
         opSelCache.inputs["Input"].connect(selector.outputs["Output"])  
@@ -303,29 +304,33 @@ class Main(QMainWindow):
     def openFile(self):
         #FIXME: only take one file for now, more to come
         #fileName = QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Image Files (*.png *.jpg *.bmp *.tif *.tiff *.gif *.h5)")
-        fileName = QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Numpy files (*.npy)")
-        self._openFile(fileName)
+        fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy files (*.npy)")
+        self._openFile(fileNames)
         
-    def _openFile(self, fileName):
-        
-        
-        fName, fExt = os.path.splitext(str(fileName))
+    def _openFile(self, fileNames):
         self.inputProvider = None
+        fName, fExt = os.path.splitext(str(fileNames[0]))
+        print fName, fExt
         if fExt=='.npy':
+            fileName = fileNames[0]
+            if len(fileNames)>1:
+                print "WARNING: only the first file will be read, multiple file prediction not supported yet"
+            fName, fExt = os.path.splitext(str(fileName))
             self.raw = numpy.load(str(fileName))
             self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
             self.inputProvider = OpArrayPiper(self.g)
             self.inputProvider.inputs["Input"].setValue(self.raw)
         
         elif fExt=='.h5':
-            
-            Reader=OpH5Reader(self.g)
-            print str(fileName),'*+++++++++++++++++++++++++'
-            Reader.inputs["Filename"].setValue(str(fileName))
-            Reader.inputs["hdf5Path"].setValue("volume/data")
+            readerNew=OpH5ReaderBigDataset(self.g)
+            readerNew.inputs["Filenames"].setValue(fileNames)
+            readerNew.inputs["hdf5Path"].setValue("volume/data")
+            #Reader=OpH5Reader(self.g)
+            #print str(fileName),'*+++++++++++++++++++++++++'
+            #Reader.inputs["Filename"].setValue(str(fileName))
+            #Reader.inputs["hdf5Path"].setValue("volume/data")
             self.inputProvider = OpArrayPiper(self.g)
-            self.inputProvider.inputs["Input"].connect(Reader.outputs["Image"])
-        
+            self.inputProvider.inputs["Input"].connect(readerNew.outputs["Output"])
         else:
             print "not supported yet"
             return
