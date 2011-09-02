@@ -7,7 +7,7 @@ import copy
 
 from operators import OpArrayPiper, OpMultiArrayPiper
 
-from generic import OpMultiArrayStacker
+from generic import OpMultiArrayStacker, getSubKeyWithFlags, popFlagsFromTheKey
 
 
 
@@ -242,8 +242,10 @@ class OpPixelFeatures(OperatorGroup):
         return outputs
 
 
-
-
+def getAllExceptAxis(ndim,index,slicer):
+    res= [slice(None, None, None)] * ndim
+    res[index] = slicer
+    return tuple(res)
 
 class OpBaseVigraFilter(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("sigma", stype = "float")]
@@ -279,16 +281,22 @@ class OpBaseVigraFilter(OpArrayPiper):
                 
         shape = self.outputs["Output"].shape
         
+        axistags = self.inputs["Input"].axistags
+        #print "DUDE, " , axistags
         
-        subkey = key[0:-1]
+        channelAxis=self.inputs["Input"].axistags.index('c')
+        hasTimeAxis = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Time)
+        timeAxis=self.inputs["Input"].axistags.index('t')
+        subkey = popFlagsFromTheKey(key,axistags,'c')
+        subshape=popFlagsFromTheKey(shape,axistags,'c')
+        
         
         oldstart, oldstop = roi.sliceToRoi(key, shape)
-        start, stop = roi.sliceToRoi(subkey,shape[:-1])
-        newStart, newStop = roi.extendSlice(start, stop, shape[:-1], largestSigma)
         
-        
-        
+        start, stop = roi.sliceToRoi(subkey,subkey)
+        newStart, newStop = roi.extendSlice(start, stop, subshape, largestSigma)
         readKey = roi.roiToSlice(newStart, newStop)
+        
         
         writeNewStart = start - newStart
         writeNewStop = writeNewStart +  stop - start
@@ -299,70 +307,72 @@ class OpBaseVigraFilter(OpArrayPiper):
             fullResult = False
         
         writeKey = roi.roiToSlice(writeNewStart, writeNewStop)
-                            
+        writeKey = list(writeKey)
+        writeKey.insert(channelAxis, slice(None,None,None))
+        writeKey = tuple(writeKey)         
+        
+        writeKey= popFlagsFromTheKey(writeKey,axistags,'t')
+        
         channelsPerChannel = self.resultingChannels()
         
-        axistags = self.inputs["Input"].axistags
+        
         
         i2 = 0          
-        for i in range(int(numpy.floor(1.0 * oldstart[-1]/channelsPerChannel)),int(numpy.ceil(1.0 * oldstop[-1]/channelsPerChannel))):
+        for i in range(int(numpy.floor(1.0 * oldstart[channelAxis]/channelsPerChannel)),int(numpy.ceil(1.0 * oldstop[channelAxis]/channelsPerChannel))):
             
-            req = self.inputs["Input"][readKey + (slice(i,i+1,None),)].allocate()
+            treadKey=list(readKey)
+            treadKey.insert(channelAxis, slice(i,i+1,None))
+            treadKey=tuple(treadKey)
+            #print readKey,'iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii'
+            #print treadKey, "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+            req = self.inputs["Input"][treadKey].allocate()
             t = req.wait()
-            #print "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHELP", type(t),t.shape,readKey
+            
             t = numpy.require(t, dtype=self.inputDtype)
             
             t = t.view(vigra.VigraArray)
             t.axistags = copy.copy(axistags)
-            t = t.squeeze() #vigra.VigraArray(t, dtype = self.inputDtype,axistags = copy.copy(axistags))
+            t = t.insertChannelAxis()
+            
 
             sourceBegin = 0
-            if oldstart[-1] > i * channelsPerChannel:
-                sourceBegin = oldstart[-1] - i * channelsPerChannel
+            if oldstart[channelAxis] > i * channelsPerChannel:
+                sourceBegin = oldstart[channelAxis] - i * channelsPerChannel
             sourceEnd = channelsPerChannel
-            if oldstop[-1] < (i+1) * channelsPerChannel:
-                sourceEnd = channelsPerChannel - ((i+1) * channelsPerChannel - oldstop[-1])
+            if oldstop[channelAxis] < (i+1) * channelsPerChannel:
+                sourceEnd = channelsPerChannel - ((i+1) * channelsPerChannel - oldstop[channelAxis])
             
             destBegin = i2
             destEnd = i2 + sourceEnd - sourceBegin
             
-            if channelsPerChannel>1:                    
-                resultArea = result[...,destBegin:destEnd]
+            if channelsPerChannel>1:
+                tkey=getAllExceptAxis(len(shape),channelAxis,slice(destBegin,destEnd,None))                   
+                resultArea = result[tkey]
             else:
-                resultArea = result[...,i2]
+                tkey=getAllExceptAxis(len(shape),channelAxis,slice(i2,i2+1,None)) 
+                resultArea = result[tkey]
 
-            if not fullResult or not self.supportsOut:
-                #print "OOOOOOOOOOOOOOOOOOOOO",t.shape, type(t)
-                #FIXME: Make More General
-                if t.axistags.axisTypeCount(vigra.AxisType.Time) > 0:
-                    ntimesteps=t.shape[-1]
-                    res=numpy.zeros(t.shape+(channelsPerChannel,),t.dtype)
-                    for l in xrange(ntimesteps):
-                        #print res.shape,numpy.squeeze(self.vigraFilter(t[...,l].view(numpy.ndarray), **kwparams)).view(numpy.ndarray).shape,"0000000000000"
-                        res[...,l,:]=self.vigraFilter(t[...,l].view(numpy.ndarray), **kwparams).view(numpy.ndarray)
-                    
-                    if channelsPerChannel==1:
-                        res=numpy.squeeze(res)
-                    temp=res
+            
+            for step,image in enumerate(t.timeIter()):
+                #print writeKey, 'EEEEEEEEEEEEEEEEEEEEEEEEE'
+                temp = self.vigraFilter(image, **kwparams)
+                #print type(temp), temp.axistags, temp.shape
+                temp=temp[writeKey]
+                nChannelAxis = channelAxis - 1
+                if timeAxis > channelAxis:
+                    nChannelAxis = channelAxis 
+                twriteKey=getAllExceptAxis(temp.ndim, nChannelAxis, slice(sourceBegin,sourceEnd,None))
                 
+                if hasTimeAxis > 0:
+                    tresKey  = getAllExceptAxis(temp.ndim, timeAxis, step)
                 else:
-                    temp = self.vigraFilter(t, **kwparams)
+                    tresKey  = slice(None, None,None)
                 
+                #print tresKey, twriteKey, resultArea.shape, temp.shape
                 
+                resultArea[tresKey] = temp[twriteKey]
+                 
                 
-                if channelsPerChannel>1:
-                    try:
-                        resultArea[:] = temp[writeKey + (slice(sourceBegin,sourceEnd,None),)]
-                    except:
-                        print "ERROR: destination and request shapes differ !", resultArea.shape, temp.shape, writeKey, destBegin, destEnd, sourceBegin, sourceEnd
-                else:
-                    
-                    resultArea[:] = temp[writeKey]
-            else:
-                #resultArea = resultArea.view(vigra.VigraArray)
-                #resultArea.axistags = copy.copy(axistags)
-                
-                self.vigraFilter(t,sigma, out = resultArea)
             i2 += channelsPerChannel
 
             
@@ -382,7 +392,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         channelsPerChannel = self.resultingChannels()
         self.outputs["Output"]._shape = inShapeWithoutChannels + (numChannels * channelsPerChannel,)
-        print "HEREEEEEEEEEEEEEE", self.inputs["Input"].shape ,self.outputs["Output"]._shape
+        #print "HEREEEEEEEEEEEEEE", self.inputs["Input"].shape ,self.outputs["Output"]._shape
         #print self.resultingChannels(), self.name
         
         #print self.outputs["Output"]._axistags

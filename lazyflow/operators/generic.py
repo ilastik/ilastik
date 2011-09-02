@@ -7,19 +7,63 @@ def axisTagObjectFromFlag(flag):
     if flag in ['x','y','z']:
         type=vigra.AxisType.Space
     elif flag=='c':
-        type=vigra.AxisType.Space
+        type=vigra.AxisType.Channel
+    elif flag=='t':
+        type=vigra.AxisType.Time
     else:
+        print "Requested flag", str(flag)
         raise
     
     return vigra.AxisTags(vigra.AxisInfo(flag,type)) 
+
 
 def axisType(flag):
     if flag in ['x','y','z']:
         return vigra.AxisType.Space
     elif flag=='c':
         return vigra.AxisType.Channels
+    
+    elif flag=='t':
+        return vigra.AxisType.Time
     else:
         raise
+
+
+def axisTagsToString(axistags):
+    res=[]
+    for axistag in axistags:
+        res.append(axistag.key)
+    return res
+    
+    
+
+
+def getSubKeyWithFlags(key,axistags,axisflags):
+    assert len(axistags)==len(key)
+    assert len(axisflags)<=len(key)
+    
+    d=dict(zip(axisTagsToString(axistags),key))
+
+    newKey=[]
+    for flag in axisflags:
+        slice=d[flag]
+        newKey.append(slice)
+    
+    return tuple(newKey)
+    
+
+def popFlagsFromTheKey(key,axistags,flags):
+    d=dict(zip(axisTagsToString(axistags),key))
+     
+    newKey=[]
+    for flag in axisTagsToString(axistags):
+        if flag not in flags:
+            slice=d[flag]
+            newKey.append(slice)
+    
+    return newKey 
+
+
 
 
 
