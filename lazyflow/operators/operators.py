@@ -271,66 +271,79 @@ class OpArrayCache(OpArrayPiper):
         self._cacheLock.release()   
         return freed
         
+    def _allocateManagementStructures(self):
+        if type(self._origBlockShape) != tuple:
+            self._blockShape = (self._origBlockShape,)*len(self.shape)
+        else:
+            self._blockShape = self._origBlockShape
+            
+        self._blockShape = numpy.minimum(self._blockShape, self.shape)
+
+        self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+        
+        print "Configured OpArrayCache with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
+
+        # if the entry in _dirtyArray differs from _dirtyState
+        # the entry is considered dirty
+        self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
+        self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+
+        _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
+        _blockNumbers.shape = self._dirtyShape
+
+        _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
+        _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
+
+         
+        self._blockNumbers = _blockNumbers
+        self._blockIndices = _blockIndices
+        
+                            #TODO: introduce constants for readability
+                            #0 is "in process"
+        self._blockState[:]= 1 #this is the dirty state
+        self._dirtyState = 2 #this is the clean state
+        
+        # allocate queryArray object
+        self._flatBlockIndices =  self._blockIndices[:]
+        self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+#        for p in self._flatBlockIndices:
+#            self._blockQuery[p] = BlockQueue()
+        
+        
+                
         
     def _allocateCache(self):
         self._cacheLock.acquire()
         mem = numpy.ndarray(self.shape, dtype = self.dtype)
         print "OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes
         self.graph._notifyMemoryAllocation(self, mem.nbytes)
+        if self._blockState is None:
+            self._allocateManagementStructures()
         inputSlot = self.inputs["Input"]
         self._cache = mem
         self._cacheLock.release()
         
     def notifyConnect(self, slot):
+        reconfigure = False
         if  self.inputs["fixAtCurrent"].connected():
-            self._fixed =  self.inputs["fixAtCurrent"].value
-        if self.inputs["blockShape"].connected():
-            self._origBlockShape = self.inputs["blockShape"].value
-        if self.inputs["Input"].connected() and (slot != self.inputs["fixAtCurrent"] or self._blockState is None):
-            self._lock.acquire()
+            self._fixed =  self.inputs["fixAtCurrent"].value        
+        if slot == self.inputs["blockShape"]:
+            newBShape = self.inputs["blockShape"].value
+            if self._origBlockShape != newBShape and self.inputs["Input"].connected():
+                reconfigure = True
+            self._origBlockShape = newBShape                
+        if slot == self.inputs["Input"]:
             OpArrayPiper.notifyConnectAll(self)
             inputSlot = self.inputs["Input"]
-            
-            if type(self._origBlockShape) != tuple:
-                self._blockShape = (self._origBlockShape,)*len(self.shape)
-            else:
-                self._blockShape = self._origBlockShape
-                
-            self._blockShape = numpy.minimum(self._blockShape, self.shape)
+            reconfigure = True
     
-            self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
-            
-            print "Configured OpArrayCache with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
-    
-            # if the entry in _dirtyArray differs from _dirtyState
-            # the entry is considered dirty
-            self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
-            self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
-    
-            _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
-            _blockNumbers.shape = self._dirtyShape
-    
-            _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
-            _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
-    
-             
-            self._blockNumbers = _blockNumbers
-            self._blockIndices = _blockIndices
-            
-                                #TODO: introduce constants for readability
-                                #0 is "in process"
-            self._blockState[:]= 1 #this is the dirty state
-            self._dirtyState = 2 #this is the clean state
-            
-            # allocate queryArray object
-            self._flatBlockIndices =  self._blockIndices[:]
-            self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
-    #        for p in self._flatBlockIndices:
-    #            self._blockQuery[p] = BlockQueue()
-            self._lock.release()
-
+        if reconfigure and self.shape is not None:
+            self._lock.acquire()
+            self._allocateManagementStructures()
             if not self._lazyAlloc:
                 self._allocateCache()
+            self._lock.release()
+
             
             
     def notifyDirty(self, slot, key):
