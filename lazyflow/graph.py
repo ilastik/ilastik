@@ -1904,7 +1904,16 @@ class OperatorGroupGraph(object):
     
     def _registerCache(self, op):    
         self._originalGraph._registerCache(op)
-        
+    
+    def _notifyMemoryAllocation(self, cache, size):
+        self._originalGraph._notifyMemoryAllocation(cache, size)
+    
+    def _freeMemory(self, size):
+        self._originalGraph._freeMemory(size)
+    
+    def _notifyMemoryHit(self):
+        self._originalGraph._notifyMemoryHit()
+    
     def putTask(self, reqObject):
         self._originalGraph.putTask(reqObject)
             
