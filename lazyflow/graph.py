@@ -226,9 +226,12 @@ class GetItemRequestObject(object):
     in turn is returned by a call to the __getitem__ method of an
     InputSlot and OutputSlot) 
     """
-        
-    #__slots__ = ["func", "slot","lock", "requestLevel", "greenlet", "event", "thread", "key", "destination", "closure",  "kwargs"]
 
+    __slots__ = ["_writer", "key", "destination", "slot", "func", "canceled",
+                 "finished", "inProcess", "parentRequest", "childRequests",
+                 "graph", "waitQueue", "notifyQueue", "cancelQueue",
+                 "_requestLevel", "arg1", "lock"]
+        
     def __init__(self, writer, slot, key, destination):
         self._writer = writer        
         self.key = key
@@ -468,6 +471,9 @@ class InputSlot(object):
     to directly provide a value as input (i.e. .setValue(value) call)
     """
     
+    __slots__ = ["name", "operator", "partner", "level", 
+                 "_value", "_stype", "axistags", "shape", "dtype"]    
+    
     def __init__(self, name, operator = None, stype = "ndarray"):
         self.name = name
         self.operator = operator
@@ -703,6 +709,11 @@ class OutputSlot(object):
     
     this call returns an GetItemWriterObject.
     """    
+    
+    __slots__ = ["name", "_metaParent", "level", "operator",
+                 "dtype", "shape", "axistags", "partners", "_stype",
+                 "_dirtyCallbacks"]    
+    
     def __init__(self, name, operator = None, stype = "ndarray"):
         self.name = name
         self._metaParent = operator
@@ -892,6 +903,9 @@ class MultiInputSlot(object):
     
     it contains nested lists of InputSlot objects.
     """
+    
+    __slots__ = ["name", "operator", "partner", "inputSlots", "level",
+                 "_stype", "_value"]    
     
     def __init__(self, name, operator = None, stype = "ndarray", level = 1):
         self.name = name
@@ -1202,6 +1216,9 @@ class MultiOutputSlot(object):
     
     it contains nested lists of OutputSlot objects.
     """
+    
+    __slots__ = ["name", "operator", "_metaParent",
+                 "partners", "outputSlots", "level", "_stype"]
     
     def __init__(self, name, operator = None, stype = "ndarray",level = 1):
         self.name = name
