@@ -374,7 +374,7 @@ class Main(QMainWindow):
             else:
                 minMax.append(None)
                 
-            layersrc = LazyflowSource(slicer.outputs['Slices'][ich])
+            layersrc = LazyflowSource(slicer.outputs['Slices'][ich], priority = 100)
             srcs.append(layersrc)
             
         #FIXME: we shouldn't merge channels automatically, but for now it's prettier
