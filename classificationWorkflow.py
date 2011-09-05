@@ -51,7 +51,8 @@ class Main(QMainWindow):
         self.opTrain = None
         self._colorTable16 = self._createDefault16ColorColorTable()
         
-        self.g = Graph(7, 2048*1024**2*5)
+        #self.g = Graph(7, 2048*1024**2*5)
+        self.g = Graph(2, 2048*1024**2)
         self.fixableOperators = []
         
         self.featureDlg=None
@@ -267,8 +268,8 @@ class Main(QMainWindow):
         
         opSelCache = OpBlockedArrayCache(self.g)
         #opSelCache = OpArrayCache(self.g)
-        opSelCache.inputs["innerBlockShape"].setValue((1,32,32,32,1))
-        opSelCache.inputs["outerBlockShape"].setValue((1,128,128,128,1))
+        opSelCache.inputs["innerBlockShape"].setValue((1,8,8,8,1))
+        opSelCache.inputs["outerBlockShape"].setValue((1,64,64,64,1))
         opSelCache.inputs["Input"].connect(selector.outputs["Output"])
         
         if self.checkInteractive.isChecked():
@@ -418,8 +419,8 @@ class Main(QMainWindow):
         #Caches the features
         opFeatureCache = OpBlockedArrayCache(self.g)
         #opSelCache = OpArrayCache(self.g)
-        opFeatureCache.inputs["innerBlockShape"].setValue((1,32,32,32,16))
-        opFeatureCache.inputs["outerBlockShape"].setValue((1,128,128,128,16))        
+        opFeatureCache.inputs["innerBlockShape"].setValue((1,8,8,8,16))
+        opFeatureCache.inputs["outerBlockShape"].setValue((1,64,64,64,16))        
         opFeatureCache.inputs["Input"].connect(opPF.outputs["Output"])
         opFeatureCache.inputs["fixAtCurrent"].setValue(False)  
         self.opFeatureCache=opFeatureCache
