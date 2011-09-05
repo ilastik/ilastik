@@ -169,7 +169,7 @@ class GetItemWriterObject(object):
         self._key = roiToSlice(self._start,self._stop)        
         self._slot = slot
     
-    def writeInto(self, destination):
+    def writeInto(self, destination, priority = 0):
         """
         the writeInto method ensures that the data
         that is requested from an InputSlot or OutputSlot is written
@@ -179,9 +179,9 @@ class GetItemWriterObject(object):
         the same size/shape/dimension as the slot will
         return in reponse to the requested key
         """
-        return  GetItemRequestObject(self, self._slot, self._key, destination)
+        return  GetItemRequestObject(self, self._slot, self._key, destination, priority)
   
-    def allocate(self, axistags = False):
+    def allocate(self, axistags = False, priority = 0):
         """
         if the user does not want lazyflow to write calculation
         results into a specific numpy array he can use
@@ -192,7 +192,7 @@ class GetItemWriterObject(object):
         """
         #destination = self._slot._allocateStorage(self._start, self._stop, axistags)
         #destination = CopyOnWriteView(self._slot.shape, self._slot.dtype)
-        return self.writeInto(None)
+        return self.writeInto(None, priority)
     
     def __call__(self):
         #TODO: remove this convenience function when
@@ -230,11 +230,12 @@ class GetItemRequestObject(object):
     __slots__ = ["_writer", "key", "destination", "slot", "func", "canceled",
                  "finished", "inProcess", "parentRequest", "childRequests",
                  "graph", "waitQueue", "notifyQueue", "cancelQueue",
-                 "_requestLevel", "arg1", "lock"]
+                 "_requestLevel", "arg1", "lock", "_priority"]
         
-    def __init__(self, writer, slot, key, destination):
+    def __init__(self, writer, slot, key, destination, priority):
         self._writer = writer        
         self.key = key
+        self._priority = priority
         self.destination = destination
         self.slot = slot
         self.func = None
@@ -277,14 +278,14 @@ class GetItemRequestObject(object):
                 lr = gr.lastRequest
                 #self.parentRequest = gr.currentRequest
                 gr.currentRequest.childRequests[self] = self
-                self._requestLevel = gr.currentRequest._requestLevel + 1
+                self._requestLevel = gr.currentRequest._requestLevel + self._priority + 1
                 gr.lastRequest = self
                 if lr is not None:
                     lr._putOnTaskQueue()
 
             else:
                 # we are in main thread
-                self._requestLevel = 0
+                self._requestLevel = self._priority
 
     def _execute(self, gr):
         if self.destination is None:
