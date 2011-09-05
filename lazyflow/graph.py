@@ -1925,6 +1925,9 @@ class OperatorGroupGraph(object):
     def _notifyMemoryAllocation(self, cache, size):
         self._originalGraph._notifyMemoryAllocation(cache, size)
     
+    def _notifyFreeMemory(self, size):
+        self._originalGraph._notifyFreeMemory(size)
+    
     def _freeMemory(self, size):
         self._originalGraph._freeMemory(size)
     
@@ -2086,7 +2089,7 @@ class Worker(Thread):
                     if reqObject.canceled is False:
                         #TODO: isnt a comparison against currentRequestLevel better 
                         # then against 1 ? ...
-                        if self._hasSlept or reqObject._requestLevel > 0 or self.process.get_memory_info().rss < self.graph.softMaxMem:
+                        if self._hasSlept or reqObject._requestLevel > 0 or self.process.get_memory_info().vms < self.graph.softMaxMem:
                             gr = CustomGreenlet(reqObject._execute)
                             gr.thread = self
                             gr.switch( gr)
@@ -2095,7 +2098,7 @@ class Worker(Thread):
                         else:
                             self.graph.tasks.put((prio,task)) #move task back to task queue
                             print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
-                            freesize = abs(self.process.get_memory_info().rss  - self.graph.softMaxMem)
+                            freesize = abs(self.process.get_memory_info().vms  - self.graph.softMaxMem)
                             self.graph._freeMemory(freesize * 3)                            
                             gc.collect()
                             self._hasSlept = True
@@ -2121,7 +2124,7 @@ class Graph(object):
         self._registeredCaches = deque()
         self._allocatedCaches = deque()
         self._usedCacheMemory = 0
-        
+        self._memAllocLock = threading.Lock()
         for i in xrange(self.numThreads):
             w = Worker(self)
             self.workers.append(w)
@@ -2129,7 +2132,7 @@ class Graph(object):
             self.freeWorkers.append(w)
     
     def _memoryUsage(self):
-        return self.process.get_memory_info().rss
+        return self.process.get_memory_info().vms
     
     def _registerCache(self, op):
         if op not in self._registeredCaches:
@@ -2137,46 +2140,69 @@ class Graph(object):
     
     def _notifyMemoryAllocation(self, cache, size):
         if self._usedCacheMemory + size > self.softCacheMem:
-            self._freeMemory(size*3) #leve a little room
-        
+            print "Graph._notifyMemoryAllocation: _usedCacheMemory + size = %f MB > softCacheMem = %f MB" \
+                  % ((self._usedCacheMemory + size)/1024.0**2, self.softCacheMem/1024.0**2)
+            self._freeMemory(size*3) #leave a little room
+        self._memAllocLock.acquire()
         self._usedCacheMemory += size
-        self._allocatedCaches.append(cache)
+        print "Graph._notifyMemoryAllocation: _usedCacheMemory      = %f MB" % ((self._usedCacheMemory)/1024.0**2,)
+        print "                               get_memory_info().vms = %f MB" % (self.process.get_memory_info().vms/1024.0**2,)
+
+        self._memAllocLock.release()
+        if cache not in self._allocatedCaches:
+            self._allocatedCaches.append(cache)
+    
+    
+    def _notifyFreeMemory(self, size):
+        self._memAllocLock.acquire()
+        self._usedCacheMemory -= size
+        print "Graph._notifyFreeMemory: freeing %f MB, now _usedCacheMemory = %f MB" % (size/1024.0**2, (self._usedCacheMemory)/1024.0**2,)
+        self._memAllocLock.release()
     
     def _freeMemory(self, size):
 
         freesize = size*3
         freesize = min(self.softCacheMem*0.5, freesize)
         freesize = max(freesize, self.softCacheMem * 0.2)
+        print "Graph._freeMemory: freesize = %f MB" % ((freesize)/1024.0**2,)
 
         freedMem = 0
         
-        usedMem = self._usedCacheMemory
-        
         while len(self._allocatedCaches) > 0:
-            if freedMem < freesize:
-                c = self._allocatedCaches.popleft()
-                freedMem += c._freeMemory()
+            if freedMem < freesize: #c._memorySize() > 1024
+                try:
+                    c = self._allocatedCaches.popleft()
+                except:
+                    c = None
+                if c is not None:
+                    if c._memorySize() > 1024:
+                    #FIXME: handle very small chunks
+                        freedMem += c._freeMemory()
+                    else:
+                        self._allocatedCaches.appendleft(c)
             else:
                 break
-        self._usedCacheMemory = usedMem - freedMem
+        self._memAllocLock.acquire()
+        self._usedCacheMemory = self._usedCacheMemory - freedMem
+        self._memAllocLock.release()
         gc.collect()
-        usedMem2 = self.process.get_memory_info().rss
-        print "GRAPH: freed memory", freedMem, "of ", usedMem
-        print "GRAPH: now truly using", usedMem2
+        usedMem2 = self.process.get_memory_info().vms
+        print "Graph._freeMemory: freed memory %f MB of get_memory_info().vms = %f MB" % (freedMem/1024.0**2, usedMem2/1024.0**2,)
 
     def _notifyMemoryHit(self):
         accesses = self._memoryAccessCounter.next()
         if accesses > 100:
             self._memoryAccessCounter = itertools.count() #reset counter
             # calculate the exponential moving average for the caches            
-            nbytes = 0            
+#            nbytes = 0            
             for c in self._registeredCaches:
                 ch = c._cacheHits
                 ch = ch * 0.8
                 c._cacheHits = ch
-                nbytes += c._memorySize()
+#                nbytes += c._memorySize()
             self._allocatedCaches = deque(sorted(self._allocatedCaches, key=lambda x: x._cacheHits))
-            self._usedCacheMemory = nbytes
+            
+#            self._usedCacheMemory = nbytes
             
     def putTask(self, reqObject):
         task = reqObject

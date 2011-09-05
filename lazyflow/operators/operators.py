@@ -308,21 +308,22 @@ class OpArrayCache(OpArrayPiper):
         self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
 #        for p in self._flatBlockIndices:
 #            self._blockQuery[p] = BlockQueue()
-        
-        
-                
+                 
         
     def _allocateCache(self):
         self._cacheLock.acquire()
-        mem = numpy.ndarray(self.shape, dtype = self.dtype)
-        print "OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes
-        self.graph._notifyMemoryAllocation(self, mem.nbytes)
-        if self._blockState is None:
-            self._allocateManagementStructures()
-        inputSlot = self.inputs["Input"]
-        self._cache = mem
+          
+        if self._cache is None or (self._cache.shape != self.shape):
+            mem = numpy.ndarray(self.shape, dtype = self.dtype)
+            print "OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes
+            self.graph._notifyMemoryAllocation(self, mem.nbytes)
+            if self._blockState is None:
+                self._allocateManagementStructures()
+            inputSlot = self.inputs["Input"]
+            self.graph._notifyFreeMemory(self._memorySize())
+            self._cache = mem
         self._cacheLock.release()
-        
+            
     def notifyConnect(self, slot):
         reconfigure = False
         if  self.inputs["fixAtCurrent"].connected():

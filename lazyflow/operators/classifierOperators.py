@@ -159,7 +159,7 @@ class OpTrainRandomForestBlocked(Operator):
             print featMatrix, labelsMatrix
             print featMatrix.shape, featMatrix.dtype
             print labelsMatrix.shape, labelsMatrix.dtype            
-            
+        assert RF is not None, "RF = %r" % RF    
         result[0]=RF
         
     def setInSlot(self, slot, key, value):
