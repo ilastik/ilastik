@@ -306,7 +306,7 @@ class Main(QMainWindow):
     def openFile(self):
         #FIXME: only take one file for now, more to come
         #fileName = QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Image Files (*.png *.jpg *.bmp *.tif *.tiff *.gif *.h5)")
-        fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy files (*.npy)")
+        fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy and h5 files (*.npy *.h5)")
         self._openFile(fileNames)
         
     def _openFile(self, fileNames):
