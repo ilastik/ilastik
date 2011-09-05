@@ -52,7 +52,7 @@ class Main(QMainWindow):
         self._colorTable16 = self._createDefault16ColorColorTable()
         
         #self.g = Graph(7, 2048*1024**2*5)
-        self.g = Graph(2, 2048*1024**2)
+        self.g = Graph(8, 18000*1024**2)
         self.fixableOperators = []
         
         self.featureDlg=None
@@ -252,8 +252,15 @@ class Main(QMainWindow):
             nclasses = self.labelListModel.rowCount()
             self.opPredict.inputs['LabelsCount'].setValue(nclasses)
             self.opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output']) 
-            self.opPredict.inputs['Image'].connect(self.opFeatureCache.outputs["Output"])  
-            
+            self.opPredict.inputs['Image'].connect(self.opPF.outputs["Output"])
+
+            pCache = OpBlockedArrayCache(self.g)
+            pCache.inputs["fixAtCurrent"].setValue(False)
+            pCache.inputs["innerBlockShape"].setValue((1,8,8,8,1))
+            pCache.inputs["outerBlockShape"].setValue((1,64,64,64,1))
+            pCache.inputs["Input"].connect(self.opPredict.outputs["PMaps"])
+            self.pCache = pCache
+  
             #add prediction results for all classes as separate channels
             for icl in range(nclasses):
                 self.addPredictionLayer(icl, self.labelListModel._labels[icl])
@@ -263,21 +270,15 @@ class Main(QMainWindow):
     def addPredictionLayer(self, icl, ref_label):
         
         selector=OpSingleChannelSelector(self.g)
-        selector.inputs["Input"].connect(self.opPredict.outputs['PMaps'])
+        selector.inputs["Input"].connect(self.pCache.outputs['Output'])
         selector.inputs["Index"].setValue(icl)
-        
-        opSelCache = OpBlockedArrayCache(self.g)
-        #opSelCache = OpArrayCache(self.g)
-        opSelCache.inputs["innerBlockShape"].setValue((1,8,8,8,1))
-        opSelCache.inputs["outerBlockShape"].setValue((1,64,64,64,1))
-        opSelCache.inputs["Input"].connect(selector.outputs["Output"])
-        
+                
         if self.checkInteractive.isChecked():
-            opSelCache.inputs["fixAtCurrent"].setValue(False)
+            self.pCache.inputs["fixAtCurrent"].setValue(False)
         else:
-            opSelCache.inputs["fixAtCurrent"].setValue(True)
+            self.pCache.inputs["fixAtCurrent"].setValue(True)
         
-        predictsrc = LazyflowSource(opSelCache.outputs["Output"][0])
+        predictsrc = LazyflowSource(selector.outputs["Output"][0])
         
         predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color, normalize = (0.0,1.0) )
         
@@ -295,7 +296,7 @@ class Main(QMainWindow):
         predictLayer.ref_object = ref_label
         #make sure that labels (index = 0) stay on top!
         self.layerstack.insert(1, predictLayer )
-        self.fixableOperators.append(opSelCache)
+        self.fixableOperators.append(self.pCache)
                
     def removePredictionLayer(self, ref_label):
         for il, layer in enumerate(self.layerstack):
@@ -326,6 +327,7 @@ class Main(QMainWindow):
         
         elif fExt=='.h5':
             readerNew=OpH5ReaderBigDataset(self.g)
+            readerCache = OpBlockedArrayCache(self.g)
             readerNew.inputs["Filenames"].setValue(fileNames)
             readerNew.inputs["hdf5Path"].setValue("volume/data")
             #Reader=OpH5Reader(self.g)
@@ -333,7 +335,14 @@ class Main(QMainWindow):
             #Reader.inputs["Filename"].setValue(str(fileName))
             #Reader.inputs["hdf5Path"].setValue("volume/data")
             self.inputProvider = OpArrayPiper(self.g)
+            
+#            readerCache.inputs["fixAtCurrent"].setValue(False)
+#            readerCache.inputs["innerBlockShape"].setValue((1,8,8,8,1))
+#            readerCache.inputs["outerBlockShape"].setValue((1,64,64,64,1))
+#            readerCache.inputs["Input"].connect(readerNew.outputs["Output"])
+
             self.inputProvider.inputs["Input"].connect(readerNew.outputs["Output"])
+            #self.inputProvider.inputs["Input"].connect(readerCache.outputs["Output"])
         else:
             print "not supported yet"
             return
@@ -420,7 +429,7 @@ class Main(QMainWindow):
         opFeatureCache = OpBlockedArrayCache(self.g)
         #opSelCache = OpArrayCache(self.g)
         opFeatureCache.inputs["innerBlockShape"].setValue((1,8,8,8,16))
-        opFeatureCache.inputs["outerBlockShape"].setValue((1,64,64,64,16))        
+        opFeatureCache.inputs["outerBlockShape"].setValue((1,64,64,64,64))
         opFeatureCache.inputs["Input"].connect(opPF.outputs["Output"])
         opFeatureCache.inputs["fixAtCurrent"].setValue(False)  
         self.opFeatureCache=opFeatureCache
