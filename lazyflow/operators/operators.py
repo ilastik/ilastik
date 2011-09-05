@@ -26,7 +26,7 @@ except:
     print "#                                                            #"
     print "##############################################################"
     
-class OpArrayPiper(Operator):
+class OpArrayPiper(Operator): 
     name = "ArrayPiper"
     description = "simple piping operator"
        
@@ -298,16 +298,16 @@ class OpArrayCache(OpArrayPiper):
         _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
 
          
-        self._blockNumbers = _blockNumbers
-        self._blockIndices = _blockIndices
-        
+#        self._blockNumbers = _blockNumbers
+#        self._blockIndices = _blockIndices
+#        
                             #TODO: introduce constants for readability
                             #0 is "in process"
         self._blockState[:]= 1 #this is the dirty state
         self._dirtyState = 2 #this is the clean state
         
         # allocate queryArray object
-        self._flatBlockIndices =  self._blockIndices[:]
+        self._flatBlockIndices =  _blockIndices[:]
         self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
 #        for p in self._flatBlockIndices:
 #            self._blockQuery[p] = BlockQueue()
@@ -769,10 +769,10 @@ if has_blist:
         
                  
                 self._blockNumbers = _blockNumbers
-                self._blockIndices = _blockIndices
+                #self._blockIndices = _blockIndices
                 
                 # allocate queryArray object
-                self._flatBlockIndices =  self._blockIndices[:]
+                self._flatBlockIndices =  _blockIndices[:]
                 self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
             
                 
@@ -981,10 +981,10 @@ class OpBlockedArrayCache(OperatorGroup):
                 _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
                     
                 self._blockNumbers = _blockNumbers
-                self._blockIndices = _blockIndices
+#                self._blockIndices = _blockIndices
             
                 # allocate queryArray object
-                self._flatBlockIndices =  self._blockIndices[:]
+                self._flatBlockIndices =  _blockIndices[:]
                 self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)     
                     
                 self._opSub_list = {}

@@ -2098,8 +2098,8 @@ class Worker(Thread):
                         else:
                             self.graph.tasks.put((prio,task)) #move task back to task queue
                             print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
-                            freesize = abs(self.process.get_memory_info().vms  - self.graph.softMaxMem)
-                            self.graph._freeMemory(freesize * 3)                            
+                            #freesize = abs(self.process.get_memory_info().vms  - self.graph.softMaxMem)
+                            #self.graph._freeMemory(freesize * 3)                            
                             gc.collect()
                             self._hasSlept = True
                             time.sleep(4.0)
@@ -2120,7 +2120,7 @@ class Graph(object):
         
         self._memoryAccessCounter = itertools.count()
         self.softMaxMem = softMaxMem # in bytes
-        self.softCacheMem = softMaxMem * 0.5
+        self.softCacheMem = softMaxMem * 0.3
         self._registeredCaches = deque()
         self._allocatedCaches = deque()
         self._usedCacheMemory = 0
@@ -2191,13 +2191,13 @@ class Graph(object):
 
     def _notifyMemoryHit(self):
         accesses = self._memoryAccessCounter.next()
-        if accesses > 100:
+        if accesses > 20:
             self._memoryAccessCounter = itertools.count() #reset counter
             # calculate the exponential moving average for the caches            
 #            nbytes = 0            
             for c in self._registeredCaches:
                 ch = c._cacheHits
-                ch = ch * 0.8
+                ch = ch * 0.2
                 c._cacheHits = ch
 #                nbytes += c._memorySize()
             self._allocatedCaches = deque(sorted(self._allocatedCaches, key=lambda x: x._cacheHits))
