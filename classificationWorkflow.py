@@ -465,10 +465,10 @@ class Main(QMainWindow):
     
     def _createDefault16ColorColorTable(self):
         c = []
-        c.append(QColor(255, 0, 0))
-        c.append(QColor(0, 255, 0))
         c.append(QColor(0, 0, 255))
         c.append(QColor(255, 255, 0))
+        c.append(QColor(255, 0, 0))
+        c.append(QColor(0, 255, 0))
         c.append(QColor(0, 255, 255))
         c.append(QColor(255, 0, 255))
         c.append(QColor(255, 105, 180)) #hot pink
