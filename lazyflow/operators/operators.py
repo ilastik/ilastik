@@ -10,7 +10,7 @@ import vigra
 import copy
 import gc
 import weakref
-from threading import current_thread, Lock
+from threading import current_thread, Lock, RLock
 import generic
 from lazyflow.graph import OperatorGroup
 
@@ -238,7 +238,7 @@ class OpArrayCache(OpArrayPiper):
         self._dirtyState = None
         self._fixed = False
         self._cache = None
-        self._lock = Lock()
+        self._lock = RLock()
         self._cacheLock = Lock()
         self._lazyAlloc = True
         self._cacheHits = 0
@@ -266,8 +266,11 @@ class OpArrayCache(OpArrayPiper):
                 #referrers = gc.get_referrers(self._cache)
                 #for r in referrers:
                 #    print "referrer: ", id(r), type(r)  
+                self._lock.acquire()
+                self._blockState[:] = 1
                 del self._cache
                 self._cache = None
+                self._lock.release()
         self._cacheLock.release()   
         return freed
         
@@ -482,7 +485,7 @@ class OpArrayCache(OpArrayPiper):
             res = req.wait()
 
         # indicate the finished inprocess state
-        if not self._fixed:        
+        if not self._fixed and temp[0] is False:        
             self._lock.acquire()
             blockSet[:] = fastWhere(cond, 2, blockSet, numpy.uint8)
             self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)                       
@@ -809,8 +812,8 @@ if has_blist:
                 blockStop = (1.0 * stop / self._blockShape).ceil()
                 blockKey = roiToSlice(blockStart,blockStop)
                 innerBlocks = self._blockNumbers[blockKey]
+                print "OpBlockedSparseLabelArray %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))    
                 for b_ind in innerBlocks.ravel():
-                    
                     #which part of the original key does this block fill?
                     offset = self._blockShape*self._flatBlockIndices[b_ind]
                     bigstart = numpy.maximum(offset, start)
@@ -1004,7 +1007,7 @@ class OpBlockedArrayCache(OperatorGroup):
 #            self._cache_list[b_num].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
            
     def getOutSlot(self, slot, key, result):
-
+        
         #find the block key
         start, stop = sliceToRoi(key, self.shape)
         blockStart = numpy.floor(1.0 * start / self._blockShape)
@@ -1013,9 +1016,11 @@ class OpBlockedArrayCache(OperatorGroup):
         blockKey = roiToSlice(blockStart,blockStop)
         innerBlocks = self._blockNumbers[blockKey]
         result[:] = 0
+
+        print "OpSparseArrayCache %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))    
+
         
         for b_ind in innerBlocks.ravel():
-                
             #which part of the original key does this block fill?
             offset = self._blockShape*self._flatBlockIndices[b_ind]
             bigstart = numpy.maximum(offset, start)
