@@ -119,7 +119,8 @@ class Main(QMainWindow):
         self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
         self.StartClassificationButton.clicked.connect(self.startClassification)
         
-        self.StartClassificationButton.setEnabled(True)
+        self.StartClassificationButton.setEnabled(False)
+        self.checkInteractive.setEnabled(False)
         
         self.checkInteractive.toggled.connect(self.toggleInteractive)   
         self._initFeatureDlg()
@@ -243,6 +244,8 @@ class Main(QMainWindow):
             #add prediction results for all classes as separate channels
             for icl in range(nclasses):
                 self.addPredictionLayer(icl, self.labelListModel._labels[icl])
+        self.StartClassificationButton.setEnabled(False)
+        self.checkInteractive.setEnabled(True)
                                     
     def addPredictionLayer(self, icl, ref_label):
         
@@ -454,8 +457,10 @@ class Main(QMainWindow):
     
     
     def onFeatureButtonClicked(self):
-        self.StartClassificationButton.setEnabled(True)
         self.featureDlg.show()
+        def onDlgAccepted():
+            self.StartClassificationButton.setEnabled(True)
+        self.featureDlg.accepted.connect(onDlgAccepted)
     
     def _onFeaturesChosen(self):
         selectedFeatures = self.featureDlg.featureTableWidget.createSelectedFeaturesBoolMatrix()
