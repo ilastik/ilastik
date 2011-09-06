@@ -1017,7 +1017,7 @@ class MultiInputSlot(object):
         answer = True
         if self._value is None and self.partner is None:
             answer = False
-        if answer is False:
+        if answer is False and len(self.inputSlots) > 0:
             answer = True
             for s in self.inputSlots:
                 if s.connected() is False:
@@ -1056,12 +1056,13 @@ class MultiInputSlot(object):
                 self.connectOk(self.partner)
                 
                 # create new self.inputSlots for each outputSlot 
-                # of our partner   
+                # of our partner 
                 if len(self) != len(partner):
                     self.resize(len(partner))
+                    
                 for i,p in enumerate(self.partner):
                     self.partner[i]._connect(self[i])
-
+                
                 self.operator._notifyConnect(self)
                 self._checkNotifyConnectAll()
                 
