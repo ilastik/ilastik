@@ -242,6 +242,147 @@ class OpPixelFeatures(OperatorGroup):
         return outputs
 
 
+
+class OpPixelFeaturesPresmoothed(OperatorGroup):
+    name="OpPixelFeaturesPresmoothed"
+    category = "Vigra filter"
+    
+    inputSlots = [MultiInputSlot("Input", level = 1), MultiInputSlot("inputSigmas", level = 1), InputSlot("Matrix"), InputSlot("Scales")]
+    outputSlots = [OutputSlot("Output"), OutputSlot("ArrayOfOperators")]
+    
+    def _createInnerOperators(self):
+        # this method must setup the
+        # inner operators and connect them (internally)
+        
+        self.source = OpArrayPiper(self.graph)
+        
+        self.stacker = OpMultiArrayStacker(self.graph)
+        
+        self.multi = Op20ToMulti(self.graph)
+        
+        
+        self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
+
+        self._inputSigmas = []
+        self._sigma = 0
+       
+           
+    def _bestIndexForScale(self, scale):
+        i = 0
+        while(i < len(self._inputSigmas) and self._inputSigmas[i] < scale):          
+            i += 1
+        
+        bestIndex = i-1
+        bestInputSigma = scale - self._inputSigmas[bestIndex]
+        return bestIndex, bestInputSigma         
+       
+    def notifyConnectAll(self):
+
+        self._inputSigmas = []            
+        for i,s in enumerate(self.inputs["inputSigmas"]):
+            self._inputSigmas.append(s.value)
+            
+
+        numChannels  = 1
+        
+
+        inputSlot = self.inputs["Input"][0]
+        if inputSlot.axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
+            channelIndex = inputSlot.axistags.channelIndex
+            numChannels = inputSlot.shape[channelIndex]
+            inShapeWithoutChannels = inputSlot.shape[:-1]
+        else:
+            inShapeWithoutChannels = inputSlot.shape
+                            
+
+        self.stacker.inputs["Images"].disconnect()
+        self.scales = self.inputs["Scales"].value
+        self.matrix = self.inputs["Matrix"].value 
+        
+        if type(self.matrix)!=numpy.ndarray:
+          print "Please input a numpy ndarray"
+          raise
+        
+        dimCol = len(self.scales)
+        dimRow = self.matrix.shape[0]
+        
+        assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same"
+        assert dimRow==4, "Right now the features are fixed"
+
+        oparray = []
+        for j in range(dimCol):
+            oparray.append([])
+
+        i = 0
+        for j in range(dimCol):
+            oparray[i].append(OpGaussianSmoothing(self.graph))
+            bestIndex, bestSigma = self._bestIndexForScale(self.scales[j])
+            oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"][bestIndex])
+            oparray[i][j].inputs["sigma"].setValue(bestSigma)
+            print "OpPixelFeaturesPresmoothed : selected index %d with scale %f for scale %d, new sigma: %f" %(bestIndex,self._inputSigmas[bestIndex],self.scales[j],bestSigma)
+        i = 1
+        for j in range(dimCol):
+            oparray[i].append(OpLaplacianOfGaussian(self.graph))
+            bestIndex, bestSigma = self._bestIndexForScale(self.scales[j])
+            oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"][bestIndex])
+            oparray[i][j].inputs["scale"].setValue(bestSigma)
+        i = 2
+        for j in range(dimCol):
+            oparray[i].append(OpHessianOfGaussian(self.graph))
+            bestIndex, bestSigma = self._bestIndexForScale(self.scales[j])
+            oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"][bestIndex])
+            oparray[i][j].inputs["sigma"].setValue(bestSigma)
+        i = 3
+        for j in range(dimCol):   
+            oparray[i].append(OpHessianOfGaussianEigenvalues(self.graph))
+            bestIndex, bestSigma = self._bestIndexForScale(self.scales[j])
+            oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"][bestIndex])
+            oparray[i][j].inputs["scale"].setValue(bestSigma)
+        
+        self.outputs["ArrayOfOperators"][0] = oparray
+        
+        #disconnecting all Operators
+        for i in range(dimRow):
+            for j in range(dimCol):
+                #print "Disconnect", (i*dimRow+j)
+                self.multi.inputs["Input%02d" %(i*dimRow+j)].disconnect() 
+        
+        #connect individual operators
+        for i in range(dimRow):
+            for j in range(dimCol):
+                val=self.matrix[i,j]
+                if val:
+                    #print "Connect", (i*dimRow+j)
+                    self.multi.inputs["Input%02d" %(i*dimRow+j)].connect(oparray[i][j].outputs["Output"])
+        
+        #additional connection with FakeOperator
+        if (self.matrix==0).all():
+            fakeOp = OpGaussianSmoothing(self.graph)
+            fakeOp.inputs["Input"].connect(self.source.outputs["Output"])
+            fakeOp.inputs["sigma"].setValue(10)
+            self.multi.inputs["Input%02d" %(i*dimRow+j+1)].connect(fakeOp.outputs["Output"])
+            self.multi.inputs["Input%02d" %(i*dimRow+j+1)].disconnect() 
+            self.stacker.outputs["Output"].shape=()
+            return
+     
+        
+        index = len(self.source.outputs["Output"][0].shape) - 1
+        self.stacker.inputs["AxisFlag"].setValue('c')
+        self.stacker.inputs["AxisIndex"].setValue(index)
+        self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
+            
+    
+    def getInnerInputs(self):
+        inputs = {}
+        inputs["Input"] = self.source.inputs["Input"]
+        return inputs
+        
+    def getInnerOutputs(self):
+        outputs = {}
+        outputs["Output"] = self.stacker.outputs["Output"]
+        return outputs
+
+
 def getAllExceptAxis(ndim,index,slicer):
     res= [slice(None, None, None)] * ndim
     res[index] = slicer
@@ -444,7 +585,6 @@ def coherenceOrientationOfStructureTensor(image,sigma0, sigma1, out = None):
     
     
     return res
-
 
 
 
