@@ -51,8 +51,8 @@ class Main(QMainWindow):
         self.opTrain = None
         self._colorTable16 = self._createDefault16ColorColorTable()
         
-        #self.g = Graph(7, 2048*1024**2*5)
-        self.g = Graph(8, 18000*1024**2)
+        self.g = Graph(7, 2048*1024**2*5)
+        #self.g = Graph(1, 18000*1024**2)
         self.fixableOperators = []
         
         self.featureDlg=None
@@ -322,7 +322,8 @@ class Main(QMainWindow):
             self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
             self.inputProvider = OpArrayPiper(self.g)
             self.inputProvider.inputs["Input"].setValue(self.raw)
-        
+            import copy,vigra
+            self.inputProvider.outputs["Output"].axistags=copy.copy(vigra.defaultAxistags('txyzc'))
         elif fExt=='.h5':
             readerNew=OpH5ReaderBigDataset(self.g)
             readerCache = OpBlockedArrayCache(self.g)
