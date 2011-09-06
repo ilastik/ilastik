@@ -69,9 +69,7 @@ class Main(QMainWindow):
         #
         # if the filename was specified on command line, load it
         #
-        arguments=sys.argv
-
-        if len(arguments) >= 2:
+        if len(sys.argv) >= 2:
             def loadFile():
                 self._openFile(sys.argv[1:])
             QTimer.singleShot(0, loadFile)
@@ -155,16 +153,10 @@ class Main(QMainWindow):
                 mexBox.exec_()
                 return
                 
-        if checked:
-            self.AddLabelButton.setEnabled(False)
-            self.SelectFeaturesButton.setEnabled(False)
-            for o in self.fixableOperators:
-                o.inputs["fixAtCurrent"].setValue(False)
-        else:
-            self.AddLabelButton.setEnabled(True)
-            self.SelectFeaturesButton.setEnabled(True)
-            for o in self.fixableOperators:
-                o.inputs["fixAtCurrent"].setValue(True)
+        self.AddLabelButton.setEnabled(not checked)
+        self.SelectFeaturesButton.setEnabled(not checked)
+        for o in self.fixableOperators:
+            o.inputs["fixAtCurrent"].setValue(not checked)
                 
         self.editor.scheduleSlicesRedraw()
         
