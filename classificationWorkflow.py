@@ -56,12 +56,10 @@ class Main(QMainWindow):
         self.fixableOperators = []
         
         self.featureDlg=None
-        self.featScalesList=[.1,.2,1,2]
         
-        
-        
-        
-        
+        #old ilastik:
+        #self.groupScaleNames = ['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
+        self.featScalesList=[0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
         
         
         self.initUic()
