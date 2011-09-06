@@ -1,3 +1,4 @@
+import lazyflow
 import numpy
 
 from lazyflow.graph import Operators, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
@@ -19,12 +20,13 @@ try:
     has_blist = True
 except:
     has_blist = False
-    print "##############################################################"
-    print "#                                                            #"
-    print "#           please install blist (easy_install blist)        #"
-    print "#           otherwise OpSparseLabelArray will be missing     #"
-    print "#                                                            #"
-    print "##############################################################"
+    err =  "##############################################################"
+    err += "#                                                            #"
+    err += "#           please install blist (easy_install blist)        #"
+    err += "#           otherwise OpSparseLabelArray will be missing     #"
+    err += "#                                                            #"
+    err += "##############################################################"
+    raise RuntimeError(err)
     
 class OpArrayPiper(Operator): 
     name = "ArrayPiper"
@@ -66,7 +68,7 @@ class OpMultiArrayPiper(Operator):
     
     def notifyConnectAll(self):
         inputSlot = self.inputs["MultiInput"]
-        #print "OpMultiArrayPiper notifyConnect"
+        
         self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
         for i,islot in enumerate(self.inputs["MultiInput"]):
             oslot = self.outputs["MultiOutput"][i]
@@ -76,7 +78,6 @@ class OpMultiArrayPiper(Operator):
                 oslot._axistags = islot.axistags
     
     def notifySubConnect(self, slots, indexes):
-        #print "OpMultiArrayPiper notifySubConnect"
         self.notifyConnectAll()
 
     def notifySubSlotRemove(self, slots, indexes):
@@ -108,7 +109,7 @@ class OpMultiMultiArrayPiper(Operator):
     
     def notifyConnectAll(self):
         inputSlot = self.inputs["MultiInput"]
-        #print "OpMultiArrayPiper notifyConnect", inputSlot
+
         self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
         for i,mislot in enumerate(self.inputs["MultiInput"]):
             self.outputs["MultiOutput"][i].resize(len(mislot))
@@ -120,11 +121,8 @@ class OpMultiMultiArrayPiper(Operator):
                     oslot._axistags = islot.axistags
             
     def notifySubConnect(self, slots, indexes):
-        #print "OpMultiArrayPiper notifySubConnect", slots, indexes
         self.notifyConnectAll()
         
-
-    
     def getOutSlot(self, slot, key, result):
         raise RuntimeError("OpMultiMultiPipler does not support getOutSlot")
 
@@ -147,9 +145,7 @@ class OpMultiMultiArrayPiper(Operator):
 try:
     from  lazyflow.drtile import drtile
 except:
-    print "Error importing drtile, please use cmake to compile lazyflow.drtile !"
-    import sys    
-    sys.exit(1)
+    raise RuntimeError("Error importing drtile, please use cmake to compile lazyflow.drtile !")
 
 class BlockQueue(object):
     __slots__ = ["queue","lock"]
@@ -259,13 +255,11 @@ class OpArrayCache(OpArrayPiper):
                 self._cache.resize((1,))
             except ValueError:
                 freed = 0
-                print "OpArrayCache: freeing failed due to view references"
+                print "WARN: OpArrayCache: freeing failed due to view references"
             if freed > 0:
-                print "OpArrayCache: freed cache of shape", fshape
-                #gc.collect()
-                #referrers = gc.get_referrers(self._cache)
-                #for r in referrers:
-                #    print "referrer: ", id(r), type(r)  
+                if lazyflow.verboseMemory:
+                    print "OpArrayCache: freed cache of shape", fshape
+
                 self._lock.acquire()
                 self._blockState[:] = 1
                 del self._cache
@@ -284,7 +278,8 @@ class OpArrayCache(OpArrayPiper):
 
         self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
         
-        print "Configured OpArrayCache with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
+        if lazyflow.verboseMemory:
+            print "Configured OpArrayCache with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
 
         # if the entry in _dirtyArray differs from _dirtyState
         # the entry is considered dirty
@@ -318,7 +313,8 @@ class OpArrayCache(OpArrayPiper):
           
         if self._cache is None or (self._cache.shape != self.shape):
             mem = numpy.ndarray(self.shape, dtype = self.dtype)
-            print "OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes
+            if lazyflow.verboseMemory:
+                print "OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes
             self.graph._notifyMemoryAllocation(self, mem.nbytes)
             if self._blockState is None:
                 self._allocateManagementStructures()
@@ -352,9 +348,6 @@ class OpArrayCache(OpArrayPiper):
             
     def notifyDirty(self, slot, key):
         if not self._fixed:
-            #print
-            #print "OpArrayCache : DIRTY", key
-            #print
             start, stop = sliceToRoi(key, self.shape)
             
             self._lock.acquire()
@@ -400,30 +393,16 @@ class OpArrayCache(OpArrayPiper):
         
         cond = (blockSet == 1)
         tileWeights = fastWhere(cond, 1, 128**3, numpy.uint32)       
-        #tileWeights = numpy.where(cond, 1, 128**3)       
         trueDirtyIndices = numpy.nonzero(cond)
-
                     
-        #tileWeights = tileWeights.astype(numpy.uint32)
-        #print "calling drtile...", tileWeights.dtype
         tileArray = drtile.test_DRTILE(tileWeights, 128**3).swapaxes(0,1)
-        
-        #print "finished calling drtile."
-        #print "shape of the dirty tile array:", tileArray.shape
         
         dirtyRois = []
         half = tileArray.shape[0]/2
         dirtyRequests = []
-#        print "Original Key %r, split into %d requests" % (key, tileArray.shape[1])
-#        print self._blockState[blockKey][trueDirtyIndices]
-#        print "Ranges:"
-#        print "TileArray:", tileArray
-
 
         for i in range(tileArray.shape[1]):
 
-            #drStart2 = (tileArray[half-1::-1,i] + blockStart)
-            #drStop2 = (tileArray[half*2:half-1:-1,i] + blockStart)
             drStart3 = tileArray[:half,i]
             drStop3 = tileArray[half:,i]
             drStart2 = drStart3 + blockStart
@@ -441,8 +420,6 @@ class OpArrayCache(OpArrayPiper):
             
             if not self._fixed:
                 dirtyRois.append([drStart,drStop])
-                #print drStart2, drStop2, blockStart, self._blockShape
-                #print "Request %d: %r" %(i,key)
     
                 req = self.inputs["Input"][key].writeInto(self._cache[key])
                 
@@ -497,7 +474,6 @@ class OpArrayCache(OpArrayPiper):
             req.wait()
         
         # finally, store results in result area
-        #print "Oparraycache debug",result.shape,self._cache[roiToSlice(start, stop)].shape
         self._lock.acquire()        
         if self._cache is not None:
             result[:] = self._cache[roiToSlice(start, stop)]
@@ -509,7 +485,6 @@ class OpArrayCache(OpArrayPiper):
         ch = self._cacheHits
         ch += 1
         self._cacheHits = ch
-        #print "OpArrayCache : SetInSlot", key
         start, stop = sliceToRoi(key, self.shape)
         blockStart = numpy.ceil(1.0 * start / self._blockShape)
         blockStop = numpy.floor(1.0 * stop / self._blockShape)
@@ -757,7 +732,8 @@ if has_blist:
         
                 self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
                 
-                print "Reconfigured Sparse labels with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
+                if lazyflow.verboseMemory:
+                    print "Reconfigured Sparse labels with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
                 #FIXME: we don't really need this blockState thing
                 self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
                 
@@ -800,7 +776,6 @@ if has_blist:
                     
         def getOutSlot(self, slot, key, result):
             self.lock.acquire()
-            #print "AAAAAAAAAAAAAAAAAAAA, request ", key, "from blocked labels", len(self._labelers), "filled so far"
             assert(self.inputs["eraser"].connected() == True and self.inputs["shape"].connected() == True and self.inputs["blockShape"].connected()==True), \
             "OpDenseSparseArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % \
             (self.inputs["eraser"].connected(), self.inputs["shape"].connected())
@@ -812,7 +787,8 @@ if has_blist:
                 blockStop = (1.0 * stop / self._blockShape).ceil()
                 blockKey = roiToSlice(blockStart,blockStop)
                 innerBlocks = self._blockNumbers[blockKey]
-                print "OpBlockedSparseLabelArray %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))    
+                if lazyflow.verboseRequests:
+                    print "OpBlockedSparseLabelArray %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))    
                 for b_ind in innerBlocks.ravel():
                     #which part of the original key does this block fill?
                     offset = self._blockShape*self._flatBlockIndices[b_ind]
@@ -825,7 +801,6 @@ if has_blist:
                     bigkey = roiToSlice(bigstart-start, bigstop-start)
                     smallkey = roiToSlice(smallstart, smallstop)
                     if not b_ind in self._labelers:
-                        #print "returning zeros from block ", b_ind, "for key ", bigkey
                         result[bigkey]=0
                     else:
                         result[bigkey]=self._labelers[b_ind]._denseArray[smallkey]
@@ -842,30 +817,12 @@ if has_blist:
                 #we only return all non-zero blocks, no keys
                 slicelist = []
                 for b_ind in self._labelers.keys():
-                    #print "labeler exists!", b_ind
                     offset = self._blockShape*self._flatBlockIndices[b_ind]
                     bigstart = offset
                     bigstop = numpy.minimum(offset + self._blockShape, self.shape)                    
                     bigkey = roiToSlice(bigstart, bigstop)
                     slicelist.append(bigkey)
                 
-                
-#                slicelist = []
-#                print "requesting key", key
-#                start, stop = sliceToRoi(key, self.shape)
-#                blockStart = (1.0 * start / self._blockShape).floor()
-#                blockStop = (1.0 * stop / self._blockShape).ceil()
-#                blockKey = roiToSlice(blockStart,blockStop)
-#                innerBlocks = self._blockNumbers[blockKey]
-#                for b_ind in innerBlocks.ravel():
-#                    print "b_ind", b_ind
-#                    if b_ind in self._labelers:
-#                        print "labeler exists", b_ind
-#                        offset = self._blockShape*self._flatBlockIndices[b_ind]
-#                        bigstart = numpy.maximum(offset, start)
-#                        bigstop = numpy.minimum(offset + self._blockShape, stop)                    
-#                        bigkey = roiToSlice(bigstart, bigstop)
-#                        slicelist.append(bigkey)
                 result[0] = slicelist
                 
                 
@@ -873,45 +830,29 @@ if has_blist:
             return result
             
         def setInSlot(self, slot, key, value):
-            #print "setting inslot, key:", key, "value", value.shape
             start, stop = sliceToRoi(key, self.shape)
             
-            #print "start, stop:", start, stop, "blockshape:", self._blockShape
             blockStart = (1.0 * start / self._blockShape).floor()
             blockStop = (1.0 * stop / self._blockShape).ceil()
             blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
             blockKey = roiToSlice(blockStart,blockStop)
-            #print "blockStop:", blockStop
-            #blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
-            #print "blockStop2:", blockStop
-            #blockKey = roiToSlice(blockStart,blockStop)
             
             #FIXME: this assumes, that key passes 0 at singleton dimensions
             #FIXME: like volumeeditor does.
             nonsingletons = [i for i in range(len(key)) if key[i]!=0]
             
-        
-            #print "good dimensions:", nonsingletons
             innerBlocks = self._blockNumbers[blockKey]
-            #print "innerBlocks:"
             for b_ind in innerBlocks.ravel():
 
                 offset = self._blockShape*self._flatBlockIndices[b_ind]
-                #print "offset:", offset
                 bigstart = numpy.maximum(offset, start)
                 bigstop = numpy.minimum(offset + self._blockShape, stop)
-                #print "bigstart:", bigstart, "bigstop:", bigstop
                 smallstart = bigstart-offset
                 smallstop = bigstop - offset
-                #print "smallstart:", smallstart, "smallstop", smallstop
                 bigkey = roiToSlice(bigstart-start, bigstop-start)
                 smallkey = roiToSlice(smallstart, smallstop)
                 shortbigkey = [bigkey[i] for i in nonsingletons]
-                #print "smallkey", smallkey
-                #print "bigkey", bigkey
-                #print "shortbigkey", shortbigkey, "value", value.shape
                 if not b_ind in self._labelers:
-                    #print "allocating labeler for b_ind", b_ind
                     self._labelers[b_ind]=OpSparseLabelArray(self.graph)
                     self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
                     self._labelers[b_ind].inputs["eraser"].setValue(self.inputs["eraser"])
@@ -1019,9 +960,9 @@ class OpBlockedArrayCache(OperatorGroup):
         innerBlocks = self._blockNumbers[blockKey]
         result[:] = 0
 
-        print "OpSparseArrayCache %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))    
+        if lazyflow.verboseRequests:
+            print "OpSparseArrayCache %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))    
 
-        
         for b_ind in innerBlocks.ravel():
             #which part of the original key does this block fill?
             offset = self._blockShape*self._flatBlockIndices[b_ind]

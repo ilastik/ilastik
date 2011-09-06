@@ -47,9 +47,7 @@ class OpMultiArrayStackerOld(Operator):
             if inSlot.partner is not None:
                 req = None
                 if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                    #print "########################", inSlot.shape, inSlot.axistags
                     if cnt >= start[-1] and start[-1] + written < stop[-1]:
-                        #print "OOOOOOOOOOOOOOOOO1", i, cnt, start[-1], stop[-1], result[..., cnt].shape
                         req = inSlot[key].writeInto(result[..., cnt])
                         written += 1
                     cnt += 1
@@ -66,7 +64,6 @@ class OpMultiArrayStackerOld(Operator):
                             end -= cnt + end - stop[-1]
                         key_ = key + (slice(begin,end,None),)
 
-                        #print "OOOOOOOOOOOOOO2", i, cnt, start[-1],stop[-1],inSlot.shape[-1], begin, end, key_, result.shape, result[...,written:written+end-begin].shape, written,written+end-begin
                         assert (end <= numpy.array(inSlot.shape)).all()
                         assert (begin < numpy.array(inSlot.shape)).all(), "begin : %r, shape: %r" % (begin, inSlot.shape)
                         req = inSlot[key_].writeInto(result[...,written:written+end-begin])
@@ -184,8 +181,7 @@ class OpPixelFeatures(OperatorGroup):
             self.matrix = self.inputs["Matrix"].value 
             
             if type(self.matrix)!=numpy.ndarray:
-              print "Please input a numpy ndarray"
-              raise
+                raise RuntimeError("OpPixelFeatures: Please input a numpy.ndarray as 'Matrix'")
             
             dimCol = len(self.scales)
             dimRow = self.matrix.shape[0]
@@ -223,7 +219,6 @@ class OpPixelFeatures(OperatorGroup):
             #disconnecting all Operators
             for i in range(dimRow):
                 for j in range(dimCol):
-                    #print "Disconnect", (i*dimRow+j)
                     self.multi.inputs["Input%02d" %(i*dimRow+j)].disconnect() 
             
             #connect individual operators
@@ -231,7 +226,6 @@ class OpPixelFeatures(OperatorGroup):
                 for j in range(dimCol):
                     val=self.matrix[i,j]
                     if val:
-                        #print "Connect", (i*dimRow+j)
                         self.multi.inputs["Input%02d" %(i*dimRow+j)].connect(oparray[i][j].outputs["Output"])
             
             #additional connection with FakeOperator
@@ -320,8 +314,7 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
         self.matrix = self.inputs["Matrix"].value 
         
         if type(self.matrix)!=numpy.ndarray:
-          print "Please input a numpy ndarray"
-          raise
+          raise RuntimeError("OpPixelFeaturesPresmoothed: Please input a numpy.ndarray as 'Matrix'")
         
         dimCol = len(self.scales)
         dimRow = self.matrix.shape[0]
@@ -364,7 +357,6 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
         #disconnecting all Operators
         for i in range(dimRow):
             for j in range(dimCol):
-                #print "Disconnect", (i*dimRow+j)
                 self.multi.inputs["Input%02d" %(i*dimRow+j)].disconnect() 
         
         #connect individual operators
@@ -372,7 +364,6 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
             for j in range(dimCol):
                 val=self.matrix[i,j]
                 if val:
-                    #print "Connect", (i*dimRow+j)
                     self.multi.inputs["Input%02d" %(i*dimRow+j)].connect(oparray[i][j].outputs["Output"])
         
         #additional connection with FakeOperator
@@ -445,7 +436,6 @@ class OpBaseVigraFilter(OpArrayPiper):
         shape = self.outputs["Output"].shape
         
         axistags = self.inputs["Input"].axistags
-        #print "DUDE, " , axistags
         
         channelAxis=self.inputs["Input"].axistags.index('c')
         hasTimeAxis = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Time)
@@ -486,8 +476,6 @@ class OpBaseVigraFilter(OpArrayPiper):
             treadKey=list(readKey)
             treadKey.insert(channelAxis, slice(i,i+1,None))
             treadKey=tuple(treadKey)
-            #print readKey,'iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii'
-            #print treadKey, "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
             req = self.inputs["Input"][treadKey].allocate()
             t = req.wait()
             
@@ -517,9 +505,7 @@ class OpBaseVigraFilter(OpArrayPiper):
 
             
             for step,image in enumerate(t.timeIter()):
-                #print writeKey, 'EEEEEEEEEEEEEEEEEEEEEEEEE'
                 temp = self.vigraFilter(image, **kwparams)
-                #print type(temp), temp.axistags, temp.shape
                 temp=temp[writeKey]
                 nChannelAxis = channelAxis - 1
                 if timeAxis > channelAxis:
@@ -530,8 +516,6 @@ class OpBaseVigraFilter(OpArrayPiper):
                     tresKey  = getAllExceptAxis(temp.ndim, timeAxis, step)
                 else:
                     tresKey  = slice(None, None,None)
-                
-                #print tresKey, twriteKey, resultArea.shape, temp.shape
                 
                 resultArea[tresKey] = temp[twriteKey]
                  
@@ -557,10 +541,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         channelsPerChannel = self.resultingChannels()
         inShapeWithoutChannels.insert(channelIndex,numChannels * channelsPerChannel)
         self.outputs["Output"]._shape = tuple(inShapeWithoutChannels)
-        #print "HEREEEEEEEEEEEEEE", self.inputs["Input"].shape ,self.outputs["Output"]._shape
-        #print self.resultingChannels(), self.name
-        
-        #print self.outputs["Output"]._axistags
+
         if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
             self.outputs["Output"]._axistags.insertChannelAxis()
 
@@ -571,7 +552,7 @@ class OpBaseVigraFilter(OpArrayPiper):
 #difference of Gaussians
 def differenceOfGausssians(image,sigma0, sigma1, out = None):
     """ difference of gaussian function""" 
-    print "GUGE",image.shape, image.axistags, sigma0,sigma1       
+    print "differenceOfGausssians: shape=%r, axistags=%r, sigma0=%r, sigma1=%r" % (image.shape, image.axistags, sigma0, sigma1)     
     return (vigra.filters.gaussianSmoothing(image,sigma0)-vigra.filters.gaussianSmoothing(image,sigma1))
 
 
@@ -999,11 +980,7 @@ class OpH5WriterBigDataset(Operator):
         for s in pathElements[:-1]:
             g = g.create_group(s)
         
-        print self.inputs['Image'].shape
-        #FIXME:
-        #change that to the real shape after testing
         shape=self.inputs['Image'].shape
-        #shape = (1, 10, 10, 10, 1)
         
         self.d=g.create_dataset(pathElements[-1],shape=shape,dtype=numpy.float32, chunks=(1,128,128,1,1),\
                                 compression='gzip', compression_opts=4)
@@ -1085,8 +1062,7 @@ class OpH5ReaderBigDataset(Operator):
         if len(d.shape) == 5:
             axistags= vigra.VigraArray.defaultAxistags('txyzc')
         else:
-            print "Not implemented"
-            raise
+            raise RuntimeError("OpH5ReaderBigDataset: Not implemented for shape=%r" % d.shape)
         self.outputs["Output"]._axistags=axistags
             
         f.close()
@@ -1128,13 +1104,9 @@ class OpH5ReaderBigDataset(Operator):
             cs = numpy.array(chunks)
             
             error = numpy.sum(numpy.abs(diff -cs))
-            #print error
             if error<maxError:
                 index = i
                 maxError = error
-        
-#        print "best error", maxError
-#        print "selected chunking", self.ChunkList[index], "for request", diff
         
         result[:]=self.D[index][key]
         self._lock.release()
@@ -1182,9 +1154,7 @@ class OpH5ReaderSmoothedDataset(Operator):
                 self.outputs["Outputs"][i]._axistags=vigra.VigraArray.defaultAxistags('txyzc')
             
             else:
-                print "not implemented for non 5 d dataset due to non serialization of axistags"
-                raise
-    
+                raise RuntimeError("OpH5ReaderSmoothedDataset: not implemented for non 5d dataset due to non serialization of axistags")
         
     def getSubOutSlot(self, slots, indexes, key, result):
         

@@ -27,7 +27,7 @@ g.finalize()
 
 """
 
-
+import lazyflow
 import numpy
 import vigra
 import sys
@@ -551,8 +551,9 @@ class InputSlot(object):
         self.disconnect()
         if partner.level > 0:
             partner.disconnectSlot(self)
-            print "InputSlot", self.name, "of op", self.operator.name, self.operator
-            print "-> Wrapping operator because own level is 0 and partner is", partner.level
+            if lazyflow.verboseWrapping:
+                print "Operator [self=%r] '%s', slot '%s':" % (self.operator, self.operator.name, self.name)
+                print "  -> wrapping because operator.level=0 and partner.level=%d" % partner.level
             newop = OperatorWrapper(self.operator)
             newop.inputs[self.name].connect(partner)
             
@@ -579,23 +580,19 @@ class InputSlot(object):
         check that involves
         more then one slot
         """
-        if self.operator is not None:
-            ####self.operator.notifyConnect(self)
-            # check wether all slots are connected and notify operator            
-            if isinstance(self.operator,Operator):
-                allConnected = True
-                for slot in self.operator.inputs.values():
-                    if slot.connected() is False:
-                        allConnected = False
-                        break
-                if allConnected:
-                    self.operator._notifyConnectAll()
+        
+        assert self.operator is not None
+        
+        # check wether all slots are connected and notify operator            
+        if isinstance(self.operator,Operator):
+            allConnected = True
+            for slot in self.operator.inputs.values():
+                if slot.connected() is False:
+                    allConnected = False
+                    break
+            if allConnected:
+                self.operator._notifyConnectAll()
                 
-        else:
-            print "BBBBBBBBBBBBBBBBBBBBBBB operator is NONE", self.name
-
-
-       
     def disconnect(self):
         """
         Disconnect a InputSlot from its partner
@@ -842,12 +839,9 @@ class OutputSlot(object):
         return storage
 
     def __getitem__(self, key):
-        if self.shape is None:
-            print "______________________", self.name, self.operator
-            print self.shape
+        assert self.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
 
         #start, stop = sliceToRoi(key, self.shape)
-
         #assert numpy.min(start) >= 0, "Somebody is requesting shit from slot %s of operator %s (%r)" %(self.name, self.operator.name, self.operator)
         #assert (stop <= numpy.array(self.shape)).all(), "Somebody is requesting shit from slot %s of operator %s (%r) :  start: %r, stop %r, shape %r" %(self.name, self.operator.name, self.operator, start, stop, self.shape)
                 
@@ -1133,9 +1127,11 @@ class MultiInputSlot(object):
         try:
             index = self.inputSlots.index(inputSlot)
         except:
-            print self.name, self.operator.name, self.operator
-            print self.inputSlots
-            print self.partner
+            err =  "MultiInputSlot._removeInputSlot:"
+            err += "  name='%s', operator='%s', operator=%r" % (self.name, self.operator.name, self.operator)
+            err += "  inputSlots = %r" % (self.inputSlots,)
+            err += "  partner    = %r" % (self.partner,)
+            raise RuntimeError(str)
             sys.exit(1)
         inputSlot.disconnect()
         # notify parent operator of slot removal
@@ -1325,8 +1321,8 @@ class MultiOutputSlot(object):
         try:
             index = self.outputSlots.index(slots[0])
         except:
-            #print self.name, self.operator.name, self.operator, slots
-            raise
+            raise RuntimeError("MultiOutputSlot.getSubOutSlot: name=%r, operator.name=%r, slots=%r" % \
+                               (self.name, self.operator.name, self.operator, slots))
         return self.operator.getSubOutSlot((self,) + slots, (index,) + indexes, key, result)
     
     #TODO RENAME? createInstance
@@ -1576,7 +1572,8 @@ class OperatorWrapper(Operator):
             self.comprehensionCount = 0
             self.origInputs = self.operator.inputs.copy()
             self.origOutputs = self.operator.outputs.copy()
-            print "wrapping ", operator.name, operator
+            if lazyflow.verboseWrapping:
+                print "wrapping operator [self=%r] '%s'" % (operator, operator.name)
             
             self._inputSlots = []
             self._outputSlots = []
@@ -1650,12 +1647,11 @@ class OperatorWrapper(Operator):
                     needWrapping = True
                 
         if needWrapping is False:
-            print "Restoring original operator of ", self, self.name
-            #print self, self.name
+            if lazyflow.verboseWrapping:
+                print "Restoring original operator [self=%r] named '%s'" % (self, self.name)
             op = self
             while isinstance(op.operator, (OperatorWrapper)):
                 op = op.operator
-                #print op, op.name
             op.operator.outputs = op.origOutputs
             op.operator.inputs = op.origInputs
             op = op.operator
@@ -1687,7 +1683,8 @@ class OperatorWrapper(Operator):
         if self.operator.__class__ is not OperatorWrapper:
             opcopy = self.operator.__class__(self.graph, register = False)
         else:
-            print "creatInnerOperator OperatorWrapper"
+            if lazyflow.verboseWrapping:
+                print "_createInnerOperator OperatorWrapper"
             opcopy = OperatorWrapper(self.operator._createInnerOperator())
         return opcopy
     
@@ -1761,7 +1758,8 @@ class OperatorWrapper(Operator):
         for i,islot in enumerate(inputSlot):
             if islot.partner is not None:
                 self.innerOperators[i].inputs[inputSlot.name].connect(islot.partner)
-                print "Wrapped Op", self.name, "connected", i
+                if lazyflow.verboseWrapping:
+                    print "Wrapped Op", self.name, "connected", i
             elif islot._value is not None:
                 self.innerOperators[i].inputs[inputSlot.name].setValue(islot._value)
 
@@ -1866,7 +1864,6 @@ class OperatorWrapper(Operator):
 
     def getSubOutSlot(self, slots, indexes, key, result):
         if len(indexes) == 1:
-            #print "getSubOutSlot", indexes, slots
             return self.innerOperators[indexes[0]].getOutSlot(self.innerOperators[indexes[0]].outputs[slots[0].name], key, result)
         else:
             self.innerOperators[indexes[0]].getSubOutSlot(slots[1:], indexes[1:], key, result)
@@ -2062,8 +2059,6 @@ class Worker(Thread):
         self.number =  len(self.graph.workers)
         self.workAvailableEvent = Event()
         self.workAvailableEvent.clear()
-        #print "Initializing Worker #%d" % self.number
-        
     
     def signalWorkAvailable(self): 
         self.workAvailableEvent.set()
@@ -2108,9 +2103,6 @@ class Worker(Thread):
                             self._hasSlept = True
                             time.sleep(4.0)
     
-        #print "Finalized Worker"
-                
-    
 class Graph(object):
     def __init__(self, numThreads = 3, softMaxMem =  500*1024*1024):
         self.operators = []
@@ -2149,8 +2141,10 @@ class Graph(object):
             self._freeMemory(size*3) #leave a little room
         self._memAllocLock.acquire()
         self._usedCacheMemory += size
-        print "Graph._notifyMemoryAllocation: _usedCacheMemory      = %f MB" % ((self._usedCacheMemory)/1024.0**2,)
-        print "                               get_memory_info().vms = %f MB" % (self.process.get_memory_info().vms/1024.0**2,)
+        
+        if lazyflow.verboseMemory:
+            print "Graph._notifyMemoryAllocation: _usedCacheMemory      = %f MB" % ((self._usedCacheMemory)/1024.0**2,)
+            print "                               get_memory_info().vms = %f MB" % (self.process.get_memory_info().vms/1024.0**2,)
 
         self._memAllocLock.release()
         if cache not in self._allocatedCaches:
@@ -2160,7 +2154,8 @@ class Graph(object):
     def _notifyFreeMemory(self, size):
         self._memAllocLock.acquire()
         self._usedCacheMemory -= size
-        print "Graph._notifyFreeMemory: freeing %f MB, now _usedCacheMemory = %f MB" % (size/1024.0**2, (self._usedCacheMemory)/1024.0**2,)
+        if lazyflow.verboseMemory:
+            print "Graph._notifyFreeMemory: freeing %f MB, now _usedCacheMemory = %f MB" % (size/1024.0**2, (self._usedCacheMemory)/1024.0**2,)
         self._memAllocLock.release()
     
     def _freeMemory(self, size):
@@ -2168,7 +2163,8 @@ class Graph(object):
         freesize = size*3
         freesize = min(self.softCacheMem*0.5, freesize)
         freesize = max(freesize, self.softCacheMem * 0.2)
-        print "Graph._freeMemory: freesize = %f MB" % ((freesize)/1024.0**2,)
+        if lazyflow.verboseMemory:
+            print "Graph._freeMemory: freesize = %f MB" % ((freesize)/1024.0**2,)
 
         freedMem = 0
         

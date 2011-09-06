@@ -18,9 +18,11 @@ except:
 
     ops = itersubclasses(Operator)
     print "Loading default Operators..."
-    for o in ops:
-        print "    Adding", o.__name__
+    for i, o in enumerate(ops):
+        sys.stdout.write(o.__name__)
+        sys.stdout.write(" ")
         globals()[o.__name__] = o
+    sys.stdout.write(os.linesep+os.linesep)
 
     ops = list(itersubclasses(Operator))
     
@@ -47,3 +49,4 @@ except:
         for o in newOps:
             print "    Adding", o.__name__
             globals()[o.__name__] = o
+    sys.stdout.write(os.linesep)
