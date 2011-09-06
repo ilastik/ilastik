@@ -543,9 +543,10 @@ class OpBaseVigraFilter(OpArrayPiper):
         numChannels  = 1
         inputSlot = self.inputs["Input"]
         if inputSlot.axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
+                      
             channelIndex = self.inputs["Input"].axistags.channelIndex
             numChannels = self.inputs["Input"].shape[channelIndex]
-            inShapeWithoutChannels = inputSlot.shape[:-1]
+            inShapeWithoutChannels = popFlagsFromTheKey( self.inputs["Input"].shape,self.inputs["Input"].axistags,'c')
         else:
             inShapeWithoutChannels = inputSlot.shape
                     
@@ -554,7 +555,8 @@ class OpBaseVigraFilter(OpArrayPiper):
         self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
         
         channelsPerChannel = self.resultingChannels()
-        self.outputs["Output"]._shape = inShapeWithoutChannels + (numChannels * channelsPerChannel,)
+        inShapeWithoutChannels.insert(channelIndex,numChannels * channelsPerChannel)
+        self.outputs["Output"]._shape = tuple(inShapeWithoutChannels)
         #print "HEREEEEEEEEEEEEEE", self.inputs["Input"].shape ,self.outputs["Output"]._shape
         #print self.resultingChannels(), self.name
         
@@ -568,7 +570,8 @@ class OpBaseVigraFilter(OpArrayPiper):
 
 #difference of Gaussians
 def differenceOfGausssians(image,sigma0, sigma1, out = None):
-    """ difference of gaussian function"""        
+    """ difference of gaussian function""" 
+    print "GUGE",image.shape, image.axistags, sigma0,sigma1       
     return (vigra.filters.gaussianSmoothing(image,sigma0)-vigra.filters.gaussianSmoothing(image,sigma1))
 
 
