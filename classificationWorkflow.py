@@ -127,7 +127,7 @@ class Main(QMainWindow):
         self.StartClassificationButton.setEnabled(True)
         
         self.checkInteractive.toggled.connect(self.toggleInteractive)   
-        self.initTheFeatureDlg()
+        self._initFeatureDlg()
         
     def toggleInteractive(self, checked):
         print "toggling interactive mode to '%r'" % checked
@@ -486,28 +486,26 @@ class Main(QMainWindow):
     
     def onFeatureButtonClicked(self):
         self.StartClassificationButton.setEnabled(True)
-        dlg=self.featureDlg
-        dlg.show()
-        
+        self.featureDlg.show()
     
-    def choosenDifferrentFeatSet(self):
-        dlg=self.featureDlg
-        
-        selectedFeatures = dlg.featureTableWidget.createSelectedFeaturesBoolMatrix()
-        print "******", selectedFeatures
+    def _onFeaturesChosen(self):
+        selectedFeatures = self.featureDlg.featureTableWidget.createSelectedFeaturesBoolMatrix()
+        print "new feature set:", selectedFeatures
         self.opPF.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
     
-    def initTheFeatureDlg(self):
-        dlg = FeatureDlg()
+    def _initFeatureDlg(self):
+        dlg = self.featureDlg = FeatureDlg()
         
-        m = [[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0]]
-        dlg.featureTableWidget.setSelectedFeatureBoolMatrix(m)
-        
-        self.featureDlg=dlg
         dlg.setWindowTitle("Features")
-        dlg.createFeatureTable({"Features": [FeatureEntry("Gaussian smoothing"), FeatureEntry("Laplacian of Gaussian"), FeatureEntry("Hessian of Gaussian"), FeatureEntry("Hessian of Gaussian EV")]}, self.featScalesList)
-        dlg.setImageToPreView((numpy.random.rand(100,100)*256).astype(numpy.uint8))
-        dlg.accepted.connect(self.choosenDifferrentFeatSet)
+        dlg.createFeatureTable({"Features": [FeatureEntry("Gaussian smoothing"), \
+                                             FeatureEntry("Laplacian of Gaussian"), \
+                                             FeatureEntry("Hessian of Gaussian"), \
+                                             FeatureEntry("Hessian of Gaussian EV")]}, \
+                               self.featScalesList)
+        dlg.setImageToPreView(None)
+        m = [[1,0,0,0,0,0,0],[1,0,0,0,0,0,0],[0,0,0,0,0,0,0],[1,0,0,0,0,0,0]]
+        dlg.featureTableWidget.setSelectedFeatureBoolMatrix(m)
+        dlg.accepted.connect(self._onFeaturesChosen)
     
 app = QApplication(sys.argv)        
 t = Main(sys.argv)

@@ -57,6 +57,7 @@ class FeatureDlg(QDialog):
         self.viewAndButtonLayout =  QVBoxLayout() 
         self.preView = preView.PreView()
         self.viewAndButtonLayout.addWidget(self.preView)
+        self.viewAndButtonLayout.addStretch()
         
         self.buttonsLayout = QHBoxLayout()
         self.memReqLabel = QLabel()
@@ -94,8 +95,10 @@ class FeatureDlg(QDialog):
         self.featureTableWidget.createTableForFeatureDlg(features, sigmas, brushNames)
     
     def setImageToPreView(self, image):
-        self.preView.setPreviewImage(qimage2ndarray.array2qimage(image))
-    
+        self.preView.setVisible(image is not None)
+        if image is not None:
+            self.preView.setPreviewImage(qimage2ndarray.array2qimage(image))
+        
     def setIconsToTableWidget(self, checked, partiallyChecked, unchecked):
         self.featureTableWidget.itemDelegate.setCheckBoxIcons(checked, partiallyChecked, unchecked)
     
