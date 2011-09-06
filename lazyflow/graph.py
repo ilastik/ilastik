@@ -291,7 +291,9 @@ class GetItemRequestObject(object):
         if self.destination is None:
             self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
         gr.currentRequest = self
+        assert self.destination is not None
         self.func(self.arg1,self.key, self.destination)
+        assert self.destination is not None
         self._finalize()        
 
     def _putOnTaskQueue(self):

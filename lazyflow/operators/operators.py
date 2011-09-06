@@ -989,6 +989,8 @@ class OpBlockedArrayCache(OperatorGroup):
                     
                 self._opSub_list = {}
                 self._cache_list = {}
+                
+                self._lock = Lock()
             
 #        for b_num in self._blockNumbers.ravel():
 #                
@@ -1035,7 +1037,9 @@ class OpBlockedArrayCache(OperatorGroup):
             minimum = numpy.min(diff)
             smallkey = roiToSlice(smallstart, smallstop)
                 
-            bigkey = roiToSlice(bigstart-start, bigstop-start)                  
+            bigkey = roiToSlice(bigstart-start, bigstop-start)
+            
+            self._lock.acquire()                  
             if not self._fixed:
                 if not self._cache_list.has_key(b_ind):
                     self._opSub_list[b_ind] = generic.OpSubRegion(self.graph)
@@ -1051,10 +1055,13 @@ class OpBlockedArrayCache(OperatorGroup):
                     self._cache_list[b_ind].inputs["Input"].connect(self._opSub_list[b_ind].outputs["Output"])
                     self._cache_list[b_ind].inputs["fixAtCurrent"].connect(self.fixerSource.outputs["Output"])
                     self._cache_list[b_ind].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
-            
+
             if self._cache_list.has_key(b_ind):
                 req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
+                self._lock.release()
                 res = req.wait()
+            else:
+                self._lock.release()
 
         return result
 
