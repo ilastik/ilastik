@@ -450,9 +450,13 @@ class OpBaseVigraFilter(OpArrayPiper):
         channelAxis=self.inputs["Input"].axistags.index('c')
         hasTimeAxis = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Time)
         timeAxis=self.inputs["Input"].axistags.index('t')
+
         subkey = popFlagsFromTheKey(key,axistags,'c')
         subshape=popFlagsFromTheKey(shape,axistags,'c')
-        
+        at2 = copy.copy(axistags)
+        at2.dropChannelAxis()
+        subshape=popFlagsFromTheKey(subshape,at2,'t')
+        subkey = popFlagsFromTheKey(subkey,at2,'t')
         
         oldstart, oldstop = roi.sliceToRoi(key, shape)
         
@@ -473,21 +477,19 @@ class OpBaseVigraFilter(OpArrayPiper):
         writeKey = list(writeKey)
         writeKey.insert(channelAxis, slice(None,None,None))
         writeKey = tuple(writeKey)         
-        
-        writeKey= popFlagsFromTheKey(writeKey,axistags,'t')
-        
+                
         channelsPerChannel = self.resultingChannels()
         
         
         
         i2 = 0          
         for i in range(int(numpy.floor(1.0 * oldstart[channelAxis]/channelsPerChannel)),int(numpy.ceil(1.0 * oldstop[channelAxis]/channelsPerChannel))):
-            
             treadKey=list(readKey)
+            treadKey.insert(timeAxis, key[timeAxis])
+            
             treadKey.insert(channelAxis, slice(i,i+1,None))
             treadKey=tuple(treadKey)
-            #print readKey,'iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii'
-            #print treadKey, "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+
             req = self.inputs["Input"][treadKey].allocate()
             t = req.wait()
             
@@ -527,14 +529,17 @@ class OpBaseVigraFilter(OpArrayPiper):
                 twriteKey=getAllExceptAxis(temp.ndim, nChannelAxis, slice(sourceBegin,sourceEnd,None))
                 
                 if hasTimeAxis > 0:
-                    tresKey  = getAllExceptAxis(temp.ndim, timeAxis, step)
+                    tresKey  = getAllExceptAxis(resultArea.ndim, timeAxis, step)
                 else:
                     tresKey  = slice(None, None,None)
                 
                 #print tresKey, twriteKey, resultArea.shape, temp.shape
-                
-                resultArea[tresKey] = temp[twriteKey]
-                 
+                try:
+                    resultArea[tresKey] = temp[twriteKey]
+                except:
+                    print resultArea.shape,  tresKey, temp.shape, twriteKey
+                    print "step, t.shape", step, t.shape, timeAxis
+                    assert 1==2
                 
             i2 += channelsPerChannel
 
@@ -543,26 +548,26 @@ class OpBaseVigraFilter(OpArrayPiper):
         numChannels  = 1
         inputSlot = self.inputs["Input"]
         if inputSlot.axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
-                      
             channelIndex = self.inputs["Input"].axistags.channelIndex
             numChannels = self.inputs["Input"].shape[channelIndex]
             inShapeWithoutChannels = popFlagsFromTheKey( self.inputs["Input"].shape,self.inputs["Input"].axistags,'c')
         else:
             inShapeWithoutChannels = inputSlot.shape
-                    
+            channelIndex = len(inputSlot.shape)
+                
         self.outputs["Output"]._dtype = self.outputDtype
         p = self.inputs["Input"].partner
-        self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
+        at = copy.copy(inputSlot.axistags)
+
+        if at.axisTypeCount(vigra.AxisType.Channels) == 0:
+            at.insertChannelAxis()
+            
+        self.outputs["Output"]._axistags = at 
         
         channelsPerChannel = self.resultingChannels()
-        inShapeWithoutChannels.insert(channelIndex,numChannels * channelsPerChannel)
+        inShapeWithoutChannels = list(inShapeWithoutChannels)
+        inShapeWithoutChannels.insert(channelIndex,numChannels * channelsPerChannel)        
         self.outputs["Output"]._shape = tuple(inShapeWithoutChannels)
-        #print "HEREEEEEEEEEEEEEE", self.inputs["Input"].shape ,self.outputs["Output"]._shape
-        #print self.resultingChannels(), self.name
-        
-        #print self.outputs["Output"]._axistags
-        if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-            self.outputs["Output"]._axistags.insertChannelAxis()
 
     def resultingChannels(self):
         raise RuntimeError('resultingChannels() not implemented')
