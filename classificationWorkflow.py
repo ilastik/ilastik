@@ -59,23 +59,20 @@ class Main(QMainWindow):
         
         self.featureDlg=None
         
-        #old ilastik:
-        #self.groupScaleNames = ['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
+        #The old ilastik provided the following scale names:
+        #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
+        #The corresponding scales are:
         self.featScalesList=[0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
-        
         
         self.initUic()
         
-        #
-        # if the filename was specified on command line, load it
-        #
+        #if the filename was specified on command line, load it
         if len(sys.argv) >= 2:
             def loadFile():
                 self._openFile(sys.argv[1:])
             QTimer.singleShot(0, loadFile)
         
     def initUic(self):
-        #get the absolute path of the 'ilastik' module
         uic.loadUi("designerElements/MainWindow.ui", self) 
         #connect the window and graph creation to the opening of the file
         self.actionOpen.triggered.connect(self.openFile)
@@ -114,8 +111,6 @@ class Main(QMainWindow):
             if 0 in range(firstCol, lastCol+1):
                 self.switchColor(firstRow+1, self.labelListModel[firstRow].color)
                 self.editor.scheduleSlicesRedraw()
-            #self.onColorChanged()
-            
             
         self.labelListModel.dataChanged.connect(onDataChanged)
         
@@ -163,7 +158,6 @@ class Main(QMainWindow):
     def switchLabel(self, row):
         print "switching to label=%r" % (self.labelListModel[row])
         #+1 because first is transparent
-        
         #FIXME: shouldn't be just row+1 here
         self.editor.brushingModel.setDrawnNumber(row+1)
         self.editor.brushingModel.setBrushColor(self.labelListModel[row].color)
@@ -192,7 +186,6 @@ class Main(QMainWindow):
         #make the new label selected
         index = self.labelListModel.index(nlabels-1, 1)
         self.labelListModel._selectionModel.select(index, QItemSelectionModel.ClearAndSelect)
-        
         
         #FIXME: this should watch for model changes   
         #drawing will be enabled when the first label is added  
@@ -224,7 +217,6 @@ class Main(QMainWindow):
             
             opMultiLblocks = Op5ToMulti(self.g)
             opMultiLblocks.inputs["Input0"].connect(self.opLabels.outputs["nonzeroBlocks"])
-            #self.opTrain = OpTrainRandomForest(self.g)
             self.opTrain = OpTrainRandomForestBlocked(self.g)
             self.opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
             self.opTrain.inputs['Images'].connect(self.opFeatureCache.outputs["Output"])
@@ -251,8 +243,6 @@ class Main(QMainWindow):
             #add prediction results for all classes as separate channels
             for icl in range(nclasses):
                 self.addPredictionLayer(icl, self.labelListModel._labels[icl])
-                
-            #self.updatePredictionLayers()
                                     
     def addPredictionLayer(self, icl, ref_label):
         
@@ -297,8 +287,6 @@ class Main(QMainWindow):
                 break
     
     def openFile(self):
-        #FIXME: only take one file for now, more to come
-        #fileName = QFileDialog.getOpenFileName(self, "Open Image", os.path.abspath(__file__), "Image Files (*.png *.jpg *.bmp *.tif *.tiff *.gif *.h5)")
         fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy and h5 files (*.npy *.h5)")
         self._openFile(fileNames)
         
@@ -322,25 +310,13 @@ class Main(QMainWindow):
                 vigra.AxisInfo('z',vigra.AxisType.Space),
                 vigra.AxisInfo('c',vigra.AxisType.Channels))
             self.inputProvider.inputs["Input"].setValue(self.raw)
-        
         elif fExt=='.h5':
             readerNew=OpH5ReaderBigDataset(self.g)
             readerCache = OpBlockedArrayCache(self.g)
             readerNew.inputs["Filenames"].setValue(fileNames)
             readerNew.inputs["hdf5Path"].setValue("volume/data")
-            #Reader=OpH5Reader(self.g)
-            #print str(fileName),'*+++++++++++++++++++++++++'
-            #Reader.inputs["Filename"].setValue(str(fileName))
-            #Reader.inputs["hdf5Path"].setValue("volume/data")
             self.inputProvider = OpArrayPiper(self.g)
-            
-#            readerCache.inputs["fixAtCurrent"].setValue(False)
-#            readerCache.inputs["innerBlockShape"].setValue((1,8,8,8,1))
-#            readerCache.inputs["outerBlockShape"].setValue((1,64,64,64,1))
-#            readerCache.inputs["Input"].connect(readerNew.outputs["Output"])
-
             self.inputProvider.inputs["Input"].connect(readerNew.outputs["Output"])
-            #self.inputProvider.inputs["Input"].connect(readerCache.outputs["Output"])
         else:
             raise RuntimeError("opening filenames=%r not supported yet" % fileNames)
         
@@ -354,28 +330,22 @@ class Main(QMainWindow):
         print "* Data has shape=%r" % (shape,)
         
         #create a layer for each channel of the input:
-        
         slicer=OpMultiArraySlicer2(self.g)
         slicer.inputs["Input"].connect(self.inputProvider.outputs["Output"])
         slicer.inputs["AxisFlag"].setValue('c')
        
         nchannels = shape[-1]
         for ich in xrange(nchannels):
-
             if self._normalize_data:
                 data=slicer.outputs['Slices'][ich][:].allocate().wait()
-        
                 #find the minimum and maximum value for normalization
                 mm = (numpy.min(data), numpy.max(data))
                 print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
-                
                 minMax.append(mm)
             else:
                 minMax.append(None)
-                
             layersrc = LazyflowSource(slicer.outputs['Slices'][ich], priority = 100)
             layersrc.setObjectName("raw data channel=%d" % ich)
-            
             srcs.append(layersrc)
             
         #FIXME: we shouldn't merge channels automatically, but for now it's prettier
@@ -418,7 +388,6 @@ class Main(QMainWindow):
         
         #Caches the features
         opFeatureCache = OpBlockedArrayCache(self.g)
-        #opSelCache = OpArrayCache(self.g)
         opFeatureCache.inputs["innerBlockShape"].setValue((1,8,8,8,16))
         opFeatureCache.inputs["outerBlockShape"].setValue((1,64,64,64,64))
         opFeatureCache.inputs["Input"].connect(opPF.outputs["Output"])
