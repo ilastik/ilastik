@@ -995,3 +995,54 @@ class OpH5ReaderBigDataset(Operator):
         self.D=[]
         self.ChunkList=[]
     """
+
+
+class OpH5ReaderSmoothedDataset(Operator):
+    
+    name = "H5FileReaderForMultipleScaleDatasets"
+    category = "Input"
+    
+    inputSlots = [InputSlot("Filename"), InputSlot("hdf5Path", stype = "string")]
+    outputSlots = [MultiOutputSlot("Outputs"),MultiOutputSlot("Sigmas")]
+    
+        
+    def notifyConnectAll(self):
+        filename = str(self.inputs["Filename"].value)
+        hdf5Path = self.inputs["hdf5Path"].value
+
+        f = h5py.File(filename, 'r')
+        self.f=f
+        
+        d = f[hdf5Path]
+                
+        self.D=[]
+        
+        count=len(d.keys())
+        self.outputs['Outputs'].resize(count)
+        self.outputs['Sigmas'].resize(count)
+        
+        for i,el in enumerate(sorted(d.keys())):
+            self.D.append(d[el])
+            self.outputs["Sigmas"][i]._dtype = numpy.float32
+            self.outputs["Sigmas"][i]._shape = (1,)
+            
+            self.outputs["Outputs"][i]._dtype = d[el].dtype
+            self.outputs["Outputs"][i]._shape = d[el].shape
+            if len(d[el].shape):
+                self.outputs["Outputs"][i]._axistags=vigra.VigraArray.defaultAxistags('txyzc')
+            
+            else:
+                print "not implemented for non 5 d dataset due to non serialization of axistags"
+                raise
+    
+        
+    def getSubOutSlot(self, slots, indexes, key, result):
+        
+            slot=slots[0]
+            index=indexes[0]
+            if slot.name=='Outputs':
+                result[key]=self.D[index][key]
+            elif slot.name=='Sigmas':
+                result[key]=self.D[index].attrs['sigma']    
+        
+        
