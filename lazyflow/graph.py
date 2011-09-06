@@ -496,7 +496,7 @@ class InputSlot(object):
         """
         assert self.partner == None, "InputSlot %s (%r): Cannot dot setValue, because it is connected !" %(self.name, self)
         self._value = value
-        if isinstance(value, numpy.ndarray):
+        if isinstance(value, (numpy.ndarray, vigra.VigraArray)):
             self.shape = value.shape
             self.dtype = value.dtype
             if hasattr(value, "axistags"):

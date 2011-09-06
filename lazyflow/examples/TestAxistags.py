@@ -120,7 +120,7 @@ import pylab
 
 if __name__=="__main__":
     
-    s = [60,100,50,70,40]    
+    s = [20,600,20,30,10]    
     img = numpy.ndarray((s[0],s[1],s[2],s[3],s[4]), dtype = float)
      
     axisKey = []
@@ -220,8 +220,8 @@ if __name__=="__main__":
 #    Op[1].inputs["sigma"].setValue(0.3)    
 #    
     Op[2] = OpDifferenceOfGaussians(g)#
-    Op[2].inputs["sigma0"].setValue(5)
-    Op[2].inputs["sigma1"].setValue(10)
+    Op[2].inputs["sigma0"].setValue(1)
+    Op[2].inputs["sigma1"].setValue(2)
     
 #    Op[3] = OpDifferenceOfGaussians(g)#
 #    Op[3].inputs["sigma0"].setValue(0.4)
