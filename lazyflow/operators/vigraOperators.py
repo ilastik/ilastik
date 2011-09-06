@@ -9,7 +9,7 @@ from operators import OpArrayPiper, OpMultiArrayPiper
 
 from generic import OpMultiArrayStacker, getSubKeyWithFlags, popFlagsFromTheKey
 
-
+from threading import Lock
 
 
 class OpMultiArrayStackerOld(Operator):
@@ -921,6 +921,10 @@ class OpH5ReaderBigDataset(Operator):
     inputSlots = [InputSlot("Filenames"), InputSlot("hdf5Path", stype = "string")]
     outputSlots = [OutputSlot("Output")]
     
+    def __init__(self, graph):
+        Operator.__init__(self, graph)
+        
+        self._lock = Lock()
         
     def notifyConnectAll(self):
         filename = str(self.inputs["Filenames"].value[0])
@@ -974,6 +978,9 @@ class OpH5ReaderBigDataset(Operator):
         maxError=sys.maxint
         index=0
 
+        self._lock.acquire()
+        #lock access to self.ChunkList,
+        #               self.D
         for i,chunks in enumerate(self.ChunkList):
             cs = numpy.array(chunks)
             
@@ -986,8 +993,8 @@ class OpH5ReaderBigDataset(Operator):
 #        print "best error", maxError
 #        print "selected chunking", self.ChunkList[index], "for request", diff
         
-        
         result[:]=self.D[index][key]
+        self._lock.release()
     """
     def notifyDisconnect(self, slot):
         for f in self.F:
