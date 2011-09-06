@@ -135,6 +135,26 @@ class Op20ToMulti(Op5ToMulti):
 
 
 
+class OpNToMulti(Op5ToMulti):
+    
+    name = "N Elements to Multislot"
+    category = "Misc"
+
+    
+    outputSlots = [MultiOutputSlot("Outputs")]
+
+    
+    def __init__(self,g,N=20):
+        self.inputSlots = []
+        for i in range(N):
+            self.inputSlots.append(InputSlot("Input"+str(i)))
+        
+                
+        Op5ToMulti.__init__(self,g)
+
+
+
+
 class OpPixelFeatures(OperatorGroup):
     name="OpPixelFeatures"
     category = "Vigra filter"
@@ -417,6 +437,8 @@ class OpBaseVigraFilter(OpArrayPiper):
             sigma = self.inputs["scale"].value
         elif self.inputs.has_key("sigma1"):
             sigma = self.inputs["sigma1"].value
+        elif self.inputs.has_key("innerScale"):
+            sigma = self.inputs["innerScale"].value
             
         largestSigma = sigma*3.5 #ensure enough context for the vigra operators
                 
@@ -632,6 +654,17 @@ class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
         temp = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)
         return temp
 
+
+class OpStructureTensorEigenvalues(OpBaseVigraFilter):
+    name = "StructureTensorEigenvalues"
+    vigraFilter = staticmethod(vigra.filters.structureTensorEigenvalues)
+    outputDtype = numpy.float32 
+    inputSlots = [InputSlot("Input"), InputSlot("innerScale", stype = "float"),InputSlot("outerScale", stype = "float")]
+
+    def resultingChannels(self):
+        temp = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)
+        return temp
+    
 
 
 class OpHessianOfGaussianEigenvaluesFirst(OpBaseVigraFilter):
@@ -936,8 +969,89 @@ class OpH5Writer(Operator):
         
         result[0] = True
         
+        
+        
+class OpH5WriterBigDataset(Operator):
+    name = "H5 File Writer BigDataset"
+    category = "Output"
+    
+    inputSlots = [InputSlot("Filename", stype = "filestring"), InputSlot("hdf5Path", stype = "string"), InputSlot("Image")]
+    outputSlots = [OutputSlot("WriteImage")]
 
+    def notifyConnectAll(self):    
+        self.outputs["WriteImage"]._shape = (1,)
+        self.outputs["WriteImage"]._dtype = object
+        
+        
+        
+        filename = self.inputs["Filename"].value
+        import os
+        if os.path.exists(filename): os.remove(filename)
+        
+        hdf5Path = self.inputs["hdf5Path"].value
+        self.f = h5py.File(filename, 'w')
+        
+        g=self.f
+        pathElements = hdf5Path.split("/")
+        for s in pathElements[:-1]:
+            g = g.create_group(s)
+        
+        print self.inputs['Image'].shape
+        #FIXME:
+        #change that to the real shape after testing
+        shape=self.inputs['Image'].shape
+        #shape = (1, 10, 10, 10, 1)
+        
+        self.d=g.create_dataset(pathElements[-1],shape=shape,dtype=numpy.float32, chunks=(1,128,128,1,1),\
+                                compression='gzip', compression_opts=4)
 
+    
+    def getOutSlot(self, slot, key, result):
+        
+        requests=self.computeRequests()
+        
+        
+        imSlot = self.inputs["Image"]
+        
+                    
+        for r in requests:
+            self.d[r]=self.inputs["Image"][r].allocate().wait()
+
+        result[0] = True
+        
+        
+    def computeRequests(self):
+        
+        #TODO: reimplement the request better
+        shape=numpy.asarray(self.inputs['Image'].shape)
+        
+        
+        
+        
+        start=numpy.asarray([0]*len(shape))
+        
+        block=numpy.asarray(shape)
+        
+        
+        
+        reqList=[]
+        
+        
+        for z in xrange(1,shape[3]):
+            block[3]=z
+            reqList.append(roiToSlice(start,block))
+        
+        return reqList
+    
+    def close(self):
+        self.f.close()
+        
+        
+        
+        
+        
+        
+                
 
 class OpH5ReaderBigDataset(Operator):
     
