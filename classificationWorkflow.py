@@ -52,7 +52,7 @@ class Main(QMainWindow):
         self._colorTable16 = self._createDefault16ColorColorTable()
         
         #self.g = Graph(7, 2048*1024**2*5)
-        self.g = Graph(8, 18000*1024**2)
+        self.g = Graph(2 , 2048*1024**2*5)
         self.fixableOperators = []
         
         self.featureDlg=None
@@ -130,7 +130,7 @@ class Main(QMainWindow):
         self.initTheFeatureDlg()
         
     def toggleInteractive(self, checked):
-        print "checked = ", checked
+        print "toggling interactive mode to '%r'" % checked
         
         #Check if the number of labels in the layer stack is equals to the number of Painted labels
         if checked==True:
@@ -145,9 +145,6 @@ class Main(QMainWindow):
                 mexBox.setText("Did you forget to paint some labels?")
                 mexBox.setInformativeText("Painted Labels %d \nNumber Active Labels Layers %d"%(nPaintedLabels,self.labelListModel.rowCount()))
                 mexBox.exec_()
-                #print "Painted Labels: ", labels
-                #print "nPainted Labels: " , nPaintedLabels
-                #print "nLabelsLayers", self.labelListModel.rowCount()
                 return
             if (selectedFeatures==0).all():
                 self.checkInteractive.setCheckState(0)
@@ -156,8 +153,7 @@ class Main(QMainWindow):
                 mexBox.exec_()
                 return
                 
-        
-        if checked==True:
+        if checked:
             self.AddLabelButton.setEnabled(False)
             self.SelectFeaturesButton.setEnabled(False)
             for o in self.fixableOperators:
@@ -196,7 +192,6 @@ class Main(QMainWindow):
         if self.opPredict is not None:
             print "Label added, changing predictions"
             #re-train the forest now that we have more labels
-            #self.opTrain.notifyDirty(None, None)
             self.opPredict.inputs['LabelsCount'].setValue(nlabels)
             self.addPredictionLayer(nlabels-1, self.labelListModel._labels[nlabels-1])
         
@@ -277,8 +272,12 @@ class Main(QMainWindow):
             self.pCache.inputs["fixAtCurrent"].setValue(True)
         
         predictsrc = LazyflowSource(selector.outputs["Output"][0])
+        def srcName(newName):
+            predictsrc.setObjectName("Prediction for %s" % ref_label.name)
+        srcName("")
         
         predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color, normalize = (0.0,1.0) )
+        predictLayer.nameChanged.connect(srcName)
         
         def setLayerColor(c):
             print "as the color of label '%s' has changed, setting layer's '%s' tint color to %r" % (ref_label.name, predictLayer.name, c)
@@ -312,7 +311,7 @@ class Main(QMainWindow):
     def _openFile(self, fileNames):
         self.inputProvider = None
         fName, fExt = os.path.splitext(str(fileNames[0]))
-        print fName, fExt
+        print "Opening Files %r" % fileNames
         if fExt=='.npy':
             fileName = fileNames[0]
             if len(fileNames)>1:
@@ -342,21 +341,16 @@ class Main(QMainWindow):
             self.inputProvider.inputs["Input"].connect(readerNew.outputs["Output"])
             #self.inputProvider.inputs["Input"].connect(readerCache.outputs["Output"])
         else:
-            print "not supported yet"
-            return
+            raise RuntimeError("opening filenames=%r not supported yet" % fileNames)
         
         self.haveData.emit()
        
     def initGraph(self):
-        
-        print "I'm going to init the graph"
-        
         shape = self.inputProvider.outputs["Output"].shape
-        print "data block shape: ", shape
         srcs    = []
         minMax = []
         
-        print "* Data has shape=%r", (shape,)
+        print "* Data has shape=%r" % (shape,)
         
         #create a layer for each channel of the input:
         
@@ -364,9 +358,6 @@ class Main(QMainWindow):
         slicer.inputs["Input"].connect(self.inputProvider.outputs["Output"])
         slicer.inputs["AxisFlag"].setValue('c')
        
-        
-        
-        
         nchannels = shape[-1]
         for ich in xrange(nchannels):
 
@@ -382,6 +373,8 @@ class Main(QMainWindow):
                 minMax.append(None)
                 
             layersrc = LazyflowSource(slicer.outputs['Slices'][ich], priority = 100)
+            layersrc.setObjectName("raw data channel=%d" % ich)
+            
             srcs.append(layersrc)
             
         #FIXME: we shouldn't merge channels automatically, but for now it's prettier
@@ -407,6 +400,7 @@ class Main(QMainWindow):
         else:
             print "only 1,2 or 3 channels supported so far"
             return
+        print
         
         layer1.name = "Input data"
         layer1.ref_object = None
@@ -420,8 +414,6 @@ class Main(QMainWindow):
         opPF.inputs["Input"].connect(opImageList.outputs["Outputs"])
         opPF.inputs["Scales"].setValue(self.featScalesList)
         self.opPF=opPF
-        
-        print "####################################"
         
         #Caches the features
         opFeatureCache = OpBlockedArrayCache(self.g)
@@ -446,6 +438,8 @@ class Main(QMainWindow):
         self.opLabels.inputs["eraser"].setValue(100)                
         
         self.labelsrc = LazyflowSinkSource(self.opLabels, self.opLabels.outputs["Output"], self.opLabels.inputs["Input"])
+        self.labelsrc.setObjectName("labels")
+        
         transparent = QColor(0,0,0,0)
         self.labellayer = ColortableLayer(self.labelsrc, colorTable = [transparent.rgba()] )
         self.labellayer.name = "Labels"
@@ -453,8 +447,6 @@ class Main(QMainWindow):
         self.layerstack.append(self.labellayer)    
     
     def initEditor(self):
-        print "going to init editor"
-        
         shape=self.inputProvider.outputs["Output"].shape
         
         self.editor = VolumeEditor(shape, self.layerstack, labelsink=self.labelsrc)
