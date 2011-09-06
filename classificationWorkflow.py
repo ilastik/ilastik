@@ -31,6 +31,8 @@ from labelListModel import LabelListModel
 
 from featureDlg import FeatureDlg, FeatureEntry
 
+import vigra
+
 class Main(QMainWindow):    
     haveData        = pyqtSignal()
     dataReadyToView = pyqtSignal()
@@ -321,6 +323,13 @@ class Main(QMainWindow):
             self.raw = numpy.load(str(fileName))
             self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
             self.inputProvider = OpArrayPiper(self.g)
+            self.raw = self.raw.view(vigra.VigraArray)
+            self.raw.axistags =  vigra.AxisTags(
+                vigra.AxisInfo('t',vigra.AxisType.Time),
+                vigra.AxisInfo('x',vigra.AxisType.Space),
+                vigra.AxisInfo('y',vigra.AxisType.Space),
+                vigra.AxisInfo('z',vigra.AxisType.Space),
+                vigra.AxisInfo('c',vigra.AxisType.Channels))
             self.inputProvider.inputs["Input"].setValue(self.raw)
         
         elif fExt=='.h5':
