@@ -1212,8 +1212,8 @@ class OpH5ReaderSmoothedDataset(Operator):
             slot=slots[0]
             index=indexes[0]
             if slot.name=='Outputs':
-                result[key]=self.D[index][key]
+                result[:]=self.D[index][key]
             elif slot.name=='Sigmas':
-                result[key]=self.D[index].attrs['sigma']    
+                result[:]=self.D[index].attrs['sigma']    
         
         
