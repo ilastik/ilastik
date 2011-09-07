@@ -294,6 +294,8 @@ class Main(QMainWindow):
     
     def openFile(self):
         fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy and h5 files (*.npy *.h5)")
+        if fileNames.count() == 0:
+            return
         self._openFile(fileNames)
         
     def _openFile(self, fileNames):
