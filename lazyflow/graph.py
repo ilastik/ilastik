@@ -184,6 +184,11 @@ class GetItemWriterObject(object):
         the same size/shape/dimension as the slot will
         return in reponse to the requested key
         """
+        if destination is not None:
+            diff = self._start - self._stop
+            shape = list(destination.shape)
+            assert len(diff) == len(shape), "GetItemWriterObject: writeInto - somebody provided result area that has a different shape then the request key itself ! resultarea shape = %r, key = %r" % (destination.shape, self._key)
+            assert diff == shape, "GetItemWriterObject: writeInto - somebody provided result area that has a different shape then the request key itself ! resultarea shape = %r, key = %r" % (destination.shape, self._key)
         return  GetItemRequestObject(self, self._slot, self._key, destination, priority)
   
     def allocate(self, axistags = False, priority = 0):
@@ -660,6 +665,10 @@ class InputSlot(object):
         
         allows to call inputslot[0,:,3:11] 
         """
+        start, stop = sliceToRoi(key, self.shape)
+        assert len(stop) == len(self.shape)
+        assert stop <= list(self.shape)
+        assert start >= [0]*len(self.shape)
         assert self.partner is not None or self._value is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
         return GetItemWriterObject(self, key)
 
