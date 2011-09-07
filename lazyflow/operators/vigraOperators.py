@@ -203,9 +203,10 @@ class OpPixelFeatures(OperatorGroup):
                 oparray[i][j].inputs["scale"].setValue(self.scales[j])
             i = 2
             for j in range(dimCol):
-                oparray[i].append(OpHessianOfGaussian(self.graph))
+                oparray[i].append(OpStructureTensorEigenvalues(self.graph))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                oparray[i][j].inputs["sigma"].setValue(self.scales[j])
+                oparray[i][j].inputs["innerScale"].setValue(self.scales[j])
+                oparray[i][j].inputs["outerScale"].setValue(self.scales[j]*0.5)
             i = 3
             for j in range(dimCol):   
                 oparray[i].append(OpHessianOfGaussianEigenvalues(self.graph))
@@ -224,6 +225,9 @@ class OpPixelFeatures(OperatorGroup):
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["sigma0"].setValue(self.scales[j])            
                 oparray[i][j].inputs["sigma1"].setValue(self.scales[j]*0.66)
+            
+
+                
             
             
             self.outputs["ArrayOfOperators"][0] = oparray
