@@ -2239,15 +2239,16 @@ class Graph(object):
         if accesses > 20:
             self._memoryAccessCounter = itertools.count() #reset counter
             # calculate the exponential moving average for the caches            
-#            nbytes = 0            
+            #prevent manipulation of deque during calculation
+            self._memAllocLock.acquire()
             for c in self._registeredCaches:
                 ch = c._cacheHits
                 ch = ch * 0.2
                 c._cacheHits = ch
-#                nbytes += c._memorySize()
+
             self._allocatedCaches = deque(sorted(self._allocatedCaches, key=lambda x: x._cacheHits))
-            
-#            self._usedCacheMemory = nbytes
+            self._memAllocLock.release()
+
             
     def putTask(self, reqObject):
         task = reqObject
