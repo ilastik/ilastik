@@ -97,7 +97,10 @@ class TinyVector(list):
     def floor(self):
         return TinyVector(map(lambda x:  floor(x) ,self))
         #return numpy.floor(numpy.array(self))
-            
+    
+    def _asint(self):
+        return TinyVector(map(lambda x:  int(x) ,self))
+    
     def all(self):
         answer = True
         for e in self:
