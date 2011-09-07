@@ -1968,10 +1968,6 @@ class OperatorGroupGraph(object):
     
     def putTask(self, reqObject):
         self._originalGraph.putTask(reqObject)
-            
-            
-    def cancelRequestID(self, requestID):
-        self._originalGraph.cancelRequestID(requestID)
         
     def finalize(self):
         self._originalGraph.finalize()
@@ -2249,26 +2245,7 @@ class Graph(object):
             self.freeWorkers.appendleft(w)
             w.signalWorkAvailable()
             
-            
-    def cancelRequestID(self, requestID):
-        for w in self.workers:
-            w.cancelRequestID(requestID)
 
-        temp = deque()                
-        while len(self.tasks) > 0:
-            try:
-                reqObject = self.tasks.popleft()
-            except IndexError:
-                pass
-            if reqObject.requestID != requestID:
-                temp.append(reqObject)
-        
-        while len(temp) > 0:
-            elem = temp.popleft()            
-            self.tasks.append(elem)
-        
-        for w in self.workers:
-            w.cancelRequestID(requestID)        
         
     def finalize(self):
         print "Finalizing Graph..."
