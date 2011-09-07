@@ -42,13 +42,12 @@ class Main(QMainWindow):
         
         #Normalize the data if true
         self._normalize_data=True
-        arguments=sys.argv
         
-        if 'notnormalize' in arguments:
+        if 'notnormalize' in sys.argv:
+            print sys.argv
             self._normalize_data=False
-            arguments.remove('notnormalize')
-        
-        
+            sys.argv.remove('notnormalize')
+
         self.opPredict = None
         self.opTrain = None
         self._colorTable16 = self._createDefault16ColorColorTable()
@@ -74,7 +73,8 @@ class Main(QMainWindow):
             QTimer.singleShot(0, loadFile)
         
     def initUic(self):
-        uic.loadUi("designerElements/MainWindow.ui", self) 
+        p = os.path.split(__file__)[0]+'/'
+        uic.loadUi(p+"designerElements/MainWindow.ui", self) 
         #connect the window and graph creation to the opening of the file
         self.actionOpen.triggered.connect(self.openFile)
         self.actionQuit.triggered.connect(qApp.quit)
