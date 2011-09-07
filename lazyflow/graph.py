@@ -282,9 +282,11 @@ class GetItemRequestObject(object):
                 
                 lr = gr.lastRequest
                 #self.parentRequest = gr.currentRequest
+                gr.currentRequest.lock.acquire()
                 gr.currentRequest.childRequests[self] = self
                 self._requestLevel = gr.currentRequest._requestLevel + self._priority + 1
                 gr.lastRequest = self
+                gr.currentRequest.lock.release()                
                 if lr is not None:
                     lr._putOnTaskQueue()
 
@@ -309,7 +311,15 @@ class GetItemRequestObject(object):
         assert self.finished, "Please make sure the request is completed before calling getResult()!"
         return self.destination
     
-    
+    def adjustPriority(self, delta):
+        self.lock.acquire()
+        self._priority += delta 
+        self._requestLevel += delta
+        childs = list(self.childRequests.values())
+        self.lock.release()
+        for c in childs:
+            c.adjustPriority(delta)
+        
     def wait(self, timeout = 0):
         """
         calling .wait() on an RequestObject is a blocking
@@ -358,7 +368,10 @@ class GetItemRequestObject(object):
             else:
                 self.lock.release()
         else:
-            if isinstance(self.slot._value, numpy.ndarray):
+            if self.destination is None:
+                self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
+            
+            if isinstance(self.slot._value, (numpy.ndarray, vigra.VigraArray)):
                 self.destination[:] = self.slot._value[self.key]
             else:
                 self.destination[:] = self.slot._value
@@ -393,6 +406,7 @@ class GetItemRequestObject(object):
         self.lock.acquire()
         if self.finished is True:
             self.lock.release()
+            assert self.destination is not None
             closure(self.destination, **kwargs)
         else:
             self.notifyQueue.append((closure, kwargs))
@@ -451,7 +465,10 @@ class GetItemRequestObject(object):
     def _cancelChildren(self):
         if not self.finished:
             self._cancel()
-            for r in self.childRequests.values():
+            self.lock.acquire()
+            childs = list(self.childRequests.values())
+            self.lock.release()
+            for r in childs:
                 r._cancelChildren()            
             self.childRequests = {}
 
