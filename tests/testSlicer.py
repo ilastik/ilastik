@@ -22,7 +22,7 @@ if __name__=="__main__":
     
     filename='ostrich.jpg'
     
-    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
+    g = Graph()
            
     vimageReader = OpImageReader(g)
     vimageReader.inputs["Filename"].setValue(filename)

@@ -9,7 +9,7 @@ from lazyflow.operators.vigraOperators import *
 
 
 
-graph = graph.Graph(numThreads=2)
+graph = graph.Graph()
 
 
 ostrich = OpImageReader(graph)

@@ -477,7 +477,9 @@ class OpBaseVigraFilter(OpArrayPiper):
         i2 = 0          
         for i in range(int(numpy.floor(1.0 * oldstart[channelAxis]/channelsPerChannel)),int(numpy.ceil(1.0 * oldstop[channelAxis]/channelsPerChannel))):
             treadKey=list(readKey)
-            treadKey.insert(timeAxis, key[timeAxis])
+            
+            if hasTimeAxis:
+                treadKey.insert(timeAxis, key[timeAxis])
             
             treadKey.insert(channelAxis, slice(i,i+1,None))
             treadKey=tuple(treadKey)

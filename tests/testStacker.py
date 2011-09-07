@@ -19,7 +19,7 @@ if __name__=="__main__":
     nc = 7
     stack = numpy.random.rand(nx, ny, nz, nc)
     
-    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
+    g = Graph()
     
     #assume that the slicer works
     
