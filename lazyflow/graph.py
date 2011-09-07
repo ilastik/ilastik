@@ -41,7 +41,7 @@ import string
 import itertools
 
 from h5dumprestore import instanceClassToString, stringToClass
-from helpers import itersubclasses
+from helpers import itersubclasses, detectCPUs
 from roi import sliceToRoi, roiToSlice
 from collections import deque
 from Queue import Queue, LifoQueue, Empty, PriorityQueue
@@ -2112,13 +2112,16 @@ class Worker(Thread):
                 
     
 class Graph(object):
-    def __init__(self, numThreads = 3, softMaxMem =  500*1024*1024):
+    def __init__(self, numThreads = None, softMaxMem =  None):
         self.operators = []
         self.tasks = PriorityQueue() #Lifo <-> depth first, fifo <-> breath first
         self.workers = []
         self.freeWorkers = deque()
         self.running = True
-        self.numThreads = numThreads
+        if numThreads is None:
+            self.numThreads = detectCPUs()
+        else:
+            self.numThreads = numThreads
         self.lastRequestID = itertools.count()
         self.process = psutil.Process(os.getpid())
         
