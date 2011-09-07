@@ -125,94 +125,94 @@ def add_Op(graph, OpNum=None):
     import random
     random.seed()    
     
-#    a_Op[0]= OpGaussianSmoothing(graph)#
-#    a_Op[0].inputs["sigma"].setValue(5) 
-#    
-#    a_Op[1]= OpGaussianSmoothing(graph)#
-#    a_Op[1].inputs["sigma"].setValue(0.3)    
-#    
+    a_Op[0]= OpGaussianSmoothing(graph)#
+    a_Op[0].inputs["sigma"].setValue(0.2) 
+    
+    a_Op[1]= OpGaussianSmoothing(graph)#
+    a_Op[1].inputs["sigma"].setValue(0.3)    
+    
     a_Op[2] = OpDifferenceOfGaussians(graph)#
     a_Op[2].inputs["sigma0"].setValue(1)
     a_Op[2].inputs["sigma1"].setValue(0.2)
         
-#    a_Op[3] = OpDifferenceOfGaussians(graph)#
-#    a_Op[3].inputs["sigma0"].setValue(0.4)
-#    a_Op[3].inputs["sigma1"].setValue(9)
-#    
-#    a_Op[4] = OpDifferenceOfGaussians(graph)#
-#    a_Op[4].inputs["sigma0"].setValue(2.1)
-#    a_Op[4].inputs["sigma1"].setValue(0.6)    
-#    
-#    a_Op[5] = OpLaplacianOfGaussian(graph)#
-#    a_Op[5].inputs["scale"].setValue(2.5)
-#    
-#    a_Op[5] = OpLaplacianOfGaussian(graph)#
-#    a_Op[5].inputs["scale"].setValue(0.1)
-#    
-#    a_Op[6] = OpOpening(graph)#
-#    a_Op[6].inputs["sigma"].setValue(7.1)
-#
-#    a_Op[7] = OpOpening(graph)#
-#    a_Op[7].inputs["sigma"].setValue(0.8)
-#    
-#    a_Op[8] = OpErosion(graph)#
-#    a_Op[8].inputs["sigma"].setValue(0.74)
-#    
-#    a_Op[9] = OpErosion(graph)#
-#    a_Op[9].inputs["sigma"].setValue(3.25)
-#    
-#    a_Op[10] = OpDilation(graph)#
-#    a_Op[10].inputs["sigma"].setValue(0.15)
-#    
-#    a_Op[11] = OpDilation(graph)#
-#    a_Op[11].inputs["sigma"].setValue(9.1)   
-#    
-#    a_Op[10] = OpClosing(graph)#    
-#    a_Op[10].inputs["sigma"].setValue(5.12)
-#    
-#    a_Op[11] = OpClosing(graph)#
-#    a_Op[11].inputs["sigma"].setValue(0.36) 
-#     
-#    a_Op[12] = OpGaussianGradientMagnitude(graph)#
-#    a_Op[12].inputs["sigma"].setValue(2.12)
-#    
-#    a_Op[13] = OpGaussianGradientMagnitude(graph)#
-#    a_Op[13].inputs["sigma"].setValue(0.78)
+    a_Op[3] = OpDifferenceOfGaussians(graph)#
+    a_Op[3].inputs["sigma0"].setValue(0.4)
+    a_Op[3].inputs["sigma1"].setValue(1.9)
+    
+    a_Op[4] = OpDifferenceOfGaussians(graph)#
+    a_Op[4].inputs["sigma0"].setValue(1.1)
+    a_Op[4].inputs["sigma1"].setValue(0.6)    
+    
+    a_Op[5] = OpLaplacianOfGaussian(graph)#
+    a_Op[5].inputs["scale"].setValue(1.5)
+    
+    a_Op[5] = OpLaplacianOfGaussian(graph)#
+    a_Op[5].inputs["scale"].setValue(0.1)
+    
+    a_Op[6] = OpOpening(graph)#
+    a_Op[6].inputs["sigma"].setValue(1.1)
+
+    a_Op[7] = OpOpening(graph)#
+    a_Op[7].inputs["sigma"].setValue(0.8)
+    
+    a_Op[8] = OpErosion(graph)#
+    a_Op[8].inputs["sigma"].setValue(0.74)
+    
+    a_Op[9] = OpErosion(graph)#
+    a_Op[9].inputs["sigma"].setValue(1.25)
+    
+    a_Op[10] = OpDilation(graph)#
+    a_Op[10].inputs["sigma"].setValue(0.15)
+    
+    a_Op[11] = OpDilation(graph)#
+    a_Op[11].inputs["sigma"].setValue(0.1)   
+    
+    a_Op[10] = OpClosing(graph)#    
+    a_Op[10].inputs["sigma"].setValue(1.12)
+    
+    a_Op[11] = OpClosing(graph)#
+    a_Op[11].inputs["sigma"].setValue(0.36) 
+     
+    a_Op[12] = OpGaussianGradientMagnitude(graph)#
+    a_Op[12].inputs["sigma"].setValue(1.12)
+    
+    a_Op[13] = OpGaussianGradientMagnitude(graph)#
+    a_Op[13].inputs["sigma"].setValue(0.78)
         
 #    a_Op[14] = OpHessianOfGaussianEigenvaluesFirst(graph)
 #    a_Op[14].inputs["scale"].setValue(6.7)
-#
+
 #    a_Op[15] = OpHessianOfGaussianEigenvaluesFirst(graph)
 #    a_Op[15].inputs["scale"].setValue(0.24)
     
-#    a_Op[16] = OpArrayCache(graph)##
-#    
-#    a_Op[17] = OpArrayCache(graph)##
-#    
-#    a_Op[18] = OpArrayPiper(graph)##
-#    
-#    a_Op[19] = OpArrayPiper(graph)##
+    a_Op[16] = OpArrayCache(graph)##
+    
+    a_Op[17] = OpArrayCache(graph)##
+    
+    a_Op[18] = OpArrayPiper(graph)##
+    
+    a_Op[19] = OpArrayPiper(graph)##
         
     a_Op[20] = operators.OpBlockedArrayCache(graph)
     a_Op[20].inputs["innerBlockShape"].setValue(7)
-    a_Op[20].inputs["outerBlockShape"].setValue((68,18,20,3,2))
+    a_Op[20].inputs["outerBlockShape"].setValue((5,18,20,3,2))
     a_Op[20].inputs["fixAtCurrent"].setValue(False)
           
     a_Op[21] = operators.OpBlockedArrayCache(graph)
     a_Op[21].inputs["innerBlockShape"].setValue(64)
-    a_Op[21].inputs["outerBlockShape"].setValue((100,50,100,50,50))
+    a_Op[21].inputs["outerBlockShape"].setValue((10,5,10,5,5))
     a_Op[21].inputs["fixAtCurrent"].setValue(False)
     
-#    a_Op[22] = operators.OpPixelOperator(graph)##
-#    def func1(a):
-#        return a +1
-#    a_Op[22].inputs["Function"].setValue(func1)
-#    
-#    a_Op[23] = operators.OpPixelOperator(graph)##
-#    def func2(a):
-#        return a * 7
-#    a_Op[23].inputs["Function"].setValue(func2)
-        
+    a_Op[22] = operators.OpPixelOperator(graph)##
+    def func1(a):
+        return a +1
+    a_Op[22].inputs["Function"].setValue(func1)
+    
+    a_Op[23] = operators.OpPixelOperator(graph)##
+    def func2(a):
+        return a * 7
+    a_Op[23].inputs["Function"].setValue(func2)
+#        
 #    a_Op[24] = OpDifferenceOfGaussians(graph)
 #    a_Op[24].inputs["sigma0"].setValue(6.29)
 #    
@@ -223,7 +223,7 @@ def add_Op(graph, OpNum=None):
 #    a_Op[26].inputs["sigma0"].setValue(0.77)
 #    
 #    a_Op[27] = OpCoherenceOrientation(graph)
-#    a_Op[27].inputs["sigma0"].setValue(3.6)OpSwapAxes
+#    a_Op[27].inputs["sigma0"].setValue(3.6)
     
     if OpNum in a_Op:
         return a_Op[OpNum]
@@ -406,7 +406,7 @@ def connect_random(graph, source, Op):
             Op[num].inputs["Input"].connect(Op[pre_num].outputs["Output"])
         
         
-        print "Op Number:", num
+        print "Op Name:", Op[num].name
         print Op[num].outputs["Output"]._shape
         assert (Op[num].outputs["Output"]._shape == s_shape), "Output shape %s  expected shape %s "%( Op[num].outputs["Output"]._shape,s_shape)   
         assert (Op[num].outputs["Output"]._dtype == s_dytpe)
@@ -466,22 +466,26 @@ if __name__=="__main__":
     print "_______________________"    
     
     
+#    Op = {}       
+#
+#    for i in range(0,42):
+#        Op[i] = add_Op(g)
+#
+#    max_num = len(Op)  
+#    print "MAX:" , max_num
+#   
+#    stacker = connect_Multi20_Stacker(g,source, Op)   
+    
     Op = {}       
 
-    for i in range(0,42):
-        Op[i] = add_Op(g)
+    for i in range(0,12):
+        Op[i] = add_Op(g) 
+    
 
     max_num = len(Op)  
     print "MAX:" , max_num
-   
-    stacker = connect_Multi20_Stacker(g,source, Op)   
     
-    Op = {}       
-
-    for i in range(0,6):
-        Op[i] = add_Op(g)    
-    
-    rand_op = connect_random(g,stacker, Op)
+    rand_op = connect_random(g,source, Op)
 
     
 
@@ -499,7 +503,7 @@ if __name__=="__main__":
     print "Result-Shape", res.shape
     
 
-#    assert (e.outputs["Output"]._shape == s_shape), "Output shape %s  expected shape %s "%( e.outputs["Output"]._shape,s_shape)   
+    assert (e.outputs["Output"]._shape == s_shape), "Output shape %s  expected shape %s "%( e.outputs["Output"]._shape,s_shape)   
     assert (e.outputs["Output"]._dtype == s_dytpe)
                
     for i in range (5):
