@@ -185,7 +185,7 @@ class OpPixelFeatures(OperatorGroup):
             dimRow = self.matrix.shape[0]
             
             assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same"
-            assert dimRow==5, "Right now the features are fixed"
+            assert dimRow==6, "Right now the features are fixed"
     
             oparray = []
             for j in range(dimRow):
@@ -212,11 +212,19 @@ class OpPixelFeatures(OperatorGroup):
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["scale"].setValue(self.scales[j])
             
-            i=4
+            i= 4
             for j in range(dimCol): 
                 oparray[i].append(OpGaussianGradientMagnitude(self.graph))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["sigma"].setValue(self.scales[j])
+            
+            i= 5
+            for j in range(dimCol): 
+                oparray[i].append(OpDifferenceOfGaussians(self.graph))
+                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["sigma0"].setValue(self.scales[j])            
+                oparray[i][j].inputs["sigma1"].setValue(self.scales[j]*0.66)
+            
             
             self.outputs["ArrayOfOperators"][0] = oparray
             
