@@ -49,6 +49,9 @@ class OpArrayPiper(Operator):
     def notifyDirty(self,slot,key):
         self.outputs["Output"].setDirty(key)
 
+    def setInSlot(self, slot, key, value):
+        self.outputs["Output"][key] = value
+
     @property
     def shape(self):
         return self.outputs["Output"]._shape
@@ -347,19 +350,23 @@ class OpArrayCache(OpArrayPiper):
             
             
     def notifyDirty(self, slot, key):
-        start, stop = sliceToRoi(key, self.shape)
-        
-        self._lock.acquire()
-        if self._cache is not None:        
-            blockStart = numpy.floor(1.0 * start / self._blockShape)
-            blockStop = numpy.ceil(1.0 * stop / self._blockShape)
-            blockKey = roiToSlice(blockStart,blockStop)
-            self._blockState[blockKey] = 1
-            #FIXME: we should recalculate results for which others are waiting and notify them...
-        self._lock.release()
+        if slot == self.inputs["Input"]:
+            start, stop = sliceToRoi(key, self.shape)
             
-        if not self._fixed:
-            self.outputs["Output"].setDirty(key)
+            self._lock.acquire()
+            if self._cache is not None:        
+                blockStart = numpy.floor(1.0 * start / self._blockShape)
+                blockStop = numpy.ceil(1.0 * stop / self._blockShape)
+                blockKey = roiToSlice(blockStart,blockStop)
+                self._blockState[blockKey] = 1
+                #FIXME: we should recalculate results for which others are waiting and notify them...
+            self._lock.release()
+                
+            if not self._fixed:
+                self.outputs["Output"].setDirty(key)
+        if slot == self.inputs["fixAtCurrent"]:
+            if  self.inputs["fixAtCurrent"].connected():
+                self._fixed =  self.inputs["fixAtCurrent"].value   
         
     def getOutSlot(self,slot,key,result):
         #return     
@@ -482,29 +489,34 @@ class OpArrayCache(OpArrayPiper):
         self._lock.release()
         
     def setInSlot(self, slot, key, value):
-        ch = self._cacheHits
-        ch += 1
-        self._cacheHits = ch
-        start, stop = sliceToRoi(key, self.shape)
-        blockStart = numpy.ceil(1.0 * start / self._blockShape)
-        blockStop = numpy.floor(1.0 * stop / self._blockShape)
-        blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
-        blockKey = roiToSlice(blockStart,blockStop)
-
-        if (blockStop >= blockStart).all():
-            start2 = blockStart * self._blockShape
-            stop2 = blockStop * self._blockShape
-            stop2 = numpy.minimum(stop2, self.shape)
-            key2 = roiToSlice(start2,stop2)
-            self._lock.acquire()
-            if self._cache is None:
-                self._allocateCache()
-            self._cache[key2] = value[roiToSlice(start2-start,stop2-start)]
-            self._blockState[blockKey] = self._dirtyState
-            self._lock.release()
-        
-        #pass request on
-        self.outputs["Output"][key] = value
+        if slot == self.inputs["Input"]:
+            ch = self._cacheHits
+            ch += 1
+            self._cacheHits = ch
+            start, stop = sliceToRoi(key, self.shape)
+            blockStart = numpy.ceil(1.0 * start / self._blockShape)
+            blockStop = numpy.floor(1.0 * stop / self._blockShape)
+            blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
+            blockKey = roiToSlice(blockStart,blockStop)
+    
+            if (blockStop >= blockStart).all():
+                start2 = blockStart * self._blockShape
+                stop2 = blockStop * self._blockShape
+                stop2 = numpy.minimum(stop2, self.shape)
+                key2 = roiToSlice(start2,stop2)
+                self._lock.acquire()
+                if self._cache is None:
+                    self._allocateCache()
+                self._cache[key2] = value[roiToSlice(start2-start,stop2-start)]
+                self._blockState[blockKey] = self._dirtyState
+                self._lock.release()
+            
+            #pass request on
+            if not self._fixed:
+                self.outputs["Output"][key] = value
+        if slot == self.inputs["fixAtCurrent"]:
+            self._fixed = value
+            assert 1==2
         
         
         
@@ -898,6 +910,8 @@ class OpBlockedArrayCache(OperatorGroup):
     def notifyConnect(self, slot):
         if slot == self.inputs["fixAtCurrent"]:
             self._fixed = self.inputs["fixAtCurrent"].value  
+            self.fixerSource.inputs["Input"].setValue(self._fixed)
+            self.fixerSource.inputs["Input"].setDirty(0)
         if self.inputs["Input"].connected() and self.inputs["fixAtCurrent"].connected() and self.inputs["innerBlockShape"].connected() and self.inputs["outerBlockShape"].connected():
             if slot != self.inputs["fixAtCurrent"] or not hasattr(self,"_blockState"):
                 inputSlot = self.inputs["Input"]
@@ -1011,10 +1025,12 @@ class OpBlockedArrayCache(OperatorGroup):
         return result
 
     def notifyDirty(self, slot, key):
-        if slot == self.inputs["Input"]:
+        if slot == self.inputs["Input"] and not self._fixed:
             self.outputs["Output"].setDirty(key)
             
-            
+    def setInSlot(self,slot,key):
+        pass
+    
     def getInnerInputs(self):
         inputs = {}
         inputs["Input"] = self.source.inputs["Input"]

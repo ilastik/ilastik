@@ -679,8 +679,6 @@ class InputSlot(object):
         
         allows to call inputslot[0,:,3:11] 
         """
-        gr = greenlet.getcurrent()
-        assert hasattr(gr,"currentRequest")
         start, stop = sliceToRoi(key, self.shape)
         assert len(stop) == len(self.shape)
         assert stop <= list(self.shape)
@@ -2119,7 +2117,10 @@ class Worker(Thread):
         while self.graph.running:
             self.graph.freeWorkers.append(self)
             self.workAvailableEvent.wait()#(0.2)
-            self.graph.freeWorkers.remove(self)
+            try:
+                self.graph.freeWorkers.remove(self)
+            except:
+                pass
             self.workAvailableEvent.clear()
                 
             while not self.graph.tasks.empty() or len(self.finishedRequestGreenlets) > 0:       
@@ -2285,9 +2286,11 @@ class Graph(object):
             self.tasks.put((-task._requestLevel,task))
             
             if len(self.freeWorkers) > 0:
-                w = self.freeWorkers.pop()
-                self.freeWorkers.appendleft(w)
-                w.signalWorkAvailable()
+                try:
+                    w = self.freeWorkers.pop()
+                    w.signalWorkAvailable()
+                except:
+                    pass
         else:
             self._suspendedRequests.append(reqObject)
 
@@ -2331,6 +2334,11 @@ class Graph(object):
 
         sys.stdout.write("\n")
         sys.stdout.flush()
+
+        print "    Waiting for workers..."          
+        while len(self.workers) != len(self.freeWorkers):
+            time.sleep(0.05)
+        print "    ok"
         print "finished."
         #self.finalize()
             
