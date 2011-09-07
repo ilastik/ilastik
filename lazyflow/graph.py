@@ -272,6 +272,9 @@ class GetItemRequestObject(object):
             # we are in the ._value case of an inputSlot
             if self.destination is None:
                 self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)            
+            gr = greenlet.getcurrent()
+            if hasattr(gr, "currentRequest"):
+                self.parentRequest = gr.currentRequest                
             self.wait() #this sets self._finished and copies the results over
         if not self._finished:
             self.lock = Lock()
@@ -433,7 +436,7 @@ class GetItemRequestObject(object):
         self.lock.acquire()
         self._finished = True
         self.lock.release()
-        if self.graph.running or self.parentRequest is not None:
+        if self.graph.suspended is False or self.parentRequest is not None:
             if self.canceled is False:
                 while len(self.notifyQueue) > 0:
                     try:
@@ -1996,8 +1999,8 @@ class OperatorGroupGraph(object):
         op.disconnect()
  
     @property
-    def running(self):
-        return self._originalGraph.running
+    def suspended(self):
+        return self._originalGraph.suspended
  
     def dumpToH5G(self, h5g, patchBoard):
         h5op = h5g.create_group("operators")
@@ -2156,7 +2159,8 @@ class Graph(object):
         self.workers = []
         self.freeWorkers = deque()
         self.running = True
-
+        self.suspended = False
+        
         self._suspendedRequests = deque()
         self._suspendedNotifyFinish = deque()
         
@@ -2274,7 +2278,7 @@ class Graph(object):
 
             
     def putTask(self, reqObject):
-        if self.running:
+        if self.suspended is False:
             task = reqObject
             self.tasks.put((-task._requestLevel,task))
             
@@ -2291,7 +2295,6 @@ class Graph(object):
     def stopGraph(self):
         print "Graph: stopping..."        
         tasks = []
-        
         while not self.tasks.empty():
             try:
                 t = self.tasks.get(block = False)
@@ -2317,6 +2320,8 @@ class Graph(object):
             sys.stdout.flush()
             req.wait()
             sys.stdout.write("\b"*len(s))
+        self.suspended = True
+
         sys.stdout.write("\n")
         sys.stdout.flush()
         print "finished."
@@ -2324,7 +2329,8 @@ class Graph(object):
             
     def resumeGraph(self):
         print "Graph: resuming %d requests" % len(self._suspendedRequests)
-        self.running = True
+        self.suspended = False
+        
         while len(self._suspendedNotifyFinish) > 0:
             try:
                 r = self._suspendedNotifyFinish.pop()
