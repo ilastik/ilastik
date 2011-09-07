@@ -134,22 +134,18 @@ class Op20ToMulti(Op5ToMulti):
 
 
 
-class OpNToMulti(Op5ToMulti):
+class Op50ToMulti(Op5ToMulti):
     
     name = "N Elements to Multislot"
     category = "Misc"
 
-    
+    inputSlots=[]
+    for i in xrange(50):
+        inputSlots.append(InputSlot("Input%.2d"%(i)))
     outputSlots = [MultiOutputSlot("Outputs")]
 
     
-    def __init__(self,g,N=20):
-        self.inputSlots = []
-        for i in range(N):
-            self.inputSlots.append(InputSlot("Input"+str(i)))
-        
-                
-        Op5ToMulti.__init__(self,g)
+
 
 
 
@@ -169,7 +165,7 @@ class OpPixelFeatures(OperatorGroup):
         
         self.stacker = OpMultiArrayStacker(self.graph)
         
-        self.multi = Op20ToMulti(self.graph)
+        self.multi = Op50ToMulti(self.graph)
         
         
         self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
