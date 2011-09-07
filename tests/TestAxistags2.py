@@ -354,16 +354,23 @@ def createVigraAxistags():
 #        axis.append(vigra.AxisInfo(key = key, typeFlags = typeFlags, resolution = 0.0, description = description))
     
     info = []    
+    info.append(vigra.AxisInfo(key = "t", typeFlags = vigra.AxisType.Time , resolution = 0.0, description = "Cat"))
     info.append(vigra.AxisInfo(key = "x", typeFlags = vigra.AxisType.Space , resolution = 0.0, description = "Lion"))
     info.append(vigra.AxisInfo(key = "y", typeFlags = vigra.AxisType.Space , resolution = 0.0, description = "Bird"))
     info.append(vigra.AxisInfo(key = "z", typeFlags = vigra.AxisType.Space , resolution = 0.0, description = "Shark"))
-    info.append(vigra.AxisInfo(key = "t", typeFlags = vigra.AxisType.Time , resolution = 0.0, description = "Cat"))
     info.append(vigra.AxisInfo(key = "c", typeFlags = vigra.AxisType.Channels , resolution = 0.0, description = "Tiger"))
     
-    for i in range(5):
-        inf = info[random.randint(0,len(info)-1)]
-        axis.append(inf)
-        info.remove(inf)
+    
+    axis = info    
+#    for i in range(5):
+#        inf = info[random.randint(0,len(info)-1)]
+#        axis.append(inf)
+#        info.remove(inf)
+
+
+
+    
+    
     
 #    axis = defaultAxistags(5)
 #    axis[0].description = "Cat"
@@ -466,16 +473,16 @@ if __name__=="__main__":
     print "_______________________"    
     
     
-#    Op = {}       
-#
-#    for i in range(0,42):
-#        Op[i] = add_Op(g)
-#
-#    max_num = len(Op)  
-#    print "MAX:" , max_num
-#   
-#    stacker = connect_Multi20_Stacker(g,source, Op)   
-    
+    Op = {}       
+
+    for i in range(0,42):
+        Op[i] = add_Op(g)
+
+    max_num = len(Op)  
+    print "MAX:" , max_num
+   
+    stacker = connect_Multi20_Stacker(g,source, Op)   
+ 
     Op = {}       
 
     for i in range(0,12):
@@ -485,9 +492,7 @@ if __name__=="__main__":
     max_num = len(Op)  
     print "MAX:" , max_num
     
-    rand_op = connect_random(g,source, Op)
-
-    
+    rand_op = connect_random(g,stacker, Op)
 
 
     e = OpArrayPiper(g)
@@ -503,7 +508,7 @@ if __name__=="__main__":
     print "Result-Shape", res.shape
     
 
-    assert (e.outputs["Output"]._shape == s_shape), "Output shape %s  expected shape %s "%( e.outputs["Output"]._shape,s_shape)   
+    #assert (e.outputs["Output"]._shape == s_shape), "Output shape %s  expected shape %s "%( e.outputs["Output"]._shape,s_shape)   
     assert (e.outputs["Output"]._dtype == s_dytpe)
                
     for i in range (5):

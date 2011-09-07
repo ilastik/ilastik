@@ -279,14 +279,14 @@ class GetItemRequestObject(object):
             #return
             
             gr = greenlet.getcurrent()
-            if hasattr(gr, "lastRequest"):
+            if hasattr(gr, "currentRequest"):
                 # we delay the firing of an request until
                 # another one arrives 
                 # by this we make sure that one call path
                 # through the graph is done in one greenlet/thread
                 
                 lr = gr.lastRequest
-                #self.parentRequest = gr.currentRequest
+                self.parentRequest = gr.currentRequest
                 gr.currentRequest.lock.acquire()
                 gr.currentRequest.childRequests[self] = self
                 self._requestLevel = gr.currentRequest._requestLevel + self._priority + 1
@@ -337,7 +337,7 @@ class GetItemRequestObject(object):
             if not self._finished:
                 gr = greenlet.getcurrent()
                 if self.inProcess:   
-                    if hasattr(gr, "lastRequest"):                         
+                    if hasattr(gr, "currentRequest"):                         
                         lr = gr.lastRequest
                         if lr is not None:
                             lr._putOnTaskQueue()
@@ -353,7 +353,7 @@ class GetItemRequestObject(object):
                         cgr.switch(self)
                         self._waitFor(cgr,tr) #wait for finish
                 else:
-                    if hasattr(gr, "lastRequest"):
+                    if hasattr(gr, "currentRequest"):
                         lr = gr.lastRequest
                         if lr == self:
                             gr.lastRequest = None
@@ -1977,10 +1977,6 @@ class OperatorGroupGraph(object):
     
     def putTask(self, reqObject):
         self._originalGraph.putTask(reqObject)
-            
-            
-    def cancelRequestID(self, requestID):
-        self._originalGraph.cancelRequestID(requestID)
         
     def finalize(self):
         self._originalGraph.finalize()
@@ -2128,7 +2124,7 @@ class Worker(Thread):
                     if reqObject.canceled is False:
                         #TODO: isnt a comparison against currentRequestLevel better 
                         # then against 1 ? ...
-                        if self._hasSlept or reqObject._requestLevel > 0 or self.process.get_memory_info().vms < self.graph.softMaxMem:
+                        if self._hasSlept or reqObject._requestLevel > reqObject._priority or self.process.get_memory_info().vms < self.graph.softMaxMem:
                             gr = CustomGreenlet(reqObject._execute)
                             gr.thread = self
                             gr.switch( gr)
@@ -2150,6 +2146,9 @@ class Graph(object):
         self.workers = []
         self.freeWorkers = deque()
         self.running = True
+
+        self._suspendedRequests = deque()
+        
         if numThreads is None:
             self.numThreads = detectCPUs()
         else:
@@ -2166,11 +2165,18 @@ class Graph(object):
         self._allocatedCaches = deque()
         self._usedCacheMemory = 0
         self._memAllocLock = threading.Lock()
+
+        self._startWorkers()
+        
+    def _startWorkers(self):
+        self.workers = []
+        self.freeWorkers = deque()
+        self.tasks = PriorityQueue()
         for i in xrange(self.numThreads):
             w = Worker(self)
             self.workers.append(w)
             w.start()
-            self.freeWorkers.append(w)
+            self.freeWorkers.append(w)        
     
     def _memoryUsage(self):
         return self.process.get_memory_info().vms
@@ -2253,37 +2259,64 @@ class Graph(object):
 
             
     def putTask(self, reqObject):
-        task = reqObject
-        self.tasks.put((-task._requestLevel,task))
-        
-        if len(self.freeWorkers) > 0:
-            w = self.freeWorkers.pop()
-            self.freeWorkers.appendleft(w)
-            w.signalWorkAvailable()
+        if self.running:
+            task = reqObject
+            self.tasks.put((-task._requestLevel,task))
             
-            
-    def cancelRequestID(self, requestID):
-        for w in self.workers:
-            w.cancelRequestID(requestID)
+            if len(self.freeWorkers) > 0:
+                w = self.freeWorkers.pop()
+                self.freeWorkers.appendleft(w)
+                w.signalWorkAvailable()
+        else:
+            self._suspendedRequests.append(reqObject)
 
-        temp = deque()                
-        while len(self.tasks) > 0:
+    def stopGraph(self):
+        print "Graph: stopping..."        
+        tasks = []
+        
+        while not self.tasks.empty():
             try:
-                reqObject = self.tasks.popleft()
-            except IndexError:
-                pass
-            if reqObject.requestID != requestID:
-                temp.append(reqObject)
+                t = self.tasks.get(block = False)
+                tasks.append(t)
+            except:
+                break
+        runningRequests = []
+        for t in tasks:
+            prio, req = t
+            if req.parentRequest is not None:
+                self.putTask(req)
+                runningRequests.append(req)
+            else:
+                self._suspendedRequests.append(req)
+
+        waitFor = sorted(runningRequests, key=lambda x: -x._requestLevel)
+        if len(waitFor) == 0:
+            print "   no requests that need to be waited for"
         
-        while len(temp) > 0:
-            elem = temp.popleft()            
-            self.tasks.append(elem)
-        
-        for w in self.workers:
-            w.cancelRequestID(requestID)        
+        for i,req in enumerate(waitFor):
+            s = "    Waiting for request %6d/%6d" % (i+1,len(waitFor))
+            sys.stdout.write(s)
+            sys.stdout.flush()
+            req.wait()
+            sys.stdout.write("\b"*len(s))
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+        print "finished."
+        #self.finalize()
+            
+    def resumeGraph(self):
+        print "Graph: resuming %d requests" % len(self._suspendedRequests)
+        self.running = True
+        while len(self._suspendedRequests) > 0:
+            try:
+                r = self._suspendedRequests.pop()
+            except:
+                break
+            self.putTask(r)
+        print "finished."
+
         
     def finalize(self):
-        print "Finalizing Graph..."
         self.running = False
         for w in self.workers:
             w.signalWorkAvailable()
