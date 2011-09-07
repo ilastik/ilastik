@@ -13,7 +13,7 @@ if __name__=="__main__":
     
     
     
-    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
+    g = Graph()
 
             
     vimageReader = operators.OpImageReader(g)

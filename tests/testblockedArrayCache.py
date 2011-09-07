@@ -15,7 +15,7 @@ from lazyflow import operators
 def test1():
              
     
-    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
+    g = Graph()
     
 
     Op = operators.OpBlockedArrayCache(g)
@@ -107,7 +107,7 @@ def arraySplitter(op,img,start,stop, requests, callback, sync):
 
 def operatorTest(blockShape, sync = False, cache = False):
     
-    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
+    g = Graph()
   
 
     op = operators.OpBlockedArrayCache(g)

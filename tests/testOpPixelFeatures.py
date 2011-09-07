@@ -20,7 +20,7 @@ def test_OpPixelFeatures__T1():
     print "__TEST: test_OpPixelFeatures__T1__"
     print "_____________"
     
-    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
+    g = Graph()
     
     OpG = operators.OpPixelFeatures(g)
     
@@ -106,7 +106,7 @@ def test_OpPixelFeatures__T2():
     print "__TEST: test_OpPixelFeatures__T2__"
     print "_____________"    
     
-    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
+    g = Graph()
     
 
     OpG = operators.OpPixelFeatures(g)
@@ -150,7 +150,7 @@ def test_OpPixelFeatures__T3():
     print "__TEST: test_OpPixelFeatures__T3__"
     print "_____________"
     
-    g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
+    g = Graph()
     
     OpPI = operators.Op5ToMulti(g)    
 

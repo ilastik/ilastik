@@ -19,7 +19,7 @@ from numpy.testing import *
 if __name__=="__main__":
     
     
-    g = Graph(numThreads = 10, softMaxMem = 2000*1024**2)
+    g = Graph()
            
     
     

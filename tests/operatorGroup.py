@@ -69,7 +69,7 @@ class OperatorGroupA(OperatorGroup):
 
 Operators.registerOperatorSubclasses()
 
-g = Graph(numThreads = 2)
+g = Graph()
 
 source0 = OpArrayPiper(g)
 source0.inputs["Input"].setValue(numpy.zeros(shape = (200,100), dtype=numpy.uint8))

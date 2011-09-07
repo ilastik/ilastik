@@ -16,7 +16,7 @@ from tests.mockOperators import OpA, OpB, OpC
 
 Operators.registerOperatorSubclasses()
 
-g = Graph(numThreads = 2)
+g = Graph()
 
 source0 = OpArrayPiper(g)
 source0.inputs["Input"].setValue(numpy.zeros(shape = (200,100), dtype=numpy.uint8))
@@ -127,7 +127,7 @@ g.finalize()
 
 
 
-g = Graph(numThreads = 2)
+g = Graph()
 
 opList1 = operators.ListToMultiOperator(g)
 opList1.inputs["List"].setValue(["ostrich.jpg"])
