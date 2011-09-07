@@ -46,7 +46,6 @@ class OpTrainRandomForest(Operator):
                 #Maybe later request only part of the region?
                 
                 image=self.inputs["Images"][i][:].allocate().wait()
-                print "OpTrainRandomForest:", image.shape, labels.shape
                 
                 features=image[indexes]
                 labels=labels[indexes]
@@ -58,14 +57,11 @@ class OpTrainRandomForest(Operator):
         featMatrix=numpy.concatenate(featMatrix,axis=0)
         labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
         
-        print "featMatrix.shape:", featMatrix.shape
-        print "labelsMatrix.shape:", labelsMatrix.shape
-        
         RF=vigra.learning.RandomForest(100)        
         try:
             RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
         except:
-            print "ERROR: couldnt learn classifier"
+            print "ERROR: could not learn classifier"
             print featMatrix, labelsMatrix
             print featMatrix.shape, featMatrix.dtype
             print labelsMatrix.shape, labelsMatrix.dtype            
@@ -135,9 +131,6 @@ class OpTrainRandomForestBlocked(Operator):
                     
                     indexes=numpy.nonzero(labblock[...,0].view(numpy.ndarray))
                 
-                    #image=self.inputs["Images"][i][:].allocate().wait()
-                    print "OpTrainRandomForest:", image.shape, labblock.shape
-                
                     features=image[indexes]
                     labbla=labblock[indexes]
                 
@@ -147,9 +140,6 @@ class OpTrainRandomForestBlocked(Operator):
 
         featMatrix=numpy.concatenate(featMatrix,axis=0)
         labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
-        
-        print "featMatrix.shape:", featMatrix.shape
-        print "labelsMatrix.shape:", labelsMatrix.shape
         
         RF=vigra.learning.RandomForest(100)        
         try:

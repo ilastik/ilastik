@@ -29,7 +29,7 @@ def test_OpPixelFeatures__T1():
     OpG.inputs["Input"].setValue(inputImage)
     OpG.inputs["Scales"].setValue([1,20,30,40])
 
-    aMatrix = numpy.array([[0,1,0,1],[0,0,0,0],[0,1,0,0],[0,1,0,0]])
+    aMatrix = numpy.array([[0,1,0,1],[0,0,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,1],[0,1,0,0]])
 
     OpG.inputs["Matrix"].setValue(aMatrix)
 
@@ -48,7 +48,7 @@ def test_OpPixelFeatures__T1():
     
     shape1 = OpG.outputs["Output"].shape 
   
-    OpG.inputs["Matrix"].setValue(numpy.array([[1,1,0,0],[0,1,1,0],[1,0,1,0],[1,0,0,1]]))   
+    OpG.inputs["Matrix"].setValue(numpy.array([[1,1,0,0],[0,1,1,0],[1,0,1,0],[1,0,0,1],[0,1,0,1],[0,1,0,0]]))   
    
     import gc
     del dest1
@@ -114,7 +114,7 @@ def test_OpPixelFeatures__T2():
     inputImage = vigra.impex.readImage("../../tests/ostrich.jpg")
 
     OpG.inputs["Input"].setValue(numpy.random.rand(60,60,60,10,10).astype(numpy.float32))
-    OpG.inputs["Matrix"].setValue(numpy.array([[1,1,0,0],[0,1,0,0],[0,1,0,0],[1,0,0,1]]))
+    OpG.inputs["Matrix"].setValue(numpy.array([[1,1,0,0],[0,1,0,0],[0,1,0,0],[1,0,0,1],[0,1,0,1],[0,1,0,0]]))
     OpG.inputs["Scales"].setValue([1,.20,0.30,0.40])
     
     print OpG.outputs["Output"].shape

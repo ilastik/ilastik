@@ -134,22 +134,18 @@ class Op20ToMulti(Op5ToMulti):
 
 
 
-class OpNToMulti(Op5ToMulti):
+class Op50ToMulti(Op5ToMulti):
     
     name = "N Elements to Multislot"
     category = "Misc"
 
-    
+    inputSlots=[]
+    for i in xrange(50):
+        inputSlots.append(InputSlot("Input%.2d"%(i)))
     outputSlots = [MultiOutputSlot("Outputs")]
 
     
-    def __init__(self,g,N=20):
-        self.inputSlots = []
-        for i in range(N):
-            self.inputSlots.append(InputSlot("Input"+str(i)))
-        
-                
-        Op5ToMulti.__init__(self,g)
+
 
 
 
@@ -169,7 +165,7 @@ class OpPixelFeatures(OperatorGroup):
         
         self.stacker = OpMultiArrayStacker(self.graph)
         
-        self.multi = Op20ToMulti(self.graph)
+        self.multi = Op50ToMulti(self.graph)
         
         
         self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
@@ -189,10 +185,10 @@ class OpPixelFeatures(OperatorGroup):
             dimRow = self.matrix.shape[0]
             
             assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same"
-            assert dimRow==4, "Right now the features are fixed"
+            assert dimRow==6, "Right now the features are fixed"
     
             oparray = []
-            for j in range(dimCol):
+            for j in range(dimRow):
                 oparray.append([])
     
             i = 0
@@ -207,14 +203,32 @@ class OpPixelFeatures(OperatorGroup):
                 oparray[i][j].inputs["scale"].setValue(self.scales[j])
             i = 2
             for j in range(dimCol):
-                oparray[i].append(OpHessianOfGaussian(self.graph))
+                oparray[i].append(OpStructureTensorEigenvalues(self.graph))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                oparray[i][j].inputs["sigma"].setValue(self.scales[j])
+                oparray[i][j].inputs["innerScale"].setValue(self.scales[j])
+                oparray[i][j].inputs["outerScale"].setValue(self.scales[j]*0.5)
             i = 3
             for j in range(dimCol):   
                 oparray[i].append(OpHessianOfGaussianEigenvalues(self.graph))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["scale"].setValue(self.scales[j])
+            
+            i= 4
+            for j in range(dimCol): 
+                oparray[i].append(OpGaussianGradientMagnitude(self.graph))
+                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["sigma"].setValue(self.scales[j])
+            
+            i= 5
+            for j in range(dimCol): 
+                oparray[i].append(OpDifferenceOfGaussians(self.graph))
+                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["sigma0"].setValue(self.scales[j])            
+                oparray[i][j].inputs["sigma1"].setValue(self.scales[j]*0.66)
+            
+
+                
+            
             
             self.outputs["ArrayOfOperators"][0] = oparray
             
@@ -243,7 +257,7 @@ class OpPixelFeatures(OperatorGroup):
             
             index = len(self.source.outputs["Output"].shape) - 1
             self.stacker.inputs["AxisFlag"].setValue('c')
-            self.stacker.inputs["AxisIndex"].setValue(index)
+            self.stacker.inputs["AxisIndex"].setValue(self.source.outputs["Output"]._axistags.index('c'))
             self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
             
     
