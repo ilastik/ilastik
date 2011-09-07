@@ -347,18 +347,18 @@ class OpArrayCache(OpArrayPiper):
             
             
     def notifyDirty(self, slot, key):
+        start, stop = sliceToRoi(key, self.shape)
+        
+        self._lock.acquire()
+        if self._cache is not None:        
+            blockStart = numpy.floor(1.0 * start / self._blockShape)
+            blockStop = numpy.ceil(1.0 * stop / self._blockShape)
+            blockKey = roiToSlice(blockStart,blockStop)
+            self._blockState[blockKey] = 1
+            #FIXME: we should recalculate results for which others are waiting and notify them...
+        self._lock.release()
+            
         if not self._fixed:
-            start, stop = sliceToRoi(key, self.shape)
-            
-            self._lock.acquire()
-            if self._cache is not None:        
-                blockStart = numpy.floor(1.0 * start / self._blockShape)
-                blockStop = numpy.ceil(1.0 * stop / self._blockShape)
-                blockKey = roiToSlice(blockStart,blockStop)
-                self._blockState[blockKey] = 1
-                #FIXME: we should recalculate results for which others are waiting and notify them...
-            self._lock.release()
-            
             self.outputs["Output"].setDirty(key)
         
     def getOutSlot(self,slot,key,result):
