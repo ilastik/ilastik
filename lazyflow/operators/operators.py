@@ -692,6 +692,7 @@ if has_blist:
             self._sparseNZ = None
             self._labelers = {}
             self.shape = None
+            self.eraser = None
             
             
         def _createInnerOperators(self):
@@ -719,7 +720,13 @@ if has_blist:
     
                 #Filled on request
                 self._sparseNZ =  blist.sorteddict()
-                
+            
+            if slot.name == "eraser":
+                self.eraser = self.inputs["eraser"].value
+                print "EXTERNAL LABELER, SETTING ERASER TO", self.eraser
+                for l in self._labelers:
+                    l.inputs['eraser'].setValue(self.eraser)
+            
             if slot.name == "blockShape":
                 self._origBlockShape = self.inputs["blockShape"].value
                 
@@ -830,17 +837,25 @@ if has_blist:
             return result
             
         def setInSlot(self, slot, key, value):
+<<<<<<< HEAD
+            #print "LABELER INPUT SETTING: setting inslot, key:", key, "value", value.shape
+            #print "MAXIMUM VALUE PASSED:", numpy.max(value)
+=======
+>>>>>>> 688aaa407a01b44ffaee5e669cfed1f946625a6f
             start, stop = sliceToRoi(key, self.shape)
             
             blockStart = (1.0 * start / self._blockShape).floor()
             blockStop = (1.0 * stop / self._blockShape).ceil()
             blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
             blockKey = roiToSlice(blockStart,blockStop)
+<<<<<<< HEAD
+=======
             
             #FIXME: this assumes, that key passes 0 at singleton dimensions
             #FIXME: like volumeeditor does.
             nonsingletons = [i for i in range(len(key)) if key[i]!=0]
             
+>>>>>>> 688aaa407a01b44ffaee5e669cfed1f946625a6f
             innerBlocks = self._blockNumbers[blockKey]
             for b_ind in innerBlocks.ravel():
 
@@ -851,11 +866,15 @@ if has_blist:
                 smallstop = bigstop - offset
                 bigkey = roiToSlice(bigstart-start, bigstop-start)
                 smallkey = roiToSlice(smallstart, smallstop)
+<<<<<<< HEAD
+                
+=======
                 shortbigkey = [bigkey[i] for i in nonsingletons]
+>>>>>>> 688aaa407a01b44ffaee5e669cfed1f946625a6f
                 if not b_ind in self._labelers:
                     self._labelers[b_ind]=OpSparseLabelArray(self.graph)
                     self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
-                    self._labelers[b_ind].inputs["eraser"].setValue(self.inputs["eraser"])
+                    self._labelers[b_ind].inputs["eraser"].setValue(self.inputs["eraser"].value)
                     self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"])
                     
                 self._labelers[b_ind].inputs["Input"][smallkey] = value[tuple(bigkey)].squeeze()
@@ -960,8 +979,12 @@ class OpBlockedArrayCache(OperatorGroup):
         innerBlocks = self._blockNumbers[blockKey]
         result[:] = 0
 
+<<<<<<< HEAD
+        #print "OpSparseArrayCache %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))    
+=======
         if lazyflow.verboseRequests:
             print "OpSparseArrayCache %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))    
+>>>>>>> 688aaa407a01b44ffaee5e669cfed1f946625a6f
 
         for b_ind in innerBlocks.ravel():
             #which part of the original key does this block fill?

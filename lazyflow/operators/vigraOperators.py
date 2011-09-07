@@ -1013,10 +1013,16 @@ class OpH5WriterBigDataset(Operator):
         
         imSlot = self.inputs["Image"]
         
+        tmp=[]
                     
         for r in requests:
-            self.d[r]=self.inputs["Image"][r].allocate().wait()
-
+            
+            tmp.append(self.inputs["Image"][r].allocate())
+         
+        for i,t in enumerate(tmp):
+            r=requests[i]
+            self.d[r]=t.wait()
+            print "request ", i, "out of ", len(tmp), "executed"
         result[0] = True
         
         
@@ -1025,21 +1031,32 @@ class OpH5WriterBigDataset(Operator):
         #TODO: reimplement the request better
         shape=numpy.asarray(self.inputs['Image'].shape)
         
-        
-        
-        
+
+        shift=numpy.asarray((10,200,200,64,10))
+        shift=numpy.minimum(shift,shape)
         start=numpy.asarray([0]*len(shape))
         
-        block=numpy.asarray(shape)
         
         
         
+        stop=shift
         reqList=[]
         
+        #shape = shape - (numpy.mod(numpy.asarray(shape), 
+        #                  shift))
+        from itertools import product
         
-        for z in xrange(1,shape[3]):
-            block[3]=z
-            reqList.append(roiToSlice(start,block))
+        for indices in product(*[range(0, stop, step) 
+                        for stop,step in zip(shape, shift)]):
+                            
+                            start=numpy.asarray(indices)
+                            stop=numpy.minimum(start+shift,shape)
+                            reqList.append(roiToSlice(start,stop))
+        
+     
+        
+        
+   
         
         return reqList
     
