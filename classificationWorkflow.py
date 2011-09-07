@@ -74,6 +74,7 @@ class Main(QMainWindow):
         
     def initUic(self):
         p = os.path.split(__file__)[0]+'/'
+        if p == "/": p = "."+p
         uic.loadUi(p+"designerElements/MainWindow.ui", self) 
         #connect the window and graph creation to the opening of the file
         self.actionOpen.triggered.connect(self.openFile)
