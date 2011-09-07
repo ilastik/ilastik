@@ -238,7 +238,7 @@ class GetItemRequestObject(object):
     """
 
     __slots__ = ["_writer", "key", "destination", "slot", "func", "canceled",
-                 "finished", "inProcess", "parentRequest", "childRequests",
+                 "_finished", "inProcess", "parentRequest", "childRequests",
                  "graph", "waitQueue", "notifyQueue", "cancelQueue",
                  "_requestLevel", "arg1", "lock", "_priority"]
         
@@ -250,7 +250,7 @@ class GetItemRequestObject(object):
         self.slot = slot
         self.func = None
         self.canceled = False
-        self.finished = False
+        self._finished = False
         self.inProcess = False
         self.parentRequest = None
         self.childRequests = {}
@@ -272,8 +272,8 @@ class GetItemRequestObject(object):
             # we are in the ._value case of an inputSlot
             if self.destination is None:
                 self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)            
-            self.wait() #this sets self.finished and copies the results over
-        if not self.finished:
+            self.wait() #this sets self._finished and copies the results over
+        if not self._finished:
             self.lock = Lock()
             #self._putOnTaskQueue()
             #return
@@ -313,7 +313,7 @@ class GetItemRequestObject(object):
         self.graph.putTask(self)
     
     def getResult(self):
-        assert self.finished, "Please make sure the request is completed before calling getResult()!"
+        assert self._finished, "Please make sure the request is completed before calling getResult()!"
         return self.destination
     
     def adjustPriority(self, delta):
@@ -334,7 +334,7 @@ class GetItemRequestObject(object):
         """
         if isinstance(self.slot, OutputSlot) or self.slot._value is None:
             self.lock.acquire()
-            if not self.finished:
+            if not self._finished:
                 gr = greenlet.getcurrent()
                 if self.inProcess:   
                     if hasattr(gr, "lastRequest"):                         
@@ -380,7 +380,7 @@ class GetItemRequestObject(object):
                 self.destination[:] = self.slot._value[self.key]
             else:
                 self.destination[:] = self.slot._value
-            self.finished = True
+            self._finished = True
         return self.destination   
   
       
@@ -409,7 +409,7 @@ class GetItemRequestObject(object):
         are, the provided someFunction will be called by lazyflow.
         """
         self.lock.acquire()
-        if self.finished is True:
+        if self._finished is True:
             self.lock.release()
             assert self.destination is not None
             closure(self.destination, **kwargs)
@@ -431,15 +431,21 @@ class GetItemRequestObject(object):
 
     def _finalize(self):
         self.lock.acquire()
-        self.finished = True
+        self._finished = True
         self.lock.release()
         if self.canceled is False:
             while len(self.notifyQueue) > 0:
-                func, kwargs = self.notifyQueue.pop()
+                try:
+                    func, kwargs = self.notifyQueue.pop()
+                except:
+                    break
                 func(self.destination, **kwargs)
 
             while len(self.waitQueue) > 0:
-                tr, req, gr = self.waitQueue.pop()
+                try:
+                    tr, req, gr = self.waitQueue.pop()
+                except:
+                    break
                 req.lock.acquire()
                 if not req.canceled:
                     tr.finishedRequestGreenlets.append((req, gr))
@@ -451,11 +457,14 @@ class GetItemRequestObject(object):
         
     def _cancel(self):
         self.lock.acquire()
-        if not self.finished:
+        if not self._finished:
             self.canceled = True
             self.lock.release()
             while len(self.cancelQueue) > 0:
-                closure, kwargs = self.cancelQueue.pop()
+                try:
+                    closure, kwargs = self.cancelQueue.pop()
+                except:
+                    break
                 closure(**kwargs)
         else:
             self.lock.release()
@@ -468,7 +477,7 @@ class GetItemRequestObject(object):
 #                    tr.workAvailableEvent.set()
 
     def _cancelChildren(self):
-        if not self.finished:
+        if not self._finished:
             self._cancel()
             self.lock.acquire()
             childs = list(self.childRequests.values())
@@ -478,14 +487,14 @@ class GetItemRequestObject(object):
             self.childRequests = {}
 
     def _cancelParents(self):
-        if not self.finished:
+        if not self._finished:
             self._cancel()
             if self.parentRequest is not None:
                 self.parentRequest._cancelParents()
 
 
     def cancel(self):
-        if not self.finished:
+        if not self._finished:
             self.canceled = True
             self._cancelChildren()
             #self._cancelParents()
