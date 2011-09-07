@@ -28,7 +28,8 @@ reader.inputs["hdf5Path"].setValue("volume/data")
 
 
 
-sigmas=[0.7,1,1.6,3.5,5]
+#sigmas=[0.7,1,1.6,3.5,5]
+sigmas = [0.3, 10]
 operators=[]
 resFolder='/media/96A669B1A6699293/features_knott/'
 
@@ -103,6 +104,7 @@ for s in sigmas:
     count+=1
     '''
 #Stack all of them together and put also the stacker in the bunch
+'''
 op=OpMultiArrayStacker(g)
 op.inputs['Images'].connect(multi.outputs['Outputs'])
 op.inputs['AxisFlag'].setValue('c')
@@ -110,7 +112,7 @@ op.inputs['AxisIndex'].setValue(4)
 operators.append(op)
 filename=op.name+'_gsm_.h5'
 resultfileNames.append(filename)
-
+'''
 
 writerList=[]
 for i,op in enumerate(operators):

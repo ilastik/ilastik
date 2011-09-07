@@ -154,7 +154,8 @@ class Main(QMainWindow):
         self.SelectFeaturesButton.setEnabled(not checked)
         for o in self.fixableOperators:
             o.inputs["fixAtCurrent"].setValue(not checked)
-                
+        self.labelListModel.allowRemove(not checked)
+        
         self.editor.scheduleSlicesRedraw()
         
     def switchLabel(self, row):

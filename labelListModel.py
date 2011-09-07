@@ -46,6 +46,8 @@ class LabelListModel(QAbstractTableModel):
         def onSelectionChanged(selected, deselected):
             self.labelSelected.emit(selected[0].indexes()[0].row())
         self._selectionModel.selectionChanged.connect(onSelectionChanged)
+        
+        self._allowRemove = True
     
     def __len__(self):
         return len(self._labels)
@@ -130,11 +132,18 @@ class LabelListModel(QAbstractTableModel):
         return True
 
     def removeRow(self, position, parent = QModelIndex()):
+        if not self._allowRemove:
+            return True
         self.beginRemoveRows(parent, position, position)
         value = self._labels[position]
         print "removing row: ", value
         self._labels.remove(value)     
         self.endRemoveRows()
         return True
+    
+    def allowRemove(self, check):
+        #Allow removing of rows. Needed to be able to disallow it
+        #in interactive mode
+        self._allowRemove = check
     
     
