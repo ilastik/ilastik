@@ -262,9 +262,8 @@ class GetItemRequestObject(object):
         self._requestLevel = -1
         
         if isinstance(slot, InputSlot) and self.slot._value is None:
-            if slot.partner is not None:
-                self.func = slot.partner.operator.getOutSlot
-                self.arg1 = slot.partner            
+            self.func = slot.partner.operator.getOutSlot
+            self.arg1 = slot.partner            
         elif isinstance(slot, OutputSlot):
             self.func =  slot.operator.getOutSlot
             self.arg1 = slot
@@ -680,6 +679,8 @@ class InputSlot(object):
         
         allows to call inputslot[0,:,3:11] 
         """
+        gr = greenlet.getcurrent()
+        assert hasattr(gr,"currentRequest")
         start, stop = sliceToRoi(key, self.shape)
         assert len(stop) == len(self.shape)
         assert stop <= list(self.shape)
@@ -2137,7 +2138,7 @@ class Worker(Thread):
                     if reqObject.canceled is False:
                         #TODO: isnt a comparison against currentRequestLevel better 
                         # then against 1 ? ...
-                        if self._hasSlept or reqObject._requestLevel > reqObject._priority or self.process.get_memory_info().vms < self.graph.softMaxMem:
+                        if self._hasSlept or reqObject.parentRequest is not None or self.process.get_memory_info().vms < self.graph.softMaxMem:
                             gr = CustomGreenlet(reqObject._execute)
                             gr.thread = self
                             gr.switch( gr)
@@ -2160,6 +2161,7 @@ class Graph(object):
         self.freeWorkers = deque()
         self.running = True
         self.suspended = False
+        self.stopped = False
         
         self._suspendedRequests = deque()
         self._suspendedNotifyFinish = deque()
@@ -2278,7 +2280,7 @@ class Graph(object):
 
             
     def putTask(self, reqObject):
-        if self.suspended is False:
+        if self.suspended is False or reqObject.parentRequest is not None:
             task = reqObject
             self.tasks.put((-task._requestLevel,task))
             
@@ -2294,6 +2296,11 @@ class Graph(object):
 
     def stopGraph(self):
         print "Graph: stopping..."        
+        self.stopped = True
+        self.suspendGraph()
+
+    def suspendGraph(self):
+        print "Graph: suspending..."        
         tasks = []
         while not self.tasks.empty():
             try:
@@ -2328,6 +2335,11 @@ class Graph(object):
         #self.finalize()
             
     def resumeGraph(self):
+        if self.stopped:
+            self.stopped = False
+            self._suspendedRequests = deque()
+            self._suspendedNotifyFinish = deque()
+            
         print "Graph: resuming %d requests" % len(self._suspendedRequests)
         self.suspended = False
         
