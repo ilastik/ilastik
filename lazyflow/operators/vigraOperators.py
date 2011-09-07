@@ -9,6 +9,8 @@ from operators import OpArrayPiper, OpMultiArrayPiper
 
 from generic import OpMultiArrayStacker, getSubKeyWithFlags, popFlagsFromTheKey
 
+import math
+
 from threading import Lock
 
 
@@ -287,7 +289,7 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
             i += 1
         
         bestIndex = i-1
-        bestInputSigma = scale - self._inputSigmas[bestIndex]
+        bestInputSigma = math.sqrt(scale**2 - self._inputSigmas[bestIndex]**2)
         return bestIndex, bestInputSigma         
        
     def notifyConnectAll(self):
