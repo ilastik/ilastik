@@ -2176,8 +2176,10 @@ class Graph(object):
         return self.process.get_memory_info().vms
     
     def _registerCache(self, op):
+        self._memAllocLock.acquire()
         if op not in self._registeredCaches:
             self._registeredCaches.append(op)
+        self._memAllocLock.release()
     
     def _notifyMemoryAllocation(self, cache, size):
         if self._usedCacheMemory + size > self.softCacheMem:

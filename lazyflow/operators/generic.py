@@ -250,7 +250,6 @@ class OpMultiArrayStacker(Operator):
                 newshape[axisindex]=c
             else:
                 newshape.insert(axisindex, c)
-            print "UUUUUUUUUUUUUUUUUU", newshape
             self.outputs["Output"]._shape=tuple(newshape)
         else:
             self.outputs["Output"]._shape = None
