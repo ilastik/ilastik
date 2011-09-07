@@ -588,13 +588,8 @@ class OpBaseVigraFilter(OpArrayPiper):
 #difference of Gaussians
 def differenceOfGausssians(image,sigma0, sigma1,window_size, out = None):
     """ difference of gaussian function""" 
-<<<<<<< HEAD
     print "differenceOfGausssians: shape=%r, axistags=%r, sigma0=%r, sigma1=%r" % (image.shape, image.axistags, sigma0, sigma1)     
     return (vigra.filters.gaussianSmoothing(image,sigma0,window_size=window_size)-vigra.filters.gaussianSmoothing(image,sigma1,window_size=window_size))
-=======
-    #print "differenceOfGausssians: shape=%r, axistags=%r, sigma0=%r, sigma1=%r" % (image.shape, image.axistags, sigma0, sigma1)     
-    return (vigra.filters.gaussianSmoothing(image,sigma0)-vigra.filters.gaussianSmoothing(image,sigma1))
->>>>>>> 2b5e7cca85c265cf5c34fb8659bf94ae1defc328
 
 
 def firstHessianOfGaussianEigenvalues(image, sigmas):
@@ -1187,44 +1182,92 @@ class OpH5ReaderSmoothedDataset(Operator):
     
         
     def notifyConnectAll(self):
-        filenames = self.inputs["Filenames"].value[0]
-        hdf5Path = self.inputs["hdf5Path"].value
-
-        f = h5py.File(filename, 'r')
-        self.f=f
         
-        d = f[hdf5Path]
-                
-        self.D=[]
+        #get the shape and other stuff from the first dataset
+        self.sigmas=[]
+        self.shape=None
+        self._setTheOutPutSlotsAndSigmas()    
+        
+        
+        #get the chunks and the references to the files for all other datasets
         self.ChunkList=[]
+        self.D=[]
+        self.F=[]
         
+        self._setChunksAndDatasets()
+            
+    def getSubOutSlot(self, slots, indexes, key, result):
         
-        count=len(d.keys())
+        slot=slots[0]
+        index=indexes[0]
+        
+        if slot.name=='Outputs':
+            indexFile=self._getFileIndex(key)
+            result[:]=self.D[indexFile][index][key]
+        elif slot.name=='Sigmas':
+            result[:]=self.sigmas[index]
+           
+          
+    def _setTheOutPutSlotsAndSigmas(self):
+        firstfile = self.inputs["Filenames"].value[0]
+        print "GUAGA",firstfile
+        
+        hdf5Path = self.inputs["hdf5Path"].value
+        
+        f = h5py.File(firstfile, 'r')
+        g = f[hdf5Path]
+        
+        count=len(g.keys())
         self.outputs['Outputs'].resize(count)
         self.outputs['Sigmas'].resize(count)
         
+        self.shape=f['volume/data'].shape
         
-        for filename in filenames:
-            for i,el in enumerate(sorted(d.keys())):
-                self.D.append(d[el])
-                self.outputs["Sigmas"][i]._dtype = numpy.float32
-                self.outputs["Sigmas"][i]._shape = (1,)
+        for i,el in enumerate(sorted(g.keys())):
+            self.outputs["Sigmas"][i]._dtype = numpy.float32
+            self.outputs["Sigmas"][i]._shape = (1,)
+            self.sigmas.append(g[el].attrs['sigma'])
+            self.outputs["Outputs"][i]._dtype = g[el].dtype
+            self.outputs["Outputs"][i]._shape = g[el].shape
+            if len(g[el].shape):
+                self.outputs["Outputs"][i]._axistags=vigra.VigraArray.defaultAxistags('txyzc')
+            else:
+                raise RuntimeError("OpH5ReaderSmoothedDataset: not implemented for non 5d dataset due to non serialization of axistags")
+        f.close()
+    
+    def _setChunksAndDatasets(self):
+        hdf5Path = self.inputs["hdf5Path"].value
+        for filename in self.inputs["Filenames"].value:
+            f=h5py.File(filename, 'r')
+            self.F.append(f)
+            g=f[hdf5Path]
+            tmplist=[]
+            self.ChunkList.append(f['volume/data'].chunks)
+            for i,el in enumerate(sorted(g.keys())):
+                assert (g[el].attrs['sigma'] in self.sigmas), "A new unexpected sigma was found %s %s" %(g[el].attr['sigma'],self.sigmas) 
+                assert (g[el].chunks==self.ChunkList[-1]), "chunks are not consistent through the dataset %s %s"%(g[el].chunks,self.ChunkList[-1])
+                assert (g[el].shape==self.shape), "shape is not consistent"
+                tmplist.append(g[el])
             
-                self.outputs["Outputs"][i]._dtype = d[el].dtype
-                self.outputs["Outputs"][i]._shape = d[el].shape
-                if len(d[el].shape):
-                    self.outputs["Outputs"][i]._axistags=vigra.VigraArray.defaultAxistags('txyzc')
-            
-                else:
-                    raise RuntimeError("OpH5ReaderSmoothedDataset: not implemented for non 5d dataset due to non serialization of axistags")
+            self.D.append(tmplist)
+    
+    def _getFileIndex(self,key):
+        start,stop=sliceToRoi(key,self.shape)
+        diff=numpy.array(stop)-numpy.array(start)
+        maxError=sys.maxint
+        indexFile=0
+        for i,chunks in enumerate(self.ChunkList):
+               cs = numpy.array(chunks)
         
-    def getSubOutSlot(self, slots, indexes, key, result):
+               error = numpy.sum(numpy.abs(diff -cs))
+               if error<maxError:
+                   indexFile = i
+                   maxError = error
         
-            slot=slots[0]
-            index=indexes[0]
-            if slot.name=='Outputs':
-                result[:]=self.D[index][key]
-            elif slot.name=='Sigmas':
-                result[:]=self.D[index].attrs['sigma']    
+        return indexFile
+    
+                
+                
+           
         
         
