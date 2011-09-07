@@ -132,7 +132,6 @@ class Main(QMainWindow):
         
         #Check if the number of labels in the layer stack is equals to the number of Painted labels
         if checked==True:
-            self.g.resumeGraph()
             labels =numpy.unique(numpy.asarray(self.opLabels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
             nPaintedLabels=labels.shape[0]
             nLabelsLayers = self.labelListModel.rowCount()
@@ -153,6 +152,7 @@ class Main(QMainWindow):
                 return
         else:
             self.g.stopGraph()
+            self.g.resumeGraph()
                 
         self.AddLabelButton.setEnabled(not checked)
         self.SelectFeaturesButton.setEnabled(not checked)
