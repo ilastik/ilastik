@@ -272,6 +272,9 @@ class GetItemRequestObject(object):
             # we are in the ._value case of an inputSlot
             if self.destination is None:
                 self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)            
+            gr = greenlet.getcurrent()
+            if hasattr(gr, "currentRequest"):
+                self.parentRequest = gr.currentRequest                
             self.wait() #this sets self._finished and copies the results over
         if not self._finished:
             self.lock = Lock()
@@ -433,24 +436,27 @@ class GetItemRequestObject(object):
         self.lock.acquire()
         self._finished = True
         self.lock.release()
-        if self.canceled is False:
-            while len(self.notifyQueue) > 0:
-                try:
-                    func, kwargs = self.notifyQueue.pop()
-                except:
-                    break
-                func(self.destination, **kwargs)
-
-            while len(self.waitQueue) > 0:
-                try:
-                    tr, req, gr = self.waitQueue.pop()
-                except:
-                    break
-                req.lock.acquire()
-                if not req.canceled:
-                    tr.finishedRequestGreenlets.append((req, gr))
-                    tr.workAvailableEvent.set()
-                req.lock.release()
+        if self.graph.suspended is False or self.parentRequest is not None:
+            if self.canceled is False:
+                while len(self.notifyQueue) > 0:
+                    try:
+                        func, kwargs = self.notifyQueue.pop()
+                    except:
+                        break
+                    func(self.destination, **kwargs)
+    
+                while len(self.waitQueue) > 0:
+                    try:
+                        tr, req, gr = self.waitQueue.pop()
+                    except:
+                        break
+                    req.lock.acquire()
+                    if not req.canceled:
+                        tr.finishedRequestGreenlets.append((req, gr))
+                        tr.workAvailableEvent.set()
+                    req.lock.release()
+        else:
+            self.graph.putFinalize(self)
         self.parentRequest = None
         self.childRequests = {}
 
@@ -1977,7 +1983,10 @@ class OperatorGroupGraph(object):
     
     def putTask(self, reqObject):
         self._originalGraph.putTask(reqObject)
-        
+
+    def putFinalize(self, reqObject):
+        self._originalGraph.putFinalize(reqObject)
+
     def finalize(self):
         self._originalGraph.finalize()
     
@@ -1988,6 +1997,10 @@ class OperatorGroupGraph(object):
         assert op in self.operators, "Operator %r not a registered Operator" % op
         self.operators.remove(op)
         op.disconnect()
+ 
+    @property
+    def suspended(self):
+        return self._originalGraph.suspended
  
     def dumpToH5G(self, h5g, patchBoard):
         h5op = h5g.create_group("operators")
@@ -2146,8 +2159,10 @@ class Graph(object):
         self.workers = []
         self.freeWorkers = deque()
         self.running = True
-
+        self.suspended = False
+        
         self._suspendedRequests = deque()
+        self._suspendedNotifyFinish = deque()
         
         if numThreads is None:
             self.numThreads = detectCPUs()
@@ -2158,7 +2173,11 @@ class Graph(object):
         
         self._memoryAccessCounter = itertools.count()
         if softMaxMem is None:
-            softMaxMem = psutil.avail_phymem() + psutil.cached_phymem()      
+            softMaxMem = psutil.avail_phymem()
+            try:
+                softMaxMem += psutil.cached_phymem()
+            except:
+                pass
         self.softMaxMem = softMaxMem # in bytes
         self.softCacheMem = softMaxMem * 0.3
         self._registeredCaches = deque()
@@ -2259,7 +2278,7 @@ class Graph(object):
 
             
     def putTask(self, reqObject):
-        if self.running:
+        if self.suspended is False:
             task = reqObject
             self.tasks.put((-task._requestLevel,task))
             
@@ -2270,10 +2289,12 @@ class Graph(object):
         else:
             self._suspendedRequests.append(reqObject)
 
+    def putFinalize(self, reqObject):
+        self._suspendedNotifyFinish.append(reqObject)
+
     def stopGraph(self):
         print "Graph: stopping..."        
         tasks = []
-        
         while not self.tasks.empty():
             try:
                 t = self.tasks.get(block = False)
@@ -2299,6 +2320,8 @@ class Graph(object):
             sys.stdout.flush()
             req.wait()
             sys.stdout.write("\b"*len(s))
+        self.suspended = True
+
         sys.stdout.write("\n")
         sys.stdout.flush()
         print "finished."
@@ -2306,7 +2329,15 @@ class Graph(object):
             
     def resumeGraph(self):
         print "Graph: resuming %d requests" % len(self._suspendedRequests)
-        self.running = True
+        self.suspended = False
+        
+        while len(self._suspendedNotifyFinish) > 0:
+            try:
+                r = self._suspendedNotifyFinish.pop()
+            except:
+                break
+            r._finalize()
+            
         while len(self._suspendedRequests) > 0:
             try:
                 r = self._suspendedRequests.pop()

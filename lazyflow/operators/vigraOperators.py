@@ -588,7 +588,6 @@ class OpBaseVigraFilter(OpArrayPiper):
 #difference of Gaussians
 def differenceOfGausssians(image,sigma0, sigma1,window_size, out = None):
     """ difference of gaussian function""" 
-    print "differenceOfGausssians: shape=%r, axistags=%r, sigma0=%r, sigma1=%r" % (image.shape, image.axistags, sigma0, sigma1)     
     return (vigra.filters.gaussianSmoothing(image,sigma0,window_size=window_size)-vigra.filters.gaussianSmoothing(image,sigma1,window_size=window_size))
 
 
