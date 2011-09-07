@@ -436,7 +436,7 @@ class Main(QMainWindow):
         self.DeleteButton.clicked.connect(model.deleteSelected)
         model.canDeleteSelected.connect(self.DeleteButton.setEnabled)     
         
-        self.opLabels.inputs["eraser"].setValue(self.editor.brushingModel.erasingColor)      
+        self.opLabels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)      
     
     def _createDefault16ColorColorTable(self):
         c = []
