@@ -52,6 +52,7 @@ class LabelListView(QTableView):
             button.setAttribute(Qt.WA_TransparentForMouseEvents, True)
             button.setFocusPolicy(Qt.NoFocus)
             button.setText("x")
+            
             layout.addWidget(button)
             box.setLayout(layout)
             

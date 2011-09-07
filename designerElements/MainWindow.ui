@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1019</width>
-    <height>667</height>
+    <width>906</width>
+    <height>671</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,196 +15,210 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_3">
+    <property name="margin">
+     <number>0</number>
+    </property>
     <item>
-     <widget class="QTabWidget" name="tabWidget">
-      <property name="currentIndex">
-       <number>0</number>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="QWidget" name="tab">
-       <attribute name="title">
-        <string>Tab 1</string>
-       </attribute>
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <widget class="VolumeEditorWidget" name="volumeEditorWidget"/>
+      <widget class="QWidget" name="widget" native="true">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-         <widget class="QSplitter" name="splitter">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>&lt;b&gt;Problem specific labels:&lt;/b&gt;</string>
           </property>
-          <widget class="VolumeEditorWidget" name="volumeEditorWidget"/>
-          <widget class="QWidget" name="widget" native="true">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
+         </widget>
+        </item>
+        <item>
+         <widget class="LabelListView" name="labelListView">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="AddLabelButton">
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
+          <property name="text">
+           <string>Add labels</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="SelectFeaturesButton">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Select Features</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="StartClassificationButton">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Initialize Workflow</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkInteractive">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <property name="text">
+           <string>Interactive updating</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>10</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>&lt;b&gt;Layers:&lt;/b&gt;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QWidget" name="widget_2" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout">
+           <property name="margin">
+            <number>0</number>
            </property>
-           <layout class="QVBoxLayout" name="verticalLayout_2">
-            <item>
-             <widget class="QCheckBox" name="checkInteractive">
-              <property name="enabled">
-               <bool>true</bool>
+           <item>
+            <widget class="LayerWidget" name="layerWidget">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QWidget" name="widget_3" native="true">
+             <layout class="QVBoxLayout" name="verticalLayout">
+              <property name="margin">
+               <number>0</number>
               </property>
-              <property name="text">
-               <string>Interactive updating</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="StartClassificationButton">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>Create Classifier</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="SelectFeaturesButton">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="text">
-               <string>Select Features</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="LabelListView" name="labelListView">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="AddLabelButton">
-              <property name="text">
-               <string>Add Label</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QWidget" name="widget" native="true">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <layout class="QHBoxLayout" name="horizontalLayout">
-               <property name="margin">
-                <number>0</number>
-               </property>
-               <item>
-                <widget class="LayerWidget" name="layerWidget">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QWidget" name="widget" native="true">
-                 <layout class="QVBoxLayout" name="verticalLayout">
-                  <property name="margin">
-                   <number>0</number>
-                  </property>
-                  <item>
-                   <widget class="QToolButton" name="UpButton">
-                    <property name="toolTip">
-                     <string>move layer up</string>
-                    </property>
-                    <property name="text">
-                     <string>Up</string>
-                    </property>
-                    <property name="icon">
-                     <iconset>
-                      <normaloff>../icons/go-up.png</normaloff>../icons/go-up.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QToolButton" name="DownButton">
-                    <property name="toolTip">
-                     <string>move layer down</string>
-                    </property>
-                    <property name="text">
-                     <string>Down</string>
-                    </property>
-                    <property name="icon">
-                     <iconset>
-                      <normaloff>../icons/go-down.png</normaloff>../icons/go-down.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QToolButton" name="DeleteButton">
-                    <property name="toolTip">
-                     <string>delete layer</string>
-                    </property>
-                    <property name="text">
-                     <string>Delete</string>
-                    </property>
-                    <property name="icon">
-                     <iconset>
-                      <normaloff>../icons/list-remove.png</normaloff>../icons/list-remove.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <spacer name="verticalSpacer">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>20</width>
-                      <height>40</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                  <item>
-                   <widget class="QToolButton" name="AddLayOutButton">
-                    <property name="toolTip">
-                     <string>add new layer</string>
-                    </property>
-                    <property name="text">
-                     <string>Add Layout</string>
-                    </property>
-                    <property name="icon">
-                     <iconset>
-                      <normaloff>../icons/list-add.png</normaloff>../icons/list-add.png</iconset>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-           </layout>
-          </widget>
+              <item>
+               <widget class="QToolButton" name="UpButton">
+                <property name="toolTip">
+                 <string>move layer up</string>
+                </property>
+                <property name="text">
+                 <string>Up</string>
+                </property>
+                <property name="icon">
+                 <iconset>
+                  <normaloff>../icons/go-up.png</normaloff>../icons/go-up.png</iconset>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QToolButton" name="DownButton">
+                <property name="toolTip">
+                 <string>move layer down</string>
+                </property>
+                <property name="text">
+                 <string>Down</string>
+                </property>
+                <property name="icon">
+                 <iconset>
+                  <normaloff>../icons/go-down.png</normaloff>../icons/go-down.png</iconset>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QToolButton" name="DeleteButton">
+                <property name="toolTip">
+                 <string>delete layer</string>
+                </property>
+                <property name="text">
+                 <string>Delete</string>
+                </property>
+                <property name="icon">
+                 <iconset>
+                  <normaloff>../icons/list-remove.png</normaloff>../icons/list-remove.png</iconset>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QToolButton" name="AddLayOutButton">
+                <property name="toolTip">
+                 <string>add new layer</string>
+                </property>
+                <property name="text">
+                 <string>Add Layout</string>
+                </property>
+                <property name="icon">
+                 <iconset>
+                  <normaloff>../icons/list-add.png</normaloff>../icons/list-add.png</iconset>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
        </layout>
-      </widget>
-      <widget class="QWidget" name="tab_2">
-       <attribute name="title">
-        <string>Tab 2</string>
-       </attribute>
       </widget>
      </widget>
     </item>
@@ -215,7 +229,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1019</width>
+     <width>906</width>
      <height>24</height>
     </rect>
    </property>
@@ -223,15 +237,11 @@
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="actionOpen"/>
-    <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>View</string>
     </property>
-    <addaction name="actionFitToScreen"/>
-    <addaction name="actionShowDebugPatches"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
@@ -247,39 +257,10 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-  </widget>
-  <widget class="QToolBar" name="toolBar_2">
-   <property name="windowTitle">
-    <string>toolBar_2</string>
-   </property>
-   <attribute name="toolBarArea">
-    <enum>TopToolBarArea</enum>
-   </attribute>
-   <attribute name="toolBarBreak">
-    <bool>false</bool>
-   </attribute>
-  </widget>
-  <widget class="QToolBar" name="toolBar_3">
-   <property name="windowTitle">
-    <string>toolBar_3</string>
-   </property>
-   <attribute name="toolBarArea">
-    <enum>TopToolBarArea</enum>
-   </attribute>
-   <attribute name="toolBarBreak">
-    <bool>false</bool>
-   </attribute>
-  </widget>
-  <widget class="QToolBar" name="toolBar_4">
-   <property name="windowTitle">
-    <string>toolBar_4</string>
-   </property>
-   <attribute name="toolBarArea">
-    <enum>TopToolBarArea</enum>
-   </attribute>
-   <attribute name="toolBarBreak">
-    <bool>false</bool>
-   </attribute>
+   <addaction name="actionOpen"/>
+   <addaction name="actionQuit"/>
+   <addaction name="actionFitToScreen"/>
+   <addaction name="actionShowDebugPatches"/>
   </widget>
   <action name="actionOpen">
    <property name="icon">
