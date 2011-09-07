@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>906</width>
-    <height>671</height>
+    <height>684</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -230,18 +230,22 @@
      <x>0</x>
      <y>0</y>
      <width>906</width>
-     <height>24</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionOpen"/>
+    <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>View</string>
     </property>
+    <addaction name="actionFitToScreen"/>
+    <addaction name="actionShowDebugPatches"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
@@ -270,6 +274,9 @@
    <property name="text">
     <string>Open</string>
    </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
   </action>
   <action name="actionFitToScreen">
    <property name="icon">
@@ -278,6 +285,9 @@
    </property>
    <property name="text">
     <string>Zoom to fit</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
    </property>
   </action>
   <action name="actionQuit">
@@ -288,6 +298,9 @@
    <property name="text">
     <string>Quit</string>
    </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
   </action>
   <action name="actionShowDebugPatches">
    <property name="checkable">
@@ -296,9 +309,17 @@
    <property name="text">
     <string>Show Debug Patches</string>
    </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
   </action>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>LabelListView</class>
+   <extends>QTableView</extends>
+   <header>labelListView</header>
+  </customwidget>
   <customwidget>
    <class>LayerWidget</class>
    <extends>QListView</extends>
@@ -308,11 +329,6 @@
    <class>VolumeEditorWidget</class>
    <extends>QWidget</extends>
    <header>volumeeditor.volumeEditorWidget</header>
-  </customwidget>
-  <customwidget>
-   <class>LabelListView</class>
-   <extends>QTableView</extends>
-   <header>labelListView</header>
   </customwidget>
  </customwidgets>
  <resources/>
