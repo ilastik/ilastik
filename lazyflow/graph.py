@@ -433,24 +433,27 @@ class GetItemRequestObject(object):
         self.lock.acquire()
         self._finished = True
         self.lock.release()
-        if self.canceled is False:
-            while len(self.notifyQueue) > 0:
-                try:
-                    func, kwargs = self.notifyQueue.pop()
-                except:
-                    break
-                func(self.destination, **kwargs)
-
-            while len(self.waitQueue) > 0:
-                try:
-                    tr, req, gr = self.waitQueue.pop()
-                except:
-                    break
-                req.lock.acquire()
-                if not req.canceled:
-                    tr.finishedRequestGreenlets.append((req, gr))
-                    tr.workAvailableEvent.set()
-                req.lock.release()
+        if self.graph.running or self.parentRequest is not None:
+            if self.canceled is False:
+                while len(self.notifyQueue) > 0:
+                    try:
+                        func, kwargs = self.notifyQueue.pop()
+                    except:
+                        break
+                    func(self.destination, **kwargs)
+    
+                while len(self.waitQueue) > 0:
+                    try:
+                        tr, req, gr = self.waitQueue.pop()
+                    except:
+                        break
+                    req.lock.acquire()
+                    if not req.canceled:
+                        tr.finishedRequestGreenlets.append((req, gr))
+                        tr.workAvailableEvent.set()
+                    req.lock.release()
+        else:
+            self.graph.putFinalize(self)
         self.parentRequest = None
         self.childRequests = {}
 
@@ -1977,7 +1980,10 @@ class OperatorGroupGraph(object):
     
     def putTask(self, reqObject):
         self._originalGraph.putTask(reqObject)
-        
+
+    def putFinalize(self, reqObject):
+        self._originalGraph.putFinalize(reqObject)
+
     def finalize(self):
         self._originalGraph.finalize()
     
@@ -1988,6 +1994,10 @@ class OperatorGroupGraph(object):
         assert op in self.operators, "Operator %r not a registered Operator" % op
         self.operators.remove(op)
         op.disconnect()
+ 
+    @property
+    def running(self):
+        return self._originalGraph.running
  
     def dumpToH5G(self, h5g, patchBoard):
         h5op = h5g.create_group("operators")
@@ -2148,6 +2158,7 @@ class Graph(object):
         self.running = True
 
         self._suspendedRequests = deque()
+        self._suspendedNotifyFinish = deque()
         
         if numThreads is None:
             self.numThreads = detectCPUs()
@@ -2274,6 +2285,9 @@ class Graph(object):
         else:
             self._suspendedRequests.append(reqObject)
 
+    def putFinalize(self, reqObject):
+        self._suspendedNotifyFinish.append(reqObject)
+
     def stopGraph(self):
         print "Graph: stopping..."        
         tasks = []
@@ -2311,6 +2325,13 @@ class Graph(object):
     def resumeGraph(self):
         print "Graph: resuming %d requests" % len(self._suspendedRequests)
         self.running = True
+        while len(self._suspendedNotifyFinish) > 0:
+            try:
+                r = self._suspendedNotifyFinish.pop()
+            except:
+                break
+            r._finalize()
+            
         while len(self._suspendedRequests) > 0:
             try:
                 r = self._suspendedRequests.pop()
