@@ -33,6 +33,11 @@ import vigra
 import sys
 import copy
 import psutil
+
+if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".")[1]) < 3:
+    print "Lazyflow: Please install a psutil python module version of at least >= 0.3.0"
+    sys.exit(1)
+    
 import os
 import time
 import gc
@@ -2118,6 +2123,8 @@ class Graph(object):
         self.process = psutil.Process(os.getpid())
         
         self._memoryAccessCounter = itertools.count()
+        if softMaxMem is None:
+            softMaxMem = psutil.avail_phymem() + psutil.cached_phymem()      
         self.softMaxMem = softMaxMem # in bytes
         self.softCacheMem = softMaxMem * 0.3
         self._registeredCaches = deque()
