@@ -58,6 +58,7 @@ class Main(QMainWindow):
         self.fixableOperators = []
         
         self.featureDlg=None
+
         
         #The old ilastik provided the following scale names:
         #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
@@ -433,7 +434,9 @@ class Main(QMainWindow):
         self.DownButton.clicked.connect(model.moveSelectedDown)
         model.canMoveSelectedDown.connect(self.DownButton.setEnabled)
         self.DeleteButton.clicked.connect(model.deleteSelected)
-        model.canDeleteSelected.connect(self.DeleteButton.setEnabled)           
+        model.canDeleteSelected.connect(self.DeleteButton.setEnabled)     
+        
+        self.opLabels.inputs["eraser"].setValue(self.editor.brushingModel.erasingColor)      
     
     def _createDefault16ColorColorTable(self):
         c = []

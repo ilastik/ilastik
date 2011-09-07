@@ -15,7 +15,7 @@ from lazyflow.operators import *
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-g = graph.Graph(numThreads=8)
+g = graph.Graph(8,5*2000*1024**2)
 
 
 
@@ -50,7 +50,7 @@ for s in sigmas:
     multi.inputs['Input'+str(count)].connect(op.outputs['Output'])
     count+=1
     
-    
+    '''
     op=OpHessianOfGaussianEigenvalues(g)
     op.inputs['scale'].setValue(s)
     op.inputs['Input'].connect(reader.outputs['Output'])
@@ -101,14 +101,14 @@ for s in sigmas:
     resultfileNames.append(filename)
     multi.inputs['Input'+str(count)].connect(op.outputs['Output'])
     count+=1
-
+    '''
 #Stack all of them together and put also the stacker in the bunch
 op=OpMultiArrayStacker(g)
 op.inputs['Images'].connect(multi.outputs['Outputs'])
 op.inputs['AxisFlag'].setValue('c')
 op.inputs['AxisIndex'].setValue(4)
 operators.append(op)
-filename=op.name+'_.h5'
+filename=op.name+'_gsm_.h5'
 resultfileNames.append(filename)
 
 
@@ -125,5 +125,6 @@ for i,op in enumerate(operators):
 for w in writerList:
     w.outputs["WriteImage"][0].allocate().wait()
     w.close()
+    print "Here - -- - -"
 
 g.finalize()
