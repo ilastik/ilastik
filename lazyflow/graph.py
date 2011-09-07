@@ -2158,7 +2158,11 @@ class Graph(object):
         
         self._memoryAccessCounter = itertools.count()
         if softMaxMem is None:
-            softMaxMem = psutil.avail_phymem() + psutil.cached_phymem()      
+            softMaxMem = psutil.avail_phymem()
+            try:
+                softMaxMem += psutil.cached_phymem()
+            except:
+                pass
         self.softMaxMem = softMaxMem # in bytes
         self.softCacheMem = softMaxMem * 0.3
         self._registeredCaches = deque()
