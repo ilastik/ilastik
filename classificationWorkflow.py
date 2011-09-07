@@ -480,11 +480,13 @@ class Main(QMainWindow):
         dlg.setWindowTitle("Features")
         dlg.createFeatureTable({"Features": [FeatureEntry("Gaussian smoothing"), \
                                              FeatureEntry("Laplacian of Gaussian"), \
-                                             FeatureEntry("Hessian of Gaussian"), \
-                                             FeatureEntry("Hessian of Gaussian EV")]}, \
+                                             FeatureEntry("Structure Tensor Eigenvalues"), \
+                                             FeatureEntry("Hessian of Gaussian EV"),  \
+                                             FeatureEntry("Gaussian Gradient Magnitude"), \
+                                             FeatureEntry("Difference Of Gaussian")]}, \
                                self.featScalesList)
         dlg.setImageToPreView(None)
-        m = [[1,0,0,0,0,0,0],[1,0,0,0,0,0,0],[0,0,0,0,0,0,0],[1,0,0,0,0,0,0]]
+        m = [[1,0,0,0,0,0,0],[1,0,0,0,0,0,0],[0,0,0,0,0,0,0],[1,0,0,0,0,0,0],[1,0,0,0,0,0,0],[1,0,0,0,0,0,0]]
         dlg.featureTableWidget.setSelectedFeatureBoolMatrix(m)
         dlg.accepted.connect(self._onFeaturesChosen)
     
