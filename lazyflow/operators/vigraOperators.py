@@ -426,7 +426,7 @@ class OpBaseVigraFilter(OpArrayPiper):
     outputDtype = numpy.float32 
     inputDtype = numpy.float32
     supportsOut = True
-    
+    window_size=2
     def __init__(self, graph, register = True):
         OpArrayPiper.__init__(self, graph, register = register)
         self.supportsOut = False
@@ -446,6 +446,8 @@ class OpBaseVigraFilter(OpArrayPiper):
             sigma = self.inputs["sigma1"].value
         elif self.inputs.has_key("innerScale"):
             sigma = self.inputs["innerScale"].value
+        
+        kwparams['window_size']=self.window_size
             
         largestSigma = sigma*3.5 #ensure enough context for the vigra operators
                 
@@ -584,10 +586,10 @@ class OpBaseVigraFilter(OpArrayPiper):
         
 
 #difference of Gaussians
-def differenceOfGausssians(image,sigma0, sigma1, out = None):
+def differenceOfGausssians(image,sigma0, sigma1,window_size, out = None):
     """ difference of gaussian function""" 
     print "differenceOfGausssians: shape=%r, axistags=%r, sigma0=%r, sigma1=%r" % (image.shape, image.axistags, sigma0, sigma1)     
-    return (vigra.filters.gaussianSmoothing(image,sigma0)-vigra.filters.gaussianSmoothing(image,sigma1))
+    return (vigra.filters.gaussianSmoothing(image,sigma0,window_size=window_size)-vigra.filters.gaussianSmoothing(image,sigma1,window_size=window_size))
 
 
 def firstHessianOfGaussianEigenvalues(image, sigmas):
@@ -1175,12 +1177,12 @@ class OpH5ReaderSmoothedDataset(Operator):
     name = "H5FileReaderForMultipleScaleDatasets"
     category = "Input"
     
-    inputSlots = [InputSlot("Filename"), InputSlot("hdf5Path", stype = "string")]
+    inputSlots = [InputSlot("Filenames"), InputSlot("hdf5Path", stype = "string")]
     outputSlots = [MultiOutputSlot("Outputs"),MultiOutputSlot("Sigmas")]
     
         
     def notifyConnectAll(self):
-        filename = str(self.inputs["Filename"].value)
+        filenames = self.inputs["Filenames"].value[0]
         hdf5Path = self.inputs["hdf5Path"].value
 
         f = h5py.File(filename, 'r')
@@ -1189,23 +1191,27 @@ class OpH5ReaderSmoothedDataset(Operator):
         d = f[hdf5Path]
                 
         self.D=[]
+        self.ChunkList=[]
+        
         
         count=len(d.keys())
         self.outputs['Outputs'].resize(count)
         self.outputs['Sigmas'].resize(count)
         
-        for i,el in enumerate(sorted(d.keys())):
-            self.D.append(d[el])
-            self.outputs["Sigmas"][i]._dtype = numpy.float32
-            self.outputs["Sigmas"][i]._shape = (1,)
+        
+        for filename in filenames:
+            for i,el in enumerate(sorted(d.keys())):
+                self.D.append(d[el])
+                self.outputs["Sigmas"][i]._dtype = numpy.float32
+                self.outputs["Sigmas"][i]._shape = (1,)
             
-            self.outputs["Outputs"][i]._dtype = d[el].dtype
-            self.outputs["Outputs"][i]._shape = d[el].shape
-            if len(d[el].shape):
-                self.outputs["Outputs"][i]._axistags=vigra.VigraArray.defaultAxistags('txyzc')
+                self.outputs["Outputs"][i]._dtype = d[el].dtype
+                self.outputs["Outputs"][i]._shape = d[el].shape
+                if len(d[el].shape):
+                    self.outputs["Outputs"][i]._axistags=vigra.VigraArray.defaultAxistags('txyzc')
             
-            else:
-                raise RuntimeError("OpH5ReaderSmoothedDataset: not implemented for non 5d dataset due to non serialization of axistags")
+                else:
+                    raise RuntimeError("OpH5ReaderSmoothedDataset: not implemented for non 5d dataset due to non serialization of axistags")
         
     def getSubOutSlot(self, slots, indexes, key, result):
         
