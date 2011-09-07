@@ -243,7 +243,7 @@ class OpPixelFeatures(OperatorGroup):
             
             index = len(self.source.outputs["Output"].shape) - 1
             self.stacker.inputs["AxisFlag"].setValue('c')
-            self.stacker.inputs["AxisIndex"].setValue(index)
+            self.stacker.inputs["AxisIndex"].setValue(self.source.outputs["Output"]._axistags.index('c'))
             self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
             
     
