@@ -723,8 +723,7 @@ if has_blist:
             
             if slot.name == "eraser":
                 self.eraser = self.inputs["eraser"].value
-                print "EXTERNAL LABELER, SETTING ERASER TO", self.eraser
-                for l in self._labelers:
+                for l in self._labelers.values():
                     l.inputs['eraser'].setValue(self.eraser)
             
             if slot.name == "blockShape":
@@ -761,7 +760,7 @@ if has_blist:
                 
             if slot.name == "deleteLabel":
                 print "DELETING LABEL", self.inputs['deleteLabel'].value
-                for l in self._labelers:
+                for l in self._labelers.values():
                     l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
                 
                 #print "not there yet"
