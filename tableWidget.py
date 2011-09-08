@@ -373,7 +373,6 @@ class FeatureTableWidget(QTableWidget):
             raise RuntimeError("No featuregroups set!")
         self._addVHeader()
         self._setFixedSizeToHeaders()
-        self._collapsAllRows()
         self._fillTabelWithItems()
         self._setSizeHintToTableWidgetItems()
         self.itemDelegate = ItemDelegate(self, self.horizontalHeader().sizeHint().width(), self.verticalHeader().sizeHint().height())
