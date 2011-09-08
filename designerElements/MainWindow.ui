@@ -237,19 +237,19 @@
      <x>0</x>
      <y>0</y>
      <width>906</width>
-     <height>25</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
-     <string>File</string>
+     <string>&amp;File</string>
     </property>
     <addaction name="actionOpen"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
-     <string>View</string>
+     <string>&amp;View</string>
     </property>
     <addaction name="actionFitToScreen"/>
     <addaction name="actionShowDebugPatches"/>
@@ -279,7 +279,7 @@
      <normaloff>../icons/document-open.png</normaloff>../icons/document-open.png</iconset>
    </property>
    <property name="text">
-    <string>Open</string>
+    <string>&amp;Open</string>
    </property>
    <property name="iconVisibleInMenu">
     <bool>true</bool>
@@ -291,7 +291,7 @@
      <normaloff>../icons/view-fullscreen.png</normaloff>../icons/view-fullscreen.png</iconset>
    </property>
    <property name="text">
-    <string>Zoom to fit</string>
+    <string>&amp;Zoom to &amp;fit</string>
    </property>
    <property name="iconVisibleInMenu">
     <bool>true</bool>
@@ -303,7 +303,7 @@
      <normaloff>../icons/process-stop.png</normaloff>../icons/process-stop.png</iconset>
    </property>
    <property name="text">
-    <string>Quit</string>
+    <string>&amp;Quit</string>
    </property>
    <property name="iconVisibleInMenu">
     <bool>true</bool>
@@ -314,7 +314,10 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Show Debug Patches</string>
+    <string>&amp;Show Debug Patches</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+D</string>
    </property>
    <property name="iconVisibleInMenu">
     <bool>false</bool>
@@ -322,11 +325,6 @@
   </action>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>LabelListView</class>
-   <extends>QTableView</extends>
-   <header>labelListView</header>
-  </customwidget>
   <customwidget>
    <class>LayerWidget</class>
    <extends>QListView</extends>
@@ -336,6 +334,11 @@
    <class>VolumeEditorWidget</class>
    <extends>QWidget</extends>
    <header>volumeeditor.volumeEditorWidget</header>
+  </customwidget>
+  <customwidget>
+   <class>LabelListView</class>
+   <extends>QTableView</extends>
+   <header>labelListView</header>
   </customwidget>
  </customwidgets>
  <resources/>
