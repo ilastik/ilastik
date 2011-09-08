@@ -10,6 +10,7 @@ import greenlet, threading
 import vigra
 import copy
 import gc
+import sys
 import weakref
 from threading import current_thread, Lock, RLock
 import generic
@@ -951,22 +952,7 @@ class OpBlockedArrayCache(OperatorGroup):
                 
                 self._lock = Lock()
             
-#        for b_num in self._blockNumbers.ravel():
-#                
-#            self._opSub_list.append(generic.OpSubRegion(self.graph))
-#            self._opSub_list[b_num].inputs["Input"].connect(self.source.outputs["Output"])
-#                    
-#            start = self._blockShape*self._flatBlockIndices[b_num]
-#            stop = numpy.minimum((self._flatBlockIndices[b_num]+numpy.ones(self._flatBlockIndices[b_num].shape, numpy.uint8))*self._blockShape, self.shape)                
-#                    
-#            self._opSub_list[b_num].inputs["Start"].setValue(tuple(start))
-#            self._opSub_list[b_num].inputs["Stop"].setValue(tuple(stop))
-#    
-#            self._cache_list.append(OpArrayCache(self.graph))
-#            self._cache_list[b_num].inputs["Input"].connect(self._opSub_list[b_num].outputs["Output"])
-#            self._cache_list[b_num].inputs["fixAtCurrent"].setValue(self._fixed)
-#            self._cache_list[b_num].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
-           
+
     def getOutSlot(self, slot, key, result):
         
         #find the block key
@@ -1012,7 +998,8 @@ class OpBlockedArrayCache(OperatorGroup):
             
                     self._cache_list[b_ind] = OpArrayCache(self.graph)
                     self._cache_list[b_ind].inputs["Input"].connect(self._opSub_list[b_ind].outputs["Output"])
-                    self._cache_list[b_ind].inputs["fixAtCurrent"].connect(self.fixerSource.outputs["Output"])
+                    #self._cache_list[b_ind].inputs["fixAtCurrent"].connect(self.fixerSource.outputs["Output"])
+                    self._cache_list[b_ind].inputs["fixAtCurrent"].setValue(self._fixed)
                     self._cache_list[b_ind].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
 
             if self._cache_list.has_key(b_ind):
@@ -1027,6 +1014,91 @@ class OpBlockedArrayCache(OperatorGroup):
     def notifyDirty(self, slot, key):
         if slot == self.inputs["Input"] and not self._fixed:
             self.outputs["Output"].setDirty(key)
+            
+    def setInSlot(self,slot,key):
+        pass
+    
+    def getInnerInputs(self):
+        inputs = {}
+        inputs["Input"] = self.source.inputs["Input"]
+        inputs["fixAtCurrent"] = self.fixerSource.inputs["Input"]
+        return inputs
+        
+    def getInnerOutputs(self):
+        outputs = {}
+        return outputs
+        
+                   
+        
+
+
+
+class OpSlicedBlockedArrayCache(OperatorGroup):
+    name = "OpSlicedBlockedArrayCache"
+    description = ""
+
+    inputSlots = [InputSlot("Input"),InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent")]
+    outputSlots = [OutputSlot("Output")]    
+
+    def _createInnerOperators(self):
+        self.source = OpArrayPiper(self.graph)
+        self.fixerSource = OpArrayPiper(self.graph)
+
+    def notifyConnect(self, slot):
+        if slot == self.inputs["fixAtCurrent"]:
+            self._fixed = self.inputs["fixAtCurrent"].value  
+            self.fixerSource.inputs["Input"].setValue(self._fixed)
+            self.fixerSource.inputs["Input"].setDirty(0)
+            
+        if self.inputs["Input"].connected() and self.inputs["fixAtCurrent"].connected() and self.inputs["innerBlockShape"].connected() and self.inputs["outerBlockShape"].connected():
+            if slot != self.inputs["fixAtCurrent"]:            
+                self.shape = self.inputs["Input"].shape            
+                self._lock = Lock()            
+                self._outerShapes = self.inputs["outerBlockShape"].value
+                self._innerShapes = self.inputs["innerBlockShape"].value
+                self._innerOps = []
+                
+                for i,innershape in enumerate(self._innerShapes):
+                    op = OpBlockedArrayCache(self.graph)
+                    op.inputs["innerBlockShape"].setValue(innershape)
+                    op.inputs["outerBlockShape"].setValue(self._outerShapes[i])
+                    op.inputs["fixAtCurrent"].setValue(self._fixed)
+                    op.inputs["Input"].connect(self.source.outputs["Output"])                
+                    self._innerOps.append(op)
+    
+                self.outputs["Output"]._dtype = self.inputs["Input"].dtype            
+                self.outputs["Output"]._axistags = copy.copy(self.inputs["Input"].axistags)            
+                self.outputs["Output"]._shape = self.inputs["Input"].shape            
+
+            
+    def getOutSlot(self, slot, key, result):
+        start,stop=sliceToRoi(key,self.shape)
+        diff=numpy.array(stop)-numpy.array(start)
+
+        maxError=sys.maxint
+        index=0
+
+        self._lock.acquire()
+        for i,shape in enumerate(self._innerShapes):
+            cs = numpy.array(shape)
+            
+            error = numpy.sum(numpy.abs(diff -cs))
+            if error<maxError:
+                index = i
+                maxError = error
+        op = self._innerOps[index]
+        #print "Selected index %d with shape=%r for diff=%r, key=%r" %(index, self._innerShapes[index], diff, key)        
+        self._lock.release()        
+        
+        op.outputs["Output"][key].writeInto(result).wait()
+
+    def notifyDirty(self, slot, key):
+        if slot == self.inputs["Input"] and not self._fixed:
+            self.outputs["Output"].setDirty(key)
+        if slot == self.inputs["fixAtCurrent"]:
+            if  self.inputs["fixAtCurrent"].connected():
+                self._fixed =  self.inputs["fixAtCurrent"].value   
+
             
     def setInSlot(self,slot,key):
         pass
