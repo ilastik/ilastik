@@ -324,6 +324,18 @@ class Main(QMainWindow):
             self.inputProvider.inputs["Input"].setValue(self.raw)
             import copy,vigra
             self.inputProvider.outputs["Output"].axistags=copy.copy(vigra.defaultAxistags('txyzc'))
+
+            self.readerOut0 = Op5ToMulti(self.g)
+            self.readerSigma0 = Op5ToMulti(self.g)
+            self.readerOut0.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
+            self.readerSigma0.inputs["Input0"].setValue(0.0)
+    
+            self.readerOut = OpArrayPiper(self.g)
+            self.readerSigma = OpArrayPiper(self.g)
+            
+            self.readerOut.inputs["Input"].connect(self.readerOut0.outputs["Outputs"])
+            self.readerSigma.inputs["Input"].connect(self.readerSigma0.outputs["Outputs"])
+    
         elif fExt=='.h5':
             readerNew=OpH5ReaderSmoothedDataset(self.g)
             readerCache = OpBlockedArrayCache(self.g)

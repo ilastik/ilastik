@@ -53,7 +53,7 @@ class Main(QMainWindow):
         self._colorTable16 = self._createDefault16ColorColorTable()
         
         #self.g = Graph(7, 2048*1024**2*5)
-        self.g = Graph(2 , 2048*1024**2*5)
+        self.g = Graph()
         self.fixableOperators = []
         
         self.featureDlg=None
@@ -242,8 +242,8 @@ class Main(QMainWindow):
 
             pCache = OpBlockedArrayCache(self.g)
             pCache.inputs["fixAtCurrent"].setValue(False)
-            pCache.inputs["innerBlockShape"].setValue((1,8,8,8,1))
-            pCache.inputs["outerBlockShape"].setValue((1,64,64,64,1))
+            pCache.inputs["innerBlockShape"].setValue((1,4,4,4,1))
+            pCache.inputs["outerBlockShape"].setValue((1,128,128,128,1))
             pCache.inputs["Input"].connect(self.opPredict.outputs["PMaps"])
             self.pCache = pCache
   
@@ -399,8 +399,8 @@ class Main(QMainWindow):
         
         #Caches the features
         opFeatureCache = OpBlockedArrayCache(self.g)
-        opFeatureCache.inputs["innerBlockShape"].setValue((1,8,8,8,16))
-        opFeatureCache.inputs["outerBlockShape"].setValue((1,64,64,64,64))
+        opFeatureCache.inputs["innerBlockShape"].setValue((1,4,4,4,16))
+        opFeatureCache.inputs["outerBlockShape"].setValue((1,128,128,128,64))
         opFeatureCache.inputs["Input"].connect(opPF.outputs["Output"])
         opFeatureCache.inputs["fixAtCurrent"].setValue(False)  
         self.opFeatureCache=opFeatureCache
