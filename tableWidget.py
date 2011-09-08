@@ -494,6 +494,7 @@ class FeatureTableWidget(QTableWidget):
                         item.featureState = Qt.Unchecked
                     else:
                         item.featureState = Qt.PartiallyChecked
+            self.viewport().update()
 
 
     def eventFilter(self, obj, event):

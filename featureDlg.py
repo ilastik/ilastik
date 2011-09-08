@@ -50,7 +50,7 @@ class FeatureDlg(QDialog):
         self.tableAndViewGroupBox.setFlat(True)
         self.featureTableWidget = tableWidget.FeatureTableWidget()
         
-        self.tableAndViewLayout = QHBoxLayout()
+        self.tableAndViewLayout = QVBoxLayout()
         self.tableAndViewLayout.setSizeConstraint(QLayout.SetNoConstraint)
         self.tableAndViewLayout.addWidget(self.featureTableWidget)
         
@@ -75,10 +75,12 @@ class FeatureDlg(QDialog):
 
         self.buttonsLayout.addWidget(self.cancel)
         self.buttonsLayout.addSpacerItem(QSpacerItem(10,0))
-        self.viewAndButtonLayout.addLayout(self.buttonsLayout)
+#        self.viewAndButtonLayout.addLayout(self.buttonsLayout)
         self.viewAndButtonLayout.addSpacerItem(QSpacerItem(0,10))
-        self.tableAndViewLayout.addLayout(self.viewAndButtonLayout)
+#        self.tableAndViewLayout.addLayout(self.viewAndButtonLayout)
         self.tableAndViewGroupBox.setLayout(self.tableAndViewLayout)
+        self.tableAndViewLayout.addStretch()
+        self.tableAndViewLayout.addLayout(self.buttonsLayout)
         self.layout.addWidget(self.tableAndViewGroupBox)
         
         self.layout.setContentsMargins(0,0,0,0)
