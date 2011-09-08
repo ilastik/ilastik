@@ -330,7 +330,8 @@ class OpArrayCache(OpArrayPiper):
     def notifyConnect(self, slot):
         reconfigure = False
         if  self.inputs["fixAtCurrent"].connected():
-            self._fixed =  self.inputs["fixAtCurrent"].value        
+            self._fixed =  self.inputs["fixAtCurrent"].value  
+            
         if slot == self.inputs["blockShape"]:
             newBShape = self.inputs["blockShape"].value
             if self._origBlockShape != newBShape and self.inputs["Input"].connected():
@@ -999,7 +1000,7 @@ class OpBlockedArrayCache(OperatorGroup):
                     self._cache_list[b_ind] = OpArrayCache(self.graph)
                     self._cache_list[b_ind].inputs["Input"].connect(self._opSub_list[b_ind].outputs["Output"])
                     #self._cache_list[b_ind].inputs["fixAtCurrent"].connect(self.fixerSource.outputs["Output"])
-                    self._cache_list[b_ind].inputs["fixAtCurrent"].setValue(self._fixed)
+                    self._cache_list[b_ind].inputs["fixAtCurrent"].connect(self.fixerSource.outputs["Output"])
                     self._cache_list[b_ind].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
 
             if self._cache_list.has_key(b_ind):

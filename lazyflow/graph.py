@@ -403,7 +403,7 @@ class GetItemRequestObject(object):
             tr.workAvailableEvent.wait()
             tr.workAvailableEvent.clear()
             while not tr.finishedRequestGreenlets.empty():
-                req, gr = tr.finishedRequestGreenlets.popleft()
+                prio,req, gr = tr.finishedRequestGreenlets.get(block = False)
                 gr.currentRequest = req                 
                 gr.switch()
                 del gr
