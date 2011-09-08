@@ -269,7 +269,7 @@ class Main(QMainWindow):
             predictsrc.setObjectName("Prediction for %s" % ref_label.name)
         srcName("")
         
-        predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color, normalize = (0.0,1.0) )
+        predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color, normalize = None )
         predictLayer.nameChanged.connect(srcName)
         
         def setLayerColor(c):
