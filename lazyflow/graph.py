@@ -344,7 +344,15 @@ class GetItemRequestObject(object):
                         if lr is not None:
                             lr._putOnTaskQueue()
                         self.waitQueue.append((gr.thread, gr.currentRequest, gr))
-                        self.lock.release()                    
+                        self.lock.release()
+                        # reprioritize this request if running requests
+                        # requestlevel is higher then that of the request
+                        # on which we are waiting -> prevent starving of
+                        # high prio requests through resources blocked
+                        # by low prio requests.
+                        if gr.currentRequest._requestLevel > self._requestLevel:
+                            delta = gr.currentRequest._requestLevel - self._requestLevel
+                            self.adjustPriority(delta)
                         gr.parent.switch(None)
                     else:
                         tr = current_thread()                    
