@@ -16,7 +16,7 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
                                OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures, \
                                OpMultiArraySlicer2,OpH5Reader, OpBlockedSparseLabelArray, \
                                OpMultiArrayStacker, OpTrainRandomForestBlocked, OpPixelFeatures, \
-                               OpH5ReaderBigDataset
+                               OpH5ReaderBigDataset, OpSlicedBlockedArrayCache
 
 from volumeeditor.pixelpipeline.datasources import LazyflowSource
 from volumeeditor.pixelpipeline._testing import OpDataProvider
@@ -240,10 +240,10 @@ class Main(QMainWindow):
             self.opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output']) 
             self.opPredict.inputs['Image'].connect(self.opPF.outputs["Output"])
 
-            pCache = OpBlockedArrayCache(self.g)
+            pCache = OpSlicedBlockedArrayCache(self.g)
             pCache.inputs["fixAtCurrent"].setValue(False)
-            pCache.inputs["innerBlockShape"].setValue((1,4,4,4,1))
-            pCache.inputs["outerBlockShape"].setValue((1,128,128,128,1))
+            pCache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
+            pCache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
             pCache.inputs["Input"].connect(self.opPredict.outputs["PMaps"])
             self.pCache = pCache
   
@@ -399,7 +399,7 @@ class Main(QMainWindow):
         
         #Caches the features
         opFeatureCache = OpBlockedArrayCache(self.g)
-        opFeatureCache.inputs["innerBlockShape"].setValue((1,4,4,4,16))
+        opFeatureCache.inputs["innerBlockShape"].setValue((1,32,32,32,16))
         opFeatureCache.inputs["outerBlockShape"].setValue((1,128,128,128,64))
         opFeatureCache.inputs["Input"].connect(opPF.outputs["Output"])
         opFeatureCache.inputs["fixAtCurrent"].setValue(False)  
