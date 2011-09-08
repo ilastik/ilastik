@@ -195,7 +195,7 @@ class OpPredictRandomForest(Operator):
         oslot = self.outputs["PMaps"]
         islot=self.inputs["Image"]
 
-        oslot._dtype = numpy.float32
+        oslot._dtype = numpy.uint8
         
         oslot._axistags = islot.axistags
         oslot._shape = islot.shape[:-1]+(nlabels,)
@@ -231,7 +231,7 @@ class OpPredictRandomForest(Operator):
         
         prediction = prediction.reshape(*(shape[:-1] + (RF.labelCount(),)))
         
-        result[:]=prediction[...,key[-1]]
+        result[:]=prediction[...,key[-1]]*255
 
             
     def notifyDirty(self, slot, key):
