@@ -494,6 +494,8 @@ class OpBaseVigraFilter(OpArrayPiper):
                 
         channelsPerChannel = self.resultingChannels()
         
+        if self.supportsRoi is False and largestSigma > 5:
+            print "WARNING: operator", self.name, "does not support roi !!"
         
         
         i2 = 0          
@@ -602,8 +604,8 @@ def differenceOfGausssians(image,sigma0, sigma1,window_size, roi, out = None):
     return (vigra.filters.gaussianSmoothing(image,sigma0,window_size=window_size,roi = roi)-vigra.filters.gaussianSmoothing(image,sigma1,window_size=window_size,roi = roi))
 
 
-def firstHessianOfGaussianEigenvalues(image, sigmas):
-    return vigra.filters.hessianOfGaussianEigenvalues(image, sigmas)[...,0]
+def firstHessianOfGaussianEigenvalues(image, sigmas, roi):
+    return vigra.filters.hessianOfGaussianEigenvalues(image, sigmas,roi = roi)[...,0]
 
 def coherenceOrientationOfStructureTensor(image,sigma0, sigma1, out = None):
     """
@@ -712,6 +714,7 @@ class OpHessianOfGaussianEigenvaluesFirst(OpBaseVigraFilter):
     outputDtype = numpy.float32 
     supportsOut = False
     supportsWindow = True
+    supportsRoi = True
     inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
 
     def resultingChannels(self):
@@ -724,7 +727,8 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
     vigraFilter = staticmethod(vigra.filters.hessianOfGaussian)
     outputDtype = numpy.float32 
     supportsWindow = True
-
+    supportsRoi = True
+    
     def resultingChannels(self):
         temp = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
         return temp
