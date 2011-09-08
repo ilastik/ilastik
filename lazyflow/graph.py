@@ -2178,7 +2178,7 @@ class Graph(object):
         self._suspendedNotifyFinish = deque()
         
         if numThreads is None:
-            self.numThreads = detectCPUs()
+            self.numThreads = int(detectCPUs() * 1.5)
         else:
             self.numThreads = numThreads
         self.lastRequestID = itertools.count()
@@ -2191,8 +2191,10 @@ class Graph(object):
                 softMaxMem += psutil.cached_phymem()
             except:
                 pass
+        print "GRAPH: using %d Threads" % (self.numThreads)
+        print "GRAPH: using target size of %dMB of Memory" % (softMaxMem / 1024**2)
         self.softMaxMem = softMaxMem # in bytes
-        self.softCacheMem = softMaxMem * 0.3
+        self.softCacheMem = softMaxMem * 0.7
         self._registeredCaches = deque()
         self._allocatedCaches = deque()
         self._usedCacheMemory = 0

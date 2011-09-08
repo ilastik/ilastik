@@ -1049,7 +1049,9 @@ class OpSlicedBlockedArrayCache(OperatorGroup):
             self._fixed = self.inputs["fixAtCurrent"].value  
             self.fixerSource.inputs["Input"].setValue(self._fixed)
             self.fixerSource.inputs["Input"].setDirty(0)
-            
+            if hasattr(self, "_innerOps"):
+                for op in self._innerOps:
+                    op.inputs["fixAtCurrent"].setValue(self._fixed)
         if self.inputs["Input"].connected() and self.inputs["fixAtCurrent"].connected() and self.inputs["innerBlockShape"].connected() and self.inputs["outerBlockShape"].connected():
             if slot != self.inputs["fixAtCurrent"]:            
                 self.shape = self.inputs["Input"].shape            
