@@ -218,7 +218,7 @@ class CustomGreenlet(greenlet.greenlet):
         greenlet.greenlet.__init__(self, func)
         self.thread = None
 
-setattr(current_thread(), "finishedRequestGreenlets", deque())
+setattr(current_thread(), "finishedRequestGreenlets", PriorityQueue())
 setattr(current_thread(), "workAvailableEvent", Event())
 setattr(current_thread(), "process", psutil.Process(os.getpid()))
 
@@ -402,7 +402,7 @@ class GetItemRequestObject(object):
         while not cgr.dead:
             tr.workAvailableEvent.wait()
             tr.workAvailableEvent.clear()
-            while len(tr.finishedRequestGreenlets) > 0:
+            while not tr.finishedRequestGreenlets.empty():
                 req, gr = tr.finishedRequestGreenlets.popleft()
                 gr.currentRequest = req                 
                 gr.switch()
@@ -459,7 +459,7 @@ class GetItemRequestObject(object):
                         break
                     req.lock.acquire()
                     if not req.canceled:
-                        tr.finishedRequestGreenlets.append((req, gr))
+                        tr.finishedRequestGreenlets.put((-req._requestLevel, req, gr))
                         tr.workAvailableEvent.set()
                     req.lock.release()
         else:
@@ -2108,7 +2108,7 @@ class Worker(Thread):
         self.working = False
         self._hasSlept = False
         self.daemon = True # kill automatically on application exit!
-        self.finishedRequestGreenlets = deque()
+        self.finishedRequestGreenlets = PriorityQueue()
         self.currentRequest = None
         self.requests = deque()
         self.process = psutil.Process(os.getpid())
@@ -2131,17 +2131,19 @@ class Worker(Thread):
                 pass
             self.workAvailableEvent.clear()
                 
-            while not self.graph.tasks.empty() or len(self.finishedRequestGreenlets) > 0:       
-                while len(self.finishedRequestGreenlets) > 0:
-                    req, gr = self.finishedRequestGreenlets.popleft()
+            while not self.graph.tasks.empty() or not self.finishedRequestGreenlets.empty():       
+                task = None
+                try:
+                    prioNewReq,task = self.graph.tasks.get(block = False)#timeout = 1.0)
+                except Empty:
+                    pass                
+                while not self.finishedRequestGreenlets.empty():
+                    prioFinReq, req, gr = self.finishedRequestGreenlets.get(block = False)
                     gr.currentRequest = req                 
                     gr.switch()
                     del gr
-                task = None
-                try:
-                    prio,task = self.graph.tasks.get(block = False)#timeout = 1.0)
-                except Empty:
-                    pass
+                    if prioNewReq < prioFinReq: #prios are inverted
+                        break
                 if task is not None:
                     reqObject = task
                     if reqObject.canceled is False:
