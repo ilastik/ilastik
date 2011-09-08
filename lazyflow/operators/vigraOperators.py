@@ -597,9 +597,9 @@ class OpBaseVigraFilter(OpArrayPiper):
         
 
 #difference of Gaussians
-def differenceOfGausssians(image,sigma0, sigma1,window_size, out = None):
+def differenceOfGausssians(image,sigma0, sigma1,window_size, roi, out = None):
     """ difference of gaussian function""" 
-    return (vigra.filters.gaussianSmoothing(image,sigma0,window_size=window_size)-vigra.filters.gaussianSmoothing(image,sigma1,window_size=window_size))
+    return (vigra.filters.gaussianSmoothing(image,sigma0,window_size=window_size,roi = roi)-vigra.filters.gaussianSmoothing(image,sigma1,window_size=window_size,roi = roi))
 
 
 def firstHessianOfGaussianEigenvalues(image, sigmas):
@@ -645,7 +645,8 @@ class OpDifferenceOfGaussians(OpBaseVigraFilter):
     vigraFilter = staticmethod(differenceOfGausssians)
     outputDtype = numpy.float32 
     supportsOut = False
-    supportsWindow = True    
+    supportsWindow = True   
+    supportsRoi = True
     inputSlots = [InputSlot("Input"), InputSlot("sigma0", stype = "float"), InputSlot("sigma1", stype = "float")]
     
     def resultingChannels(self):
