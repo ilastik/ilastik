@@ -347,7 +347,7 @@ class GetItemRequestObject(object):
                             temp = gr.currentRequest
                             gr.lastRequest = None
                             self.lock.release()
-                            lr._execute(gr)#_putOnTaskQueue()#
+                            lr._putOnTaskQueue()#_execute(gr)#
                             gr.currentRequest = temp
                             self.lock.acquire()
                         if not self._finished:
