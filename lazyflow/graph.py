@@ -342,17 +342,10 @@ class GetItemRequestObject(object):
                 gr = greenlet.getcurrent()
                 if self.inProcess:   
                     if hasattr(gr, "currentRequest"):                         
-                        lr = gr.lastRequest
-                        if lr is not None:
-                            temp = gr.currentRequest
-                            gr.lastRequest = None
-                            #self.lock.release()
-                            lr._putOnTaskQueue()#_execute(gr)#
-                            gr.currentRequest = temp
-                            #self.lock.acquire()
                         if not self._finished:
                             self.waitQueue.append((gr.thread, gr.currentRequest, gr))
                             self.lock.release()
+
                             # reprioritize this request if running requests
                             # requestlevel is higher then that of the request
                             # on which we are waiting -> prevent starving of
@@ -361,29 +354,27 @@ class GetItemRequestObject(object):
                             if gr.currentRequest._requestLevel > self._requestLevel:
                                 delta = gr.currentRequest._requestLevel - self._requestLevel
                                 self.adjustPriority(delta)
+                            self._burstLastRequest(gr)
                             gr.parent.switch(None)
                         else:
                             self.lock.release()
                             return self.destination
-#                    else:
-#                        sys.exit(1)
-#                        tr = current_thread()                    
-#                        cgr = CustomGreenlet(self.wait)
-#                        cgr.currentRequest = self
-#                        cgr.thread = tr                        
-#                        self.lock.release()
-#                        cgr.switch(self)
-#                        self._waitFor(cgr,tr) #wait for finish
+                    else:
+                        tr = current_thread()                    
+                        cgr = CustomGreenlet(self.wait)
+                        cgr.currentRequest = self
+                        cgr.thread = tr                        
+                        self.lock.release()
+                        cgr.switch(self)
+                        self._waitFor(cgr,tr) #wait for finish
                 else:
                     if hasattr(gr, "currentRequest"):
-                        lr = gr.lastRequest
-                        if lr == self:
-                            gr.lastRequest = None
-                        elif lr is not None:
-                            lr._putOnTaskQueue()
+                        self._burstLastRequest(gr)
                         self.inProcess = True
+                        #temp = gr.currentRequest
                         self.lock.release()
                         self._execute(gr)
+                        #gr.currentRequest = temp
                     else:
                         tr = current_thread()                    
                         cgr = CustomGreenlet(self.wait)
@@ -422,6 +413,16 @@ class GetItemRequestObject(object):
         del cgr
         self._finalize()
 
+
+    def _burstLastRequest(self,gr):
+        lr = gr.lastRequest
+        gr.lastRequest = None
+        if lr is not None and lr != self:            
+            #lr.lock.acquire()
+            if lr.inProcess is False:
+                lr._putOnTaskQueue()
+            #lr.lock.release()
+
        
     def notify(self, closure, **kwargs): 
         """
@@ -437,10 +438,11 @@ class GetItemRequestObject(object):
             closure(self.destination, **kwargs)
         else:
             self.notifyQueue.append((closure, kwargs))
-            
             if not self.inProcess:
                 self._putOnTaskQueue()
+                
             self.lock.release()
+
             
     def onCancel(self, closure, **kwargs):
         self.lock.acquire()       
@@ -2364,8 +2366,11 @@ class Graph(object):
 
         print "    Waiting for workers..."          
         while len(self.workers) != len(self.freeWorkers):
-            time.sleep(0.05)
-            print len(self.workers),len(self.freeWorkers)
+            time.sleep(0.1)
+            #print len(self.workers),len(self.freeWorkers)
+        time.sleep(0.1)
+        while len(self.workers) != len(self.freeWorkers):
+            time.sleep(0.1)
         print "    ok"
         print "finished."
         #self.finalize()
