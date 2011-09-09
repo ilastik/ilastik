@@ -55,7 +55,8 @@ import greenlet
 import weakref
 import threading
 
-greenlet.GREENLET_USE_GC = True #use garbage collection
+greenlet.GREENLET_USE_GC = False #use garbage collection
+sys.setrecursionlimit(100000)
 
 class DefaultConfigParser(ConfigParser.SafeConfigParser):
     """
@@ -300,6 +301,7 @@ class GetItemRequestObject(object):
             else:
                 # we are in main thread
                 self._requestLevel = self._priority
+            
 
     def _execute(self, gr):
         if self.destination is None:
@@ -342,26 +344,36 @@ class GetItemRequestObject(object):
                     if hasattr(gr, "currentRequest"):                         
                         lr = gr.lastRequest
                         if lr is not None:
-                            lr._putOnTaskQueue()
-                        self.waitQueue.append((gr.thread, gr.currentRequest, gr))
-                        self.lock.release()
-                        # reprioritize this request if running requests
-                        # requestlevel is higher then that of the request
-                        # on which we are waiting -> prevent starving of
-                        # high prio requests through resources blocked
-                        # by low prio requests.
-                        if gr.currentRequest._requestLevel > self._requestLevel:
-                            delta = gr.currentRequest._requestLevel - self._requestLevel
-                            self.adjustPriority(delta)
-                        gr.parent.switch(None)
-                    else:
-                        tr = current_thread()                    
-                        cgr = CustomGreenlet(self.wait)
-                        cgr.currentRequest = self
-                        cgr.thread = tr                        
-                        self.lock.release()
-                        cgr.switch(self)
-                        self._waitFor(cgr,tr) #wait for finish
+                            temp = gr.currentRequest
+                            gr.lastRequest = None
+                            self.lock.release()
+                            lr._execute(gr)#_putOnTaskQueue()#
+                            gr.currentRequest = temp
+                            self.lock.acquire()
+                        if not self._finished:
+                            self.waitQueue.append((gr.thread, gr.currentRequest, gr))
+                            self.lock.release()
+                            # reprioritize this request if running requests
+                            # requestlevel is higher then that of the request
+                            # on which we are waiting -> prevent starving of
+                            # high prio requests through resources blocked
+                            # by low prio requests.
+                            if gr.currentRequest._requestLevel > self._requestLevel:
+                                delta = gr.currentRequest._requestLevel - self._requestLevel
+                                self.adjustPriority(delta)
+                            gr.parent.switch(None)
+                        else:
+                            self.lock.release()
+                            return self.destination
+#                    else:
+#                        sys.exit(1)
+#                        tr = current_thread()                    
+#                        cgr = CustomGreenlet(self.wait)
+#                        cgr.currentRequest = self
+#                        cgr.thread = tr                        
+#                        self.lock.release()
+#                        cgr.switch(self)
+#                        self._waitFor(cgr,tr) #wait for finish
                 else:
                     if hasattr(gr, "currentRequest"):
                         lr = gr.lastRequest
@@ -2123,7 +2135,8 @@ class Worker(Thread):
     def run(self):
         ct = current_thread()
         while self.graph.running:
-            self.graph.freeWorkers.append(self)
+            if not self.workAvailableEvent.isSet():
+                self.graph.freeWorkers.append(self)
             self.workAvailableEvent.wait()#(0.2)
             try:
                 self.graph.freeWorkers.remove(self)
@@ -2132,18 +2145,16 @@ class Worker(Thread):
             self.workAvailableEvent.clear()
                 
             while not self.graph.tasks.empty() or not self.finishedRequestGreenlets.empty():       
-                task = None
-                try:
-                    prioNewReq,task = self.graph.tasks.get(block = False)#timeout = 1.0)
-                except Empty:
-                    pass                
                 while not self.finishedRequestGreenlets.empty():
                     prioFinReq, req, gr = self.finishedRequestGreenlets.get(block = False)
                     gr.currentRequest = req                 
                     gr.switch()
                     del gr
-                    if prioNewReq < prioFinReq: #prios are inverted
-                        break
+                task = None
+                try:
+                    prioNewReq,task = self.graph.tasks.get(block = False)#timeout = 1.0)
+                except Empty:
+                    pass                
                 if task is not None:
                     reqObject = task
                     if reqObject.canceled is False:
@@ -2178,7 +2189,7 @@ class Graph(object):
         self._suspendedNotifyFinish = deque()
         
         if numThreads is None:
-            self.numThreads = int(detectCPUs() * 1.5)
+            self.numThreads = detectCPUs()
         else:
             self.numThreads = numThreads
         self.lastRequestID = itertools.count()
@@ -2350,6 +2361,7 @@ class Graph(object):
         print "    Waiting for workers..."          
         while len(self.workers) != len(self.freeWorkers):
             time.sleep(0.05)
+            print len(self.workers),len(self.freeWorkers)
         print "    ok"
         print "finished."
         #self.finalize()
