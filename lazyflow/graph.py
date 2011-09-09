@@ -354,7 +354,18 @@ class GetItemRequestObject(object):
                             if gr.currentRequest._requestLevel > self._requestLevel:
                                 delta = gr.currentRequest._requestLevel - self._requestLevel
                                 self.adjustPriority(delta)
-                            self._burstLastRequest(gr)
+                            lr = gr.lastRequest
+                            gr.lastRequest = None
+                            if lr is not None and lr is not self:
+                                lr.lock.acquire()
+                                if not lr.inProcess:                                
+                                    lr.lock.release()
+                                    temp = gr.currentRequest
+                                    lr._execute(gr)
+                                    gr.currentRequest = temp
+                                else:
+                                    lr.lock.release()
+                            #self._burstLastRequest(gr)
                             gr.parent.switch(None)
                         else:
                             self.lock.release()
@@ -370,11 +381,13 @@ class GetItemRequestObject(object):
                 else:
                     if hasattr(gr, "currentRequest"):
                         self._burstLastRequest(gr)
+                        if gr.lastRequest == self:
+                            gr.lastRequest = None
                         self.inProcess = True
-                        #temp = gr.currentRequest
+                        temp = gr.currentRequest
                         self.lock.release()
                         self._execute(gr)
-                        #gr.currentRequest = temp
+                        gr.currentRequest = temp
                     else:
                         tr = current_thread()                    
                         cgr = CustomGreenlet(self.wait)
@@ -440,7 +453,6 @@ class GetItemRequestObject(object):
             self.notifyQueue.append((closure, kwargs))
             if not self.inProcess:
                 self._putOnTaskQueue()
-                
             self.lock.release()
 
             
@@ -457,6 +469,11 @@ class GetItemRequestObject(object):
         self.lock.acquire()
         self._finished = True
         self.lock.release()
+        p = self.parentRequest
+        if p is not None:
+            l = p._requestLevel + 1
+            p._requestLevel = l
+            
         if self.graph.suspended is False or self.parentRequest is not None:
             if self.canceled is False:
                 while len(self.notifyQueue) > 0:
