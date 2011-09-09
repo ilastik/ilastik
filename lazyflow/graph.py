@@ -346,10 +346,10 @@ class GetItemRequestObject(object):
                         if lr is not None:
                             temp = gr.currentRequest
                             gr.lastRequest = None
-                            self.lock.release()
+                            #self.lock.release()
                             lr._putOnTaskQueue()#_execute(gr)#
                             gr.currentRequest = temp
-                            self.lock.acquire()
+                            #self.lock.acquire()
                         if not self._finished:
                             self.waitQueue.append((gr.thread, gr.currentRequest, gr))
                             self.lock.release()
@@ -2167,7 +2167,7 @@ class Worker(Thread):
                             del gr
                             self._hasSlept = False
                         else:
-                            self.graph.tasks.put((prio,task)) #move task back to task queue
+                            self.graph.putTask(reqObject) #move task back to task queue
                             print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
                             #freesize = abs(self.process.get_memory_info().vms  - self.graph.softMaxMem)
                             #self.graph._freeMemory(freesize * 3)                            
@@ -2190,6 +2190,10 @@ class Graph(object):
         
         if numThreads is None:
             self.numThreads = detectCPUs()
+            if self.numThreads > 2:
+                self.numThreads -= 1
+            if self.numThreads > 6:
+                self.numThreads -= 1
         else:
             self.numThreads = numThreads
         self.lastRequestID = itertools.count()
