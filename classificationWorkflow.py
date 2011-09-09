@@ -323,11 +323,19 @@ class Main(QMainWindow):
             self.inputProvider.inputs["Input"].setValue(self.raw)
         elif fExt=='.h5':
             readerNew=OpH5ReaderBigDataset(self.g)
-            readerCache = OpBlockedArrayCache(self.g)
+            
+            
             readerNew.inputs["Filenames"].setValue(fileNames)
             readerNew.inputs["hdf5Path"].setValue("volume/data")
+
+            readerCache =  OpSlicedBlockedArrayCache(self.g)
+            readerCache.inputs["fixAtCurrent"].setValue(False)
+            readerCache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
+            readerCache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
+            readerCache.inputs["Input"].connect(readerNew.outputs["Output"])
+
             self.inputProvider = OpArrayPiper(self.g)
-            self.inputProvider.inputs["Input"].connect(readerNew.outputs["Output"])
+            self.inputProvider.inputs["Input"].connect(readerCache.outputs["Output"])
         else:
             raise RuntimeError("opening filenames=%r not supported yet" % fileNames)
         
