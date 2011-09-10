@@ -407,7 +407,7 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
             self.featureOps = oparray
     
                 
-            self.outputs["Output"]._dtype = self.stacker.outputs["Output"]._dtype            
+            self.outputs["Output"]._dtype = numpy.float32            
             self.outputs["Output"]._axistags = self.stacker.outputs["Output"]._axistags            
             self.outputs["Output"]._shape = self.stacker.outputs["Output"]._shape            
             
@@ -430,10 +430,13 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
             
             
             
-            
             __shape = self.outputs["Output"].shape
             
             __axistags = self.inputs["Input"].axistags
+
+            result = result.view(vigra.VigraArray)
+            result.axistags = copy.copy(__axistags)
+            
             
             __channelAxis=self.inputs["Input"].axistags.index('c')
             __hasTimeAxis = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Time)
@@ -596,10 +599,8 @@ class OpBaseVigraFilter(OpArrayPiper):
     
     def __init__(self, graph, register = True):
         OpArrayPiper.__init__(self, graph, register = register)
-        self.supportsOut = False
         
     def getOutSlot(self, slot, key, result, sourceArray = None):
-        
         kwparams = {}        
         for islot in self.inputs.values():
             if islot.name != "Input":
@@ -711,25 +712,19 @@ class OpBaseVigraFilter(OpArrayPiper):
 
             i2 += destEnd-destBegin
             
+            supportsOut = self.supportsOut
+            if (destEnd-destBegin != channelsPerChannel):
+                supportsOut = False
+
+            supportsOut= False #disable for now due to vigra crashes!
+            
             for step,image in enumerate(t.timeIter()):
-                if self.supportsRoi:
-                    vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
-                    try:
-                        temp = self.vigraFilter(image, roi = vroi, **kwparams)
-                    except:
-                        print self.name, image.shape, vroi, kwparams
-                else:
-                    try:
-                        temp = self.vigraFilter(image, **kwparams)
-                    except:
-                        print self.name, image.shape, vroi, kwparams
-                    temp=temp[writeKey]
                     
                 nChannelAxis = channelAxis - 1
                 
                 if timeAxis > channelAxis or not hasTimeAxis:
                     nChannelAxis = channelAxis 
-                twriteKey=getAllExceptAxis(temp.ndim, nChannelAxis, slice(sourceBegin,sourceEnd,None))
+                twriteKey=getAllExceptAxis(image.ndim, nChannelAxis, slice(sourceBegin,sourceEnd,None))
 
                 if hasTimeAxis > 0:
                     tresKey  = getAllExceptAxis(resultArea.ndim, timeAxis, step)
@@ -737,12 +732,44 @@ class OpBaseVigraFilter(OpArrayPiper):
                     tresKey  = slice(None, None,None)
                 
                 #print tresKey, twriteKey, resultArea.shape, temp.shape
-                try:
-                    resultArea[tresKey] = temp[twriteKey]
-                except:
-                    print resultArea.shape,  tresKey, temp.shape, twriteKey
-                    print "step, t.shape", step, t.shape, timeAxis
-                    assert 1==2
+                vres = resultArea[tresKey]
+                if supportsOut:
+                    if self.supportsRoi:
+                        vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
+                        try:
+                            vres = vres.view(vigra.VigraArray)
+                            vres.axistags = copy.copy(image.axistags)
+                            print "FAST LANE", self.name, vres.shape, image[twriteKey].shape, vroi
+                            temp = self.vigraFilter(image[twriteKey], roi = vroi,out=vres, **kwparams)
+                        except:
+                            print self.name, image.shape, vroi, kwparams
+                    else:
+                        try:
+                            temp = self.vigraFilter(image, **kwparams)
+                        except:
+                            print self.name, image.shape, vroi, kwparams
+                        vres[:]=temp[writeKey]
+                else:
+                    if self.supportsRoi:
+                        vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
+                        try:                            
+                            temp = self.vigraFilter(image, roi = vroi, **kwparams)
+                        except:
+                            print self.name, image.shape, vroi, kwparams
+                    else:
+                        try:
+                            temp = self.vigraFilter(image, **kwparams)
+                        except:
+                            print self.name, image.shape, vroi, kwparams
+                        vres[:]=temp[writeKey]
+    
+    
+                    try:
+                        vres[:] = temp[twriteKey]
+                    except:
+                        print resultArea.shape,  tresKey, temp.shape, twriteKey
+                        print "step, t.shape", step, t.shape, timeAxis
+                        assert 1==2
                 
 
             
@@ -852,7 +879,7 @@ class OpGaussianSmoothing(OpBaseVigraFilter):
     outputDtype = numpy.float32 
     supportsRoi = True
     supportsWindow = True
-        
+    supportsOut = True    
 
     def resultingChannels(self):
         return 1
@@ -868,6 +895,7 @@ class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
     outputDtype = numpy.float32 
     supportsRoi = True
     supportsWindow = True
+    supportsOut = True    
     inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
 
     def resultingChannels(self):
@@ -881,6 +909,7 @@ class OpStructureTensorEigenvalues(OpBaseVigraFilter):
     outputDtype = numpy.float32 
     supportsRoi = True    
     supportsWindow = True
+    supportsOut = True    
     inputSlots = [InputSlot("Input"), InputSlot("innerScale", stype = "float"),InputSlot("outerScale", stype = "float")]
 
     def resultingChannels(self):
@@ -896,6 +925,7 @@ class OpHessianOfGaussianEigenvaluesFirst(OpBaseVigraFilter):
     supportsOut = False
     supportsWindow = True
     supportsRoi = True
+    
     inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
 
     def resultingChannels(self):
@@ -909,7 +939,8 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
     outputDtype = numpy.float32 
     supportsWindow = True
     supportsRoi = True
-    
+    supportsOut = True    
+  
     def resultingChannels(self):
         temp = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
         return temp
@@ -920,6 +951,7 @@ class OpGaussianGradientMagnitude(OpBaseVigraFilter):
     outputDtype = numpy.float32 
     supportsRoi = True
     supportsWindow = True
+    supportsOut = True    
 
     def resultingChannels(self):        
         return 1
@@ -928,7 +960,7 @@ class OpLaplacianOfGaussian(OpBaseVigraFilter):
     name = "LaplacianOfGaussian"
     vigraFilter = staticmethod(vigra.filters.laplacianOfGaussian)
     outputDtype = numpy.float32 
-    supportsOut = False
+    supportsOut = True
     supportsRoi = True
     supportsWindow = True
     inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
