@@ -101,6 +101,11 @@ class TinyVector(list):
     def _asint(self):
         return TinyVector(map(lambda x:  int(x) ,self))
     
+    def insert(self,index, value):
+        l = list(self)
+        l.insert(index,value)
+        return TinyVector(l)
+    
     def all(self):
         answer = True
         for e in self:
@@ -210,11 +215,11 @@ def roiToSlice(start, stop, hardBind=False):
 
 
 
-def extendSlice(start, stop, shape, sigma):
+def extendSlice(start, stop, shape, sigma, window = 3.5):
     zeros = start - start
-    newStart = numpy.maximum(start - numpy.ceil(3.5 * sigma), zeros)
+    newStart = numpy.maximum(start - numpy.ceil(window * sigma), zeros)
     sa = numpy.array(shape)
-    newStop = numpy.minimum(stop + numpy.ceil(3.5 * sigma), sa)
+    newStop = numpy.minimum(stop + numpy.ceil(window * sigma), sa)
     return newStart, newStop
 
 

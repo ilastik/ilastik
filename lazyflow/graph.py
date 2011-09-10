@@ -307,9 +307,7 @@ class GetItemRequestObject(object):
         if self.destination is None:
             self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
         gr.currentRequest = self
-        assert self.destination is not None
         self.func(self.arg1,self.key, self.destination)
-        assert self.destination is not None
         self._finalize()        
 
     def _putOnTaskQueue(self):
@@ -354,18 +352,7 @@ class GetItemRequestObject(object):
                             if gr.currentRequest._requestLevel > self._requestLevel:
                                 delta = gr.currentRequest._requestLevel - self._requestLevel
                                 self.adjustPriority(delta)
-                            lr = gr.lastRequest
-                            gr.lastRequest = None
-                            if lr is not None and lr is not self:
-                                lr.lock.acquire()
-                                if not lr.inProcess:                                
-                                    lr.lock.release()
-                                    temp = gr.currentRequest
-                                    lr._execute(gr)
-                                    gr.currentRequest = temp
-                                else:
-                                    lr.lock.release()
-                            #self._burstLastRequest(gr)
+                            self._burstLastRequest(gr)
                             gr.parent.switch(None)
                         else:
                             self.lock.release()
@@ -2153,6 +2140,7 @@ class Worker(Thread):
         
     def run(self):
         ct = current_thread()
+        prioLastReq = 0
         while self.graph.running:
             if not self.workAvailableEvent.isSet():
                 self.graph.freeWorkers.append(self)
@@ -2169,9 +2157,11 @@ class Worker(Thread):
                     gr.currentRequest = req                 
                     gr.switch()
                     del gr
+                    if prioLastReq > prioFinReq:
+                        break
                 task = None
                 try:
-                    prioNewReq,task = self.graph.tasks.get(block = False)#timeout = 1.0)
+                    prioLastReq,task = self.graph.tasks.get(block = False)#timeout = 1.0)
                 except Empty:
                     pass                
                 if task is not None:

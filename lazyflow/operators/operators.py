@@ -501,7 +501,7 @@ class OpArrayCache(OpArrayPiper):
             blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
             blockKey = roiToSlice(blockStart,blockStop)
     
-            if (blockStop >= blockStart).all():
+            if (self._blockState[blockKey] != 2).any():
                 start2 = blockStart * self._blockShape
                 stop2 = blockStop * self._blockShape
                 stop2 = numpy.minimum(stop2, self.shape)
@@ -514,8 +514,8 @@ class OpArrayCache(OpArrayPiper):
                 self._lock.release()
             
             #pass request on
-            if not self._fixed:
-                self.outputs["Output"][key] = value
+            #if not self._fixed:
+            #    self.outputs["Output"][key] = value
         if slot == self.inputs["fixAtCurrent"]:
             self._fixed = value
             assert 1==2

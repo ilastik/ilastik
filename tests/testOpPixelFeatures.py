@@ -29,7 +29,7 @@ def test_OpPixelFeatures__T1():
     OpG.inputs["Input"].setValue(inputImage)
     OpG.inputs["Scales"].setValue([1,20,30,40])
 
-    aMatrix = numpy.array([[0,1,0,1],[0,0,0,0],[0,1,0,0],[0,1,0,0]])
+    aMatrix = numpy.array([[0,1,0,1],[0,0,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]])
 
     OpG.inputs["Matrix"].setValue(aMatrix)
 
@@ -48,7 +48,7 @@ def test_OpPixelFeatures__T1():
     
     shape1 = OpG.outputs["Output"].shape 
   
-    OpG.inputs["Matrix"].setValue(numpy.array([[1,1,0,0],[0,1,1,0],[1,0,1,0],[1,0,0,1]]))   
+    OpG.inputs["Matrix"].setValue(numpy.array([[1,1,0,0],[0,1,1,0],[1,0,1,0],[1,0,0,1],[0,1,0,0],[0,1,0,0]]))   
    
     import gc
     del dest1
@@ -160,28 +160,15 @@ def test_OpPixelFeatures__T3():
     
     inputImage = vigra.impex.readImage("ostrich.jpg")
     
-    OpPI.inputs["Input0"].setValue(inputImage)
-    OpPI.inputs["Input2"].setValue(inputImage)
-    OpPI.inputs["Input3"].setValue(inputImage)
-    OpPI.inputs["Input4"].setValue(inputImage)
-    
-    OpPS.inputs["Input0"].setValue(0.0)
-    OpPS.inputs["Input2"].setValue(19.0)
-    OpPS.inputs["Input3"].setValue(29.0)
-    OpPS.inputs["Input4"].setValue(39.0)
-
     
     OpG.inputs["Scales"].setValue([1,20,30,40])
 
-    aMatrix = numpy.array([[0,1,0,1],[0,0,0,0],[0,1,0,0],[0,1,0,0]])
+    aMatrix = numpy.array([[0,1,0,1],[0,0,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]])
 
 
     OpG.inputs["Matrix"].setValue(aMatrix)
 
-    OpG.inputs["Input"].connect(OpPI.outputs["Outputs"])
-
-    
-    OpG.inputs["inputSigmas"].connect(OpPS.outputs["Outputs"])
+    OpG.inputs["Input"].setValue(inputImage)
 
 
     dest1 = OpG.outputs["Output"][:,:,0:3].allocate().wait()
@@ -198,7 +185,7 @@ def test_OpPixelFeatures__T3():
     
     shape1 = OpG.outputs["Output"].shape 
   
-    OpG.inputs["Matrix"].setValue(numpy.array([[1,1,0,0],[0,1,1,0],[1,0,1,0],[1,0,0,1]]))   
+    OpG.inputs["Matrix"].setValue(numpy.array([[1,1,0,0],[0,1,1,0],[1,0,1,0],[1,0,0,1],[0,1,0,0],[0,1,0,0]]))   
    
     import gc
     del dest1
@@ -253,4 +240,4 @@ def test_OpPixelFeatures__T3():
 
 test_OpPixelFeatures__T1()
 test_OpPixelFeatures__T3()
-test_OpPixelFeatures__T2()
+#test_OpPixelFeatures__T2()
