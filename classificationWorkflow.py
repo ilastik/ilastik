@@ -16,7 +16,7 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
                                OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures, \
                                OpMultiArraySlicer2,OpH5Reader, OpBlockedSparseLabelArray, \
                                OpMultiArrayStacker, OpTrainRandomForestBlocked, OpPixelFeatures, \
-                               OpH5ReaderBigDataset, OpSlicedBlockedArrayCache
+                               OpH5ReaderBigDataset, OpSlicedBlockedArrayCache, OpPixelFeaturesPresmoothed
 
 from volumeeditor.pixelpipeline.datasources import LazyflowSource
 from volumeeditor.pixelpipeline._testing import OpDataProvider
@@ -335,7 +335,7 @@ class Main(QMainWindow):
             readerCache.inputs["Input"].connect(readerNew.outputs["Output"])
 
             self.inputProvider = OpArrayPiper(self.g)
-            self.inputProvider.inputs["Input"].connect(readerCache.outputs["Output"])
+            self.inputProvider.inputs["Input"].connect(readerNew.outputs["Output"])
         else:
             raise RuntimeError("opening filenames=%r not supported yet" % fileNames)
         
@@ -400,7 +400,7 @@ class Main(QMainWindow):
         opImageList.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
         
         #init the features operator
-        opPF = OpPixelFeatures(self.g)
+        opPF = OpPixelFeaturesPresmoothed(self.g)
         opPF.inputs["Input"].connect(opImageList.outputs["Outputs"])
         opPF.inputs["Scales"].setValue(self.featScalesList)
         self.opPF=opPF
