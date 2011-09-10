@@ -335,7 +335,7 @@ class Main(QMainWindow):
             readerCache.inputs["Input"].connect(readerNew.outputs["Output"])
 
             self.inputProvider = OpArrayPiper(self.g)
-            self.inputProvider.inputs["Input"].connect(readerNew.outputs["Output"])
+            self.inputProvider.inputs["Input"].connect(readerCache.outputs["Output"])
         else:
             raise RuntimeError("opening filenames=%r not supported yet" % fileNames)
         
