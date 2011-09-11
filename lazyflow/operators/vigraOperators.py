@@ -478,9 +478,15 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
             req = self.inputs["Input"][treadKey].allocate()
             
             __sourceArray = req.wait()
-            __sourceArray = __sourceArray.astype(numpy.float32)
-            __sourceArray = __sourceArray.view(vigra.VigraArray) 
-            __sourceArray.axistags =  copy.copy(__axistags)
+
+            req.destination = None
+            if __sourceArray.dtype is not numpy.float32:
+                __sourceArrayF = __sourceArray.astype(numpy.float32)
+                __sourceArray.resize((1,))
+                del __sourceArray
+                __sourceArray = __sourceArrayF
+            __sourceArrayV = __sourceArrayF.view(vigra.VigraArray) 
+            __sourceArrayV.axistags =  copy.copy(__axistags)
             
             
             
@@ -513,17 +519,17 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
                     __vigOpSourceShape.insert(__channelAxis, ( __oldstop - __oldstart)[__channelAxis])
                                         
                     __sourceArrayForSigma = numpy.ndarray(tuple(__vigOpSourceShape),numpy.float32)
-                    for i,vsa in enumerate(__sourceArray.timeIter()):
+                    for i,vsa in enumerate(__sourceArrayV.timeIter()):
                         droi = (tuple(__vigOpSourceStart._asint()), tuple(__vigOpSourceStop._asint()))
                         __sourceArrayForSigma[i,...] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
                 else:
                     droi = (tuple(__vigOpSourceStart._asint()), tuple(__vigOpSourceStop._asint()))
                     #print droi, __sourceArray.shape, tempSigma,self.scales[j]
-                    __sourceArrayForSigma = vigra.filters.gaussianSmoothing(__sourceArray, sigma = tempSigma, roi = droi, window_size = 3.5)                         
+                    __sourceArrayForSigma = vigra.filters.gaussianSmoothing(__sourceArrayV, sigma = tempSigma, roi = droi, window_size = 3.5)                         
                     __sourceArrayForSigma = __sourceArrayForSigma.view(numpy.ndarray)
                 
                 sourceArraysForSigmas[j] = __sourceArrayForSigma
-
+                del __sourceArrayForSigma
 
 
             
@@ -566,7 +572,14 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
                                 written += 1
                             cnt += 1
     
-    
+        for i,s in enumerate(sourceArraysForSigmas):
+            if s is not None:
+                del s
+            sourceArraysForSigmas[i] = None
+        del __sourceArrayV
+        __sourceArray.resize((1,), refcheck = False)
+        del __sourceArray
+        
     def getInnerInputs(self):
         inputs = {}
         inputs["Input"] = self.source.inputs["Input"]
