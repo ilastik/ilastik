@@ -274,7 +274,8 @@ class GetItemRequestObject(object):
                 self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)            
             gr = greenlet.getcurrent()
             if hasattr(gr, "currentRequest"):
-                self.parentRequest = gr.currentRequest                
+                self.parentRequest = gr.currentRequest    
+                assert gr.currentRequest is not None
             self.wait() #this sets self._finished and copies the results over
         if not self._finished:
             self.lock = Lock()
@@ -359,6 +360,7 @@ class GetItemRequestObject(object):
                             if gr.currentRequest._requestLevel > self._requestLevel:
                                 delta = gr.currentRequest._requestLevel - self._requestLevel
                                 self.adjustPriority(delta)
+                            
                             lr = gr.lastRequest
                             gr.lastRequest = None
                             if lr is not None and lr != self:            
@@ -367,7 +369,7 @@ class GetItemRequestObject(object):
                                     lr.lock.release()
                                     lr._execute(gr)
                                 else:
-                                    lr.lock.release()
+                                    lr.lock.release()                                      
                             gr.parent.switch(None)
                         else:
                             self.lock.release()
@@ -487,23 +489,23 @@ class GetItemRequestObject(object):
                         break
                     func(self.destination, **kwargs)
     
-                waiters = []
-                while len(self.waitQueue) > 0:
-                    try:
-                        w = self.waitQueue.pop()
-                        waiters.append(w)
-                    except:
-                        break
-                waiter = sorted(waiters, key=lambda x: -x[1]._requestLevel)
-                for tr, req, gr in waiters:
-                    req.lock.acquire()
-                    if not req.canceled:
-                        tr.finishedRequestGreenlets.put((-req._requestLevel, req, gr))
-                        tr.workAvailableEvent.set()
-                    req.lock.release()
+            waiters = []
+            while len(self.waitQueue) > 0:
+                try:
+                    w = self.waitQueue.pop()
+                    waiters.append(w)
+                except:
+                    break
+            waiter = sorted(waiters, key=lambda x: -x[1]._requestLevel)
+            for tr, req, gr in waiters:
+                req.lock.acquire()
+                if not req.canceled:
+                    tr.finishedRequestGreenlets.put((-req._requestLevel, req, gr))
+                    tr.workAvailableEvent.set()
+                req.lock.release()
         else:
             self.graph.putFinalize(self)
-        self.parentRequest = None
+        #self.parentRequest = None
         self.childRequests = {}
 
         
@@ -2049,6 +2051,10 @@ class OperatorGroupGraph(object):
     @property
     def suspended(self):
         return self._originalGraph.suspended
+
+    @property
+    def freeWorkers(self):
+        return self._originalGraph.freeWorkers
  
     def dumpToH5G(self, h5g, patchBoard):
         h5op = h5g.create_group("operators")
@@ -2156,6 +2162,7 @@ class Worker(Thread):
         self.number =  len(self.graph.workers)
         self.workAvailableEvent = Event()
         self.workAvailableEvent.clear()
+        self.openUserRequests = set()
     
     def signalWorkAvailable(self): 
         self.workAvailableEvent.set()
@@ -2173,12 +2180,15 @@ class Worker(Thread):
             except:
                 pass
             self.workAvailableEvent.clear()
-                
-            while not self.graph.tasks.empty() or not self.finishedRequestGreenlets.empty():       
+            self._hasSlept = True
+            
+            while not self.graph.tasks.empty() or not self.finishedRequestGreenlets.empty() or (not self.graph.newTasks.empty() and self._hasSlept):       
+                #print self, len(self.openUserRequests)                
                 while not self.finishedRequestGreenlets.empty():
                     prioFinReq, req, gr = self.finishedRequestGreenlets.get(block = False)
                     gr.currentRequest = req                 
-                    gr.switch()
+                    if req.canceled is False:
+                        gr.switch()
                     del gr
                     if prioLastReq < prioFinReq:
                         #print prioLastReq, prioFinReq
@@ -2192,28 +2202,40 @@ class Worker(Thread):
                 if task is not None:
                     reqObject = task
                     if reqObject.canceled is False:
-                        #TODO: isnt a comparison against currentRequestLevel better 
-                        # then against 1 ? ...
-                        if self._hasSlept or reqObject.parentRequest is not None or self.process.get_memory_info().vms < self.graph.softMaxMem:
+                        gr = CustomGreenlet(reqObject._execute)
+                        gr.thread = self
+                        gr.switch( gr)
+                        del gr
+                        
+                if len(self.openUserRequests) < 4:
+                    self._hasSlept = True                    
+                    task = None
+                    try:
+                        pr,task = self.graph.newTasks.get(block = False)#timeout = 1.0)
+                    except Empty:
+                        pass               
+                    if task is not None:
+                        reqObject = task
+                        self.openUserRequests.add(reqObject)                
+                        if reqObject.canceled is False:
                             gr = CustomGreenlet(reqObject._execute)
                             gr.thread = self
                             gr.switch( gr)
                             del gr
-                            self._hasSlept = False
-                        else:
-                            self.graph.putTask(reqObject) #move task back to task queue
-                            print "Worker %d: The process uses too much memory sleeping for a while even though work is available..." % self.number
-                            #freesize = abs(self.process.get_memory_info().vms  - self.graph.softMaxMem)
-                            #self.graph._freeMemory(freesize * 3)                            
-                            gc.collect()
-                            self._hasSlept = True
-                            prioLastReq = 0
-                            #time.sleep(4.0)
+                else:
+                    self._hasSlept = False
+                for r in self.openUserRequests.copy():
+                    if r.canceled or r._finished:
+                        self.openUserRequests.remove(r)
+                        self._hasSlept = True
+
+
     
 class Graph(object):
     def __init__(self, numThreads = None, softMaxMem =  None):
         self.operators = []
         self.tasks = PriorityQueue() #Lifo <-> depth first, fifo <-> breath first
+        self.newTasks = PriorityQueue() #Lifo <-> depth first, fifo <-> breath first
         self.workers = []
         self.freeWorkers = deque()
         self.running = True
@@ -2304,19 +2326,23 @@ class Graph(object):
             print "Graph._freeMemory: freesize = %f MB" % ((freesize)/1024.0**2,)
 
         freedMem = 0
-        
-        while len(self._allocatedCaches) > 0:
+        i = 0
+        maxCount = len(self._allocatedCaches)
+        while len(self._allocatedCaches) > 0 and i < maxCount:
+            i +=1            
             if freedMem < freesize: #c._memorySize() > 1024
                 try:
                     c = self._allocatedCaches.popleft()
                 except:
                     c = None
                 if c is not None:
+                    fmc = 0
                     if c._memorySize() > 1024:
                     #FIXME: handle very small chunks
-                        freedMem += c._freeMemory()
-                    else:
-                        self._allocatedCaches.appendleft(c)
+                        fmc = c._freeMemory()
+                        freedMem += fmc
+                    if fmc == 0: #freeing did not succeed
+                        self._allocatedCaches.append(c)
             else:
                 break
         self._memAllocLock.acquire()
@@ -2328,7 +2354,7 @@ class Graph(object):
 
     def _notifyMemoryHit(self):
         accesses = self._memoryAccessCounter.next()
-        if accesses > 20:
+        if accesses > 30:
             self._memoryAccessCounter = itertools.count() #reset counter
             # calculate the exponential moving average for the caches            
             #prevent manipulation of deque during calculation
@@ -2343,13 +2369,15 @@ class Graph(object):
 
             
     def putTask(self, reqObject):
-        if self.suspended is False or reqObject.parentRequest is not None:
+        if self.suspended is False:
             task = reqObject
-            self.tasks.put((-task._requestLevel,task))
-            
+            if task.parentRequest is not None:
+                self.tasks.put((-task._requestLevel,task))
+            else:
+                self.newTasks.put((-task._requestLevel,task))
             if len(self.freeWorkers) > 0:
                 try:
-                    w = self.freeWorkers.pop()
+                    w = self.freeWorkers.popleft()
                     w.signalWorkAvailable()
                 except:
                     pass

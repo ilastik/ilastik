@@ -376,13 +376,15 @@ class OpArrayCache(OpArrayPiper):
         self.graph._notifyMemoryHit()
         
         start, stop = sliceToRoi(key, self.shape)
-        
+
         self._lock.acquire()
 
         ch = self._cacheHits
         ch += 1
         self._cacheHits = ch
-        
+
+        cacheView = self._cache #prevent freeing of cache during running this function
+
         if self._cache is None:
             self._allocateCache()
         blockStart = (1.0 * start / self._blockShape).floor()

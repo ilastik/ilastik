@@ -124,6 +124,15 @@ class OpTrainRandomForestBlocked(Operator):
                     request2 = self.inputs["Images"][i][b].allocate()
                     reqlistlabels.append(request)
                     reqlistfeat.append(request2)
+
+                def dummyNotify(req):
+                    pass
+
+                for ir, req in enumerate(reqlistfeat):
+                    image = req.notify(dummyNotify)
+
+                for ir, req in enumerate(reqlistlabels):
+                    labblock = req.notify(dummyNotify)
                     
                 for ir, req in enumerate(reqlistlabels):
                     labblock = req.wait()
