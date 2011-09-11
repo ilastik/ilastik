@@ -518,20 +518,19 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
                     __vigOpSourceShape.insert(__timeAxis, ( __oldstop - __oldstart)[__timeAxis])
                     __vigOpSourceShape.insert(__channelAxis, ( __oldstop - __oldstart)[__channelAxis])
                                         
-                    __sourceArrayForSigma = numpy.ndarray(tuple(__vigOpSourceShape),numpy.float32)
+                    sourceArraysForSigmas[j] = numpy.ndarray(tuple(__vigOpSourceShape),numpy.float32)
                     for i,vsa in enumerate(__sourceArrayV.timeIter()):
                         droi = (tuple(__vigOpSourceStart._asint()), tuple(__vigOpSourceStop._asint()))
-                        __sourceArrayForSigma[i,...] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
+                        sourceArraysForSigmas[j][i,...] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
                 else:
                     droi = (tuple(__vigOpSourceStart._asint()), tuple(__vigOpSourceStop._asint()))
                     #print droi, __sourceArray.shape, tempSigma,self.scales[j]
-                    __sourceArrayForSigma = vigra.filters.gaussianSmoothing(__sourceArrayV, sigma = tempSigma, roi = droi, window_size = 3.5)                         
-                    __sourceArrayForSigma = __sourceArrayForSigma.view(numpy.ndarray)
-                
-                sourceArraysForSigmas[j] = __sourceArrayForSigma
-                del __sourceArrayForSigma
+                    sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(__sourceArrayV, sigma = tempSigma, roi = droi, window_size = 3.5)                         
+                    #__sourceArrayForSigma = __sourceArrayForSigma.view(numpy.ndarray)
 
-
+            del __sourceArrayV
+            __sourceArray.resize((1,), refcheck = False)
+            del __sourceArray
             
             #connect individual operators
             for i in range(dimRow):
@@ -572,13 +571,11 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
                                 written += 1
                             cnt += 1
     
-        for i,s in enumerate(sourceArraysForSigmas):
-            if s is not None:
-                del s
-            sourceArraysForSigmas[i] = None
-        del __sourceArrayV
-        __sourceArray.resize((1,), refcheck = False)
-        del __sourceArray
+            for i in range(len(sourceArraysForSigmas)):
+                if sourceArraysForSigmas[i] is not None:
+                    sourceArraysForSigmas[i].resize((1,))
+                    sourceArraysForSigmas[i] = None
+
         
     def getInnerInputs(self):
         inputs = {}
