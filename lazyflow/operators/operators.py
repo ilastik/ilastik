@@ -511,6 +511,7 @@ class OpArrayCache(OpArrayPiper):
                     self._allocateCache()
                 self._cache[key2] = value[roiToSlice(start2-start,stop2-start)]
                 self._blockState[blockKey] = self._dirtyState
+                self._blockQuery[blockKey] = None
                 self._lock.release()
             
             #pass request on
