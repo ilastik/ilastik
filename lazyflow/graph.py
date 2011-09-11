@@ -304,11 +304,13 @@ class GetItemRequestObject(object):
             
 
     def _execute(self, gr):
+        temp = gr.currentRequest
         if self.destination is None:
             self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
         gr.currentRequest = self
         self.func(self.arg1,self.key, self.destination)
         self._finalize()        
+        gr.currentRequest = temp
 
     def _putOnTaskQueue(self):
         self.inProcess = True
@@ -322,7 +324,7 @@ class GetItemRequestObject(object):
         self.lock.acquire()
         self._priority += delta 
         self._requestLevel += delta
-        childs = list(self.childRequests.values())
+        childs = tuple(self.childRequests.values())
         self.lock.release()
         for c in childs:
             c.adjustPriority(delta)
@@ -336,8 +338,13 @@ class GetItemRequestObject(object):
         """
         if isinstance(self.slot, OutputSlot) or self.slot._value is None:
             self.lock.acquire()
+            gr = greenlet.getcurrent()
+            if self.canceled:
+                self.canceled = False
+                self._finished = False
+                self.childRequests = {}
+                self.parentRequest = gr.currentRequest
             if not self._finished:
-                gr = greenlet.getcurrent()
                 if self.inProcess:   
                     if hasattr(gr, "currentRequest"):                         
                         if not self._finished:
@@ -418,11 +425,12 @@ class GetItemRequestObject(object):
         lr = gr.lastRequest
         gr.lastRequest = None
         if lr is not None and lr != self:            
-            #lr.lock.acquire()
+            lr.lock.acquire()
             if lr.inProcess is False:
+                lr.lock.release()
                 lr._putOnTaskQueue()
-            #lr.lock.release()
-
+            else:
+                lr.lock.release()
        
     def notify(self, closure, **kwargs): 
         """
