@@ -359,7 +359,15 @@ class GetItemRequestObject(object):
                             if gr.currentRequest._requestLevel > self._requestLevel:
                                 delta = gr.currentRequest._requestLevel - self._requestLevel
                                 self.adjustPriority(delta)
-                            self._burstLastRequest(gr)
+                            lr = gr.lastRequest
+                            gr.lastRequest = None
+                            if lr is not None and lr != self:            
+                                lr.lock.acquire()
+                                if lr.inProcess is False:
+                                    lr.lock.release()
+                                    lr._execute(gr)
+                                else:
+                                    lr.lock.release()
                             gr.parent.switch(None)
                         else:
                             self.lock.release()
@@ -2169,12 +2177,14 @@ class Worker(Thread):
                     gr.currentRequest = req                 
                     gr.switch()
                     del gr
-                    if prioLastReq > prioFinReq:
+                    if prioLastReq < prioFinReq:
+                        print prioLastReq, prioFinReq
                         break
                 task = None
                 try:
                     prioLastReq,task = self.graph.tasks.get(block = False)#timeout = 1.0)
                 except Empty:
+                    prioLastReq = 0
                     pass                
                 if task is not None:
                     reqObject = task
@@ -2194,7 +2204,8 @@ class Worker(Thread):
                             #self.graph._freeMemory(freesize * 3)                            
                             gc.collect()
                             self._hasSlept = True
-                            time.sleep(4.0)
+                            prioLastReq = 0
+                            #time.sleep(4.0)
     
 class Graph(object):
     def __init__(self, numThreads = None, softMaxMem =  None):
