@@ -15,6 +15,7 @@ import weakref
 from threading import current_thread, Lock, RLock
 import generic
 from lazyflow.graph import OperatorGroup
+import itertools
 
 try:
     import blist
@@ -456,14 +457,13 @@ class OpArrayCache(OpArrayPiper):
         self._lock.release()
         
         def onCancel(cancelled, reqBlockKey, reqSubBlockKey):
-            if not cancelled[0]:
-                cancelled[0] = True
+            if cancelled.next() == 0:
                 self._lock.acquire()
                 blockSet = fastWhere(cond, 1, blockSet, numpy.uint8)
                 self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)                       
                 self._lock.release()            
             
-        temp = [False]            
+        temp = itertools.count(0)        
             
         #wait for all requests to finish
         for req, reqBlockKey, reqSubBlockKey in dirtyRequests:
@@ -471,7 +471,7 @@ class OpArrayCache(OpArrayPiper):
             res = req.wait()
 
         # indicate the finished inprocess state
-        if not self._fixed and temp[0] is False:        
+        if not self._fixed and temp.next() == 0:        
             self._lock.acquire()
             blockSet[:] = fastWhere(cond, 2, blockSet, numpy.uint8)
             self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)                       
