@@ -363,7 +363,7 @@ class GetItemRequestObject(object):
                             gr.lastRequest = None
                             if lr is not None and lr != self:            
                                 lr.lock.acquire()
-                                if lr.inProcess is False:
+                                if lr.inProcess is False and lr.canceled is False:
                                     lr.lock.release()
                                     lr._execute(gr)
                                 else:
@@ -434,7 +434,7 @@ class GetItemRequestObject(object):
         gr.lastRequest = None
         if lr is not None and lr != self:            
             lr.lock.acquire()
-            if lr.inProcess is False:
+            if lr.inProcess is False and lr.canceled is False:
                 lr.lock.release()
                 lr._putOnTaskQueue()
             else:
@@ -471,6 +471,7 @@ class GetItemRequestObject(object):
     def _finalize(self):
         self.lock.acquire()
         self._finished = True
+        self.cancelQueue = deque()
         self.lock.release()
         p = self.parentRequest
         if p is not None:
@@ -528,14 +529,12 @@ class GetItemRequestObject(object):
 #                    tr.workAvailableEvent.set()
 
     def _cancelChildren(self):
-        if not self._finished:
-            self._cancel()
             self.lock.acquire()
-            childs = list(self.childRequests.values())
+            childs = tuple(self.childRequests.values())
+            self.childRequests = {}
             self.lock.release()
             for r in childs:
-                r._cancelChildren()            
-            self.childRequests = {}
+                r._cancel()            
 
     def _cancelParents(self):
         if not self._finished:
@@ -545,10 +544,14 @@ class GetItemRequestObject(object):
 
 
     def cancel(self):
+        self.lock.acquire()
         if not self._finished:
             self.canceled = True
+            self.lock.release()
             self._cancelChildren()
             #self._cancelParents()
+        else:            
+            self.lock.release()
         
     def __call__(self):
         assert 1==2, "Please use the .wait() method, () is deprecated !"
@@ -2178,7 +2181,7 @@ class Worker(Thread):
                     gr.switch()
                     del gr
                     if prioLastReq < prioFinReq:
-                        print prioLastReq, prioFinReq
+                        #print prioLastReq, prioFinReq
                         break
                 task = None
                 try:
@@ -2241,7 +2244,7 @@ class Graph(object):
         print "GRAPH: using %d Threads" % (self.numThreads)
         print "GRAPH: using target size of %dMB of Memory" % (softMaxMem / 1024**2)
         self.softMaxMem = softMaxMem # in bytes
-        self.softCacheMem = softMaxMem * 0.7
+        self.softCacheMem = softMaxMem * 0.5
         self._registeredCaches = deque()
         self._allocatedCaches = deque()
         self._usedCacheMemory = 0
