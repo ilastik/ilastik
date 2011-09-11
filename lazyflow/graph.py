@@ -2249,8 +2249,6 @@ class Graph(object):
             self.numThreads = detectCPUs()
             if self.numThreads > 2:
                 self.numThreads -= 1
-            if self.numThreads > 6:
-                self.numThreads -= 1
         else:
             self.numThreads = numThreads
         self.lastRequestID = itertools.count()
