@@ -478,11 +478,15 @@ class GetItemRequestObject(object):
                         break
                     func(self.destination, **kwargs)
     
+                waiters = []
                 while len(self.waitQueue) > 0:
                     try:
-                        tr, req, gr = self.waitQueue.pop()
+                        w = self.waitQueue.pop()
+                        waiters.append(w)
                     except:
                         break
+                waiter = sorted(waiters, key=lambda x: -x[1]._requestLevel)
+                for tr, req, gr in waiters:
                     req.lock.acquire()
                     if not req.canceled:
                         tr.finishedRequestGreenlets.put((-req._requestLevel, req, gr))
