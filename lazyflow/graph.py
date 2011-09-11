@@ -2393,6 +2393,12 @@ class Graph(object):
     def suspendGraph(self):
         print "Graph: suspending..."        
         tasks = []
+        while not self.newTasks.empty():
+            try:
+                t = self.newTasks.get(block = False)
+                tasks.append(t)
+            except:
+                break
         while not self.tasks.empty():
             try:
                 t = self.tasks.get(block = False)
@@ -2434,12 +2440,13 @@ class Graph(object):
         print "finished."
         #self.finalize()
             
-    def resumeGraph(self):
+    def resumeGraph(self):        
         if self.stopped:
             self.stopped = False
             self._suspendedRequests = deque()
             self._suspendedNotifyFinish = deque()
-            
+            for w in self.workers:
+                w.openUserRequests = set()            
         print "Graph: resuming %d requests" % len(self._suspendedRequests)
         self.suspended = False
         
