@@ -18,13 +18,8 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
                                OpMultiArrayStacker, OpTrainRandomForestBlocked, OpPixelFeatures, \
                                OpH5ReaderBigDataset, OpSlicedBlockedArrayCache, OpPixelFeaturesPresmoothed
 
-from volumeeditor.pixelpipeline.datasources import LazyflowSource
-from volumeeditor.pixelpipeline._testing import OpDataProvider
-from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer, \
-                               AlphaModulatedLayer
-from volumeeditor.layerstack import LayerStackModel
-from volumeeditor.volumeEditor import VolumeEditor
-from volumeeditor.pixelpipeline.datasources import LazyflowSinkSource
+from volumeeditor.hl import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
+    AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
 
 from labelListView import Label
 from labelListModel import LabelListModel
