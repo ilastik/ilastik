@@ -17,14 +17,14 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpArrayFixableCache, \
 
 from lazyflow import operators
 
-from volumeeditor.pixelpipeline.datasources import LazyflowSource
-from volumeeditor.pixelpipeline._testing import OpDataProvider
-from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer, \
+from volumina.pixelpipeline.datasources import LazyflowSource
+from volumina.pixelpipeline._testing import OpDataProvider
+from volumina.layer import GrayscaleLayer, RGBALayer, ColortableLayer, \
                                AlphaModulatedLayer
-from volumeeditor.layerstack import LayerStackModel
-from volumeeditor.volumeEditor import VolumeEditor
-from volumeeditor.volumeEditorWidget import VolumeEditorWidget
-from volumeeditor.pixelpipeline.datasources import LazyflowSinkSource
+from volumina.layerstack import LayerStackModel
+from volumina.volumeEditor import VolumeEditor
+from volumina.volumeEditorWidget import VolumeEditorWidget
+from volumina.pixelpipeline.datasources import LazyflowSinkSource
 
 from labelListView import Label
 from labelListModel import LabelListModel
