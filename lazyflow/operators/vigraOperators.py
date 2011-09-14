@@ -771,7 +771,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                             temp = self.vigraFilter(image, **kwparams)
                         except:
                             print self.name, image.shape, vroi, kwparams
-                        vres[:]=temp[writeKey]
+                        temp=temp[writeKey]
     
     
                     try:
