@@ -10,15 +10,15 @@ from PyQt4.QtGui import QColor, QApplication, QSplitter, QPushButton, \
                         QVBoxLayout, QWidget, QHBoxLayout, QMainWindow, qApp
 
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
-from volumeeditor.pixelpipeline.datasources import LazyflowSource, ConstantSource
-from volumeeditor.pixelpipeline._testing import OpDataProvider
-from volumeeditor._testing.from_lazyflow import OpDataProvider5D, OpDelay
-from volumeeditor.layer import GrayscaleLayer, RGBALayer, ColortableLayer
-from volumeeditor.layerwidget.layerwidget import LayerWidget
-from volumeeditor.layerstack import LayerStackModel
-from volumeeditor.volumeEditor import VolumeEditor
-from volumeeditor.volumeEditorWidget import VolumeEditorWidget
-from volumeeditor.pixelpipeline.datasources import ArraySource, LazyflowSinkSource
+from volumina.pixelpipeline.datasources import LazyflowSource, ConstantSource
+from volumina.pixelpipeline._testing import OpDataProvider
+from volumina._testing.from_lazyflow import OpDataProvider5D, OpDelay
+from volumina.layer import GrayscaleLayer, RGBALayer, ColortableLayer
+from volumina.layerwidget.layerwidget import LayerWidget
+from volumina.layerstack import LayerStackModel
+from volumina.volumeEditor import VolumeEditor
+from volumina.volumeEditorWidget import VolumeEditorWidget
+from volumina.pixelpipeline.datasources import ArraySource, LazyflowSinkSource
 
 
 
