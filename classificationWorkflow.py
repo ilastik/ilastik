@@ -18,7 +18,7 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
                                OpMultiArrayStacker, OpTrainRandomForestBlocked, OpPixelFeatures, \
                                OpH5ReaderBigDataset, OpSlicedBlockedArrayCache, OpPixelFeaturesPresmoothed
 
-from volumina.hl import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
+from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
     AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
 
 from labelListView import Label
