@@ -573,8 +573,10 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
     
             for i in range(len(sourceArraysForSigmas)):
                 if sourceArraysForSigmas[i] is not None:
-                    sourceArraysForSigmas[i].resize((1,))
-                    sourceArraysForSigmas[i] = None
+                    try:
+                        sourceArraysForSigmas[i].resize((1,))
+                    except:
+                        sourceArraysForSigmas[i] = None
 
         
     def getInnerInputs(self):
@@ -744,6 +746,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                 #print tresKey, twriteKey, resultArea.shape, temp.shape
                 vres = resultArea[tresKey]
                 if supportsOut:
+                    print "SSSSSSSSSSSSSSSSSSS"
                     if self.supportsRoi:
                         vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
                         try:
@@ -758,7 +761,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                             temp = self.vigraFilter(image, **kwparams)
                         except:
                             print self.name, image.shape, vroi, kwparams
-                        vres[:]=temp[writeKey]
+                        temp=temp[writeKey]
                 else:
                     if self.supportsRoi:
                         vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
