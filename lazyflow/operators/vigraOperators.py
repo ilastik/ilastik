@@ -680,7 +680,10 @@ class OpBaseVigraFilter(OpArrayPiper):
             treadKey=list(readKey)
             
             if hasTimeAxis:
-                treadKey.insert(timeAxis, key[timeAxis])
+                if channelAxis > timeAxis:
+                    treadKey.insert(timeAxis, key[timeAxis])
+                else:
+                    treadKey.insert(timeAxis-1, key[timeAxis])
             treadKey.insert(channelAxis, slice(i,i+1,None))
             treadKey=tuple(treadKey)
 
