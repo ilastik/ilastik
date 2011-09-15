@@ -418,8 +418,9 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
             written = 0
             start, stop = roi.sliceToRoi(key, self.outputs["Output"]._shape)
             assert (stop<=self.outputs["Output"].shape).all()
-            axisindex =  len(self.source.outputs["Output"].shape) - 1
             flag = 'c'
+            __channelAxis=self.inputs["Input"].axistags.index('c')
+            axisindex = __channelAxis
             oldkey = list(key)
             oldkey.pop(axisindex)
             
@@ -438,7 +439,6 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
             result.axistags = copy.copy(__axistags)
             
             
-            __channelAxis=self.inputs["Input"].axistags.index('c')
             __hasTimeAxis = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Time)
             __timeAxis=self.inputs["Input"].axistags.index('t')
     
@@ -455,12 +455,12 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
             __maxSigma = max(0.7,self.maxSigma)
         
             __newStart, __newStop = roi.extendSlice(__start, __stop, __subshape, __maxSigma, window = 3.5)
-
+            
             __vigOpSourceStart, __vigOpSourceStop = roi.extendSlice(__start, __stop, __subshape, 0.7, window = 2)
-
+            
             __vigOpSourceStart = roi.TinyVector(__vigOpSourceStart - __newStart)
             __vigOpSourceStop = roi.TinyVector(__vigOpSourceStop - __newStart)
-
+            
             __readKey = roi.roiToSlice(__newStart, __newStop)
         
         
@@ -696,12 +696,13 @@ class OpBaseVigraFilter(OpArrayPiper):
                     treadKey.insert(timeAxis-1, key[timeAxis])
             treadKey.insert(channelAxis, slice(i,i+1,None))
             treadKey=tuple(treadKey)
-
+            
             if sourceArray is None:
                 req = self.inputs["Input"][treadKey].allocate()
                 t = req.wait()
             else:
-                t = sourceArray[...,i:i+1]
+                #t = sourceArray[...,i:i+1]
+                t = sourceArray[getAllExceptAxis(len(treadKey),channelAxis,slice(i,i+1,None) )]
                 #req = self.inputs["Input"][treadKey].allocate()
                 #t2 = req.wait()
                 
@@ -710,11 +711,9 @@ class OpBaseVigraFilter(OpArrayPiper):
                 #assert t.shape == t2.shape, "Vigra Filter %r: shape difference !! sigm = %f, window = %r, %r, %r" %( self.name, largestSigma, windowSize,  t.shape, t2.shape)
                 
             t = numpy.require(t, dtype=self.inputDtype)
-            
             t = t.view(vigra.VigraArray)
             t.axistags = copy.copy(axistags)
             t = t.insertChannelAxis()
-            
 
             sourceBegin = 0
             
@@ -742,9 +741,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                 supportsOut = False
 
             supportsOut= False #disable for now due to vigra crashes!
-            
-            for step,image in enumerate(t.timeIter()):
-                    
+            for step,image in enumerate(t.timeIter()):   
                 nChannelAxis = channelAxis - 1
                 
                 if timeAxis > channelAxis or not hasTimeAxis:
@@ -789,7 +786,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                             print self.name, image.shape, vroi, kwparams
                         temp=temp[writeKey]
     
-    
+
                     try:
                         vres[:] = temp[twriteKey]
                     except:
