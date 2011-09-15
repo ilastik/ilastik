@@ -429,7 +429,7 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
             
             
             
-            
+            __inShape  = self.inputs["Input"].shape
             
             __shape = self.outputs["Output"].shape
             
@@ -477,7 +477,7 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
                     treadKey.insert(__timeAxis-1, key[__timeAxis])
             treadKey.insert(__channelAxis, slice(None,None,None))
             treadKey=tuple(treadKey)
-    
+            
             req = self.inputs["Input"][treadKey].allocate()
             
             __sourceArray = req.wait()
@@ -488,9 +488,9 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
                 __sourceArray.resize((1,))
                 del __sourceArray
                 __sourceArray = __sourceArrayF
-            __sourceArrayV = __sourceArrayF.view(vigra.VigraArray) 
+            __sourceArrayV = __sourceArray.view(vigra.VigraArray) 
             __sourceArrayV.axistags =  copy.copy(__axistags)
-            
+
             
             
             
@@ -517,12 +517,12 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
                     tempSigma = self.scales[j]
                 __vigOpSourceShape = list(__vigOpSourceStop - __vigOpSourceStart)
                 if __hasTimeAxis:
-                    
+
                     if __timeAxis < __channelAxis:
                         __vigOpSourceShape.insert(__timeAxis, ( __oldstop - __oldstart)[__timeAxis])
                     else:
-                        __vigOpSourceShape.insert(__timeAxis-1, ( __oldstop - __oldstart)[__timeAxis])
-                    __vigOpSourceShape.insert(__channelAxis, ( __oldstop - __oldstart)[__channelAxis])
+                        __vigOpSourceShape.insert(__timeAxis-1, ( __oldstop - __oldstart)[__timeAxis]) 
+                    __vigOpSourceShape.insert(__channelAxis, __inShape[__channelAxis])
                                         
                     sourceArraysForSigmas[j] = numpy.ndarray(tuple(__vigOpSourceShape),numpy.float32)
                     for i,vsa in enumerate(__sourceArrayV.timeIter()):
@@ -577,6 +577,7 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
                                 oslot.operator.getOutSlot(oslot,tuple(oldkey),destArea, sourceArray = sourceArraysForSigmas[j])
                                 written += 1
                             cnt += 1
+
     
             for i in range(len(sourceArraysForSigmas)):
                 if sourceArraysForSigmas[i] is not None:
@@ -703,10 +704,10 @@ class OpBaseVigraFilter(OpArrayPiper):
             else:
                 #t = sourceArray[...,i:i+1]
                 t = sourceArray[getAllExceptAxis(len(treadKey),channelAxis,slice(i,i+1,None) )]
-                #req = self.inputs["Input"][treadKey].allocate()
-                #t2 = req.wait()
+                req = self.inputs["Input"][treadKey].allocate()
+                t2 = req.wait()
                 
-                #t3 = t.view(numpy.ndarray)
+                t3 = t.view(numpy.ndarray)
                 #assert (t3==t2).all()
                 #assert t.shape == t2.shape, "Vigra Filter %r: shape difference !! sigm = %f, window = %r, %r, %r" %( self.name, largestSigma, windowSize,  t.shape, t2.shape)
                 
