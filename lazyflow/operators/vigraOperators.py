@@ -471,7 +471,10 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
             treadKey=list(__readKey)
             
             if __hasTimeAxis:
-                treadKey.insert(__timeAxis, key[__timeAxis])
+                if __timeAxis < __channelAxis:
+                    treadKey.insert(__timeAxis, key[__timeAxis])
+                else:
+                    treadKey.insert(__timeAxis-1, key[__timeAxis])
             treadKey.insert(__channelAxis, slice(None,None,None))
             treadKey=tuple(treadKey)
     
@@ -515,13 +518,17 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
                 __vigOpSourceShape = list(__vigOpSourceStop - __vigOpSourceStart)
                 if __hasTimeAxis:
                     
-                    __vigOpSourceShape.insert(__timeAxis, ( __oldstop - __oldstart)[__timeAxis])
+                    if __timeAxis < __channelAxis:
+                        __vigOpSourceShape.insert(__timeAxis, ( __oldstop - __oldstart)[__timeAxis])
+                    else:
+                        __vigOpSourceShape.insert(__timeAxis-1, ( __oldstop - __oldstart)[__timeAxis])
                     __vigOpSourceShape.insert(__channelAxis, ( __oldstop - __oldstart)[__channelAxis])
                                         
                     sourceArraysForSigmas[j] = numpy.ndarray(tuple(__vigOpSourceShape),numpy.float32)
                     for i,vsa in enumerate(__sourceArrayV.timeIter()):
                         droi = (tuple(__vigOpSourceStart._asint()), tuple(__vigOpSourceStop._asint()))
-                        sourceArraysForSigmas[j][i,...] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
+                        tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),__timeAxis, i)
+                        sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
                 else:
                     droi = (tuple(__vigOpSourceStart._asint()), tuple(__vigOpSourceStop._asint()))
                     #print droi, __sourceArray.shape, tempSigma,self.scales[j]
@@ -666,7 +673,10 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         writeKey = roi.roiToSlice(writeNewStart, writeNewStop)
         writeKey = list(writeKey)
-        writeKey.insert(channelAxis, slice(None,None,None))
+        if timeAxis < channelAxis:
+            writeKey.insert(channelAxis-1, slice(None,None,None))
+        else:
+            writeKey.insert(channelAxis, slice(None,None,None))
         writeKey = tuple(writeKey)         
                 
         channelsPerChannel = self.resultingChannels()
