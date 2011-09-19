@@ -114,12 +114,15 @@ class Main(QMainWindow):
         self.AddLabelButton.clicked.connect(self.addLabel)
         
         self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
-        self.StartClassificationButton.clicked.connect(self.startClassification)
-        
+        self.StartClassificationButton.clicked.connect(self.startClassification)        
         self.StartClassificationButton.setEnabled(False)
+
         self.checkInteractive.setEnabled(False)
-        
         self.checkInteractive.toggled.connect(self.toggleInteractive)   
+
+        self.interactionComboBox.currentIndexChanged.connect(self.changeInteractionMode)
+        self.interactionComboBox.setEnabled(False)
+
         self._initFeatureDlg()
         
     def toggleInteractive(self, checked):
@@ -156,7 +159,13 @@ class Main(QMainWindow):
         self.labelListModel.allowRemove(not checked)
         
         self.editor.scheduleSlicesRedraw()
-        
+
+    def changeInteractionMode( self, index ):
+        modes = {0: "navigation", 1: "brushing"}
+        self.editor.setInteractionMode( modes[index] )
+        self.interactionComboBox.setCurrentIndex(index)
+        print "interaction mode switched to", modes[index]
+
     def switchLabel(self, row):
         print "switching to label=%r" % (self.labelListModel[row])
         #+1 because first is transparent
@@ -191,7 +200,8 @@ class Main(QMainWindow):
         
         #FIXME: this should watch for model changes   
         #drawing will be enabled when the first label is added  
-        self.editor.setDrawingEnabled(True)
+        self.changeInteractionMode( 1 )
+        self.interactionComboBox.setEnabled(True)
     
     def onLabelAboutToBeRemoved(self, parent, start, end):
         #the user deleted a label, reshape prediction and remove the layer
@@ -435,7 +445,7 @@ class Main(QMainWindow):
         
         self.editor = VolumeEditor(shape, self.layerstack, labelsink=self.labelsrc)
         #drawing will be enabled when the first label is added  
-        self.editor.setDrawingEnabled(False)
+        self.editor.setInteractionMode( 'navigation' )
         self.volumeEditorWidget.init(self.editor)
         model = self.editor.layerStack
         self.layerWidget.init(model)

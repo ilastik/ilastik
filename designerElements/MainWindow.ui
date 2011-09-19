@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>906</width>
-    <height>684</height>
+    <width>961</width>
+    <height>776</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -100,6 +100,23 @@
           <property name="text">
            <string>Interactive updating</string>
           </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="interactionComboBox">
+          <property name="maxVisibleItems">
+           <number>10</number>
+          </property>
+          <item>
+           <property name="text">
+            <string>Navigation Mode</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Brushing Mode</string>
+           </property>
+          </item>
          </widget>
         </item>
         <item>
@@ -236,8 +253,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>906</width>
-     <height>24</height>
+     <width>961</width>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
