@@ -77,6 +77,8 @@ void avContext2Dmulti(MultiArrayView<1, IND, S>& sizes,
 {
     //fill the results array with averages of predictions array
     //computed at the radii of sizes of each member of predictions
+    //the averages are computed in concentric squares of size radii,
+    //where  for each r_i the middle of the square of size r_i-1 is removed
     
     int nx = predictions.shape()[0];
     int ny = predictions.shape()[1];
@@ -87,7 +89,7 @@ void avContext2Dmulti(MultiArrayView<1, IND, S>& sizes,
     integralImage(predictions, integral);
     
     for (IND c=0; c<nclasses; ++c) {
-        std::cout<<"class "<<c<<std::endl;
+//         std::cout<<"class "<<c<<std::endl;
         for (IND x=0; x<nx; ++x){
             for (IND y=0; y<ny; ++y){
                 std::vector<T> newf(nnewfeatures);
@@ -168,7 +170,7 @@ void varContext2Dmulti(MultiArrayView<1, IND, S>&sizes,
     integralImage2(predictions, integral2);
 
     for (IND c=0; c<nclasses; ++c) {
-        std::cout<<"class "<<c<<std::endl;
+//         std::cout<<"class "<<c<<std::endl;
         for (IND x=0; x<nx; ++x) {
             for (IND y=0; y<ny; ++y) {
                 std::vector<T> newf(nnewfeatures);

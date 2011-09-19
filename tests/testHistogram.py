@@ -1,4 +1,4 @@
-from context import *
+import context
 import vigra, numpy,h5py
 from numpy.testing import assert_array_equal as equal
 
@@ -20,6 +20,22 @@ def hR(upperLeft,lowerRight,H):
     
     return res.astype(numpy.uint32)
 
+def concatHist(data, pos, nbins, histrange=(0,1)):
+    y,x,r = pos
+    nc = data.shape[2]
+    histlist = []
+    subregion = data[y-r:y+r+1, x-r:x+r+1, :]
+    for ic in range(nc):
+        #print "channel", ic
+        ch = numpy.histogram(subregion[:, :, ic], nbins, histrange)[0]
+        #print "data:"
+        #print subregion[:, :, ic]
+        #print "histogram:"
+        #print ch
+        histlist.append(ch)
+    #print histlist
+    return numpy.concatenate(numpy.array(histlist))
+   
 
 def TestSimplestHistogram():
     print
@@ -28,26 +44,26 @@ def TestSimplestHistogram():
     data = data.view(vigra.VigraArray)
     data.axistags = vigra.VigraArray.defaultAxistags(3)
     nbins = 4
-    integral = intHistogram2D(data, nbins)
+    integral = context.intHistogram2D(data, nbins)
     newshape = (data.shape[0], data.shape[1], nbins)
     assert newshape==integral.shape, "shape mismatch"
 
     #print integral
 
-    newhist = getHistOfRegion((0, 0), (2, 2), integral)
+    newhist = context.getHistOfRegion((0, 0), (2, 2), integral)
     subset = data[0:2, 0:2, :].squeeze()
     truehist = numpy.histogram(subset, bins=nbins, range=(0, 1))[0]
     equal(newhist,truehist)
     print "first good"
     print
     
-    newhist = getHistOfRegion((1, 1), (4, 4), integral)
+    newhist = context.getHistOfRegion((1, 1), (4, 4), integral)
     subset = data[1:4, 1:4, :].squeeze()
     truehist = numpy.histogram(subset, bins=nbins, range=(0, 1))[0]
     equal(newhist,truehist)
     print "second good"
     print
-    newhist = getHistOfRegion((0, 1), (5, 5), integral)
+    newhist = context.getHistOfRegion((0, 1), (5, 5), integral)
     #print newhist
     subset = data[0:5, 1:5, :].squeeze()
     truehist = numpy.histogram(subset, bins=nbins, range=(0, 1))[0]
@@ -56,7 +72,7 @@ def TestSimplestHistogram():
     print "third good"
     print
     
-    newhist = getHistOfRegion((1, 1), (5, 5), integral)
+    newhist = context.getHistOfRegion((1, 1), (5, 5), integral)
     #print newhist
     subset = data[1:5, 1:5, :].squeeze()
     truehist = numpy.histogram(subset, bins=nbins, range=(0, 1))[0]
@@ -77,7 +93,7 @@ def TestIntegralHistogram():
     data=data.view(vigra.VigraArray)
     data.axistags=vigra.VigraArray.defaultAxistags(3)
     
-    res=intHistogram2D(data,3)
+    res=context.intHistogram2D(data,3)
 
     assert res.shape==(10,5,3), "shape mismatch"
     
@@ -100,14 +116,14 @@ def TestIntegralHistogram():
     print ""
     print (reduced[:,:]*50).astype(numpy.uint8)
     
-    h=getHistOfRegion((0,0),(10,5),res).view(numpy.ndarray)
+    h = context.getHistOfRegion((0,0),(10,5),res).view(numpy.ndarray)
     assert (h==numpy.histogram(reduced, 3)[0]).all()
     
     
-    h=getHistOfRegion((0,0),(7,3),res).view(numpy.ndarray)
+    h = context.getHistOfRegion((0,0),(7,3),res).view(numpy.ndarray)
     equal(h,numpy.histogram(data[:7,:3], 3,(0,1))[0])    
     
-    h=getHistOfRegion((1,2),(7,3),res).view(numpy.ndarray)
+    h = context.getHistOfRegion((1,2),(7,3),res).view(numpy.ndarray)
     equal(h,numpy.histogram(data[1:7,2:3], 3,(0,1))[0])
     
     
@@ -122,13 +138,13 @@ def TestIntegralHistogram():
     data=data.view(vigra.VigraArray)
     data.axistags=vigra.VigraArray.defaultAxistags(3)
     
-    res=intHistogram2D(data,3)
+    res = context.intHistogram2D(data,3)
     
     assert res.shape==(50,50,3), "shape mismatch"
     
     reduced=numpy.squeeze(data.view(numpy.ndarray)).view(numpy.ndarray)
     
-    h=getHistOfRegion((8,8),(13,13),res).view(numpy.ndarray)
+    h = context.getHistOfRegion((8,8),(13,13),res).view(numpy.ndarray)
     equal(h,numpy.histogram(reduced[8:13,8:13],3,(0,1))[0])
 
     print "good"
@@ -141,17 +157,15 @@ def TestSimpleHistogram():
     data=data-data.min()
     data=data/data.max()
     
-    res=histogram2D(data,3)
+    res=context.histogram2D(data,3)
     res=res.view(numpy.ndarray)
     assert res.shape==(data.shape[0],data.shape[1],data.shape[2]*3)
-    
     def hist(data,pos,bins,range):
         y,x=pos
         ch0=numpy.histogram(data[y,x,0], bins, range)[0]
         ch1=numpy.histogram(data[y,x,1], bins, range)[0]
         ch2=numpy.histogram(data[y,x,2], bins, range)[0]
-        return numpy.concatenate([ch0,ch1,ch2])
-    
+        return numpy.concatenate([ch0,ch1,ch2])  
    
     equal(hist(data,(0,0),3,(0,1)),res[0,0])
     
@@ -161,6 +175,8 @@ def TestSimpleHistogram():
     print "good"
 
 def TestOverlappingHistogram():
+    
+    #FIXME: not tested yet
     
     data=vigra.impex.readImage('ostrich.jpg')
     data=data.view(numpy.ndarray).astype(numpy.float32)
@@ -198,7 +214,74 @@ def TestOverlappingHistogram():
     res=overlappingHistogram2D(data,bins,0.01)
     
  
- 
+
+def TestHistContextC():
+    #Test the context histogram features
+    #border conditions are not tested!
+
+    print
+    print "TestHistContextC---------------"
+    
+    nx = 20
+    ny = 30
+    nc = 2
+    dummypred = numpy.random.rand(nx, ny, nc)
+    #dummypred = numpy.arange(nx*ny*nc)
+    dummypred = dummypred.astype(numpy.float32)
+    dummypred = dummypred - dummypred.min()
+    dummypred = dummypred/dummypred.max()
+
+    dummypred = dummypred.reshape((nx, ny, nc))
+    
+
+    dummy = vigra.VigraArray(dummypred.shape, axistags=vigra.VigraArray.defaultAxistags(3)).astype(dummypred.dtype)
+    dummy[:]=dummypred[:]
+    
+    sizes = numpy.array([3, 4], dtype=numpy.uint32)
+    nr = sizes.shape[0]
+    nbins = 4
+    
+    resshape = (nx, ny, nr*nbins*nc)
+    res = vigra.VigraArray(resshape, axistags=vigra.VigraArray.defaultAxistags(3)).astype(numpy.float32)
+    res = context.contextHistogram2D(sizes, nbins, dummy, res)
+    print res.shape
+    res=res.view(numpy.ndarray)
+    
+    #for the first radius, results should be like the regular histogram
+    r1 = sizes[0]
+    nr1 = nbins*nc
+    resr1 = res[:, :, 0:nr1]
+    print "compare with numpy hist at some random locations"
+    niter = 5
+    print "for innermost radius"
+    for it in range(niter):
+        p1x = numpy.random.randint(r1, nx-r1)
+        p1y = numpy.random.randint(r1, ny-r1)
+        desired = concatHist(dummy, (p1x, p1y, r1), nbins)
+        equal(resr1[p1x, p1y, :], desired)
+        print "         ", p1x, p1y, "----good"
+        
+    
+    #for the second radius, it should be like the difference between 
+    #the outer and the inner one
+    resr2 = res[:, :, nr1:2*nr1]
+    niter = 5
+    maxr = max(sizes)
+    r2 = sizes[1]
+    print "for the second radius"
+    for it in range(niter):
+        p1x = numpy.random.randint(maxr, nx-maxr)
+        p1y = numpy.random.randint(maxr, ny-maxr)
+        outer = concatHist(dummy, (p1x, p1y, r2), nbins)
+        inner = concatHist(dummy, (p1x, p1y, r1), nbins)
+        desired = outer-inner
+        equal(resr2[p1x, p1y, :], desired)
+        print "         ", p1x, p1y, "----good"
+        
+    print "all good"
+    print
+
+
 def TestHistContext():
     
     
@@ -223,8 +306,9 @@ def TestHistContext():
     d[:]=res[:]
     file.close()
     """
-
     a=histContext([1,2],res)
+    
+    
     print a[:,:,0].T
     
     print res[:,:,0]
@@ -242,4 +326,4 @@ if __name__=="__main__":
     TestIntegralHistogram()
     TestSimpleHistogram()
     #TestOverlappingHistogram()
-    
+    TestHistContextC()

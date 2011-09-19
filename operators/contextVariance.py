@@ -22,9 +22,8 @@ class OpVarianceContext2D(Operator):
         
         h,w,c=self.inputs["PMaps"].shape
         
-        self.outputs["Output"]._shape = (h,w,2*nclasses*len(radii))
-        
         self.outputs["Output"]._axistags = copy.copy(self.inputs["PMaps"].axistags)
+        self.outputs["Output"]._shape = (h,w,2*nclasses*len(radii))
 
     def getOutSlot(self, slot, key, result):
         pmaps = self.inputs["PMaps"][:].allocate().wait()

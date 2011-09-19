@@ -156,6 +156,10 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 		MultiArrayView<3, T2, S2>& H) {
 
 	//FIXME you are imposing between zero and 1
+    //The order in the output array is all bins of the first channel,
+    //then all bins of the second channel
+    
+    
 	int height = image.shape()[0];
 	int width = image.shape()[1];
 	int nc = image.shape()[2];
@@ -265,7 +269,7 @@ void contextHistogramFeatures(int x, int y, int nclasses,
                               MultiArrayView<3, T1, S2>& integral,
                               std::vector<T1>& flathisto)
 {
-
+    //The order in the output array is first radius, then channel, then bins.
     
     int nr = radii.shape()[0];
     int nctb = integral.shape()[2];
