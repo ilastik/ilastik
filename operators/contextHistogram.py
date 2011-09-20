@@ -1,5 +1,7 @@
 from lazyflow.graph import *
 import context
+from lazyflow import roi
+from lazyflow.operators.generic import popFlagsFromTheKey
 
 
 class OpContextHistogram(Operator):
@@ -25,16 +27,58 @@ class OpContextHistogram(Operator):
         self.outputs["Output"]._axistags = copy.copy(self.inputs["PMaps"].axistags)
         self.outputs["Output"]._shape = (h, w, len(radii)*nbins*c)
         
+        #print "set the output shape as ", self.outputs["Output"].shape
+        
     def getOutSlot(self, slot, key, result):
-        #FIXME: we don't really need that
-        pmaps = self.inputs["PMaps"][:].allocate().wait()
+        
+        print "requested key:", key, "result shape:", result.shape
         
         radii=self.inputs["Radii"].value        
         radii=numpy.array(radii,dtype=numpy.uint32)
+        maxRadius = numpy.max(radii)
+        
+        shape = self.outputs["Output"].shape
+        axistags = self.inputs["PMaps"].axistags
+        
+        channelAxis=self.inputs["PMaps"].axistags.index('c')
+        hasTimeAxis = self.inputs["PMaps"].axistags.axisTypeCount(vigra.AxisType.Time)
+        timeAxis=self.inputs["PMaps"].axistags.index('t')
+
+        subkey = popFlagsFromTheKey(key,axistags,'c')
+        subshape=popFlagsFromTheKey(shape,axistags,'c')
+        at2 = copy.copy(axistags)
+        at2.dropChannelAxis()
+        subshape=popFlagsFromTheKey(subshape,at2,'t')
+        subkey = popFlagsFromTheKey(subkey,at2,'t')
+        
+        oldstart, oldstop = roi.sliceToRoi(key, shape)
+        
+        start, stop = roi.sliceToRoi(subkey,subkey)
+        newStart, newStop = roi.extendSlice(start, stop, subshape, maxRadius, 1)
+        newkey = list(roi.roiToSlice(newStart, newStop))
+        #Request all the labels
+        nclasses=self.inputs["LabelsCount"].value
+        newkey.append(slice(0, nclasses, None))
+        readKey = tuple(newkey)
+        
+        print "pmaps will be computed for key:", readKey
+        pmaps = self.inputs["PMaps"][readKey].allocate().wait()
+        print "pmaps computation done", pmaps.shape
+        
+        writeNewStart = start - newStart
+        writeNewStop = writeNewStart +  stop - start
+        writeNewKey = roi.roiToSlice(writeNewStart, writeNewStop)
+        
+        #stuff is not allocated inside, we have to do it here
+        resshape = list(pmaps.shape)
+        resshape[-1] = shape[-1]
+        temp = vigra.VigraArray(tuple(resshape), axistags=vigra.VigraArray.defaultAxistags(3))
         
         nbins = self.inputs["BinsCount"].value
         print "We are in the business"
-        print radii, radii.dtype
-        print nbins
         
-        context.contextHistogram2D(radii, nbins, pmaps, result)
+        context.contextHistogram2D(radii, nbins, pmaps, temp)
+        result = temp[writeNewKey]
+        
+        
+        

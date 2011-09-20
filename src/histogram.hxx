@@ -151,8 +151,7 @@ void overlappingHistogram2D(MultiArrayView<3, T, S1>& image, int nbins,
 // The result is a Histogram where last index loops through the bins
 // NB Assumes that the values of each channel in the original image are between 0,1
 template<class T1,class T2, class S1, class S2>
-void
-integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
+void integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 		MultiArrayView<3, T2, S2>& H) {
 
 	//FIXME you are imposing between zero and 1
@@ -166,16 +165,16 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 	int x,y,c,index;
 	MultiArrayShape<3>::type resShp(width, height, nc * nbins);
 	vigra_precondition(resShp[2]==H.shape(2),"wrong shape");
-
-
-
-
 	std::cerr << "inside c++" << std::endl;
-	//For all the channels do the same
+    std::cout << "processing image with width="<<width<<", height="<<height<<", channels="<<nc<<std::endl;
+    std::cout<<"number of bins="<<nbins<<std::endl;
+    
+    
+    //For all the channels do the same
 	for (c=0;c<nc;c++)
 	{
 		int shift=c*nbins;
-		//std::cerr << "here" << std::endl ;
+		//std::cerr << "channel " << c<<std::endl ;
 
 		//initialize the histogram
 		for(int j=shift; j<nbins+shift;j++)
@@ -233,6 +232,8 @@ void contextHistogram2D(MultiArrayView<1, IND, S1>&radii, int nbins,
     //where  for each r_i the middle of the square of size r_i-1 is removed
     //for multichannel images, histogramming is done channel-wise
     
+    std::cout<<"contextHistogram2D in c++"<<std::endl;
+    
     int nx = image.shape()[0];
     int ny = image.shape()[1];
     int nchannels = image.shape()[2];
@@ -242,6 +243,8 @@ void contextHistogram2D(MultiArrayView<1, IND, S1>&radii, int nbins,
     int nnewfeatures = nr*nctb;
     MultiArrayShape<3>::type resShp(nx, ny, nctb);
     MultiArray<3, T1> integral(resShp);
+    
+    std::cout<<"computing the integral histogram"<<std::endl;
     integralHistogram2D(image, nbins, integral);
     
     std::vector<T1> flathisto(nnewfeatures);
@@ -253,7 +256,9 @@ void contextHistogram2D(MultiArrayView<1, IND, S1>&radii, int nbins,
     
     for (int ix=0; ix<nx; ++ix){
         for (int iy=0; iy<ny; ++iy){
+            //std::cout<<"x="<<ix<<", y="<<iy<<std::endl;
             contextHistogramFeatures(ix, iy, nchannels, lr, ll, ur, ul, radii, integral, flathisto);
+            //std::cout<<"computed, writing"<<std::endl;
             for (int ii=0; ii<nnewfeatures; ++ii){
                 res(ix, iy, ii) = flathisto[ii];
             }
