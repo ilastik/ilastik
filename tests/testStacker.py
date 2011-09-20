@@ -11,7 +11,7 @@ import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 
-if __name__=="__main__":
+def testFullAllocate():
     
     nx = 5
     ny = 10
@@ -22,7 +22,6 @@ if __name__=="__main__":
     g = Graph()
     
     #assume that the slicer works
-    
     slicerX = operators.OpMultiArraySlicer(g)
     slicerX.inputs["Input"].setValue(stack)
     slicerX.inputs["AxisFlag"].setValue('x')
@@ -101,3 +100,35 @@ if __name__=="__main__":
     print "4th part ok................."
     
     g.finalize()
+    
+    
+def testPartialAllocate():
+    
+    nx = 15
+    ny = 20
+    nz = 17
+    nc = 7
+    stack = numpy.random.rand(nx, ny, nz, nc)
+    
+    g = Graph()
+    
+    #assume that the slicer works
+    slicerX = operators.OpMultiArraySlicer(g)
+    slicerX.inputs["Input"].setValue(stack)
+    slicerX.inputs["AxisFlag"].setValue('x')
+    
+    #insert the x dimension
+    stackerX = operators.OpMultiArrayStacker(g)
+    stackerX.inputs["AxisFlag"].setValue('x')
+    stackerX.inputs["AxisIndex"].setValue(0)
+    stackerX.inputs["Images"].connect(slicerX.outputs["Slices"])
+
+    key = (slice(2, 3, None), slice(15, 18, None), slice(12, 15, None), slice(0, 7, None))
+    newdata = stackerX.outputs["Output"][key].allocate().wait()
+    substack = stack[key]
+    print newdata.shape, substack.shape
+    assert_array_equal(newdata, substack)
+    
+if __name__=="__main__":
+    #testFullAllocate()
+    testPartialAllocate()

@@ -97,6 +97,9 @@ class OpMultiArraySlicer(Operator):
         
             
     def getSubOutSlot(self, slots, indexes, key, result):
+        
+        #print "SLICER: key", key, "indexes[0]", indexes[0], "result", result.shape
+        
         start,stop=roi.sliceToRoi(key,self.outputs["Slices"][indexes[0]].shape)
         
         oldstart,oldstop=start,stop
@@ -111,15 +114,13 @@ class OpMultiArraySlicer(Operator):
         stop.insert(indexAxis,indexes[0])
         
         newKey=roi.roiToSlice(numpy.array(start),numpy.array(stop))
-
-        writeKey=roi.roiToSlice(oldstart,oldstop)
-        writeKey=list(writeKey)
-        writeKey.insert(indexAxis,0)
-        writeKey=tuple(writeKey)
         
         ttt = self.inputs["Input"][newKey].allocate().wait()
         
-        
+        writeKey = [slice(None, None, None) for k in key]
+        writeKey.insert(indexAxis, 0)
+        writeKey = tuple(writeKey)
+
         result[:]=ttt[writeKey ]#+ (0,)]
 
 
@@ -159,15 +160,10 @@ class OpMultiArraySlicer2(Operator):
             
     def getSubOutSlot(self, slots, indexes, key, result):
         
-                
-        
         outshape = self.outputs["Slices"][indexes[0]].shape
             
         
         start,stop=roi.sliceToRoi(key,outshape)
-        
-        
-        
         oldstart,oldstop=start,stop
         
         start=list(start)
@@ -184,20 +180,8 @@ class OpMultiArraySlicer2(Operator):
         
         
         newKey=roi.roiToSlice(numpy.array(start),numpy.array(stop))
-        
-        
-        
-        
-        
-        writeKey=roi.roiToSlice(oldstart,oldstop)
-        writeKey=list(writeKey)
-        #writeKey.insert(indexAxis,0)
-        writeKey=tuple(writeKey)
-        
       
         ttt = self.inputs["Input"][newKey].allocate().wait()
-        
-
         result[:]=ttt[:]
 
 class OpMultiArrayStacker(Operator):
@@ -295,10 +279,10 @@ class OpMultiArrayStacker(Operator):
                     cnt += slices
                 else:
                     if cnt>=start[axisindex] and start[axisindex] + written < stop[axisindex]:
-                        reskey = copy.copy(oldkey)
-                        reskey.insert(axisindex, written)
                         #print "key: ", key, "reskey: ", reskey, "oldkey: ", oldkey
                         #print "result: ", result.shape, "inslot:", inSlot.shape
+                        reskey = [slice(None, None, None) for s in oldkey]
+                        reskey.insert(axisindex, written)
                         destArea = result[tuple(reskey)]
                         req = inSlot[tuple(oldkey)].writeInto(destArea)
                         written += 1
