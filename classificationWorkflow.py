@@ -102,12 +102,12 @@ class Main(QMainWindow):
         def onDataChanged(topLeft, bottomRight):
             firstRow = topLeft.row()
             lastRow  = bottomRight.row()
-            assert firstRow == lastRow
-            firstCol = topLeft.column()
-            lastCol  = bottomRight.column()
-            if 0 in range(firstCol, lastCol+1):
-                self.switchColor(firstRow+1, self.labelListModel[firstRow].color)
-                self.editor.scheduleSlicesRedraw()
+            if firstRow == lastRow:
+                firstCol = topLeft.column()
+                lastCol  = bottomRight.column()
+                if 0 in range(firstCol, lastCol+1):
+                    self.switchColor(firstRow+1, self.labelListModel[firstRow].color)
+                    self.editor.scheduleSlicesRedraw()
             
         self.labelListModel.dataChanged.connect(onDataChanged)
         
