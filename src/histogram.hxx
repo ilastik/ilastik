@@ -165,9 +165,9 @@ void integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 	int x,y,c,index;
 	MultiArrayShape<3>::type resShp(width, height, nc * nbins);
 	vigra_precondition(resShp[2]==H.shape(2),"wrong shape");
-	std::cerr << "inside c++" << std::endl;
-    std::cout << "processing image with width="<<width<<", height="<<height<<", channels="<<nc<<std::endl;
-    std::cout<<"number of bins="<<nbins<<std::endl;
+	//std::cerr << "inside c++" << std::endl;
+    //std::cout << "processing image with width="<<width<<", height="<<height<<", channels="<<nc<<std::endl;
+    //std::cout<<"number of bins="<<nbins<<std::endl;
     
     
     //For all the channels do the same
@@ -232,7 +232,7 @@ void contextHistogram2D(MultiArrayView<1, IND, S1>&radii, int nbins,
     //where  for each r_i the middle of the square of size r_i-1 is removed
     //for multichannel images, histogramming is done channel-wise
     
-    std::cout<<"contextHistogram2D in c++"<<std::endl;
+    //std::cout<<"contextHistogram2D in c++"<<std::endl;
     
     int nx = image.shape()[0];
     int ny = image.shape()[1];
@@ -244,7 +244,7 @@ void contextHistogram2D(MultiArrayView<1, IND, S1>&radii, int nbins,
     MultiArrayShape<3>::type resShp(nx, ny, nctb);
     MultiArray<3, T1> integral(resShp);
     
-    std::cout<<"computing the integral histogram"<<std::endl;
+    //std::cout<<"computing the integral histogram"<<std::endl;
     integralHistogram2D(image, nbins, integral);
     
     std::vector<T1> flathisto(nnewfeatures);

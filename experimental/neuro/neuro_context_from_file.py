@@ -30,8 +30,13 @@ tempfilenew = "/home/akreshuk/data/context/50slices_down2_hist_temp_iter1.h5"
 
 #numIter = 4
 
+#for blockwise final prediction
+nxcut = 3
+nycut = 3
+
 sys.setrecursionlimit(10000)
-g = Graph(numThreads = 1, softMaxMem = 18000*1024**2)
+#g = Graph(numThreads = 1, softMaxMem = 18000*1024**2)
+g = Graph()
 
 f = h5py.File(tempfile)
 pmaps = numpy.array(f["/volume/pmaps"])
@@ -79,9 +84,16 @@ stacker2.inputs["AxisIndex"].setValue(3)
 stacker2.inputs["Images"].connect(opMultiS.outputs["Outputs"])
 
 #Let's cache the stacker, it's used both in training and in prediction
-featurecache2 = operators.OpArrayCache(g)
+#featurecache2 = operators.OpArrayCache(g)
+#featurecache2.inputs["Input"].connect(stacker2.outputs["Output"])
+#featurecache2.inputs["blockShape"].setValue((64, 64, 1, 180))
+
+featurecache2 = operators.OpBlockedArrayCache(g)
+featurecache2.inputs["innerBlockShape"].setValue((8,8,8,180))
+featurecache2.inputs["outerBlockShape"].setValue((64,64,64,180))
 featurecache2.inputs["Input"].connect(stacker2.outputs["Output"])
-featurecache2.inputs["blockShape"].setValue((64, 64, 1, 180))
+featurecache2.inputs["fixAtCurrent"].setValue(False)  
+
 
 #wrap the features, because opTrain has a multi input slot
 opMultiTr = operators.Op5ToMulti(g)
@@ -128,12 +140,27 @@ opPredict2.inputs['Classifier'].connect(acache2.outputs['Output'])
 opPredict2.inputs['Image'].connect(featurecache2.outputs["Output"])
 opPredict2.inputs['LabelsCount'].setValue(pmaps.shape[-1])
 
-pmaps2 = opPredict2.outputs["PMaps"][0:20, 0:20, 0:20, :].allocate().wait()
+size = pmaps.shape
+xmin = [i*size[0]/nxcut for i in range(nxcut)]
+ymin = [i*size[1]/nycut for i in range(nycut)]
+xmax = [i*size[0]/nxcut for i in range(1, nxcut+1)]
+ymax = [i*size[1]/nycut for i in range(1, nycut+1)]
+
+print size
+print xmin, ymin, xmax, ymax
+pmaps2 = numpy.zeros(size)
+for i, x in enumerate(xmin):
+    for j, y in enumerate(ymin):
+        print "processing part ", i, j
+        pmapspart = opPredict2.outputs["PMaps"][xmin[i]:xmax[i], ymin[j]:ymax[j], :, :].allocate().wait()
+        pmaps2[xmin[i]:xmax[i], ymin[j]:ymax[j], :, :] = pmapspart[:]
+    
+#pmaps2 = opPredict2.outputs["PMaps"][0:20, 0:20, 0:20, :].allocate().wait()
 print "prediction done"
 print pmaps2.shape
 
-import sys
-sys.exit(1)
+#import sys
+#sys.exit(1)
 
 #opPredict2.outputs["PMaps"][:].writeInto(pmaps).wait()
 #save into an old ilastik project for easy visualization

@@ -31,7 +31,7 @@ class OpContextHistogram(Operator):
         
     def getOutSlot(self, slot, key, result):
         
-        print "requested key:", key, "result shape:", result.shape
+        #print "requested key:", key, "result shape:", result.shape
         
         radii=self.inputs["Radii"].value        
         radii=numpy.array(radii,dtype=numpy.uint32)
@@ -61,9 +61,9 @@ class OpContextHistogram(Operator):
         newkey.append(slice(0, nclasses, None))
         readKey = tuple(newkey)
         
-        print "pmaps will be computed for key:", readKey
+        #print "pmaps will be computed for key:", readKey
         pmaps = self.inputs["PMaps"][readKey].allocate().wait()
-        print "pmaps computation done", pmaps.shape
+        #print "pmaps computation done", pmaps.shape
         
         writeNewStart = start - newStart
         writeNewStop = writeNewStart +  stop - start
@@ -75,7 +75,7 @@ class OpContextHistogram(Operator):
         temp = vigra.VigraArray(tuple(resshape), axistags=vigra.VigraArray.defaultAxistags(3))
         
         nbins = self.inputs["BinsCount"].value
-        print "We are in the business"
+        #print "We are in the business"
         
         context.contextHistogram2D(radii, nbins, pmaps, temp)
         result = temp[writeNewKey]
