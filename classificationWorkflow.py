@@ -102,12 +102,20 @@ class Main(QMainWindow):
         def onDataChanged(topLeft, bottomRight):
             firstRow = topLeft.row()
             lastRow  = bottomRight.row()
-            if firstRow == lastRow:
-                firstCol = topLeft.column()
-                lastCol  = bottomRight.column()
-                if 0 in range(firstCol, lastCol+1):
-                    self.switchColor(firstRow+1, self.labelListModel[firstRow].color)
-                    self.editor.scheduleSlicesRedraw()
+        
+            firstCol = topLeft.column()
+            lastCol  = bottomRight.column()
+            
+            if lastCol == firstCol == 0:
+                assert(firstRow == lastRow) #only one data item changes at a time
+
+                #in this case, the actual data (for example color) has changed
+                self.switchColor(firstRow+1, self.labelListModel[firstRow].color)
+                self.editor.scheduleSlicesRedraw()
+            else:
+                #this column is used for the 'delete' buttons, we don't care
+                #about data changed here
+                pass
             
         self.labelListModel.dataChanged.connect(onDataChanged)
         
