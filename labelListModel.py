@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel
+from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen
 from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal
 
 class Label(QObject):
@@ -95,6 +95,25 @@ class LabelListModel(QAbstractTableModel):
             icon = QIcon(pixmap)
             return icon
         
+        if role == Qt.DecorationRole and index.column() == 2:
+            row = index.row()
+            pixmap = QPixmap(26, 26)
+            pixmap.fill(Qt.transparent)
+            painter = QPainter()
+            painter.begin(pixmap)
+            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setBrush(QColor("red"))
+            painter.drawEllipse(1, 1, 24, 24)
+            pen = QPen(QColor("black"))
+            pen.setWidth(2)
+            painter.setPen(pen)
+            painter.drawLine(8,8, 18,18)
+            painter.drawLine(18,8, 8,18)
+            
+            painter.end()
+            icon = QIcon(pixmap)
+            return icon
+        
         if role == Qt.DisplayRole and index.column() == 1:
             row = index.row()
             value = self._labels[row]
@@ -106,7 +125,10 @@ class LabelListModel(QAbstractTableModel):
         elif  index.column() == 1:
             return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
         elif  index.column() == 2:
-            return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            if self._allowRemove:
+                return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            else:
+                return Qt.NoItemFlags
         
     def setData(self, index, value, role = Qt.EditRole):
         if role == Qt.EditRole  and index.column() == 0:
@@ -132,8 +154,6 @@ class LabelListModel(QAbstractTableModel):
         return True
 
     def removeRow(self, position, parent = QModelIndex()):
-        if not self._allowRemove:
-            return True
         self.beginRemoveRows(parent, position, position)
         value = self._labels[position]
         print "removing row: ", value
@@ -145,5 +165,7 @@ class LabelListModel(QAbstractTableModel):
         #Allow removing of rows. Needed to be able to disallow it
         #in interactive mode
         self._allowRemove = check
+        self.dataChanged.emit(self.createIndex(0, 2), self.createIndex(self.rowCount(), 2))
+        
     
     
