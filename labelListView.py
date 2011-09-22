@@ -1,4 +1,5 @@
-from PyQt4.QtGui import QTableView, QColorDialog, QAbstractItemView, QGroupBox, QHBoxLayout, QVBoxLayout, QPushButton, QColor, QWidget
+from PyQt4.QtGui import QTableView, QColorDialog, QAbstractItemView, QGroupBox, QHBoxLayout, QVBoxLayout, QPushButton, QColor, QWidget, \
+                        QHeaderView
 from PyQt4.QtCore import Qt, QSize
 from labelListModel import LabelListModel, Label
 import sys
@@ -27,6 +28,7 @@ class LabelListView(QTableView):
         self.horizontalHeader().hide()
         self.verticalHeader().hide()
         self.resizeColumnToContents(0)
+        self.horizontalHeader().setResizeMode(1, QHeaderView.Stretch)
         self.resizeColumnToContents(2)
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
