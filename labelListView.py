@@ -28,8 +28,8 @@ class LabelListView(QTableView):
         self.verticalHeader().hide()
         self.resizeColumnToContents(0)
         self.resizeColumnToContents(2)
-        #WTF? Why no selection?
         self.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)
     
     def setModel(self, model):
         QTableView.setModel(self, model)
