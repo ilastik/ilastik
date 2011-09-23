@@ -4,9 +4,9 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import os, sys, numpy, copy
 
-from PyQt4.QtCore import pyqtSignal, QTimer, QRectF
+from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt
 from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
-                        QMessageBox, qApp, QItemSelectionModel
+                        QMessageBox, qApp, QItemSelectionModel, QIcon
 from PyQt4 import uic
 
 from lazyflow.graph import Graph
@@ -67,6 +67,9 @@ class Main(QMainWindow):
                 self._openFile(sys.argv[1:])
             QTimer.singleShot(0, loadFile)
         
+    def setIconToViewMenu(self):
+            self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
+        
     def initUic(self):
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
@@ -83,9 +86,40 @@ class Main(QMainWindow):
                 s = list(copy.copy(shape))
                 del s[i]
                 v.changeViewPort(v.scene().data2scene.mapRect(QRectF(0,0,*s)))  
+                
+        def fitImage():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageViews[self.editor._lastImageViewFocus].fitImage()
+            
+            
+        def hideHud():
+            if self.editor.imageViews[0]._hud.isVisible():
+                hide = False
+            else:
+                hide = True
+            for i, v in enumerate(self.editor.imageViews):
+                v.hideHud(hide)
+                
+        def toggleSelectedHud():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageViews[self.editor._lastImageViewFocus].toggleHud()
+                
+        def centerAllImages():
+            for i, v in enumerate(self.editor.imageViews):
+                v.centerImage()
+                
+        def centerImage():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageViews[self.editor._lastImageViewFocus].centerImage()
+                self.actionOnly_for_current_view.setEnabled(True)
         
+        self.actionCenterAllImages.triggered.connect(centerAllImages)
+        self.actionCenterImage.triggered.connect(centerImage)
+        self.actionToggleAllHuds.triggered.connect(hideHud)
+        self.actionToggleSelectedHud.triggered.connect(toggleSelectedHud)
         self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
         self.actionFitToScreen.triggered.connect(fitToScreen)
+        self.actionFitImage.triggered.connect(fitImage)
         
         self.haveData.connect(self.initGraph)
         self.dataReadyToView.connect(self.initEditor)
@@ -452,6 +486,8 @@ class Main(QMainWindow):
         shape=self.inputProvider.outputs["Output"].shape
         
         self.editor = VolumeEditor(shape, self.layerstack, labelsink=self.labelsrc)
+        
+        self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
         #drawing will be enabled when the first label is added  
         self.editor.setInteractionMode( 'navigation' )
         self.volumeEditorWidget.init(self.editor)
