@@ -269,7 +269,14 @@
      <string>&amp;View</string>
     </property>
     <addaction name="actionFitToScreen"/>
+    <addaction name="actionToggleAllHuds"/>
+    <addaction name="actionCenterAllImages"/>
     <addaction name="actionShowDebugPatches"/>
+    <addaction name="separator"/>
+    <addaction name="actionOnly_for_current_view"/>
+    <addaction name="actionFitImage"/>
+    <addaction name="actionToggleSelectedHud"/>
+    <addaction name="actionCenterImage"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
@@ -310,6 +317,9 @@
    <property name="text">
     <string>&amp;Zoom to &amp;fit</string>
    </property>
+   <property name="toolTip">
+    <string>Fit all</string>
+   </property>
    <property name="iconVisibleInMenu">
     <bool>true</bool>
    </property>
@@ -340,8 +350,102 @@
     <bool>false</bool>
    </property>
   </action>
+  <action name="actionToggleAllHuds">
+   <property name="text">
+    <string>Toggle huds</string>
+   </property>
+   <property name="toolTip">
+    <string>Hide or show all huds</string>
+   </property>
+  </action>
+  <action name="actionOnly_for_current_view">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Only for selected view</string>
+   </property>
+   <property name="font">
+    <font>
+     <weight>75</weight>
+     <italic>true</italic>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
+  </action>
+  <action name="actionFor_all_axis">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>For all axis</string>
+   </property>
+   <property name="font">
+    <font>
+     <weight>75</weight>
+     <italic>true</italic>
+     <bold>true</bold>
+     <strikeout>false</strikeout>
+    </font>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::TextHeuristicRole</enum>
+   </property>
+  </action>
+  <action name="actionToggleSelectedHud">
+   <property name="text">
+    <string>Toggle hud</string>
+   </property>
+   <property name="toolTip">
+    <string>toggle selected hud</string>
+   </property>
+   <property name="shortcut">
+    <string>H</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetShortcut</enum>
+   </property>
+  </action>
+  <action name="actionCenterAllImages">
+   <property name="text">
+    <string>Center Images</string>
+   </property>
+  </action>
+  <action name="actionCenterImage">
+   <property name="text">
+    <string>Center Image</string>
+   </property>
+   <property name="shortcut">
+    <string>C</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetShortcut</enum>
+   </property>
+  </action>
+  <action name="actionFitImage">
+   <property name="text">
+    <string>Fit image</string>
+   </property>
+   <property name="toolTip">
+    <string>fit image into view</string>
+   </property>
+   <property name="shortcut">
+    <string>F</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::ApplicationShortcut</enum>
+   </property>
+  </action>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>LabelListView</class>
+   <extends>QTableView</extends>
+   <header>labelListView</header>
+  </customwidget>
   <customwidget>
    <class>LayerWidget</class>
    <extends>QListView</extends>
@@ -351,11 +455,6 @@
    <class>VolumeEditorWidget</class>
    <extends>QWidget</extends>
    <header>volumina.volumeEditorWidget</header>
-  </customwidget>
-  <customwidget>
-   <class>LabelListView</class>
-   <extends>QTableView</extends>
-   <header>labelListView</header>
   </customwidget>
  </customwidgets>
  <resources/>
