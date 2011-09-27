@@ -84,6 +84,7 @@ class OpTrainRandomForest(Operator):
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(0,1,None),))            
 
+
 class OpTrainRandomForestBlocked(Operator):
     name = "TrainRandomForestBlocked"
     description = "Train a random forest on multiple images"
@@ -120,8 +121,12 @@ class OpTrainRandomForestBlocked(Operator):
                 reqlistlabels = []
                 reqlistfeat = []
                 for b in blocks[0]:
+                    
                     request = labels[b].allocate()
-                    request2 = self.inputs["Images"][i][b].allocate()
+                    featurekey = list(b)
+                    featurekey[-1] = slice(None, None, None)
+                    request2 = self.inputs["Images"][i][featurekey].allocate()
+                    
                     reqlistlabels.append(request)
                     reqlistfeat.append(request2)
 
@@ -137,12 +142,11 @@ class OpTrainRandomForestBlocked(Operator):
                 for ir, req in enumerate(reqlistlabels):
                     labblock = req.wait()
                     image = reqlistfeat[ir].wait()
-                    
                     indexes=numpy.nonzero(labblock[...,0].view(numpy.ndarray))
-                
+                    
                     features=image[indexes]
                     labbla=labblock[indexes]
-                
+                    
                     featMatrix.append(features)
                     labelsMatrix.append(labbla)
         
@@ -205,6 +209,7 @@ class OpPredictRandomForest(Operator):
         islot=self.inputs["Image"]
 
         oslot._dtype = numpy.uint8
+        #oslot._dtype = numpy.float32
         
         oslot._axistags = islot.axistags
         oslot._shape = islot.shape[:-1]+(nlabels,)
@@ -235,11 +240,11 @@ class OpPredictRandomForest(Operator):
 
         features=res.reshape(prod, shape[-1])
         
-
         prediction=RF.predictProbabilities(features.astype(numpy.float32))        
         
         prediction = prediction.reshape(*(shape[:-1] + (RF.labelCount(),)))
         
+        #result[:]=prediction[...,key[-1]]
         result[:]=prediction[...,key[-1]]*255
 
             
