@@ -78,7 +78,7 @@ class OpContextHistogram(Operator):
         #print "We are in the business"
         
         context.contextHistogram2D(radii, nbins, pmaps, temp)
-        result = temp[writeNewKey]
+        result[:] = temp[writeNewKey]
         
         
         
