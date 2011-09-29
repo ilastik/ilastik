@@ -1552,18 +1552,47 @@ class Operator(object):
             s.disconnect()
         for s in self.inputs.values():
             s.disconnect()
-
+    
+    
+    """
+    This method is called when an output of another operator on which 
+    this operators dependds, i.e. to which it is connected gets invalid. 
+    The region of interest of the inputslot which is now dirty is specified
+    in the key property, the input slot which got dirty is specified in the inputSlot
+    property.
+    
+    This method must calculate what output ports and which subregions of them are
+    invalidated by this, and must call the .setDirty(key) of the corresponding
+    outputslots.
+    """
     def notifyDirty(self, inputSlot, key):
         # simple default implementation
         # -> set all outputs dirty    
         for os in self.outputs.values():
             os.setDirty(slice(None,None,None))
-            
+    
+    
+    """
+    This method corresponds to the notifyDirty method, but is used
+    for multidimensional inputslots, which contain subslots.
+    
+    The slots argument is a list of slots in which the first
+    element specifies the mainslot (i.e. the slot which is specified
+    in the operator.). The next element specifies the sub slot, i.e. the 
+    child of the main slot, and so forth.
+    
+    The indexes argument is a list of the subslot indexes. As such it is 
+    of lenght n-1 where n is the length of the slots arugment list.
+    It contains the indexes of all subslots realtive to their parent slot.
+    
+    The key argument specifies the region of interest.    
+    """
     def notifySubSlotDirty(self, slots, indexes, key):
         # simple default implementation
         # -> set all outputs dirty    
         for os in self.outputs.values():
             os.setDirty(slice(None,None,None))
+
 
     def _notifyConnect(self, inputSlot):
         self.notifyConnect(inputSlot)
@@ -1578,21 +1607,103 @@ class Operator(object):
         self.notifySubSlotRemove(slots, indexes)
         
 
+    """
+    This method is called opon connection of an inputslot.
+    The slot is specified in the inputSlot argument.
+    
+    The operator should setup the output slots that depend on this
+    inputslot accordingly.
+    
+    reimplementation of this method is optional, a full setup
+    may also be done only in the .notifyConnectAll method.
+    """
     def notifyConnect(self, inputSlot):
         pass
     
+    """
+    This method is called opon connection of all inputslots of
+    an operator.
+    
+    The operator should setup the output all outputslots accordingly.
+    this includes setting their shape and axistags properties.
+    """
     def notifyConnectAll(self):
         pass
+
+
+    """
+    This method corresponds to the notifyConnect method, but is used
+    for multidimensional inputslots, which contain subslots.
     
+    The slots argument is a list of slots in which the first
+    element specifies the mainslot (i.e. the slot which is specified
+    in the operator.). The next element specifies the sub slot, i.e. the 
+    child of the main slot, and so forth.
+    
+    The indexes argument is a list of the subslot indexes. As such it is 
+    of lenght n-1 where n is the length of the slots arugment list.
+    It contains the indexes of all subslots realtive to their parent slot.
+    
+    The key argument specifies the region of interest.    
+    """    
     def notifySubConnect(self, slots, indexes):
         pass
    
+   
+    """
+    This method is called when a subslot of a multidimensional inputslot
+    is removed.
+    
+    The slots argument is a list of slots in which the first
+    element specifies the mainslot (i.e. the slot which is specified
+    in the operator.). The next element specifies the sub slot, i.e. the 
+    child of the main slot, and so forth.
+    
+    The indexes argument is a list of the subslot indexes. As such it is 
+    of lenght n-1 where n is the length of the slots arugment list.
+    It contains the indexes of all subslots realtive to their parent slot.
+    
+    The operator should recalculate the shapes of its output slots 
+    when neccessary.
+    """   
     def notifySubSlotRemove(self, slots, indexes):
         pass
          
+         
+    """
+    This method of the operator is called when a connected operator
+    or an outside user of the graph wants to retrieve the calculation results
+    from the operator.
+    
+    The slot which is requested is specified in the slot arguemt,
+    the region of interest is specified in the key property.
+    The result area into which the calculation results MUST be written is 
+    specified in the result argument. "result" is an numpy.ndarray that
+    has the same shape as the region of interest(key).
+    
+    The method must retrieve all required inputs that are neccessary to
+    calculate the requested output area from its input slots,
+    run the calculation and put the results into the provided result argument.
+    """
     def getOutSlot(self, slot, key, result):
         return None
 
+
+    """
+    This method corresponds to the getOutSlot method, but is used
+    for multidimensional inputslots, which contain subslots.
+    
+    The slots argument is a list of slots in which the first
+    element specifies the mainslot (i.e. the slot which is specified
+    in the operator.). The next element specifies the sub slot, i.e. the 
+    child of the main slot, and so forth.
+    
+    The indexes argument is a list of the subslot indexes. As such it is 
+    of lenght n-1 where n is the length of the slots arugment list.
+    It contains the indexes of all subslots realtive to their parent slot.
+    
+    The key argument specifies the region of interest.    
+    """
     def getSubOutSlot(self, slots, indexes, key, result):
         return None
     
@@ -1609,9 +1720,33 @@ class Operator(object):
         self.notifySubDisconnect(slots,indexes)
 
 
+    """
+    This method is called when an inputslot is disconnected.
+
+    The slot argument specifies the inputslot that is affected.
+        
+    The operator should recalculate the shapes of its output slots
+    when neccessary..
+    """    
     def notifyDisconnect(self, slot):
         pass
     
+    
+    """
+    This method corresponds to the notifyDisconnect method, but is used
+    for multidimensional inputslots, which contain subslots.
+    
+    The slots argument is a list of slots in which the first
+    element specifies the mainslot (i.e. the slot which is specified
+    in the operator.). The next element specifies the sub slot, i.e. the 
+    child of the main slot, and so forth.
+    
+    The indexes argument is a list of the subslot indexes. As such it is 
+    of lenght n-1 where n is the length of the slots arugment list.
+    It contains the indexes of all subslots realtive to their parent slot.
+    
+    The key argument specifies the region of interest.    
+    """    
     def notifySubDisconnect(self, slots, indexes):
         pass
 
