@@ -91,7 +91,12 @@ class OpFlipArrayShifter(Operator):
            else:
                frstart[i] = rstart[i]
                frstop[i] = rstop[i]
-               
+           
+           if frstart[i] == frstop[i]:
+               if shifted_axes == 2:
+                   shifted_axes =1
+               continue           
+           
              
            dfrstart[i] = frstart[i]
            dfrstop[i] = frstop[i]
