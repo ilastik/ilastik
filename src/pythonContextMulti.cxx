@@ -196,7 +196,7 @@ pythonIntegralHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 template <class T1, class T2>
 NumpyAnyArray
 pythonIntegralOverlappingHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
-				  int nbins=5, float frac_overlap=0.2)
+                                  int nbins=5, double frac_overlap=0.2)
                   //NumpyArray<3, Multiband<T2> > res=python::object())
 {
 	int h=predictions.shape(0);
@@ -221,7 +221,7 @@ pythonIntegralOverlappingHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 template <class T1, class T2>
 NumpyAnyArray
 pythonIntegralOverlappingWeightLinHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
-				  int nbins=5, float frac_overlap=0.2)
+                                  int nbins=5, double frac_overlap=0.2)
                   //NumpyArray<3, Multiband<T2> > res=python::object())
 {
 	int h=predictions.shape(0);
@@ -246,7 +246,7 @@ pythonIntegralOverlappingWeightLinHistogram2D(NumpyArray<3, Multiband<T1> > pred
 template <class T1, class T2>
 NumpyAnyArray
 pythonIntegralOverlappingWeightGaussHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
-                                  int nbins=5, float sigma=0.5)
+                                  int nbins=5, double sigma=0.5)
                   //NumpyArray<3, Multiband<T2> > res=python::object())
 {
         int h=predictions.shape(0);
@@ -272,7 +272,7 @@ pythonIntegralOverlappingWeightGaussHistogram2D(NumpyArray<3, Multiband<T1> > pr
 template <class T1, class T2 >
 NumpyAnyArray
 pythonOverlappingWeightLinHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
-                                  int nbins=5, float frac_overlap=0.2)
+                                  int nbins=5, double frac_overlap=0.2)
                   //NumpyArray<3, Multiband<float> > res=python::object())
 {
 
@@ -302,7 +302,7 @@ pythonOverlappingWeightLinHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 template <class T1, class T2 >
 NumpyAnyArray
 pythonOverlappingWeightGaussHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
-                                  int nbins=5, float sigma=0.5)
+                                  int nbins=5, double sigma=0.5)
                   //NumpyArray<3, Multiband<float> > res=python::object())
 {
 
@@ -382,14 +382,22 @@ void defineContext() {
 
 
     def("intHistogram2D",registerConverters(&pythonIntegralHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4));
-    
+    def("intHistogram2D",registerConverters(&pythonIntegralHistogram2D<double, double>) , (arg("predictions"), arg("nbin")=4));
+
     def("intOverlappingHistogram2D",registerConverters(&pythonIntegralOverlappingHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2 ));
+    def("intOverlappingHistogram2D",registerConverters(&pythonIntegralOverlappingHistogram2D<double, double>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2 ));
 
     def("intOverlappingWeightLinHistogram2D",registerConverters(&pythonIntegralOverlappingWeightLinHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2 ));
+    def("intOverlappingWeightLinHistogram2D",registerConverters(&pythonIntegralOverlappingWeightLinHistogram2D<double, double>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2 ));
+
     def("overlappingWeightLinHistogram2D",registerConverters(&pythonOverlappingWeightLinHistogram2D<float,float>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2));
+    def("overlappingWeightLinHistogram2D",registerConverters(&pythonOverlappingWeightLinHistogram2D<double,double>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2));
 
     def("intOverlappingWeightGaussHistogram2D",registerConverters(&pythonIntegralOverlappingWeightGaussHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=5, arg("sigma")=0.5 ));
+    def("intOverlappingWeightGaussHistogram2D",registerConverters(&pythonIntegralOverlappingWeightGaussHistogram2D<double, double>) , (arg("predictions"), arg("nbin")=5, arg("sigma")=0.5 ));
+
     def("overlappingWeightGaussHistogram2D",registerConverters(&pythonOverlappingWeightGaussHistogram2D<float,float>) , (arg("predictions"), arg("nbin")=5, arg("sigma")=0.5));
+    def("overlappingWeightGaussHistogram2D",registerConverters(&pythonOverlappingWeightGaussHistogram2D<double,double>) , (arg("predictions"), arg("nbin")=5, arg("sigma")=0.5));
 
                                                                                                     //arg("out")=python::object()));
     def("contextHistogram2D", registerConverters(&pythonContextHistogram2D<int, float>), (arg("radii"), arg("nbins"), arg("predictions"),

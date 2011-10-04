@@ -223,7 +223,7 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 template<class T1,class T2, class S2>
 void
 integratePixel(T1& val, int x, int y, int nbins,
-               float frac_overlap, int shift, MultiArrayView<3, T2, S2>& Hist) {
+               double frac_overlap, int shift, MultiArrayView<3, T2, S2>& Hist) {
 
 
     double dt = 1 / double(nbins);
@@ -273,7 +273,7 @@ double overlapWeighting(double t, double dt, double ddt, T& val ) {
 template<class T1,class T2, class S2>
 void
 integratePixelWeightLin(T1& val, int x, int y, int nbins,
-               float frac_overlap, int shift, MultiArrayView<3, T2, S2>& Hist) {
+               double frac_overlap, int shift, MultiArrayView<3, T2, S2>& Hist) {
 
 
     double dt = 1 / double(nbins);
@@ -314,7 +314,7 @@ integratePixelWeightLin(T1& val, int x, int y, int nbins,
 template<class T1,class T2, class S2>
 void
 integratePixelWeightGauss(T1& val, int x, int y, int nbins,
-               float sigma, int shift, MultiArrayView<3, T2, S2>& Hist) {
+               double sigma, int shift, MultiArrayView<3, T2, S2>& Hist) {
 
     const double PI = std::atan(1.0) * 4;
     double dt = 1 / double(nbins);
@@ -350,7 +350,7 @@ integratePixelWeightGauss(T1& val, int x, int y, int nbins,
 template<class T1,class T2, class S1, class S2>
 void
 integralOverlappingHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
-               float frac_overlap, MultiArrayView<3, T2, S2>& H) {
+               double frac_overlap, MultiArrayView<3, T2, S2>& H) {
 
 
 
@@ -408,7 +408,7 @@ integralOverlappingHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 template<class T1,class T2, class S1, class S2>
 void
 integralOverlappingWeightLinHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
-               float frac_overlap, MultiArrayView<3, T2, S2>& H) {
+               double frac_overlap, MultiArrayView<3, T2, S2>& H) {
 
 
 
@@ -467,7 +467,7 @@ integralOverlappingWeightLinHistogram2D(MultiArrayView<3, T1, S1>& image, int nb
 template<class T1,class T2, class S1, class S2>
 void
 integralOverlappingWeightGaussHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
-               float sigma, MultiArrayView<3, T2, S2>& H) {
+               double sigma, MultiArrayView<3, T2, S2>& H) {
 
 
         //FIXME you are imposing between zero and 1
@@ -520,7 +520,7 @@ integralOverlappingWeightGaussHistogram2D(MultiArrayView<3, T1, S1>& image, int 
 
 template<class T, class S1, class S2>
 void overlappingWeightLinHistogram2D(MultiArrayView<3, T, S1>& image, int nbins,
-                float frac_overlap, MultiArrayView<3, T, S2>& Hist) {
+                double frac_overlap, MultiArrayView<3, T, S2>& Hist) {
 
 
         int width = image.shape()[0];
@@ -550,7 +550,7 @@ void overlappingWeightLinHistogram2D(MultiArrayView<3, T, S1>& image, int nbins,
 
 template<class T, class S1, class S2>
 void overlappingWeightGaussHistogram2D(MultiArrayView<3, T, S1>& image, int nbins,
-                float sigma, MultiArrayView<3, T, S2>& Hist) {
+                double sigma, MultiArrayView<3, T, S2>& Hist) {
 
 
         int width = image.shape()[0];
