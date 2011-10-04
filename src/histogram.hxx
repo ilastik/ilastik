@@ -168,7 +168,7 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 
 	std::cerr << "inside c++" << std::endl;
 	//For all the channels do the same
-	for (c=0;c<nc;c++)
+        for (c=0;c<nc;c++)
 	{
 		int shift=c*nbins;
 		//std::cerr << "here" << std::endl ;
@@ -222,7 +222,7 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 
 template<class T1,class T2, class S2>
 void
-integratePixel(T1& val, int y, int x, int nbins,
+integratePixel(T1& val, int x, int y, int nbins,
                float frac_overlap, int shift, MultiArrayView<3, T2, S2>& Hist) {
 
 
@@ -231,20 +231,26 @@ integratePixel(T1& val, int y, int x, int nbins,
 
     double t = 0;
 
+    if (nbins == 1)
+    {
+        Hist(x,y, shift + 0) ++;
+        return;
+    }
+
     if (val < dt + ddt)
-            Hist(y, x, shift+0)++;
+            Hist(x, y, shift+0)++;
     t += dt;
 
     for (int k = 1; k < nbins - 1; k++)
     {
             if (val >= t - ddt && val < t + dt + ddt)
-                    Hist(y, x, shift + k)++;
+                    Hist(x, y, shift + k)++;
             t += dt;
     }
 
     if (nbins - 2 >= 0)
             if (val <= 1 && val >= 1 - dt - 1 * ddt)
-                    Hist(y, x, shift + (nbins - 1))++;
+                    Hist(x, y, shift + (nbins - 1))++;
 }
 
 double wfunc(double w){
@@ -275,6 +281,12 @@ integratePixelWeightLin(T1& val, int x, int y, int nbins,
 
     double t = 0;
 
+    if (nbins == 1)
+    {
+        Hist(x,y, shift + 0) ++;
+        return;
+    }
+
     if (val < dt + ddt)
     {
             if (val< dt- ddt) Hist(x,y,shift+0) ++;
@@ -302,9 +314,33 @@ integratePixelWeightLin(T1& val, int x, int y, int nbins,
 template<class T1,class T2, class S2>
 void
 integratePixelWeightGauss(T1& val, int x, int y, int nbins,
-               float frac_overlap, int shift, MultiArrayView<3, T2, S2>& Hist) {
+               float sigma, int shift, MultiArrayView<3, T2, S2>& Hist) {
 
+    const double PI = std::atan(1.0) * 4;
+    double dt = 1 / double(nbins);
+    double g, m, s;
+    m = dt/2;
+    s = 0;
 
+    if (nbins == 1)
+    {
+        Hist(x,y, shift + 0) ++;
+        return;
+    }
+
+    for (int i = 0; i<nbins; i++)
+    {
+        s += 1/(sigma * std::sqrt(2 * PI)) * std::exp(-0.5*std::pow((m-val)/sigma,2));
+        m += dt;
+    }
+
+    m = dt/2;
+    for (int i = 0; i<nbins; i++)
+    {
+        g = 1/(sigma * std::sqrt(2 * PI)) * std::exp(-0.5*std::pow((m-val)/sigma,2));
+        Hist(x,y,shift+i) += g/s;
+        m += dt;
+    }
 
 }
 
@@ -434,8 +470,6 @@ integralOverlappingWeightGaussHistogram2D(MultiArrayView<3, T1, S1>& image, int 
                float sigma, MultiArrayView<3, T2, S2>& H) {
 
 
-
-
         //FIXME you are imposing between zero and 1
         int width = image.shape()[0];
         int height = image.shape()[1];
@@ -488,7 +522,6 @@ template<class T, class S1, class S2>
 void overlappingWeightLinHistogram2D(MultiArrayView<3, T, S1>& image, int nbins,
                 float frac_overlap, MultiArrayView<3, T, S2>& Hist) {
 
-        vigra_precondition(frac_overlap>=0 && frac_overlap<1,"fractionary overlap between [0,1)");
 
         int width = image.shape()[0];
         int height = image.shape()[1];
@@ -496,14 +529,13 @@ void overlappingWeightLinHistogram2D(MultiArrayView<3, T, S1>& image, int nbins,
 
         MultiArrayShape<3>::type resShp(width, height, nc * nbins);
         vigra_precondition(resShp[2]==Hist.shape(2),"wrong shape");
+        vigra_precondition(frac_overlap>=0 && frac_overlap<1,"fractionary overlap between [0,1)");
 
-        int x, y, c, index;
-
+        int x, y, c;
 
         //Do this for all the channels
         for (c = 0; c < nc; c++)
         {
-            std::cout <<"EEE" << std::endl;
                 int shift=nbins*c; //shift to write the result to corret bin
 
                 for (y = 0; y < height; y++)
@@ -520,7 +552,6 @@ template<class T, class S1, class S2>
 void overlappingWeightGaussHistogram2D(MultiArrayView<3, T, S1>& image, int nbins,
                 float sigma, MultiArrayView<3, T, S2>& Hist) {
 
-        vigra_precondition(sigma>0 ,"sigam greater should be than 0");
 
         int width = image.shape()[0];
         int height = image.shape()[1];
@@ -528,13 +559,13 @@ void overlappingWeightGaussHistogram2D(MultiArrayView<3, T, S1>& image, int nbin
 
         MultiArrayShape<3>::type resShp(width, height, nc * nbins);
         vigra_precondition(resShp[2]==Hist.shape(2),"wrong shape");
+        vigra_precondition(sigma>0 ,"sigma should be greater than 0");
 
-        int x, y, c, index;
+        int x, y, c;
 
         //Do this for all the channels
         for (c = 0; c < nc; c++)
         {
-            std::cout <<"EEE" << std::endl;
                 int shift=nbins*c; //shift to write the result to corret bin
 
                 for (y = 0; y < height; y++)
