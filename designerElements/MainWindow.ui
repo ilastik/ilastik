@@ -277,6 +277,7 @@
     <addaction name="actionFitImage"/>
     <addaction name="actionToggleSelectedHud"/>
     <addaction name="actionCenterImage"/>
+    <addaction name="actionOriginalSizeToImage"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
@@ -437,6 +438,17 @@
    </property>
    <property name="shortcutContext">
     <enum>Qt::ApplicationShortcut</enum>
+   </property>
+  </action>
+  <action name="actionOriginalSizeToImage">
+   <property name="text">
+    <string>Original size</string>
+   </property>
+   <property name="toolTip">
+    <string>Restore to original size</string>
+   </property>
+   <property name="shortcut">
+    <string>R</string>
    </property>
   </action>
  </widget>
