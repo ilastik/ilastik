@@ -278,6 +278,7 @@
     <addaction name="actionToggleSelectedHud"/>
     <addaction name="actionCenterImage"/>
     <addaction name="actionOriginalSizeToImage"/>
+    <addaction name="actionRubberBandZoom"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
@@ -442,10 +443,21 @@
   </action>
   <action name="actionOriginalSizeToImage">
    <property name="text">
-    <string>Original size</string>
+    <string>Original size (alpha status)</string>
    </property>
    <property name="toolTip">
     <string>Restore to original size</string>
+   </property>
+   <property name="shortcut">
+    <string>W</string>
+   </property>
+  </action>
+  <action name="actionRubberBandZoom">
+   <property name="text">
+    <string>Rubber band zoom (pre alpha, not usable)</string>
+   </property>
+   <property name="toolTip">
+    <string>Zoom in selected area</string>
    </property>
    <property name="shortcut">
     <string>R</string>

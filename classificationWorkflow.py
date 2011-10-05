@@ -99,6 +99,10 @@ class Main(QMainWindow):
                     self.editor.imageViews[1].setTransform(QTransform(0,1,1,0,0,0))
                 elif self.editor._lastImageViewFocus == 2:    
                     self.editor.imageViews[2].setTransform(QTransform(0,1,1,0,0,0))
+                    
+        def rubberBandZoom():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = True
                 
         
         def hideHud():
@@ -130,6 +134,7 @@ class Main(QMainWindow):
         self.actionFitToScreen.triggered.connect(fitToScreen)
         self.actionFitImage.triggered.connect(fitImage)
         self.actionOriginalSizeToImage.triggered.connect(restoreImageToOriginalSize)
+        self.actionRubberBandZoom.triggered.connect(rubberBandZoom)
         
         self.haveData.connect(self.initGraph)
         self.dataReadyToView.connect(self.initEditor)
