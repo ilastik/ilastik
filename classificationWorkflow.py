@@ -6,7 +6,7 @@ import os, sys, numpy, copy
 
 from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt
 from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
-                        QMessageBox, qApp, QItemSelectionModel, QIcon
+                        QMessageBox, qApp, QItemSelectionModel, QIcon, QTransform
 from PyQt4 import uic
 
 from lazyflow.graph import Graph
@@ -90,8 +90,17 @@ class Main(QMainWindow):
         def fitImage():
             if hasattr(self.editor, '_lastImageViewFocus'):
                 self.editor.imageViews[self.editor._lastImageViewFocus].fitImage()
-            
-            
+                
+        def restoreImageToOriginalSize():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                if self.editor._lastImageViewFocus == 0:
+                    self.editor.imageViews[0].setTransform(QTransform(1,0,0,0,1,0,0,0,1))
+                elif self.editor._lastImageViewFocus == 1:
+                    self.editor.imageViews[1].setTransform(QTransform(0,1,1,0,0,0))
+                elif self.editor._lastImageViewFocus == 2:    
+                    self.editor.imageViews[2].setTransform(QTransform(0,1,1,0,0,0))
+                
+        
         def hideHud():
             if self.editor.imageViews[0]._hud.isVisible():
                 hide = False
@@ -120,6 +129,7 @@ class Main(QMainWindow):
         self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
         self.actionFitToScreen.triggered.connect(fitToScreen)
         self.actionFitImage.triggered.connect(fitImage)
+        self.actionOriginalSizeToImage.triggered.connect(restoreImageToOriginalSize)
         
         self.haveData.connect(self.initGraph)
         self.dataReadyToView.connect(self.initEditor)
