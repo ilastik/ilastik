@@ -128,7 +128,7 @@ class Main(QMainWindow):
         self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
         self.actionFitToScreen.triggered.connect(fitToScreen)
         self.actionFitImage.triggered.connect(fitImage)
-        self.actionOriginalSizeToImage.triggered.connect(restoreImageToOriginalSize)
+        self.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
         self.actionRubberBandZoom.triggered.connect(rubberBandZoom)
         
         self.haveData.connect(self.initGraph)
