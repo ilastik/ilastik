@@ -93,12 +93,7 @@ class Main(QMainWindow):
                 
         def restoreImageToOriginalSize():
             if hasattr(self.editor, '_lastImageViewFocus'):
-                if self.editor._lastImageViewFocus == 0:
-                    self.editor.imageViews[0].setTransform(QTransform(1,0,0,0,1,0,0,0,1))
-                elif self.editor._lastImageViewFocus == 1:
-                    self.editor.imageViews[1].setTransform(QTransform(0,1,1,0,0,0))
-                elif self.editor._lastImageViewFocus == 2:    
-                    self.editor.imageViews[2].setTransform(QTransform(0,1,1,0,0,0))
+                self.editor.imageViews[self.editor._lastImageViewFocus].doScaleTo()
                     
         def rubberBandZoom():
             if hasattr(self.editor, '_lastImageViewFocus'):
