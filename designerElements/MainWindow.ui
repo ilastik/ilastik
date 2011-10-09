@@ -454,10 +454,10 @@
   </action>
   <action name="actionRubberBandZoom">
    <property name="text">
-    <string>Rubber band zoom (pre alpha, not usable)</string>
+    <string>Rubber band zoom</string>
    </property>
    <property name="toolTip">
-    <string>Zoom in selected area</string>
+    <string>Zoom selected area</string>
    </property>
    <property name="shortcut">
     <string>R</string>
