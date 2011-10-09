@@ -97,7 +97,13 @@ class Main(QMainWindow):
                     
         def rubberBandZoom():
             if hasattr(self.editor, '_lastImageViewFocus'):
-                self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = True
+                if not self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom:
+                    self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = True
+                    self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup = self.editor.imageViews[self.editor._lastImageViewFocus].cursor()
+                    self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(Qt.CrossCursor)
+                else:
+                    self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = False
+                    self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup)
                 
         
         def hideHud():
