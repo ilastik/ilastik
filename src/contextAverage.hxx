@@ -26,12 +26,15 @@ void average_features_2(MultiArrayView<1, IND, S1>& radii,
     int nclasses = integral.shape()[2];
     //std::cout<<"predictions shape: "<<predictions.shape()[0]<<" "<<predictions.shape()[1]<<" "<<predictions.shape()[2]<<std::endl;
     for (int ir=0; ir<nr; ++ir){
+        
         IND xminus = 0;
         IND yminus = 0;
         if (x<radii[ir] || y<radii[ir] || x+radii[ir]>integral.shape()[0]-1 || y+radii[ir]>integral.shape()[1]-1){
             averages[ir]= 1./nclasses;
             continue;
         } 
+        
+        //std::cout<<"filling with non-default"<<std::endl;
         
         T ul = (x==radii[ir] || y==radii[ir]) ? 0 : integral(x-radii[ir]-1, y-radii[ir]-1, c);
         T ll = (y==radii[ir]) ? 0 : integral(x+radii[ir], y-radii[ir]-1, c);

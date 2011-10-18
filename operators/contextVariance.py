@@ -66,7 +66,9 @@ class OpVarianceContext2D(Operator):
 
     def getOutSlot(self, slot, key, result):
         
-        print "output requested for key:", key
+        #print "output requested for key:", key
+        
+        #print "VARIANCE CONTEXT, passed result of shape", result.shape
         
         radii=self.inputs["Radii"].value        
         radii=numpy.array(radii,dtype=numpy.uint32)
@@ -108,12 +110,12 @@ class OpVarianceContext2D(Operator):
         resshape = list(pmaps.shape)
         resshape[-1] = shape[-1]
         temp = vigra.VigraArray(tuple(resshape), axistags=vigra.VigraArray.defaultAxistags(3))
-        print "allocated a temp array of size:", temp.shape
+        #print "allocated a temp array of size:", temp.shape
         
         
         context.varContext2Dmulti(radii, pmaps, temp)
-        print "computing done"
-        print "writeNewKey:", writeNewKey
+        #print "computing done"
+        #print "writeNewKey:", writeNewKey
         result[:] = temp[writeNewKey]
         
         

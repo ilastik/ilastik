@@ -10,17 +10,17 @@ import vigra, numpy, h5py
             #image = result
 
 fileraw = "/home/akreshuk/data/context/TEM_raw/50slices.h5"
-filerawout = "/home/akreshuk/data/context/TEM_raw/50slices_down5.h5"
+filerawout = "/home/akreshuk/data/context/TEM_raw/50slices_down2.h5"
 
 filelabels = "/home/akreshuk/data/context/TEM_labels/50slices.h5"
-filelabelsout = "/home/akreshuk/data/context/TEM_labels/50slices_down5.h5"
+filelabelsout = "/home/akreshuk/data/context/TEM_labels/50slices_down2.h5"
 
-coef = 0.2 #DANGER: downsample by 5, just for testing of classification
+coef = 0.5 
 fr = h5py.File(fileraw)
 fl = h5py.File(filelabels)
 
-data = numpy.array(fr["data"])
-labels = numpy.array(fl["data"])
+data = numpy.array(fr["/volume/data"])
+labels = numpy.array(fl["/volume/data"])
 
 shape = data.shape
 newshape = [int(coef*x) for x in shape]
@@ -34,8 +34,8 @@ result = vigra.filters.gaussianSmoothing(tempdata.astype(numpy.float32), (2.0, 2
 result = vigra.sampling.resizeVolumeSplineInterpolation(result, newshape)
 print result.shape
 
-#data5d = numpy.zeros((1, result.shape[0], result.shape[1], result.shape[2], 1))
-#data5d[0, :, :, :, 0]=result.squeeze()[:]
+data5d = numpy.zeros((1, result.shape[0], result.shape[1], result.shape[2], 1))
+data5d[0, :, :, :, 0]=result.squeeze()[:]
 
 frout = h5py.File(filerawout, "w")
 frout.create_dataset("/volume/data", data=result.squeeze())
@@ -58,6 +58,6 @@ flout.close()
 
 #make an ilastik project for easier visualization
 
-#frout5d = h5py.File("/home/akreshuk/data/context/TEM_raw/temp5d.h5")
-#frout5d.create_dataset("/volume/data", data=data5d)
-#frout5d.close()
+frout5d = h5py.File("/home/akreshuk/data/context/TEM_raw/down2_temp5d.h5")
+frout5d.create_dataset("/volume/data", data=data5d)
+frout5d.close()

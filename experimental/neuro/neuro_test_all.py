@@ -22,9 +22,9 @@ sys.setrecursionlimit(10000)
 fileraw = "/home/akreshuk/data/context/TEM_raw/50slices_down2.h5"
 filelabels = "/home/akreshuk/data/context/TEM_labels/50slices_down2.h5"
 resdir = "/home/akreshuk/data/context/TEM_results/"
-resproject = "50slices_down2_templ_all.ilp"
+resproject = "50slices_down2_templ_gaus_float.ilp"
 graphfile = "/home/akreshuk/data/context/50slices_down2_graph_all.h5"
-tempfile = "/home/akreshuk/data/context/50slices_down2_all_iter0.h5"
+tempfile = "/home/akreshuk/data/context/50slices_down2_gaus_float_iter0.h5"
 h5path = "/volume/data"
 nclasses = 5
 
@@ -54,7 +54,8 @@ slicer.inputs["AxisFlag"].setValue('z')
 print "THE SLICER:", slicer.outputs["Slices"][0].shape
 
 #Same sigmas as in Classification Workflow"
-sigmas = [0.7, 1.0, 1.6, 3.5, 5]
+#sigmas = [0.7, 1.0, 1.6, 3.5, 5]
+sigmas = [3.5, 5]
 opMulti = operators.Op50ToMulti(g)
 count = 0
 #Create all our favorite features with all sigmas, we have the space now
@@ -71,62 +72,62 @@ for sigma in sigmas:
     count +=1
     
     #Hessian eigenvalues
-    hog = operators.OpHessianOfGaussianEigenvalues(g)
-    hog.inputs["Input"].connect(slicer.outputs["Slices"])
-    hog.inputs["scale"].setValue(sigma)
-    stacker_hog = operators.OpMultiArrayStacker(g)
-    stacker_hog.inputs["Images"].connect(hog.outputs["Output"])
-    stacker_hog.inputs["AxisFlag"].setValue('z')
-    stacker_hog.inputs["AxisIndex"].setValue(2)
+    #hog = operators.OpHessianOfGaussianEigenvalues(g)
+    #hog.inputs["Input"].connect(slicer.outputs["Slices"])
+    #hog.inputs["scale"].setValue(sigma)
+    #stacker_hog = operators.OpMultiArrayStacker(g)
+    #stacker_hog.inputs["Images"].connect(hog.outputs["Output"])
+    #stacker_hog.inputs["AxisFlag"].setValue('z')
+    #stacker_hog.inputs["AxisIndex"].setValue(2)
     
-    opMulti.inputs["Input%02d"%count].connect(stacker_hog.outputs["Output"])
-    count +=1
+    #opMulti.inputs["Input%02d"%count].connect(stacker_hog.outputs["Output"])
+    #count +=1
     
-    #Structure tensor eigenvalues
-    strten = operators.OpStructureTensorEigenvalues(g)
-    strten.inputs["Input"].connect(slicer.outputs["Slices"])
-    strten.inputs["innerScale"].setValue(sigma)
-    strten.inputs["outerScale"].setValue(0.5*sigma)
-    stacker_ten = operators.OpMultiArrayStacker(g)
-    stacker_ten.inputs["Images"].connect(strten.outputs["Output"])
-    stacker_ten.inputs["AxisFlag"].setValue('z')
-    stacker_ten.inputs["AxisIndex"].setValue(2)
-    opMulti.inputs["Input%02d"%count].connect(stacker_ten.outputs["Output"])
-    count +=1
+    ##Structure tensor eigenvalues
+    #strten = operators.OpStructureTensorEigenvalues(g)
+    #strten.inputs["Input"].connect(slicer.outputs["Slices"])
+    #strten.inputs["innerScale"].setValue(sigma)
+    #strten.inputs["outerScale"].setValue(0.5*sigma)
+    #stacker_ten = operators.OpMultiArrayStacker(g)
+    #stacker_ten.inputs["Images"].connect(strten.outputs["Output"])
+    #stacker_ten.inputs["AxisFlag"].setValue('z')
+    #stacker_ten.inputs["AxisIndex"].setValue(2)
+    #opMulti.inputs["Input%02d"%count].connect(stacker_ten.outputs["Output"])
+    #count +=1
     
-    #Laplacian
-    lap = operators.OpLaplacianOfGaussian(g)
-    lap.inputs["Input"].connect(slicer.outputs["Slices"])
-    lap.inputs["scale"].setValue(sigma)
-    stacker_lap = operators.OpMultiArrayStacker(g)
-    stacker_lap.inputs["Images"].connect(lap.outputs["Output"])
-    stacker_lap.inputs["AxisFlag"].setValue('z')
-    stacker_lap.inputs["AxisIndex"].setValue(2)
-    opMulti.inputs["Input%02d"%count].connect(stacker_lap.outputs["Output"])
-    count +=1
+    ##Laplacian
+    #lap = operators.OpLaplacianOfGaussian(g)
+    #lap.inputs["Input"].connect(slicer.outputs["Slices"])
+    #lap.inputs["scale"].setValue(sigma)
+    #stacker_lap = operators.OpMultiArrayStacker(g)
+    #stacker_lap.inputs["Images"].connect(lap.outputs["Output"])
+    #stacker_lap.inputs["AxisFlag"].setValue('z')
+    #stacker_lap.inputs["AxisIndex"].setValue(2)
+    #opMulti.inputs["Input%02d"%count].connect(stacker_lap.outputs["Output"])
+    #count +=1
     
-    #Gradient Magnitude
-    opg = operators.OpGaussianGradientMagnitude(g)
-    opg.inputs["Input"].connect(slicer.outputs["Slices"])
-    opg.inputs["sigma"].setValue(sigma)
-    stacker_opg = operators.OpMultiArrayStacker(g)
-    stacker_opg.inputs["Images"].connect(opg.outputs["Output"])
-    stacker_opg.inputs["AxisFlag"].setValue('z')
-    stacker_opg.inputs["AxisIndex"].setValue(2)
-    opMulti.inputs["Input%02d"%count].connect(stacker_opg.outputs["Output"])
-    count +=1
+    ##Gradient Magnitude
+    #opg = operators.OpGaussianGradientMagnitude(g)
+    #opg.inputs["Input"].connect(slicer.outputs["Slices"])
+    #opg.inputs["sigma"].setValue(sigma)
+    #stacker_opg = operators.OpMultiArrayStacker(g)
+    #stacker_opg.inputs["Images"].connect(opg.outputs["Output"])
+    #stacker_opg.inputs["AxisFlag"].setValue('z')
+    #stacker_opg.inputs["AxisIndex"].setValue(2)
+    #opMulti.inputs["Input%02d"%count].connect(stacker_opg.outputs["Output"])
+    #count +=1
     
-    #Diff of Gaussians
-    diff = operators.OpDifferenceOfGaussians(g)
-    diff.inputs["Input"].connect(slicer.outputs["Slices"])
-    diff.inputs["sigma0"].setValue(sigma)            
-    diff.inputs["sigma1"].setValue(sigma*0.66)
-    stacker_diff = operators.OpMultiArrayStacker(g)
-    stacker_diff.inputs["Images"].connect(diff.outputs["Output"])
-    stacker_diff.inputs["AxisFlag"].setValue('z')
-    stacker_diff.inputs["AxisIndex"].setValue(2)
-    opMulti.inputs["Input%02d"%count].connect(stacker_diff.outputs["Output"])
-    count +=1
+    ##Diff of Gaussians
+    #diff = operators.OpDifferenceOfGaussians(g)
+    #diff.inputs["Input"].connect(slicer.outputs["Slices"])
+    #diff.inputs["sigma0"].setValue(sigma)            
+    #diff.inputs["sigma1"].setValue(sigma*0.66)
+    #stacker_diff = operators.OpMultiArrayStacker(g)
+    #stacker_diff.inputs["Images"].connect(diff.outputs["Output"])
+    #stacker_diff.inputs["AxisFlag"].setValue('z')
+    #stacker_diff.inputs["AxisIndex"].setValue(2)
+    #opMulti.inputs["Input%02d"%count].connect(stacker_diff.outputs["Output"])
+    #count +=1
     
 
 stacker = operators.OpMultiArrayStacker(g)
@@ -185,6 +186,8 @@ featurecache.inputs["fixAtCurrent"].setValue(False)
 opMultiS = operators.Op5ToMulti(g)
 opMultiS.inputs["Input0"].connect(featurecache.outputs["Output"])
 
+print "opMultiS outputs shape:", opMultiS.outputs["Outputs"][0].shape
+
 #Training
 opTrain = operators.OpTrainRandomForestBlocked(g)
 opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
@@ -199,6 +202,8 @@ print "Here ########################", opTrain.outputs['Classifier'][:].allocate
 print
 print "++++++++++++++ Trained ++++++++++++++++++++++"
 print
+#import sys
+#sys.exit(1)
 #Prediction
 opPredict = operators.OpPredictRandomForest(g)
 opPredict.inputs['Classifier'].connect(acache.outputs['Output'])    
@@ -229,8 +234,8 @@ ymax = [i*size[1]/nycut for i in range(1, nycut+1)]
 
 print size
 print xmin, ymin, xmax, ymax
-pmaps = numpy.zeros(size)
-oldfeatures = numpy.zeros(featurecache.outputs["Output"].shape)
+pmaps = numpy.zeros(size, dtype=numpy.float32)
+oldfeatures = numpy.zeros(featurecache.outputs["Output"].shape, dtype=numpy.float32)
 for i, x in enumerate(xmin):
     for j, y in enumerate(ymin):
         print "processing part ", i, j
@@ -240,6 +245,9 @@ for i, x in enumerate(xmin):
         print "predictions for part done"
         pmaps[xmin[i]:xmax[i], ymin[j]:ymax[j], :, :] = pmapspart[:]
         oldfeatures[xmin[i]:xmax[i], ymin[j]:ymax[j], :, :]=featurepart[:]
+        #print numpy.min(pmaps), numpy.max(pmaps), numpy.max(pmapspart)
+        #print numpy.min(oldfeatures), numpy.max(oldfeatures)
+       
 
 
 
@@ -259,9 +267,9 @@ print "old ilastik project done!"
 
 #save the predictions, features and labels for later on
 temp = h5py.File(tempfile, "w")
-temp.create_dataset("/volume/pmaps", data = pmaps)
-temp.create_dataset("/volume/labels", data = labels)
-temp.create_dataset("/volume/features", data=oldfeatures)
+temp.create_dataset("/volume/pmaps", data = pmaps, compression='gzip')
+temp.create_dataset("/volume/labels", data = labels, compression='gzip')
+temp.create_dataset("/volume/features", data=oldfeatures, compression='gzip')
 temp.close()
 
 #save the graph to work with context in a different script

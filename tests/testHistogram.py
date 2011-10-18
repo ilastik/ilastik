@@ -127,8 +127,6 @@ def TestIntegralHistogram():
     equal(h,numpy.histogram(data[1:7,2:3], 3,(0,1))[0])
     
     
-    
-    
     data=numpy.reshape(numpy.arange(2500),(50,50)).astype(numpy.float32).T
     data=data-data.min()
     data=data/data.max()
@@ -148,6 +146,25 @@ def TestIntegralHistogram():
     equal(h,numpy.histogram(reduced[8:13,8:13],3,(0,1))[0])
 
     print "good"
+
+def TestIntegralHistogramBig():
+    print
+    print "Testing the integral histogram"
+    tempfile = "/home/akreshuk/data/context/50slices_down2_hist_temp_iter0.h5"
+    f = h5py.File(tempfile)
+    pmaps = numpy.array(f["/volume/pmaps"])
+    nbins = 4
+    pmapsva = vigra.VigraArray(pmaps, axistags=vigra.VigraArray.defaultAxistags(4))
+    for i in range(pmapsva.shape[2]):
+        pmapsi = pmapsva[:, :, i, :]
+        print "max:", numpy.max(pmapsi)
+        print "min:", numpy.min(pmapsi)
+        randommap = numpy.random.rand(pmapsi.shape[0], pmapsi.shape[1], pmapsi.shape[2])
+        randommap = randommap.astype(numpy.float32)
+        print "inputting a pmap of shape:", pmapsi.shape
+        hist = context.intHistogram2D(randommap, nbins)
+    
+
 
 def TestSimpleHistogram():
     print
@@ -321,9 +338,10 @@ def TestHistContext():
  
  
 if __name__=="__main__":
-    TestSimplestHistogram()
+    #TestSimplestHistogram()
     #TestHistContext()
-    TestIntegralHistogram()
-    TestSimpleHistogram()
+    #TestIntegralHistogram()
+    #TestSimpleHistogram()
     #TestOverlappingHistogram()
-    TestHistContextC()
+    #TestHistContextC()
+    TestIntegralHistogramBig()

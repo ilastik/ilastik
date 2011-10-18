@@ -17,7 +17,7 @@ from lazyflow import operators
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-def runContext(outputfile, outfilenew, tempfile, tempfilenew, opernames, radii):
+def runContext(outputfile, outfilenew, tempfile, tempfilenew, opernames, radii, use3d):
     #graphfile = "/home/akreshuk/data/context/50slices_down2_graph_1.h5"
     #outputfile = "/home/akreshuk/data/context/TEM_results/50slices_down2_templ_all.ilp"
     #outfilenew = "/home/akreshuk/data/context/TEM_results/50slices_down2_var_i1.ilp"
@@ -43,7 +43,8 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, opernames, radii):
     f = h5py.File(tempfile)
     pmaps = numpy.array(f["/volume/pmaps"])
     pmapsva = vigra.VigraArray(pmaps, axistags=vigra.VigraArray.defaultAxistags(4))
-    pmapsva = pmapsva/255.
+    if numpy.max(pmaps)>2:
+        pmapsva = pmapsva/255.
     labels = numpy.array(f["/volume/labels"]).astype(numpy.uint8)
     labelsva = vigra.VigraArray(labels, axistags=vigra.VigraArray.defaultAxistags(4))
     oldfeatures = numpy.array(f["/volume/features"])
@@ -57,8 +58,9 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, opernames, radii):
     
     contOps = []
     contOpStackers = []
+    shifterOps = []
     for name in opernames:
-        contOp = None
+        contOps = []
         if name=="var":
             contOp = operators.OpVarianceContext2D(g)
             contOp.inputs["PMaps"].connect(pmapslicer.outputs["Slices"])
@@ -74,12 +76,26 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, opernames, radii):
             contOp.inputs["BinsCount"].setValue(5)
             contOps.append(contOp)
         
-        if contOp is not None:
+        
+        for contOp in contOps:
             stacker_cont = operators.OpMultiArrayStacker(g)
             stacker_cont.inputs["Images"].connect(contOp.outputs["Output"])
             stacker_cont.inputs["AxisFlag"].setValue('z')
             stacker_cont.inputs["AxisIndex"].setValue(2)
             contOpStackers.append(stacker_cont)
+            
+            #use the features from a number (use3d) slices from above and below
+            if use3d>0:
+                for i in range(use3d):
+                    zshift = i+1
+                    shifter_plus = operators.OpFlipArrayShifter(g)
+                    shifter_plus.inputs["Input"].connect(stacker_cont.outputs["Output"])
+                    shifter_plus.inputs["Shift"].setValue((0, 0, zshift, 0))
+                    shifterOps.append(shifter_plus)
+                    shifter_minus = operators.OpFlipArrayShifter(g)
+                    shifter_minus.inputs["Input"].connect(stacker_cont.outputs["Output"])
+                    shifter_minus.inputs["Shift"].setValue((0, 0, -zshift, 0))
+                    shifterOps.append(shifter_minus)
 
     #print "Stacker context output shape:", stacker_cont.outputs["Output"].shape
 
@@ -89,6 +105,19 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, opernames, radii):
     #opMultiS.inputs["Input1"].connect(stacker_cont.outputs["Output"])
     for ns, stacker in enumerate(contOpStackers):
         opMultiS.inputs["Input%02d"%(ns+1)].connect(stacker.outputs["Output"])
+    nold = len(contOpStackers)+1
+    for ns, shifter in enumerate(shifterOps):
+        opMultiS.inputs["Input%02d"%(ns+nold)].connect(shifter.outputs["Output"])
+
+    #opMultiS = operators.Op50ToMulti(g)
+    #opMultiS.inputs["Input00"].setValue(featuresva)
+    #opMultiS.inputs["Input1"].connect(stacker_cont.outputs["Output"])
+    #for ns, stacker in enumerate(contOpStackers):
+    #    opMultiS.inputs["Input%02d"%(ns)].connect(stacker.outputs["Output"])
+    #nold = len(contOpStackers)+1
+    #for ns, shifter in enumerate(shifterOps):
+        #opMultiS.inputs["Input%02d"%(ns+nold)].connect(shifter.outputs["Output"])
+
 
 
     stacker2 = operators.OpMultiArrayStacker(g)
@@ -100,17 +129,32 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, opernames, radii):
     #featurecache2 = operators.OpArrayCache(g)
     #featurecache2.inputs["Input"].connect(stacker2.outputs["Output"])
     #featurecache2.inputs["blockShape"].setValue((64, 64, 1, 180))
-
+    
     featurecache2 = operators.OpBlockedArrayCache(g)
-    featurecache2.inputs["innerBlockShape"].setValue((8,8,8,180))
-    featurecache2.inputs["outerBlockShape"].setValue((64,64,64,180))
+    featurecache2.inputs["innerBlockShape"].setValue((8,8,8,250))
+    featurecache2.inputs["outerBlockShape"].setValue((64,64,64,250))
     featurecache2.inputs["Input"].connect(stacker2.outputs["Output"])
     featurecache2.inputs["fixAtCurrent"].setValue(False)  
 
+    #featurecache2 = operators.OpArrayCache(g)
+    #featurecache2.inputs["Input"].connect(stacker2.outputs["Output"])
+    
+    #TEMP: dump to a file to look at
+    #import h5py
+    #tempfeat = h5py.File("/home/akreshuk/data/context/tempfeatvarnew.h5", "w")
+    #data = featurecache2.outputs["Output"][:].allocate().wait()
+    #tempfeat.create_dataset("/volume/features", data=data, compression="gzip")
+    #tempfeat.close()
+    
+    ##import sys
+    #sys.exit(1)
+    
+    
 
     #wrap the features, because opTrain has a multi input slot
     opMultiTr = operators.Op5ToMulti(g)
     opMultiTr.inputs["Input0"].connect(featurecache2.outputs["Output"])
+   
 
     #make a dummy labeler to use its blocks and sparsity
     opLabeler = operators.OpBlockedSparseLabelArray(g)
@@ -138,12 +182,18 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, opernames, radii):
     opMultiLblocks = operators.Op5ToMulti(g)
     opMultiLblocks.inputs["Input0"].connect(opLabeler.outputs["nonzeroBlocks"])
 
-
     opTrain2 = operators.OpTrainRandomForestBlocked(g)
     opTrain2.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
     opTrain2.inputs['Images'].connect(opMultiTr.outputs["Outputs"])
     opTrain2.inputs['fixClassifier'].setValue(False)
     opTrain2.inputs['nonzeroLabelBlocks'].connect(opMultiLblocks.outputs["Outputs"])
+
+    #opTrain2 = operators.OpTrainRandomForest(g)
+    #opTrain2.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
+    #opTrain2.inputs['Images'].connect(opMultiTr.outputs["Outputs"])
+    #opTrain2.inputs['fixClassifier'].setValue(False)
+    #opTrain2.inputs['nonzeroLabelBlocks'].connect(opMultiLblocks.outputs["Outputs"])
+
 
     acache2 = operators.OpArrayCache(g)
     acache2.inputs["Input"].connect(opTrain2.outputs['Classifier'])
@@ -195,9 +245,9 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, opernames, radii):
 
 
     temp = h5py.File(tempfilenew, "w")
-    temp.create_dataset("/volume/pmaps", data = pmaps2)
-    temp.create_dataset("/volume/labels", data = labels)
-    temp.create_dataset("/volume/features", data=oldfeatures)
+    temp.create_dataset("/volume/pmaps", data = pmaps2, compression='gzip')
+    temp.create_dataset("/volume/labels", data = labels, compression = 'gzip')
+    temp.create_dataset("/volume/features", data=oldfeatures, compression = 'gzip')
     temp.close()
 
 if __name__=="__main__":
@@ -206,23 +256,26 @@ if __name__=="__main__":
 
     #tempfile = "/home/akreshuk/data/context/50slices_down2_all_iter0.h5"
     #tempfilenew = "/home/akreshuk/data/context/50slices_down2_var_iter1.h5"
-    outputfile = "/home/akreshuk/data/context/TEM_results/50slices_down2_templ_all.ilp"
-    outfilenew_pref = "/home/akreshuk/data/context/TEM_results/50slices_down2_"
     
-    tempfile_pref = "/home/akreshuk/data/context/50slices_down2_var_iter"
-    
+    outputfile = "/home/akreshuk/data/context/TEM_results/50slices_down2_templ_all_float.ilp"
+    outfilenew_pref = "/home/akreshuk/data/context/TEM_results/50slices_down2_var_3d_gaus_"
+    #outfilenew_pref = "/tmp/temp"
+    #tempfile_pref = "/home/akreshuk/data/context/50slices_down2_var_hist_gaus_3d1_iter"
+    tempfile_pref = "/home/akreshuk/data/context/50slices_down2_var_3d_gaus_iter"
+    #tempfile_pref = "/tmp/temp"
     
     opernames = ["var"]
     radii = [1, 3, 5, 10, 15, 20]
     
-    niter = 4
-    for i in range(1, niter):
+    niter = 1
+    for i in range(3, 4):
         gc.collect()
         outfilenew = outfilenew_pref + opernames[0] + "_iter"+str(i+1)+".ilp"
         if i==0:
-            tempfile = "/home/akreshuk/data/context/50slices_down2_all_iter0.h5"
+            tempfile = "/home/akreshuk/data/context/50slices_down2_gaus_float_iter0.h5"
+            #tempfile = "/home/akreshuk/data/context/50slices_down2_temp_iter1.h5"
         else:
             tempfile = tempfile_pref + str(i) + ".h5"
         tempfilenew = tempfile_pref + str(i+1) + ".h5"
-        runContext(outputfile, outfilenew, tempfile, tempfilenew, opernames, radii)
+        runContext(outputfile, outfilenew, tempfile, tempfilenew, opernames, radii, use3d=1)
         gc.collect()

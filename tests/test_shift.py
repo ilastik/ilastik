@@ -6,19 +6,18 @@ import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 
-shape = (10, 10)
+shape = (10, 10, 10)
 dummy = numpy.zeros(shape)
-for i in range(shape[0]):
-    dummy[i, :] = i
+for i in range(shape[2]):
+    dummy[:, :, i] = i
     
 dummyva = vigra.VigraArray(dummy, axistags=vigra.VigraArray.defaultAxistags(len(shape))) 
 
 g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
 
-opShift = operators.OpShift(g)
+opShift = operators.OpSimpleShiftZ(g)
 opShift.inputs["Input"].setValue(dummyva)
-opShift.inputs["AxisFlag"].setValue("x")
-opShift.inputs["ShiftValue"].setValue(2)
+opShift.inputs["ShiftValue"].setValue(1)
 
 shifted = opShift.outputs["Output"][:].allocate().wait()
 

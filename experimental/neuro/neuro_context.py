@@ -17,10 +17,15 @@ from lazyflow import operators
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-graphfile = "/home/akreshuk/data/context/50slices_down2_graph_all.h5"
-outputfile = "/home/akreshuk/data/context/TEM_results/50slices_down2_templ.ilp"
+import guppy
+from guppy import hpy
+hp = hpy()
 
-numIter = 4
+graphfile = "/home/akreshuk/data/context/50slices_down2_graph_1.h5"
+outputfile = "/home/akreshuk/data/context/TEM_results/50slices_down2_templ.ilp"
+tempfile = "/home/akreshuk/data/context/50slices_down2_hist_temp_iter1.h5"
+
+numIter = 1
 
 sys.setrecursionlimit(10000)
 
@@ -37,23 +42,25 @@ classCountProvider = myPersonalEasyGraphNames["nclasses"]
 stacker = myPersonalEasyGraphNames["features"]
 opMultiL = myPersonalEasyGraphNames["opMultiL"]
 labels = myPersonalEasyGraphNames["labels"]
+featurecache = myPersonalEasyGraphNames["featurecache"]
 
 g.maxMem = 18000*1024**2
 
 
-opTrain.inputs["fixClassifier"].setValue(True)
-acache = operators.OpArrayCache(g)
-acache.inputs["Input"].connect(opTrain.outputs['Classifier'])
+#opTrain.inputs["fixClassifier"].setValue(True)
+#acache = operators.OpArrayCache(g)
+#acache.inputs["Input"].connect(opTrain.outputs['Classifier'])
 
 print "file read"
 #Allocate the previous predictions - we have to connect the context to something
+oldfeatures = featurecache.outputs["Output"][:].allocate().wait()
 pmaps = opPredict.outputs["PMaps"][:].allocate().wait()
 
 print "old predictions computed"
 
-classifiers = [acache]
-contexts3D = []
-contexts2D = []
+#classifiers = [acache]
+#contexts3D = []
+#contexts2D = []
 #predictions=[opPredict]
 #prevPredict = opPredict
 
@@ -76,25 +83,27 @@ print "=============================================="
 #import sys
 #sys.exit(1)
 
+print hp.heap()
+
+
 for numStage in range(0,numIter):
     gc.collect()
     print
     print "in the loop"
     print "iteration ", numStage
     print
-    
-    contOpAv = operators.OpVarianceContext2D(g)
+    print hp.heap()
+    contOpAv = operators.OpContextHistogram(g)
 
     pmapslicer = operators.OpMultiArraySlicer(g)
     #pmapslicer.inputs["Input"].connect(prevPredict.outputs["PMaps"])
-    #pmapslicer.inputs["Input"].connect(tempcache.outputs["Output"])
     pmapslicer.inputs["Input"].setValue(pmaps)
     pmapslicer.inputs["AxisFlag"].setValue('z')
 
     contOpAv.inputs["PMaps"].connect(pmapslicer.outputs["Slices"])
     contOpAv.inputs["Radii"].setValue([1, 3, 5, 10, 15, 20])
-    contOpAv.inputs["ClassesCount"].connect(classCountProvider.outputs["Output"])
-
+    contOpAv.inputs["LabelsCount"].connect(classCountProvider.outputs["Output"])
+    contOpAv.inputs["BinsCount"].setValue(5)
 
     stacker_cont = operators.OpMultiArrayStacker(g)
     stacker_cont.inputs["Images"].connect(contOpAv.outputs["Output"])
@@ -104,7 +113,7 @@ for numStage in range(0,numIter):
     #contexts2D.append(stacker_cont)
     
     opMultiS = operators.Op5ToMulti(g)
-    opMultiS.inputs["Input0"].connect(stacker.outputs["Output"])
+    opMultiS.inputs["Input0"].connect(featurecache.outputs["Output"])
     
     stacker2 = operators.OpMultiArrayStacker(g)
     stacker2.inputs["AxisFlag"].setValue('c')
@@ -120,44 +129,31 @@ for numStage in range(0,numIter):
     opMultiS.inputs["Input1"].connect(stacker_cont.outputs["Output"])
     stacker2.inputs["Images"].connect(opMultiS.outputs["Outputs"])
     
-    #Let's cache the stacker, it's used both in training and in prediction
-    feature_cache = operators.OpArrayCache(g)
-    feature_cache.inputs["Input"].connect(stacker2.outputs["Output"])
+    featurecache2 = operators.OpArrayCache(g)
+    featurecache2.inputs["Input"].connect(stacker2.outputs["Output"])
     
     opMultiTr = operators.Op5ToMulti(g)
-    opMultiTr.inputs["Input0"].connect(feature_cache.outputs["Output"])
-    #######Training2
+    opMultiTr.inputs["Input0"].connect(featurecache2.outputs["Output"])
     
     opTrain2 = operators.OpTrainRandomForest(g)
     opTrain2.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
-    #opTrain2.inputs['Labels'].setValue(labels)
-    #opTrain2.inputs['Images'].connect(stacker2.outputs["Output"])
     opTrain2.inputs['Images'].connect(opMultiTr.outputs["Outputs"])
     opTrain2.inputs['fixClassifier'].setValue(False)
     
-    #print "Here ########################", opTrain2.outputs['Classifier'][:].allocate().wait()    
-    
-    ##################Prediction
-    opPredict2=operators.OpPredictRandomForest(g)
-    
     acache2 = operators.OpArrayCache(g)
     acache2.inputs["Input"].connect(opTrain2.outputs['Classifier'])
-    
-    
-    
-    classifiers.append(acache2)
-    
+
+    opPredict2=operators.OpPredictRandomForest(g)
     opPredict2.inputs['Classifier'].connect(acache2.outputs['Output'])
-        
-    opPredict2.inputs['Image'].connect(feature_cache.outputs["Output"])
-    #opPredict2.inputs['Image'].connect(stacker2.outputs['Output'])
+    opPredict2.inputs['Image'].connect(featurecache2.outputs["Output"])
     opPredict2.inputs['LabelsCount'].connect(classCountProvider.outputs["Output"])
     
-    pmaps = opPredict2.outputs["PMaps"][:].allocate().wait()
+    #pmaps = opPredict2.outputs["PMaps"][:].allocate().wait()
+    opPredict2.outputs["PMaps"][:].writeInto(pmaps).wait()
     #save into an old ilastik project for easy visualization
     import shutil
     fName, fExt = os.path.splitext(outputfile)
-    outfilenew = fName + "_" + str(numStage) + ".ilp"
+    outfilenew = fName + "_hist_" + str(numStage+1) + ".ilp"
     shutil.copy2(outputfile, outfilenew)
     
     outfile = h5py.File(outfilenew, "r+")
@@ -170,6 +166,14 @@ for numStage in range(0,numIter):
     labelsfile = outfile["/DataSets/dataItem00/labels/data"]
     labelsfile[:] = labels.reshape((1, nx, ny, nz, 1))[:]
     outfile.close()
+    
+    
+    temp = h5py.File(tempfile, "w")
+    temp.create_dataset("/volume/pmaps", data = pmaps)
+    temp.create_dataset("/volume/labels", data = labels)
+    temp.create_dataset("/volume/features", data=oldfeatures)
+    temp.close()
+    
     
     #contOp2=operators.OpContextStar3D(g)
     #contOp2.inputs["Radii_triplets"].setValue(radii_triplets)
