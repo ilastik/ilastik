@@ -193,6 +193,141 @@ pythonIntegralHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 
 }
 
+template <class T1, class T2>
+NumpyAnyArray
+pythonIntegralOverlappingHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
+                                  int nbins=5, double frac_overlap=0.2)
+                  //NumpyArray<3, Multiband<T2> > res=python::object())
+{
+	int h=predictions.shape(0);
+	int w=predictions.shape(1);
+	int nc=predictions.shape(2);
+
+	MultiArrayShape<3>::type sh(h,w,nc*nbins);
+	//res.reshapeIfEmpty(sh);
+	NumpyArray<3,T2> res(sh);
+
+
+	{
+		PyAllowThreads _pythread;
+		integralOverlappingHistogram2D(predictions,nbins,frac_overlap,res);
+
+	}
+
+    return res;
+
+}
+
+template <class T1, class T2>
+NumpyAnyArray
+pythonIntegralOverlappingWeightLinHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
+                                  int nbins=5, double frac_overlap=0.2)
+                  //NumpyArray<3, Multiband<T2> > res=python::object())
+{
+	int h=predictions.shape(0);
+	int w=predictions.shape(1);
+	int nc=predictions.shape(2);
+
+	MultiArrayShape<3>::type sh(h,w,nc*nbins);
+	//res.reshapeIfEmpty(sh);
+	NumpyArray<3,T2> res(sh);
+
+
+	{
+		PyAllowThreads _pythread;
+                integralOverlappingWeightLinHistogram2D(predictions,nbins,frac_overlap,res);
+
+	}
+
+    return res;
+
+}
+
+template <class T1, class T2>
+NumpyAnyArray
+pythonIntegralOverlappingWeightGaussHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
+                                  int nbins=5, double sigma=0.5)
+                  //NumpyArray<3, Multiband<T2> > res=python::object())
+{
+        int h=predictions.shape(0);
+        int w=predictions.shape(1);
+        int nc=predictions.shape(2);
+
+        MultiArrayShape<3>::type sh(h,w,nc*nbins);
+        //res.reshapeIfEmpty(sh);
+        NumpyArray<3,T2> res(sh);
+
+
+        {
+                PyAllowThreads _pythread;
+                integralOverlappingWeightGaussHistogram2D(predictions,nbins,sigma,res);
+
+        }
+
+    return res;
+
+}
+
+
+template <class T1, class T2 >
+NumpyAnyArray
+pythonOverlappingWeightLinHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
+                                  int nbins=5, double frac_overlap=0.2)
+                  //NumpyArray<3, Multiband<float> > res=python::object())
+{
+
+
+        int h=predictions.shape(0);
+        int w=predictions.shape(1);
+        int c=predictions.shape(2);
+
+        vigra_precondition(c>=2,"right now is better");
+        MultiArrayShape<3>::type sh(h,w,c*nbins);
+        NumpyArray<3, T2 >res(sh);
+
+        {
+                PyAllowThreads _pythread;
+
+                overlappingWeightLinHistogram2D(predictions,nbins,frac_overlap,res);
+
+        }
+
+    return res;
+
+
+}
+
+
+
+template <class T1, class T2 >
+NumpyAnyArray
+pythonOverlappingWeightGaussHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
+                                  int nbins=5, double sigma=0.5)
+                  //NumpyArray<3, Multiband<float> > res=python::object())
+{
+
+
+        int h=predictions.shape(0);
+        int w=predictions.shape(1);
+        int c=predictions.shape(2);
+
+        vigra_precondition(c>=2,"right now is better");
+        MultiArrayShape<3>::type sh(h,w,c*nbins);
+        NumpyArray<3, T2 >res(sh);
+
+        {
+                PyAllowThreads _pythread;
+
+                overlappingWeightGaussHistogram2D(predictions,nbins,sigma,res);
+
+        }
+
+    return res;
+
+
+}
+
+
 template <class IND, class T>
 NumpyAnyArray pythonContextHistogram2D(NumpyArray<1, Singleband<IND> > radii, int nbins,
                                        NumpyArray<3, Multiband<T> > predictions,
@@ -247,6 +382,23 @@ void defineContext() {
 
 
     def("intHistogram2D",registerConverters(&pythonIntegralHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4));
+    def("intHistogram2D",registerConverters(&pythonIntegralHistogram2D<double, double>) , (arg("predictions"), arg("nbin")=4));
+
+    def("intOverlappingHistogram2D",registerConverters(&pythonIntegralOverlappingHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2 ));
+    def("intOverlappingHistogram2D",registerConverters(&pythonIntegralOverlappingHistogram2D<double, double>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2 ));
+
+    def("intOverlappingWeightLinHistogram2D",registerConverters(&pythonIntegralOverlappingWeightLinHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2 ));
+    def("intOverlappingWeightLinHistogram2D",registerConverters(&pythonIntegralOverlappingWeightLinHistogram2D<double, double>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2 ));
+
+    def("overlappingWeightLinHistogram2D",registerConverters(&pythonOverlappingWeightLinHistogram2D<float,float>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2));
+    def("overlappingWeightLinHistogram2D",registerConverters(&pythonOverlappingWeightLinHistogram2D<double,double>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2));
+
+    def("intOverlappingWeightGaussHistogram2D",registerConverters(&pythonIntegralOverlappingWeightGaussHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=5, arg("sigma")=0.5 ));
+    def("intOverlappingWeightGaussHistogram2D",registerConverters(&pythonIntegralOverlappingWeightGaussHistogram2D<double, double>) , (arg("predictions"), arg("nbin")=5, arg("sigma")=0.5 ));
+
+    def("overlappingWeightGaussHistogram2D",registerConverters(&pythonOverlappingWeightGaussHistogram2D<float,float>) , (arg("predictions"), arg("nbin")=5, arg("sigma")=0.5));
+    def("overlappingWeightGaussHistogram2D",registerConverters(&pythonOverlappingWeightGaussHistogram2D<double,double>) , (arg("predictions"), arg("nbin")=5, arg("sigma")=0.5));
+
                                                                                                     //arg("out")=python::object()));
     def("contextHistogram2D", registerConverters(&pythonContextHistogram2D<int, float>), (arg("radii"), arg("nbins"), arg("predictions"),
                                                                                          arg("out")=python::object()));
