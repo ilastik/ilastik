@@ -24,20 +24,20 @@ def runPrediction():
     sys.setrecursionlimit(10000)
 
     #Knott data
-    #fileraw = "/home/akreshuk/data/context/TEM_raw/50slices_down2.h5"
-    #filelabels = "/home/akreshuk/data/context/TEM_labels/50slices_down2.h5"
-    #resdir = "/home/akreshuk/data/context/TEM_results/"
-    #resproject = "50slices_down2_templ_gaus_float.ilp"
-    #graphfile = "/home/akreshuk/data/context/50slices_down2_graph_all.h5"
-    #tempfile = "/home/akreshuk/data/context/50slices_down2_gaus_float_iter0.h5"
+    fileraw = "/home/akreshuk/data/context/TEM_raw/50slices_down2.h5"
+    filelabels = "/home/akreshuk/data/context/TEM_labels/50slices_down2.h5"
+    resdir = "/home/akreshuk/data/context/TEM_results/"
+    resproject = "50slices_down2_templ_gaus_float.ilp"
+    graphfile = "/home/akreshuk/data/context/50slices_down2_graph_all.h5"
+    tempfile = "/home/akreshuk/data/context/50slices_down2_gaus_float_iter0.h5"
 
     #Bock data
-    filerawtrain = "/home/akreshuk/data/context/TEM_raw/bock_training_1024_2048_5_28_slices.h5"
-    filerawtest = "/home/akreshuk/data/context/TEM_raw/bock_testing_51_81_slices.h5"
-    filelabels = "/home/akreshuk/data/context/TEM_labels/bock_training_1024_2048_5_28_labels_from_ilastik.h5"
-    resdir = "/home/akreshuk/data/context/TEM_results/"
-    resproject = "bock_testing_1024_2048_51_81_all_3dfeat_iter0.ilp"
-    tempfile = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_iter0.h5"
+    #filerawtrain = "/home/akreshuk/data/context/TEM_raw/bock_training_1024_2048_5_28_slices.h5"
+    #filerawtest = "/home/akreshuk/data/context/TEM_raw/bock_testing_51_81_slices.h5"
+    #filelabels = "/home/akreshuk/data/context/TEM_labels/bock_training_1024_2048_5_28_labels_from_ilastik.h5"
+    #resdir = "/home/akreshuk/data/context/TEM_results/"
+    #resproject = "bock_testing_1024_2048_51_81_all_3dfeat_iter0.ilp"
+    #tempfile = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_iter0.h5"
 
     h5path = "/volume/data"
     nclasses = 5

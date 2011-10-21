@@ -36,8 +36,8 @@ def runPrediction():
     filerawtest = "/home/akreshuk/data/context/TEM_raw/bock_testing_51_81_slices.h5"
     filelabels = "/home/akreshuk/data/context/TEM_labels/bock_training_1024_2048_5_28_labels_from_ilastik.h5"
     resdir = "/home/akreshuk/data/context/TEM_results/"
-    resproject = "bock_testing_1024_2048_51_81_all_3dfeat_iter0.ilp"
-    tempfile = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_iter0.h5"
+    resproject = "bock_testing_1024_2048_51_81_all_3d_anis_feat_iter0.ilp"
+    tempfile = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_anis_iter0.h5"
 
     h5path = "/volume/data"
     nclasses = 5
@@ -65,25 +65,12 @@ def runPrediction():
 
     print "READ STACKS: stack ", stackva.shape, ", stacktest ", stacktestva.shape
 
-
-    ##Slicer
-    #slicer = operators.OpMultiArraySlicer(g)
-    ##slicer.inputs["Input"].connect(himage.outputs["Image"])
-    #slicer.inputs["Input"].setValue(stackva)
-    #slicer.inputs["AxisFlag"].setValue('z')
-
-    ##Slicer test
-    #slicertest = operators.OpMultiArraySlicer(g)
-    #slicertest.inputs["Input"].setValue(stacktestva)
-    #slicertest.inputs["AxisFlag"].setValue('z')
-
-
-    #print "THE SLICER:", len(slicer.outputs["Slices"]), slicer.outputs["Slices"][0].shape
-    #print "SLICER TEST:", len(slicertest.outputs["Slices"]), slicertest.outputs["Slices"][0].shape
-
     #Same sigmas as in Classification Workflow"
-    sigmas = [0.7, 1.0, 1.6, 3.5, 5]
+    #sigmas = [1., 1.6, 3.5]
     #sigmas = [3.5]
+    
+    sigmas = [(1., 1., 1.), (1.6, 1.6, 1.6), (3.5, 3.5, 1.), (5, 5, 1.6)]
+    
     #opMulti = operators.Op50ToMulti(g)
     count = 0
     #Create all our favorite features with all sigmas, we have the space now
@@ -185,15 +172,10 @@ def runPrediction():
 
     opPredict.inputs['LabelsCount'].setValue(nclasses)
 
-    #print "prediction output:", opPredict.outputs["PMaps"]
-    #Predict and save without context first
-    #pmaps = opPredict.outputs["PMaps"][:].allocate().wait()[:]
-    #print "shape of pmaps: ", pmaps.shape
-    #for i in range(pmaps.shape[2]):
-        #for c in range(nclasses):
-            ##print i, c
-            #pmap = pmaps[:, :, i, c]
-            #vigra.impex.writeImage(pmap, resdir + "slice00" + str(i) + "_class_" + str(c) + ".tif")
+    opPredictTrain = operators.OpPredictRandomForest(g)
+    opPredictTrain.inputs['Classifier'].connect(acache.outputs['Output'])
+    opPredictTrain.inputs['Image'].connect(featurecache.outputs['Output'])
+    opPredictTrain.inputs['LabelsCount'].setValue(nclasses)
 
 
     size = opPredict.outputs["PMaps"].shape
@@ -221,6 +203,7 @@ def runPrediction():
     trainfeaturesfile = temp.create_dataset("/volume/trainfeatures", shape = featurecache.outputs["Output"].shape, compression='gzip')
     testfeaturesfile = temp.create_dataset("/volume/testfeatures", shape = featurecacheTest.outputs["Output"].shape, compression='gzip')
     
+    pmapstrain = temp.create_dataset("/volume/pmapstrain", shape=opPredictTrain.outputs["PMaps"].shape, compression='gzip')
     #we do both training and testing features here, because they are from the same stack
     #and have the same x and y dimensions
     
@@ -238,6 +221,9 @@ def runPrediction():
             print "predictions for part done"
             predfile[0, xmin[i]:xmax[i], ymin[j]:ymax[j], :, :] = pmapspart[:]
             temppredfile[xmin[i]:xmax[i], ymin[j]:ymax[j], :, :] = pmapspart[:]
+            
+            pmapsparttrain = opPredictTrain.outputs["PMaps"][xmin[i]:xmax[i], ymin[j]:ymax[j], :, :].allocate().wait()
+            pmapstrain[xmin[i]:xmax[i], ymin[j]:ymax[j], :, :] = pmapsparttrain[:]
             
             #pmaps[xmin[i]:xmax[i], ymin[j]:ymax[j], :, :] = pmapspart[:]
             #oldfeatures[xmin[i]:xmax[i], ymin[j]:ymax[j], :, :]=featurepart[:]
@@ -312,7 +298,8 @@ def createImageFeatureOperators(g, stack, sigmas):
         strten = operators.OpStructureTensorEigenvalues(g)
         strten.inputs["Input"].setValue(stack)
         strten.inputs["innerScale"].setValue(sigma)
-        strten.inputs["outerScale"].setValue(0.5*sigma)
+        #strten.inputs["outerScale"].setValue(0.5*sigma)
+        strten.inputs["outerScale"].setValue((0.5*sigma[0], 0.5*sigma[1], 0.5*sigma[2]))
         opMulti.inputs["Input%02d"%count].connect(strten.outputs["Output"])
         count +=1
         
@@ -334,7 +321,8 @@ def createImageFeatureOperators(g, stack, sigmas):
         diff = operators.OpDifferenceOfGaussians(g)
         diff.inputs["Input"].setValue(stack)
         diff.inputs["sigma0"].setValue(sigma)            
-        diff.inputs["sigma1"].setValue(sigma*0.66)
+        #diff.inputs["sigma1"].setValue(sigma*0.66)
+        diff.inputs["sigma1"].setValue((0.5*sigma[0], 0.5*sigma[1], 0.5*sigma[2]))
         opMulti.inputs["Input%02d"%count].connect(diff.outputs["Output"])
         count +=1
     
