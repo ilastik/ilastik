@@ -36,8 +36,8 @@ def runPrediction():
     filerawtest = "/home/akreshuk/data/context/TEM_raw/bock_testing_51_81_slices.h5"
     filelabels = "/home/akreshuk/data/context/TEM_labels/bock_training_1024_2048_5_28_labels_from_ilastik.h5"
     resdir = "/home/akreshuk/data/context/TEM_results/"
-    resproject = "bock_testing_1024_2048_51_81_all_3d_anis_feat_iter0.ilp"
-    tempfile = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_anis_iter0.h5"
+    resproject = "bock_testing_1024_2048_51_81_all_3d_anis_2_feat_iter0.ilp"
+    tempfile = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_anis_2_iter0.h5"
 
     h5path = "/volume/data"
     nclasses = 5
@@ -69,7 +69,7 @@ def runPrediction():
     #sigmas = [1., 1.6, 3.5]
     #sigmas = [3.5]
     
-    sigmas = [(1., 1., 1.), (1.6, 1.6, 1.6), (3.5, 3.5, 1.), (5, 5, 1.6)]
+    sigmas = [(1., 1., 1.), (1.6, 1.6, 1.6), (3.5, 3.5, 1.), (5, 5, 1.6), (10, 10, 1.6)]
     
     #opMulti = operators.Op50ToMulti(g)
     count = 0

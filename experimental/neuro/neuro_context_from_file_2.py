@@ -106,7 +106,7 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
     print rf
     #rfout = h5py.File(rffile, "w") 
     rf.writeHDF5(rffile, "/RF")
-    sys.exit(1)
+    #sys.exit(1)
     
     size = pmaps.shape
     xmin = [i*size[0]/nxcut for i in range(nxcut)]
@@ -138,7 +138,7 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
     fout.close()
     f.close()
     
-    rf.writeHDF5(rf, rfout, "/RF")
+    #rf.writeHDF5(rf, rfout, "/RF")
 
 
 def runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames, radii, use3d):
@@ -166,7 +166,7 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames,
     #create the random forest
     #RF = Train(tempfile, tempfilenew, opernames, radii, use3d)
     print "rffile:", rffile
-    rffile = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_iter1_rf.h5"
+    #rffile = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_iter1_rf.h5"
     #rfout = h5py.File(rffile, "r")
     #RF = rfout["/RF"]
 
@@ -330,10 +330,10 @@ if __name__=="__main__":
     #tempfilenew = "/home/akreshuk/data/context/50slices_down2_var_iter1.h5"
     
     outputfile = "/home/akreshuk/data/context/TEM_results/bock_testing_1024_2048_51_81.ilp"
-    outfilenew_pref = "/home/akreshuk/data/context/TEM_results/bock_testing_1024_2048_51_81_var_"
+    outfilenew_pref = "/home/akreshuk/data/context/TEM_results/bock_testing_1024_2048_51_81_anis_"
     #outfilenew_pref = "/tmp/temp"
     #tempfile_pref = "/home/akreshuk/data/context/50slices_down2_var_hist_gaus_3d1_iter"
-    tempfile_pref = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_iter"
+    tempfile_pref = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3d_anis_feat_iter"
     #tempfile_pref = "/tmp/temp"
     
     opernames = ["var"]
@@ -347,7 +347,7 @@ if __name__=="__main__":
         if i==0:
             #tempfile = "/home/akreshuk/data/context/50slices_down2_gaus_float_iter0.h5"
             #tempfile = "/home/akreshuk/data/context/50slices_down2_temp_iter1.h5"
-            tempfile = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_iter0.h5"
+            tempfile = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_anis_iter0.h5"
         else:
             tempfile = tempfile_pref + str(i) + ".h5"
         tempfilenew = tempfile_pref + str(i+1) + ".h5"
