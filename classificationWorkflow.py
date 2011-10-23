@@ -4,9 +4,9 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import os, sys, numpy, copy
 
-from PyQt4.QtCore import pyqtSignal, QTimer, QRectF
+from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt
 from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
-                        QMessageBox, qApp, QItemSelectionModel
+                        QMessageBox, qApp, QItemSelectionModel, QIcon, QTransform
 from PyQt4 import uic
 
 from lazyflow.graph import Graph
@@ -67,6 +67,9 @@ class Main(QMainWindow):
                 self._openFile(sys.argv[1:])
             QTimer.singleShot(0, loadFile)
         
+    def setIconToViewMenu(self):
+            self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
+        
     def initUic(self):
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
@@ -83,9 +86,56 @@ class Main(QMainWindow):
                 s = list(copy.copy(shape))
                 del s[i]
                 v.changeViewPort(v.scene().data2scene.mapRect(QRectF(0,0,*s)))  
+                
+        def fitImage():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageViews[self.editor._lastImageViewFocus].fitImage()
+                
+        def restoreImageToOriginalSize():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageViews[self.editor._lastImageViewFocus].doScaleTo()
+                    
+        def rubberBandZoom():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                if not self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom:
+                    self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = True
+                    self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup = self.editor.imageViews[self.editor._lastImageViewFocus].cursor()
+                    self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(Qt.CrossCursor)
+                else:
+                    self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = False
+                    self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup)
+                
         
+        def hideHud():
+            if self.editor.imageViews[0]._hud.isVisible():
+                hide = False
+            else:
+                hide = True
+            for i, v in enumerate(self.editor.imageViews):
+                v.hideHud(hide)
+                
+        def toggleSelectedHud():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageViews[self.editor._lastImageViewFocus].toggleHud()
+                
+        def centerAllImages():
+            for i, v in enumerate(self.editor.imageViews):
+                v.centerImage()
+                
+        def centerImage():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageViews[self.editor._lastImageViewFocus].centerImage()
+                self.actionOnly_for_current_view.setEnabled(True)
+        
+        self.actionCenterAllImages.triggered.connect(centerAllImages)
+        self.actionCenterImage.triggered.connect(centerImage)
+        self.actionToggleAllHuds.triggered.connect(hideHud)
+        self.actionToggleSelectedHud.triggered.connect(toggleSelectedHud)
         self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
         self.actionFitToScreen.triggered.connect(fitToScreen)
+        self.actionFitImage.triggered.connect(fitImage)
+        self.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
+        self.actionRubberBandZoom.triggered.connect(rubberBandZoom)
         
         self.haveData.connect(self.initGraph)
         self.dataReadyToView.connect(self.initEditor)
@@ -102,24 +152,35 @@ class Main(QMainWindow):
         def onDataChanged(topLeft, bottomRight):
             firstRow = topLeft.row()
             lastRow  = bottomRight.row()
-            assert firstRow == lastRow
+        
             firstCol = topLeft.column()
             lastCol  = bottomRight.column()
-            if 0 in range(firstCol, lastCol+1):
+            
+            if lastCol == firstCol == 0:
+                assert(firstRow == lastRow) #only one data item changes at a time
+
+                #in this case, the actual data (for example color) has changed
                 self.switchColor(firstRow+1, self.labelListModel[firstRow].color)
                 self.editor.scheduleSlicesRedraw()
+            else:
+                #this column is used for the 'delete' buttons, we don't care
+                #about data changed here
+                pass
             
         self.labelListModel.dataChanged.connect(onDataChanged)
         
         self.AddLabelButton.clicked.connect(self.addLabel)
         
         self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
-        self.StartClassificationButton.clicked.connect(self.startClassification)
-        
+        self.StartClassificationButton.clicked.connect(self.startClassification)        
         self.StartClassificationButton.setEnabled(False)
+
         self.checkInteractive.setEnabled(False)
-        
         self.checkInteractive.toggled.connect(self.toggleInteractive)   
+
+        self.interactionComboBox.currentIndexChanged.connect(self.changeInteractionMode)
+        self.interactionComboBox.setEnabled(False)
+
         self._initFeatureDlg()
         
     def toggleInteractive(self, checked):
@@ -156,7 +217,13 @@ class Main(QMainWindow):
         self.labelListModel.allowRemove(not checked)
         
         self.editor.scheduleSlicesRedraw()
-        
+
+    def changeInteractionMode( self, index ):
+        modes = {0: "navigation", 1: "brushing"}
+        self.editor.setInteractionMode( modes[index] )
+        self.interactionComboBox.setCurrentIndex(index)
+        print "interaction mode switched to", modes[index]
+
     def switchLabel(self, row):
         print "switching to label=%r" % (self.labelListModel[row])
         #+1 because first is transparent
@@ -191,7 +258,8 @@ class Main(QMainWindow):
         
         #FIXME: this should watch for model changes   
         #drawing will be enabled when the first label is added  
-        self.editor.setDrawingEnabled(True)
+        self.changeInteractionMode( 1 )
+        self.interactionComboBox.setEnabled(True)
     
     def onLabelAboutToBeRemoved(self, parent, start, end):
         #the user deleted a label, reshape prediction and remove the layer
@@ -434,8 +502,10 @@ class Main(QMainWindow):
         shape=self.inputProvider.outputs["Output"].shape
         
         self.editor = VolumeEditor(shape, self.layerstack, labelsink=self.labelsrc)
+        
+        self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
         #drawing will be enabled when the first label is added  
-        self.editor.setDrawingEnabled(False)
+        self.editor.setInteractionMode( 'navigation' )
         self.volumeEditorWidget.init(self.editor)
         model = self.editor.layerStack
         self.layerWidget.init(model)

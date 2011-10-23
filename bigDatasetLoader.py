@@ -40,7 +40,7 @@ class Main(QMainWindow):
          
      def initUic(self):
          
-        self.g=g=Graph(1,softMaxMem = 15000*1024**2) 
+        self.g=g=Graph() 
          
         #get the absolute path of the 'ilastik' module
         uic.loadUi("designerElements/MainWindow.ui", self) 
@@ -67,7 +67,7 @@ class Main(QMainWindow):
         shape=readerNew.outputs["Output"].shape
         print shape
         self.editor = VolumeEditor(shape, self.layerstack)  
-        self.editor.setDrawingEnabled(False)
+        #self.editor.setDrawingEnabled(False)
         
         self.volumeEditorWidget.init(self.editor)
         model = self.editor.layerStack

@@ -1,4 +1,5 @@
-from PyQt4.QtGui import QTableView, QColorDialog, QAbstractItemView, QGroupBox, QHBoxLayout, QVBoxLayout, QPushButton, QColor, QWidget
+from PyQt4.QtGui import QTableView, QColorDialog, QAbstractItemView, QGroupBox, QHBoxLayout, QVBoxLayout, QPushButton, QColor, QWidget, \
+                        QHeaderView
 from PyQt4.QtCore import Qt, QSize
 from labelListModel import LabelListModel, Label
 import sys
@@ -9,6 +10,7 @@ class LabelListView(QTableView):
         self.clicked.connect(self.tableViewCellClicked)
         self.doubleClicked.connect(self.tableViewCellDoubleClicked)
         self.verticalHeader().sectionMoved.connect(self.rowMovedTest)
+        self.setShowGrid(False)
         
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == 0:
@@ -23,45 +25,21 @@ class LabelListView(QTableView):
         self.setAcceptDrops(True)
         self.setFocusPolicy(Qt.NoFocus)
         self.setShowGrid(False)
-        self.setColumnWidth(0, 30)
-        self.setColumnWidth(2, 30)
         self.horizontalHeader().hide()
         self.verticalHeader().hide()
-        #WTF? Why no selection?
+        self.resizeColumnToContents(0)
+        self.horizontalHeader().setResizeMode(1, QHeaderView.Stretch)
+        self.resizeColumnToContents(2)
         self.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)
     
     def setModel(self, model):
         QTableView.setModel(self, model)
-        self._setPushButtonToColumn2(None, 0, model.rowCount())
-        model.rowsInserted.connect(self._setPushButtonToColumn2)
         self.setSelectionModel(model._selectionModel)
-        
-    def _setPushButtonToColumn2(self, parent, start, end):
-        if end == start:
-            end+=1
-        for row in range(end - start):
-            box = QGroupBox()
-            box.setContentsMargins(0,0,0,0)
-            box.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-            box.setFlat(True)
-            box.setStyleSheet("QGroupBox {border:0;}")
-            layout = QHBoxLayout()
-            layout.setContentsMargins(0,0,0,0)
-            button = QPushButton()
-            button.setFixedSize(QSize(18, 18))
-            button.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-            button.setFocusPolicy(Qt.NoFocus)
-            button.setText("x")
-            
-            layout.addWidget(button)
-            box.setLayout(layout)
-            
-            self.setIndexWidget(self.model().index(start+row,2), box)
-            #print start + row
         self._setListViewLook()
             
     def tableViewCellClicked(self, modelIndex):
-        if modelIndex.column() == 2:
+        if modelIndex.column() == 2 and not self.model().flags(modelIndex) == Qt.NoItemFlags:
             self.model().removeRow(modelIndex.row())
     
 
@@ -94,6 +72,7 @@ if __name__ == '__main__':
     
     tableView2 = LabelListView()
     tableView2.setModel(model)
+    tableView2.setShowGrid(True)
     l.addWidget(tableView2)
     
     sys.exit(app.exec_())
