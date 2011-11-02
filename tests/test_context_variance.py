@@ -99,15 +99,11 @@ def testVariance3D():
                     summ = sum_out - sum_in
                     m = summ/(temp_out.size - temp_in.size)
                     assert_almost_equal(m, res[x, y, z, c*2*nr+1], 1)
-                    #v = numpy.var(temp)
-                    #assert_almost_equal(v, res[x, y, z, c*2*nr+nr], 1)
-    
-
     
 
 
 if __name__=="__main__":
-    #testVariance2D();
+    testVariance2D();
     testVariance3D();
     
 

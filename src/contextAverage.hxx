@@ -81,10 +81,7 @@ void average_features_3d_is(MultiArrayView<1, IND, S1>& radii,
             averages[ir] = 1./nclasses;
             continue;
         }
-        if (x==2 && y==2 && z==2 && c==0) {
-            std::cout<<"out of border condition"<<std::endl;
-        }
-        
+
         T uul = (x==radii[ir] || y==radii[ir] || z==radii[ir]) ? 0 : integral(x-radii[ir]-1, y-radii[ir]-1, z-radii[ir]-1, c);
         T ull = (y==radii[ir] || z==radii[ir]) ? 0 : integral(x+radii[ir], y-radii[ir]-1, z-radii[ir]-1, c);
         T uur = (x==radii[ir] || z==radii[ir]) ? 0 : integral(x-radii[ir]-1, y+radii[ir], z-radii[ir]-1, c);
@@ -100,9 +97,6 @@ void average_features_3d_is(MultiArrayView<1, IND, S1>& radii,
         T sum = uur + ull + llr + lul - ulr - uul - lur -lll;
         
         int n = (2*radii[ir]+1)*(2*radii[ir]+1)*(2*radii[ir]+1);
-        if (x==2 && y==2 && z==2 && c==0) {
-            std::cout<<"sum="<<sum<<" , n="<<n<<std::endl;
-        }
         
         if (ir>0){
             int n_prev = (2*radii[ir-1]+1)*(2*radii[ir-1]+1)*(2*radii[ir-1]+1);
@@ -111,9 +105,6 @@ void average_features_3d_is(MultiArrayView<1, IND, S1>& radii,
             n-=n_prev;
         }
         averages[ir]=sum/n;
-        if (x==2 && y==2 && z==2 && c==0) {
-            std::cout<<"ir="<<ir<<" ,averages[ir]="<<averages[ir]<<std::endl;
-        }
         
     }
         
@@ -225,9 +216,6 @@ void varContext3Dmulti(MultiArrayView<1, IND, S>& sizes,
                     average_features_3d_is(sizes, x, y, z, c, integral2, newf2);
                     //fill the averages
                     for (IND ii=0; ii<nnewfeatures; ++ii){
-                        if (x==2 && y==2 && z==2 && c==0) {
-                            std::cout<<"ii="<<ii<<" , newf[ii]="<<newf[ii]<<std::endl;
-                        }
                         res(x, y, z, c*2*nnewfeatures+ii) = newf[ii];
                     }
                     //fill the variances
