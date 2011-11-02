@@ -82,7 +82,21 @@ NumpyAnyArray pythonVarContext2Dmulti(NumpyArray<1, Singleband<IND> > sizes,
     }
     return res;
 }
-    
+
+template <class IND, class T>
+NumpyAnyArray pythonVarContext3Dmulti(NumpyArray<1, Singleband<IND> > sizes,
+                             NumpyArray<4, Multiband<T> > predictions,
+                             NumpyArray<4, Multiband<T> > res)
+{
+    { PyAllowThreads _pythread;
+    varContext3Dmulti(sizes, predictions, res);
+//     std::cout<<"back at glue function"<<std::endl;
+    }
+    return res;
+}
+
+
+
 template <class T>
 NumpyAnyArray pythonIntegralImage(NumpyArray<3, Multiband<T> > image,
                                   NumpyArray<3, Multiband<T> > res)
@@ -367,7 +381,9 @@ void defineContext() {
     def("varContext2Dmulti", registerConverters(&pythonVarContext2Dmulti<int, float>), (arg("sizes"), arg("predictions"),
                                                                                       arg("out")=python::object()));
     def("varContext2Dmulti", registerConverters(&pythonVarContext2Dmulti<unsigned int, float>), (arg("sizes"), arg("predictions"),
-                                                                                      arg("out")=python::object()));                                                                                   
+                                                                                      arg("out")=python::object())); 
+    def("varContext3Dmulti", registerConverters(&pythonVarContext3Dmulti<unsigned int, float>), (arg("sizes"), arg("predictions"),
+                                                                                      arg("out")=python::object())); 
 
     def("starContext3Dvar", registerConverters(&pythonStarContext3Dvar<int, float>), (arg("radii_x"), arg("radii_y"), arg("radii_z"),
                                                                                       arg("predictions"), arg("out")=python::object()));

@@ -54,7 +54,73 @@ void average_features(MultiArrayView<1, IND, S1>& radii,
     return;
 }
 
-
+template <class IND, class T, class S1, class S2>
+void average_features_3d_is(MultiArrayView<1, IND, S1>& radii,
+                            IND x, IND y, IND z, IND c,
+                            MultiArrayView<4, T, S2>& integral,
+                            std::vector<T>& averages)
+{
+    //FIXME: sizes are isotropic for now, anisotropic sizes later
+    /* (0, 0, 0) is at d
+      b_____a
+    d_|__c  |
+    | |  |  |
+    | f__|__e
+    h____g
+    volume = e-a-f-g+b+c+h-d
+    */
+    
+    int nx = integral.shape()[0];
+    int ny = integral.shape()[1];
+    int nz = integral.shape()[2];
+    int nr = radii.size();
+    int nclasses = integral.shape()[3];
+    for (int ir=0; ir<nr; ++ir){
+        //FIXME: do a better border treatment
+        if (x<radii[ir] || y<radii[ir] || z<radii[ir] || x+radii[ir]>nx-1 || y+radii[ir]>ny-1 || z+radii[ir]>nz-1){
+            averages[ir] = 1./nclasses;
+            continue;
+        }
+        if (x==2 && y==2 && z==2 && c==0) {
+            std::cout<<"out of border condition"<<std::endl;
+        }
+        
+        T uul = (x==radii[ir] || y==radii[ir] || z==radii[ir]) ? 0 : integral(x-radii[ir]-1, y-radii[ir]-1, z-radii[ir]-1, c);
+        T ull = (y==radii[ir] || z==radii[ir]) ? 0 : integral(x+radii[ir], y-radii[ir]-1, z-radii[ir]-1, c);
+        T uur = (x==radii[ir] || z==radii[ir]) ? 0 : integral(x-radii[ir]-1, y+radii[ir], z-radii[ir]-1, c);
+        T ulr = (z==radii[ir]) ? 0 : integral(x+radii[ir], y+radii[ir], z-radii[ir]-1, c);
+        
+        T lul = (x==radii[ir] || y==radii[ir]) ? 0 : integral(x-radii[ir]-1, y-radii[ir]-1, z+radii[ir], c);
+        T lll = (y==radii[ir]) ? 0 : integral(x+radii[ir], y-radii[ir]-1, z+radii[ir], c);
+        T lur = (x==radii[ir]) ? 0 : integral(x-radii[ir]-1, y+radii[ir], z+radii[ir], c);
+        T llr = integral(x+radii[ir], y+radii[ir], z+radii[ir], c);
+        
+        //T sum = lr-ll-ur+ul;
+        //T sum = ulr - uur - ull - llr + uul + lur + lll - lul;
+        T sum = uur + ull + llr + lul - ulr - uul - lur -lll;
+        
+        int n = (2*radii[ir]+1)*(2*radii[ir]+1)*(2*radii[ir]+1);
+        if (x==2 && y==2 && z==2 && c==0) {
+            std::cout<<"sum="<<sum<<" , n="<<n<<std::endl;
+        }
+        
+        if (ir>0){
+            int n_prev = (2*radii[ir-1]+1)*(2*radii[ir-1]+1)*(2*radii[ir-1]+1);
+            T sum_prev = averages[ir-1]*n_prev;
+            sum-=sum_prev;
+            n-=n_prev;
+        }
+        averages[ir]=sum/n;
+        if (x==2 && y==2 && z==2 && c==0) {
+            std::cout<<"ir="<<ir<<" ,averages[ir]="<<averages[ir]<<std::endl;
+        }
+        
+    }
+        
+    return;
+    
+}
+                         
 template <class IND, class T, class S>
 void avContext2Dmulti(MultiArrayView<1, IND, S>& sizes,
                       MultiArrayView<3, T, S>& predictions,
@@ -88,54 +154,9 @@ void avContext2Dmulti(MultiArrayView<1, IND, S>& sizes,
     }
     return;
 }
-/*
-template <class IND, class T, class S>
-void avContext3Dslices(MultiArrayView<1, IND, S>& radii,
-                       MultiArrayView<1, IND, S>& z_values,
-                 MultiArrayView<4, T, S>& predictions,
-                 MultiArrayView<4, T, S>& res)
-{
-    // this function does _not_ compute real 3d averages
-    // instead it computes 2d averages in neighborhoods of sizes passed in radii
-    // and then adds as features such averages at +- z_values
-    
-    int nx = predicitons.shape()[0];
-    int ny = predictions.shape()[1];
-    int nz = predictions.shape()[2];
-    int nclasses = predictions.shape()[3];
-    int nnewf_slice = radii.shape()[0];
-    int nnewf_total = nnewf*z_values.shape()[0];
-    MultiArrayShape<3>::type intShp(nx, ny, nclasses);
-    MultiArray<3, T> integral(intShp);
-    std::vector<T> newf(nnewf_slice);
-    
-    for (IND z=0; z<nz; ++z){
-        MultiArrayView<3, T, StridedArrayTag> pred_slice = predictions.bindAt(2, z);
-        integralImage(pred_slice, integral);
-        for (IND x=0; x<nx; ++x){
-            for (IND y=0; y<ny; ++y){
-                for (IND c=0; c<nclasses; ++c){
-                    average_features_2(radii, x, y, c, integral, newf);
-                    for (IND ii=0; ii<nnewf_slice; ++ii){
-                        res(x, y, z, c*nnewf_slice+ii) = newf[ii];
-                    }
-                }
-            }
-        }
-    }
-    
-    for (IND x=0; x<nx; ++x){
-        for (IND y=0; y<ny; ++y){
-            for (IND z=0; z<nz; ++z){
-                replicate_z(res, z_values);
-            }
-        }
-    }
-}
-*/
 
 template <class IND, class T, class S>
-void varContext2Dmulti(MultiArrayView<1, IND, S>&sizes,
+void varContext2Dmulti(MultiArrayView<1, IND, S>& sizes,
                        MultiArrayView<3, T, S>& predictions,
                        MultiArrayView<3, T, S>& res)
 {
@@ -164,6 +185,7 @@ void varContext2Dmulti(MultiArrayView<1, IND, S>&sizes,
                 average_features(sizes, x, y, c, integral2, newf2);
                 //fill the averages
                 for (IND ii=0; ii<nnewfeatures; ++ii) {
+                    
                     res(x, y, c*2*nnewfeatures+ii) = newf[ii];
                 }
                 //fill the variances
@@ -175,4 +197,51 @@ void varContext2Dmulti(MultiArrayView<1, IND, S>&sizes,
     }
     return;
 }
+
+template <class IND, class T, class S>
+void varContext3Dmulti(MultiArrayView<1, IND, S>& sizes,
+                       MultiArrayView<4, T, S>& predictions,
+                       MultiArrayView<4, T, S>& res)
+{
+    int nx = predictions.shape()[0];
+    int ny = predictions.shape()[1];
+    int nz = predictions.shape()[2];
+    int nclasses = predictions.shape()[3];
+    
+    int nnewfeatures = sizes.size();
+    MultiArray<4, T> integral(predictions.shape());
+    MultiArray<4, T> integral2(predictions.shape());
+    
+    integralVolume(predictions, integral);
+    integralVolume2(predictions, integral2);
+    
+    for (IND c=0; c<nclasses; ++c){
+        for (IND x=0; x<nx; ++x) {
+            for (IND y=0; y<ny; ++y){
+                for (IND z=0; z<nz; ++z){
+                    std::vector<T> newf(nnewfeatures);
+                    average_features_3d_is(sizes, x, y, z, c, integral, newf);
+                    std::vector<T> newf2(nnewfeatures);
+                    average_features_3d_is(sizes, x, y, z, c, integral2, newf2);
+                    //fill the averages
+                    for (IND ii=0; ii<nnewfeatures; ++ii){
+                        if (x==2 && y==2 && z==2 && c==0) {
+                            std::cout<<"ii="<<ii<<" , newf[ii]="<<newf[ii]<<std::endl;
+                        }
+                        res(x, y, z, c*2*nnewfeatures+ii) = newf[ii];
+                    }
+                    //fill the variances
+                    for (IND ii=0; ii<nnewfeatures; ++ii) {
+                        res(x, y, z, c*2*nnewfeatures+nnewfeatures+ii) = newf2[ii]-newf[ii]*newf[ii];
+                    }
+                }
+            }
+        }
+    }
+    return;
+    
+    
+    
+}
+
 #endif
