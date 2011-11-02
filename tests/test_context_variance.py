@@ -57,17 +57,18 @@ def testVariance3D():
     #test variance computation in 3D
     nx = 7
     ny = 10
-    nz = 5
+    nz = 7
     nc = 2
     
-    dummypred = numpy.arange(nx*ny*nz*nc)
+    dummypred = numpy.ones(nx*ny*nz*nc)
+    #dummypred = numpy.random.rand(nx, ny, nz, nc)
     dummypred = dummypred.reshape((nx, ny, nz, nc))
     dummypred = dummypred.astype(numpy.float32)
     dummy = vigra.VigraArray(dummypred.shape, axistags=vigra.VigraArray.defaultAxistags(4)).astype(dummypred.dtype)
     dummy[:]=dummypred[:]
 
     #just one radius and test against numpy variance
-    sizes = numpy.array([2], dtype=numpy.uint32)
+    sizes = numpy.array([2, 3], dtype=numpy.uint32)
     nr = sizes.shape[0]
     resshape = (nx, ny, nz, nc*2*sizes.shape[0])
     res = vigra.VigraArray(resshape, axistags=vigra.VigraArray.defaultAxistags(4)).astype(numpy.float32)
@@ -84,9 +85,25 @@ def testVariance3D():
                     m = numpy.mean(temp)
                     assert_almost_equal(m, res[x, y, z, c*2*nr], 1)
                     v = numpy.var(temp)
-                    assert_almost_equal(v, res[x, y, z, c*2*nr+1], 1)
-                    #print m
-                    #print res[x, y, z, 0]
+                    assert_almost_equal(v, res[x, y, z, c*2*nr+nr], 1)
+                    
+    for x in range(sizes[1], nx-sizes[1]):
+        for y in range(sizes[1], ny-sizes[1]):
+            for z in range(sizes[1], nz-sizes[1]):
+                for c in range(nc):
+                    temp_out = dummy[x-sizes[1]:x+sizes[1]+1, y-sizes[1]:y+sizes[1]+1, z-sizes[1]:z+sizes[1]+1, c]
+                    temp_in = dummy[x-sizes[0]:x+sizes[0]+1, y-sizes[0]:y+sizes[0]+1, z-sizes[0]:z+sizes[0]+1, c]
+                    
+                    sum_out = numpy.sum(temp_out)
+                    sum_in = numpy.sum(temp_in)
+                    summ = sum_out - sum_in
+                    m = summ/(temp_out.size - temp_in.size)
+                    assert_almost_equal(m, res[x, y, z, c*2*nr+1], 1)
+                    #v = numpy.var(temp)
+                    #assert_almost_equal(v, res[x, y, z, c*2*nr+nr], 1)
+    
+
+    
 
 
 if __name__=="__main__":
