@@ -61,4 +61,55 @@ void integralImage2(MultiArrayView<3, T, S1>& image, MultiArrayView<3, T, S2>& i
     }
     return;
 }
+
+template <class T, class S1, class S2>
+void integralVolume(MultiArrayView<4, T, S1>& volume, MultiArrayView<4, T, S2>& intvolume)
+{
+    //compute the integral volume of the the given volume
+    //for multichannel volumes, compute channelwise
+    //For more info, see [Ke, Suktankar, Hebert, "Efficient Visual Event Detection using Volumetric Features"]
+    int nx = volume.shape()[0];
+    int ny = volume.shape()[1];
+    int nz = volume.shape()[2];
+    int nc = volume.shape()[3];
+
+    //this vector will store s2(x-1, y) for all values of y
+    std::vector<T> s2_temp(ny, 0);
+    
+    
+    for (int ic=0; ic<nc; ++ic) {
+        T s1 = 0;
+        T s2 = 0;
+        for (int iy=0; iy<ny; ++iy){
+            s2_temp[iy] = 0;
+        }
+        for (int ix=0; ix<nx; ++ix){
+            s1 = 0;
+            for (int iy=0; iy<ny; ++iy){
+                s1 += volume(ix, iy, 0, ic);
+                s2 = s2_temp[iy] + s1;
+                s2_temp[iy] = s2;
+                intvolume(ix, iy, 0, ic) = s2;
+            }
+        }
+        
+        for (int iz=1; iz<nz; ++iz){
+            for (int iy=0; iy<ny; ++iy){
+                s2_temp[iy] = 0;
+            }
+            for (int ix=0; ix<nx; ++ix){
+                s1 = 0;
+                for (int iy=0; iy<ny; ++iy){
+                    s1 += volume(ix, iy, iz, ic);
+                    s2 = s2_temp[iy] + s1;
+                    s2_temp[iy] = s2;
+                    intvolume(ix, iy, iz, ic) = s2 + intvolume(ix, iy, iz-1, ic);
+                }
+            }
+        }
+    }
+}
+                
+    
+    
 #endif

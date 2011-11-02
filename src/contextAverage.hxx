@@ -17,7 +17,7 @@ using namespace vigra;
 //using namespace std;
 
 template <class IND, class T, class S1, class S2>
-void average_features_2(MultiArrayView<1, IND, S1>& radii,
+void average_features(MultiArrayView<1, IND, S1>& radii,
                         IND x, IND y, IND c, 
                         MultiArrayView<3, T, S2>& integral,
                         std::vector<T>& averages)
@@ -54,24 +54,6 @@ void average_features_2(MultiArrayView<1, IND, S1>& radii,
     return;
 }
 
-/*
-template <class IND, class T, class S>
-void replicate_z(IND x, IND y, IND z, IND c,
-                 MultiArrayView<4, T, S>& res,
-                 MultiArrayView<1, IND, S>& sizes, 
-                 std::vector<T>& neighbors)
-{
-    int ns = sizes.shape()[0];
-    int nx = res.shape()[0];
-    int ny = res.shape()[1];
-    int nz = res.shape()[2];
-    int nnewf = neighbors.size()
-    for (int is=0; is<ns; ++is) {
-        //reflect
-        for (int ii=0; ii<nnewf; ++ii) {
-            res(x, y, z, nnewf+is*(nnewf-1)) = res(x, y, std::abs(z-is), 
-    
-*/    
 
 template <class IND, class T, class S>
 void avContext2Dmulti(MultiArrayView<1, IND, S>& sizes,
@@ -96,7 +78,7 @@ void avContext2Dmulti(MultiArrayView<1, IND, S>& sizes,
         for (IND x=0; x<nx; ++x){
             for (IND y=0; y<ny; ++y){
                 std::vector<T> newf(nnewfeatures);
-                average_features_2(sizes, x, y, c, integral, newf);
+                average_features(sizes, x, y, c, integral, newf);
                 
                 for (IND ii=0; ii<nnewfeatures; ++ii){
                     res(x, y, c*nnewfeatures + ii) = newf[ii];
@@ -177,9 +159,9 @@ void varContext2Dmulti(MultiArrayView<1, IND, S>&sizes,
         for (IND x=0; x<nx; ++x) {
             for (IND y=0; y<ny; ++y) {
                 std::vector<T> newf(nnewfeatures);
-                average_features_2(sizes, x, y, c, integral, newf);
+                average_features(sizes, x, y, c, integral, newf);
                 std::vector<T> newf2(nnewfeatures);
-                average_features_2(sizes, x, y, c, integral2, newf2);
+                average_features(sizes, x, y, c, integral2, newf2);
                 //fill the averages
                 for (IND ii=0; ii<nnewfeatures; ++ii) {
                     res(x, y, c*2*nnewfeatures+ii) = newf[ii];

@@ -24,8 +24,8 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
     print "will read from a temp file:", tempfile
     
-    nxcut = 10
-    nycut = 10
+    nxcut = 12
+    nycut = 12
     g = Graph()
 
     f = h5py.File(tempfile)
@@ -54,8 +54,8 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
     print "STACKERTRAIN:", stackertrain.outputs["Output"].shape
 
     featurecachetrain = operators.OpBlockedArrayCache(g)
-    featurecachetrain.inputs["innerBlockShape"].setValue((16,16,16,100))
-    featurecachetrain.inputs["outerBlockShape"].setValue((64,64,64,100))
+    featurecachetrain.inputs["innerBlockShape"].setValue((16,16,16,120))
+    featurecachetrain.inputs["outerBlockShape"].setValue((64,64,64,120))
     featurecachetrain.inputs["Input"].connect(stackertrain.outputs["Output"])
     featurecachetrain.inputs["fixAtCurrent"].setValue(False)  
     
@@ -68,6 +68,8 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
     #find the labeled slices, slow and baaad
     lpixels = numpy.nonzero(labels)
     luns = numpy.unique(lpixels[2])
+    #REMOVE ME:
+    #luns = [luns[1]]
     for z in luns:
         #We kind of assume the last slice is not labeled here.
         #But who would label the last slice???
@@ -87,6 +89,7 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
     opMultiTr = operators.Op5ToMulti(g)
     opMultiTr.inputs["Input0"].connect(featurecachetrain.outputs["Output"])
     
+    #opTrain = operators.OpTrainRandomForestBlocked(g)
     opTrain = operators.OpTrainRandomForestBlocked(g)
     opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
     opTrain.inputs['Images'].connect(opMultiTr.outputs["Outputs"])
@@ -104,6 +107,9 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
     
     rf = acache.outputs['Output'][0].allocate().wait()[0]
     print rf
+    
+    
+    sys.exit(1)
     #rfout = h5py.File(rffile, "w") 
     rf.writeHDF5(rffile, "/RF")
     #sys.exit(1)
@@ -157,8 +163,8 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames,
 
 
     #for blockwise final prediction
-    nxcut = 10
-    nycut = 10
+    nxcut = 12
+    nycut = 12
 
     sys.setrecursionlimit(10000)
     #g = Graph(numThreads = 1, softMaxMem = 18000*1024**2)
@@ -202,8 +208,8 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames,
     print "STACKERTEST:", stackertest.outputs["Output"].shape
 
     featurecachetest = operators.OpBlockedArrayCache(g)
-    featurecachetest.inputs["innerBlockShape"].setValue((8,8,8,250))
-    featurecachetest.inputs["outerBlockShape"].setValue((64,64,64,250))
+    featurecachetest.inputs["innerBlockShape"].setValue((16,16,16,120))
+    featurecachetest.inputs["outerBlockShape"].setValue((64,64,64,120))
     featurecachetest.inputs["Input"].connect(stackertest.outputs["Output"])
     featurecachetest.inputs["fixAtCurrent"].setValue(False)  
     
@@ -282,7 +288,7 @@ def createContextFeatureOperators(g, featuresva, pmapslicer, opernames, radii, u
             contOp.inputs["PMaps"].connect(pmapslicer.outputs["Slices"])
             contOp.inputs["Radii"].setValue(radii)
             contOp.inputs["LabelsCount"].setValue(nclasses)
-            contOp.inputs["BinsCount"].setValue(5)
+            contOp.inputs["BinsCount"].setValue(4)
             contOps.append(contOp)
         
         
@@ -341,7 +347,7 @@ if __name__=="__main__":
     radii = [5, 10, 15, 20, 30, 40]
     
     niter = 1
-    for i in range(0, 1):
+    for i in range(3, 4):
         gc.collect()
         outfilenew = outfilenew_pref + opernames[0] + "_iter"+str(i+1)+".ilp"
         if i==0:
@@ -352,6 +358,6 @@ if __name__=="__main__":
             tempfile = tempfile_pref + str(i) + ".h5"
         tempfilenew = tempfile_pref + str(i+1) + ".h5"
         rffile = tempfile_pref + str(i+1) + "_rf.h5"
-        #Train(tempfile, tempfilenew, rffile, opernames, radii, use3d=0)
-        runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames, radii, use3d=0)
+        Train(tempfile, tempfilenew, rffile, opernames, radii, use3d=0)
+        #runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames, radii, use3d=0)
         gc.collect()

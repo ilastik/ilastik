@@ -96,15 +96,25 @@ NumpyAnyArray pythonIntegralImage(NumpyArray<3, Multiband<T> > image,
 
 
 template <class T>
-NumpyAnyArray
-pythonIntegralImage2(NumpyArray<3, Multiband<T> > image,
+NumpyAnyArray pythonIntegralImage2(NumpyArray<3, Multiband<T> > image,
                                   NumpyArray<3, Multiband<T> > res)
-{
+{   
+    { PyAllowThreads _pythread;
     integralImage2(image, res);
+    }
 //     std::cout<<"back at glue function"<<std::endl;
     return res;
 }
 
+template <class T>
+NumpyAnyArray pythonIntegralVolume(NumpyArray<4, Multiband<T> > volume,
+                                   NumpyArray<4, Multiband<T> > res)
+{   
+    { PyAllowThreads _pythread;
+    integralVolume(volume, res);
+    }
+    return res;
+}
 
 /****************************************************************************/
 
@@ -371,7 +381,8 @@ void defineContext() {
                                                                                       //we define for floats because we want to use it on probability maps                                                                                  
     def("integralImage", registerConverters(&pythonIntegralImage<float>), (arg("image"), arg("out")=python::object()));
     def("integralImage2", registerConverters(&pythonIntegralImage2<float>), (arg("image"), arg("out")=python::object()));
-
+    def("integralVolume", registerConverters(&pythonIntegralVolume<float>), (arg("volume"), arg("out")=python::object()));
+    
     /*************************************************************************************************************************/
     // Start histogram
     def("histogram2D",registerConverters(&pythonHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4));
