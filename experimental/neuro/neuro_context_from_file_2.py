@@ -45,7 +45,20 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
     pmapslicer.inputs["Input"].setValue(pmapsva)
     pmapslicer.inputs["AxisFlag"].setValue('z')
    
-    opMultiStrain = createContextFeatureOperators(g, trainfeaturesva, pmapslicer, opernames, radii, use3d)
+    #opMultiStrain = createContextFeatureOperators(g, trainfeaturesva, pmapslicer, opernames, radii, use3d)
+    contOps2D, shifterOps2D = createContextFeatureOperators2D(g, pmapslicer, opernames, radii, use3d)
+    contOps3D = createContextFeatureOperators3D(g, pmapsva, opernames, radii)
+    opMultiStrain = operators.Op50ToMulti(g)
+    opMultiStrain.inputs["Input00"].setValue(trainfeaturesva)
+    for ns, stacker in enumerate(contOps2D):
+        opMultiStrain.inputs["Input%02d"%(ns+1)].connect(stacker.outputs["Output"])
+    nold = len(contOps2D)+1
+    for ns, shifter in enumerate(shifterOps2D):
+        opMultiStrain.inputs["Input%02d"%(ns+nold)].connect(shifter.outputs["Output"])
+    nold = len(contOps2D)+len(shifterOps2D)+1
+    for ns, oper in enumerate(contOps3D):
+        opMultiStrain.inputs["Input%02d"%(ns+nold)].connect(oper.outputs["Output"])
+    
     stackertrain = operators.OpMultiArrayStacker(g)
     stackertrain.inputs["AxisFlag"].setValue('c')
     stackertrain.inputs["AxisIndex"].setValue(3)
@@ -107,10 +120,7 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
     
     rf = acache.outputs['Output'][0].allocate().wait()[0]
     print rf
-    
-    
     sys.exit(1)
-    #rfout = h5py.File(rffile, "w") 
     rf.writeHDF5(rffile, "/RF")
     #sys.exit(1)
     
@@ -269,7 +279,7 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames,
     outfile.close()
     temp.close()
 
-def createContextFeatureOperators(g, featuresva, pmapslicer, opernames, radii, use3d):
+def createContextFeatureOperators2D(g, pmapslicer, opernames, radii, use3d):
     contOps = []
     contOpStackers = []
     shifterOps = []
@@ -277,7 +287,7 @@ def createContextFeatureOperators(g, featuresva, pmapslicer, opernames, radii, u
     for name in opernames:
         contOps = []
         if name=="var":
-            contOp = operators.OpVarianceContext2D(g)
+            contOp = operators.OpVarianceContext(g)
             contOp.inputs["PMaps"].connect(pmapslicer.outputs["Slices"])
             #contOpAv.inputs["Radii"].setValue([1, 3, 5, 10, 15, 20])
             contOp.inputs["Radii"].setValue(radii)
@@ -290,7 +300,6 @@ def createContextFeatureOperators(g, featuresva, pmapslicer, opernames, radii, u
             contOp.inputs["LabelsCount"].setValue(nclasses)
             contOp.inputs["BinsCount"].setValue(4)
             contOps.append(contOp)
-        
         
         for contOp in contOps:
             stacker_cont = operators.OpMultiArrayStacker(g)
@@ -315,18 +324,35 @@ def createContextFeatureOperators(g, featuresva, pmapslicer, opernames, radii, u
     #print "Stacker context output shape:", stacker_cont.outputs["Output"].shape
 
     #combine the image and context features
-    opMultiS = operators.Op50ToMulti(g)
-    opMultiS.inputs["Input00"].setValue(featuresva)
-    #opMultiS.inputs["Input1"].connect(stacker_cont.outputs["Output"])
-    for ns, stacker in enumerate(contOpStackers):
-        opMultiS.inputs["Input%02d"%(ns+1)].connect(stacker.outputs["Output"])
-    nold = len(contOpStackers)+1
-    for ns, shifter in enumerate(shifterOps):
-        opMultiS.inputs["Input%02d"%(ns+nold)].connect(shifter.outputs["Output"])
+    #opMultiS = operators.Op50ToMulti(g)
+    #opMultiS.inputs["Input00"].setValue(featuresva)
+    ##opMultiS.inputs["Input1"].connect(stacker_cont.outputs["Output"])
+    #for ns, stacker in enumerate(contOpStackers):
+        #opMultiS.inputs["Input%02d"%(ns+1)].connect(stacker.outputs["Output"])
+    #nold = len(contOpStackers)+1
+    #for ns, shifter in enumerate(shifterOps):
+        #opMultiS.inputs["Input%02d"%(ns+nold)].connect(shifter.outputs["Output"])
         
-    return opMultiS
+    #return opMultiS
+    return contOpStackers, shifterOps
 
-
+def createContextFeatureOperators3D(g, pmaps, opernames, radii):
+    nclasses = pmaps.shape[-1]
+    contOps = []
+    for name in opernames:
+        contOps = []
+        if name=="var3d":
+            contOp = operators.OpVarianceContext(g)
+            contOp.inputs["PMaps"].setValue(pmaps)
+            #contOpAv.inputs["Radii"].setValue([1, 3, 5, 10, 15, 20])
+            contOp.inputs["Radii"].setValue(radii)
+            contOp.inputs["LabelsCount"].setValue(nclasses)
+            contOps.append(contOp)
+        else:
+            continue
+    
+    return contOps
+    
 
 if __name__=="__main__":
     #outputfile = "/home/akreshuk/data/context/TEM_results/50slices_down2_templ_all.ilp"
@@ -342,7 +368,7 @@ if __name__=="__main__":
     tempfile_pref = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3d_anis_feat_iter"
     #tempfile_pref = "/tmp/temp"
     
-    opernames = ["var"]
+    opernames = ["var3d"]
     #radii = [1, 3, 5, 10, 15, 20]
     radii = [5, 10, 15, 20, 30, 40]
     

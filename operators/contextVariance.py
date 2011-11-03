@@ -40,7 +40,7 @@ class OpVarianceContext2DOld(Operator):
         context.varContext2Dmulti(radii,pmaps,result)
 
 
-class OpVarianceContext2D(Operator):
+class OpVarianceContext(Operator):
     name = "VarianceContext2D"
     description = "Compute averages and variances in the neighborhoods of different sizes"
        
@@ -59,11 +59,13 @@ class OpVarianceContext2D(Operator):
         #assert len(self.inputs["PMaps"].shape) == 3 , "not implemented for 3D"
         
         if len(self.inputs["PMaps"].shape) == 3:
-            #2D case        
+            #2D case
+            print "initializing 2d variance context"
             h,w,c=self.inputs["PMaps"].shape        
             self.outputs["Output"]._shape = (h,w,2*nclasses*len(radii))
         else:
             #3D case
+            print "initializing 3d variance context"
             h, w, d, c = self.inputs["PMaps"].shape
             self.outputs["Output"]._shape = (h, w, d, 2*nclasses*len(radii))
 
@@ -117,8 +119,10 @@ class OpVarianceContext2D(Operator):
         temp = vigra.VigraArray(tuple(resshape), axistags=vigra.VigraArray.defaultAxistags(len(pmaps.shape)))
         #print "allocated a temp array of size:", temp.shape
         
-        
-        context.varContext2Dmulti(radii, pmaps, temp)
+        if len(pmaps.shape)==3:
+            context.varContext2Dmulti(radii, pmaps, temp)
+        else:
+            context.varContext3Dmulti(radii, pmaps, temp)
         #print "computing done"
         #print "writeNewKey:", writeNewKey
         result[:] = temp[writeNewKey]
