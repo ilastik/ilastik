@@ -95,6 +95,17 @@ NumpyAnyArray pythonVarContext3Dmulti(NumpyArray<1, Singleband<IND> > sizes,
     return res;
 }
 
+template <class IND, class T>
+NumpyAnyArray pythonVarContext3Danis(NumpyArray<2, Singleband<IND> > sizes,
+                             NumpyArray<4, Multiband<T> > predictions,
+                             NumpyArray<4, Multiband<T> > res)
+{
+    { PyAllowThreads _pythread;
+    varContext3Danis(sizes, predictions, res);
+//     std::cout<<"back at glue function"<<std::endl;
+    }
+    return res;
+}
 
 
 template <class T>
@@ -385,6 +396,8 @@ void defineContext() {
     def("varContext3Dmulti", registerConverters(&pythonVarContext3Dmulti<unsigned int, float>), (arg("sizes"), arg("predictions"),
                                                                                       arg("out")=python::object())); 
 
+    def("varContext3Danis", registerConverters(&pythonVarContext3Danis<unsigned int, float>), (arg("sizes"), arg("predictions"),
+                                                                                      arg("out")=python::object())); 
     def("starContext3Dvar", registerConverters(&pythonStarContext3Dvar<int, float>), (arg("radii_x"), arg("radii_y"), arg("radii_z"),
                                                                                       arg("predictions"), arg("out")=python::object()));
     def("starContext3Dvar", registerConverters(&pythonStarContext3Dvar<unsigned int, float>), (arg("radii_x"), arg("radii_y"), arg("radii_z"),
