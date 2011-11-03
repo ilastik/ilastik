@@ -1,5 +1,4 @@
 from lazyflow.graph import *
-import context
 from lazyflow import roi
 from lazyflow.operators.generic import popFlagsFromTheKey
 
@@ -57,12 +56,18 @@ class OpVarianceContext2D(Operator):
         
         self.outputs["Output"]._dtype = self.inputs["PMaps"].dtype
         
-        assert len(self.inputs["PMaps"].shape) == 3 , "not implemented for 3D"
+        #assert len(self.inputs["PMaps"].shape) == 3 , "not implemented for 3D"
         
-        h,w,c=self.inputs["PMaps"].shape
-        
+        if len(self.inputs["PMaps"].shape) == 3:
+            #2D case        
+            h,w,c=self.inputs["PMaps"].shape        
+            self.outputs["Output"]._shape = (h,w,2*nclasses*len(radii))
+        else:
+            #3D case
+            h, w, d, c = self.inputs["PMaps"].shape
+            self.outputs["Output"]._shape = (h, w, d, 2*nclasses*len(radii))
+
         self.outputs["Output"]._axistags = copy.copy(self.inputs["PMaps"].axistags)
-        self.outputs["Output"]._shape = (h,w,2*nclasses*len(radii))
 
     def getOutSlot(self, slot, key, result):
         
@@ -90,7 +95,7 @@ class OpVarianceContext2D(Operator):
         
         oldstart, oldstop = roi.sliceToRoi(key, shape)
         
-        start, stop = roi.sliceToRoi(subkey,subkey)
+        start, stop = roi.sliceToRoi(subkey,subshape)
         newStart, newStop = roi.extendSlice(start, stop, subshape, maxRadius, 1)
         newkey = list(roi.roiToSlice(newStart, newStop))
         #Request all the labels
@@ -109,7 +114,7 @@ class OpVarianceContext2D(Operator):
         #stuff is not allocated inside, we have to do it here
         resshape = list(pmaps.shape)
         resshape[-1] = shape[-1]
-        temp = vigra.VigraArray(tuple(resshape), axistags=vigra.VigraArray.defaultAxistags(3))
+        temp = vigra.VigraArray(tuple(resshape), axistags=vigra.VigraArray.defaultAxistags(len(pmaps.shape)))
         #print "allocated a temp array of size:", temp.shape
         
         
