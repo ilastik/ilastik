@@ -23,6 +23,8 @@ class OpContextHistogram(Operator):
         assert len(self.inputs["PMaps"].shape) == 3 , "not implemented for 3D"
         
         h,w,c=self.inputs["PMaps"].shape
+        #print "h=", h, "w=", w, "c=", c
+        #print len(radii)*nbins*c
         
         self.outputs["Output"]._axistags = copy.copy(self.inputs["PMaps"].axistags)
         self.outputs["Output"]._shape = (h, w, len(radii)*nbins*c)
@@ -31,7 +33,7 @@ class OpContextHistogram(Operator):
         
     def getOutSlot(self, slot, key, result):
         
-        #print "requested key:", key, "result shape:", result.shape
+       # print "requested key:", key, "result shape:", result.shape
         
         radii=self.inputs["Radii"].value        
         radii=numpy.array(radii,dtype=numpy.uint32)

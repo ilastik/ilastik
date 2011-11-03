@@ -4,6 +4,7 @@ from lazyflow.operators.generic import popFlagsFromTheKey
 
 from lazyflow.graph import *
 import context
+import collections
 
 
 class OpVarianceContext2DOld(Operator):
@@ -121,6 +122,8 @@ class OpVarianceContext(Operator):
         
         if len(pmaps.shape)==3:
             context.varContext2Dmulti(radii, pmaps, temp)
+        elif isinstance(radii[0], collections.Iterable):
+            context.varContext3Danis(radii, pmaps, temp)
         else:
             context.varContext3Dmulti(radii, pmaps, temp)
         #print "computing done"

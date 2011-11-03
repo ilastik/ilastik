@@ -21,12 +21,12 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 #but the classifier is re-trained
 
 
-def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
+def Train(tempfile, tempfilenew, rffile, opernames, radii, radii_anis, use3d):
     print "will read from a temp file:", tempfile
     
     nxcut = 12
     nycut = 12
-    g = Graph()
+    g = Graph(numThreads =1 )
 
     f = h5py.File(tempfile)
     pmaps = numpy.array(f["/volume/pmapstrain"])
@@ -47,7 +47,7 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
    
     #opMultiStrain = createContextFeatureOperators(g, trainfeaturesva, pmapslicer, opernames, radii, use3d)
     contOps2D, shifterOps2D = createContextFeatureOperators2D(g, pmapslicer, opernames, radii, use3d)
-    contOps3D = createContextFeatureOperators3D(g, pmapsva, opernames, radii)
+    contOps3D = createContextFeatureOperators3D(g, pmapsva, opernames, radii, radii_anis)
     opMultiStrain = operators.Op50ToMulti(g)
     opMultiStrain.inputs["Input00"].setValue(trainfeaturesva)
     for ns, stacker in enumerate(contOps2D):
@@ -67,8 +67,8 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
     print "STACKERTRAIN:", stackertrain.outputs["Output"].shape
 
     featurecachetrain = operators.OpBlockedArrayCache(g)
-    featurecachetrain.inputs["innerBlockShape"].setValue((16,16,16,120))
-    featurecachetrain.inputs["outerBlockShape"].setValue((64,64,64,120))
+    featurecachetrain.inputs["innerBlockShape"].setValue((16,16,16,200))
+    featurecachetrain.inputs["outerBlockShape"].setValue((64,64,64,200))
     featurecachetrain.inputs["Input"].connect(stackertrain.outputs["Output"])
     featurecachetrain.inputs["fixAtCurrent"].setValue(False)  
     
@@ -157,7 +157,7 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, use3d):
     #rf.writeHDF5(rf, rfout, "/RF")
 
 
-def runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames, radii, use3d):
+def runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames, radii, radii_anis, use3d):
     #graphfile = "/home/akreshuk/data/context/50slices_down2_graph_1.h5"
     #outputfile = "/home/akreshuk/data/context/TEM_results/50slices_down2_templ_all.ilp"
     #outfilenew = "/home/akreshuk/data/context/TEM_results/50slices_down2_var_i1.ilp"
@@ -209,7 +209,22 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames,
     pmapslicer.inputs["Input"].setValue(pmapsva)
     pmapslicer.inputs["AxisFlag"].setValue('z')
    
-    opMultiStest = createContextFeatureOperators(g, testfeaturesva, pmapslicer, opernames, radii, use3d)
+    #opMultiStest = createContextFeatureOperators(g, testfeaturesva, pmapslicer, opernames, radii, use3d)
+    contOps2D, shifterOps2D = createContextFeatureOperators2D(g, pmapslicer, opernames, radii, use3d)
+    contOps3D = createContextFeatureOperators3D(g, pmapsva, opernames, radii, radii_anis)
+    opMultiStest = operators.Op50ToMulti(g)
+    opMultiStest.inputs["Input00"].setValue(testfeaturesva)
+    for ns, stacker in enumerate(contOps2D):
+        opMultiStest.inputs["Input%02d"%(ns+1)].connect(stacker.outputs["Output"])
+    nold = len(contOps2D)+1
+    for ns, shifter in enumerate(shifterOps2D):
+        opMultiStest.inputs["Input%02d"%(ns+nold)].connect(shifter.outputs["Output"])
+    nold = len(contOps2D)+len(shifterOps2D)+1
+    for ns, oper in enumerate(contOps3D):
+        opMultiStest.inputs["Input%02d"%(ns+nold)].connect(oper.outputs["Output"])
+    
+    
+    
     stackertest = operators.OpMultiArrayStacker(g)
     stackertest.inputs["AxisFlag"].setValue('c')
     stackertest.inputs["AxisIndex"].setValue(3)
@@ -336,20 +351,23 @@ def createContextFeatureOperators2D(g, pmapslicer, opernames, radii, use3d):
     #return opMultiS
     return contOpStackers, shifterOps
 
-def createContextFeatureOperators3D(g, pmaps, opernames, radii):
+def createContextFeatureOperators3D(g, pmaps, opernames, radii, radii_anis):
     nclasses = pmaps.shape[-1]
     contOps = []
     for name in opernames:
         contOps = []
-        if name=="var3d":
+        if name=="var3D":
             contOp = operators.OpVarianceContext(g)
             contOp.inputs["PMaps"].setValue(pmaps)
-            #contOpAv.inputs["Radii"].setValue([1, 3, 5, 10, 15, 20])
             contOp.inputs["Radii"].setValue(radii)
             contOp.inputs["LabelsCount"].setValue(nclasses)
             contOps.append(contOp)
-        else:
-            continue
+        elif name=="var3Danis":
+            contOp = operators.OpVarianceContext(g)
+            contOp.inputs["PMaps"].setValue(pmaps)
+            contOp.inputs["Radii"].setValue(radii_anis)
+            contOp.inputs["LabelsCount"].setValue(nclasses)
+            contOps.append(contOp)
     
     return contOps
     
@@ -368,9 +386,12 @@ if __name__=="__main__":
     tempfile_pref = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3d_anis_feat_iter"
     #tempfile_pref = "/tmp/temp"
     
-    opernames = ["var3d"]
+    opernames = ["var3Danis"]
     #radii = [1, 3, 5, 10, 15, 20]
-    radii = [5, 10, 15, 20, 30, 40]
+    radii = [1, 3, 5, 10, 15, 20, 30, 40]
+    
+    radii_anis = [[3, 3, 1], [5, 5, 1], [5, 5, 2], [10, 10, 2], [15, 15, 2], \
+                  [15, 15, 3], [20, 20, 3], [30, 30, 3], [40, 40, 3]]
     
     niter = 1
     for i in range(3, 4):
@@ -384,6 +405,6 @@ if __name__=="__main__":
             tempfile = tempfile_pref + str(i) + ".h5"
         tempfilenew = tempfile_pref + str(i+1) + ".h5"
         rffile = tempfile_pref + str(i+1) + "_rf.h5"
-        Train(tempfile, tempfilenew, rffile, opernames, radii, use3d=0)
+        Train(tempfile, tempfilenew, rffile, opernames, radii, radii_anis, use3d=0)
         #runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames, radii, use3d=0)
         gc.collect()

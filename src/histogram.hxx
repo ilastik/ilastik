@@ -166,7 +166,7 @@ integralHistogram2D(MultiArrayView<3, T1, S1>& image, int nbins,
 
 
 
-	std::cerr << "inside c++" << std::endl;
+	//std::cerr << "inside c++" << std::endl;
 	//For all the channels do the same
         for (c=0;c<nc;c++)
 	{
