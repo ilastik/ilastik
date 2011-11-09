@@ -74,7 +74,7 @@ class OpHistogramContext(Operator):
         #stuff is not allocated inside, we have to do it here
         resshape = list(pmaps.shape)
         resshape[-1] = shape[-1]
-        temp = vigra.VigraArray(tuple(resshape), axistags=vigra.VigraArray.defaultAxistags(3))
+        temp = vigra.VigraArray(tuple(resshape), axistags=vigra.VigraArray.defaultAxistags(len(pmaps.shape)))
         
         nbins = self.inputs["BinsCount"].value
         #print "We are in the business"
