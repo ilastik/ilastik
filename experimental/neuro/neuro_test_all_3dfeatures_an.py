@@ -32,12 +32,12 @@ def runPrediction():
     #tempfile = "/home/akreshuk/data/context/50slices_down2_gaus_float_iter0.h5"
 
     #Bock data
-    filerawtrain = "/home/akreshuk/data/context/TEM_raw/bock_training_1024_2048_5_28_slices.h5"
-    filerawtest = "/home/akreshuk/data/context/TEM_raw/bock_testing_51_81_slices.h5"
-    filelabels = "/home/akreshuk/data/context/TEM_labels/bock_training_1024_2048_5_28_labels_from_ilastik.h5"
-    resdir = "/home/akreshuk/data/context/TEM_results/"
-    resproject = "bock_testing_1024_2048_51_81_all_3d_anis_2_feat_iter0.ilp"
-    tempfile = "/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_anis_2_iter0.h5"
+    filerawtrain = "/export/home/akreshuk/data/context/TEM_raw/bock_training_1024_2048_5_28_slices.h5"
+    filerawtest = "/export/home/akreshuk/data/context/TEM_raw/bock_testing_51_81_slices.h5"
+    filelabels = "/export/home/akreshuk/data/context/TEM_labels/bock_training_1024_2048_5_28_more_labels_from_ilastik.h5"
+    resdir = "/export/home/akreshuk/data/context/TEM_results/"
+    resproject = "bock_testing_1024_2048_51_81_all_3d_anis_feat_ml_iter0.ilp"
+    tempfile = "/export/home/akreshuk/data/context/bock_1024_2048_51_81_all_3d_anis_feat_ml_iter0.h5"
 
     h5path = "/volume/data"
     nclasses = 5
@@ -48,8 +48,8 @@ def runPrediction():
     outfile = h5py.File(resdir+resproject, "r+")
 
     #for blockwise final prediction
-    nxcut = 5
-    nycut = 5
+    nxcut = 2
+    nycut = 2
 
     axistags=vigra.AxisTags(vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space), vigra.AxisInfo('z',vigra.AxisType.Space))  
 
@@ -69,7 +69,7 @@ def runPrediction():
     #sigmas = [1., 1.6, 3.5]
     #sigmas = [3.5]
     
-    sigmas = [(1., 1., 1.), (1.6, 1.6, 1.6), (3.5, 3.5, 1.), (5, 5, 1.6), (10, 10, 1.6)]
+    sigmas = [(1., 1., 1.), (1.6, 1.6, 1.6), (3.5, 3.5, 1.), (5, 5, 1.6)]
     
     #opMulti = operators.Op50ToMulti(g)
     count = 0
@@ -102,7 +102,7 @@ def runPrediction():
     #make a dummy labeler to use its blocks and sparsity
     opLabeler = operators.OpBlockedSparseLabelArray(g)
     opLabeler.inputs["shape"].setValue(labelsva.shape)
-    opLabeler.inputs["blockShape"].setValue((8, 8, 8, 1))
+    opLabeler.inputs["blockShape"].setValue((128, 128, 1, 1))
     opLabeler.inputs["eraser"].setValue(100)
     #find the labeled slices, slow and baaad
     lpixels = numpy.nonzero(labels)
@@ -128,14 +128,14 @@ def runPrediction():
 
 
     featurecache = operators.OpBlockedArrayCache(g)
-    featurecache.inputs["innerBlockShape"].setValue((16,16,16,60))
-    featurecache.inputs["outerBlockShape"].setValue((64,64,64,60))
+    featurecache.inputs["innerBlockShape"].setValue((256,256,256,60))
+    featurecache.inputs["outerBlockShape"].setValue((256,256,256,60))
     featurecache.inputs["Input"].connect(stacker.outputs["Output"])
     featurecache.inputs["fixAtCurrent"].setValue(False)  
 
     featurecacheTest = operators.OpBlockedArrayCache(g)
-    featurecacheTest.inputs["innerBlockShape"].setValue((16,16,16,60))
-    featurecacheTest.inputs["outerBlockShape"].setValue((64,64,64,60))
+    featurecacheTest.inputs["innerBlockShape"].setValue((256,256,256,60))
+    featurecacheTest.inputs["outerBlockShape"].setValue((256,256,256,60))
     featurecacheTest.inputs["Input"].connect(stackerTest.outputs["Output"])
     featurecacheTest.inputs["fixAtCurrent"].setValue(False)  
     

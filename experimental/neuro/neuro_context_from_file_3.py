@@ -67,8 +67,8 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, radii_anis, use3d):
     print "STACKERTRAIN:", stackertrain.outputs["Output"].shape
 
     featurecachetrain = operators.OpBlockedArrayCache(g)
-    featurecachetrain.inputs["innerBlockShape"].setValue((64,64,64,200))
-    featurecachetrain.inputs["outerBlockShape"].setValue((128,128,128,200))
+    featurecachetrain.inputs["innerBlockShape"].setValue((64,64,64,500))
+    featurecachetrain.inputs["outerBlockShape"].setValue((128,128,128,500))
     featurecachetrain.inputs["Input"].connect(stackertrain.outputs["Output"])
     featurecachetrain.inputs["fixAtCurrent"].setValue(False)  
     
@@ -233,8 +233,8 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames,
     print "STACKERTEST:", stackertest.outputs["Output"].shape
 
     featurecachetest = operators.OpBlockedArrayCache(g)
-    featurecachetest.inputs["innerBlockShape"].setValue((256,256,256,200))
-    featurecachetest.inputs["outerBlockShape"].setValue((256,256,256,200))
+    featurecachetest.inputs["innerBlockShape"].setValue((128,128,128,500))
+    featurecachetest.inputs["outerBlockShape"].setValue((256,256,256,500))
     featurecachetest.inputs["Input"].connect(stackertest.outputs["Output"])
     featurecachetest.inputs["fixAtCurrent"].setValue(False)  
     
@@ -383,11 +383,11 @@ if __name__=="__main__":
     outfilenew_pref = "/export/home/akreshuk/data/context/TEM_results/bock_testing_1024_2048_51_81_anis_"
     #outfilenew_pref = "/tmp/temp"
     #tempfile_pref = "/home/akreshuk/data/context/50slices_down2_var_hist_gaus_3d1_iter"
-    tempfile_pref = "/export/home/akreshuk/data/context/bock_1024_2048_51_81_all_3d_anis_feat_anis_var_iter"
+    tempfile_pref = "/export/home/akreshuk/data/context/bock_1024_2048_51_81_all_3d_anis_feat_hist_iter"
     #tempfile_pref = "/tmp/temp"
     
-    opernames = ["var3Danis"]
-    #opernames = ["hist"]
+    #opernames = ["var3Danis"]
+    opernames = ["hist"]
     #radii = [1, 3, 5, 10, 15, 20]
     radii = [1, 3, 5, 10, 15, 20, 30, 40]
     
@@ -403,8 +403,8 @@ if __name__=="__main__":
             #tempfile = "/home/akreshuk/data/context/50slices_down2_temp_iter1.h5"
             tempfile = "/export/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_anis_iter0.h5"
         else:
-            tempfile = tempfile_pref + str(i) + ".h5"
-        tempfilenew = tempfile_pref + str(i+1) + ".h5"
+            tempfile = tempfile_pref +str(i) + ".h5"
+        tempfilenew = tempfile_pref +str(i+1) + ".h5"
         rffile = tempfile_pref + str(i+1) + "_rf.h5"
         #Train(tempfile, tempfilenew, rffile, opernames, radii, radii_anis, use3d=0)
         runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames, radii, radii_anis, use3d=0)
