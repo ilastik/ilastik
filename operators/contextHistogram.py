@@ -4,7 +4,7 @@ from lazyflow import roi
 from lazyflow.operators.generic import popFlagsFromTheKey
 
 
-class OpContextHistogram(Operator):
+class OpHistogramContext(Operator):
     name = "ContextHistogram"
     description = "Compute histograms in the neighborhoods of different sizes"
        
@@ -20,15 +20,15 @@ class OpContextHistogram(Operator):
         
         self.outputs["Output"]._dtype = self.inputs["PMaps"].dtype
         
-        assert len(self.inputs["PMaps"].shape) == 3 , "not implemented for 3D"
-        
-        h,w,c=self.inputs["PMaps"].shape
-        #print "h=", h, "w=", w, "c=", c
-        #print len(radii)*nbins*c
-        
+        #assert len(self.inputs["PMaps"].shape) == 3 , "not implemented for 3D"
+        if len(self.inputs["PMaps"].shape == 3):
+            h,w,c=self.inputs["PMaps"].shape
+            self.outputs["Output"]._shape = (h, w, len(radii)*nbins*c)
+        else:
+            h,w,d,c = self.inputs["PMaps"].shape
+            self.outputs["Output"]._shape = (h, w, d, len(radii)*nbins*c)
+            
         self.outputs["Output"]._axistags = copy.copy(self.inputs["PMaps"].axistags)
-        self.outputs["Output"]._shape = (h, w, len(radii)*nbins*c)
-        
         #print "set the output shape as ", self.outputs["Output"].shape
         
     def getOutSlot(self, slot, key, result):
@@ -78,8 +78,10 @@ class OpContextHistogram(Operator):
         
         nbins = self.inputs["BinsCount"].value
         #print "We are in the business"
-        
-        context.contextHistogram2D(radii, nbins, pmaps, temp)
+        if len(pmaps.shape)==3:
+            context.contextHistogram2D(radii, nbins, pmaps, temp)
+        else:
+            context.contextHistogram3D(radii, nbins, pmaps, temp)
         result[:] = temp[writeNewKey]
         
         
