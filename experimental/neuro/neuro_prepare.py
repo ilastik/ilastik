@@ -8,7 +8,7 @@ import os
 #labdir = "/home/akreshuk/data/knott_2D/stretched/cropped/labeled/"
 
 rawdir = "/home/akreshuk/data/dbock/stack/"
-labdir = "/home/akreshuk/data/context/TEM_labels/bock_training/from_ilastik/"
+labdir = "/home/akreshuk/data/context/TEM_labels/bock_training/from_ilastik_more_labels/"
 
 nslices = 50
 
@@ -73,7 +73,7 @@ for i in range(nfirst, nlast):
 #fraw = h5py.File("/home/akreshuk/data/context/TEM_raw/"+str(nslices)+"slices.h5", "w")
 #flabels = h5py.File("/home/akreshuk/data/context/TEM_labels/"+str(nslices)+"slices.h5", "w")
 fraw = h5py.File("/home/akreshuk/data/context/TEM_raw/bock_training_1024_2048_"+str(nfirst)+"_"+str(nlast)+"_slices.h5", "w")
-flabels = h5py.File("/home/akreshuk/data/context/TEM_labels/bock_training_1024_2048_"+str(nfirst)+"_"+str(nlast)+"_labels_from_ilastik.h5", "w")
+flabels = h5py.File("/home/akreshuk/data/context/TEM_labels/bock_training_1024_2048_"+str(nfirst)+"_"+str(nlast)+"_more_labels_from_ilastik.h5", "w")
 
 dr = fraw.create_dataset("/volume/data", data.shape, data.dtype, data=data)
 dl = flabels.create_dataset("/volume/data", labels.shape, labels.dtype, data=labels)

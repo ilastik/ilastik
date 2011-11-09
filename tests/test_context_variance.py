@@ -109,8 +109,8 @@ def testVariance3Danis():
     ny = 10
     nz = 8
     nc = 2
-    dummypred = numpy.ones(nx*ny*nz*nc)
-    #dummypred = numpy.random.rand(nx, ny, nz, nc)
+    #dummypred = numpy.ones(nx*ny*nz*nc)
+    dummypred = numpy.random.rand(nx, ny, nz, nc)
     dummypred = dummypred.reshape((nx, ny, nz, nc))
     dummypred = dummypred.astype(numpy.float32)
     dummy = vigra.VigraArray(dummypred.shape, axistags=vigra.VigraArray.defaultAxistags(4)).astype(dummypred.dtype)
