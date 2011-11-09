@@ -25,10 +25,10 @@ NumpyAnyArray pythonStarContext2Dmulti(NumpyArray<1, Singleband<IND> > radii,
                                        NumpyArray<3, Multiband<T> > predictions,
                                        NumpyArray<3, Multiband<T> > res = python::object())
 {
-	{ PyAllowThreads _pythread;
+    { PyAllowThreads _pythread;
     starContext2Dmulti(radii, predictions, res);
     std::cout<<"back at glue function"<<std::endl;
-	}
+    }
     return res;
 }
 
@@ -64,10 +64,10 @@ NumpyAnyArray pythonAvContext2Dmulti(NumpyArray<1, Singleband<IND> > sizes,
                                      NumpyArray<3, Multiband<T> > predictions,
                                      NumpyArray<3, Multiband<T> > res)
 {
-	{ PyAllowThreads _pythread;
+    { PyAllowThreads _pythread;
     avContext2Dmulti(sizes, predictions, res);
 //     std::cout<<"back at glue function"<<std::endl;
-	}
+    }
     return res;
 }
 
@@ -112,10 +112,10 @@ template <class T>
 NumpyAnyArray pythonIntegralImage(NumpyArray<3, Multiband<T> > image,
                                   NumpyArray<3, Multiband<T> > res)
 {
-	{ PyAllowThreads _pythread;
+    { PyAllowThreads _pythread;
     integralImage(image, res);
 //     std::cout<<"back at glue function"<<std::endl;
-	}
+    }
     return res;
 }
 
@@ -147,25 +147,25 @@ NumpyAnyArray pythonIntegralVolume(NumpyArray<4, Multiband<T> > volume,
 template <class T1, class T2>
 NumpyAnyArray
 pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
-				  int nbins=4)
+                  int nbins=4)
                   //NumpyArray<3, Multiband<T2> > res=python::object())
 {
 
 
-	int h=predictions.shape(0);
-	int w=predictions.shape(1);
-	int c=predictions.shape(2);
+    int h=predictions.shape(0);
+    int w=predictions.shape(1);
+    int c=predictions.shape(2);
 
-	//vigra_precondition(c>=2,"right now is better");
-	MultiArrayShape<3>::type sh(h,w,c*nbins);
-	NumpyArray<3, T2 >res(sh);
+    //vigra_precondition(c>=2,"right now is better");
+    MultiArrayShape<3>::type sh(h,w,c*nbins);
+    NumpyArray<3, T2 >res(sh);
 
-	{
-	    	PyAllowThreads _pythread;
+    {
+            PyAllowThreads _pythread;
 
-	    	histogram2D(predictions,nbins,res);
+            histogram2D(predictions,nbins,res);
 
-	}
+    }
 
     return res;
 
@@ -176,25 +176,25 @@ pythonHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 template <class T1, class T2 >
 NumpyAnyArray
 pythonOverlappingHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
-				  int nbins=4, float frac_overlap=0.33)
+                  int nbins=4, float frac_overlap=0.33)
                   //NumpyArray<3, Multiband<float> > res=python::object())
 {
 
 
-	int h=predictions.shape(0);
-	int w=predictions.shape(1);
-	int c=predictions.shape(2);
+    int h=predictions.shape(0);
+    int w=predictions.shape(1);
+    int c=predictions.shape(2);
 
-	vigra_precondition(c>=2,"right now is better");
-	MultiArrayShape<3>::type sh(h,w,c*nbins);
-	NumpyArray<3, T2 >res(sh);
+    vigra_precondition(c>=2,"right now is better");
+    MultiArrayShape<3>::type sh(h,w,c*nbins);
+    NumpyArray<3, T2 >res(sh);
 
-	{
-	    	PyAllowThreads _pythread;
+    {
+            PyAllowThreads _pythread;
 
-	    	overlappingHistogram2D(predictions,nbins,frac_overlap,res);
+            overlappingHistogram2D(predictions,nbins,frac_overlap,res);
 
-	}
+    }
 
     return res;
 
@@ -204,29 +204,53 @@ pythonOverlappingHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
 
 
 template <class T1, class T2>
-NumpyAnyArray
-pythonIntegralHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
-				  int nbins=4)
+NumpyAnyArray pythonIntegralHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
+                  int nbins=4)
                   //NumpyArray<3, Multiband<T2> > res=python::object())
 {
-	int h=predictions.shape(0);
-	int w=predictions.shape(1);
-	int nc=predictions.shape(2);
+    int h=predictions.shape(0);
+    int w=predictions.shape(1);
+    int nc=predictions.shape(2);
 
-	MultiArrayShape<3>::type sh(h,w,nc*nbins);
-	//res.reshapeIfEmpty(sh);
-	NumpyArray<3,T2> res(sh);
+    MultiArrayShape<3>::type sh(h,w,nc*nbins);
+    //res.reshapeIfEmpty(sh);
+    NumpyArray<3,T2> res(sh);
 
 
-	{
-		PyAllowThreads _pythread;
-		integralHistogram2D(predictions,nbins,res);
+    {
+        PyAllowThreads _pythread;
+        integralHistogram2D(predictions,nbins,res);
 
-	}
+    }
 
     return res;
 
 }
+
+template <class T1, class T2>
+NumpyAnyArray pythonIntegralHistogram3D(NumpyArray<4, Multiband<T1> > predictions,
+                                        NumpyArray<4, Multiband<T1> > res, int nbins=4)
+                  //NumpyArray<3, Multiband<T2> > res=python::object())
+{
+//     int h=predictions.shape(0);
+//     int w=predictions.shape(1);
+//     int nc=predictions.shape(2);
+// 
+//     MultiArrayShape<3>::type sh(h,w,nc*nbins);
+//     //res.reshapeIfEmpty(sh);
+//     NumpyArray<3,T2> res(sh);
+
+
+    {
+        PyAllowThreads _pythread;
+        integralHistogram3D(predictions,nbins,res);
+
+    }
+
+    return res;
+
+}
+
 
 template <class T1, class T2>
 NumpyAnyArray
@@ -234,20 +258,20 @@ pythonIntegralOverlappingHistogram2D(NumpyArray<3, Multiband<T1> > predictions,
                                   int nbins=5, double frac_overlap=0.2)
                   //NumpyArray<3, Multiband<T2> > res=python::object())
 {
-	int h=predictions.shape(0);
-	int w=predictions.shape(1);
-	int nc=predictions.shape(2);
+    int h=predictions.shape(0);
+    int w=predictions.shape(1);
+    int nc=predictions.shape(2);
 
-	MultiArrayShape<3>::type sh(h,w,nc*nbins);
-	//res.reshapeIfEmpty(sh);
-	NumpyArray<3,T2> res(sh);
+    MultiArrayShape<3>::type sh(h,w,nc*nbins);
+    //res.reshapeIfEmpty(sh);
+    NumpyArray<3,T2> res(sh);
 
 
-	{
-		PyAllowThreads _pythread;
-		integralOverlappingHistogram2D(predictions,nbins,frac_overlap,res);
+    {
+        PyAllowThreads _pythread;
+        integralOverlappingHistogram2D(predictions,nbins,frac_overlap,res);
 
-	}
+    }
 
     return res;
 
@@ -259,20 +283,20 @@ pythonIntegralOverlappingWeightLinHistogram2D(NumpyArray<3, Multiband<T1> > pred
                                   int nbins=5, double frac_overlap=0.2)
                   //NumpyArray<3, Multiband<T2> > res=python::object())
 {
-	int h=predictions.shape(0);
-	int w=predictions.shape(1);
-	int nc=predictions.shape(2);
+    int h=predictions.shape(0);
+    int w=predictions.shape(1);
+    int nc=predictions.shape(2);
 
-	MultiArrayShape<3>::type sh(h,w,nc*nbins);
-	//res.reshapeIfEmpty(sh);
-	NumpyArray<3,T2> res(sh);
+    MultiArrayShape<3>::type sh(h,w,nc*nbins);
+    //res.reshapeIfEmpty(sh);
+    NumpyArray<3,T2> res(sh);
 
 
-	{
-		PyAllowThreads _pythread;
+    {
+        PyAllowThreads _pythread;
                 integralOverlappingWeightLinHistogram2D(predictions,nbins,frac_overlap,res);
 
-	}
+    }
 
     return res;
 
@@ -377,6 +401,19 @@ NumpyAnyArray pythonContextHistogram2D(NumpyArray<1, Singleband<IND> > radii, in
     return res;
 }
 
+template <class IND, class T>
+NumpyAnyArray pythonContextHistogram3D(NumpyArray<2, Singleband<IND> > radii, int nbins,
+                                       NumpyArray<4, Multiband<T> > predictions,
+                                       NumpyArray<4, Multiband<T> > res)
+{
+    //assume that the result array is allocated outside
+    
+    {
+        PyAllowThreads _pythread;
+        contextHistogram3D(radii, nbins, predictions, res);
+    }
+    return res;
+}
 
 void defineContext() {
     using namespace python;
@@ -415,15 +452,20 @@ void defineContext() {
     /*************************************************************************************************************************/
     // Start histogram
     def("histogram2D",registerConverters(&pythonHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4));
-																				//arg("out")=python::object()));
+                                                                                //arg("out")=python::object()));
 
     def("overlappingHistogram2D",registerConverters(&pythonOverlappingHistogram2D<float,float>) , (arg("predictions"), arg("nbin")=4, arg("f_overlap")=0.33));
-    																				//arg("out")=python::object()));
+                                                                                    //arg("out")=python::object()));
 
 
     def("intHistogram2D",registerConverters(&pythonIntegralHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=4));
     def("intHistogram2D",registerConverters(&pythonIntegralHistogram2D<double, double>) , (arg("predictions"), arg("nbin")=4));
 
+    def("intHistogram3D",registerConverters(&pythonIntegralHistogram3D<float, float>) , 
+        (arg("predictions"), arg("out")=python::object(), arg("nbins")=4));
+    def("intHistogram3D",registerConverters(&pythonIntegralHistogram3D<double, double>) , 
+        (arg("predictions"), arg("out")=python::object(), arg("nbins")=4));
+    
     def("intOverlappingHistogram2D",registerConverters(&pythonIntegralOverlappingHistogram2D<float, float>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2 ));
     def("intOverlappingHistogram2D",registerConverters(&pythonIntegralOverlappingHistogram2D<double, double>) , (arg("predictions"), arg("nbin")=5, arg("f_overlap")=0.2 ));
 
@@ -443,6 +485,10 @@ void defineContext() {
     def("contextHistogram2D", registerConverters(&pythonContextHistogram2D<int, float>), (arg("radii"), arg("nbins"), arg("predictions"),
                                                                                          arg("out")=python::object()));
     def("contextHistogram2D", registerConverters(&pythonContextHistogram2D<unsigned int, float>), (arg("radii"), arg("nbins"), arg("predictions"),
+                                                                                         arg("out")=python::object()));
+    def("contextHistogram3D", registerConverters(&pythonContextHistogram3D<int, float>), (arg("radii"), arg("nbins"), arg("predictions"),
+                                                                                         arg("out")=python::object()));
+    def("contextHistogram3D", registerConverters(&pythonContextHistogram3D<unsigned int, float>), (arg("radii"), arg("nbins"), arg("predictions"),
                                                                                          arg("out")=python::object()));
 
 }

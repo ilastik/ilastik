@@ -5,7 +5,7 @@ import os
 
 #ldir = "/home/akreshuk/data/knott_2D/stretched/cropped/labeled/"
 
-ldir = "/home/akreshuk/data/context/TEM_labels/bock_training/from_ilastik/"
+ldir = "/home/akreshuk/data/context/TEM_labels/bock_training/from_ilastik_more_labels/"
 
 lfiles = glob.glob(ldir+"*.tif")
 lfiles = sorted(lfiles, key=str.lower)
