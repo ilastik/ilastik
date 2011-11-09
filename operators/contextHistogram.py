@@ -21,7 +21,7 @@ class OpHistogramContext(Operator):
         self.outputs["Output"]._dtype = self.inputs["PMaps"].dtype
         
         #assert len(self.inputs["PMaps"].shape) == 3 , "not implemented for 3D"
-        if len(self.inputs["PMaps"].shape == 3):
+        if len(self.inputs["PMaps"].shape) == 3:
             h,w,c=self.inputs["PMaps"].shape
             self.outputs["Output"]._shape = (h, w, len(radii)*nbins*c)
         else:
