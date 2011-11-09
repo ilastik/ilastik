@@ -309,7 +309,7 @@ def createContextFeatureOperators2D(g, pmapslicer, opernames, radii, use3d):
             contOp.inputs["LabelsCount"].setValue(nclasses)
             contOps.append(contOp)
         elif name=="hist":
-            contOp = operators.OpContextHistogram(g)
+            contOp = operators.OpHistogramContext(g)
             contOp.inputs["PMaps"].connect(pmapslicer.outputs["Slices"])
             contOp.inputs["Radii"].setValue(radii)
             contOp.inputs["LabelsCount"].setValue(nclasses)
@@ -368,6 +368,12 @@ def createContextFeatureOperators3D(g, pmaps, opernames, radii, radii_anis):
             contOp.inputs["Radii"].setValue(radii_anis)
             contOp.inputs["LabelsCount"].setValue(nclasses)
             contOps.append(contOp)
+        elif name=="hist3D":
+            contOp = operators.OpHistogramContext(g)
+            contOp.inputs["PMaps"].setValue(pmaps)
+            contOp.inputs["Radii"].setValue(radii_anis)
+            contOp.inputs["LabelsCount"].setValue(nclasses)
+            contOps.append(contOp)
     
     return contOps
     
@@ -387,7 +393,6 @@ if __name__=="__main__":
     #tempfile_pref = "/tmp/temp"
     
     opernames = ["var3Danis"]
-    #opernames = ["hist"]
     #radii = [1, 3, 5, 10, 15, 20]
     radii = [1, 3, 5, 10, 15, 20, 30, 40]
     
