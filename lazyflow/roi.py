@@ -156,7 +156,7 @@ def sliceToRoi(s, shape=None, extendSingleton = True):
             stop[0] = s
     if extendSingleton:
         stop = map(lambda x,y: y + 1 if x == y else y,start,stop)
-    return TinyVector(start), TinyVector(stop)
+    return TinyVector(start)._asint(), TinyVector(stop)._asint()
 
 #this method uses numpy arrays and is slower then the new one
 def sliceToRoiOld(s, shape=None, extendSingleton = True):
@@ -206,12 +206,12 @@ def roiToSlice(start, stop, hardBind=False):
         res = []
         for sta, stp in zip(start,stop):
             if stp == sta + 1 or stp == sta:
-                res.append(sta)
+                res.append(int(sta))
             else:
-                res.append(slice(sta,stp))
+                res.append(slice(int(sta),int(stp)))
         return tuple(res)
     else:
-        return tuple(map(lambda x:slice(x[0],x[1]),zip(start,stop)))
+        return tuple(map(lambda x:slice(int(x[0]),int(x[1])),zip(start,stop)))
 
 
 
