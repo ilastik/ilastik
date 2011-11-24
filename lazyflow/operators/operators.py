@@ -1018,7 +1018,6 @@ class OpBlockedArrayCache(OperatorGroup):
         
         for r in requests:
           r.wait()
-          print "Finished ", r.key
 
         return result
 

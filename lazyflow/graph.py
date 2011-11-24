@@ -361,15 +361,9 @@ class GetItemRequestObject(object):
                                 delta = gr.currentRequest._requestLevel - self._requestLevel
                                 self.adjustPriority(delta)
                             
-                            lr = gr.lastRequest
-                            gr.lastRequest = None
-                            if lr is not None and lr != self:            
-                                lr.lock.acquire()
-                                if lr.inProcess is False and lr.canceled is False:
-                                    lr.lock.release()
-                                    lr._execute(gr)
-                                else:
-                                    lr.lock.release()                                      
+                            self._burstLastRequest(gr)
+                            if gr.lastRequest == self:
+                                gr.lastRequest = None                                  
                             gr.thread.greenlet.switch(None)
                         else:
                             self.lock.release()
@@ -475,6 +469,7 @@ class GetItemRequestObject(object):
         self.lock.acquire()
         self._finished = True
         self.cancelQueue = deque()
+        self.childRequests = {}
         self.lock.release()
         p = self.parentRequest
         if p is not None:
@@ -507,7 +502,7 @@ class GetItemRequestObject(object):
         else:
             self.graph.putFinalize(self)
         #self.parentRequest = None
-        self.childRequests = {}
+        
 
         
     def _cancel(self):
@@ -537,7 +532,7 @@ class GetItemRequestObject(object):
             self.childRequests = {}
             self.lock.release()
             for r in childs:
-                r._cancel()            
+                r.cancel()            
 
     def _cancelParents(self):
         if not self._finished:
@@ -631,13 +626,17 @@ class InputSlot(object):
         are given a value by calling .setvalue(value))
         the Operator is notified via its notifyConnectAll() method.
         """
+        if partner is None:
+            self.disconnect()
+            return    
+            
+        if not isinstance(partner,(OutputSlot,MultiOutputSlot)):
+            self.setValue(partner)
+            return
+            
         assert partner is None or isinstance(partner, (OutputSlot, MultiOutputSlot)), \
                "InputSlot(name=%s, operator=%s).connect: partner has type %r" \
                % (self.name, self.operator, type(partner))
-        
-        if partner is None:
-            self.disconnect()
-            return        
         
         if self.partner == partner and partner.level == self.level:
             return
@@ -1133,7 +1132,11 @@ class MultiInputSlot(object):
         if partner is None:
             self.disconnect()
             return
-            
+        
+        if not isinstance(partner,(OutputSlot,MultiOutputSlot)):
+            self.setValue(partner)
+            return
+          
         if self.partner == partner and partner.level == self.level:
             return
         
@@ -1607,6 +1610,13 @@ class Operator(object):
     def _notifySubSlotRemove(self, slots, indexes):
         self.notifySubSlotRemove(slots, indexes)
         
+  
+  
+    def connect(self, **kwargs):
+        for k in kwargs:
+          self.inputs[k].connect(kwargs[k])
+
+
 
     """
     This method is called opon connection of an inputslot.
