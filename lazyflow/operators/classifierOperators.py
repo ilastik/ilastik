@@ -247,6 +247,7 @@ class OpPredictRandomForest(Operator):
         #result[:]=prediction[...,key[-1]]
         result[:]=prediction[...,key[-1]]*255
 
+
             
     def notifyDirty(self, slot, key):
         if slot == self.inputs["Classifier"]:

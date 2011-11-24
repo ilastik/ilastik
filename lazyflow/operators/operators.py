@@ -970,7 +970,8 @@ class OpBlockedArrayCache(OperatorGroup):
 
         if lazyflow.verboseRequests:
             print "OpSparseArrayCache %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))    
-
+        
+        requests = []
         for b_ind in innerBlocks.ravel():
             #which part of the original key does this block fill?
             offset = self._blockShape*self._flatBlockIndices[b_ind]
@@ -988,7 +989,8 @@ class OpBlockedArrayCache(OperatorGroup):
                 
             bigkey = roiToSlice(bigstart-start, bigstop-start)
             
-            self._lock.acquire()                  
+            self._lock.acquire()  
+            
             if not self._fixed:
                 if not self._cache_list.has_key(b_ind):
                     self._opSub_list[b_ind] = generic.OpSubRegion(self.graph)
@@ -1009,9 +1011,14 @@ class OpBlockedArrayCache(OperatorGroup):
             if self._cache_list.has_key(b_ind):
                 req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
                 self._lock.release()
-                res = req.wait()
+                #res = req.wait()
+                requests.append(req)
             else:
                 self._lock.release()
+        
+        for r in requests:
+          r.wait()
+          print "Finished ", r.key
 
         return result
 

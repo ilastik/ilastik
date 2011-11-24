@@ -370,7 +370,7 @@ class GetItemRequestObject(object):
                                     lr._execute(gr)
                                 else:
                                     lr.lock.release()                                      
-                            gr.parent.switch(None)
+                            gr.thread.greenlet.switch(None)
                         else:
                             self.lock.release()
                             return self.destination
@@ -398,6 +398,7 @@ class GetItemRequestObject(object):
                         cgr.currentRequest = self
                         cgr.thread = tr                        
                         self.lock.release()
+                        setattr(tr,"greenlet", greenlet.getcurrent())
                         cgr.switch(self)
                         self._waitFor(cgr,tr) #wait for finish
             else:
@@ -2298,6 +2299,7 @@ class Worker(Thread):
         self.workAvailableEvent = Event()
         self.workAvailableEvent.clear()
         self.openUserRequests = set()
+        self.greenlet = None
     
     def signalWorkAvailable(self): 
         self.workAvailableEvent.set()
@@ -2305,6 +2307,7 @@ class Worker(Thread):
         
     def run(self):
         ct = current_thread()
+        self.greenlet = greenlet.getcurrent()
         prioLastReq = 0
         while self.graph.running:
             if not self.workAvailableEvent.isSet():
@@ -2328,6 +2331,9 @@ class Worker(Thread):
                     if prioLastReq < prioFinReq:
                         #print prioLastReq, prioFinReq
                         break
+                        
+                        
+                        
                 task = None
                 try:
                     prioLastReq,task = self.graph.tasks.get(block = False)#timeout = 1.0)

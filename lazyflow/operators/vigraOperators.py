@@ -659,6 +659,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         oldstart, oldstop = roi.sliceToRoi(key, shape)
         
+        
         start, stop = roi.sliceToRoi(subkey,subkey)
         newStart, newStop = roi.extendSlice(start, stop, subshape, largestSigma, window = windowSize)
         readKey = roi.roiToSlice(newStart, newStop)
