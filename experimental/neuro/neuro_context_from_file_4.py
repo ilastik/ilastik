@@ -388,7 +388,7 @@ def createContextFeatureOperators3D(g, pmaps, opernames, radii, radii_anis):
             contOp.inputs["PMaps"].setValue(pmaps)
             contOp.inputs["Radii"].setValue(radii_anis)
             contOp.inputs["LabelsCount"].setValue(nclasses)
-            contOp.inputs["BinsCount"].setValue(10)
+            contOp.inputs["BinsCount"].setValue(5)
             contOps.append(contOp)    
 
 
@@ -406,7 +406,7 @@ if __name__=="__main__":
     outfilenew_pref = "/export/home/akreshuk/data/context/TEM_results/bock_testing_1024_2048_51_81_anis_"
     #outfilenew_pref = "/tmp/temp"
     #tempfile_pref = "/home/akreshuk/data/context/50slices_down2_var_hist_gaus_3d1_iter"
-    tempfile_pref = "/export/home/akreshuk/data/context/bock_1024_2048_51_81_all_3d_anis_feat_3d_hist_ml_iter"
+    tempfile_pref = "/export/home/akreshuk/data/context/bock_1024_2048_51_81_all_3d_anis_feat_3d_hist_5bins_ml_iter"
     #tempfile_pref = "/tmp/temp"
     
     #opernames = ["var3Danis"]
@@ -414,13 +414,16 @@ if __name__=="__main__":
     #radii = [1, 3, 5, 10, 15, 20]
     radii = [1, 3, 5, 10, 15, 20, 30, 40]
     
-    radii_anis = [[3, 3, 1], [5, 5, 1], [5, 5, 2], [10, 10, 2], [15, 15, 2], \
-                  [15, 15, 3], [20, 20, 3], [30, 30, 3], [40, 40, 3]]
+    #radii_anis = [[3, 3, 1], [5, 5, 1], [5, 5, 2], [10, 10, 2], [15, 15, 2], \
+    #              [15, 15, 3], [20, 20, 3], [30, 30, 3], [40, 40, 3]]
     
+    radii_anis = [[1, 1, 1], [3, 3, 1], [5, 5, 1], [7, 7, 2], [10, 10, 2], \
+                  [15, 15, 3], [20, 20, 3], [30, 30, 3], [40, 40, 3]]
+
     niter = 1
     for i in range(3, 4):
         gc.collect()
-        outfilenew = outfilenew_pref + opernames[0] + "_ml_iter"+str(i+1)+".ilp"
+        outfilenew = outfilenew_pref + opernames[0] + "5bins_ml_iter"+str(i+1)+".ilp"
         if i==0:
             #tempfile = "/home/akreshuk/data/context/50slices_down2_gaus_float_iter0.h5"
             #tempfile = "/home/akreshuk/data/context/50slices_down2_temp_iter1.h5"

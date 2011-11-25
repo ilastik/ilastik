@@ -67,8 +67,8 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, radii_anis, use3d):
     print "STACKERTRAIN:", stackertrain.outputs["Output"].shape
 
     featurecachetrain = operators.OpBlockedArrayCache(g)
-    featurecachetrain.inputs["innerBlockShape"].setValue((64,64,64,200))
-    featurecachetrain.inputs["outerBlockShape"].setValue((128,128,128,200))
+    featurecachetrain.inputs["innerBlockShape"].setValue((128,128,30,200))
+    featurecachetrain.inputs["outerBlockShape"].setValue((128,128,30,200))
     featurecachetrain.inputs["Input"].connect(stackertrain.outputs["Output"])
     featurecachetrain.inputs["fixAtCurrent"].setValue(False)  
     
@@ -122,7 +122,7 @@ def Train(tempfile, tempfilenew, rffile, opernames, radii, radii_anis, use3d):
     print rf
     #sys.exit(1)
     rf.writeHDF5(rffile, "/RF")
-    #sys.exit(1)
+    sys.exit(1)
     
     size = pmaps.shape
     xmin = [i*size[0]/nxcut for i in range(nxcut)]
@@ -233,8 +233,8 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames,
     print "STACKERTEST:", stackertest.outputs["Output"].shape
 
     featurecachetest = operators.OpBlockedArrayCache(g)
-    featurecachetest.inputs["innerBlockShape"].setValue((256,256,256,200))
-    featurecachetest.inputs["outerBlockShape"].setValue((256,256,256,200))
+    featurecachetest.inputs["innerBlockShape"].setValue((128,128,30,160))
+    featurecachetest.inputs["outerBlockShape"].setValue((128,128,30,160))
     featurecachetest.inputs["Input"].connect(stackertest.outputs["Output"])
     featurecachetest.inputs["fixAtCurrent"].setValue(False)  
     
@@ -247,6 +247,13 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames,
     opPredict2.inputs['LabelsCount'].setValue(pmaps.shape[-1])
 
     print "OPPREDICT2:", opPredict2.outputs["PMaps"].shape
+
+    #cache predictions for parallel processing
+    predictioncache = operators.OpBlockedArrayCache(g)
+    predictioncache.inputs["innerBlockShape"].setValue((128, 128, 30, 10))
+    predictioncache.inputs["outerBlockShape"].setValue((128, 128, 30, 10))
+    predictioncache.inputs["Input"].connect(opPredict2.outputs["PMaps"])
+    predictioncache.inputs["fixAtCurrent"].setValue(False)
 
     size = pmaps.shape
     xmin = [i*size[0]/nxcut for i in range(nxcut)]
@@ -284,7 +291,8 @@ def runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames,
              
             print "features for part done"
 
-            pmapspart = opPredict2.outputs["PMaps"][xmin[i]:xmax[i], ymin[j]:ymax[j], :, :].allocate().wait()
+            #pmapspart = opPredict2.outputs["PMaps"][xmin[i]:xmax[i], ymin[j]:ymax[j], :, :].allocate().wait()
+            pmapspart = predictioncache.outputs["Output"][xmin[i]:xmax[i], ymin[j]:ymax[j], :, :].allocate().wait()
             print "predictions for part done"
             predfile[0, xmin[i]:xmax[i], ymin[j]:ymax[j], :, :] = pmapspart[:]
             temppredfile[xmin[i]:xmax[i], ymin[j]:ymax[j], :, :] = pmapspart[:]
@@ -373,6 +381,7 @@ def createContextFeatureOperators3D(g, pmaps, opernames, radii, radii_anis):
             contOp.inputs["PMaps"].setValue(pmaps)
             contOp.inputs["Radii"].setValue(radii_anis)
             contOp.inputs["LabelsCount"].setValue(nclasses)
+            contOp.inputs["BinsCount"].setValue(10)
             contOps.append(contOp)
     
     return contOps
@@ -386,7 +395,7 @@ if __name__=="__main__":
     #tempfilenew = "/home/akreshuk/data/context/50slices_down2_var_iter1.h5"
     
     outputfile = "/export/home/akreshuk/data/context/TEM_results/bock_testing_1024_2048_51_81.ilp"
-    outfilenew_pref = "/export/home/akreshuk/data/context/TEM_results/bock_testing_1024_2048_51_81_anis_"
+    outfilenew_pref = "/export/home/akreshuk/data/context/TEM_results/bock_testing_1024_2048_51_81_anis_ml_"
     #outfilenew_pref = "/tmp/temp"
     #tempfile_pref = "/home/akreshuk/data/context/50slices_down2_var_hist_gaus_3d1_iter"
     tempfile_pref = "/export/home/akreshuk/data/context/bock_1024_2048_51_81_all_3d_anis_feat_anis_var_iter"
@@ -400,17 +409,19 @@ if __name__=="__main__":
                   [15, 15, 3], [20, 20, 3], [30, 30, 3], [40, 40, 3]]
     
     niter = 1
-    for i in range(3, 4):
+    for i in range(2, 3):
         gc.collect()
         outfilenew = outfilenew_pref + opernames[0] + "_iter"+str(i+1)+".ilp"
         if i==0:
             #tempfile = "/home/akreshuk/data/context/50slices_down2_gaus_float_iter0.h5"
             #tempfile = "/home/akreshuk/data/context/50slices_down2_temp_iter1.h5"
-            tempfile = "/export/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_anis_iter0.h5"
+            #tempfile = "/export/home/akreshuk/data/context/bock_1024_2048_51_81_all_3dfeat_anis_iter0.h5"
+            tempfile = "/export/home/akreshuk/data/context/bock_1024_2048_51_81_all_3d_anis_feat_ml_iter0.h5"
         else:
-            tempfile = tempfile_pref + str(i) + ".h5"
-        tempfilenew = tempfile_pref + str(i+1) + ".h5"
-        rffile = tempfile_pref + str(i+1) + "_rf.h5"
-        #Train(tempfile, tempfilenew, rffile, opernames, radii, radii_anis, use3d=0)
-        runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames, radii, radii_anis, use3d=0)
+            #tempfile = tempfile_pref + str(i) + "_ml.h5"
+            tempfile = tempfile_pref + str(i) + "_ml.h5"
+        tempfilenew = tempfile_pref + str(i+1) + "_ml.h5"
+        rffile = tempfile_pref + str(i+1) + "_rf_100trees.h5"
+        Train(tempfile, tempfilenew, rffile, opernames, radii, radii_anis, use3d=0)
+        #runContext(outputfile, outfilenew, tempfile, tempfilenew, rffile, opernames, radii, radii_anis, use3d=0)
         gc.collect()
