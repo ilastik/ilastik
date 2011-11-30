@@ -779,21 +779,23 @@ class OpBaseVigraFilter(OpArrayPiper):
                         vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
                         try:                            
                             temp = self.vigraFilter(image, roi = vroi, **kwparams)
-                        except:
-                            print self.name, image.shape, vroi, kwparams
+                        except Exception, err:
+                            print str(err)
+                            print "EXCEPT 2.1", self.name, image.shape, vroi, kwparams
                     else:
                         try:
                             temp = self.vigraFilter(image, **kwparams)
                         except:
-                            print self.name, image.shape, vroi, kwparams
+                            print "EXCEPT 2.2", self.name, image.shape, vroi, kwparams
                         temp=temp[writeKey]
     
 
                     try:
                         vres[:] = temp[twriteKey]
                     except:
-                        print resultArea.shape,  tresKey, temp.shape, twriteKey
-                        print "step, t.shape", step, t.shape, timeAxis
+                        print "EXCEPT3", vres.shape, temp.shape, twriteKey
+                        print "EXCEPT3", resultArea.shape,  tresKey, twriteKey
+                        print "EXCEPT3", step, t.shape, timeAxis
                         assert 1==2
                 
 
@@ -837,8 +839,8 @@ def differenceOfGausssians(image,sigma0, sigma1,window_size, roi, out = None):
     return (vigra.filters.gaussianSmoothing(image,sigma0,window_size=window_size,roi = roi)-vigra.filters.gaussianSmoothing(image,sigma1,window_size=window_size,roi = roi))
 
 
-def firstHessianOfGaussianEigenvalues(image, sigmas, roi):
-    return vigra.filters.hessianOfGaussianEigenvalues(image, sigmas,roi = roi)[...,0]
+def firstHessianOfGaussianEigenvalues(image, **kwargs):
+    return vigra.filters.hessianOfGaussianEigenvalues(image, **kwargs)[...,0:1]
 
 def coherenceOrientationOfStructureTensor(image,sigma0, sigma1, out = None):
     """
@@ -1162,8 +1164,12 @@ class OpH5Reader(Operator):
         
         if len(d.shape) == 2:
             axistags=vigra.AxisTags(vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space))   
+        elif len(d.shape) == 5:
+            axistags=vigra.AxisTags(vigra.AxisInfo('t',vigra.AxisType.Time), vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space), vigra.AxisInfo('z', vigra.AxisType.Space), vigra.AxisInfo('c', vigra.AxisType.Channels))   
+            print "OpH5Reader 5-Axistags", axistags
         else:
             axistags= vigra.VigraArray.defaultAxistags(len(d.shape))
+            print "OpH5Reader DEFAULT AXISTAGS: ", axistags
         self.outputs["Image"]._axistags=axistags
         self.f=f
         self.d=self.f[hdf5Path]    
@@ -1206,7 +1212,7 @@ class OpH5Writer(Operator):
     name = "H5 File Writer"
     category = "Output"
     
-    inputSlots = [InputSlot("Filename", stype = "filestring"), InputSlot("hdf5Path", stype = "string"), InputSlot("Image")]
+    inputSlots = [InputSlot("Filename", stype = "filestring"), InputSlot("hdf5Path", stype = "string"), InputSlot("Image"), InputSlot("blockShape")]
     outputSlots = [OutputSlot("WriteImage")]
 
     def notifyConnectAll(self):        
@@ -1241,9 +1247,6 @@ class OpH5Writer(Operator):
         axistags = copy.copy(imSlot.axistags)
         
         image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
-                    
-
-        self.inputs["Image"][:].writeInto(image).wait()
         
         
         f = h5py.File(filename, 'w')
@@ -1251,7 +1254,46 @@ class OpH5Writer(Operator):
         pathElements = hdf5Path.split("/")
         for s in pathElements[:-1]:
             g = g.create_group(s)
-        g.create_dataset(pathElements[-1],data = image)
+        d = g.create_dataset(pathElements[-1],data = image)
+
+        """
+        now, request the input in blocks
+        and write the results out
+        """
+        bs = self.inputs["blockShape"].value
+        if type(bs) != tuple:
+          assert(type(bs) == int)
+          bs = (bs,)*len(image.shape)
+
+
+        nBlockShape = numpy.array(bs)
+        nshape = numpy.array(image.shape)
+        blocks = numpy.ceil(nshape*1.0 / nBlockShape).astype(numpy.int32)
+        blockIndices = numpy.nonzero(numpy.ones(blocks))
+
+        def writeResult(result,blockNr, roiSlice):
+          d[roiSlice] = result[:]
+          print "writing block %d at %r" % (blockNr, roiSlice)
+        
+        requests = []
+        
+        for bnr in range(len(blockIndices[0])):
+          indices = [blockIndices[0][bnr]*nBlockShape[0],]
+          for i in range(1,len(nshape)):
+            indices.append(blockIndices[i][bnr]*nBlockShape[i])
+          nIndices = numpy.array(indices)
+          start =  nIndices
+          stop = numpy.minimum(nshape,start+nBlockShape)
+
+          s = roi.roiToSlice(start,stop)
+          req = self.inputs["Image"][s].allocate()
+          
+          req.notify(writeResult,blockNr = bnr, roiSlice=s)
+          requests.append(req)
+       
+        for req in requests:
+          req.wait()
+        
         f.close()
         
         result[0] = True
@@ -1428,7 +1470,7 @@ class OpH5ReaderBigDataset(Operator):
                 index = i
                 maxError = error
         
-        result[:]=self.D[index][key]
+        result[:]=0 #self.D[index][key]
         self._lock.release()
     """
     def notifyDisconnect(self, slot):

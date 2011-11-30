@@ -33,6 +33,7 @@ import vigra
 import sys
 import copy
 import psutil
+import atexit
 
 if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".")[1]) < 3:
     print "Lazyflow: Please install a psutil python module version of at least >= 0.3.0"
@@ -1614,9 +1615,12 @@ class Operator(object):
   
     def connect(self, **kwargs):
         for k in kwargs:
-          self.inputs[k].connect(kwargs[k])
-
-
+          if k in self.inputs.keys():
+            self.inputs[k].connect(kwargs[k])
+          else:
+            print "ERROR, connect(): operator %s has no slot named %s" % (self.name, k)
+            print "                  available inputSlots are: ", self.inputs.keys()
+            assert(1==2)
 
     """
     This method is called opon connection of an inputslot.
@@ -2383,6 +2387,15 @@ class Worker(Thread):
 
     
 class Graph(object):
+
+    _runningGraphs = [] 
+
+    @atexit.register
+    def stopGraphs():
+       for g in Graph._runningGraphs:
+          g.stopGraph()
+
+
     def __init__(self, numThreads = None, softMaxMem =  None):
         self.operators = []
         self.tasks = PriorityQueue() #Lifo <-> depth first, fifo <-> breath first
@@ -2398,7 +2411,9 @@ class Graph(object):
         
         if numThreads is None:
             self.numThreads = detectCPUs()
-            if self.numThreads > 2:
+            if self.numThreads <= 2:
+              self.numThreads += 1
+            if self.numThreads > 3:
                 self.numThreads -= 1
         else:
             self.numThreads = numThreads
@@ -2420,7 +2435,7 @@ class Graph(object):
         self._allocatedCaches = deque()
         self._usedCacheMemory = 0
         self._memAllocLock = threading.Lock()
-
+        Graph._runningGraphs.append(self)
         self._startWorkers()
         
     def _startWorkers(self):
@@ -2535,7 +2550,7 @@ class Graph(object):
 
     def putFinalize(self, reqObject):
         self._suspendedNotifyFinish.append(reqObject)
-
+    
     def stopGraph(self):
         print "Graph: stopping..."        
         self.stopped = True
