@@ -289,7 +289,7 @@ class OpMultiArrayStacker(Operator):
                     cnt += 1
                 
                 if req is not None:
-                   requests.append(req)
+                    requests.append(req)
         
         for r in requests:
             r.wait()
