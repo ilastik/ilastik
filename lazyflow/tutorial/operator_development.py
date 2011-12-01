@@ -244,7 +244,7 @@ class OpArrayShifter1(Operator):
         
         #new name for the shape of the InputSlot
         shape =  self.inputs["Input"].shape     
-        
+       
         #get N-D coordinate out of slice
         rstart, rstop = sliceToRoi(key, shape)    
       
