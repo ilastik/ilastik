@@ -6,3 +6,5 @@ build
 dist
 lazyflow.egg-info
 *.*~
+*.jpg
+
