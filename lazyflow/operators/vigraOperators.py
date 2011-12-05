@@ -1,5 +1,5 @@
 import numpy, vigra, h5py
-
+import traceback
 from lazyflow.graph import *
 import gc
 from lazyflow import roi
@@ -779,14 +779,17 @@ class OpBaseVigraFilter(OpArrayPiper):
                         vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
                         try:                            
                             temp = self.vigraFilter(image, roi = vroi, **kwparams)
-                        except Exception, err:
-                            print str(err)
+                        except Exception, e:
                             print "EXCEPT 2.1", self.name, image.shape, vroi, kwparams
+                            traceback.print_exc(e)
+                            sys.exit(1)
                     else:
                         try:
                             temp = self.vigraFilter(image, **kwparams)
-                        except:
-                            print "EXCEPT 2.2", self.name, image.shape, vroi, kwparams
+                        except Exception, e:
+                            print "EXCEPT 2.2", self.name, image.shape, kwparams
+                            traceback.print_exc(e)
+                            sys.exit(1)
                         temp=temp[writeKey]
     
 
@@ -842,7 +845,7 @@ def differenceOfGausssians(image,sigma0, sigma1,window_size, roi, out = None):
 def firstHessianOfGaussianEigenvalues(image, **kwargs):
     return vigra.filters.hessianOfGaussianEigenvalues(image, **kwargs)[...,0:1]
 
-def coherenceOrientationOfStructureTensor(image,sigma0, sigma1, out = None):
+def coherenceOrientationOfStructureTensor(image,sigma0, sigma1, window_size, out = None):
     """
     coherence Orientation of Structure tensor function:
     input:  M*N*1ch VigraArray
@@ -858,7 +861,7 @@ def coherenceOrientationOfStructureTensor(image,sigma0, sigma1, out = None):
     #assert image.spatialDimensions==2, "Only implemented for 2 dimensional images"
     assert len(image.shape)==2 or (len(image.shape)==3 and image.shape[2] == 1), "Only implemented for 2 dimensional images"
     
-    st=vigra.filters.structureTensor(image, sigma0, sigma1)
+    st=vigra.filters.structureTensor(image, sigma0, sigma1, window_size = window_size)
     i11=st[:,:,0]
     i12=st[:,:,1]
     i22=st[:,:,2]
@@ -894,6 +897,7 @@ class OpCoherenceOrientation(OpBaseVigraFilter):
     vigraFilter = staticmethod(coherenceOrientationOfStructureTensor)
     outputDtype = numpy.float32 
     supportsWindow = True
+    supportsRoi = False
     inputSlots = [InputSlot("Input"), InputSlot("sigma0", stype = "float"), InputSlot("sigma1", stype = "float")]
     
     def resultingChannels(self):

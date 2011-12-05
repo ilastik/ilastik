@@ -34,6 +34,8 @@ import sys
 import copy
 import psutil
 import atexit
+import traceback
+
 
 if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".")[1]) < 3:
     print "Lazyflow: Please install a psutil python module version of at least >= 0.3.0"
@@ -310,7 +312,13 @@ class GetItemRequestObject(object):
         if self.destination is None:
             self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
         gr.currentRequest = self
-        self.func(self.arg1,self.key, self.destination)
+        try:
+          self.func(self.arg1,self.key, self.destination)
+        except Exception,e:
+          print
+          print "ERROR: Exception in Operator %s (%r)" % (self.slot.operator.name, self.slot.operator)
+          traceback.print_exc(e)
+          sys.exit(1)
         self._finalize()        
         gr.currentRequest = temp
 
@@ -424,7 +432,6 @@ class GetItemRequestObject(object):
                 gr.switch()
                 del gr
         del cgr
-        self._finalize()
 
 
     def _burstLastRequest(self,gr):
@@ -763,7 +770,7 @@ class InputSlot(object):
             "operator" : self.operator,
             "partner" : self.partner,
             "value" : self._value,
-            "stype" : self._stype,
+            "_stype" : self._stype,
             "dtype" : self.dtype,
             "axistags" : self.axistags,
             "shape" : self.shape
@@ -783,7 +790,7 @@ class InputSlot(object):
             "operator" : "operator",
             "partner" : "partner",
             "value" : "_value",
-            "stype" : "stype",
+            "_stype" : "_stype",
             "dtype" : "dtype",
             "axistags" : "axistags",
             "shape" : "shape"
@@ -965,7 +972,7 @@ class OutputSlot(object):
             "axistags" : self.axistags,
             "dtype" : self.dtype,
             "partners" : self.partners,
-            "stype" : self._stype
+            "_stype" : self._stype
             
         },patchBoard)
     
@@ -984,7 +991,7 @@ class OutputSlot(object):
             "axistags" : "axistags",
             "dtype" : "dtype",
             "partners" : "partners",
-            "stype" : "stype"
+            "_stype" : "_stype"
             
         },patchBoard)
             
@@ -1286,7 +1293,7 @@ class MultiInputSlot(object):
             "level" : self.level,
             "operator" : self.operator,
             "partner" : self.partner,
-            "stype" : self._stype,
+            "_stype" : self._stype,
             "inputSlots": self.inputSlots
             
         },patchBoard)
@@ -1303,7 +1310,7 @@ class MultiInputSlot(object):
             "level" : "level",
             "operator" : "operator",
             "partner" : "partner",
-            "stype" : "stype",
+            "_stype" : "_stype",
             "inputSlots": "inputSlots"
             
         },patchBoard)
@@ -1457,7 +1464,7 @@ class MultiOutputSlot(object):
             "level" : self.level,
             "operator" : self.operator,
             "partners" : self.partners,
-            "stype" : self._stype,
+            "_stype" : self._stype,
             "outputSlots" : self.outputSlots
             
         },patchBoard)
@@ -1474,7 +1481,7 @@ class MultiOutputSlot(object):
             "level" : "level",
             "operator" : "operator",
             "partners" : "partners",
-            "stype" : "stype",
+            "_stype" : "_stype",
             "outputSlots" : "outputSlots"
             
         },patchBoard)
@@ -1487,6 +1494,14 @@ class OutputDict(dict):
     def __setitem__(self, key, value):
         assert isinstance(value, (OutputSlot, MultiOutputSlot)), "ERROR: all elements of .outputs must be of type OutputSlot or MultiOutputSlot, you provided %r !" % (value,)
         return dict.__setitem__(self, key, value)
+
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        temp = OutputDict()
+        patchBoard[h5g.attrs["id"]] = temp
+        for i,g in h5g.items():
+            temp[str(i)] = g.reconstructObject(patchBoard)
+        return temp
 
 class Operator(object):
     """
@@ -2383,7 +2398,7 @@ class Worker(Thread):
                     if r.canceled or r._finished:
                         self.openUserRequests.remove(r)
                         self._hasSlept = True
-
+        self.graph.workers.remove(self)
 
     
 class Graph(object):
@@ -2552,59 +2567,62 @@ class Graph(object):
         self._suspendedNotifyFinish.append(reqObject)
     
     def stopGraph(self):
-        print "Graph: stopping..."        
-        self.stopped = True
-        self.suspendGraph()
+        if not self.stopped:
+            print "Graph: stopping..."        
+            self.stopped = True
+            self.suspendGraph()
 
     def suspendGraph(self):
-        print "Graph: suspending..."        
-        tasks = []
-        while not self.newTasks.empty():
-            try:
-                t = self.newTasks.get(block = False)
-                tasks.append(t)
-            except:
-                break
-        while not self.tasks.empty():
-            try:
-                t = self.tasks.get(block = False)
-                tasks.append(t)
-            except:
-                break
-        runningRequests = []
-        for t in tasks:
-            prio, req = t
-            if req.parentRequest is not None:
-                self.putTask(req)
-                runningRequests.append(req)
-            else:
-                self._suspendedRequests.append(req)
+        if not self.suspended:
+          tasks = []
+          while not self.newTasks.empty():
+              try:
+                  t = self.newTasks.get(block = False)
+                  tasks.append(t)
+              except:
+                  break
+          while not self.tasks.empty():
+              try:
+                  t = self.tasks.get(block = False)
+                  tasks.append(t)
+              except:
+                  break
+          runningRequests = []
+          for t in tasks:
+              prio, req = t
+              if req.parentRequest is not None:
+                  self.putTask(req)
+                  runningRequests.append(req)
+              else:
+                  self._suspendedRequests.append(req)
 
-        waitFor = sorted(runningRequests, key=lambda x: -x._requestLevel)
-        if len(waitFor) == 0:
-            print "   no requests that need to be waited for"
-        
-        for i,req in enumerate(waitFor):
-            s = "    Waiting for request %6d/%6d" % (i+1,len(waitFor))
-            sys.stdout.write(s)
-            sys.stdout.flush()
-            req.wait()
-            sys.stdout.write("\b"*len(s))
-        self.suspended = True
+          waitFor = sorted(runningRequests, key=lambda x: -x._requestLevel)
+          if len(waitFor) == 0:
+              print "   no requests that need to be waited for"
+          
+          for i,req in enumerate(waitFor):
+              s = "    Waiting for request %6d/%6d" % (i+1,len(waitFor))
+              sys.stdout.write(s)
+              sys.stdout.flush()
+              req.wait()
+              sys.stdout.write("\b"*len(s))
+          self.suspended = True
 
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+          sys.stdout.write("\n")
+          sys.stdout.flush()
 
-        print "    Waiting for workers..."          
-        while len(self.workers) != len(self.freeWorkers):
-            time.sleep(0.1)
-            #print len(self.workers),len(self.freeWorkers)
-        time.sleep(0.1)
-        while len(self.workers) != len(self.freeWorkers):
-            time.sleep(0.1)
-        print "    ok"
-        print "finished."
-        #self.finalize()
+          print "   Waiting for workers..."          
+          for w in self.workers:
+            w.signalWorkAvailable()
+          while len(self.workers) > len(self.freeWorkers):
+              time.sleep(0.1)
+              print len(self.workers),len(self.freeWorkers)
+          time.sleep(0.1)
+          while len(self.workers) > len(self.freeWorkers):
+              time.sleep(0.1)
+          print "   ok"
+          print "finished."
+          self._runningGraphs.remove(self)
             
     def resumeGraph(self):        
         if self.stopped:
@@ -2613,23 +2631,24 @@ class Graph(object):
             self._suspendedNotifyFinish = deque()
             for w in self.workers:
                 w.openUserRequests = set()            
-        print "Graph: resuming %d requests" % len(self._suspendedRequests)
-        self.suspended = False
-        
-        while len(self._suspendedNotifyFinish) > 0:
-            try:
-                r = self._suspendedNotifyFinish.pop()
-            except:
-                break
-            r._finalize()
+            print "Graph: resuming %d requests" % len(self._suspendedRequests)
+            self.suspended = False
             
-        while len(self._suspendedRequests) > 0:
-            try:
-                r = self._suspendedRequests.pop()
-            except:
-                break
-            self.putTask(r)
-        print "finished."
+            while len(self._suspendedNotifyFinish) > 0:
+                try:
+                    r = self._suspendedNotifyFinish.pop()
+                except:
+                    break
+                r._finalize()
+                
+            while len(self._suspendedRequests) > 0:
+                try:
+                    r = self._suspendedRequests.pop()
+                except:
+                    break
+                self.putTask(r)
+            self._runningGraphs.append(self)
+            print "finished."
 
         
     def finalize(self):
@@ -2637,7 +2656,8 @@ class Graph(object):
         for w in self.workers:
             w.signalWorkAvailable()
             w.join()
-    
+        self.stopGraph()
+
     def registerOperator(self, op):
         self.operators.append(op)
     
@@ -2647,161 +2667,29 @@ class Graph(object):
         op.disconnect()
  
     def dumpToH5G(self, h5g, patchBoard):
-        h5op = h5g.create_group("operators")
-        h5op.dumpObject(self.operators, patchBoard)
-
+        self.stopGraph()
         h5g.dumpSubObjects({
                     "operators" : self.operators,
                     "numThreads": self.numThreads,
-                    "softMaxMem": self.softMaxMem,
-                    "registeredCaches": self.registeredCaches
+                    "softMaxMem": self.softMaxMem
                 },patchBoard)    
+        self.resumeGraph()
 
     
     @classmethod
     def reconstructFromH5G(cls, h5g, patchBoard):
-        g = Graph(numThreads = h5g.attrs["numThreads"], softMaxMem = h5g.attrs["softMaxMem"])
-        patchBoard[h5g.attrs["id"]] = g 
+        numThreads = h5g["numThreads"].reconstructObject()
+        softMaxMem = h5g["softMaxMem"].reconstructObject()
 
-        patchBoard[h5g.attrs["id"]] = op
-        h5g.reconstructSubObjects(op, {
+        g = Graph(numThreads = numThreads, softMaxMem = softMaxMem)
+        patchBoard[h5g.attrs["id"]] = g 
+        g.stopGraph()
+        
+        h5g.reconstructSubObjects(g, {
                     "operators": "operators",
                     "numThreads": "numThreads",
-                    "softMaxMem" : "softMaxMem",
-                    "registeredCaches": "registeredCaches"
+                    "softMaxMem" : "softMaxMem"
                 },patchBoard)    
- 
+        g.resumeGraph()
         return g
  
-    def dumpToH5G_OLD(self,h5g):
-        endPoints = []
-        
-        # loop over all operators and
-        # and find the endpoints
-        for o in self.operators:
-            olength = 0
-            ilength = 0
-            for os in o.outputs.values():
-                olength += len(os.partners)
-            for k, ins in o.inputs.items():
-                if ins.partner is not None or ins.value is not None:
-                    ilength += 1
-            # if an operator has no outputs but inputs
-            # it belongs to the graph and is an endpoint
-            if olength == 0 and ilength > 0:
-                ooooo = o._getOriginalOperator()
-                if ooooo not in endPoints:
-                    endPoints.append(ooooo)                
-                
-        queue = endPoints
-        
-        doneQueue = []
-        
-        # loop over all operators in the queue
-        # (i.e. the endpoints in the beginning)
-        # and append all inputs operators on which
-        # they depend onto the queue
-        # -> we construct the dependency graph in
-        #    a breadth first manner
-        while len(queue) > 0:
-            op = queue.pop(0)
-            doneQueue.append(op)
-            for i in op.inputs.values():
-                if i.partner is not None:
-                    p = i.partner
-                    # we use the metaParent to allow for operatorGroups and operatorWrappers
-                    assert p._metaParent is not None, "%r, %r" % (p.name, p.operator)
-                    partnerOp = p._metaParent._getOriginalOperator()
-                    if partnerOp not in queue and partnerOp not in doneQueue:
-                        queue.append(partnerOp)
-        
-        # we reverse the dependencies
-        # since the graph has to be reconstructed beginning from the inputs
-        doneQueue.reverse()
-
-        # create subgroups for the operators, inslot values and connections themself                        
-        h5ops = h5g.create_group("operators")
-        h5values = h5g.create_group("inslot_values")
-        h5gconnections = h5g.create_group("connections")
-        
-        #save the operator class names and ids
-        for i,op in enumerate(doneQueue):
-            opG = h5ops.create_group(str(id(op)))
-            opG.attrs["id"] = str(id(op))
-            opG.attrs["class"] = instanceClassToString(op)
-                    
-        connections = []
-
-        # save the connections between the operators
-        # and potential .value, so that everything can be restored 
-        for i,op in enumerate(doneQueue):
-            for key,inslot in op.inputs.items():
-                #save a connection
-                val = inslot.value
-                if inslot.partner is not None:
-                    partnerOp = inslot.partner.operator._getOriginalOperator()
-                    partnerSlotName = inslot.partner.name
-                    connections.append(["connect", [str(id(op)),key,str(id(partnerOp)), partnerSlotName]])                    
-                elif val is not None:
-                    #save the value in to the dedicated value group
-                    connections.append(["setValue", [str(id(op)), key, str(id(val))]])
-                    valG = h5values.create_group(str(id(val)))
-                    valG.dumpObject(val)
-        
-        # save the connectino nested lists recursively
-        h5gconnections.dumpObject(connections)
-        
-        
-    @classmethod
-    def reconstructFromH5G_OLD(cls, h5g, patchBoard):
-        graph = Graph()
-        
-        reconstructedOperators = {}        
-        reconstructedValues = {}
-        
-        h5ops = h5g["operators"]
-        h5values = h5g["inslot_values"]
-        connections = h5g["connections"].reconstructObject()
-        
-        def getReconstructedOperator(opId):
-            """
-            helper method to map an operatorId string to an reconstructed object
-            """
-            op = reconstructedOperators.get(opId,None)
-            if op is None:
-                # if the operator is accessed for the first tim
-                # construct the object once
-                opClassName = h5ops[opId].attrs["class"]
-                opClass = stringToClass(opClassName)
-                reconstructedOperators[opId] = op = opClass(graph)
-            return op
-
-        def getReconstructedValue(valueId):
-            """
-            helper method to map an valueId string to an reconstructed object
-            """
-            value = reconstructedValues.get(valueId,None)
-            if value is None:
-                # if the valueId is accessed for the first tim
-                # construct the object once
-                reconstructedValues[valueId] = value = h5values[valueId].reconstructObject()
-            return value
-
-                
-        for c in connections:
-            operation, arguments = c
-            if operation == "connect":
-                opInId, inSlotName, opOutId,outSlotName = arguments
-                opInObject = getReconstructedOperator(opInId)
-                opOutObject = getReconstructedOperator(opOutId)
-                opInObject.inputs[inSlotName].connect(opOutObject.outputs[outSlotName])
-                
-            elif operation == "setValue":
-                opId, inSlotName, valueId = arguments
-                op = getReconstructedOperator(opId)
-                value = getReconstructedValue(valueId)
-                op.inputs[inSlotName].setValue(value)
-                
-        return graph
-                
-     

@@ -536,7 +536,7 @@ class OpArrayCache(OpArrayPiper):
                     "_blockState" : self._blockState,
                     "_dirtyState" : self._dirtyState,
                     "_cache" : self._cache,
-                    "_allocateCache" : self._allocateCache,
+                    "_lazyAlloc" : self._lazyAlloc,
                     "_cacheHits" : self._cacheHits,
                     "_fixed" : self._fixed
                 },patchBoard)    
@@ -559,7 +559,7 @@ class OpArrayCache(OpArrayPiper):
                     "_dirtyState" : "_dirtyState",
                     "_dirtyShape" : "_dirtyShape",
                     "_cache" : "_cache",
-                    "_allocateCache" : "_allocateCache",
+                    "_lazyAlloc" : "_lazyAlloc",
                     "_cacheHits" : "_cacheHits",
                     "_fixed" : "_fixed"
                 },patchBoard)    

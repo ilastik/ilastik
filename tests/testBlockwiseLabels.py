@@ -137,8 +137,8 @@ def testBlocks(shape, blockshape):
     opLabelBlocked.inputs["blockShape"].setValue(blockshape)
     opLabelBlocked.inputs["eraser"].setValue(100)
     
-    key = (slice(5, 15, None), slice(0, 10, None), 0)
-    value = numpy.zeros((10, 10), dtype=numpy.uint8)
+    key = (slice(5, 15, None), slice(0, 10, None), 3, 3)
+    value = numpy.zeros((10, 10, 1, 1), dtype=numpy.uint8)
     value[:] = 33
     
     opLabelBlocked.setInSlot(opLabelBlocked.inputs["Input"], key, value)
@@ -158,7 +158,7 @@ def testBlocks(shape, blockshape):
         key = roiToSlice(start, stop)
         print key
         valueshape = stop-start
-        value = numpy.zeros(tuple(valueshape), dtype=numpy.uint8)
+        value = numpy.zeros(tuple(valueshape)+(1,), dtype=numpy.uint8)
         value[:] = 33
         newkey = [x for x in key]
         newkey.append(0)

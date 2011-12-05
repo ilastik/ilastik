@@ -366,19 +366,21 @@ class OpSubRegion(Operator):
         readStart, readStop = sliceToRoi(key, temp)
         
         newKey = ()
+        resultKey = ()
         i = 0
         i2 = 0
         for e in temp:
             if e > 0:
                 newKey += (slice(start[i2] + readStart[i], start[i2] + readStop[i],None),)
+                resultKey += (slice(0,temp[i2],None),)
                 i +=1
             else:
                 newKey += (slice(start[i2], start[i2], None),)
+                resultKey += (0,)
             i2 += 1
-            
+      
         res = self.inputs["Input"][newKey].allocate().wait()
-        
-        resultArea[:] = res[:]
+        resultArea[:] = res[resultKey]
         
  
  

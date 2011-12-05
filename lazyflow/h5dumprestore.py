@@ -29,6 +29,8 @@ two methods:
 import h5py
 import string
 import types
+import sys
+import traceback
 import copy
 import numpy
 try:
@@ -158,8 +160,12 @@ def dumpObjectToH5G(self, thing, patchBoard = {}):
             self.attrs["value"] = thing
         else:
             #try pickling the thing
-            self.attrs["picklevalue"] = pickle.dumps(thing)
-
+            try:
+              self.attrs["picklevalue"] = pickle.dumps(thing)
+            except Exception, e:
+              print "ERROR: cannot pickle %r " % ( thing,)
+              traceback.print_exception(e)
+              sys.exit(1)
 
 
 def reconstructObjectFromH5G(self, patchBoard = None):

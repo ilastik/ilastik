@@ -37,7 +37,7 @@ if __name__=="__main__":
     opa.inputs["sigma"].connect(sigmaProvider.outputs["Output"])
     
     #Gradient Magnitude
-    opgg=OpGaussinaGradientMagnitude(g)
+    opgg=OpGaussianGradientMagnitude(g)
     opgg.inputs["Input"].connect(vimageReader.outputs["Image"])
     opgg.inputs["sigma"].connect(sigmaProvider.outputs["Output"])
     
@@ -91,7 +91,7 @@ if __name__=="__main__":
     opa2.inputs["sigma"].connect(sigmaProvider2.outputs["Output"])
 
     #Gradient Magnitude2
-    opgg2=OpGaussinaGradientMagnitude(g)
+    opgg2=OpGaussianGradientMagnitude(g)
     opgg2.inputs["Input"].connect(vimageReader.outputs["Image"])
     opgg2.inputs["sigma"].connect(sigmaProvider2.outputs["Output"])
     
