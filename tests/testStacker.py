@@ -130,5 +130,5 @@ def testPartialAllocate():
     assert_array_equal(newdata, substack)
     
 if __name__=="__main__":
-    #testFullAllocate()
+    testFullAllocate()
     testPartialAllocate()

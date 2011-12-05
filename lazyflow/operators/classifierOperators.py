@@ -305,7 +305,7 @@ class OpSegmentation(Operator):
             
 
 
-    def notifyDirty(selfut,slot,key):
+    def notifyDirty(self,slot,key):
         self.outputs["Output"].setDirty(key)
 
     @property
@@ -345,7 +345,7 @@ class OpAreas(Operator):
             
 
 
-    def notifyDirty(selfut,slot,key):
+    def notifyDirty(self,slot,key):
         self.outputs["Output"].setDirty(key)
 
     @property
