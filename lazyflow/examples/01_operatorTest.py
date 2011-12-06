@@ -107,11 +107,11 @@ def operatorTest(operator_name, sync = False, cache = False):
         imgP[tempKey] = result
         global imageCounter
         
-        vigra.impex.writeImage(imgP,"/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/tt/result_%09d.jpg" % imageCounter ) 
+        vigra.impex.writeImage(imgP,"./tt/result_%09d.jpg" % imageCounter ) 
         imageCounter +=1   
     
     
-    inputImage = vigra.impex.readImage("/net/gorgonzola/storage/cripp/lazyflow/tests/ostrich.jpg")
+    inputImage = vigra.impex.readImage("./tests/ostrich.jpg")
     op.inputs["Input"].setValue(inputImage)
     
     if cache:
@@ -151,8 +151,8 @@ def operatorTest(operator_name, sync = False, cache = False):
         print "Op doesn't work correctly"
         print "_______________" 
   
-    vigra.impex.writeImage(img1,"/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/tt/result_fullImage.jpg")     
-    vigra.impex.writeImage(img2,"/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/tt/result_fragmentedImage.jpg" )     
+    vigra.impex.writeImage(img1,"./tt/result_fullImage.jpg")     
+    vigra.impex.writeImage(img2,"./tt/result_fragmentedImage.jpg" )     
 
     
     g.finalize()
