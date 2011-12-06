@@ -1583,7 +1583,39 @@ class OpH5ReaderSmoothedDataset(Operator):
         
         return indexFile
     
-                
+class OpStackLoader(Operator):
+    name = "Image Stack Reader"
+    category = "Input"
+    
+    inputSlots = [InputSlot("globstring", stype = "string")]
+    outputSlots = [OutputSlot("stack")]
+    
+    def notifyConnectAll(self):
+        globString = self.inputs["globstring"].value
+        self.fileNameList = (glob.glob(globString))
+        self.fileNameList.sort()
+
+        if len(self.fileNameList) != 0:
+            self.info = vigra.impex.ImageInfo(self.fileNameList[0])
+            oslot = self.outputs["stack"]
+            
+            #build 4D shape out of 2DShape and Filelist
+            oslot._shape = (self.info.getShape()[0],self.info.getShape()[1],self.info.getShape()[2],len(self.fileNameList))
+            oslot._dtype = self.info.getDtype()
+            oslot._axistags = self.info.getAxisTags()
+            
+        else:
+            oslot = self.outputs["stack"]
+            oslot._shape = None
+            oslot._dtype = None
+            oslot._axistags = None
+            
+    def getOutSlot(self, slot, key, result):
+        
+        i=0
+        for fileName in self.fileNameList[key[3]]:
+            result[:,:,:,i] = vigra.impex.readImage(fileName)[key[0],key[1],key[2]]
+            i = i+1        
                 
            
         
