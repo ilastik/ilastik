@@ -85,6 +85,10 @@ class OpMultiArrayPiper(Operator):
     def notifySubConnect(self, slots, indexes):
         self.notifyConnectAll()
 
+    def notifySubSlotInsert(self,slots,indexes):
+        self.outputs["MultiOutput"]._insertNew(indexes[0])
+
+
     def notifySubSlotRemove(self, slots, indexes):
         self.outputs["MultiOutput"].pop(indexes[0])
     

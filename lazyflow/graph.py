@@ -1044,19 +1044,16 @@ class MultiInputSlot(object):
         while size < len(self):
             self._removeInputSlot(self[-1])
 
-        if oldsize < size:
-            for index in range(oldsize-1,size):
-                islot = self.inputSlots[index]
-        
                     
     def _appendNew(self):
         if self.level <= 1:
             islot = InputSlot(self.name ,self, stype = self._stype)
         else:
             islot = MultiInputSlot(self.name,self, stype = self._stype, level = self.level - 1)
-        index = len(self) - 1
         self.inputSlots.append(islot)
-    
+        islot.name = self.name
+        index = len(self)-1
+        self._notifySubSlotInsert((islot,),tuple())
         if self.partner is not None:
             if self.partner.level > 0:
                 if len(self.partner) >= len(self):
@@ -1068,19 +1065,20 @@ class MultiInputSlot(object):
 
         return islot 
 
-    def _insertNew(self, index):
+    def _insertNew(self, index, notify = True):
         if self.level == 1:
             islot = InputSlot(self.name,self, self._stype)
         else:
             islot = MultiInputSlot(self.name,self, stype = self._stype, level = self.level - 1)
         self.inputSlots.insert(index,islot)
-        for i, isl in enumerate(self.inputSlots[index+1:]):
-            isl.name = self.name
+        islot.name = self.name
+        if notify:
+          self._notifySubSlotInsert((islot,),tuple())
         if self.partner is not None:
             if len(self.partner) > index:
                 islot.connect(self.partner[index])
         elif self._value is not None:
-            islot.setValue(self._value)                
+            islot.setValue(self._value)
         return islot
     
     
@@ -1099,18 +1097,6 @@ class MultiInputSlot(object):
             self.operator._checkNotifyConnectAll()
         
     
-    def cloneConnectionsFrom(self, otherInputSlot):
-        self.resize(len(otherInputSlot))
-        for i, slot in enumerate(otherInputSlot):
-            if slot.level == 0:
-                if slot.partner is not None:
-                    self[i].connect(slot.partner)
-                elif slot._value is not None:
-                    self[i].setValue(slot._value)
-                    
-            else:
-                self[i].cloneConnectionsFrom(slot)
-
     def connected(self):
         answer = True
         if self._value is None and self.partner is None:
@@ -1201,6 +1187,10 @@ class MultiInputSlot(object):
         index = self.inputSlots.index(slots[0])
         self.operator._notifySubConnect( (self,) + slots, (index,) +indexes)
 
+    def _notifySubSlotInsert(self,slots,indexes):
+        index = self.inputSlots.index(slots[0])
+        self.operator._notifySubSlotInsert( (self,) + slots, (index,) + indexes)
+
     def _notifyDisconnect(self, slot):
         index = self.inputSlots.index(slot)
         self.operator._notifySubDisconnect((self, slot), (index,))
@@ -1248,15 +1238,9 @@ class MultiInputSlot(object):
         if notify:
             self._notifySubSlotRemove((),(index,))
         self.inputSlots.remove(inputSlot)
-        for i, slot in enumerate(self[index:]):
-            slot.name = self.name+"3%d" % (index + i)
 
         
 
-    def _partialSetItem(self, slot, key, value):
-        index = self.inputSlots.index(slot)
-        self.operator.multiSlotSetItem(self,slot,index, key,value)   
-    
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
@@ -1362,9 +1346,14 @@ class MultiOutputSlot(object):
             p.resize(len(self))
             outputSlot._connect(p.inputSlots[index])
     
+    def _insertNew(self,index):
+        oslot = OutputSlot(self.name,self,stype=self._stype)
+        self.insert(index,oslot)
+
+
     def insert(self, index, outputSlot):
         outputSlot.operator = self
-        self.outputSlots.append(outputSlot)
+        self.outputSlots.insert(index,outputSlot)
         for p in self.partners:
             pslot = p._insertNew(index)
             outputSlot._connect(pslot)
@@ -1626,7 +1615,8 @@ class Operator(object):
     def _notifySubSlotRemove(self, slots, indexes):
         self.notifySubSlotRemove(slots, indexes)
         
-  
+    def _notifySubSlotInsert(self,slots,indexes):
+        self.notifySubSlotInsert(slots,indexes)
   
     def connect(self, **kwargs):
         for k in kwargs:
@@ -1699,7 +1689,9 @@ class Operator(object):
     def notifySubSlotRemove(self, slots, indexes):
         pass
          
-         
+    def notifySubSlotInsert(self,slots,indexes):
+      pass
+
     """
     This method of the operator is called when a connected operator
     or an outside user of the graph wants to retrieve the calculation results
@@ -1808,6 +1800,8 @@ class Operator(object):
         
         return op
         
+
+
 class OperatorWrapper(Operator):
     name = ""
     
@@ -1869,7 +1863,6 @@ class OperatorWrapper(Operator):
                 while isinstance(op.operator, (Operator, MultiOutputSlot)):
                     op = op.operator
                 op.outputs[oslot.name] = oo
-    
             #connect input slots
             for islot in self.origInputs.values():
                 ii = self.inputs[islot.name]
@@ -1906,6 +1899,7 @@ class OperatorWrapper(Operator):
             if islot.partner is not None:
                 if islot.partner.level > self.origInputs[iname].level:
                     needWrapping = True
+                    return
                 
         if needWrapping is False:
             if lazyflow.verboseWrapping:
@@ -1950,43 +1944,30 @@ class OperatorWrapper(Operator):
         return opcopy
     
     def _removeInnerOperator(self, op):
+        op.disconnect()
         index = self.innerOperators.index(op)
         self.innerOperators.remove(op)
         for name, oslot in self.outputs.items():
             oslot.pop(index)
-        op.disconnect()
 
     def _connectInnerOutputsForIndex(self, index):
-        for k,mslot in self.outputs.items():
-            #assert isinstance(mslot,MultiOutputSlot)
-            mslot.resize(len(self.innerOperators))
-
         innerOp = self.innerOperators[index]
         for key,mslot in self.outputs.items():            
+            print len(mslot), index
+            print mslot[index]
+            print innerOp.outputs[key]
             mslot[index] = innerOp.outputs[key]
 
             
     def _connectInnerOutputs(self):
-        for k,mslot in self.outputs.items():
-            #assert isinstance(mslot,MultiOutputSlot)
-            mslot.resize(len(self.innerOperators))
+        #for k,mslot in self.outputs.items():
+        #    #assert isinstance(mslot,MultiOutputSlot)
+        #    mslot.resize(len(self.innerOperators))
 
         for key,mslot in self.outputs.items():
             for index, innerOp in enumerate(self.innerOperators):
-                mslot[index] = innerOp.outputs[key]
-
-#    def _recuresSetOutputs(self, outer, inner):
-#        if not isinstance(inner, MultiOutputSlot):
-#            assert not isinstance(outer, MultiOutputSlot)
-#            outer._dtype = inner._dtype
-#            outer._shape = inner._shape
-#            outer._axistags = inner._axistags
-#        else:
-#            outer.resize(len(inner))
-#            for i, innerSlot in enumerate(inner):
-#                self._recuresSetOutputs(outer[i], inner[i])
-                
-
+                if innerOp is not None and index < len(mslot):
+                  mslot[index] = innerOp.outputs[key]
 
     def _ensureInputSize(self, numMax = 0):
         
@@ -1996,6 +1977,9 @@ class OperatorWrapper(Operator):
             assert isinstance(islot, MultiInputSlot)
             maxLen = max(islot._requiredLength(), maxLen)
                 
+        for name, islot in self.inputs.items():
+            islot.resize(maxLen)
+
         while maxLen > len(self.innerOperators):
             newop = self._createInnerOperator()
             self.innerOperators.append(newop)
@@ -2004,6 +1988,10 @@ class OperatorWrapper(Operator):
         while maxLen < len(self.innerOperators):
             op = self.innerOperators[-1]
             self._removeInnerOperator(op)
+        
+        #for name, oslot in self.outputs.items():
+        #    oslot.resize(maxLen)
+
 
         for k,mslot in self.inputs.items():
             mslot.resize(maxLen)
@@ -2014,7 +2002,7 @@ class OperatorWrapper(Operator):
         return maxLen
 
     def _notifyConnect(self, inputSlot):
-        
+
         maxLen = self._ensureInputSize(len(inputSlot))
         for i,islot in enumerate(inputSlot):
             if islot.partner is not None:
@@ -2032,62 +2020,46 @@ class OperatorWrapper(Operator):
 
     
     def _notifyConnectAll(self):
-        maxLen = self._ensureInputSize()
-        for o in self.outputs.values():
-            o.resize(maxLen)
-            
-        while len(self.innerOperators) > maxLen:
-            self.innerOperators.pop()
-            
-    def _notifySubConnect(self, slots, indexes):
-        numMax = self._ensureInputSize(len(slots[0]))
+        pass
+    
+    def _notifySubSlotInsert(self,slots,indexes):
+        if len(indexes) != 1:
+          return
+                                                            
+        op = self._createInnerOperator()
+        self.innerOperators.insert(indexes[0],op)
+
+        for k,oslot in self.outputs.items():
+          oslot._insertNew(indexes[0])
+
+
+        for k,islot in self.inputs.items():
+          if islot != slots[0]:
+            islot._insertNew(indexes[0],notify=False)
+
+
+    def notifySubSlotRemove(self, slots, indexes):
+        if len(indexes) != 1:
+          return
         
+
+        op = self.innerOperators[indexes[0]]
+
+
+        for k,oslot in self.outputs.items():
+          oslot.pop(indexes[0])
+
+        self.innerOperators.pop(indexes[0])
+        for k,islot in self.inputs.items():
+          if islot != slots[0]:
+            islot.removeSlot(indexes[0],notify=False)
+
+
+    def _notifySubConnect(self, slots, indexes):
         if slots[1].partner is not None:
-            #
-            # we have to connect the sub operator only
-            # if it is a true inner operator, but not
-            # if it is an OperatorWrapper. 
-            #
-            # why, is unclear.
-            #
-            #if not isinstance(self.innerOperators[indexes[0]], OperatorWrapper):
             self.innerOperators[indexes[0]].inputs[slots[0].name].connect(slots[1].partner)
         elif slots[1]._value is not None:
-            #if not isinstance(self.innerOperators[indexes[0]], OperatorWrapper):
-            self.innerOperators[indexes[0]].inputs[slots[0].name].disconnect()
             self.innerOperators[indexes[0]].inputs[slots[0].name].setValue(slots[1]._value)
-            
-        else:            
-            if isinstance(self.innerOperators[indexes[0]], OperatorWrapper):
-                
-                if len(indexes)>1:
-                    self.innerOperators[indexes[0]]._notifySubConnect(slots[1:],indexes[1:])
-                else:
-                    self.innerOperators[indexes[0]]._notifyConnect(slots[1],indexes[0])
-
-#                # check wether all slots are connected and notify operator            
-#                op = self.innerOperators[indexes[0]]
-#                allConnected = True
-#                for slot in op.inputs.values():
-#                    if slot.partner is None and slot._value is None:
-#                        allConnected = False
-#                        break
-#                if allConnected:
-#                    op.notifyConnectAll()
-                    
-            else:
-                if len(indexes)>1:
-                    self.innerOperators[indexes[0]].inputs[slots[0].name].resize(len(slots[1]))
-                    for i, islot in enumerate(slots[1]):
-                        if islot.partner is not None:
-                            self.innerOperators[indexes[0]].inputs[slots[0].name][i].connect(islot.partner)
-                        elif islot._value is not None:
-                            self.innerOperators[indexes[0]].inputs[slots[0].name][i].setValue(islot._value)
-                else:
-                    if slots[1].partner is not None:
-                        self.innerOperators[indexes[0]].inputs[slots[0].name].connect(slots[1].partner)
-                    elif slots[1]._value is not None:
-                        self.innerOperators[indexes[0]].inputs[slots[0].name].setValue(slots[1]._value)                        
         self._connectInnerOutputsForIndex(indexes[0])
         return
 
@@ -2097,26 +2069,7 @@ class OperatorWrapper(Operator):
         
     def _notifySubDisconnect(self, slots, indexes):
         return
-        maxLen = 0
-        for name, islot in self.inputs.items():
-            maxLen = max(len(islot), maxLen)
-        
-        while len(self.innerOperators) > maxLen:
-            op = self.innerOperators[-1]
-            self._removeInnerOperator(op)
 
-    def notifySubSlotRemove(self, slots, indexes):
-        if len(indexes) == 1:
-            if len(self.innerOperators) > indexes[0]:
-                op = self.innerOperators[indexes[0]]
-                self._removeInnerOperator(op)
-        else:
-            if slots[0].partner is not None: #normal connect case
-                self.innerOperators[indexes[0]]._notifySubSlotRemove(slots[1:], indexes[1:])
-            else: #connectAdd case
-                op = self.innerOperators[indexes[0]]
-                self._removeInnerOperator(op)
-        self._connectInnerOutputs()
                 
     def getOutSlot(self, slot, key, result):
         #this should never be called !!!        
