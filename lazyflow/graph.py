@@ -117,7 +117,7 @@ class Operators(object):
     @classmethod
     def register(cls, opcls):
         cls.operators[opcls.__name__] = opcls
-        print "registered operator %s (%s)", (opcls.name, opcls.__name__)
+        print "registered operator %s (%s)" % (opcls.name, opcls.__name__)
 
     @classmethod
     def registerOperatorSubclasses(cls):
@@ -316,7 +316,7 @@ class GetItemRequestObject(object):
           self.func(self.arg1,self.key, self.destination)
         except Exception,e:
           print
-          print "ERROR: Exception in Operator %s (%r)" % (self.slot.operator.name, self.slot.operator)
+          print "ERROR: Exception in Operator %s (%r)" % (self.slot.partner.operator.name, self.slot.partner.operator)
           traceback.print_exc(e)
           sys.exit(1)
         self._finalize()        
@@ -1643,7 +1643,6 @@ class Operator(object):
         self.notifySubSlotInsert(slots,indexes)
 
     def _notifySubSlotResize(self,slots,indexes, size,event = None):
-        print "EVENT:",event
         self.notifySubSlotResize(slots,indexes,size,event)
 
     def connect(self, **kwargs):
@@ -1986,9 +1985,6 @@ class OperatorWrapper(Operator):
     def _connectInnerOutputsForIndex(self, index):
         innerOp = self.innerOperators[index]
         for key,mslot in self.outputs.items():            
-            print len(mslot), index
-            print mslot[index]
-            print innerOp.outputs[key]
             mslot[index] = innerOp.outputs[key]
 
             
@@ -2062,7 +2058,7 @@ class OperatorWrapper(Operator):
         pass
     
     def _notifySubSlotInsert(self,slots,indexes, event = None):
-        print "_notifySubSlotInsert Wrapper of", self.operator.name,slots, indexes
+        #print "_notifySubSlotInsert Wrapper of", self.operator.name,slots, indexes
         if len(indexes) != 1:
           return
         
@@ -2094,10 +2090,7 @@ class OperatorWrapper(Operator):
           self._eventCounter += 1
           event = (id(self),self._eventCounter)
 
-        print "_notifySubSlotResize Wrapper of", self.operator.name,slots, indexes,size
-        print "Wrapper: ",self
-        print "Keys:", self._processedEvents.keys()
-        print "event", event, " has_key", self._processedEvents.has_key(event)
+        #print "_notifySubSlotResize Wrapper of", self.operator.name,slots, indexes,size
 
         if self._processedEvents.has_key(event):
           return
@@ -2127,7 +2120,7 @@ class OperatorWrapper(Operator):
 
     def _notifySubSlotRemove(self, slots, indexes, event = None):
         
-        print "_notifySubSlotRemove Wrapper of ", self.operator.name,slots, indexes
+        #print "_notifySubSlotRemove Wrapper of ", self.operator.name,slots, indexes
         if len(indexes) != 1:
           return
         
@@ -2154,8 +2147,7 @@ class OperatorWrapper(Operator):
 
 
     def _notifySubConnect(self, slots, indexes):
-        print "_notifySubConnect Wrapper of", self.operator.name, slots, indexes
-        print len(self.innerOperators)
+        #print "_notifySubConnect Wrapper of", self.operator.name, slots, indexes
         if slots[1].partner is not None:
             self.innerOperators[indexes[0]].inputs[slots[0].name].connect(slots[1].partner)
         elif slots[1]._value is not None:
