@@ -85,9 +85,15 @@ class OpMultiArrayPiper(Operator):
     def notifySubConnect(self, slots, indexes):
         self.notifyConnectAll()
 
+    def notifySubSlotInsert(self,slots,indexes):
+        self.outputs["MultiOutput"]._insertNew(indexes[0])
+
     def notifySubSlotRemove(self, slots, indexes):
         self.outputs["MultiOutput"].pop(indexes[0])
     
+    def notifySubSlotResize(self,slots,indexes,size,event):
+        self.outputs["MultiOutput"].resize(size,event = event)
+
     def getOutSlot(self, slot, key, result):
         raise RuntimeError("OpMultiPipler does not support getOutSlot")
 

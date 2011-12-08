@@ -85,10 +85,13 @@ for i in range(1,2):
     
     assert (r1[:] == r2[:]).all(), i
 
+def pups(dest):
+  pass
 
 requests = []
 for i in range(100):
     r = g3.outputs["Output"][0][:,:,:].allocate()
+    r.notify(pups)
     requests.append(r)
     
 import gc
