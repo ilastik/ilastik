@@ -1595,6 +1595,9 @@ class Operator(object):
             # of the partner operators are created  
         if self.register:
             self.graph.registerOperator(self)
+
+        if len(self.inputs.keys()) == 0:
+          self.notifyConnectAll()
          
     def _getOriginalOperator(self):
         return self
