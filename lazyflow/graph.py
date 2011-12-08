@@ -225,7 +225,7 @@ class CustomGreenlet(greenlet.greenlet):
 setattr(current_thread(), "finishedRequestGreenlets", PriorityQueue())
 setattr(current_thread(), "workAvailableEvent", Event())
 setattr(current_thread(), "process", psutil.Process(os.getpid()))
-
+setattr(current_thread(), "lastRequest", None)
 
 class GetItemRequestObject(object):
     """ 
@@ -304,6 +304,11 @@ class GetItemRequestObject(object):
 
             else:
                 # we are in main thread
+                tr = current_thread()
+                lr = tr.lastRequest
+                tr.lastRequest = self
+                if lr is not None:
+                  lr._putOnTaskQueue()
                 self._requestLevel = self._priority
             
 
@@ -378,7 +383,14 @@ class GetItemRequestObject(object):
                             self.lock.release()
                             return self.destination
                     else:
-                        tr = current_thread()                    
+                        tr = current_thread()
+                        lr = tr.lastRequest
+                        tr.lastRequest = None
+                        if lr is not None and lr != self:
+                          lr.lock.acquire()
+                          if lr.inProcess is False:
+                            lr._putOnTaskQueue()
+                          lr.lock.release()
                         cgr = CustomGreenlet(self.wait)
                         cgr.currentRequest = self
                         cgr.thread = tr                        
@@ -396,7 +408,14 @@ class GetItemRequestObject(object):
                         self._execute(gr)
                         gr.currentRequest = temp
                     else:
-                        tr = current_thread()                    
+                        tr = current_thread()
+                        lr = tr.lastRequest
+                        tr.lastRequest = None
+                        if lr is not None and lr != self:
+                          lr.lock.acquire()
+                          if lr.inProcess is False:
+                            lr._putOnTaskQueue()
+                          lr.lock.release()
                         cgr = CustomGreenlet(self.wait)
                         cgr.currentRequest = self
                         cgr.thread = tr                        

@@ -91,7 +91,7 @@ def pups(dest):
 requests = []
 for i in range(100):
     r = g3.outputs["Output"][0][:,:,:].allocate()
-    r.notify(pups)
+    #r.notify(pups)
     requests.append(r)
     
 import gc
