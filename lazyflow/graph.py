@@ -1521,11 +1521,45 @@ class MultiOutputSlot(object):
         return s
 
 
+class InputDict(dict):
+    
+    def __init__(self, operator):
+      self.operator = operator
+
+
+    def __setitem__(self, key, value):
+        assert isinstance(value, (InputSlot, MultiInputSlot)), "ERROR: all elements of .inputs must be of type InputSlot or MultiInputSlot, you provided %r !" % (value,)
+        return dict.__setitem__(self, key, value)
+    def __getitem__(self, key):
+        if self.has_key(key):
+          return dict.__getitem__(self,key)
+        else:
+          raise Exception("Operator %s (class: %s) has no input slot named '%s'. available input slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
+
+    @classmethod
+    def reconstructFromH5G(cls, h5g, patchBoard):
+        temp = InputDict()
+        patchBoard[h5g.attrs["id"]] = temp
+        for i,g in h5g.items():
+            temp[str(i)] = g.reconstructObject(patchBoard)
+        return temp
+
+
+
 class OutputDict(dict):
     
+    def __init__(self, operator):
+      self.operator = operator
+
+
     def __setitem__(self, key, value):
         assert isinstance(value, (OutputSlot, MultiOutputSlot)), "ERROR: all elements of .outputs must be of type OutputSlot or MultiOutputSlot, you provided %r !" % (value,)
         return dict.__setitem__(self, key, value)
+    def __getitem__(self, key):
+        if self.has_key(key):
+          return dict.__getitem__(self,key)
+        else:
+          raise Exception("Operator %s (class: %s) has no output slot named '%s'. available output slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
 
     @classmethod
     def reconstructFromH5G(cls, h5g, patchBoard):
@@ -1571,8 +1605,8 @@ class Operator(object):
     
     def __init__(self, graph, register = True):
         self.operator = None
-        self.inputs = {}
-        self.outputs = OutputDict()
+        self.inputs = InputDict(self)
+        self.outputs = OutputDict(self)
         self.graph = graph
         self.register = register
         #provide simple default name for lazy users
@@ -1866,8 +1900,8 @@ class OperatorWrapper(Operator):
         return self._outputSlots
     
     def __init__(self, operator, register = False):
-        self.inputs = {}
-        self.outputs = OutputDict()
+        self.inputs = InputDict(self)
+        self.outputs = OutputDict(self)
         self.operator = operator
         self.register = False
         self._eventCounter = 0
