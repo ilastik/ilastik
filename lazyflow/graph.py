@@ -197,6 +197,7 @@ class GetItemWriterObject(object):
   
     def allocate(self, axistags = False, priority = 0):
         """
+print "\n\n"
         if the user does not want lazyflow to write calculation
         results into a specific numpy array he can use
         the .allocate() call.
@@ -222,10 +223,16 @@ class CustomGreenlet(greenlet.greenlet):
         greenlet.greenlet.__init__(self, func)
         self.thread = None
 
-setattr(current_thread(), "finishedRequestGreenlets", PriorityQueue())
-setattr(current_thread(), "workAvailableEvent", Event())
-setattr(current_thread(), "process", psutil.Process(os.getpid()))
-setattr(current_thread(), "lastRequest", None)
+
+def patchForeignCurrentThread():
+  setattr(current_thread(), "finishedRequestGreenlets", PriorityQueue())
+  setattr(current_thread(), "workAvailableEvent", Event())
+  setattr(current_thread(), "process", psutil.Process(os.getpid()))
+  setattr(current_thread(), "lastRequest", None)
+
+
+#patch main thread
+patchForeignCurrentThread()
 
 class GetItemRequestObject(object):
     """ 
@@ -303,8 +310,11 @@ class GetItemRequestObject(object):
                     lr._putOnTaskQueue()
 
             else:
-                # we are in main thread
+                # we are in a unknownnnon worker thread
                 tr = current_thread()
+                if not hasattr(tr,"lastRequest"):
+                  #some bad person called our library from a completely unknown strange thread
+                  patchForeignCurrentThread()
                 lr = tr.lastRequest
                 tr.lastRequest = self
                 if lr is not None:
@@ -384,6 +394,9 @@ class GetItemRequestObject(object):
                             return self.destination
                     else:
                         tr = current_thread()
+                        if not hasattr(tr,"lastRequest"):
+                          #some bad person called our library from a completely unknown strange thread
+                          patchForeignCurrentThread()
                         lr = tr.lastRequest
                         tr.lastRequest = None
                         if lr is not None and lr != self:
@@ -410,6 +423,10 @@ class GetItemRequestObject(object):
                         gr.currentRequest = temp
                     else:
                         tr = current_thread()
+                        if not hasattr(tr,"lastRequest"):
+                          #some bad person called our library from a completely unknown strange thread
+                          patchForeignCurrentThread()
+
                         lr = tr.lastRequest
                         tr.lastRequest = None
                         if lr is not None and lr != self:
