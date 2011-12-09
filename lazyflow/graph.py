@@ -265,6 +265,7 @@ class GetItemRequestObject(object):
         self.cancelQueue = deque()
         self._requestLevel = -1
         
+        self.lock = Lock()
         if isinstance(slot, InputSlot) and self.slot._value is None:
             self.func = slot.partner.operator.getOutSlot
             self.arg1 = slot.partner            
@@ -281,7 +282,6 @@ class GetItemRequestObject(object):
                 assert gr.currentRequest is not None
             self.wait() #this sets self._finished and copies the results over
         if not self._finished:
-            self.lock = Lock()
             #self._putOnTaskQueue()
             #return
             
@@ -395,6 +395,7 @@ class GetItemRequestObject(object):
                         cgr.currentRequest = self
                         cgr.thread = tr                        
                         self.lock.release()
+                        setattr(tr,"greenlet", greenlet.getcurrent())
                         cgr.switch(self)
                         self._waitFor(cgr,tr) #wait for finish
                 else:
