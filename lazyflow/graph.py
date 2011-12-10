@@ -675,7 +675,7 @@ class InputSlot(object):
             self.disconnect()
             return    
             
-        if not isinstance(partner,(OutputSlot,MultiOutputSlot)):
+        if not isinstance(partner,(OutputSlot,MultiOutputSlot,Operator)):
             self.setValue(partner)
             return
             
@@ -1181,7 +1181,7 @@ class MultiInputSlot(object):
             self.disconnect()
             return
         
-        if not isinstance(partner,(OutputSlot,MultiOutputSlot)):
+        if not isinstance(partner,(OutputSlot,MultiOutputSlot,Operator)):
             self.setValue(partner)
             return
           
