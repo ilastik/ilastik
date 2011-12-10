@@ -446,10 +446,9 @@ class GetItemRequestObject(object):
         else:
             if self.destination is None:
                 self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
-            
-            if isinstance(self.slot._value, (numpy.ndarray, vigra.VigraArray)):
+            try:
                 self.destination[:] = self.slot._value[self.key]
-            else:
+            except (AttributeError, TypeError): # not an array
                 self.destination[:] = self.slot._value
             self._finished = True
         return self.destination   
@@ -629,14 +628,15 @@ class InputSlot(object):
         """
         assert self.partner == None, "InputSlot %s (%r): Cannot dot setValue, because it is connected !" %(self.name, self)
         self._value = value
-        if isinstance(value, (numpy.ndarray, vigra.VigraArray)):
+
+        try:
             self.shape = value.shape
             self.dtype = value.dtype
             if hasattr(value, "axistags"):
                 self.axistags = value.axistags
             else:
                 self.axistags = vigra.defaultAxistags(len(value.shape))
-        else:
+        except (AttributeEror, TypeError): # not an array like value
             self.shape = (1,)
             self.dtype = object
             self.axistags = vigra.defaultAxistags(1)
