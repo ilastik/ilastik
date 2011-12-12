@@ -465,11 +465,7 @@ class OpArrayCache(OpArrayPiper):
         self._lock.release()
         
         def onCancel(cancelled, reqBlockKey, reqSubBlockKey):
-            if cancelled.next() == 0:
-                self._lock.acquire()
-                blockSet = fastWhere(cond, 1, blockSet, numpy.uint8)
-                self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)                       
-                self._lock.release()            
+            return False # indicate that this request cannot be canceled
             
         temp = itertools.count(0)        
             

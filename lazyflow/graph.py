@@ -547,33 +547,33 @@ class GetItemRequestObject(object):
         
     def _cancel(self):
         self.lock.acquire()
-        self.canceled = True
+        canceled = True
         if len(self.waitQueue) == 0:
           if not self._finished:
-              self.lock.release()
-              while len(self.cancelQueue) > 0:
+              while canceled and len(self.cancelQueue) > 0:
                   try:
                       closure, kwargs = self.cancelQueue.pop()
                   except:
                       break
                   
-                  closure(**kwargs)
-          else:
-              self.lock.release()
-              pass
-          self._finalize()
-          return True
+                  canceled = canceld and not (closure(**kwargs) == False)
+
+          self.lock.release()
+          if canceled:
+            self.canceled = True
+            self._finalize()
+          return canceled
         else:
           self.lock.release()
           return False
 
-    def _cancelChildren(self):
+    def _cancelChildren(self,level):
             self.lock.acquire()
             childs = tuple(self.childRequests.values())
             self.childRequests = {}
             self.lock.release()
             for r in childs:
-                r.cancel()            
+                r.cancel(level = level + 1)            
 
     def _cancelParents(self):
         if not self._finished:
@@ -582,15 +582,13 @@ class GetItemRequestObject(object):
                 self.parentRequest._cancelParents()
 
 
-    def cancel(self):
+    def cancel(self, level = 0):
         if not self._finished:
             if self._cancel():
-              print "CANCELING CHILDREN", self
-              self._cancelChildren()
-              self._cancelParents()
+              self._cancelChildren(level = level)
               return True
             else:
-              print "NOT CANCELING CHILDREN", self
+              print "NOT CANCELING CHILDREN level=%d" % level, self
               return False
 
         
