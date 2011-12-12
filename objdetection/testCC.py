@@ -62,7 +62,7 @@ def testCC():
     desired[0, 7:8, 7:8, 0, 0] = 2
     desired[0, 0:5, 0:5, 0, 1] = 1
     assert_array_equal(res, desired)
-    
+    print "done!"
     
     
     

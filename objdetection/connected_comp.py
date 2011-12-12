@@ -72,21 +72,28 @@ class OpConnectedComponents(Operator):
         self.outputs["Output"]._axistags= inputSlot.axistags
         
     def getOutSlot(self, slot, key, result):
-        #print "requesting cc output with key"
-        #image = self.inputs["Input"][key].allocate().wait()
-        #print "result.shape:", result.shape, "key:", key
-        #FIXME: we have to demand the whole thing here
-        image = self.inputs["Input"][:].allocate().wait()
+        
+        timeAxis = None
+        channelAxis = None
+        newkey = [slice(None, None, None) for x in key]
         tags = self.inputs["Input"].axistags
+        if tags.axisTypeCount(vigra.AxisType.Time)!=0:
+            timeAxis = tags.index('t')
+        if tags.axisTypeCount(vigra.AxisType.Channels)!=0:
+            channelAxis = tags.index('c')
+        newkey[timeAxis] = key[timeAxis]
+        newkey[channelAxis] = key[channelAxis]
+        
+        #we have to allocate everything on the space axis, but only
+        #the requested stuff on the channel and time axis
+        image = self.inputs["Input"][newkey].allocate().wait()
         
         timekeys = []
         channelkeys = []
         writekeys = []
-        timeAxis = None
-        channelAxis = None
-        if tags.axisTypeCount(vigra.AxisType.Time)!=0:
+        
+        if timeAxis is not None:
             #we have a time axis
-            timeAxis=tags.index('t')
             for i in range(image.shape[timeAxis]):
                 newkey = copy.copy(key)
                 newkey = list(newkey)
@@ -95,10 +102,9 @@ class OpConnectedComponents(Operator):
         else:
             timekeys.append(key)
         
-        if tags.axisTypeCount(vigra.AxisType.Channels)!=0:
+        if channelAxis is not None:
             #channelwise...
             for timekey in timekeys:
-                channelAxis = tags.index('c')
                 for c in range(image.shape[channelAxis]):
                     newkey = copy.copy(timekey)
                     newkey = list(newkey)
@@ -131,6 +137,9 @@ class OpConnectedComponents(Operator):
                     temp = vigra.analysis.labelVolumeWithBackground(image[readkey], neighborhood, bg)
                 else:
                     temp = vigra.analysis.labelVolume(image[readkey], neighborhood)
+                
+                print "total number of components for this time and channel:", readkey, numpy.max(temp)
+                
                 result[writekeys[ik]] = temp[:]
         else:
             print "ERROR: unsupported number of dimensions", ndim
