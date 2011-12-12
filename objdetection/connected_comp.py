@@ -2,6 +2,8 @@ import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 from lazyflow.roi import sliceToRoi, roiToSlice, block_view
+import copy
+
 
 class OpThreshold(Operator):
     #Threshold one channel agains the rest. To be used for threshoding probability maps
@@ -59,7 +61,12 @@ class OpConnectedComponents(Operator):
                 self.inputs["Background"].setValue(0)
     
     def notifyConnectAll(self):
+        print "in notify connect all"
         inputSlot = self.inputs["Input"]
+        if inputSlot.axistags is None:
+            print "no axistags"
+        else:
+            print inputSlot.axistags
         self.outputs["Output"]._shape = inputSlot.shape
         self.outputs["Output"]._dtype = numpy.uint32
         self.outputs["Output"]._axistags= inputSlot.axistags
@@ -67,32 +74,36 @@ class OpConnectedComponents(Operator):
     def getOutSlot(self, slot, key, result):
         #print "requesting cc output with key"
         #image = self.inputs["Input"][key].allocate().wait()
+        #print "result.shape:", result.shape, "key:", key
         #FIXME: we have to demand the whole thing here
         image = self.inputs["Input"][:].allocate().wait()
+        tags = self.inputs["Input"].axistags
+        
         timekeys = []
         channelkeys = []
         writekeys = []
         timeAxis = None
         channelAxis = None
-      
-        if image.axistags.axisTypeCount(vigra.AxisType.Time)!=0:
+        if tags.axisTypeCount(vigra.AxisType.Time)!=0:
             #we have a time axis
-            timeAxis=self.inputs["Input"].axistags.index('t')
+            timeAxis=tags.index('t')
             for i in range(image.shape[timeAxis]):
-                newkey = list(copy.copy(key))
-                newkey[timeaxis] = slice(i, i, None)
-                timekeys.append(newkey)
+                newkey = copy.copy(key)
+                newkey = list(newkey)
+                newkey[timeAxis] = i
+                timekeys.append(tuple(newkey))
         else:
             timekeys.append(key)
         
-        if image.axistags.axisTypeCount(vigra.AxisType.Channel)!=0:
+        if tags.axisTypeCount(vigra.AxisType.Channels)!=0:
             #channelwise...
             for timekey in timekeys:
-                channelAxis = image.axistags.index('c')
+                channelAxis = tags.index('c')
                 for c in range(image.shape[channelAxis]):
-                    newkey = list(copy.copy(timekey))
-                    newkey[channelaxis] = slice(c, c, None)
-                    channelkeys.append(newkey)
+                    newkey = copy.copy(timekey)
+                    newkey = list(newkey)
+                    newkey[channelAxis] = c
+                    channelkeys.append(tuple(newkey))
                     writekey = [slice(None, None, None) for x in newkey]
                     if timeAxis is not None:
                         writekey[timeAxis] = newkey[timeAxis]
@@ -103,7 +114,6 @@ class OpConnectedComponents(Operator):
             writekeys = [[slice(None, None, None) for x in channelkeys[0]] for x in channelkeys]
             
         ndim = len(image[channelkeys[0]].shape)
-        print "ndim = ", ndim
         neighborhood = self.inputs["Neighborhood"].value
         bg = self.inputs["Background"].value
         if ndim==2:            
@@ -116,7 +126,7 @@ class OpConnectedComponents(Operator):
                 result[writekeys[ik]] = temp[:]
                     
         elif ndim==3:
-            for readkey in channelkeys:
+            for ik, readkey in enumerate(channelkeys):
                 if bg!=-1:
                     temp = vigra.analysis.labelVolumeWithBackground(image[readkey], neighborhood, bg)
                 else:
