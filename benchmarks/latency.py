@@ -1,9 +1,12 @@
+import cProfile
 import threading
 import time
 import lazyflow
 from lazyflow.graph import *
 from lazyflow import operators
 
+
+doProfile = True
 
 g = Graph()
 
@@ -57,13 +60,13 @@ class C(object):
     return self.array[key]
 
 
-c = operators.OpArrayCache(g)
+cache = operators.OpArrayCache(g)
 p = operators.OpArrayPiper(g)
 
 arr = numpy.ndarray((100,100,100),numpy.uint8)
 
-c.inputs["Input"].setValue(arr)
-p.connect(Input = c.outputs["Output"])
+cache.inputs["Input"].setValue(arr)
+p.connect(Input = cache.outputs["Output"])
 
 t1 = time.time()
 for i in range(0,mcount):
@@ -109,9 +112,11 @@ print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 
 
 t1 = time.time()
-requests = []
-for i in range(0,mcount):
-  r = p.outputs["Output"][3,3,3].allocate().wait()
+if doProfile:
+  cProfile.run("for i in range(0,mcount): p.outputs[\"Output\"][3,3,3].allocate().wait()", filename="benchmark.cprof")
+else:
+  for i in range(0,mcount):
+    p.outputs["Output"][3,3,3].allocate().wait()
 t2 = time.time()
 print "\n\n"
 print "LAZYFLOW SYNC WAIT OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount)
@@ -130,4 +135,29 @@ t2 = time.time()
 print "\n\n"
 print "LAZYFLOW ASYNC WAIT OVERHEAD:   %f seconds for %d iterations" % (t2-t1,mcount)
 print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
+
+
+
+
+
+
+
+
+
+
+
+
+
+if doProfile:
+  import pstats
+  stats = pstats.Stats("benchmark.cprof")
+  print "##################################################################"
+  print "                  C U M U L A T I V E"
+  print "##################################################################"
+  stats.sort_stats("cumulative").print_stats(20) 
+  print "##################################################################"
+  print "                  T I M E"
+  print "##################################################################"
+  
+  stats.sort_stats("time").print_stats(20) 
 

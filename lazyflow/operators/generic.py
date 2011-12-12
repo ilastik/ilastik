@@ -361,15 +361,22 @@ class OpSubRegion(Operator):
     def getOutSlot(self, slot, key, resultArea):
         start = self.inputs["Start"].value
         stop = self.inputs["Stop"].value
-        temp = tuple(numpy.array(stop) - numpy.array(start))
         
+        temp = tuple()
+        for i in xrange(len(start)):
+          if stop[i] - start[i] > 0:
+            temp += (stop[i]-start[i],)
+
         readStart, readStop = sliceToRoi(key, temp)
         
+
+
         newKey = ()
         resultKey = ()
         i = 0
         i2 = 0
-        for e in temp:
+        for kkk in xrange(len(start)):
+            e = stop[kkk] - start[kkk]
             if e > 0:
                 newKey += (slice(start[i2] + readStart[i], start[i2] + readStop[i],None),)
                 resultKey += (slice(0,temp[i2],None),)

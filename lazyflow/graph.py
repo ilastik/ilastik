@@ -58,8 +58,11 @@ import greenlet
 import weakref
 import threading
 
+
 greenlet.GREENLET_USE_GC = False #use garbage collection
 sys.setrecursionlimit(100000)
+
+
 
 class DefaultConfigParser(ConfigParser.SafeConfigParser):
     """
@@ -216,7 +219,7 @@ print "\n\n"
 
       
 class CustomGreenlet(greenlet.greenlet):
-    
+    __slots__ = ["lastRequest","currentRequest","thread"] 
     def __init__(self, func):
         self.lastRequest = None
         self.currentRequest = None
@@ -225,11 +228,11 @@ class CustomGreenlet(greenlet.greenlet):
 
 
 def patchForeignCurrentThread():
-  setattr(current_thread(), "finishedRequestGreenlets", PriorityQueue())
+  setattr(current_thread(), "finishedRequestGreenlets", deque())#PriorityQueue())
   setattr(current_thread(), "workAvailableEvent", Event())
   setattr(current_thread(), "process", psutil.Process(os.getpid()))
   setattr(current_thread(), "lastRequest", None)
-
+  setattr(current_thread(), "greenlet", None)
 
 #patch main thread
 patchForeignCurrentThread()
@@ -271,7 +274,6 @@ class GetItemRequestObject(object):
         self.notifyQueue = deque()
         self.cancelQueue = deque()
         self._requestLevel = -1
-        
         self.lock = Lock()
         if isinstance(slot, InputSlot) and self.slot._value is None:
             self.func = slot.partner.operator.getOutSlot
@@ -284,7 +286,7 @@ class GetItemRequestObject(object):
             if self.destination is None:
                 self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)            
             gr = greenlet.getcurrent()
-            if hasattr(gr, "currentRequest"):
+            if isinstance(gr,CustomGreenlet):
                 self.parentRequest = gr.currentRequest    
                 assert gr.currentRequest is not None
             self.wait() #this sets self._finished and copies the results over
@@ -293,7 +295,7 @@ class GetItemRequestObject(object):
             #return
             
             gr = greenlet.getcurrent()
-            if hasattr(gr, "currentRequest"):
+            if isinstance(gr,CustomGreenlet):
                 # we delay the firing of an request until
                 # another one arrives 
                 # by this we make sure that one call path
@@ -330,8 +332,11 @@ class GetItemRequestObject(object):
         try:
           self.func(self.arg1,self.key, self.destination)
         except Exception,e:
-          print
-          print "ERROR: Exception in Operator %s (%r)" % (self.slot.partner.operator.name, self.slot.partner.operator)
+          if isinstance(self.slot, InputSlot):
+            print
+            print "ERROR: Exception in Operator %s (%r)" % (self.slot.partner.operator.name, self.slot.partner.operator)
+          else:
+            pass 
           traceback.print_exc(e)
           sys.exit(1)
         self._finalize()        
@@ -364,34 +369,25 @@ class GetItemRequestObject(object):
         if isinstance(self.slot, OutputSlot) or self.slot._value is None:
             self.lock.acquire()
             gr = greenlet.getcurrent()
-            if self.canceled:
-                self.canceled = False
-                self._finished = False
-                self.childRequests = {}
-                self.parentRequest = gr.currentRequest
             if not self._finished:
                 if self.inProcess:   
-                    if hasattr(gr, "currentRequest"):                         
-                        if not self._finished:
-                            self.waitQueue.append((gr.thread, gr.currentRequest, gr))
-                            self.lock.release()
+                    if isinstance(gr,CustomGreenlet):
+                        self.waitQueue.append((gr.thread, gr.currentRequest, gr))
+                        self.lock.release()
 
-                            # reprioritize this request if running requests
-                            # requestlevel is higher then that of the request
-                            # on which we are waiting -> prevent starving of
-                            # high prio requests through resources blocked
-                            # by low prio requests.
-                            if gr.currentRequest._requestLevel > self._requestLevel:
-                                delta = gr.currentRequest._requestLevel - self._requestLevel
-                                self.adjustPriority(delta)
-                            
-                            self._burstLastRequest(gr)
-                            if gr.lastRequest == self:
-                                gr.lastRequest = None                                  
-                            gr.thread.greenlet.switch(None)
-                        else:
-                            self.lock.release()
-                            return self.destination
+                        # reprioritize this request if running requests
+                        # requestlevel is higher then that of the request
+                        # on which we are waiting -> prevent starving of
+                        # high prio requests through resources blocked
+                        # by low prio requests.
+                        if gr.currentRequest._requestLevel > self._requestLevel:
+                            delta = gr.currentRequest._requestLevel - self._requestLevel
+                            self.adjustPriority(delta)
+                        
+                        self._burstLastRequest(gr)
+                        if gr.lastRequest == self:
+                            gr.lastRequest = None                                  
+                        gr.thread.greenlet.switch(None)
                     else:
                         tr = current_thread()
                         if not hasattr(tr,"lastRequest"):
@@ -408,11 +404,11 @@ class GetItemRequestObject(object):
                         cgr.currentRequest = self
                         cgr.thread = tr                        
                         self.lock.release()
-                        setattr(tr,"greenlet", greenlet.getcurrent())
+                        tr.greenlet = gr
                         cgr.switch(self)
                         self._waitFor(cgr,tr) #wait for finish
                 else:
-                    if hasattr(gr, "currentRequest"):
+                    if isinstance(gr,CustomGreenlet):
                         self._burstLastRequest(gr)
                         if gr.lastRequest == self:
                             gr.lastRequest = None
@@ -438,7 +434,7 @@ class GetItemRequestObject(object):
                         cgr.currentRequest = self
                         cgr.thread = tr                        
                         self.lock.release()
-                        setattr(tr,"greenlet", greenlet.getcurrent())
+                        tr.greenlet = gr
                         cgr.switch(self)
                         self._waitFor(cgr,tr) #wait for finish
             else:
@@ -463,8 +459,8 @@ class GetItemRequestObject(object):
         while not cgr.dead:
             tr.workAvailableEvent.wait()
             tr.workAvailableEvent.clear()
-            while not tr.finishedRequestGreenlets.empty():
-                prio,req, gr = tr.finishedRequestGreenlets.get(block = False)
+            while len(tr.finishedRequestGreenlets) > 0:
+                prio,req, gr = tr.finishedRequestGreenlets.pop()#get(block = False)
                 gr.currentRequest = req                 
                 gr.switch()
                 del gr
@@ -541,7 +537,7 @@ class GetItemRequestObject(object):
             for tr, req, gr in waiters:
                 req.lock.acquire()
                 if not req.canceled:
-                    tr.finishedRequestGreenlets.put((-req._requestLevel, req, gr))
+                    tr.finishedRequestGreenlets.append((-req._requestLevel,req,gr))#put((-req._requestLevel, req, gr))
                     tr.workAvailableEvent.set()
                 req.lock.release()
         else:
@@ -776,6 +772,8 @@ class InputSlot(object):
         
         allows to call inputslot[0,:,3:11] 
         """
+        if type(key) == tuple:
+          assert len(key) == len(self.shape)
         start, stop = sliceToRoi(key, self.shape)
         assert len(stop) == len(self.shape)
         assert stop <= list(self.shape)
@@ -2439,7 +2437,7 @@ class Worker(Thread):
         self.working = False
         self._hasSlept = False
         self.daemon = True # kill automatically on application exit!
-        self.finishedRequestGreenlets = PriorityQueue()
+        self.finishedRequestGreenlets = deque()#PriorityQueue()
         self.currentRequest = None
         self.requests = deque()
         self.process = psutil.Process(os.getpid())
@@ -2459,7 +2457,7 @@ class Worker(Thread):
         prioLastReq = 0
         while self.graph.running:
             if not self.workAvailableEvent.isSet():
-                self.graph.freeWorkers.append(self)
+                self.graph.freeWorkers.add(self)
             self.workAvailableEvent.wait()#(0.2)
             try:
                 self.graph.freeWorkers.remove(self)
@@ -2468,10 +2466,10 @@ class Worker(Thread):
             self.workAvailableEvent.clear()
             self._hasSlept = True
             
-            while not self.graph.tasks.empty() or not self.finishedRequestGreenlets.empty() or (not self.graph.newTasks.empty() and self._hasSlept):       
+            while not self.graph.tasks.empty() or len(self.finishedRequestGreenlets) > 0 or (not self.graph.newTasks.empty() and self._hasSlept):       
                 #print self, len(self.openUserRequests)                
-                while not self.finishedRequestGreenlets.empty():
-                    prioFinReq, req, gr = self.finishedRequestGreenlets.get(block = False)
+                while len(self.finishedRequestGreenlets) > 0:
+                    prioFinReq, req, gr = self.finishedRequestGreenlets.pop()#get(block = False)
                     gr.currentRequest = req                 
                     if req.canceled is False:
                         gr.switch()
@@ -2535,7 +2533,7 @@ class Graph(object):
         self.tasks = PriorityQueue() #Lifo <-> depth first, fifo <-> breath first
         self.newTasks = PriorityQueue() #Lifo <-> depth first, fifo <-> breath first
         self.workers = []
-        self.freeWorkers = deque()
+        self.freeWorkers = set()
         self.running = True
         self.suspended = False
         self.stopped = False
@@ -2574,13 +2572,13 @@ class Graph(object):
         
     def _startWorkers(self):
         self.workers = []
-        self.freeWorkers = deque()
+        self.freeWorkers = set()
         self.tasks = PriorityQueue()
         for i in xrange(self.numThreads):
             w = Worker(self)
             self.workers.append(w)
             w.start()
-            self.freeWorkers.append(w)        
+            self.freeWorkers.add(w)        
     
     def _memoryUsage(self):
         return self.process.get_memory_info().vms
@@ -2675,7 +2673,7 @@ class Graph(object):
                 self.newTasks.put((-task._requestLevel,task))
             if len(self.freeWorkers) > 0:
                 try:
-                    w = self.freeWorkers.popleft()
+                    w = self.freeWorkers.pop()
                     w.signalWorkAvailable()
                 except:
                     pass

@@ -13,7 +13,6 @@ except:
     import generic
     import vigraOperators
     import classifierOperators
-    import connected_comp
     import valueProviders
     import operators
 

@@ -277,8 +277,9 @@ class OpSegmentation(Operator):
     def getOutSlot(self, slot, key, result):
         
         shape = self.inputs["Input"].shape
-        rstart, rstop = sliceToRoi(key, shape)  
-        rstop[-1] = shape[-1]
+        rstart, rstop = sliceToRoi(key, self.outputs["Output"]._shape)  
+        rstart.append(0)
+        rstop.append(shape[-1])
         rkey = roiToSlice(rstart,rstop)
         img = self.inputs["Input"][rkey].allocate().wait()       
         

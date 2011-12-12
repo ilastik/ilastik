@@ -4,8 +4,6 @@ from math import ceil, floor
 
 class TinyVector(list):
     __slots__ = []
-    def __init__(self, data=None):
-        list.__init__(self, data)
     
     def copy(self):
         return TinyVector(self)
@@ -43,10 +41,11 @@ class TinyVector(list):
             return TinyVector(map(lambda x: x * other ,self))
 
     def __div__(self, other):
+        rdiv = numpy.divide
         if hasattr(other, "__iter__"):
-            return TinyVector(map(lambda x,y: x / y ,self,other))
+            return TinyVector(map(lambda x,y: rdiv(y,x) ,self,other))
         else:
-            return TinyVector(map(lambda x: x / other ,self))
+            return TinyVector(map(lambda x: rdiv(x),self))
 
     def __rdiv__(self, other):
         if hasattr(other, "__iter__"):
@@ -99,7 +98,7 @@ class TinyVector(list):
         #return numpy.floor(numpy.array(self))
     
     def _asint(self):
-        return TinyVector(map(lambda x:  int(x) ,self))
+        return TinyVector(map(lambda x:  x.__int__() ,self))
     
     def insert(self,index, value):
         l = list(self)
@@ -126,73 +125,29 @@ TinyVector.__radd__ = TinyVector.__add__
 TinyVector.__rmul__ = TinyVector.__mul__   
 
 
-            
+
+sTrl1 =   lambda x: x if type(x) != slice else x.start if x.start != None else 0 
+sTrl2 =  lambda x,y: y if type(y) != slice else y.stop if y.stop != None else x
+sTrl3 = lambda x,y: y + 1 if x == y else y
 def sliceToRoi(s, shape=None, extendSingleton = True):
     """Args:
             slice: slice object (1D) or list of slice objects (N-D)
        Returns:
             ROI instance corresponding to slice
     """
-    start = [0]*len(shape)
-    stop = list(shape)
-    try:
-        for k in xrange(len(s)):
-            try:
-                if s[k].start is not None:
-                    start[k] = s[k].start
-                if s[k].stop is not None:
-                    stop[k] = s[k].stop
-            except:
-                start[k] = s[k]
-                stop[k] = s[k]
-    except:
-        try:
-            if s.start is not None:
-                start[0] = s.start
-            if s.stop is not None:
-                stop[0] = s.stop
-        except:
-            start[0] = s
-            stop[0] = s
+    if type(s) == tuple or type(s) == list:
+      assert len(s) == len(shape)
+      start = map(sTrl1, s)
+      stop = map(sTrl2, shape,s)
+    else: #this handles the [:] case
+      start = [0]*len(shape)
+      stop = shape
     if extendSingleton:
-        stop = map(lambda x,y: y + 1 if x == y else y,start,stop)
-    return TinyVector(start)._asint(), TinyVector(stop)._asint()
-
-#this method uses numpy arrays and is slower then the new one
-def sliceToRoiOld(s, shape=None, extendSingleton = True):
-    """Args:
-            slice: slice object (1D) or list of slice objects (N-D)
-       Returns:
-            ROI instance corresponding to slice
-    """
-    start = numpy.zeros((len(shape),), dtype=numpy.int32)
-    stop = numpy.array(shape)
-
-    try:
-        for k in xrange(len(s)):
-            try:
-                if s[k].start is not None:
-                    start[k] = s[k].start
-                if s[k].stop is not None:
-                    stop[k] = s[k].stop
-            except:
-                start[k] = s[k]
-                stop[k] = s[k]
-    except:
-        try:
-            if s.start is not None:
-                start[0] = s.start
-            if s.stop is not None:
-                stop[0] = s.stop
-        except:
-            start[0] = s
-            stop[0] = s
-    if extendSingleton and (stop - start == 0).any():
-        temp = 1 - numpy.minimum(start - start + 1, stop - start)
-        stop += temp
-    return start, stop 
+        stop = map(sTrl3,start,stop)
+    return TinyVector(start), TinyVector(stop)
 
 
+rTsl1 = lambda x,y:slice(x.__int__(),y.__int__())
 def roiToSlice(start, stop, hardBind=False):
     """Args:
             start (N-D coordinate): inclusive start
@@ -201,7 +156,6 @@ def roiToSlice(start, stop, hardBind=False):
             list of slice objects describing the [start,stop) range,
             so that numpy.ndarray.__getitem__(roiToSlice(start,stop)) can be used.
     """
-           
     if hardBind:
         res = []
         for sta, stp in zip(start,stop):
@@ -211,7 +165,7 @@ def roiToSlice(start, stop, hardBind=False):
                 res.append(slice(int(sta),int(stp)))
         return tuple(res)
     else:
-        return tuple(map(lambda x:slice(int(x[0]),int(x[1])),zip(start,stop)))
+        return tuple(map(rTsl1,start,stop))
 
 
 
