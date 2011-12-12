@@ -545,8 +545,9 @@ class Main(QMainWindow):
     def initEditor(self):
         shape=self.inputProvider.outputs["Output"].shape
         
-        self.editor = VolumeEditor(shape, self.layerstack, labelsink=self.labelsrc)
-        
+        self.editor = VolumeEditor(self.layerstack, labelsink=self.labelsrc)
+        self.editor.dataShape = shape
+
         self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
         #drawing will be enabled when the first label is added  
         self.editor.setInteractionMode( 'navigation' )
