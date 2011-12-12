@@ -636,7 +636,7 @@ class InputSlot(object):
                 self.axistags = value.axistags
             else:
                 self.axistags = vigra.defaultAxistags(len(value.shape))
-        except (AttributeEror, TypeError): # not an array like value
+        except (AttributeError, TypeError): # not an array like value
             self.shape = (1,)
             self.dtype = object
             self.axistags = vigra.defaultAxistags(1)
