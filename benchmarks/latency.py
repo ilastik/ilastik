@@ -6,7 +6,7 @@ from lazyflow.graph import *
 from lazyflow import operators
 
 
-doProfile = True
+doProfile = False
 
 g = Graph()
 

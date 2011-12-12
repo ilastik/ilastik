@@ -1476,7 +1476,7 @@ class OpH5ReaderBigDataset(Operator):
                 index = i
                 maxError = error
         
-        result[:]=0 #self.D[index][key]
+        result[:]=self.D[index][key]
         self._lock.release()
     """
     def notifyDisconnect(self, slot):

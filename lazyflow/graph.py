@@ -325,6 +325,7 @@ class GetItemRequestObject(object):
             
 
     def _execute(self, gr):
+        assert self.parentRequest != self
         temp = gr.currentRequest
         if self.destination is None:
             self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
@@ -373,6 +374,7 @@ class GetItemRequestObject(object):
                 if self.inProcess:   
                     if isinstance(gr,CustomGreenlet):
                         self.waitQueue.append((gr.thread, gr.currentRequest, gr))
+                        gr.currentRequest.childRequests[self] = self
                         self.lock.release()
 
                         # reprioritize this request if running requests
@@ -439,6 +441,10 @@ class GetItemRequestObject(object):
                         self._waitFor(cgr,tr) #wait for finish
             else:
                 self.lock.release()
+            try:
+              gr.currentRequest.childRequests.pop(self)
+            except:
+              pass
         else:
             if self.destination is None:
                 self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
@@ -525,15 +531,9 @@ class GetItemRequestObject(object):
                         break
                     func(self.destination, **kwargs)
     
-            waiters = []
             while len(self.waitQueue) > 0:
-                try:
-                    w = self.waitQueue.pop()
-                    waiters.append(w)
-                except:
-                    break
-            waiter = sorted(waiters, key=lambda x: -x[1]._requestLevel)
-            for tr, req, gr in waiters:
+                w = self.waitQueue.pop()
+                tr, req, gr = w
                 req.lock.acquire()
                 if not req.canceled:
                     tr.finishedRequestGreenlets.append((-req._requestLevel,req,gr))#put((-req._requestLevel, req, gr))
@@ -541,30 +541,31 @@ class GetItemRequestObject(object):
                 req.lock.release()
         else:
             self.graph.putFinalize(self)
-        #self.parentRequest = None
+        self.parentRequest = None
         
 
         
     def _cancel(self):
         self.lock.acquire()
-        if not self._finished:
-            self.canceled = True
-            self.lock.release()
-            while len(self.cancelQueue) > 0:
-                try:
-                    closure, kwargs = self.cancelQueue.pop()
-                except:
-                    break
-                closure(**kwargs)
+        self.canceled = True
+        if len(self.waitQueue) == 0:
+          if not self._finished:
+              self.lock.release()
+              while len(self.cancelQueue) > 0:
+                  try:
+                      closure, kwargs = self.cancelQueue.pop()
+                  except:
+                      break
+                  
+                  closure(**kwargs)
+          else:
+              self.lock.release()
+              pass
+          self._finalize()
+          return True
         else:
-            self.lock.release()
-            pass
-        self._finalize()
-#            while len(self.waitQueue) > 0:
-#                tr, req, gr = self.waitQueue.popleft()
-#                if req.canceled is False:
-#                    tr.finishedRequestGreenlets.append((req, gr))
-#                    tr.workAvailableEvent.set()
+          self.lock.release()
+          return False
 
     def _cancelChildren(self):
             self.lock.acquire()
@@ -576,20 +577,22 @@ class GetItemRequestObject(object):
 
     def _cancelParents(self):
         if not self._finished:
-            self._cancel()
-            if self.parentRequest is not None:
+            if self._cancel():
+              if self.parentRequest is not None:
                 self.parentRequest._cancelParents()
 
 
     def cancel(self):
-        self.lock.acquire()
         if not self._finished:
-            self.canceled = True
-            self.lock.release()
-            self._cancelChildren()
-            #self._cancelParents()
-        else:            
-            self.lock.release()
+            if self._cancel():
+              print "CANCELING CHILDREN", self
+              self._cancelChildren()
+              self._cancelParents()
+              return True
+            else:
+              print "NOT CANCELING CHILDREN", self
+              return False
+
         
     def __call__(self):
         assert 1==2, "Please use the .wait() method, () is deprecated !"
@@ -2474,11 +2477,6 @@ class Worker(Thread):
                     if req.canceled is False:
                         gr.switch()
                     del gr
-                    if prioLastReq < prioFinReq:
-                        #print prioLastReq, prioFinReq
-                        break
-                        
-                        
                         
                 task = None
                 try:

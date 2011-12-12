@@ -43,9 +43,9 @@ class TinyVector(list):
     def __div__(self, other):
         rdiv = numpy.divide
         if hasattr(other, "__iter__"):
-            return TinyVector(map(lambda x,y: rdiv(y,x) ,self,other))
+            return TinyVector(map(lambda x,y: rdiv(x,y) ,self,other))
         else:
-            return TinyVector(map(lambda x: rdiv(x),self))
+            return TinyVector(map(lambda x: rdiv(other,x),self))
 
     def __rdiv__(self, other):
         if hasattr(other, "__iter__"):
