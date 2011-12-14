@@ -419,6 +419,9 @@ class OpArrayCache(OpArrayPiper):
         half = tileArray.shape[0]/2
         dirtyRequests = []
 
+        def onCancel():
+            return False # indicate that this request cannot be canceled
+            
         for i in range(tileArray.shape[1]):
 
             drStart3 = tileArray[:half,i]
@@ -441,6 +444,8 @@ class OpArrayCache(OpArrayPiper):
     
                 req = self.inputs["Input"][key].writeInto(self._cache[key])
                 
+                req.onCancel(onCancel)
+
                 dirtyRequests.append((req,key2, key3))   
     
                 self._blockQuery[key2] = req
@@ -464,14 +469,10 @@ class OpArrayCache(OpArrayPiper):
             blockSet[:]  = fastWhere(cond, 0, blockSet, numpy.uint8)
         self._lock.release()
         
-        def onCancel(cancelled, reqBlockKey, reqSubBlockKey):
-            return False # indicate that this request cannot be canceled
-            
         temp = itertools.count(0)        
             
         #wait for all requests to finish
         for req, reqBlockKey, reqSubBlockKey in dirtyRequests:
-            req.onCancel(onCancel, cancelled = temp, reqBlockKey = reqBlockKey, reqSubBlockKey = reqSubBlockKey)
             res = req.wait()
 
         # indicate the finished inprocess state

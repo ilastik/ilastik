@@ -325,7 +325,6 @@ class GetItemRequestObject(object):
             
 
     def _execute(self, gr):
-        assert self.parentRequest != self
         temp = gr.currentRequest
         if self.destination is None:
             self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
@@ -415,10 +414,8 @@ class GetItemRequestObject(object):
                         if gr.lastRequest == self:
                             gr.lastRequest = None
                         self.inProcess = True
-                        temp = gr.currentRequest
                         self.lock.release()
                         self._execute(gr)
-                        gr.currentRequest = temp
                     else:
                         tr = current_thread()
                         if not hasattr(tr,"lastRequest"):
@@ -518,6 +515,7 @@ class GetItemRequestObject(object):
         self.childRequests = {}
         self.lock.release()
         p = self.parentRequest
+        gr = greenlet.getcurrent()
         if p is not None:
             l = p._requestLevel + 1
             p._requestLevel = l
@@ -782,7 +780,7 @@ class InputSlot(object):
         assert self.partner is not None or self._value is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
         return GetItemWriterObject(self, key)
 
-    def _allocateStorage(self, start, stop, axistags = True):
+    def _allocateStorage(self, start, stop, axistags = False):
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
         if axistags is True:
            storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
@@ -2436,7 +2434,6 @@ class Worker(Thread):
         Thread.__init__(self)
         self.graph = graph
         self.working = False
-        self._hasSlept = False
         self.daemon = True # kill automatically on application exit!
         self.finishedRequestGreenlets = deque()#PriorityQueue()
         self.currentRequest = None
@@ -2465,17 +2462,20 @@ class Worker(Thread):
             except:
                 pass
             self.workAvailableEvent.clear()
-            self._hasSlept = True
             
-            while not self.graph.tasks.empty() or len(self.finishedRequestGreenlets) > 0 or (not self.graph.newTasks.empty() and self._hasSlept):       
-                #print self, len(self.openUserRequests)                
+            didSomething = True
+
+            while didSomething:
+                didSomething = False
                 while len(self.finishedRequestGreenlets) > 0:
                     prioFinReq, req, gr = self.finishedRequestGreenlets.pop()#get(block = False)
                     gr.currentRequest = req                 
                     if req.canceled is False:
                         gr.switch()
                     del gr
+                    didSomething = True
                         
+                
                 task = None
                 try:
                     prioLastReq,task = self.graph.tasks.get(block = False)#timeout = 1.0)
@@ -2483,6 +2483,7 @@ class Worker(Thread):
                     prioLastReq = 0
                     pass                
                 if task is not None:
+                    didSomething = True
                     reqObject = task
                     if reqObject.canceled is False:
                         gr = CustomGreenlet(reqObject._execute)
@@ -2490,27 +2491,20 @@ class Worker(Thread):
                         gr.switch( gr)
                         del gr
                         
-                if len(self.openUserRequests) < 4:
-                    self._hasSlept = True                    
+                if didSomething is False: # only start a new request if nothing else was done
                     task = None
                     try:
                         pr,task = self.graph.newTasks.get(block = False)#timeout = 1.0)
                     except Empty:
                         pass               
                     if task is not None:
+                        didSomething = True
                         reqObject = task
-                        self.openUserRequests.add(reqObject)                
                         if reqObject.canceled is False:
                             gr = CustomGreenlet(reqObject._execute)
                             gr.thread = self
                             gr.switch( gr)
                             del gr
-                else:
-                    self._hasSlept = False
-                for r in self.openUserRequests.copy():
-                    if r.canceled or r._finished:
-                        self.openUserRequests.remove(r)
-                        self._hasSlept = True
         self.graph.workers.remove(self)
 
     
@@ -2671,6 +2665,7 @@ class Graph(object):
                 try:
                     w = self.freeWorkers.pop()
                     w.signalWorkAvailable()
+                    time.sleep(0)
                 except:
                     pass
         else:
