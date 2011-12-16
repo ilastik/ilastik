@@ -961,21 +961,23 @@ class OpBlockedArrayCache(OperatorGroup):
             
 
     def getOutSlot(self, slot, key, result):
+        #return
         
         #find the block key
         start, stop = sliceToRoi(key, self.shape)
-        blockStart = numpy.floor(1.0 * start / self._blockShape)
-        blockStop = numpy.ceil(1.0 * stop / self._blockShape)
-        blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
+        
+        blockStart = (start / self._blockShape)
+        blockStop = (stop * 1.0 / self._blockShape).ceil()
+        #blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
         blockKey = roiToSlice(blockStart,blockStop)
         innerBlocks = self._blockNumbers[blockKey]
-        result[:] = 0
 
         if lazyflow.verboseRequests:
-            print "OpSparseArrayCache %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))    
+            print "OpSparseArrayCache %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))
+
         
         requests = []
-        for b_ind in innerBlocks.ravel():
+        for b_ind in innerBlocks.flat:
             #which part of the original key does this block fill?
             offset = self._blockShape*self._flatBlockIndices[b_ind]
             bigstart = numpy.maximum(offset, start)
@@ -987,7 +989,6 @@ class OpBlockedArrayCache(OperatorGroup):
             smallstop = bigstop - offset
             
             diff = smallstop - smallstart
-            minimum = numpy.min(diff)
             smallkey = roiToSlice(smallstart, smallstop)
                 
             bigkey = roiToSlice(bigstart-start, bigstop-start)
@@ -1010,19 +1011,17 @@ class OpBlockedArrayCache(OperatorGroup):
                     #self._cache_list[b_ind].inputs["fixAtCurrent"].connect(self.fixerSource.outputs["Output"])
                     self._cache_list[b_ind].inputs["fixAtCurrent"].connect(self.fixerSource.outputs["Output"])
                     self._cache_list[b_ind].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
+            self._lock.release()
 
             if self._cache_list.has_key(b_ind):
-                req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
-                self._lock.release()
-                #res = req.wait()
-                requests.append(req)
-            else:
-                self._lock.release()
+                op = self._cache_list[b_ind]
+                #req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
+                op.getOutSlot(op.outputs["Output"],smallkey,result[bigkey])
+                #requests.append(req)
         
         for r in requests:
           r.wait()
 
-        return result
 
     def notifyDirty(self, slot, key):
         if slot == self.inputs["Input"] and not self._fixed:

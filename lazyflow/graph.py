@@ -219,12 +219,7 @@ print "\n\n"
 
       
 class CustomGreenlet(greenlet.greenlet):
-    __slots__ = ["lastRequest","currentRequest","thread"] 
-    def __init__(self, func):
-        self.lastRequest = None
-        self.currentRequest = None
-        greenlet.greenlet.__init__(self, func)
-        self.thread = None
+    __slots__ = ("lastRequest","currentRequest","thread")
 
 
 def patchForeignCurrentThread():
@@ -402,6 +397,7 @@ class GetItemRequestObject(object):
                           else:
                             lr.lock.release()
                         cgr = CustomGreenlet(self.wait)
+                        cgr.lastRequest = None
                         cgr.currentRequest = self
                         cgr.thread = tr                        
                         self.lock.release()
@@ -433,6 +429,7 @@ class GetItemRequestObject(object):
                         cgr = CustomGreenlet(self._execute)
                         cgr.currentRequest = self
                         cgr.thread = tr
+                        cgr.lastRequest = None
                         self.inProcess = True
                         self.lock.release()
                         tr.greenlet = gr
@@ -595,7 +592,6 @@ class GetItemRequestObject(object):
 
 
     def cancel(self, level = 0):
-        return
         if not self._finished:
             if self._cancel():
               self._cancelChildren(level = level)
@@ -2502,6 +2498,8 @@ class Worker(Thread):
                     reqObject = task
                     if reqObject.canceled is False:
                         gr = CustomGreenlet(reqObject._execute)
+                        gr.lastRequest = None
+                        gr.currentRequest = reqObject
                         gr.thread = self
                         gr.switch( gr)
                         del gr
@@ -2518,6 +2516,8 @@ class Worker(Thread):
                         if reqObject.canceled is False:
                             gr = CustomGreenlet(reqObject._execute)
                             gr.thread = self
+                            gr.lastRequest = None
+                            gr.currentRequest = reqObject
                             gr.switch( gr)
                             del gr
         self.graph.workers.remove(self)
