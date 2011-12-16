@@ -283,17 +283,12 @@ class GetItemRequestObject(object):
             self.arg1 = slot
         else:
             # we are in the ._value case of an inputSlot
-            if self.destination is None:
-                self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)            
             gr = greenlet.getcurrent()
             if isinstance(gr,CustomGreenlet):
                 self.parentRequest = gr.currentRequest    
                 assert gr.currentRequest is not None
             self.wait() #this sets self._finished and copies the results over
         if not self._finished:
-            #self._putOnTaskQueue()
-            #return
-            
             gr = greenlet.getcurrent()
             if isinstance(gr,CustomGreenlet):
                 # we delay the firing of an request until
@@ -301,15 +296,13 @@ class GetItemRequestObject(object):
                 # by this we make sure that one call path
                 # through the graph is done in one greenlet/thread
                 
-                lr = gr.lastRequest
+                self._burstLastRequest(gr)
                 self.parentRequest = gr.currentRequest
                 gr.currentRequest.lock.acquire()
                 gr.currentRequest.childRequests[self] = self
                 self._requestLevel = gr.currentRequest._requestLevel + self._priority + 1
                 gr.lastRequest = self
-                gr.currentRequest.lock.release()                
-                if lr is not None:
-                    lr._putOnTaskQueue()
+                gr.currentRequest.lock.release()
 
             else:
                 # we are in a unknownnnon worker thread
@@ -320,11 +313,18 @@ class GetItemRequestObject(object):
                 lr = tr.lastRequest
                 tr.lastRequest = self
                 if lr is not None:
-                  lr._putOnTaskQueue()
+                  lr.lock.acquire()
+                  if lr.inProcess is False:
+                    lr.inProcess = True
+                    lr.lock.release()
+                    lr._putOnTaskQueue()
+                  else:
+                    lr.lock.release()
                 self._requestLevel = self._priority
             
 
     def _execute(self, gr):
+        self.inProcess = True
         temp = gr.currentRequest
         if self.destination is None:
             self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
@@ -343,7 +343,6 @@ class GetItemRequestObject(object):
         gr.currentRequest = temp
 
     def _putOnTaskQueue(self):
-        self.inProcess = True
         self.graph.putTask(self)
     
     def getResult(self):
@@ -386,8 +385,6 @@ class GetItemRequestObject(object):
                             self.adjustPriority(delta)
                         
                         self._burstLastRequest(gr)
-                        if gr.lastRequest == self:
-                            gr.lastRequest = None                                  
                         gr.thread.greenlet.switch(None)
                     else:
                         tr = current_thread()
@@ -399,8 +396,11 @@ class GetItemRequestObject(object):
                         if lr is not None and lr != self:
                           lr.lock.acquire()
                           if lr.inProcess is False:
+                            lr.inProcess = True
+                            lr.lock.release()
                             lr._putOnTaskQueue()
-                          lr.lock.release()
+                          else:
+                            lr.lock.release()
                         cgr = CustomGreenlet(self.wait)
                         cgr.currentRequest = self
                         cgr.thread = tr                        
@@ -411,8 +411,6 @@ class GetItemRequestObject(object):
                 else:
                     if isinstance(gr,CustomGreenlet):
                         self._burstLastRequest(gr)
-                        if gr.lastRequest == self:
-                            gr.lastRequest = None
                         self.inProcess = True
                         self.lock.release()
                         self._execute(gr)
@@ -427,14 +425,19 @@ class GetItemRequestObject(object):
                         if lr is not None and lr != self:
                           lr.lock.acquire()
                           if lr.inProcess is False:
+                            lr.inProcess = True
+                            lr.lock.release()
                             lr._putOnTaskQueue()
-                          lr.lock.release()
-                        cgr = CustomGreenlet(self.wait)
+                          else:
+                            lr.lock.release()
+                        cgr = CustomGreenlet(self._execute)
                         cgr.currentRequest = self
-                        cgr.thread = tr                        
+                        cgr.thread = tr
+                        self.inProcess = True
                         self.lock.release()
                         tr.greenlet = gr
-                        cgr.switch(self)
+                        
+                        cgr.switch(cgr)
                         self._waitFor(cgr,tr) #wait for finish
             else:
                 self.lock.release()
@@ -449,13 +452,13 @@ class GetItemRequestObject(object):
                 self.destination[:] = self.slot._value[self.key]
             except (AttributeError, TypeError): # not an array
                 self.destination[:] = self.slot._value
-            self._finished = True
-        return self.destination   
+        self._finished = True
+        if self.canceled is False:
+          assert self.destination is not None
+          return self.destination
+        else:
+          return None
   
-      
-    def processReqObject(self,reqObject):
-        reqObject.func(reqObject.arg1, reqObject.key, reqObject.destination)
-        reqObject._finalize()
       
     def _waitFor(self, cgr, tr):
         while not cgr.dead:
@@ -475,6 +478,7 @@ class GetItemRequestObject(object):
         if lr is not None and lr != self:            
             lr.lock.acquire()
             if lr.inProcess is False and lr.canceled is False:
+                lr.inProcess = True
                 lr.lock.release()
                 lr._putOnTaskQueue()
             else:
@@ -495,9 +499,11 @@ class GetItemRequestObject(object):
         else:
             self.notifyQueue.append((closure, kwargs))
             if not self.inProcess:
+                self.inProcess = True
+                self.lock.release()
                 self._putOnTaskQueue()
-            self.lock.release()
-
+            else:
+              self.lock.relase()
             
     def onCancel(self, closure, **kwargs):
         self.lock.acquire()       
@@ -513,8 +519,15 @@ class GetItemRequestObject(object):
         self._finished = True
         self.cancelQueue = deque()
         self.childRequests = {}
+        nq = self.notifyQueue
+        wq = self.waitQueue
+
+        self.notifyQueue = deque()
+        self.waitQueue = deque()
+
         self.lock.release()
         p = self.parentRequest
+        self.parentRequest = None
         gr = greenlet.getcurrent()
         if p is not None:
             l = p._requestLevel + 1
@@ -522,24 +535,25 @@ class GetItemRequestObject(object):
             
         if self.graph.suspended is False or self.parentRequest is not None:
             if self.canceled is False:
-                while len(self.notifyQueue) > 0:
+                while len(nq) > 0:
                     try:
-                        func, kwargs = self.notifyQueue.pop()
+                        func, kwargs = nq.pop()
                     except:
                         break
                     func(self.destination, **kwargs)
     
-            while len(self.waitQueue) > 0:
-                w = self.waitQueue.pop()
+            while len(wq) > 0:
+                w = wq.pop()
                 tr, req, gr = w
                 req.lock.acquire()
                 if not req.canceled:
                     tr.finishedRequestGreenlets.append((-req._requestLevel,req,gr))#put((-req._requestLevel, req, gr))
+                    req.lock.release()
                     tr.workAvailableEvent.set()
-                req.lock.release()
+                else:
+                  req.lock.release()
         else:
             self.graph.putFinalize(self)
-        self.parentRequest = None
         
 
         
@@ -581,6 +595,7 @@ class GetItemRequestObject(object):
 
 
     def cancel(self, level = 0):
+        return
         if not self._finished:
             if self._cancel():
               self._cancelChildren(level = level)
