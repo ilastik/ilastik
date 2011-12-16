@@ -503,7 +503,7 @@ class GetItemRequestObject(object):
                 self.lock.release()
                 self._putOnTaskQueue()
             else:
-              self.lock.relase()
+              self.lock.release()
             
     def onCancel(self, closure, **kwargs):
         self.lock.acquire()       
