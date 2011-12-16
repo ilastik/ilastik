@@ -434,21 +434,21 @@ class Main(QMainWindow):
         layer1 = None
         if nchannels == 1:
             layer1 = GrayscaleLayer(srcs[0], thresholding=minMax[0])
-            layer1.rangeRed   = minMax[0]
+            layer1.set_range(0,minMax[0])
             print "  - showing raw data as grayscale"
         elif nchannels==2:
             layer1 = RGBALayer(red  = srcs[0], normalizeR=minMax[0],
                                green = srcs[1], normalizeG=minMax[1])
-            layer1.rangeRed   = minMax[0]
-            layer1.rangeGreen = minMax[1]
+            layer1.set_range(0, minMax[0])
+            layer1.set_range(1, minMax[1])
             print "  - showing channel 1 as red, channel 2 as green"
         elif nchannels==3:
             layer1 = RGBALayer(red   = srcs[0], normalizeR=minMax[0],
                                green = srcs[1], normalizeG=minMax[1],
                                blue  = srcs[2], normalizeB=minMax[2])
-            layer1.rangeRed   = minMax[0]
-            layer1.rangeGreen = minMax[1]
-            layer1.rangeBlue  = minMax[2]
+            layer1.set_range(0, minMax[0])
+            layer1.set_range(1, minMax[1])
+            layer1.set_range(2, minMax[2])
             print "  - showing channel 1 as red, channel 2 as green, channel 3 as blue"
         else:
             print "only 1,2 or 3 channels supported so far"
