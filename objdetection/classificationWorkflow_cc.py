@@ -16,8 +16,9 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
                                OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures, \
                                OpMultiArraySlicer2,OpH5Reader, OpBlockedSparseLabelArray, \
                                OpMultiArrayStacker, OpTrainRandomForestBlocked, OpPixelFeatures, \
-                               OpH5ReaderBigDataset, OpSlicedBlockedArrayCache, OpPixelFeaturesPresmoothed,\
-                               OpThreshold, OpConnectedComponents
+                               OpH5ReaderBigDataset, OpSlicedBlockedArrayCache, OpPixelFeaturesPresmoothed
+                               
+from connected_comp import OpThreshold, OpConnectedComponents
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
     AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
@@ -376,7 +377,6 @@ class Main(QMainWindow):
         ref_label = self.labelListModel._labels[channel]
         self.opThreshold.inputs["Channel"].setValue(channel)
         self.opThreshold.inputs["Threshold"].setValue(value)
-        print "shape of the output", self.opThreshold.outputs["Output"][0].shape
         threshsrc = LazyflowSource(self.opThreshold.outputs["Output"][0])
         
         threshsrc.setObjectName("Threshold for %s" % ref_label.name)
@@ -397,6 +397,8 @@ class Main(QMainWindow):
         
         ccsrc = LazyflowSource(self.opCC.outputs["Output"][0])
         ccsrc.setObjectName("Connected Components")
+        ctb = self._colorTable16
+        ctb.insert(0, QColor(0, 0, 0, 0).rgba())
         ccLayer = ColortableLayer(ccsrc, self._colorTable16)
         ccLayer.name = "Connected Components"
         self.layerstack.insert(1, ccLayer)
