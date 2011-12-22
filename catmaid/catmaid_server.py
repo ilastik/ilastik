@@ -30,6 +30,7 @@ if __name__ == '__main__':
     import numpy
     from volumina.pixelpipeline._testing import OpDataProvider
     from volumina._testing.from_lazyflow import OpDataProvider5D, OpDelay
+    from volumina.pixelpipeline.imagesources import RandomImageSource
     from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
     from lazyflow import operators
 
@@ -60,6 +61,6 @@ if __name__ == '__main__':
     pump = volumina.pixelpipeline.imagepump.ImagePump(layerstack, alongTZC)
 
     from BaseHTTPServer import HTTPServer
-    server = CatmaidServer(('localhost', 8080), GetHandler, pump.stackedImageSources.getImageSource(0))
+    server = CatmaidServer(('localhost', 8080), GetHandler, RandomImageSource())
     print 'Starting server, use <Ctrl-C> to stop'
     server.serve_forever()
