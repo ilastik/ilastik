@@ -33,7 +33,6 @@ if __name__ == '__main__':
     from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
     from lazyflow import operators
 
-    from testing import testVolume
     import volumina.pixelpipeline.imagepump
     from volumina.slicingtools import SliceProjection
 
@@ -58,12 +57,7 @@ if __name__ == '__main__':
     layerstack.append( GrayscaleLayer(source) )
 
     alongTZC = SliceProjection( abscissa = 1, ordinate = 2, along = [0,3,4] )
-
-    #source = ArraySource(testVolume(N))
-
-    #layerstack.append(GrayscaleLayer( source ))
     pump = volumina.pixelpipeline.imagepump.ImagePump(layerstack, alongTZC)
-    #pump.stackedImageSources
 
     from BaseHTTPServer import HTTPServer
     server = CatmaidServer(('localhost', 8080), GetHandler, pump.stackedImageSources.getImageSource(0))
