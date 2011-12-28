@@ -14,7 +14,7 @@ from volumina.pixelpipeline.datasources import LazyflowSource, ConstantSource
 from volumina.pixelpipeline._testing import OpDataProvider
 from volumina._testing.from_lazyflow import OpDataProvider5D, OpDelay
 from volumina.layer import GrayscaleLayer, RGBALayer, ColortableLayer
-from volumina.layerwidget.layerwidget import LayerWidget
+from volumina.widgets.layerwidget import LayerWidget
 from volumina.layerstack import LayerStackModel
 from volumina.volumeEditor import VolumeEditor
 from volumina.volumeEditorWidget import VolumeEditorWidget

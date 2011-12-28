@@ -324,7 +324,7 @@
   <customwidget>
    <class>LayerWidget</class>
    <extends>QListView</extends>
-   <header>volumina.layerwidget.layerwidget</header>
+   <header>volumina.widgets.layerwidget</header>
   </customwidget>
   <customwidget>
    <class>VolumeEditorWidget</class>
