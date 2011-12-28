@@ -433,7 +433,7 @@ class Main(QMainWindow):
         #FIXME: we shouldn't merge channels automatically, but for now it's prettier
         layer1 = None
         if nchannels == 1:
-            layer1 = GrayscaleLayer(srcs[0], thresholding=minMax[0])
+            layer1 = GrayscaleLayer(srcs[0], normalize=minMax[0])
             layer1.set_range(0,minMax[0])
             print "  - showing raw data as grayscale"
         elif nchannels==2:
