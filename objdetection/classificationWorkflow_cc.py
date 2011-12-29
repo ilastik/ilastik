@@ -456,6 +456,7 @@ class Main(QMainWindow):
         shape = self.inputProvider.outputs["Output"].shape
         srcs    = []
         minMax = []
+        normalize = []
         
         print "* Data has shape=%r" % (shape,)
         
@@ -466,14 +467,15 @@ class Main(QMainWindow):
        
         nchannels = shape[-1]
         for ich in xrange(nchannels):
+            data=slicer.outputs['Slices'][ich][:].allocate().wait()
+            #find the minimum and maximum value for normalization
+            mm = (numpy.min(data), numpy.max(data))
+            print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
+            minMax.append(mm)
             if self._normalize_data:
-                data=slicer.outputs['Slices'][ich][:].allocate().wait()
-                #find the minimum and maximum value for normalization
-                mm = (numpy.min(data), numpy.max(data))
-                print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
-                minMax.append(mm)
+                normalize.append(mm)
             else:
-                minMax.append(None)
+                normalize.append((0,255))
             layersrc = LazyflowSource(slicer.outputs['Slices'][ich], priority = 100)
             layersrc.setObjectName("raw data channel=%d" % ich)
             srcs.append(layersrc)
@@ -481,22 +483,17 @@ class Main(QMainWindow):
         #FIXME: we shouldn't merge channels automatically, but for now it's prettier
         layer1 = None
         if nchannels == 1:
-            layer1 = GrayscaleLayer(srcs[0], normalize=minMax[0])
-            layer1.rangeRed   = minMax[0]
+            layer1 = GrayscaleLayer(srcs[0], range=minMax[0], normalize=normalize[0])
             print "  - showing raw data as grayscale"
         elif nchannels==2:
-            layer1 = RGBALayer(red  = srcs[0], normalizeR=minMax[0],
-                               green = srcs[1], normalizeG=minMax[1])
-            layer1.rangeRed   = minMax[0]
-            layer1.rangeGreen = minMax[1]
+            layer1 = RGBALayer(red  = srcs[0], normalizeR=normalize[0],
+                               green = srcs[1], normalizeG=normalize[1], range=minMax[0:2]+[(0,255), (0,255)])
             print "  - showing channel 1 as red, channel 2 as green"
         elif nchannels==3:
-            layer1 = RGBALayer(red   = srcs[0], normalizeR=minMax[0],
-                               green = srcs[1], normalizeG=minMax[1],
-                               blue  = srcs[2], normalizeB=minMax[2])
-            layer1.rangeRed   = minMax[0]
-            layer1.rangeGreen = minMax[1]
-            layer1.rangeBlue  = minMax[2]
+            layer1 = RGBALayer(red   = srcs[0], normalizeR=normalize[0],
+                               green = srcs[1], normalizeG=normalize[1],
+                               blue  = srcs[2], normalizeB=normalize[2],
+                               range = minMax[0:3])
             print "  - showing channel 1 as red, channel 2 as green, channel 3 as blue"
         else:
             print "only 1,2 or 3 channels supported so far"
