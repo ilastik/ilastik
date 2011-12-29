@@ -23,6 +23,8 @@ from connected_comp import OpThreshold, OpConnectedComponents
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
     AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
 
+from volumina import colortables
+
 from labelListView import Label
 from labelListModel import LabelListModel
 
@@ -397,9 +399,9 @@ class Main(QMainWindow):
         
         ccsrc = LazyflowSource(self.opCC.outputs["Output"][0])
         ccsrc.setObjectName("Connected Components")
-        ctb = self._colorTable16
-        ctb.insert(0, QColor(0, 0, 0, 0).rgba())
-        ccLayer = ColortableLayer(ccsrc, self._colorTable16)
+        ctb = colortables.create_default_16bit()
+        ctb.insert(0, QColor(0, 0, 0, 0).rgba()) # make background transparent
+        ccLayer = ColortableLayer(ccsrc, ctb)
         ccLayer.name = "Connected Components"
         self.layerstack.insert(1, ccLayer)
         
