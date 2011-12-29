@@ -341,7 +341,7 @@ class Main(QMainWindow):
             predictsrc.setObjectName("Prediction for %s" % ref_label.name)
         srcName("")
         
-        predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color, normalize = None )
+        predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color)
         predictLayer.nameChanged.connect(srcName)
         
         def setLayerColor(c):
@@ -479,7 +479,7 @@ class Main(QMainWindow):
         #FIXME: we shouldn't merge channels automatically, but for now it's prettier
         layer1 = None
         if nchannels == 1:
-            layer1 = GrayscaleLayer(srcs[0], thresholding=minMax[0])
+            layer1 = GrayscaleLayer(srcs[0], normalize=minMax[0])
             layer1.rangeRed   = minMax[0]
             print "  - showing raw data as grayscale"
         elif nchannels==2:
