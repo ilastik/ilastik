@@ -381,8 +381,8 @@ class Main(QMainWindow):
         
         threshsrc.setObjectName("Threshold for %s" % ref_label.name)
         transparent = QColor(0,0,0,0)
-        white = QColor(255, 255, 255)
-        colorTable = [transparent.rgba(), white]
+        white = QColor(255,255,255)
+        colorTable = [transparent.rgba(), white.rgba()]
         threshLayer = ColortableLayer(threshsrc, colorTable = colorTable )
         threshLayer.name = "Threshold for %s" % ref_label.name
         self.layerstack.insert(1, threshLayer)
