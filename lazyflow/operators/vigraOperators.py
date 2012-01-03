@@ -1167,7 +1167,11 @@ class OpH5Reader(Operator):
         if len(d.shape) == 2:
             axistags=vigra.AxisTags(vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space))   
         elif len(d.shape) == 3:
-            axistags=vigra.AxisTags( vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space), vigra.AxisInfo('z', vigra.AxisType.Space))   
+            if(d.shape[2]>3):
+              axistags=vigra.AxisTags( vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space), vigra.AxisInfo('z', vigra.AxisType.Space))   
+            else:
+              axistags=vigra.AxisTags( vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space), vigra.AxisInfo('c', vigra.AxisType.Channels))   
+
         elif len(d.shape) == 4:
             axistags=vigra.AxisTags( vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space), vigra.AxisInfo('z', vigra.AxisType.Space), vigra.AxisInfo('c', vigra.AxisType.Channels))   
         elif len(d.shape) == 5:

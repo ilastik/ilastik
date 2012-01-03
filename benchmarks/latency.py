@@ -8,7 +8,7 @@ from lazyflow import operators
 
 doProfile = False
 
-g = Graph()
+g = Graph(1)
 
 mcount = 30000
 lock = threading.Lock()
