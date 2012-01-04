@@ -1638,18 +1638,21 @@ class Operator(object):
         #provide simple default name for lazy users
         if self.name == "": 
             self.name = type(self).__name__
-        assert self.graph is not None, "Operators must be given a graph, they cannot exist alone!" 
+        assert self.graph is not None, "Operators must be given a graph, they cannot exist alone!"
+
         # replicate input slot connections
         # defined for the operator for the instance
         for i in self.inputSlots:
             ii = i.getInstance(self)
             ii.connect(i.partner)
             self.inputs[i.name] = ii
+            setattr(self,i.name,ii)
         # replicate output slots
         # defined for the operator for the instance 
         for o in self.outputSlots:
             oo = o.getInstance(self)
             self.outputs[o.name] = oo         
+            setattr(self,o.name,oo)
             # output slots are connected
             # when the corresponding input slots
             # of the partner operators are created  
