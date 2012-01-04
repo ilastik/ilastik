@@ -1639,6 +1639,20 @@ class Operator(object):
         if self.name == "": 
             self.name = type(self).__name__
         assert self.graph is not None, "Operators must be given a graph, they cannot exist alone!"
+        
+        # check for slot uniqueness
+        temp = {}
+        for i in self.inputSlots:
+          if temp.has_key(i.name):
+            raise Exception("ERROR: Operator %s has multiple slots with name %s, please make sure that all input and output slot names are unique" % (self.name, i.name))
+            sys.exit(1)
+          temp[i.name] = True
+
+        for i in self.outputSlots:
+          if temp.has_key(i.name):
+            raise Exception("ERROR: Operator %s has multiple slots with name %s, please make sure that all input and output slot names are unique" % (self.name, i.name))
+            sys.exit(1)
+          temp[i.name] = True
 
         # replicate input slot connections
         # defined for the operator for the instance
@@ -1966,6 +1980,7 @@ class OperatorWrapper(Operator):
                 level = islot.level + 1
                 ii = MultiInputSlot(islot.name, self, stype = islot._stype, level = level)
                 self.inputs[islot.name] = ii
+                setattr(self,islot.name,ii)
                 op = self.operator
                 while isinstance(op.operator, (Operator, MultiInputSlot, OperatorGroup)):
                     op = op.operator
@@ -1976,6 +1991,7 @@ class OperatorWrapper(Operator):
                 level = oslot.level + 1
                 oo = MultiOutputSlot(oslot.name, self, stype = oslot._stype, level = level)
                 self.outputs[oslot.name] = oo
+                setattr(self,oslot.name,oo)
                 op = self.operator
                 while isinstance(op.operator, (Operator, MultiOutputSlot)):
                     op = op.operator
