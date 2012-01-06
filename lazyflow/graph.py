@@ -177,8 +177,7 @@ class GetItemWriterObject(object):
     __slots__ = ["_key", "_start", "_stop","_slot"]
     
     def __init__(self, slot, key):
-        self._start, self._stop = sliceToRoi(key, slot.shape)
-        self._key = roiToSlice(self._start,self._stop)        
+        self._key = key        
         self._slot = slot
     
     def writeInto(self, destination, priority = 0):
@@ -192,10 +191,7 @@ class GetItemWriterObject(object):
         return in reponse to the requested key
         """
         if destination is not None:
-            diff = self._start - self._stop
-            shape = list(destination.shape)
-            assert len(diff) == len(shape), "GetItemWriterObject: writeInto - somebody provided result area that has a different shape then the request key itself ! resultarea shape = %r, key = %r" % (destination.shape, self._key)
-            assert diff == shape, "GetItemWriterObject: writeInto - somebody provided result area that has a different shape then the request key itself ! resultarea shape = %r, key = %r" % (destination.shape, self._key)
+            assert self._slot._isCompatible( destination, self._key ), "GetItemWriterObject: writeInto - destination is not compatible with requested key"
         return  GetItemRequestObject(self, self._slot, self._key, destination, priority)
   
     def allocate(self, axistags = False, priority = 0):
@@ -322,7 +318,7 @@ class GetItemRequestObject(object):
         self.inProcess = True
         temp = gr.currentRequest
         if self.destination is None:
-            self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
+            self.destination = self.slot._allocateDestination( self.key )
         gr.currentRequest = self
         try:
           self.func(self.arg1,self.key, self.destination)
@@ -797,6 +793,10 @@ class InputSlot(object):
            storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
 #        key = roiToSlice(start,stop) #we need a fully specified key e.g. not [:] but [0:10,0:17] !!
         return storage
+
+    def _allocateDestination( self, key ):
+        start, stop = sliceToRoi(key, self.shape)
+        return self._allocateStorage( start, stop, axistags = False)
             
     def __setitem__(self, key, value):
         assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"     
@@ -988,14 +988,20 @@ class OutputSlot(object):
             #storage.axistags = copy.copy(self.axistags)
         return storage
 
+    def _isCompatible( destination, key ):
+        start, stop = sliceToRoi(key, self.shape)
+        diff = start - stop
+        shape = list(destination.shape)
+        return len(diff) == len(shape) and diff == shape
+
+    def _allocateDestination( self, key ):
+        start, stop = sliceToRoi(key, self.shape)
+        return self._allocateStorage( start, stop, axistags = False)
+
     def __getitem__(self, key):
         assert self.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
-
-        #start, stop = sliceToRoi(key, self.shape)
-        #assert numpy.min(start) >= 0, "Somebody is requesting shit from slot %s of operator %s (%r)" %(self.name, self.operator.name, self.operator)
-        #assert (stop <= numpy.array(self.shape)).all(), "Somebody is requesting shit from slot %s of operator %s (%r) :  start: %r, stop %r, shape %r" %(self.name, self.operator.name, self.operator, start, stop, self.shape)
-                
-        return GetItemWriterObject(self,key)
+        start, stop = sliceToRoi(key, self.shape)
+        return GetItemWriterObject(self, roiToSlice(start, stop))
     
     def getOutSlotFromOp(self, key, destination):
         self.operator.getOutSlot(self, key, destination)
