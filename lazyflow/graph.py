@@ -397,7 +397,7 @@ class GetItemRequestObject(object):
         self._finished = True
         if self.canceled is False:
           assert self.destination is not None
-          return self.destination
+          return self.destination if self.slot._array_destination else self.destination[0]
         else:
           return None
   
@@ -556,9 +556,10 @@ class Slot(object):
     def graph(self):
         return self.operator.graph
 
-    def __init__( self ):
+    def __init__( self, array_destination = True ):
         if self.__class__ == Slot: # make Slot constructor "private"
             raise Exception("Slot can't be constructed directly; use one of the derived slot types")
+        self._array_destination = array_destination 
 
     def _allocateStorage(self, start, stop, axistags = True):
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
@@ -569,11 +570,17 @@ class Slot(object):
         return storage
 
     def _allocateDestination( self, key ):
-        start, stop = sliceToRoi(key, self.shape)
-        return self._allocateStorage( start, stop, axistags = False)
+        if self._array_destination:
+            start, stop = sliceToRoi(key, self.shape)
+            return self._allocateStorage( start, stop, axistags = False)
+        else:
+            return [None]
 
     def _writeIntoDestination( self, destination, value ):
-        destination[:] = value
+        if self._array_destination:
+            destination[:] = value
+        else:
+            destination[0] = value
 
     def __getitem__(self, key):
         assert self.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
@@ -813,8 +820,8 @@ class OutputSlot(Slot):
                  "dtype", "shape", "axistags", "partners", "_stype",
                  "_dirtyCallbacks"]    
     
-    def __init__(self, name, operator = None, stype = "ndarray"):
-        super(OutputSlot, self).__init__()
+    def __init__(self, name, operator = None, stype = "ndarray", array_destination=True):
+        super(OutputSlot, self).__init__(array_destination)
         self.name = name
         self._metaParent = operator
         self.level = 0
@@ -827,7 +834,7 @@ class OutputSlot(Slot):
             self.axistags = None
         self.partners = []
         self._stype = stype
-        
+
         self._dirtyCallbacks = []
     
     @property
@@ -924,7 +931,7 @@ class OutputSlot(Slot):
 
     #FIXME __copy__ ?
     def getInstance(self, operator):
-        s = OutputSlot(self.name, operator, stype = self._stype)
+        s = OutputSlot(self.name, operator, stype = self._stype, array_destination = self._array_destination)
         s.shape = self.shape
         s.dtype = self.dtype
         s.axistags = self.axistags
