@@ -785,7 +785,7 @@ class InputSlot(object):
         assert stop <= list(self.shape)
         assert start >= [0]*len(self.shape)
         assert self.partner is not None or self._value is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
-        return GetItemWriterObject(self, key)
+        return GetItemWriterObject(self, roiToSlice(start, stop))
 
     def _allocateStorage(self, start, stop, axistags = False):
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
@@ -793,6 +793,12 @@ class InputSlot(object):
            storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
 #        key = roiToSlice(start,stop) #we need a fully specified key e.g. not [:] but [0:10,0:17] !!
         return storage
+
+    def _isCompatible( self, destination, key ):
+        start, stop = sliceToRoi(key, self.shape)
+        diff = start - stop
+        shape = list(destination.shape)
+        return len(diff) == len(shape) and diff == shape
 
     def _allocateDestination( self, key ):
         start, stop = sliceToRoi(key, self.shape)
@@ -988,7 +994,7 @@ class OutputSlot(object):
             #storage.axistags = copy.copy(self.axistags)
         return storage
 
-    def _isCompatible( destination, key ):
+    def _isCompatible( self, destination, key ):
         start, stop = sliceToRoi(key, self.shape)
         diff = start - stop
         shape = list(destination.shape)
