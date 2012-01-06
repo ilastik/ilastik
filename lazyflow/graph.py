@@ -392,9 +392,10 @@ class GetItemRequestObject(object):
             if self.destination is None:
                 self.destination = self.slot._allocateDestination(self.key)
             try:
-                self.destination[:] = self.slot._value[self.key]
+                value = self.slot._value[self.key]
             except (AttributeError, TypeError): # not an array
-                self.destination[:] = self.slot._value
+                value = self.slot._value
+            self.slot._writeIntoDestination(self.destination, value)
         self._finished = True
         if self.canceled is False:
           assert self.destination is not None
@@ -578,6 +579,9 @@ class Slot(object):
     def _allocateDestination( self, key ):
         start, stop = sliceToRoi(key, self.shape)
         return self._allocateStorage( start, stop, axistags = False)
+
+    def _writeIntoDestination( self, destination, value ):
+        destination[:] = value
 
     def __getitem__(self, key):
         assert self.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
