@@ -600,7 +600,41 @@ class GetItemRequestObject(object):
     def __call__(self):
         assert 1==2, "Please use the .wait() method, () is deprecated !"
 
-class InputSlot(object):
+class Slot(object):
+    """Common methods of all slot types."""
+
+    @property
+    def graph(self):
+        return self.operator.graph
+
+    def __init__( self ):
+        if self.__class__ == Slot: # make Slot constructor "private"
+            raise Exception("Slot can't be constructed directly; use one of the derived slot types")
+
+    def _allocateStorage(self, start, stop, axistags = True):
+        storage = numpy.ndarray(stop - start, dtype=self.dtype)
+        if axistags is True:
+            storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
+            #storage = storage.view(vigra.VigraArray)
+            #storage.axistags = copy.copy(self.axistags)
+        return storage
+
+    def _isCompatible( self, destination, key ):
+        start, stop = sliceToRoi(key, self.shape)
+        diff = start - stop
+        shape = list(destination.shape)
+        return len(diff) == len(shape) and diff == shape
+
+    def _allocateDestination( self, key ):
+        start, stop = sliceToRoi(key, self.shape)
+        return self._allocateStorage( start, stop, axistags = False)
+
+    def __getitem__(self, key):
+        assert self.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
+        start, stop = sliceToRoi(key, self.shape)
+        return GetItemWriterObject(self, roiToSlice(start, stop))
+
+class InputSlot(Slot):
     """
     The base class for input slots, it provides methods
     to connect the InputSlot to an OutputSlot of another
@@ -612,6 +646,7 @@ class InputSlot(object):
                  "_value", "_stype", "axistags", "shape", "dtype"]    
     
     def __init__(self, name, operator = None, stype = "ndarray"):
+        super(InputSlot, self).__init__()
         self.name = name
         self.operator = operator
         self.partner = None
@@ -769,40 +804,6 @@ class InputSlot(object):
         # if you want a more involved
         # type checking
         return True
-
-    def __getitem__(self, key):
-        """
-        retrieve the array content from the partner OutputSlot
-        
-        the method supports the array access interface.
-        
-        allows to call inputslot[0,:,3:11] 
-        """
-        if type(key) == tuple:
-          assert len(key) == len(self.shape)
-        start, stop = sliceToRoi(key, self.shape)
-        assert len(stop) == len(self.shape)
-        assert stop <= list(self.shape)
-        assert start >= [0]*len(self.shape)
-        assert self.partner is not None or self._value is not None, "cannot do __getitem__ on Slot %s, of %r Not Connected!" % (self.name, self.operator)
-        return GetItemWriterObject(self, roiToSlice(start, stop))
-
-    def _allocateStorage(self, start, stop, axistags = False):
-        storage = numpy.ndarray(stop - start, dtype=self.dtype)
-        if axistags is True:
-           storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
-#        key = roiToSlice(start,stop) #we need a fully specified key e.g. not [:] but [0:10,0:17] !!
-        return storage
-
-    def _isCompatible( self, destination, key ):
-        start, stop = sliceToRoi(key, self.shape)
-        diff = start - stop
-        shape = list(destination.shape)
-        return len(diff) == len(shape) and diff == shape
-
-    def _allocateDestination( self, key ):
-        start, stop = sliceToRoi(key, self.shape)
-        return self._allocateStorage( start, stop, axistags = False)
             
     def __setitem__(self, key, value):
         assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"     
@@ -811,10 +812,6 @@ class InputSlot(object):
             self.setDirty(key) # only propagate the dirty key at the very beginning of the chain
         self.operator.setInSlot(self,key,value)
         
-    @property
-    def graph(self):
-        return self.operator.graph
-
     def dumpToH5G(self, h5g, patchBoard):
         h5g.dumpSubObjects({
             "name" : self.name,
@@ -851,7 +848,7 @@ class InputSlot(object):
 
         return s
     
-class OutputSlot(object):
+class OutputSlot(Slot):
     """
     The base class for output slots, it provides methods
     to connect the OutputSlot to an InputSlot of another
@@ -871,6 +868,7 @@ class OutputSlot(object):
                  "_dirtyCallbacks"]    
     
     def __init__(self, name, operator = None, stype = "ndarray"):
+        super(OutputSlot, self).__init__()
         self.name = name
         self._metaParent = operator
         self.level = 0
@@ -985,29 +983,6 @@ class OutputSlot(object):
         s.dtype = self.dtype
         s.axistags = self.axistags
         return s
-
-    def _allocateStorage(self, start, stop, axistags = True):
-        storage = numpy.ndarray(stop - start, dtype=self.dtype)
-        if axistags is True:
-            storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
-            #storage = storage.view(vigra.VigraArray)
-            #storage.axistags = copy.copy(self.axistags)
-        return storage
-
-    def _isCompatible( self, destination, key ):
-        start, stop = sliceToRoi(key, self.shape)
-        diff = start - stop
-        shape = list(destination.shape)
-        return len(diff) == len(shape) and diff == shape
-
-    def _allocateDestination( self, key ):
-        start, stop = sliceToRoi(key, self.shape)
-        return self._allocateStorage( start, stop, axistags = False)
-
-    def __getitem__(self, key):
-        assert self.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
-        start, stop = sliceToRoi(key, self.shape)
-        return GetItemWriterObject(self, roiToSlice(start, stop))
     
     def getOutSlotFromOp(self, key, destination):
         self.operator.getOutSlot(self, key, destination)
@@ -1017,9 +992,6 @@ class OutputSlot(object):
         for p in self.partners:
             p[key] = value
 
-    @property
-    def graph(self):
-        return self.operator.graph
     
     def dumpToH5G(self, h5g, patchBoard):
         h5g.dumpSubObjects({
