@@ -24,7 +24,7 @@ class OpObjectExtractor( Operator ):
     name = "OpObjectExtractor"
 
     inputSlots = [InputSlot('Input')]
-    outputSlots = [OutputSlot('Output')]
+    outputSlots = [OutputSlot('Output', array_destination=False)]
 
     def notifyConnectAll(self):
         self.outputs["Output"]._shape = self.Input.shape
@@ -32,14 +32,13 @@ class OpObjectExtractor( Operator ):
     def getOutSlot( self, slot, key, result ):
         cc = self.Input[key].allocate().wait()
         objs = objects_from_connected_components(cc, background = 0)
-        result = objs
+        print "extractor result type", type(result)
+        result[0] = objs
         
 if __name__ == '__main__':
     cc = numpy.load("cc.npy")    
     g = Graph()
     extractor = OpObjectExtractor( g )
     extractor.Input.setValue(cc)
-    objs = []
-    extractor.Output[:].writeInto(objs).wait()
-    print objs, "sad"
-
+    objs = extractor.Output[:].wait()
+    print objs

@@ -139,7 +139,6 @@ class OpConnectedComponents(Operator):
                     temp = vigra.analysis.labelVolume(image[readkey], neighborhood)
                 
                 print "total number of components for this time and channel:", readkey, numpy.max(temp)
-                
                 result[writekeys[ik]] = temp[:]
         else:
             print "ERROR: unsupported number of dimensions", ndim
