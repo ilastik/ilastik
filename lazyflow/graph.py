@@ -290,8 +290,6 @@ class GetItemRequestObject(object):
             c.adjustPriority(delta)
 
     def writeInto(self, destination, priority = 0):
-        if destination != None and not self.slot._isCompatible( destination, self.key ):
-            raise Exception("writeInto - destination is not compatible with requested key")
         self.destination = destination
         self._priority = priority
         return self
@@ -569,12 +567,6 @@ class Slot(object):
             #storage = storage.view(vigra.VigraArray)
             #storage.axistags = copy.copy(self.axistags)
         return storage
-
-    def _isCompatible( self, destination, key ):
-        start, stop = sliceToRoi(key, self.shape)
-        diff = start - stop
-        shape = list(destination.shape)
-        return len(diff) == len(shape) and diff == shape
 
     def _allocateDestination( self, key ):
         start, stop = sliceToRoi(key, self.shape)
