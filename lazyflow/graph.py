@@ -158,61 +158,6 @@ class CopyOnWriteView(object):
     
     def __getitem__(self,key):
         return self._data[key]
-
-      
-      
-class GetItemWriterObject(object):
-    """
-    Enables the syntax:
-
-    InputSlot[:,:].writeInto(array)
-    InputSlot[:,:].allocate()
-    
-    for requesting data from an input or output slot of an operator.
-    
-    An instance of this class is returned by a call to a __getitem__ (i.e. [key])
-    method call of any InputSlot or OutputSlot.
-    """
-    
-    __slots__ = ["_key", "_start", "_stop","_slot"]
-    
-    def __init__(self, slot, key):
-        self._key = key        
-        self._slot = slot
-    
-    def writeInto(self, destination, priority = 0):
-        """
-        the writeInto method ensures that the data
-        that is requested from an InputSlot or OutputSlot is written
-        into the specified numpy.ndarray
-        
-        of course the destination numpy.ndarray must have
-        the same size/shape/dimension as the slot will
-        return in reponse to the requested key
-        """
-        if destination is not None:
-            assert self._slot._isCompatible( destination, self._key ), "GetItemWriterObject: writeInto - destination is not compatible with requested key"
-        return  GetItemRequestObject(self, self._slot, self._key, destination, priority)
-  
-    def allocate(self, axistags = False, priority = 0):
-        """
-print "\n\n"
-        if the user does not want lazyflow to write calculation
-        results into a specific numpy array he can use
-        the .allocate() call.
-        
-        a destination array of required size,shape,dtype will
-        be constructed in which the results will be written.
-        """
-        #destination = self._slot._allocateStorage(self._start, self._stop, axistags)
-        #destination = CopyOnWriteView(self._slot.shape, self._slot.dtype)
-        return self.writeInto(None, priority)
-    
-    def __call__(self):
-        #TODO: remove this convenience function when
-        #      everything is ported ?
-        return self.allocate()
-
       
 class CustomGreenlet(greenlet.greenlet):
     __slots__ = ("lastRequest","currentRequest","thread")
@@ -234,21 +179,16 @@ class GetItemRequestObject(object):
     InputSlot[:,:].writeInto(array).wait() or
     InputSlot[:,:].writeInto(array).notify(someFunction)
     
-    the GetItemRequestObject is responsible for the
-    .wait() and .notify() part of the above statements.
-    
-    It is returned by all method calls to an GetItemWriterObject (which
-    in turn is returned by a call to the __getitem__ method of an
-    InputSlot and OutputSlot) 
+    It is returned by a call to the __getitem__ method of Slot.
+ 
     """
 
-    __slots__ = ["_writer", "key", "destination", "slot", "func", "canceled",
+    __slots__ = ["key", "destination", "slot", "func", "canceled",
                  "_finished", "inProcess", "parentRequest", "childRequests",
                  "graph", "waitQueue", "notifyQueue", "cancelQueue",
                  "_requestLevel", "arg1", "lock", "_priority"]
         
-    def __init__(self, writer, slot, key, destination, priority):
-        self._writer = writer        
+    def __init__(self, slot, key, destination, priority):        
         self.key = key
         self._priority = priority
         self.destination = destination
@@ -348,7 +288,17 @@ class GetItemRequestObject(object):
         self.lock.release()
         for c in childs:
             c.adjustPriority(delta)
-        
+
+    def writeInto(self, destination, priority = 0):
+        if destination != None and not self.slot._isCompatible( destination, self.key ):
+            raise Exception("writeInto - destination is not compatible with requested key")
+        self.destination = destination
+        self._priority = priority
+        return self
+
+    def allocate(self, priority = 0):
+        return self.writeInto( None, priority)
+
     def wait(self, timeout = 0):
         """
         calling .wait() on an RequestObject is a blocking
@@ -440,7 +390,7 @@ class GetItemRequestObject(object):
               pass
         else:
             if self.destination is None:
-                self.destination = self.slot._allocateStorage(self._writer._start, self._writer._stop, False)
+                self.destination = self.slot._allocateDestination(self.key)
             try:
                 self.destination[:] = self.slot._value[self.key]
             except (AttributeError, TypeError): # not an array
@@ -632,7 +582,7 @@ class Slot(object):
     def __getitem__(self, key):
         assert self.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
         start, stop = sliceToRoi(key, self.shape)
-        return GetItemWriterObject(self, roiToSlice(start, stop))
+        return GetItemRequestObject(self, roiToSlice(start, stop), None, 0)
 
 class InputSlot(Slot):
     """
@@ -860,7 +810,7 @@ class OutputSlot(Slot):
     
     outputslot[3,:,14:32]
     
-    this call returns an GetItemWriterObject.
+    this call returns an GetItemRequestObject.
     """    
     
     __slots__ = ["name", "_metaParent", "level", "operator",
