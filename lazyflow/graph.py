@@ -549,6 +549,38 @@ class GetItemRequestObject(object):
     def __call__(self):
         assert 1==2, "Please use the .wait() method, () is deprecated !"
 
+
+
+class SlotType( object ):
+    pass
+
+class ArrayLike( SlotType ):
+    def __init__( self, meta = None ):
+        self._meta = meta
+
+    def allocateDestination( self, roi ):
+        start, stop = sliceToRoi(roi, self._meta.shape)
+        storage = numpy.ndarray(stop - start, dtype=self._meta.dtype)
+        # if axistags is True:
+        #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
+        #     #storage = storage.view(vigra.VigraArray)
+        #     #storage.axistags = copy.copy(self.axistags)
+        return storage
+
+    def writeIntoDestination( self, destination, value ):
+        destination[:] = value
+
+class Default( SlotType ):
+    def __init__( self, meta = None ):
+        self._meta = meta
+
+    def allocateDestination( self, roi ):
+        return [None]
+
+    def writeIntoDestination( self, destination, value ):
+        destination[0] = value
+    
+
 class Slot(object):
     """Common methods of all slot types."""
 
