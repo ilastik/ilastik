@@ -562,7 +562,7 @@ class ArrayLike( SlotType ):
         start, stop = sliceToRoi(roi, self._meta.shape)
         storage = numpy.ndarray(stop - start, dtype=self._meta.dtype)
         # if axistags is True:
-        #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
+        #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(s))elf.axistags))
         #     #storage = storage.view(vigra.VigraArray)
         #     #storage.axistags = copy.copy(self.axistags)
         return storage
@@ -617,9 +617,10 @@ class Slot(object):
 
     def __getitem__(self, key):
         assert self.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
-        print "BLUBB", key, self.shape
         start, stop = sliceToRoi(key, self.shape)
         return GetItemRequestObject(self, roiToSlice(start, stop), None, 0)
+
+import copy
 
 class MetaDict(dict):
   def __setattr__(self,name,value):
@@ -629,6 +630,8 @@ class MetaDict(dict):
   def __getattr__(self,name):
     return self[name]
 
+  def copy(self):
+    return MetaDict(dict.copy(self))
 
 class InputSlot(Slot):
     """
@@ -650,6 +653,9 @@ class InputSlot(Slot):
         self._value = None
         self._stype = stype
         self.meta =  MetaDict()
+        self.meta.axistags = None
+        self.meta.dtype = None
+        self.meta.axistags = None
 
     @property
     def shape(self):
@@ -678,7 +684,7 @@ class InputSlot(Slot):
             if hasattr(value, "axistags"):
                 self.meta.axistags = value.axistags
             else:
-                self.axistags = vigra.defaultAxistags(len(value.shape))
+                self.meta.axistags = vigra.defaultAxistags(len(value.shape))
         except (AttributeError, TypeError): # not an array like value
             self.meta.shape = (1,)
             self.meta.dtype = object
@@ -932,7 +938,7 @@ class OutputSlot(Slot):
         if value is not None:
             if value != origValue:
                 for p in self.partners:
-                    p.meta = MetaDict(self.meta.copy())
+                    p.meta = self.meta.copy()
                     p.operator._notifyConnect(p)
                     p._checkNotifyConnectAll()
                 
@@ -982,7 +988,7 @@ class OutputSlot(Slot):
     #FIXME __copy__ ?
     def getInstance(self, operator):
         s = OutputSlot(self.name, operator, stype = self._stype, array_destination = self._array_destination)
-        s.meta = MetaDict(self.meta.copy())
+        s.meta = self.meta.copy()
         return s
     
     def getOutSlotFromOp(self, key, destination):
