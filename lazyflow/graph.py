@@ -609,6 +609,7 @@ class Slot(object):
             return [None]
 
     def _writeIntoDestination( self, destination, value ):
+        print self._array_destination,destination.shape, value.shape
         if self._array_destination:
             destination[:] = value
         else:
@@ -616,6 +617,7 @@ class Slot(object):
 
     def __getitem__(self, key):
         assert self.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
+        print "BLUBB", key, self.shape
         start, stop = sliceToRoi(key, self.shape)
         return GetItemRequestObject(self, roiToSlice(start, stop), None, 0)
 
@@ -871,65 +873,68 @@ class OutputSlot(Slot):
         self._metaParent = operator
         self.level = 0
         self.operator = operator
-        if not hasattr(self, "dtype"):
-            self.dtype = None
-        if not hasattr(self, "shape"):
-            self.shape = None
-        if not hasattr(self, "axistags"):
-            self.axistags = None
+        if not hasattr(self, "meta"):
+          self.meta =  MetaDict()
+          if not self.meta.has_key("shape"):
+            self.meta.shape = None
+          if not self.meta.has_key("dtype"):
+            self.meta.dtype = None
+          if not self.meta.has_key("axistags"):
+            self.meta.axistags = None
         self.partners = []
         self._stype = stype
 
         self._dirtyCallbacks = []
     
     @property
+    def shape(self):
+      return self.meta.shape
+
+    @property
+    def dtype(self):
+      return self.meta.dtype
+
+    @property
+    def axistags(self):
+      return self.meta.axistags
+
+    @property
     def _shape(self):
         return self.shape
         
     @_shape.setter
-    def _shape(self, value):
-        if value is not None:
-            if value != self.shape:
-                self.shape = value
-                for p in self.partners:
-                    #p._checkNotifyConnectAll()
-                    #p.disconnect()
-                    #p.connect(self)
-                    p.shape = value
-                    p.operator._notifyConnect(p)
-                    p._checkNotifyConnectAll()
-            #else:
-            #    self.setDirty(slice(None,None,None)) #set everything to dirty! BEWARE; DANGER;
-        else:
-            self.shape = None
-            #for p in self.partners:
-                #p.operator.notifyConnect(p)
-                #p._checkNotifyConnectAll()
-    
+    def _shape(self,value):
+      old = self.meta.shape
+      self.meta.shape = value
+      self._checkChange(value, old)
+
     @property
     def _axistags(self):
-        return self.axistags
+      return self.axistags
         
     @_axistags.setter
     def _axistags(self, value):
-        if value is not None:
-            if value != self.axistags:
-                self.axistags = value
-                for p in self.partners:
-                    p.axistags = value
-                    # check for connect propagation 
-                    #p.operator.notifyConnect(p)
-                    #p._checkNotifyConnectAll()                    
-        else:
-            self.axistags = None
+      old = self.meta.axistags
+      self.meta.axistags = value
+      #self._checkChange(value, old)
 
     @property
     def _dtype(self):
-        return self.dtype
+      return self.dtype
 
     @_dtype.setter
     def _dtype(self, value):
-        self.dtype = value
+      old = self.meta.dtype
+      self.meta.dtype = value
+      #self._checkChange(value, old)
+    
+    def _checkChange(self, value, origValue):
+        if value is not None:
+            if value != origValue:
+                for p in self.partners:
+                    p.meta = MetaDict(self.meta.copy())
+                    p.operator._notifyConnect(p)
+                    p._checkNotifyConnectAll()
                 
     def _connect(self, partner, notify = True):
         if partner not in self.partners:
@@ -977,9 +982,7 @@ class OutputSlot(Slot):
     #FIXME __copy__ ?
     def getInstance(self, operator):
         s = OutputSlot(self.name, operator, stype = self._stype, array_destination = self._array_destination)
-        s.shape = self.shape
-        s.dtype = self.dtype
-        s.axistags = self.axistags
+        s.meta = MetaDict(self.meta.copy())
         return s
     
     def getOutSlotFromOp(self, key, destination):
@@ -996,9 +999,6 @@ class OutputSlot(Slot):
             "name" : self.name,
             "level" : self.level,
             "operator" : self.operator,
-            "shape" : self.shape,
-            "axistags" : self.axistags,
-            "dtype" : self.dtype,
             "partners" : self.partners,
             "_stype" : self._stype
             
@@ -1015,9 +1015,6 @@ class OutputSlot(Slot):
             "name" : "name",
             "level" : "level",
             "operator" : "operator",
-            "shape" : "shape",
-            "axistags" : "axistags",
-            "dtype" : "dtype",
             "partners" : "partners",
             "_stype" : "_stype"
             

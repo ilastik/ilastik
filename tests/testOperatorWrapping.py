@@ -57,8 +57,8 @@ print len(opd.outputs["Output"])
 print len(ope.outputs["MultiOutput"])
 
 
-assert (ope.outputs["MultiOutput"][0][:,:].allocate().wait() == 1).all(), ope.outputs["MultiOutput"][0][:].allocate().wait()
-assert (ope.outputs["MultiOutput"][1][:,:].allocate().wait() == 2).all(), ope.outputs["MultiOutput"][1][:].allocate().wait()
+assert (ope.outputs["MultiOutput"][0][:].allocate().wait() == 1).all(), ope.outputs["MultiOutput"][0][:].allocate().wait()
+assert (ope.outputs["MultiOutput"][1][:].allocate().wait() == 2).all(), ope.outputs["MultiOutput"][1][:].allocate().wait()
 
 assert len(opb.outputs["MultiOutput"]) == 2, len(opb.outputs["MultiOutput"])
 assert len(opc.outputs["Output"]) == 2, len(opc.outputs["Output"])
