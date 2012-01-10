@@ -592,7 +592,7 @@ class Slot(object):
         if self.__class__ == Slot: # make Slot constructor "private"
             raise Exception("Slot can't be constructed directly; use one of the derived slot types")
         self._array_destination = array_destination 
-
+        
     def _allocateStorage(self, start, stop, axistags = True):
         storage = numpy.ndarray(stop - start, dtype=self.dtype)
         if axistags is True:
@@ -619,6 +619,15 @@ class Slot(object):
         start, stop = sliceToRoi(key, self.shape)
         return GetItemRequestObject(self, roiToSlice(start, stop), None, 0)
 
+class MetaDict(dict):
+  def __setattr__(self,name,value):
+    self[name] = value
+    return value
+
+  def __getattr__(self,name):
+    return self[name]
+
+
 class InputSlot(Slot):
     """
     The base class for input slots, it provides methods
@@ -638,9 +647,19 @@ class InputSlot(Slot):
         self.level = 0
         self._value = None
         self._stype = stype
-        self.axistags = None
-        self.shape = None
-        self.dtype = None
+        self.meta =  MetaDict()
+
+    @property
+    def shape(self):
+      return self.meta.shape
+
+    @property
+    def dtype(self):
+      return self.meta.dtype
+
+    @property
+    def axistags(self):
+      return self.meta.axistags
 
     def setValue(self, value, notify = True):
         """
@@ -652,16 +671,16 @@ class InputSlot(Slot):
         self._value = value
 
         try:
-            self.shape = value.shape
-            self.dtype = value.dtype
+            self.meta.shape = value.shape
+            self.meta.dtype = value.dtype
             if hasattr(value, "axistags"):
-                self.axistags = value.axistags
+                self.meta.axistags = value.axistags
             else:
                 self.axistags = vigra.defaultAxistags(len(value.shape))
         except (AttributeError, TypeError): # not an array like value
-            self.shape = (1,)
-            self.dtype = object
-            self.axistags = vigra.defaultAxistags(1)
+            self.meta.shape = (1,)
+            self.meta.dtype = object
+            self.meta.axistags = vigra.defaultAxistags(1)
         self._checkNotifyConnect(notify = notify)
 
     @property
@@ -718,13 +737,13 @@ class InputSlot(Slot):
             
         else:
             self.partner = partner
-            self.dtype = partner.dtype
-            self.axistags = partner.axistags
-            self.shape = partner.shape
+            self.meta.dtype = partner.dtype
+            self.meta.axistags = partner.axistags
+            self.meta.shape = partner.shape
             partner._connect(self)
             # do a type check
             self.connectOk(self.partner)
-            if self.shape is not None:
+            if self.meta.shape is not None:
                 self._checkNotifyConnect(notify = notify)
     
     def _checkNotifyConnect(self, notify = True):
@@ -762,9 +781,9 @@ class InputSlot(Slot):
         if self.partner is not None:
             self.partner.disconnectSlot(self)
         self.partner = None
-        self.dtype = None
-        self.axistags = None
-        self.shape = None
+        self.meta.dtype = None
+        self.meta.axistags = None
+        self.meta.shape = None
     
     #TODO RENAME? createInstance
     # def __copy__ ?, clone ?
@@ -804,10 +823,7 @@ class InputSlot(Slot):
             "operator" : self.operator,
             "partner" : self.partner,
             "value" : self._value,
-            "_stype" : self._stype,
-            "dtype" : self.dtype,
-            "axistags" : self.axistags,
-            "shape" : self.shape
+            "_stype" : self._stype
             
         },patchBoard)
     
@@ -824,10 +840,7 @@ class InputSlot(Slot):
             "operator" : "operator",
             "partner" : "partner",
             "value" : "_value",
-            "_stype" : "_stype",
-            "dtype" : "dtype",
-            "axistags" : "axistags",
-            "shape" : "shape"
+            "_stype" : "_stype"
             
         },patchBoard)
 
