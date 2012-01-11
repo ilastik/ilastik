@@ -397,7 +397,7 @@ class GetItemRequestObject(object):
         self._finished = True
         if self.canceled is False:
           assert self.destination is not None
-          return self.destination if self.slot._array_destination else self.destination[0]
+          return self.slot._returnDestination(self.destination)
         else:
           return None
   
@@ -555,27 +555,32 @@ class SlotType( object ):
     pass
 
 class ArrayLike( SlotType ):
-    def __init__( self, meta = None ):
-        self._meta = meta
+    def __init__( self, slot):
+        self.slot = slot
 
     def allocateDestination( self, roi ):
-        start, stop = sliceToRoi(roi, self._meta.shape)
-        storage = numpy.ndarray(stop - start, dtype=self._meta.dtype)
+        start, stop = sliceToRoi(roi, self.slot.meta.shape)
+        storage = numpy.ndarray(stop - start, dtype=self.slot.meta.dtype)
         # if axistags is True:
         #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(s))elf.axistags))
         #     #storage = storage.view(vigra.VigraArray)
         #     #storage.axistags = copy.copy(self.axistags)
         return storage
 
+    def returnDestination(self, destination):
+        return destination
+
     def writeIntoDestination( self, destination, value ):
         destination[:] = value
 
 class Default( SlotType ):
-    def __init__( self, meta = None ):
-        self._meta = meta
+    def __init__( self, slot):
+        self.slot = slot
 
     def allocateDestination( self, roi ):
         return [None]
+    def returnDestination(self, destination):
+        return destination[0]
 
     def writeIntoDestination( self, destination, value ):
         destination[0] = value
@@ -587,33 +592,20 @@ class Slot(object):
     @property
     def graph(self):
         return self.operator.graph
-
-    def __init__( self, array_destination = True ):
+                        
+    def __init__( self, stype = ArrayLike):
         if self.__class__ == Slot: # make Slot constructor "private"
             raise Exception("Slot can't be constructed directly; use one of the derived slot types")
-        self._array_destination = array_destination 
-        
-    def _allocateStorage(self, start, stop, axistags = True):
-        storage = numpy.ndarray(stop - start, dtype=self.dtype)
-        if axistags is True:
-            storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.axistags))
-            #storage = storage.view(vigra.VigraArray)
-            #storage.axistags = copy.copy(self.axistags)
-        return storage
+        self.stype = stype(self)
 
     def _allocateDestination( self, key ):
-        if self._array_destination:
-            start, stop = sliceToRoi(key, self.shape)
-            return self._allocateStorage( start, stop, axistags = False)
-        else:
-            return [None]
-
+        return self.stype.allocateDestination(key)
+        
     def _writeIntoDestination( self, destination, value ):
-        print self._array_destination,destination.shape, value.shape
-        if self._array_destination:
-            destination[:] = value
-        else:
-            destination[0] = value
+        self.stype.writeIntoDestination(destination,value)
+
+    def _returnDestination(self, destination):
+        return self.stype.returnDestination(destination)
 
     def __getitem__(self, key):
         assert self.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
@@ -874,7 +866,7 @@ class OutputSlot(Slot):
                  "_dirtyCallbacks"]    
     
     def __init__(self, name, operator = None, stype = "ndarray", array_destination=True):
-        super(OutputSlot, self).__init__(array_destination)
+        super(OutputSlot, self).__init__()
         self.name = name
         self._metaParent = operator
         self.level = 0
@@ -987,7 +979,7 @@ class OutputSlot(Slot):
 
     #FIXME __copy__ ?
     def getInstance(self, operator):
-        s = OutputSlot(self.name, operator, stype = self._stype, array_destination = self._array_destination)
+        s = OutputSlot(self.name, operator, stype = self._stype)
         s.meta = self.meta.copy()
         return s
     
@@ -1037,7 +1029,7 @@ class MultiInputSlot(object):
     """
     
     __slots__ = ["name", "operator", "partner", "inputSlots", "level",
-                 "_stype", "_value"]    
+                 "_stype", "_value","meta"]    
     
     def __init__(self, name, operator = None, stype = "ndarray", level = 1):
         self.name = name
@@ -1367,7 +1359,7 @@ class MultiOutputSlot(object):
     """
     
     __slots__ = ["name", "operator", "_metaParent",
-                 "partners", "outputSlots", "level", "_stype"]
+                 "partners", "outputSlots", "level", "_stype", "meta"]
     
     def __init__(self, name, operator = None, stype = "ndarray",level = 1):
         self.name = name
