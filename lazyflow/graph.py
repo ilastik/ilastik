@@ -1047,6 +1047,7 @@ class MultiInputSlot(object):
         self.level = level
         self._stype = stype
         self._value = None
+        self.meta = MetaDict()
     
     @property
     def value(self):
@@ -1186,6 +1187,7 @@ class MultiInputSlot(object):
                 if self.partner is not None:
                     self.partner.disconnectSlot(self)
                 self.partner = partner
+                self.meta = self.partner.meta.copy()
                 partner._connect(self)
                 # do a type check
                 self.connectOk(self.partner)
@@ -1206,6 +1208,7 @@ class MultiInputSlot(object):
                 #if self.partner is not None:
                 #    self.partner.disconnectSlot(self)                
                 self.partner = partner
+                self.meta = self.partner.meta.copy()
                 for i, slot in enumerate(self):                
                     slot.connect(partner)
                     if self.operator is not None:
@@ -1374,6 +1377,7 @@ class MultiOutputSlot(object):
         self.outputSlots = []
         self.level = level
         self._stype = stype
+        self.meta = MetaDict()
     
     def __getitem__(self, key):
         return self.outputSlots[key]
