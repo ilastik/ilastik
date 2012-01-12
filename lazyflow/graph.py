@@ -771,7 +771,7 @@ class InputSlot(Slot):
                     allConnected = False
                     break
             if allConnected:
-                self.operator._notifyConnectAll()
+                self.operator.setupOutputs()
                 
     def disconnect(self):
         """
@@ -1129,7 +1129,7 @@ class MultiInputSlot(Slot):
                     allConnected = False
                     break
             if allConnected:
-                self.operator._notifyConnectAll()
+                self.operator.setupOutputs()
         else: #the .operator is a MultiInputSlot itself
             self.operator._checkNotifyConnectAll()
         
@@ -1707,7 +1707,8 @@ class Operator(object):
         self.notifyConnect(inputSlot)
     
     def _notifyConnectAll(self):
-        self.notifyConnectAll()
+        pass
+        #self.notifyConnectAll()
 
     def _notifySubConnect(self, slots, indexes):
         self.notifySubConnect(slots,indexes)
@@ -1729,8 +1730,29 @@ class Operator(object):
             print "ERROR, connect(): operator %s has no slot named %s" % (self.name, k)
             print "                  available inputSlots are: ", self.inputs.keys()
             assert(1==2)
+    
+
+    def setupOutputs(self):
+      """
+      This method is called when all input slots of an operator are
+      successfully connected, a successful connection is also established
+      if the input slot is not connected to another slot, but has
+      a default value defined.
+
+      In this method the operator developer should stup 
+      the .meta information of the outputslots.
+
+      The default implementation emulates the old api behaviour.
+      """
+      # emulate old behaviour
+      for s in self.inputs:
+        self.notifyConnect(s)
+      self.notifyConnectAll()
+
+
 
     """
+    OBSOLETE API
     This method is called opon connection of an inputslot.
     The slot is specified in the inputSlot argument.
     
@@ -1744,6 +1766,7 @@ class Operator(object):
         pass
     
     """
+    OBSOLETE API
     This method is called opon connection of all inputslots of
     an operator.
     
