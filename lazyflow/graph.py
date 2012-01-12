@@ -618,7 +618,16 @@ class Slot(object):
 import copy
 
 class MetaDict(dict):
+  def __init__(self, other=False):
+    if(other):
+      dict.__init__(self,other)
+    else:
+      dict.__init__(self)
+    self._dirty = True
+
   def __setattr__(self,name,value):
+    if self.has_key(name) and self[name] != value:
+      self._dirty = True
     self[name] = value
     return value
 
@@ -662,6 +671,10 @@ class InputSlot(Slot):
     def axistags(self):
       return self.meta.axistags
 
+    def _changed(self, notify = True):
+      self._checkNotifyConnect(notify = notify)
+      self._checkNotifyConnectAll(notify = notify)
+
     def setValue(self, value, notify = True):
         """
         This methods allows to directly provide an array
@@ -682,7 +695,7 @@ class InputSlot(Slot):
             self.meta.shape = (1,)
             self.meta.dtype = object
             self.meta.axistags = vigra.defaultAxistags(1)
-        self._checkNotifyConnect(notify = notify)
+        self._changed(notify = notify)
 
     @property
     def value(self):
@@ -771,7 +784,7 @@ class InputSlot(Slot):
                     allConnected = False
                     break
             if allConnected:
-                self.operator.setupOutputs()
+                self.operator._setupOutputs()
                 
     def disconnect(self):
         """
@@ -902,7 +915,6 @@ class OutputSlot(Slot):
     def _shape(self,value):
       old = self.meta.shape
       self.meta.shape = value
-      self._checkChange(value, old)
 
     @property
     def _axistags(self):
@@ -912,7 +924,6 @@ class OutputSlot(Slot):
     def _axistags(self, value):
       old = self.meta.axistags
       self.meta.axistags = value
-      #self._checkChange(value, old)
 
     @property
     def _dtype(self):
@@ -922,16 +933,13 @@ class OutputSlot(Slot):
     def _dtype(self, value):
       old = self.meta.dtype
       self.meta.dtype = value
-      #self._checkChange(value, old)
-    
-    def _checkChange(self, value, origValue):
-        if value is not None:
-            if value != origValue:
-                for p in self.partners:
-                    p.meta = self.meta.copy()
-                    p.operator._notifyConnect(p)
-                    p._checkNotifyConnectAll()
-                
+
+    def _changed(self):
+      if self.meta._dirty:
+        for p in self.partners:
+          p._changed()
+
+
     def _connect(self, partner, notify = True):
         if partner not in self.partners:
             self.partners.append(partner)
@@ -1129,7 +1137,7 @@ class MultiInputSlot(Slot):
                     allConnected = False
                     break
             if allConnected:
-                self.operator.setupOutputs()
+              self.operator._setupOutputs()
         else: #the .operator is a MultiInputSlot itself
             self.operator._checkNotifyConnectAll()
         
@@ -1157,7 +1165,11 @@ class MultiInputSlot(Slot):
             return 1
         else:
             return 0
-
+    
+    def _changed(self):
+      if self.operator:
+        self.operator._notifyConnect(self)
+      self._checkNotifyConnectAll()
         
     def connect(self,partner, notify = True):
         if partner is None:
@@ -1416,7 +1428,12 @@ class MultiOutputSlot(Slot):
         
         oslot.disconnect()
         oslot = self.outputSlots.pop(index)
-        
+    
+    def _changed(self):
+      if self.meta._dirty:
+        for p in self.partners:
+          p._changed()
+
     def _connect(self, partner, notify = True):
         if partner not in self.partners:
             self.partners.append(partner)
@@ -1730,7 +1747,14 @@ class Operator(object):
             print "ERROR, connect(): operator %s has no slot named %s" % (self.name, k)
             print "                  available inputSlots are: ", self.inputs.keys()
             assert(1==2)
-    
+
+
+    def _setupOutputs(self):
+      self.setupOutputs()
+
+      #notify outputs of probably changed meta informatio
+      for k,v in self.outputs.items():
+        v._changed()
 
     def setupOutputs(self):
       """
