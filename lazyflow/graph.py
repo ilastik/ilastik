@@ -552,11 +552,39 @@ class GetItemRequestObject(object):
 
 
 class SlotType( object ):
-    pass
+    def allocateDestination( self, roi ):
+      pass
+
+    def returnDestination(self, destination):
+      pass
+
+    def writeIntoDestination( self, destination, value ):
+      pass
+
+    def isCompatible(self, value):
+      """
+      Slot types must implement this method.
+
+      this method should check wether the supplied value
+      is compatible with this type trait and should return true
+      if this is the case.
+      """
+      pass
+
+    def setupMetaForValue(self, value):
+      """
+      Slot types must implement this method.
+
+      this method should extract valuable meta information
+      from the provied value and set up the self.slot.meta
+      MetaDict accordingly
+      """
+      pass
 
 class ArrayLike( SlotType ):
     def __init__( self, slot):
         self.slot = slot
+        self._is_true_array = True
 
     def allocateDestination( self, roi ):
         start, stop = sliceToRoi(roi, self.slot.meta.shape)
@@ -573,18 +601,48 @@ class ArrayLike( SlotType ):
     def writeIntoDestination( self, destination, value ):
         destination[:] = value
 
+    def isCompatible(self, value):
+      # TODO: change this function, only for backwards compatability !
+      if hasattr(value,"__getitem__")  and hasattr(value,"shape") and hasattr(value,"dtype"):
+        self._is_true_array = True
+      else:
+        self._is_true_array = False
+
+      return True
+
+
+    def setupMetaForValue(self, value):
+      if hasattr(value,"__getitem__")  and hasattr(value,"shape") and hasattr(value,"dtype"):
+        self.slot.meta.shape = value.shape
+        self.slot.meta.dtype = value.dtype
+        if hasattr(value,"axistags"):
+          self.slot.meta.axistags = value.axistags
+      else:
+        self.slot.meta.shape = (1,)
+        self.slot.meta.dtype = object
+
+
 class Default( SlotType ):
     def __init__( self, slot):
         self.slot = slot
 
     def allocateDestination( self, roi ):
         return [None]
+   
     def returnDestination(self, destination):
         return destination[0]
 
     def writeIntoDestination( self, destination, value ):
         destination[0] = value
     
+
+    def isCompatible(self, value):
+      return True
+   
+    def setupMetaForValue(self, value):
+      self.slot.meta.shape = (1,)
+      self.slot.meta.dtype = object
+      self.slot.meta.axistags = vigra.defaultAxistags(1)
 
 class Slot(object):
     """Common methods of all slot types."""
@@ -624,6 +682,13 @@ class MetaDict(dict):
     else:
       dict.__init__(self)
     self._dirty = True
+    #TODO: remove this, only for backwards compatability
+    if not self.has_key("shape"):
+      self.shape = None
+    if not self.has_key("dtype"):
+      self.dtype = None
+    if not self.has_key("axistags"):
+      self.axistags = None
 
   def __setattr__(self,name,value):
     if self.has_key(name) and self[name] != value:
@@ -655,9 +720,7 @@ class InputSlot(Slot):
         self.partner = None
         self.level = 0
         self._value = None
-        self.meta.axistags = None
-        self.meta.dtype = None
-        self.meta.axistags = None
+ 
 
     @property
     def shape(self):
@@ -682,20 +745,10 @@ class InputSlot(Slot):
         of connecting it to a partner OutputSlot.
         """
         assert self.partner == None, "InputSlot %s (%r): Cannot dot setValue, because it is connected !" %(self.name, self)
-        self._value = value
-
-        try:
-            self.meta.shape = value.shape
-            self.meta.dtype = value.dtype
-            if hasattr(value, "axistags"):
-                self.meta.axistags = value.axistags
-            else:
-                self.meta.axistags = vigra.defaultAxistags(len(value.shape))
-        except (AttributeError, TypeError): # not an array like value
-            self.meta.shape = (1,)
-            self.meta.dtype = object
-            self.meta.axistags = vigra.defaultAxistags(1)
-        self._changed(notify = notify)
+        if self.stype.isCompatible(value):
+          self._value = value
+          self.stype.setupMetaForValue(value)
+          self._changed(notify = notify)
 
     @property
     def value(self):
@@ -751,14 +804,12 @@ class InputSlot(Slot):
             
         else:
             self.partner = partner
-            self.meta.dtype = partner.dtype
-            self.meta.axistags = partner.axistags
-            self.meta.shape = partner.shape
+            self.meta = partner.meta.copy()
             partner._connect(self)
             # do a type check
             self.connectOk(self.partner)
             if self.meta.shape is not None:
-                self._checkNotifyConnect(notify = notify)
+                self._changed()
     
     def _checkNotifyConnect(self, notify = True):
         if self.operator is not None:
@@ -795,9 +846,8 @@ class InputSlot(Slot):
         if self.partner is not None:
             self.partner.disconnectSlot(self)
         self.partner = None
-        self.meta.dtype = None
-        self.meta.axistags = None
-        self.meta.shape = None
+        self.meta = MetaDict()
+        
     
     #TODO RENAME? createInstance
     # def __copy__ ?, clone ?
@@ -885,12 +935,6 @@ class OutputSlot(Slot):
         self._metaParent = operator
         self.level = 0
         self.operator = operator
-        if not self.meta.has_key("shape"):
-          self.meta.shape = None
-        if not self.meta.has_key("dtype"):
-          self.meta.dtype = None
-        if not self.meta.has_key("axistags"):
-          self.meta.axistags = None
         self.partners = []
 
         self._dirtyCallbacks = []
@@ -986,7 +1030,7 @@ class OutputSlot(Slot):
     #FIXME __copy__ ?
     def getInstance(self, operator):
         s = OutputSlot(self.name, operator, stype = type(self.stype))
-        s.meta = self.meta.copy()
+        s.meta = MetaDict()
         return s
     
     def getOutSlotFromOp(self, key, destination):
