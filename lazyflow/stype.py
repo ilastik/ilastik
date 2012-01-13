@@ -1,4 +1,5 @@
 import numpy
+from roi import roiToSlice
 
 class SlotType( object ):
     def allocateDestination( self, roi ):
@@ -47,7 +48,8 @@ class ArrayLike( SlotType ):
         return destination
 
     def writeIntoDestination( self, destination, value, roi ):
-        destination[:] = value
+        sl = roiToSlice(roi.start, roi.stop)
+        destination[:] = value[sl]
 
     def isCompatible(self, value):
       return True
