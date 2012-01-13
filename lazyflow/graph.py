@@ -603,7 +603,7 @@ class Slot(object):
         return self(pslice=key)
 
 
-    def __call__(self,**kwargs):
+    def __call__(self, *args, **kwargs):
       """
       new API
 
@@ -611,8 +611,11 @@ class Slot(object):
       of the Roi type. this allows lazyflow to support different
       types of rois without knowing anything about them.
       """
-      roi = self.rtype(self,**kwargs) if kwargs else None
-      return GetItemRequestObject(self,roi,None,0)
+      roi = self.rtype(self,*args, **kwargs) if (args or kwargs) else None
+      return self.get( roi )
+
+    def get( self, roi ):
+      return GetItemRequestObject(self,roi,None,0)        
 
 
 import copy
