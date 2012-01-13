@@ -14,3 +14,6 @@ class SubRegion(Roi):
     else:
       self.start = start
       self.stop = stop
+
+  def __str__( self ):
+      return "".join(("Subregion: start '", str(self.start), "' stop '", str(self.stop), "'"))
