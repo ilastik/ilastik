@@ -964,6 +964,12 @@ class OutputSlot(Slot):
         the method notifies all InputSlots that are connected to
         this output slot
         """
+
+        if self.shape is None:
+            #if we have not yet received a shape,
+            #do not propagate dirtyness
+            return
+        
         start, stop = sliceToRoi(key, self.shape)
         key = roiToSlice(start,stop)
         for p in self.partners:

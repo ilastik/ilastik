@@ -1105,8 +1105,7 @@ class OpOstrichReader(Operator):
     
     def __init__(self, g):
         Operator.__init__(self,g)
-        #filename = self.filename = "/home/lfiaschi/graph-christoph/tests/ostrich.jpg"
-        filename = self.filename = "/home/cstraehl/Projects/eclipse-workspace/graph/tests/ostrich.jpg"
+        filename = self.filename = os.path.dirname(lazyflow.__file__)+"/../tests/ostrich.jpg"
         info = vigra.impex.ImageInfo(filename)
         
         oslot = self.outputs["Image"]
