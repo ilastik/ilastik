@@ -1018,6 +1018,11 @@ class OpBlockedArrayCache(OperatorGroup):
                 #req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
                 op.getOutSlot(op.outputs["Output"],smallkey,result[bigkey])
                 #requests.append(req)
+            else:
+                #When this block has never been in the cache and the current
+                #value is fixed (fixAtCurrent=True), return 0  values
+                #This prevents random noise appearing in such cases.
+                result[bigkey] = 0
         
         for r in requests:
           r.wait()
