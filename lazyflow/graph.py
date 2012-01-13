@@ -183,13 +183,13 @@ class GetItemRequestObject(object):
  
     """
 
-    __slots__ = ["key", "destination", "slot", "func", "canceled",
+    __slots__ = ["roi", "destination", "slot", "func", "canceled",
                  "_finished", "inProcess", "parentRequest", "childRequests",
                  "graph", "waitQueue", "notifyQueue", "cancelQueue",
                  "_requestLevel", "arg1", "lock", "_priority"]
         
-    def __init__(self, slot, key, destination, priority):        
-        self.key = key
+    def __init__(self, slot, roi, destination, priority):        
+        self.roi = roi
         self._priority = priority
         self.destination = destination
         self.slot = slot
@@ -207,10 +207,10 @@ class GetItemRequestObject(object):
         self._requestLevel = -1
         self.lock = Lock()
         if isinstance(slot, InputSlot) and self.slot._value is None:
-            self.func = slot.partner.operator.getOutSlot
+            self.func = slot.partner.operator._execute
             self.arg1 = slot.partner            
         elif isinstance(slot, OutputSlot):
-            self.func =  slot.operator.getOutSlot
+            self.func =  slot.operator._execute
             self.arg1 = slot
         else:
             # we are in the ._value case of an inputSlot
@@ -258,10 +258,10 @@ class GetItemRequestObject(object):
         self.inProcess = True
         temp = gr.currentRequest
         if self.destination is None:
-            self.destination = self.slot._allocateDestination( self.key )
+            self.destination = self.slot._allocateDestination( self.roi )
         gr.currentRequest = self
         try:
-          self.func(self.arg1,self.key, self.destination)
+          self.func(self.arg1,self.roi, self.destination)
         except Exception,e:
           if isinstance(self.slot, InputSlot):
             print
@@ -388,12 +388,8 @@ class GetItemRequestObject(object):
               pass
         else:
             if self.destination is None:
-                self.destination = self.slot._allocateDestination(self.key)
-            try:
-                value = self.slot._value[self.key]
-            except (AttributeError, TypeError): # not an array
-                value = self.slot._value
-            self.slot._writeIntoDestination(self.destination, value)
+                self.destination = self.slot._allocateDestination(self.roi)
+            self.slot._writeIntoDestination(self.destination, self.slot._value, self.roi)
         self._finished = True
         if self.canceled is False:
           assert self.destination is not None
@@ -558,7 +554,7 @@ class SlotType( object ):
     def returnDestination(self, destination):
       pass
 
-    def writeIntoDestination( self, destination, value ):
+    def writeIntoDestination( self, destination, value, roi ):
       pass
 
     def isCompatible(self, value):
@@ -587,8 +583,7 @@ class ArrayLike( SlotType ):
         self._is_true_array = True
 
     def allocateDestination( self, roi ):
-        start, stop = sliceToRoi(roi, self.slot.meta.shape)
-        storage = numpy.ndarray(stop - start, dtype=self.slot.meta.dtype)
+        storage = numpy.ndarray(roi.stop - roi.start, dtype=self.slot.meta.dtype)
         # if axistags is True:
         #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(s))elf.axistags))
         #     #storage = storage.view(vigra.VigraArray)
@@ -598,8 +593,12 @@ class ArrayLike( SlotType ):
     def returnDestination(self, destination):
         return destination
 
-    def writeIntoDestination( self, destination, value ):
-        destination[:] = value
+    def writeIntoDestination( self, destination, value, roi ):
+        if self._is_true_array:
+          key = roiToSlice(roi.start, roi.stop)
+          destination[:] = value[key]
+        else:
+          destination[:] = value
 
     def isCompatible(self, value):
       # TODO: change this function, only for backwards compatability !
@@ -632,7 +631,7 @@ class Default( SlotType ):
     def returnDestination(self, destination):
         return destination[0]
 
-    def writeIntoDestination( self, destination, value ):
+    def writeIntoDestination( self, destination, value,roi ):
         destination[0] = value
     
 
@@ -644,6 +643,25 @@ class Default( SlotType ):
       self.slot.meta.dtype = object
       self.slot.meta.axistags = vigra.defaultAxistags(1)
 
+
+class Roi(object):
+  def __init__(self, slot):
+    self.slot = slot
+    pass
+  pass
+
+
+class RoiSubRegion(Roi):
+  def __init__(self, slot, start = None, stop = None, pslice = None):
+    self.slot = slot
+    if pslice != None:
+      self.start, self.stop = sliceToRoi(pslice,self.slot.meta.shape)
+    else:
+      self.start = start
+      self.stop = stop
+
+
+
 class Slot(object):
     """Common methods of all slot types."""
 
@@ -651,27 +669,44 @@ class Slot(object):
     def graph(self):
         return self.operator.graph
                         
-    def __init__( self, stype = ArrayLike):
+    def __init__( self, stype = ArrayLike, rtype = RoiSubRegion):
         if self.__class__ == Slot: # make Slot constructor "private"
             raise Exception("Slot can't be constructed directly; use one of the derived slot types")
         if type(stype) == str:
           stype = ArrayLike
         self.stype = stype(self)
+        self.rtype = rtype
         self.meta = MetaDict()
 
     def _allocateDestination( self, key ):
         return self.stype.allocateDestination(key)
         
-    def _writeIntoDestination( self, destination, value ):
-        self.stype.writeIntoDestination(destination,value)
+    def _writeIntoDestination( self, destination, value,roi ):
+        self.stype.writeIntoDestination(destination,value, roi)
 
     def _returnDestination(self, destination):
         return self.stype.returnDestination(destination)
 
     def __getitem__(self, key):
-        assert self.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
-        start, stop = sliceToRoi(key, self.shape)
-        return GetItemRequestObject(self, roiToSlice(start, stop), None, 0)
+        """
+        THIS API call is obsolete !
+        please use the operator.slot() api from now on, i.e. the callable interface...
+        """
+        assert self.meta.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
+        return self(pslice=key)
+
+
+    def __call__(self,**kwargs):
+      """
+      new API
+
+      the slot relays all arguments to the __init__ method
+      of the Roi type. this allows lazyflow to support different
+      types of rois without knowing anything about them.
+      """
+      roi = self.rtype(self,**kwargs)
+      return GetItemRequestObject(self,roi,None,0)
+
 
 import copy
 
@@ -711,7 +746,7 @@ class InputSlot(Slot):
     """
     
     __slots__ = ["name", "operator", "partner", "level", 
-                 "_value", "stype", "axistags", "shape", "dtype"]    
+                 "_value", "stype", "rtype", "axistags", "shape", "dtype"]    
     
     def __init__(self, name, operator = None, stype = ArrayLike):
         super(InputSlot, self).__init__(stype = stype)
@@ -926,7 +961,7 @@ class OutputSlot(Slot):
     """    
     
     __slots__ = ["name", "_metaParent", "level", "operator",
-                 "dtype", "shape", "axistags", "partners", "stype",
+                 "dtype", "shape", "axistags", "partners", "stype", "rtype",
                  "_dirtyCallbacks"]    
     
     def __init__(self, name, operator = None, stype = ArrayLike, array_destination=True):
@@ -1033,10 +1068,6 @@ class OutputSlot(Slot):
         s.meta = MetaDict()
         return s
     
-    def getOutSlotFromOp(self, key, destination):
-        self.operator.getOutSlot(self, key, destination)
-
-
     def __setitem__(self, key, value):
         for p in self.partners:
             p[key] = value
@@ -1079,7 +1110,7 @@ class MultiInputSlot(Slot):
     """
     
     __slots__ = ["name", "operator", "partner", "inputSlots", "level",
-                 "stype", "_value","meta"]    
+                 "stype", "rtype", "_value","meta"]    
     
     def __init__(self, name, operator = None, stype = ArrayLike, level = 1):
         super(MultiInputSlot, self).__init__(stype=stype)
@@ -1412,7 +1443,7 @@ class MultiOutputSlot(Slot):
     """
     
     __slots__ = ["name", "operator", "_metaParent",
-                 "partners", "outputSlots", "level", "stype", "meta"]
+                 "partners", "outputSlots", "level", "stype", "rtype", "meta"]
     
     def __init__(self, name, operator = None, stype = ArrayLike,level = 1):
         super(MultiOutputSlot, self).__init__(stype=stype)
@@ -1516,7 +1547,12 @@ class MultiOutputSlot(Slot):
             p.resize(size, event = event)
             assert len(p) == len(self)
                 
-            
+    def _execute(self,slot,roi,result):
+        index = self.outputSlots.index(slot)
+        key = roiToSlice(roi.start,roi.stop)
+        return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
+
+
     def getOutSlot(self, slot, key, result):
         index = self.outputSlots.index(slot)
         return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
@@ -1535,19 +1571,15 @@ class MultiOutputSlot(Slot):
         s = MultiOutputSlot(self.name, operator, stype = type(self.stype), level = self.level)
         return s
             
-    def setDirty(self, key):
+    def setDirty(self, roi):
         for partner in self.partners:
-            partner.setDirty(key)
+            partner.setDirty(roi)
     
     def connectOk(self, partner):
         # reimplement this method
         # if you want a more involved
         # type checking
         return True
-
-    def getOutSlotFromOp(self, slot, key, destination):
-        index = self.outputSlots.index(slot)
-        self.operator.getSubOutSlot(self, slot, index, key, destination)
 
     @property
     def graph(self):
@@ -1888,6 +1920,16 @@ class Operator(object):
 
     def notifySubSlotResize(self,slots,indexes,size,event):
       pass
+
+
+    def _execute(self, slot, roi, result):
+      if hasattr(self, "execute"):
+        self.execute(slot,roi,result)
+      else:
+        #FALLBACK use old  api
+        pslice = roiToSlice(roi.start,roi.stop)
+        self.getOutSlot(slot,pslice,result)
+
 
     """
     This method of the operator is called when a connected operator
