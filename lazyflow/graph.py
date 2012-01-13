@@ -68,7 +68,7 @@ class DefaultConfigParser(ConfigParser.SafeConfigParser):
     """
     Simple extension to the default SafeConfigParser that
     accepts a default parameter in its .get method and
-    returns its valaue when the parameter cannot be found
+    returns its value when the parameter cannot be found
     in the config file instead of throwing an exception
     """
     def __init__(self):
@@ -111,6 +111,24 @@ except:
     if not os.path.exists(CONFIG_DIR):
         os.mkdir(CONFIG_DIR)
     CONFIG = DefaultConfigParser()
+
+def warn_deprecated( msg ):
+    warn = True
+    if CONFIG.has_option("verbosity", "deprecation_warnings"):
+        warn = CONFIG.getboolean("verbosity", "deprecation_warnings")
+    if warn:
+        import inspect
+        import os.path
+        fi = inspect.getframeinfo(inspect.currentframe().f_back)
+        print "DEPRECATION WARNING: in", os.path.basename(fi.filename), "line", fi.lineno, ":", msg
+
+# deprecation warning decorator
+def deprecated( fn ):
+    def warner(*args, **kwargs):
+        warn_deprecated( fn.__name__ )
+        return fn(*args, **kwargs)
+    return warner
+
 
 
 class Operators(object):
@@ -687,9 +705,10 @@ class Slot(object):
     def _returnDestination(self, destination):
         return self.stype.returnDestination(destination)
 
+    @deprecated
     def __getitem__(self, key):
         """
-        THIS API call is obsolete !
+        operator.slot[] is obsolete;
         please use the operator.slot() api from now on, i.e. the callable interface...
         """
         assert self.meta.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
@@ -1928,6 +1947,7 @@ class Operator(object):
       else:
         #FALLBACK use old  api
         pslice = roiToSlice(roi.start,roi.stop)
+        warn_deprecated( "getOutSlot() is superseded by execute()" )
         self.getOutSlot(slot,pslice,result)
 
 
