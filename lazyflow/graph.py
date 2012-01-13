@@ -312,6 +312,7 @@ class GetItemRequestObject(object):
         self._priority = priority
         return self
 
+    @deprecated
     def allocate(self, priority = 0):
         return self.writeInto( None, priority)
 
@@ -598,10 +599,10 @@ class SlotType( object ):
 class ArrayLike( SlotType ):
     def __init__( self, slot):
         self.slot = slot
-        self._is_true_array = True
 
     def allocateDestination( self, roi ):
-        storage = numpy.ndarray(roi.stop - roi.start, dtype=self.slot.meta.dtype)
+        shape = roi.stop - roi.start if roi else self.slot.meta.shape
+        storage = numpy.ndarray(shape, dtype=self.slot.meta.dtype)
         # if axistags is True:
         #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(s))elf.axistags))
         #     #storage = storage.view(vigra.VigraArray)
@@ -612,19 +613,9 @@ class ArrayLike( SlotType ):
         return destination
 
     def writeIntoDestination( self, destination, value, roi ):
-        if self._is_true_array:
-          key = roiToSlice(roi.start, roi.stop)
-          destination[:] = value[key]
-        else:
-          destination[:] = value
+        destination[:] = value
 
     def isCompatible(self, value):
-      # TODO: change this function, only for backwards compatability !
-      if hasattr(value,"__getitem__")  and hasattr(value,"shape") and hasattr(value,"dtype"):
-        self._is_true_array = True
-      else:
-        self._is_true_array = False
-
       return True
 
 
@@ -723,7 +714,7 @@ class Slot(object):
       of the Roi type. this allows lazyflow to support different
       types of rois without knowing anything about them.
       """
-      roi = self.rtype(self,**kwargs)
+      roi = self.rtype(self,**kwargs) if kwargs else None
       return GetItemRequestObject(self,roi,None,0)
 
 
