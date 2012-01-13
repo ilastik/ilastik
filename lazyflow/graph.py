@@ -655,8 +655,8 @@ class InputSlot(Slot):
     __slots__ = ["name", "operator", "partner", "level", 
                  "_value", "stype", "rtype", "axistags", "shape", "dtype"]    
     
-    def __init__(self, name, operator = None, stype = ArrayLike):
-        super(InputSlot, self).__init__(stype = stype)
+    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion):
+        super(InputSlot, self).__init__(stype = stype, rtype=rtype)
         self.name = name
         self.operator = operator
         self.partner = None
@@ -871,8 +871,8 @@ class OutputSlot(Slot):
                  "dtype", "shape", "axistags", "partners", "stype", "rtype",
                  "_dirtyCallbacks"]    
     
-    def __init__(self, name, operator = None, stype = ArrayLike, array_destination=True):
-        super(OutputSlot, self).__init__(stype=stype)
+    def __init__(self, name, operator = None, stype = ArrayLike, rtype = rtype.SubRegion):
+        super(OutputSlot, self).__init__(stype=stype, rtype=rtype)
         self.name = name
         self._metaParent = operator
         self.level = 0
@@ -1019,8 +1019,8 @@ class MultiInputSlot(Slot):
     __slots__ = ["name", "operator", "partner", "inputSlots", "level",
                  "stype", "rtype", "_value","meta"]    
     
-    def __init__(self, name, operator = None, stype = ArrayLike, level = 1):
-        super(MultiInputSlot, self).__init__(stype=stype)
+    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1):
+        super(MultiInputSlot, self).__init__(stype=stype, rtype=rtype)
         self.name = name
         self.operator = operator
         self.partner = None
@@ -1352,8 +1352,8 @@ class MultiOutputSlot(Slot):
     __slots__ = ["name", "operator", "_metaParent",
                  "partners", "outputSlots", "level", "stype", "rtype", "meta"]
     
-    def __init__(self, name, operator = None, stype = ArrayLike,level = 1):
-        super(MultiOutputSlot, self).__init__(stype=stype)
+    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1):
+        super(MultiOutputSlot, self).__init__(stype=stype, rtype=rtype)
         self.name = name
         self.operator = operator
         self._metaParent = operator
