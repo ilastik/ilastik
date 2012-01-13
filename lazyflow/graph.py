@@ -50,7 +50,6 @@ import itertools
 
 from h5dumprestore import instanceClassToString, stringToClass
 from helpers import itersubclasses, detectCPUs
-from roi import sliceToRoi, roiToSlice
 from collections import deque
 from Queue import Queue, LifoQueue, Empty, PriorityQueue
 from threading import Thread, Event, current_thread, Lock
@@ -58,6 +57,9 @@ import greenlet
 import weakref
 import threading
 
+import rtype
+from roi import sliceToRoi, roiToSlice
+from lazyflow.stype import ArrayLike
 
 greenlet.GREENLET_USE_GC = False #use garbage collection
 sys.setrecursionlimit(100000)
@@ -566,111 +568,6 @@ class GetItemRequestObject(object):
 
 
 
-class SlotType( object ):
-    def allocateDestination( self, roi ):
-      pass
-
-    def returnDestination(self, destination):
-      pass
-
-    def writeIntoDestination( self, destination, value, roi ):
-      pass
-
-    def isCompatible(self, value):
-      """
-      Slot types must implement this method.
-
-      this method should check wether the supplied value
-      is compatible with this type trait and should return true
-      if this is the case.
-      """
-      pass
-
-    def setupMetaForValue(self, value):
-      """
-      Slot types must implement this method.
-
-      this method should extract valuable meta information
-      from the provied value and set up the self.slot.meta
-      MetaDict accordingly
-      """
-      pass
-
-class ArrayLike( SlotType ):
-    def __init__( self, slot):
-        self.slot = slot
-
-    def allocateDestination( self, roi ):
-        shape = roi.stop - roi.start if roi else self.slot.meta.shape
-        storage = numpy.ndarray(shape, dtype=self.slot.meta.dtype)
-        # if axistags is True:
-        #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(s))elf.axistags))
-        #     #storage = storage.view(vigra.VigraArray)
-        #     #storage.axistags = copy.copy(self.axistags)
-        return storage
-
-    def returnDestination(self, destination):
-        return destination
-
-    def writeIntoDestination( self, destination, value, roi ):
-        destination[:] = value
-
-    def isCompatible(self, value):
-      return True
-
-
-    def setupMetaForValue(self, value):
-      if hasattr(value,"__getitem__")  and hasattr(value,"shape") and hasattr(value,"dtype"):
-        self.slot.meta.shape = value.shape
-        self.slot.meta.dtype = value.dtype
-        if hasattr(value,"axistags"):
-          self.slot.meta.axistags = value.axistags
-      else:
-        self.slot.meta.shape = (1,)
-        self.slot.meta.dtype = object
-
-
-class Default( SlotType ):
-    def __init__( self, slot):
-        self.slot = slot
-
-    def allocateDestination( self, roi ):
-        return [None]
-   
-    def returnDestination(self, destination):
-        return destination[0]
-
-    def writeIntoDestination( self, destination, value,roi ):
-        destination[0] = value
-    
-
-    def isCompatible(self, value):
-      return True
-   
-    def setupMetaForValue(self, value):
-      self.slot.meta.shape = (1,)
-      self.slot.meta.dtype = object
-      self.slot.meta.axistags = vigra.defaultAxistags(1)
-
-
-class Roi(object):
-  def __init__(self, slot):
-    self.slot = slot
-    pass
-  pass
-
-
-class RoiSubRegion(Roi):
-  def __init__(self, slot, start = None, stop = None, pslice = None):
-    self.slot = slot
-    if pslice != None:
-      self.start, self.stop = sliceToRoi(pslice,self.slot.meta.shape)
-    else:
-      self.start = start
-      self.stop = stop
-
-
-
 class Slot(object):
     """Common methods of all slot types."""
 
@@ -678,7 +575,7 @@ class Slot(object):
     def graph(self):
         return self.operator.graph
                         
-    def __init__( self, stype = ArrayLike, rtype = RoiSubRegion):
+    def __init__( self, stype = ArrayLike, rtype = rtype.SubRegion):
         if self.__class__ == Slot: # make Slot constructor "private"
             raise Exception("Slot can't be constructed directly; use one of the derived slot types")
         if type(stype) == str:
