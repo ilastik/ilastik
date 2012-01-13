@@ -322,10 +322,7 @@ class Main(QMainWindow):
         selector.inputs["Input"].connect(self.pCache.outputs['Output'])
         selector.inputs["Index"].setValue(icl)
                 
-        if self.checkInteractive.isChecked():
-            self.pCache.inputs["fixAtCurrent"].setValue(False)
-        else:
-            self.pCache.inputs["fixAtCurrent"].setValue(True)
+        self.pCache.inputs["fixAtCurrent"].setValue(not self.checkInteractive.isChecked())
         
         predictsrc = LazyflowSource(selector.outputs["Output"][0])
         def srcName(newName):
