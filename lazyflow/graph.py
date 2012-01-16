@@ -1775,15 +1775,22 @@ class Operator(object):
       pass
 
 
-    def _execute(self, slot, roi, result):
-      if hasattr(self, "execute"):
-        return self.execute(slot,roi,result)
-      else:
-        #FALLBACK use old  api
-        pslice = roiToSlice(roi.start,roi.stop)
-        warn_deprecated( "getOutSlot() is superseded by execute()" )
-        return self.getOutSlot(slot,pslice,result)
+    def __new__( cls, *args, **kwargs ):
+        cls = super(Operator, cls).__new__(cls, *args, **kwargs)
+        
+        # wrap old api
+        if hasattr(cls, "execute"):
+            pass
+        else:
+            def getOutSlot_wrapper( slot, roi, result ):
+                pslice = roiToSlice(roi.start,roi.stop)
+                warn_deprecated( "getOutSlot() is superseded by execute()" )
+                return cls.getOutSlot(slot,pslice,result)
+            cls.execute = getOutSlot_wrapper
+        return cls
 
+    def _execute(self, slot, roi, result):
+        return self.execute(slot,roi,result)
 
     """
     This method of the operator is called when a connected operator
