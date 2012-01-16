@@ -159,10 +159,10 @@ class GetItemRequestObject(object):
         self._requestLevel = -1
         self.lock = Lock()
         if isinstance(slot, InputSlot) and self.slot._value is None:
-            self.func = slot.partner.operator._execute
+            self.func = slot.partner.operator.execute
             self.arg1 = slot.partner            
         elif isinstance(slot, OutputSlot):
-            self.func =  slot.operator._execute
+            self.func =  slot.operator.execute
             self.arg1 = slot
         else:
             # we are in the ._value case of an inputSlot
@@ -1400,7 +1400,7 @@ class MultiOutputSlot(Slot):
             p.resize(size, event = event)
             assert len(p) == len(self)
                 
-    def _execute(self,slot,roi,result):
+    def execute(self,slot,roi,result):
         index = self.outputSlots.index(slot)
         key = roiToSlice(roi.start,roi.stop)
         return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
@@ -1779,18 +1779,17 @@ class Operator(object):
         cls = super(Operator, cls).__new__(cls, *args, **kwargs)
         
         # wrap old api
-        if hasattr(cls, "execute"):
-            pass
-        else:
-            def getOutSlot_wrapper( slot, roi, result ):
+        if hasattr(cls, "getOutSlot"):
+            def getOutSlot_wrapper( self, slot, roi, result ):
                 pslice = roiToSlice(roi.start,roi.stop)
                 warn_deprecated( "getOutSlot() is superseded by execute()" )
-                return cls.getOutSlot(slot,pslice,result)
-            cls.execute = getOutSlot_wrapper
+                return self.getOutSlot(slot,pslice,result)
+            import types
+            cls.execute = types.MethodType(getOutSlot_wrapper, cls)
         return cls
 
-    def _execute(self, slot, roi, result):
-        return self.execute(slot,roi,result)
+    def execute(self, slot, roi, result):
+        return None
 
     """
     This method of the operator is called when a connected operator
