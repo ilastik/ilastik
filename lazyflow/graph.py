@@ -44,12 +44,11 @@ if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".
 import os
 import time
 import gc
-import ConfigParser
 import string
 import itertools
 
 from h5dumprestore import instanceClassToString, stringToClass
-from helpers import itersubclasses, detectCPUs
+from helpers import itersubclasses, detectCPUs, deprecated, warn_deprecated
 from collections import deque
 from Queue import Queue, LifoQueue, Empty, PriorityQueue
 from threading import Thread, Event, current_thread, Lock
@@ -63,73 +62,6 @@ from lazyflow.stype import ArrayLike
 
 greenlet.GREENLET_USE_GC = False #use garbage collection
 sys.setrecursionlimit(100000)
-
-
-
-class DefaultConfigParser(ConfigParser.SafeConfigParser):
-    """
-    Simple extension to the default SafeConfigParser that
-    accepts a default parameter in its .get method and
-    returns its value when the parameter cannot be found
-    in the config file instead of throwing an exception
-    """
-    def __init__(self):
-        ConfigParser.SafeConfigParser.__init__(self)
-        if not os.path.exists(CONFIG_DIR+"config"):
-            self.configfile = open(CONFIG_DIR+"config", "w+")
-        else:
-            self.configfile = open(CONFIG_DIR+"config", "r+")
-        self.readfp(self.configfile)
-        self.configfile.close()
-    
-    def get(self, section, option, default = None):
-        """
-        accepts a default parameter and returns its value
-        instead of throwing an exception when the section
-        or option is not found in the config file
-        """
-        try:
-            ans = ConfigParser.SafeConfigParser.get(self, section, option)
-            print ans
-            return ans
-        except (ConfigParser.NoSectionError, ConfigParser.NoOptionError), e:
-            if default is not None:
-                if e == ConfigParser.NoSectionError:
-                    self.add_section(section)
-                    self.set(section, option, default)
-                if e == ConfigParser.NoOptionError:
-                    self.set(section, option, default)
-                return default
-            else:
-                raise e
-
-try:
-    if LAZYFLOW_LOADED == None:
-        pass
-except:
-    LAZYFLOW_LOADED = True
-    
-    CONFIG_DIR = os.path.expanduser("~/.lazyflow/")
-    if not os.path.exists(CONFIG_DIR):
-        os.mkdir(CONFIG_DIR)
-    CONFIG = DefaultConfigParser()
-
-def warn_deprecated( msg ):
-    warn = True
-    if CONFIG.has_option("verbosity", "deprecation_warnings"):
-        warn = CONFIG.getboolean("verbosity", "deprecation_warnings")
-    if warn:
-        import inspect
-        import os.path
-        fi = inspect.getframeinfo(inspect.currentframe().f_back)
-        print "DEPRECATION WARNING: in", os.path.basename(fi.filename), "line", fi.lineno, ":", msg
-
-# deprecation warning decorator
-def deprecated( fn ):
-    def warner(*args, **kwargs):
-        warn_deprecated( fn.__name__ )
-        return fn(*args, **kwargs)
-    return warner
 
 
 
@@ -411,7 +343,7 @@ class GetItemRequestObject(object):
               gr.currentRequest.childRequests.pop(self)
             except:
               pass
-        else:
+        else: # not (isinstance(self.slot, OutputSlot) or self.slot._value is None)
             if self.destination is None:
                 self.destination = self.slot._allocateDestination(self.roi)
             self.slot._writeIntoDestination(self.destination, self.slot._value, self.roi)

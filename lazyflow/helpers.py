@@ -1,4 +1,23 @@
 import os
+from lazyflow.config import CONFIG
+
+
+def warn_deprecated( msg ):
+    warn = True
+    if CONFIG.has_option("verbosity", "deprecation_warnings"):
+        warn = CONFIG.getboolean("verbosity", "deprecation_warnings")
+    if warn:
+        import inspect
+        import os.path
+        fi = inspect.getframeinfo(inspect.currentframe().f_back)
+        print "DEPRECATION WARNING: in", os.path.basename(fi.filename), "line", fi.lineno, ":", msg
+
+# deprecation warning decorator
+def deprecated( fn ):
+    def warner(*args, **kwargs):
+        warn_deprecated( fn.__name__ )
+        return fn(*args, **kwargs)
+    return warner
 
 def itersubclasses(cls, _seen=None):
     """
