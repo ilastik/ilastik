@@ -58,7 +58,8 @@ class ArrayLike( SlotType ):
         return destination
 
     def isCompatible(self, value):
-      return True
+        print "FIXME here"
+        return True
 
 
     def setupMetaForValue(self, value):
@@ -77,13 +78,14 @@ class Default( SlotType ):
         self.slot = slot
 
     def allocateDestination( self, roi ):
-        return [None]
+        return None
    
     def returnDestination(self, destination):
-        return destination[0]
+        return destination
 
     def writeIntoDestination( self, destination, value,roi ):
-        destination[0] = value
+        print "FIXME: roi cant be applied here"
+        destination = value
         return destination
 
     def isCompatible(self, value):

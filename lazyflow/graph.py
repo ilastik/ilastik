@@ -346,7 +346,6 @@ class GetItemRequestObject(object):
         else: # not (isinstance(self.slot, OutputSlot) or self.slot._value is None)
             if self.destination is None:
                 self.destination = self.slot._allocateDestination(self.roi)
-                assert self.destination is not None
             self.destination = self.slot._writeIntoDestination(self.destination, self.slot._value, self.roi)
         self._finished = True
         if self.canceled is False:
@@ -1788,8 +1787,6 @@ class Operator(object):
             cls.execute = types.MethodType(getOutSlot_wrapper, cls)
         return cls
 
-    def execute(self, slot, roi, result):
-        return None
 
     """
     This method of the operator is called when a connected operator
@@ -1806,7 +1803,7 @@ class Operator(object):
     calculate the requested output area from its input slots,
     run the calculation and put the results into the provided result argument.
     """
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
         return None
 
 
