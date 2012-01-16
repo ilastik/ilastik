@@ -214,7 +214,7 @@ class GetItemRequestObject(object):
         gr.currentRequest = self
         try:
           ret = self.func(self.arg1,self.roi, self.destination)
-          if not ret:
+          if ret == None:
               warn_deprecated("Old style operator with no return value in Op.execute() encountered: " + self.func.__self__.__class__.__name__)
           else:
               self.destination = ret
