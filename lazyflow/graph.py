@@ -1777,12 +1777,12 @@ class Operator(object):
 
     def _execute(self, slot, roi, result):
       if hasattr(self, "execute"):
-        self.execute(slot,roi,result)
+        return self.execute(slot,roi,result)
       else:
         #FALLBACK use old  api
         pslice = roiToSlice(roi.start,roi.stop)
         warn_deprecated( "getOutSlot() is superseded by execute()" )
-        self.getOutSlot(slot,pslice,result)
+        return self.getOutSlot(slot,pslice,result)
 
 
     """
