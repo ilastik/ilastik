@@ -1,5 +1,6 @@
 import numpy
 from roi import roiToSlice
+from helpers import warn_deprecated
 
 class SlotType( object ):
     def allocateDestination( self, roi ):
@@ -49,7 +50,11 @@ class ArrayLike( SlotType ):
 
     def writeIntoDestination( self, destination, value, roi ):
         sl = roiToSlice(roi.start, roi.stop)
-        destination[:] = value[sl]
+        try:
+            destination[:] = value[sl]
+        except TypeError:
+            warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
+        return destination
 
     def isCompatible(self, value):
       return True
@@ -78,7 +83,7 @@ class Default( SlotType ):
 
     def writeIntoDestination( self, destination, value,roi ):
         destination[0] = value
-    
+        return destination
 
     def isCompatible(self, value):
       return True
