@@ -67,7 +67,7 @@ class ArrayLike( SlotType ):
         self.slot.meta.dtype = object
 
 
-class Default( SlotType ):
+class Opaque( SlotType ):
     def __init__( self, slot):
         self.slot = slot
 

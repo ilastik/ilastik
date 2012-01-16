@@ -2,6 +2,7 @@ import numpy, vigra
 from numpy.lib.stride_tricks import as_strided as ast
 from math import ceil, floor
 
+
 class TinyVector(list):
     __slots__ = []
     
