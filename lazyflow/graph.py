@@ -350,7 +350,7 @@ class GetItemRequestObject(object):
         self._finished = True
         if self.canceled is False:
           assert self.destination is not None
-          return self.slot._returnDestination(self.destination)
+          return self.destination
         else:
           return None
   
@@ -525,9 +525,6 @@ class Slot(object):
         
     def _writeIntoDestination( self, destination, value,roi ):
         return self.stype.writeIntoDestination(destination,value, roi)
-
-    def _returnDestination(self, destination):
-        return self.stype.returnDestination(destination)
 
     @deprecated
     def __getitem__(self, key):

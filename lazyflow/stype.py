@@ -6,9 +6,6 @@ class SlotType( object ):
     def allocateDestination( self, roi ):
       pass
 
-    def returnDestination(self, destination):
-      pass
-
     def writeIntoDestination( self, destination, value, roi ):
       pass
 
@@ -45,9 +42,6 @@ class ArrayLike( SlotType ):
         #     #storage.axistags = copy.copy(self.axistags)
         return storage
 
-    def returnDestination(self, destination):
-        return destination
-
     def writeIntoDestination( self, destination, value, roi ):
         sl = roiToSlice(roi.start, roi.stop)
         try:
@@ -79,9 +73,6 @@ class Default( SlotType ):
 
     def allocateDestination( self, roi ):
         return None
-   
-    def returnDestination(self, destination):
-        return destination
 
     def writeIntoDestination( self, destination, value,roi ):
         print "FIXME: roi cant be applied here"
