@@ -346,7 +346,8 @@ class GetItemRequestObject(object):
         else: # not (isinstance(self.slot, OutputSlot) or self.slot._value is None)
             if self.destination is None:
                 self.destination = self.slot._allocateDestination(self.roi)
-            self.slot._writeIntoDestination(self.destination, self.slot._value, self.roi)
+                assert self.destination is not None
+            self.destination = self.slot._writeIntoDestination(self.destination, self.slot._value, self.roi)
         self._finished = True
         if self.canceled is False:
           assert self.destination is not None
@@ -524,7 +525,7 @@ class Slot(object):
         return self.stype.allocateDestination(key)
         
     def _writeIntoDestination( self, destination, value,roi ):
-        self.stype.writeIntoDestination(destination,value, roi)
+        return self.stype.writeIntoDestination(destination,value, roi)
 
     def _returnDestination(self, destination):
         return self.stype.returnDestination(destination)
