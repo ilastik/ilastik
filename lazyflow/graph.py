@@ -281,7 +281,11 @@ class GetItemRequestObject(object):
             self.destination = self.slot._allocateDestination( self.roi )
         gr.currentRequest = self
         try:
-          self.func(self.arg1,self.roi, self.destination)
+          ret = self.func(self.arg1,self.roi, self.destination)
+          if not ret:
+              warn_deprecated("Old style operator with no return value in Op.execute() encountered: " + self.func.__self__.__class__.__name__)
+          else:
+              self.destination = ret
         except Exception,e:
           if isinstance(self.slot, InputSlot):
             print
