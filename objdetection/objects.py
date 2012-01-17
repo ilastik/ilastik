@@ -1,5 +1,6 @@
 import numpy
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
+from lazyflow import stype, rtype 
 
 class Object:
     def __repr__( self ):
@@ -23,22 +24,39 @@ def objects_from_connected_components( cc, background=None ):
 class OpObjectExtractor( Operator ):
     name = "OpObjectExtractor"
 
-    inputSlots = [InputSlot('Input')]
-    outputSlots = [OutputSlot('Output', array_destination=False)]
+    inputSlots = [InputSlot('Input', stype=stype.ArrayLike)]
+    outputSlots = [OutputSlot('Output', stype=stype.Default, rtype=rtype.SubRegion)]
 
     def notifyConnectAll(self):
         self.outputs["Output"]._shape = self.Input.shape
 
-    def getOutSlot( self, slot, key, result ):
-        cc = self.Input[key].allocate().wait()
+    def execute( self, slot, roi, result ):
+        cc = self.Input.get(roi).wait()
         objs = objects_from_connected_components(cc, background = 0)
-        print "extractor result type", type(result)
-        result[0] = objs
+        print "FIXME: correct for absolute coordinate shift"
+        return objs
         
+class OpObjectPiper( Operator ):
+    name = "ObjectPiper"
+
+    inputSlots = [InputSlot('Input', stype=stype.Default, rtype=None)]
+    outputSlots = [OutputSlot('Output', stype=stype.Default, rtype=None)]
+
+    def execute( self, slot, roi, result ):
+        objects = self.Input().wait()
+        result = filter(roi, objects)
+        return result
+
 if __name__ == '__main__':
     cc = numpy.load("cc.npy")    
     g = Graph()
     extractor = OpObjectExtractor( g )
+    piper = OpObjectPiper( g )
+
+    piper.Input.connect( extractor.Output )
     extractor.Input.setValue(cc)
-    objs = extractor.Output[:].wait()
+    print extractor.Output.shape
+    objs = extractor.Output(pslice=numpy.s_[:,100:101,:]).wait()
+
+    #objs = piper.Output().wait()
     print objs
