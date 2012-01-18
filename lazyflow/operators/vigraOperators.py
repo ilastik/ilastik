@@ -79,15 +79,12 @@ class OpMultiArrayStackerOld(Operator):
             r.wait()
 
 
-class Op5ToMulti(Operator):
-    name = "5 Elements to Multislot"
-    category = "Misc"
+class OpXToMulti(Operator):
 
-    
-    inputSlots = [InputSlot("Input0"),InputSlot("Input1"),InputSlot("Input2"),InputSlot("Input3"),InputSlot("Input4")]
-    outputSlots = [MultiOutputSlot("Outputs")]
+    inputSlots = []
+    outputSlots = []
         
-    def notifyConnect(self, slot):
+    def notifyConnectAll(self):
         length = 0
         for slot in self.inputs.values():
             if slot.connected():
@@ -117,31 +114,48 @@ class Op5ToMulti(Operator):
                     break
                 i += 1                
 
-class Op10ToMulti(Op5ToMulti):
+
+
+class Op5ToMulti(OpXToMulti):
+    name = "5 Elements to Multislot"
+    category = "Misc"
+
+    inputSlots = []
+    for i in xrange(5):
+        inputSlots.append(InputSlot("Input%.1d"%(i), optional = True))
+    outputSlots = [MultiOutputSlot("Outputs")]
+    
+
+class Op10ToMulti(OpXToMulti):
     name = "10 Elements to Multislot"
     category = "Misc"
 
-    inputSlots = [InputSlot("Input0"), InputSlot("Input1"),InputSlot("Input2"),InputSlot("Input3"),InputSlot("Input4"),InputSlot("Input5"), InputSlot("Input6"),InputSlot("Input7"),InputSlot("Input8"),InputSlot("Input9")]
+    inputSlots = []
+    for i in xrange(10):
+        inputSlots.append(InputSlot("Input%.1d"%(i), optional = True))
     outputSlots = [MultiOutputSlot("Outputs")]
 
 
-class Op20ToMulti(Op5ToMulti):
+class Op20ToMulti(OpXToMulti):
     name = "20 Elements to Multislot"
     category = "Misc"
 
-    inputSlots = [InputSlot("Input00"), InputSlot("Input01"),InputSlot("Input02"),InputSlot("Input03"),InputSlot("Input04"),InputSlot("Input05"), InputSlot("Input06"),InputSlot("Input07"),InputSlot("Input08"),InputSlot("Input09"),InputSlot("Input10"), InputSlot("Input11"),InputSlot("Input12"),InputSlot("Input13"),InputSlot("Input14"),InputSlot("Input15"), InputSlot("Input16"),InputSlot("Input17"),InputSlot("Input18"),InputSlot("Input19")]
+    inputSlots = []
+    for i in xrange(20):
+        inputSlots.append(InputSlot("Input%.2d"%(i), optional = True))
     outputSlots = [MultiOutputSlot("Outputs")]
 
 
 
-class Op50ToMulti(Op5ToMulti):
+
+class Op50ToMulti(OpXToMulti):
     
     name = "N Elements to Multislot"
     category = "Misc"
 
-    inputSlots=[]
+    inputSlots = []
     for i in xrange(50):
-        inputSlots.append(InputSlot("Input%.2d"%(i)))
+        inputSlots.append(InputSlot("Input%.2d"%(i), optional = True))
     outputSlots = [MultiOutputSlot("Outputs")]
 
     
@@ -410,7 +424,6 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
             self.outputs["Output"]._dtype = numpy.float32            
             self.outputs["Output"]._axistags = self.stacker.outputs["Output"]._axistags            
             self.outputs["Output"]._shape = self.stacker.outputs["Output"]._shape            
-            
     
     def getOutSlot(self, slot, key, result):    
         if slot == self.outputs["Output"]:

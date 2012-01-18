@@ -48,7 +48,7 @@ class ArrayLike( SlotType ):
             destination[:] = value[sl]
         except TypeError:
             warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
-            destination = value
+            destination = [value]
         return destination
 
     def isCompatible(self, value):

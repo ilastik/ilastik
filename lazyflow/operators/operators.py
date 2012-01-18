@@ -920,7 +920,6 @@ class OpBlockedArrayCache(OperatorGroup):
             self._fixed = self.inputs["fixAtCurrent"].value  
             self.fixerSource.inputs["Input"].setValue(self._fixed)
             self.fixerSource.inputs["Input"].setDirty(0)
-        print "KKKKKKKKKKK", self.inputs["Input"].connected(), self.inputs["fixAtCurrent"].connected(),self.inputs["innerBlockShape"].connected(),self.inputs["outerBlockShape"].connected()
         if self.inputs["Input"].connected() and self.inputs["fixAtCurrent"].connected() and self.inputs["innerBlockShape"].connected() and self.inputs["outerBlockShape"].connected():
             if slot != self.inputs["fixAtCurrent"] or not hasattr(self,"_blockState"):
                 inputSlot = self.inputs["Input"]

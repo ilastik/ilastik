@@ -591,8 +591,9 @@ class InputSlot(Slot):
     __slots__ = ["name", "operator", "partner", "level", 
                  "_value", "stype", "rtype", "axistags", "shape", "dtype"]    
     
-    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None):
+    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False):
         super(InputSlot, self).__init__(stype = stype, rtype=rtype)
+        self._optional = optional
         self.name = name
         self.operator = operator
         self.partner = None
@@ -613,6 +614,8 @@ class InputSlot(Slot):
       return self.meta.axistags
 
     def _changed(self, notify = True):
+      if self.partner is not None:
+        self.meta = self.partner.meta.copy()
       self._checkNotifyConnect(notify = notify)
       self._checkNotifyConnectAll(notify = notify)
 
@@ -709,7 +712,7 @@ class InputSlot(Slot):
         if isinstance(self.operator,Operator):
             allConnected = True
             for slot in self.operator.inputs.values():
-                if slot.connected() is False:
+                if slot._optional is False and slot.connected() is False:
                     print "INFO: ", self.operator.name, "slot ", slot.name, "NOT CONNECTED"
                     allConnected = False
                     break
@@ -732,7 +735,7 @@ class InputSlot(Slot):
     #TODO RENAME? createInstance
     # def __copy__ ?, clone ?
     def getInstance(self, operator):
-        s = InputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, value = self._value)
+        s = InputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, value = self._value, optional = self._optional)
         return s
             
     def setDirty(self, key):
@@ -963,8 +966,9 @@ class MultiInputSlot(Slot):
     __slots__ = ["name", "operator", "partner", "inputSlots", "level",
                  "stype", "rtype", "_value","meta"]    
     
-    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None):
+    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None, optional = False):
         super(MultiInputSlot, self).__init__(stype=stype, rtype=rtype)
+        self._optional = optional
         self.name = name
         self.operator = operator
         self.partner = None
@@ -981,9 +985,8 @@ class MultiInputSlot(Slot):
         for i,s in enumerate(self.inputSlots):
             s.disconnect()
             s.setValue(self._value)
-        self.operator._notifyConnect(self)
-        self._checkNotifyConnectAll()
-    
+        self._changed()
+
     def __getitem__(self, key):
         return self.inputSlots[key]
     
@@ -1059,7 +1062,7 @@ class MultiInputSlot(Slot):
         if issubclass(self.operator.__class__, Operator):
             allConnected = True
             for slot in self.operator.inputs.values():
-                if not slot.connected():
+                if slot._optional is False and not slot.connected():
                     allConnected = False
                     break
             if allConnected:
@@ -1093,6 +1096,8 @@ class MultiInputSlot(Slot):
             return 0
     
     def _changed(self):
+      if self.partner is not None:
+        self.meta = self.partner.meta.copy()
       if self.operator:
         self.operator._notifyConnect(self)
       self._checkNotifyConnectAll()
@@ -1228,7 +1233,7 @@ class MultiInputSlot(Slot):
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
-        s = MultiInputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, level = self.level, value = self._value)
+        s = MultiInputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, level = self.level, value = self._value, optional = self._optional)
         return s
             
     def setDirty(self, key = None):
@@ -1359,6 +1364,9 @@ class MultiOutputSlot(Slot):
       if self.meta._dirty:
         for p in self.partners:
           p._changed()
+
+      for o in self.outputSlots:
+        o._changed()
 
     def _connect(self, partner, notify = True):
         if partner not in self.partners:
@@ -1598,6 +1606,16 @@ class Operator(object):
 
         if len(self.inputs.keys()) == 0:
           self.notifyConnectAll()
+
+    def connected(self):
+      allConnected = True
+      for slot in self.inputs.values():
+          if slot._optional is False and slot.connected() is False:
+              print "INFO: ", self.name, "slot ", slot.name, "NOT CONNECTED"
+              allConnected = False
+      if allConnected:
+          print "INFO: ", self.name, "ALL SLOTS CONNECTED"
+
 
     def _setDefaultInputValues(self):
       for i in self.inputs.values():
@@ -2127,9 +2145,6 @@ class OperatorWrapper(Operator):
         for k,mslot in self.outputs.items():
             assert len(mslot) == len(self.innerOperators) == maxLen, "%d, %d" % (len(mslot), len(self.innerOperators))        
 
-    
-    def _notifyConnectAll(self):
-        pass
     
     def _notifySubSlotInsert(self,slots,indexes, event = None):
         #print "_notifySubSlotInsert Wrapper of", self.operator.name,slots, indexes
