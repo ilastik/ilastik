@@ -569,8 +569,15 @@ class MetaDict(dict):
       self.axistags = None
 
   def __setattr__(self,name,value):
-    if self.has_key(name) and self[name] != value:
-      self["_dirty"] = True
+    if self.has_key(name):
+      changed = True
+      try:
+        if self[name] == value:
+          changed = False
+      except:
+        pass
+      if changed:
+        self["_dirty"] = True
     self[name] = value
     return value
 
@@ -1691,7 +1698,7 @@ class Operator(object):
 
 
     def _notifyConnect(self, inputSlot):
-        self.notifyConnect(inputSlot)
+        pass#self.notifyConnect(inputSlot)
     
     def _notifyConnectAll(self):
         pass
@@ -1739,8 +1746,9 @@ class Operator(object):
       The default implementation emulates the old api behaviour.
       """
       # emulate old behaviour
-      for s in self.inputs:
-        self.notifyConnect(s)
+      for s in self.inputs.values():
+        if s.connected():
+          self.notifyConnect(s)
       self.notifyConnectAll()
 
 
@@ -2068,6 +2076,9 @@ class OperatorWrapper(Operator):
     def notifySubSlotDirty(self, slots, indexes, key):
         pass
 
+    def _notifyConnect(self, inputSlot):
+        self.notifyConnect(inputSlot)
+    
     
     def disconnect(self):
         for s in self.outputs.values():
@@ -2440,6 +2451,9 @@ class OperatorGroup(Operator):
         # this method must setup 
         # self._visibleOutputs
         pass
+    
+    def _notifyConnect(self, inputSlot):
+        self.notifyConnect(inputSlot)
     
     def _connectInnerOutputs(self):
         outputs = self.getInnerOutputs()

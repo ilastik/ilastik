@@ -247,8 +247,6 @@ class OpArrayCache(OpArrayPiper):
         self._lazyAlloc = True
         self._cacheHits = 0
         OpArrayPiper.__init__(self, graph, register = register)
-        if blockShape == None:
-            blockShape = 64
         self.graph._registerCache(self)
         
     def _memorySize(self):
@@ -335,19 +333,17 @@ class OpArrayCache(OpArrayPiper):
         self._cacheLock.release()
             
     def notifyConnect(self, slot):
+        print "kjsdahkjsahd",self, slot.name
         reconfigure = False
         if  self.inputs["fixAtCurrent"].connected():
             self._fixed =  self.inputs["fixAtCurrent"].value  
             
-        if slot == self.inputs["blockShape"]:
+        if self.inputs["blockShape"].connected() and self.inputs["Input"].connected():
             newBShape = self.inputs["blockShape"].value
             if self._origBlockShape != newBShape and self.inputs["Input"].connected():
                 reconfigure = True
             self._origBlockShape = newBShape                
-        if slot == self.inputs["Input"]:
             OpArrayPiper.notifyConnectAll(self)
-            inputSlot = self.inputs["Input"]
-            reconfigure = True
     
         if reconfigure and self.shape is not None:
             self._lock.acquire()
@@ -577,14 +573,14 @@ if has_blist:
         name = "Sparse Label Array"
         description = "simple cache for sparse label arrays"
            
-        inputSlots = [InputSlot("Input"), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel")]
+        inputSlots = [InputSlot("Input", optional = True), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel", optional = True)]
         outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates")]    
         
         def __init__(self, graph):
-            Operator.__init__(self, graph)
             self.lock = threading.Lock()
             self._denseArray = None
             self._sparseNZ = None
+            Operator.__init__(self, graph)
             
         def notifyConnect(self, slot):
             if slot.name == "shape":
@@ -702,107 +698,110 @@ if has_blist:
         name = "Blocked Sparse Label Array"
         description = "simple cache for sparse label arrays"
            
-        inputSlots = [InputSlot("Input"), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel"), InputSlot("blockShape")]
+        inputSlots = [InputSlot("Input", optional = True), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel", optional = True), InputSlot("blockShape")]
         outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates"), OutputSlot("nonzeroBlocks")]
         
         def __init__(self, graph):
-            OperatorGroup.__init__(self, graph)
             self.lock = threading.Lock()
             
             self._sparseNZ = None
             self._labelers = {}
             self.shape = None
             self.eraser = None
+            OperatorGroup.__init__(self, graph)
             
             
         def _createInnerOperators(self):
             #Inner operators are created on demand            
             pass
             
-        def notifyConnect(self, slot):
-            if slot.name == "shape":
-                self.shape = self.inputs["shape"].value
-                self.outputs["Output"]._dtype = numpy.uint8
-                self.outputs["Output"]._shape = self.shape
-                self.outputs["Output"]._axistags = vigra.defaultAxistags(len(self.shape))
-        
-                self.outputs["nonzeroValues"]._dtype = object
-                self.outputs["nonzeroValues"]._shape = (1,)
-                self.outputs["nonzeroValues"]._axistags = vigra.defaultAxistags(1)
-                
-                self.outputs["nonzeroCoordinates"]._dtype = object
-                self.outputs["nonzeroCoordinates"]._shape = (1,)
-                self.outputs["nonzeroCoordinates"]._axistags = vigra.defaultAxistags(1)
+        def notifyConnectAll(self):
+            for slot in self.inputs.values():
+              if slot.connected() is False:
+                continue
+              if slot.name == "shape":
+                  self.shape = self.inputs["shape"].value
+                  self.outputs["Output"]._dtype = numpy.uint8
+                  self.outputs["Output"]._shape = self.shape
+                  self.outputs["Output"]._axistags = vigra.defaultAxistags(len(self.shape))
+          
+                  self.outputs["nonzeroValues"]._dtype = object
+                  self.outputs["nonzeroValues"]._shape = (1,)
+                  self.outputs["nonzeroValues"]._axistags = vigra.defaultAxistags(1)
+                  
+                  self.outputs["nonzeroCoordinates"]._dtype = object
+                  self.outputs["nonzeroCoordinates"]._shape = (1,)
+                  self.outputs["nonzeroCoordinates"]._axistags = vigra.defaultAxistags(1)
 
-                self.outputs["nonzeroBlocks"]._dtype = object
-                self.outputs["nonzeroBlocks"]._shape = (1,)
-                self.outputs["nonzeroBlocks"]._axistags = vigra.defaultAxistags(1)
-    
-                #Filled on request
-                self._sparseNZ =  blist.sorteddict()
-            
-            if slot.name == "eraser":
-                self.eraser = self.inputs["eraser"].value
-                for l in self._labelers.values():
-                    l.inputs['eraser'].setValue(self.eraser)
-            
-            if slot.name == "blockShape":
-                self._origBlockShape = self.inputs["blockShape"].value
-                
-                if type(self._origBlockShape) != tuple:
-                    self._blockShape = (self._origBlockShape,)*len(self.shape)
-                else:
-                    self._blockShape = self._origBlockShape
-                    
-                self._blockShape = numpy.minimum(self._blockShape, self.shape)
-        
-                self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
-                
-                if lazyflow.verboseMemory:
-                    print "Reconfigured Sparse labels with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
-                #FIXME: we don't really need this blockState thing
-                self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
-                
-                _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
-                _blockNumbers.shape = self._dirtyShape
-        
-                _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
-                _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
-        
-                 
-                self._blockNumbers = _blockNumbers
-                #self._blockIndices = _blockIndices
-                
-                # allocate queryArray object
-                self._flatBlockIndices =  _blockIndices[:]
-                self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
-            
-                
-            if slot.name == "deleteLabel":
-                print "DELETING LABEL", self.inputs['deleteLabel'].value
-                for l in self._labelers.values():
-                    l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
-                
-                #print "not there yet"
-                return
-                labelNr = slot.value
-                if labelNr is not -1:
-                    neutralElement = 0
-                    slot.setValue(-1) #reset state of inputslot
-                    self.lock.acquire()
-    
-                    #remove values to be deleted
-                    updateNZ = numpy.nonzero(numpy.where(self._denseArray == labelNr,1,0))
-                    if len(updateNZ)>0:
-                        updateNZRavel = numpy.ravel_multi_index(updateNZ, self._denseArray.shape)
-                        self._denseArray.ravel()[updateNZRavel] = neutralElement
-                        for index in updateNZRavel:
-                            self._sparseNZ.pop(index)
-                    self._denseArray[:] = numpy.where(self._denseArray > labelNr, self._denseArray - 1, self._denseArray)
-                    self.lock.release()
-                    self.outputs["nonzeroValues"][0] = numpy.array(self._sparseNZ.values())
-                    self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
-                    self.outputs["Output"][:] = self._denseArray #set output dirty
+                  self.outputs["nonzeroBlocks"]._dtype = object
+                  self.outputs["nonzeroBlocks"]._shape = (1,)
+                  self.outputs["nonzeroBlocks"]._axistags = vigra.defaultAxistags(1)
+      
+                  #Filled on request
+                  self._sparseNZ =  blist.sorteddict()
+              
+              if slot.name == "eraser":
+                  self.eraser = self.inputs["eraser"].value
+                  for l in self._labelers.values():
+                      l.inputs['eraser'].setValue(self.eraser)
+              
+              if slot.name == "blockShape":
+                  self._origBlockShape = self.inputs["blockShape"].value
+                  
+                  if type(self._origBlockShape) != tuple:
+                      self._blockShape = (self._origBlockShape,)*len(self.shape)
+                  else:
+                      self._blockShape = self._origBlockShape
+                      
+                  self._blockShape = numpy.minimum(self._blockShape, self.shape)
+          
+                  self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+                  
+                  if lazyflow.verboseMemory:
+                      print "Reconfigured Sparse labels with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
+                  #FIXME: we don't really need this blockState thing
+                  self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+                  
+                  _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
+                  _blockNumbers.shape = self._dirtyShape
+          
+                  _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
+                  _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
+          
+                   
+                  self._blockNumbers = _blockNumbers
+                  #self._blockIndices = _blockIndices
+                  
+                  # allocate queryArray object
+                  self._flatBlockIndices =  _blockIndices[:]
+                  self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+              
+                  
+              if slot.name == "deleteLabel":
+                  print "DELETING LABEL", self.inputs['deleteLabel'].value
+                  for l in self._labelers.values():
+                      l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
+                  
+                  #print "not there yet"
+                  return
+                  labelNr = slot.value
+                  if labelNr is not -1:
+                      neutralElement = 0
+                      slot.setValue(-1) #reset state of inputslot
+                      self.lock.acquire()
+      
+                      #remove values to be deleted
+                      updateNZ = numpy.nonzero(numpy.where(self._denseArray == labelNr,1,0))
+                      if len(updateNZ)>0:
+                          updateNZRavel = numpy.ravel_multi_index(updateNZ, self._denseArray.shape)
+                          self._denseArray.ravel()[updateNZRavel] = neutralElement
+                          for index in updateNZRavel:
+                              self._sparseNZ.pop(index)
+                      self._denseArray[:] = numpy.where(self._denseArray > labelNr, self._denseArray - 1, self._denseArray)
+                      self.lock.release()
+                      self.outputs["nonzeroValues"][0] = numpy.array(self._sparseNZ.values())
+                      self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
+                      self.outputs["Output"][:] = self._denseArray #set output dirty
                     
         def getOutSlot(self, slot, key, result):
             self.lock.acquire()
@@ -840,6 +839,7 @@ if has_blist:
                 for l in self._labelers.values():
                     nzvalues |= set(l._sparseNZ.values())
                 result[0] = numpy.array(list(nzvalues))
+
             elif slot.name == "nonzeroCoordinates":
                 print "not supported yet"
                 #result[0] = numpy.array(self._sparseNZ.keys())
