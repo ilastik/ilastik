@@ -1054,14 +1054,15 @@ class OpSlicedBlockedArrayCache(OperatorGroup):
     name = "OpSlicedBlockedArrayCache"
     description = ""
 
-    inputSlots = [InputSlot("Input"),InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent")]
+    inputSlots = [InputSlot("Input"),InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent", value = False)]
     outputSlots = [OutputSlot("Output")]    
 
     def _createInnerOperators(self):
         self.source = OpArrayPiper(self.graph)
         self.fixerSource = OpArrayPiper(self.graph)
 
-    def notifyConnect(self, slot):
+    def notifyConnectAll(self):
+        slot = self.inputs["fixAtCurrent"]
         if slot == self.inputs["fixAtCurrent"]:
             self._fixed = self.inputs["fixAtCurrent"].value  
             self.fixerSource.inputs["Input"].setValue(self._fixed)
@@ -1070,6 +1071,7 @@ class OpSlicedBlockedArrayCache(OperatorGroup):
                 for op in self._innerOps:
                     op.inputs["fixAtCurrent"].setValue(self._fixed)
         if self.inputs["Input"].connected() and self.inputs["fixAtCurrent"].connected() and self.inputs["innerBlockShape"].connected() and self.inputs["outerBlockShape"].connected():
+            slot = self.inputs["Input"]
             if slot != self.inputs["fixAtCurrent"]:            
                 self.shape = self.inputs["Input"].shape            
                 self._lock = Lock()            

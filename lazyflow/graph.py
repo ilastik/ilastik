@@ -1702,7 +1702,6 @@ class Operator(object):
     
     def _notifyConnectAll(self):
         pass
-        #self.notifyConnectAll()
 
     def _notifySubConnect(self, slots, indexes):
         self.notifySubConnect(slots,indexes)
@@ -2076,10 +2075,6 @@ class OperatorWrapper(Operator):
     def notifySubSlotDirty(self, slots, indexes, key):
         pass
 
-    def _notifyConnect(self, inputSlot):
-        self.notifyConnect(inputSlot)
-    
-    
     def disconnect(self):
         for s in self.outputs.values():
             s.disconnect()
@@ -2452,9 +2447,6 @@ class OperatorGroup(Operator):
         # self._visibleOutputs
         pass
     
-    def _notifyConnect(self, inputSlot):
-        self.notifyConnect(inputSlot)
-    
     def _connectInnerOutputs(self):
         outputs = self.getInnerOutputs()
         
@@ -2487,7 +2479,7 @@ class OperatorGroup(Operator):
                 inputs[inputSlot.name].setValue(inputSlot._value)
         self.notifyConnect(inputSlot)
       self.notifyConnectAll()
-
+      self.setupOutputs()
       for o in self.outputs.values():
         o._changed()
 
