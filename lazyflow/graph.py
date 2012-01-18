@@ -591,13 +591,13 @@ class InputSlot(Slot):
     __slots__ = ["name", "operator", "partner", "level", 
                  "_value", "stype", "rtype", "axistags", "shape", "dtype"]    
     
-    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion):
+    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None):
         super(InputSlot, self).__init__(stype = stype, rtype=rtype)
         self.name = name
         self.operator = operator
         self.partner = None
         self.level = 0
-        self._value = None
+        self._value = value
  
 
     @property
@@ -644,7 +644,7 @@ class InputSlot(Slot):
 
     def connected(self):
         answer = True
-        if self._value is None and self.partner is None or (self.partner is not None and self.partner.shape is None):
+        if self._value is None and self.partner is None or (self.partner is not None and self.shape is None):
             answer = False
         return answer
 
@@ -710,9 +710,11 @@ class InputSlot(Slot):
             allConnected = True
             for slot in self.operator.inputs.values():
                 if slot.connected() is False:
+                    print "INFO: ", self.operator.name, "slot ", slot.name, "NOT CONNECTED"
                     allConnected = False
                     break
             if allConnected:
+                print "INFO: ", self.operator.name, "ALL SLOTS CONNECTED"
                 self.operator._setupOutputs()
                 
     def disconnect(self):
@@ -730,7 +732,7 @@ class InputSlot(Slot):
     #TODO RENAME? createInstance
     # def __copy__ ?, clone ?
     def getInstance(self, operator):
-        s = InputSlot(self.name, operator, stype = type(self.stype))
+        s = InputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, value = self._value)
         return s
             
     def setDirty(self, key):
@@ -913,7 +915,7 @@ class OutputSlot(Slot):
 
     #FIXME __copy__ ?
     def getInstance(self, operator):
-        s = OutputSlot(self.name, operator, stype = type(self.stype))
+        s = OutputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype)
         s.meta = MetaDict()
         return s
     
@@ -961,14 +963,14 @@ class MultiInputSlot(Slot):
     __slots__ = ["name", "operator", "partner", "inputSlots", "level",
                  "stype", "rtype", "_value","meta"]    
     
-    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1):
+    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None):
         super(MultiInputSlot, self).__init__(stype=stype, rtype=rtype)
         self.name = name
         self.operator = operator
         self.partner = None
         self.inputSlots = []
         self.level = level
-        self._value = None
+        self._value = value
     
     @property
     def value(self):
@@ -1226,7 +1228,7 @@ class MultiInputSlot(Slot):
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
-        s = MultiInputSlot(self.name, operator, stype = type(self.stype), level = self.level)
+        s = MultiInputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, level = self.level, value = self._value)
         return s
             
     def setDirty(self, key = None):
@@ -1592,8 +1594,15 @@ class Operator(object):
         if self.register:
             self.graph.registerOperator(self)
 
+        self._setDefaultInputValues()
+
         if len(self.inputs.keys()) == 0:
           self.notifyConnectAll()
+
+    def _setDefaultInputValues(self):
+      for i in self.inputs.values():
+        if i._value is not None:
+          i.setValue(i._value)
          
     def _getOriginalOperator(self):
         return self

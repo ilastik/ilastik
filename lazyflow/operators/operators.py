@@ -231,13 +231,10 @@ class OpArrayCache(OpArrayPiper):
     description = "numpy.ndarray caching class"
     category = "misc"
     
-    inputSlots = [InputSlot("Input"), InputSlot("blockShape"), InputSlot("fixAtCurrent")]
+    inputSlots = [InputSlot("Input"), InputSlot("blockShape", value = 64), InputSlot("fixAtCurrent", value = False)]
     outputSlots = [OutputSlot("Output")]    
     
     def __init__(self, graph, register = True, blockShape = None, immediateAlloc = True):
-        OpArrayPiper.__init__(self, graph, register = register)
-        if blockShape == None:
-            blockShape = 64
         self._origBlockShape = blockShape
         self._blockShape = None
         self._dirtyShape = None
@@ -249,6 +246,9 @@ class OpArrayCache(OpArrayPiper):
         self._cacheLock = Lock()
         self._lazyAlloc = True
         self._cacheHits = 0
+        OpArrayPiper.__init__(self, graph, register = register)
+        if blockShape == None:
+            blockShape = 64
         self.graph._registerCache(self)
         
     def _memorySize(self):
@@ -920,6 +920,7 @@ class OpBlockedArrayCache(OperatorGroup):
             self._fixed = self.inputs["fixAtCurrent"].value  
             self.fixerSource.inputs["Input"].setValue(self._fixed)
             self.fixerSource.inputs["Input"].setDirty(0)
+        print "KKKKKKKKKKK", self.inputs["Input"].connected(), self.inputs["fixAtCurrent"].connected(),self.inputs["innerBlockShape"].connected(),self.inputs["outerBlockShape"].connected()
         if self.inputs["Input"].connected() and self.inputs["fixAtCurrent"].connected() and self.inputs["innerBlockShape"].connected() and self.inputs["outerBlockShape"].connected():
             if slot != self.inputs["fixAtCurrent"] or not hasattr(self,"_blockState"):
                 inputSlot = self.inputs["Input"]
