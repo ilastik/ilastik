@@ -627,10 +627,18 @@ class InputSlot(Slot):
         of connecting it to a partner OutputSlot.
         """
         assert self.partner == None, "InputSlot %s (%r): Cannot dot setValue, because it is connected !" %(self.name, self)
-        if self.stype.isCompatible(value):
-          self._value = value
-          self.stype.setupMetaForValue(value)
-          self._changed(notify = notify)
+        changed = True
+        try:
+          if value == self._value:
+            changed = False
+            print "SETTING VALUE TWO TIMES", value
+        except:
+          pass
+        if changed:
+          if self.stype.isCompatible(value):
+            self._value = value
+            self.stype.setupMetaForValue(value)
+            self._changed(notify = notify)
 
     @property
     def value(self):
@@ -981,11 +989,18 @@ class MultiInputSlot(Slot):
         return self._value
 
     def setValue(self, value):
-        self._value = value
-        for i,s in enumerate(self.inputSlots):
-            s.disconnect()
-            s.setValue(self._value)
-        self._changed()
+        changed = True
+        try:
+          if value == self._value:
+            changed = False
+            print "SETTING VALUE TWO TIMES (Multi)", value
+        except:
+          pass
+        if changed:
+          self._value = value
+          for i,s in enumerate(self.inputSlots):
+              s.setValue(self._value)
+          self._changed()
 
     def __getitem__(self, key):
         return self.inputSlots[key]
@@ -1038,6 +1053,8 @@ class MultiInputSlot(Slot):
           self._notifySubSlotInsert((islot,),tuple(), event = event)
         if connect:
           self._connectSubSlot(index)
+        if self._value is not None:
+          islot.setValue(self._value)
         return islot
 
 
@@ -1052,6 +1069,8 @@ class MultiInputSlot(Slot):
           self._notifySubSlotInsert((islot,),tuple())
         if connect:
           self._connectSubSlot(index)
+        if self._value is not None:
+          islot.setValue(self._value)
 
         return islot
     
@@ -1671,7 +1690,7 @@ class Operator(object):
 
 
     def _notifyConnect(self, inputSlot):
-        return#self.notifyConnect(inputSlot)
+        self.notifyConnect(inputSlot)
     
     def _notifyConnectAll(self):
         pass
@@ -2127,7 +2146,7 @@ class OperatorWrapper(Operator):
 
         return maxLen
 
-    def setupOutputs(self):
+    def _setupOutputs(self):
       inputSlot = self.inputs.values()[0]
       maxLen = self._ensureInputSize(len(inputSlot))
       for inputSlot in self.inputs.values():
@@ -2138,12 +2157,17 @@ class OperatorWrapper(Operator):
                     print "Wrapped Op", self.name, "connected", i
             elif islot._value is not None:
                 self.innerOperators[i].inputs[inputSlot.name].setValue(islot._value)
-
                         
+      self.setupOutputs()
+
       self._connectInnerOutputs()
         
       for k,mslot in self.outputs.items():
         assert len(mslot) == len(self.innerOperators) == maxLen, "%d, %d" % (len(mslot), len(self.innerOperators))        
+
+
+      for o in self.outputs.values():
+        o._changed()
 
     
     def _notifySubSlotInsert(self,slots,indexes, event = None):
@@ -2438,7 +2462,7 @@ class OperatorGroup(Operator):
     def getOutSlot(self, slot, key, result):
         self._visibleOutputs[slot.name][key].writeInto(result)
    
-    def setupOutputs(self):
+    def _setupOutputs(self):
       inputs = self._getInnerInputs()
       for inputSlot in self.inputs.values():
         if inputSlot != inputs[inputSlot.name]:
@@ -2448,6 +2472,9 @@ class OperatorGroup(Operator):
                 inputs[inputSlot.name].setValue(inputSlot._value)
         self.notifyConnect(inputSlot)
       self.notifyConnectAll()
+
+      for o in self.outputs.values():
+        o._changed()
 
    
                         
