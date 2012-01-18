@@ -570,7 +570,7 @@ class MetaDict(dict):
 
   def __setattr__(self,name,value):
     if self.has_key(name) and self[name] != value:
-      self._dirty = True
+      self["_dirty"] = True
     self[name] = value
     return value
 
@@ -870,6 +870,7 @@ class OutputSlot(Slot):
 
     def _changed(self):
       if self.meta._dirty:
+        self.meta._dirty = False
         for p in self.partners:
           p._changed()
 
