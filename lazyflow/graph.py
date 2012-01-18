@@ -1671,7 +1671,7 @@ class Operator(object):
 
 
     def _notifyConnect(self, inputSlot):
-        self.notifyConnect(inputSlot)
+        return#self.notifyConnect(inputSlot)
     
     def _notifyConnectAll(self):
         pass
