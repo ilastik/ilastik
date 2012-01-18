@@ -598,7 +598,8 @@ class InputSlot(Slot):
         self.operator = operator
         self.partner = None
         self.level = 0
-        self._value = value
+        self._value = None
+        self._defaultValue = value
  
 
     @property
@@ -713,11 +714,9 @@ class InputSlot(Slot):
             allConnected = True
             for slot in self.operator.inputs.values():
                 if slot._optional is False and slot.connected() is False:
-                    print "INFO: ", self.operator.name, "slot ", slot.name, "NOT CONNECTED"
                     allConnected = False
                     break
             if allConnected:
-                print "INFO: ", self.operator.name, "ALL SLOTS CONNECTED"
                 self.operator._setupOutputs()
                 
     def disconnect(self):
@@ -735,7 +734,7 @@ class InputSlot(Slot):
     #TODO RENAME? createInstance
     # def __copy__ ?, clone ?
     def getInstance(self, operator):
-        s = InputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, value = self._value, optional = self._optional)
+        s = InputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, value = self._defaultValue, optional = self._optional)
         return s
             
     def setDirty(self, key):
@@ -974,7 +973,8 @@ class MultiInputSlot(Slot):
         self.partner = None
         self.inputSlots = []
         self.level = level
-        self._value = value
+        self._value = None
+        self._defaultValue = value
     
     @property
     def value(self):
@@ -1233,7 +1233,7 @@ class MultiInputSlot(Slot):
     #TODO RENAME? createInstance
     # def __copy__ ?
     def getInstance(self, operator):
-        s = MultiInputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, level = self.level, value = self._value, optional = self._optional)
+        s = MultiInputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, level = self.level, value = self._defaultValue, optional = self._optional)
         return s
             
     def setDirty(self, key = None):
@@ -1611,16 +1611,14 @@ class Operator(object):
       allConnected = True
       for slot in self.inputs.values():
           if slot._optional is False and slot.connected() is False:
-              print "INFO: ", self.name, "slot ", slot.name, "NOT CONNECTED"
               allConnected = False
       if allConnected:
-          print "INFO: ", self.name, "ALL SLOTS CONNECTED"
-
+        pass
 
     def _setDefaultInputValues(self):
       for i in self.inputs.values():
-        if i._value is not None:
-          i.setValue(i._value)
+        if i._defaultValue is not None:
+          i.setValue(i._defaultValue)
          
     def _getOriginalOperator(self):
         return self
@@ -2009,7 +2007,8 @@ class OperatorWrapper(Operator):
                 for p in partners:         
                     oo._connect(p)
             
-            
+        self._setDefaultInputValues()
+
     def _getOriginalOperator(self):
         op = self.operator
         while isinstance(op, OperatorWrapper):
@@ -2128,9 +2127,10 @@ class OperatorWrapper(Operator):
 
         return maxLen
 
-    def _notifyConnect(self, inputSlot):
-
-        maxLen = self._ensureInputSize(len(inputSlot))
+    def setupOutputs(self):
+      inputSlot = self.inputs.values()[0]
+      maxLen = self._ensureInputSize(len(inputSlot))
+      for inputSlot in self.inputs.values():
         for i,islot in enumerate(inputSlot):
             if islot.partner is not None:
                 self.innerOperators[i].inputs[inputSlot.name].connect(islot.partner)
@@ -2140,10 +2140,10 @@ class OperatorWrapper(Operator):
                 self.innerOperators[i].inputs[inputSlot.name].setValue(islot._value)
 
                         
-        self._connectInnerOutputs()
+      self._connectInnerOutputs()
         
-        for k,mslot in self.outputs.items():
-            assert len(mslot) == len(self.innerOperators) == maxLen, "%d, %d" % (len(mslot), len(self.innerOperators))        
+      for k,mslot in self.outputs.items():
+        assert len(mslot) == len(self.innerOperators) == maxLen, "%d, %d" % (len(mslot), len(self.innerOperators))        
 
     
     def _notifySubSlotInsert(self,slots,indexes, event = None):
@@ -2394,6 +2394,8 @@ class OperatorGroup(Operator):
 
         self._createInnerOperators()
         self._connectInnerOutputs()
+
+        self._setDefaultInputValues()
 
         if self.register:
             self._originalGraph.registerOperator(self)
