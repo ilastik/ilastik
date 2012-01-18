@@ -2438,14 +2438,16 @@ class OperatorGroup(Operator):
     def getOutSlot(self, slot, key, result):
         self._visibleOutputs[slot.name][key].writeInto(result)
    
-    def _notifyConnect(self, inputSlot):
-        inputs = self._getInnerInputs()
+    def setupOutputs(self):
+      inputs = self._getInnerInputs()
+      for inputSlot in self.inputs.values():
         if inputSlot != inputs[inputSlot.name]:
             if inputSlot.partner is not None and inputs[inputSlot.name].partner != inputSlot.partner:
                 inputs[inputSlot.name].connect(inputSlot.partner)
             elif inputSlot._value is not None and id(inputs[inputSlot.name]._value) != id(inputSlot._value):
                 inputs[inputSlot.name].setValue(inputSlot._value)
         self.notifyConnect(inputSlot)
+      self.notifyConnectAll()
 
    
                         
