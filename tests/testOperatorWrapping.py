@@ -7,8 +7,8 @@ import threading
 
 from lazyflow import operators
 
-from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
-from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
+from lazyflow.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
+from lazyflow.operators import OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
 
 __testing__ = False
 

@@ -3,13 +3,9 @@ import threading
 from lazyflow.graph import *
 import copy
 
-from lazyflow.operators.operators import OpArrayPiper 
-from lazyflow.operators.vigraOperators import *
-from lazyflow.operators.valueProviders import *
-from lazyflow.operators.classifierOperators import *
-from lazyflow.operators.generic import *
 
 from lazyflow import operators
+from lazyflow.operators import *
 
 from numpy.testing import *
 
@@ -148,7 +144,7 @@ if __name__=="__main__":
     stacker=OpMultiArrayStacker(g)
 
 
-    opMulti = operators.Op5ToMulti(g)
+    opMulti = Op5ToMulti(g)
     opMulti.inputs["Input1"].connect(opa.outputs["Output"])
     opMulti.inputs["Input2"].connect(opgg.outputs["Output"])
     #opMulti.inputs["Input0"].setValue(stack)

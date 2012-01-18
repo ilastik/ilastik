@@ -5,8 +5,8 @@ import gc
 from lazyflow import roi
 import threading
 
-from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
-from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
+from lazyflow import operators
+from lazyflow.operators import *
 
 from lazyflow import operators
 

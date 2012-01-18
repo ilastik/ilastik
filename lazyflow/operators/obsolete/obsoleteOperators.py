@@ -6,7 +6,7 @@ from Queue import Empty
 from collections import deque
 import greenlet, threading
 import vigra
-from lazyflow.operators.operators import OpArrayPiper
+from operators import OpArrayPiper
 
 """
 distributed blocks

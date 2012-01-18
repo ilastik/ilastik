@@ -3,13 +3,9 @@ import threading
 from lazyflow.graph import *
 import copy
 
-from lazyflow.operators.operators import OpArrayPiper 
-from lazyflow.operators.vigraOperators import *
-from lazyflow.operators.valueProviders import *
-from lazyflow.operators.classifierOperators import *
-from lazyflow.operators.generic import *
-
 from lazyflow import operators
+from lazyflow.operators import *
+
 
 #from OptionsProviders import *
 #from VigraFilters import *
@@ -42,7 +38,7 @@ if __name__=="__main__":
     
     
     #Gradient Magnitude
-    opgg=OpGaussinaGradientMagnitude(g)
+    opgg=OpGaussianGradientMagnitude(g)
     opgg.inputs["Input"].connect(vimageReader.outputs["Image"])
     opgg.inputs["sigma"].connect(sigmaProvider.outputs["Output"])
     
@@ -98,7 +94,7 @@ if __name__=="__main__":
     opa2.inputs["sigma"].connect(sigmaProvider2.outputs["Output"])
 
     #Gradient Magnitude2
-    opgg2=OpGaussinaGradientMagnitude(g)
+    opgg2=OpGaussianGradientMagnitude(g)
     opgg2.inputs["Input"].connect(vimageReader.outputs["Image"])
     opgg2.inputs["sigma"].connect(sigmaProvider2.outputs["Output"])
     
@@ -144,7 +140,7 @@ if __name__=="__main__":
     stacker.inputs["AxisFlag"].setValue('c')
     stacker.inputs["AxisIndex"].setValue(2)
     
-    opMulti = operators.Op20ToMulti(g)    
+    opMulti = Op20ToMulti(g)    
     opMulti.inputs["Input00"].connect(opa.outputs["Output"])
     opMulti.inputs["Input01"].connect(opgg.outputs["Output"])
     opMulti.inputs["Input02"].connect(olg.outputs["Output"])
@@ -174,8 +170,8 @@ if __name__=="__main__":
         
     #######Training
     
-    opMultiL = operators.Op5ToMulti(g)    
-    opMultiI = operators.Op5ToMulti(g)    
+    opMultiL = Op5ToMulti(g)    
+    opMultiI = Op5ToMulti(g)    
     
     opMultiL.inputs["Input0"].connect(labelsReader.outputs["Image"])
     opMultiI.inputs["Input0"].connect(stacker.outputs["Output"])

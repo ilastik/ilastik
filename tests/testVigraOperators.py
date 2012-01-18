@@ -6,11 +6,11 @@ from lazyflow import roi
 import sys
 import copy
 
-from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
+from lazyflow.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
 
 from lazyflow.graph import MultiInputSlot
 
-from lazyflow.operators.vigraOperators import *
+from lazyflow.operators import *
 
 
 graph = graph.Graph()

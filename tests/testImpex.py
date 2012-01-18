@@ -4,7 +4,7 @@ from lazyflow import graph
 
 from lazyflow.graph import MultiInputSlot
 
-from lazyflow.operators.vigraOperators import *
+from lazyflow.operators import *
 
 
 

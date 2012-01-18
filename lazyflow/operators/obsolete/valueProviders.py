@@ -5,8 +5,8 @@ import gc
 import lazyflow.roi
 import threading
 
-from lazyflow.operators.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
-from lazyflow.operators.obsoleteOperators import OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
+from operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
+from obsoleteOperators import OpArrayBlockCache, OpArraySliceCache, OpArraySliceCacheBounding
 
 
 class ArrayProvider(OutputSlot):

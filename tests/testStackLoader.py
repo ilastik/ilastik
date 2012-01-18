@@ -3,8 +3,7 @@ from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 import glob,os
 from unittest.case import TestCase
 from shutil import rmtree
-from lazyflow.operators.vigraOperators import OpStackLoader
-
+from lazyflow.operators import *
 
             
 

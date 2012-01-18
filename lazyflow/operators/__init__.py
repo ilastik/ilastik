@@ -10,11 +10,11 @@ try:
         pass
 except:
     modules = []
-    import generic
-    import vigraOperators
-    import classifierOperators
-    import valueProviders
-    import operators
+    from obsolete import generic
+    from obsolete import vigraOperators
+    from obsolete import classifierOperators
+    from obsolete import valueProviders
+    from obsolete import operators
 
     ops = itersubclasses(Operator)
     print "Loading default Operators..."

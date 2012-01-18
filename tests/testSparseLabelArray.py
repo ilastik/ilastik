@@ -2,10 +2,11 @@ import numpy, vigra
 from lazyflow.graph import *
 
 from lazyflow import operators
+from lazyflow.operators import *
 
 g = Graph()
 
-opSparse = operators.OpSparseLabelArray(g)
+opSparse = OpSparseLabelArray(g)
 
 opSparse.inputs["shape"].setValue((30,40,50))
 opSparse.inputs["eraser"].setValue(1)

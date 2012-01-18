@@ -3,12 +3,8 @@ import threading
 from lazyflow.graph import *
 import copy
 
-from lazyflow.operators.operators import OpArrayPiper 
-from lazyflow.operators.vigraOperators import *
-from lazyflow.operators.valueProviders import *
-from lazyflow.operators.classifierOperators import *
-from lazyflow.operators.generic import *
 from lazyflow import operators
+from lazyflow.operators import *
 import numpy
 import sys,signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -22,7 +18,7 @@ def test_OpPixelFeatures__T1():
     
     g = Graph()
     
-    OpG = operators.OpPixelFeatures(g)
+    OpG = OpPixelFeatures(g)
     
     inputImage = vigra.impex.readImage("ostrich.jpg")
     
@@ -109,7 +105,7 @@ def test_OpPixelFeatures__T2():
     g = Graph()
     
 
-    OpG = operators.OpPixelFeatures(g)
+    OpG = OpPixelFeatures(g)
     
     inputImage = vigra.impex.readImage("ostrich.jpg")
 
@@ -152,11 +148,11 @@ def test_OpPixelFeatures__T3():
     
     g = Graph()
     
-    OpPI = operators.Op5ToMulti(g)    
+    OpPI = Op5ToMulti(g)    
 
-    OpPS = operators.Op5ToMulti(g)    
+    OpPS = Op5ToMulti(g)    
     
-    OpG = operators.OpPixelFeaturesPresmoothed(g)
+    OpG = OpPixelFeaturesPresmoothed(g)
     
     inputImage = vigra.impex.readImage("ostrich.jpg")
     
