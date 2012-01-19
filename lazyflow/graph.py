@@ -918,14 +918,13 @@ class OutputSlot(Slot):
 
         if not self.stype.isConfigured():
             return
-        
-        #start, stop = sliceToRoi(key, self.shape)
-        #key = roiToSlice(start,stop)
+        roi = self.stype.transformRoi(roi)
+
         for p in self.partners:
             p.setDirty(roi) #set everything dirty
             
         for cb in self._dirtyCallbacks:
-            cb[0](key, **cb[1])
+            cb[0](roi, **cb[1])
 
     #FIXME __copy__ ?
     def getInstance(self, operator):
@@ -1431,6 +1430,7 @@ class MultiOutputSlot(Slot):
                 
     def execute(self,slot,roi,result):
         index = self.outputSlots.index(slot)
+        #TODO: remove this special case  once all operators are ported
         key = roiToSlice(roi.start,roi.stop)
         return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
 
