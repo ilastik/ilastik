@@ -497,7 +497,6 @@ class Main(QMainWindow):
         shape=self.inputProvider.outputs["Output"].shape
         
         self.editor = VolumeEditor(self.layerstack, labelsink=self.labelsrc)
-        self.editor.dataShape = shape
 
         self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
         #drawing will be enabled when the first label is added  
@@ -513,6 +512,10 @@ class Main(QMainWindow):
         model.canDeleteSelected.connect(self.DeleteButton.setEnabled)     
         
         self.opLabels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)      
+        
+        #finally, setup the editor to have the correct shape
+        #doing this last ensures that all connections are setup already
+        self.editor.dataShape = shape
     
     def _createDefault16ColorColorTable(self):
         c = []
