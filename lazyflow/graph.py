@@ -663,7 +663,7 @@ class InputSlot(Slot):
 
     def connected(self):
         answer = True
-        if self._value is None and self.partner is None or (self.partner is not None and self.shape is None):
+        if self._value is None and self.partner is None or not self.stype.isConfigured():
             answer = False
         return answer
 
@@ -703,9 +703,7 @@ class InputSlot(Slot):
             self.partner = partner
             self.meta = partner.meta.copy()
             partner._connect(self)
-            # do a type check
-            self.connectOk(self.partner)
-            if self.meta.shape is not None:
+            if self.stype.isConfigured():
                 self._changed()
     
     def _checkNotifyConnect(self, notify = True):
@@ -908,7 +906,7 @@ class OutputSlot(Slot):
         if element is not None:
             self._dirtyCallbacks.remove(element)
             
-    def setDirty(self, key):
+    def setDirty(self, roi):
         """
         This method can be called by an operator
         to indicate that a region (identified by key)
@@ -918,15 +916,13 @@ class OutputSlot(Slot):
         this output slot
         """
 
-        if self.shape is None:
-            #if we have not yet received a shape,
-            #do not propagate dirtyness
+        if not self.stype.isConfigured():
             return
         
-        start, stop = sliceToRoi(key, self.shape)
-        key = roiToSlice(start,stop)
+        #start, stop = sliceToRoi(key, self.shape)
+        #key = roiToSlice(start,stop)
         for p in self.partners:
-            p.setDirty(key) #set everything dirty
+            p.setDirty(roi) #set everything dirty
             
         for cb in self._dirtyCallbacks:
             cb[0](key, **cb[1])

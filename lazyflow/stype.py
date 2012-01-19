@@ -3,6 +3,9 @@ from roi import roiToSlice
 from helpers import warn_deprecated
 
 class SlotType( object ):
+    def __init__( self, slot):
+        self.slot = slot
+
     def allocateDestination( self, roi ):
       pass
 
@@ -29,10 +32,18 @@ class SlotType( object ):
       """
       pass
 
-class ArrayLike( SlotType ):
-    def __init__( self, slot):
-        self.slot = slot
 
+    def isConfigured(self):
+      """
+      Slot types must implement this method.
+
+      it should analyse the .meta property of the slot
+      and return wether the neccessary meta information
+      is available.
+      """
+      return False
+
+class ArrayLike( SlotType ):
     def allocateDestination( self, roi ):
         shape = roi.stop - roi.start if roi else self.slot.meta.shape
         storage = numpy.ndarray(shape, dtype=self.slot.meta.dtype)
@@ -66,11 +77,14 @@ class ArrayLike( SlotType ):
         self.slot.meta.shape = (1,)
         self.slot.meta.dtype = object
 
+    def isConfigured(self):
+      meta = self.slot.meta
+      if meta.shape is not None and meta.dtype is not None:
+        return True
+      else:
+        return False
 
 class Opaque( SlotType ):
-    def __init__( self, slot):
-        self.slot = slot
-
     def allocateDestination( self, roi ):
         return None
 
@@ -86,3 +100,6 @@ class Opaque( SlotType ):
       self.slot.meta.shape = (1,)
       self.slot.meta.dtype = object
       self.slot.meta.axistags = vigra.defaultAxistags(1)
+
+    def isConfigured(self):
+      return True
