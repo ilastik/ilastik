@@ -25,7 +25,7 @@ class OpObjectExtractor( Operator ):
     name = "OpObjectExtractor"
 
     inputSlots = [InputSlot('Input', stype=stype.ArrayLike)]
-    outputSlots = [OutputSlot('Output', stype=stype.Default, rtype=rtype.SubRegion)]
+    outputSlots = [OutputSlot('Output', stype=stype.Opaque, rtype=rtype.SubRegion)]
 
     def notifyConnectAll(self):
         self.outputs["Output"]._shape = self.Input.shape
@@ -39,8 +39,8 @@ class OpObjectExtractor( Operator ):
 class OpObjectPiper( Operator ):
     name = "ObjectPiper"
 
-    inputSlots = [InputSlot('Input', stype=stype.Default, rtype=None)]
-    outputSlots = [OutputSlot('Output', stype=stype.Default, rtype=None)]
+    inputSlots = [InputSlot('Input', stype=stype.Opaque, rtype=None)]
+    outputSlots = [OutputSlot('Output', stype=stype.Opaque, rtype=None)]
 
     def execute( self, slot, roi, result ):
         objects = self.Input().wait()
