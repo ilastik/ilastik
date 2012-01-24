@@ -1059,7 +1059,9 @@ class OpSlicedBlockedArrayCache(OperatorGroup):
     name = "OpSlicedBlockedArrayCache"
     description = ""
 
-    inputSlots = [InputSlot("Input"),InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent", value = False)]
+    Input = InputSlot()
+
+    inputSlots = [InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent", value = False)]
     outputSlots = [OutputSlot("Output")]    
 
     def _createInnerOperators(self):

@@ -598,7 +598,7 @@ class InputSlot(Slot):
     __slots__ = ["name", "operator", "partner", "level", 
                  "_value", "stype", "rtype", "axistags", "shape", "dtype"]    
     
-    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False):
+    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False):
         super(InputSlot, self).__init__(stype = stype, rtype=rtype)
         self._optional = optional
         self.name = name
@@ -828,7 +828,7 @@ class OutputSlot(Slot):
                  "dtype", "shape", "axistags", "partners", "stype", "rtype",
                  "_dirtyCallbacks"]    
     
-    def __init__(self, name, operator = None, stype = ArrayLike, rtype = rtype.SubRegion):
+    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion):
         super(OutputSlot, self).__init__(stype=stype, rtype=rtype)
         self.name = name
         self._metaParent = operator
@@ -983,7 +983,7 @@ class MultiInputSlot(Slot):
     __slots__ = ["name", "operator", "partner", "inputSlots", "level",
                  "stype", "rtype", "_value","meta"]    
     
-    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None, optional = False):
+    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None, optional = False):
         super(MultiInputSlot, self).__init__(stype=stype, rtype=rtype)
         self._optional = optional
         self.name = name
@@ -1331,7 +1331,7 @@ class MultiOutputSlot(Slot):
     __slots__ = ["name", "operator", "_metaParent",
                  "partners", "outputSlots", "level", "stype", "rtype", "meta"]
     
-    def __init__(self, name, operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1):
+    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1):
         super(MultiOutputSlot, self).__init__(stype=stype, rtype=rtype)
         self.name = name
         self.operator = operator
@@ -1518,6 +1518,8 @@ class InputDict(dict):
     def __getitem__(self, key):
         if self.has_key(key):
           return dict.__getitem__(self,key)
+        elif hasattr(self.operator,key):
+          return getattr(self.operator, key)
         else:
           raise Exception("Operator %s (class: %s) has no input slot named '%s'. available input slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
 
@@ -1543,6 +1545,8 @@ class OutputDict(dict):
     def __getitem__(self, key):
         if self.has_key(key):
           return dict.__getitem__(self,key)
+        elif hasattr(self.operator,key):
+          return getattr(self.operator, key)
         else:
           raise Exception("Operator %s (class: %s) has no output slot named '%s'. available output slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
 
@@ -1553,6 +1557,32 @@ class OutputDict(dict):
         for i,g in h5g.items():
             temp[str(i)] = g.reconstructObject(patchBoard)
         return temp
+
+
+
+
+class OperatorMetaClass(type):
+    def __new__(meta, classname, bases, classDict):
+        instance =  type.__new__(meta, classname, bases, classDict)
+        return instance
+
+    def __init__(cls,name,bases,classDict):
+        # support defining the slots directly in the class definition
+        for k,v in cls.__dict__.items():
+          if isinstance(v,InputSlot):
+            v.name = k
+            cls.inputSlots.append(v)
+            
+
+          if isinstance(v,OutputSlot):
+            v.name = k
+            cls.outputSlots.append(v)
+
+    def __call__(cls,*args,**kwargs):
+      instance = type.__call__(cls,*args,**kwargs)
+      instance._after_init()
+      return instance
+
 
 class Operator(object):
     """
@@ -1588,12 +1618,33 @@ class Operator(object):
     description = ""
     category = "lazyflow"
     
-    def __init__(self, graph, register = True):
-        self.operator = None
-        self.inputs = InputDict(self)
-        self.outputs = OutputDict(self)
-        self.graph = graph
-        self.register = register
+    __metaclass__ = OperatorMetaClass
+
+
+    def __new__( cls, *args, **kwargs ):
+        cls = super(Operator, cls).__new__(cls)
+        cls.graph = args[0]
+        cls.operator = None
+        cls.inputs = InputDict(cls)
+        cls.outputs = OutputDict(cls)
+        cls.register = True
+        
+
+
+
+        # wrap old api
+        if hasattr(cls, "getOutSlot"):
+            def getOutSlot_wrapper( self, slot, roi, result ):
+                pslice = roiToSlice(roi.start,roi.stop)
+                warn_deprecated( "getOutSlot() is superseded by execute()" )
+                return self.getOutSlot(slot,pslice,result)
+            import types
+            cls.execute = types.MethodType(getOutSlot_wrapper, cls)
+        return cls
+
+
+
+    def _after_init(self):
         #provide simple default name for lazy users
         if self.name == "": 
             self.name = type(self).__name__
@@ -1613,22 +1664,31 @@ class Operator(object):
             sys.exit(1)
           temp[i.name] = True
 
+        
         # replicate input slot connections
         # defined for the operator for the instance
         for i in self.inputSlots:
-            ii = i.getInstance(self)
-            ii.connect(i.partner)
-            self.inputs[i.name] = ii
-            setattr(self,i.name,ii)
-        # replicate output slots
+            if not self.inputs.has_key(i.name):
+              ii = i.getInstance(self)
+              ii.connect(i.partner)
+              self.inputs[i.name] = ii
+
+        for k,v in self.inputs.items():
+          self.__dict__[v.name] = v
+        
+        # relicate output slots
         # defined for the operator for the instance 
         for o in self.outputSlots:
-            oo = o.getInstance(self)
-            self.outputs[o.name] = oo         
-            setattr(self,o.name,oo)
-            # output slots are connected
-            # when the corresponding input slots
-            # of the partner operators are created  
+            if not self.inputs.has_key(o.name):
+              oo = o.getInstance(self)
+              self.outputs[o.name] = oo         
+
+        for k,v in self.outputs.items():
+          self.__dict__[v.name] = v
+              # output slots are connected
+              # when the corresponding input slots
+              # of the partner operators are created  
+
         if self.register:
             self.graph.registerOperator(self)
 
@@ -1833,20 +1893,6 @@ class Operator(object):
       pass
 
 
-    def __new__( cls, *args, **kwargs ):
-        cls = super(Operator, cls).__new__(cls, *args, **kwargs)
-        
-        # wrap old api
-        if hasattr(cls, "getOutSlot"):
-            def getOutSlot_wrapper( self, slot, roi, result ):
-                pslice = roiToSlice(roi.start,roi.stop)
-                warn_deprecated( "getOutSlot() is superseded by execute()" )
-                return self.getOutSlot(slot,pslice,result)
-            import types
-            cls.execute = types.MethodType(getOutSlot_wrapper, cls)
-        return cls
-
-
     """
     This method of the operator is called when a connected operator
     or an outside user of the graph wants to retrieve the calculation results
@@ -1979,9 +2025,12 @@ class OperatorWrapper(Operator):
         self.graph = OperatorGroupGraph(operator.graph)
         
         if operator is not None:
-            self.graph = operator.graph
             self.name = operator.name
-            
+            self._originalGraph = operator.graph
+            self.graph = OperatorGroupGraph(operator.graph)
+
+            self._originalGraph.replaceOperator(self.operator, self)
+
             self.comprehensionSlots = 1
             self.innerOperators = []
             self.comprehensionCount = 0
@@ -2081,6 +2130,9 @@ class OperatorWrapper(Operator):
             for k, oslot in self.outputs.items():
                 for p in oslot.partners:
                     op.outputs[k]._connect(p)
+
+            self._originalGraph.replaceOperator(self,op)
+
                     
     def notifyDirty(self, slot, key):
         pass
@@ -2390,7 +2442,11 @@ class OperatorGroupGraph(object):
         assert op in self.operators, "Operator %r not a registered Operator" % op
         self.operators.remove(op)
         op.disconnect()
- 
+
+    def replaceOperator(self,op1,op2):
+        index = self.operators.index(op1)
+        self.operators[index] = op2
+
     @property
     def suspended(self):
         return self._originalGraph.suspended
@@ -2429,9 +2485,9 @@ class OperatorGroup(Operator):
         # of the group operator are not visible in the 
         # operator list of the original graph
         self._originalGraph = graph
-        fakeGraph = OperatorGroupGraph(graph)
+        self.graph = OperatorGroupGraph(graph)
         
-        Operator.__init__(self,fakeGraph, register = register)
+        Operator.__init__(self,self.graph, register = register)
 
         self._visibleOutputs = None
         self._visibleInputs = None
@@ -2847,6 +2903,11 @@ class Graph(object):
         self.operators.remove(op)
         op.disconnect()
  
+    def replaceOperator(self,op1,op2):
+        index = self.operators.index(op1)
+        self.operators[index] = op2
+
+
     def dumpToH5G(self, h5g, patchBoard):
         self.stopGraph()
         h5g.dumpSubObjects({
