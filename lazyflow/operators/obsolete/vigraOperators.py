@@ -114,7 +114,19 @@ class OpXToMulti(Operator):
                     break
                 i += 1                
 
-
+    def propagateDirty(self, islot, roi):
+        i = 0
+        for sname in sorted(self.inputs.keys()):
+            slot = self.inputs[sname]
+            if slot == islot:
+              self.outputs["Outputs"][i].setDirty(roi)
+              break
+            if slot.connected():
+                self.outputs["Outputs"][i]._dtype = slot.dtype
+                self.outputs["Outputs"][i]._axistags = copy.copy(slot.axistags)
+                self.outputs["Outputs"][i]._shape = slot.shape
+                i += 1       
+ 
 
 class Op5ToMulti(OpXToMulti):
     name = "5 Elements to Multislot"

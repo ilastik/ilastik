@@ -750,7 +750,7 @@ class InputSlot(Slot):
         s = InputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, value = self._defaultValue, optional = self._optional)
         return s
             
-    def setDirty(self, key):
+    def setDirty(self, *args,**kwargs):
         """
         this method is called by a partnering OutputSlot
         when its content changes.
@@ -760,7 +760,9 @@ class InputSlot(Slot):
         """
         assert self.operator is not None, \
                "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
-        self.operator.notifyDirty(self, key)
+        roi = self.rtype(self,*args,**kwargs)
+        print "Input %r of %r is dirty" % (self.name, self.operator)
+        self.operator.propagateDirty(self, roi)
     
     def connectOk(self, partner):
         # reimplement this method
@@ -770,9 +772,11 @@ class InputSlot(Slot):
             
     def __setitem__(self, key, value):
         assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"     
+        roi = self.rtype(self,pslice = key)
         if self._value is not None:
             self._value[key] = value
-            self.setDirty(key) # only propagate the dirty key at the very beginning of the chain
+            self.setDirty(roi) # only propagate the dirty key at the very beginning of the chain
+        
         self.operator.setInSlot(self,key,value)
         
     def dumpToH5G(self, h5g, patchBoard):
@@ -906,7 +910,7 @@ class OutputSlot(Slot):
         if element is not None:
             self._dirtyCallbacks.remove(element)
             
-    def setDirty(self, roi):
+    def setDirty(self, *args, **kwargs):
         """
         This method can be called by an operator
         to indicate that a region (identified by key)
@@ -918,13 +922,16 @@ class OutputSlot(Slot):
 
         if not self.stype.isConfigured():
             return
-        roi = self.stype.transformRoi(roi)
+        if not isinstance(args[0],rtype.Roi):
+          roi = self.rtype(self, *args, **kwargs)
+        else:
+          roi = args[0]
 
         for p in self.partners:
             p.setDirty(roi) #set everything dirty
             
         for cb in self._dirtyCallbacks:
-            cb[0](roi, **cb[1])
+            cb[0](roi.toSlice(), **cb[1])
 
     #FIXME __copy__ ?
     def getInstance(self, operator):
@@ -1258,18 +1265,19 @@ class MultiInputSlot(Slot):
         s = MultiInputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, level = self.level, value = self._defaultValue, optional = self._optional)
         return s
             
-    def setDirty(self, key = None):
+    def setDirty(self, roi):
         assert self.operator is not None, "Slot %s cannot be set dirty, slot not belonging to any actual operator instance" % self.name
-        self.operator.notifyDirty(self, key)
+        self.operator.propagateDirty(self, roi)
 
-    def notifyDirty(self, slot, key):
+    def propagateDirty(self, slot, roi):
+        print "MultiInput %r of %r is dirty" % (self.name, self.operator)
         index = self.inputSlots.index(slot)
-        self.operator.notifySubSlotDirty((self,slot),(index,),key)
+        self.operator.notifySubSlotDirty((self,slot),(index,),roi)
         pass
     
-    def notifySubSlotDirty(self, slots, indexes, key):
+    def notifySubSlotDirty(self, slots, indexes, roi):
         index = self.inputSlots.index(slots[0])
-        self.operator.notifySubSlotDirty((self,)+slots,(index,) + indexes,key)
+        self.operator.notifySubSlotDirty((self,)+slots,(index,) + indexes,roi)
         pass
    
     def connectOk(self, partner):
@@ -1454,8 +1462,7 @@ class MultiOutputSlot(Slot):
         return s
             
     def setDirty(self, roi):
-        for partner in self.partners:
-            partner.setDirty(roi)
+        return
     
     def connectOk(self, partner):
         # reimplement this method
@@ -1664,13 +1671,20 @@ class Operator(object):
     invalidated by this, and must call the .setDirty(key) of the corresponding
     outputslots.
     """
+    def propagateDirty(self, inputSlot, roi):
+        # default implementation calls old api for backwardcompatability
+        if hasattr(roi,"toSlice"):
+          self.notifyDirty(inputSlot,roi.toSlice())
+        else:
+          print roi
+          raise TypeError(".propagatedirty of Operator %r is not implemented !" % (self)) 
+
     def notifyDirty(self, inputSlot, key):
         # simple default implementation
         # -> set all outputs dirty    
         for os in self.outputs.values():
             os.setDirty(slice(None,None,None))
-    
-    
+
     """
     This method corresponds to the notifyDirty method, but is used
     for multidimensional inputslots, which contain subslots.
@@ -1960,7 +1974,10 @@ class OperatorWrapper(Operator):
         self.operator = operator
         self.register = False
         self._eventCounter = 0
-        self._processedEvents = {}
+        self._processedEvents = {}       
+        self._originalGraph = operator.graph
+        self.graph = OperatorGroupGraph(operator.graph)
+        
         if operator is not None:
             self.graph = operator.graph
             self.name = operator.name
