@@ -34,7 +34,7 @@ import ilastik.gui
 from ilastik.gui import loadOptionsWidget
 from ilastik.core import loadOptionsMgr
 from lazyflow.graph import OperatorGroup, InputSlot, OutputSlot
-from lazyflow.operators.vigraOperators import *
+from lazyflow.operators.obsolete.vigraOperators import *
 
 
 from PyQt4 import QtCore, QtGui
@@ -179,7 +179,6 @@ class StackLoader(QtGui.QDialog):
         self.image = None
 
     def pathChanged(self, text):
-        print 'path Changed to', text
         self.ChainBuilder.inputs["globstring"].setValue(str(text))
     
     def checkBoxesChanged(self,integer):

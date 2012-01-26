@@ -11,14 +11,19 @@ from PyQt4 import uic
 
 from lazyflow.graph import Graph
 from widgets.stackloader import OpStackChainBuilder,StackLoader
-from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
-                               OpArrayPiper, OpPredictRandomForest, \
-                               OpSingleChannelSelector, OpSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures, \
-                               OpMultiArraySlicer2,OpH5Reader, OpBlockedSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForestBlocked, OpPixelFeatures, \
-                               OpH5ReaderBigDataset, OpSlicedBlockedArrayCache, OpPixelFeaturesPresmoothed
+from lazyflow.operators.obsolete.vigraOperators import Op5ToMulti, \
+                               OpArrayPiper, \
+                               OpMultiArrayStacker,  OpPixelFeatures, \
+                               OpH5Reader,\
+                               OpMultiArrayStacker,OpPixelFeatures, \
+                               OpH5ReaderBigDataset, OpPixelFeaturesPresmoothed
 
+from lazyflow.operators.obsolete.operators import  OpArrayCache, OpBlockedArrayCache,\
+                                                 OpSparseLabelArray,\
+                                                  OpBlockedSparseLabelArray, OpSlicedBlockedArrayCache
+from lazyflow.operators.obsolete.classifierOperators import  OpPredictRandomForest, OpTrainRandomForestBlocked,OpTrainRandomForest 
+from lazyflow.operators.obsolete.generic import OpSingleChannelSelector, OpMultiArraySlicer2 
+                                                 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
     AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
 from volumina.adaptors import Op5ifyer
