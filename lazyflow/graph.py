@@ -1613,8 +1613,10 @@ class Operator(object):
             obj.execute = types.MethodType(getOutSlot_wrapper, obj)
         return obj
 
-    def __init__( self, graph ):
+    def __init__( self, graph, register = True ):
         self.graph = graph
+        self.register = register
+        
 
     # continue initialization, when user overrides __init__
     def _after_init(self):
@@ -2459,7 +2461,8 @@ class OperatorGroup(Operator):
         self._originalGraph = graph
         self.graph = OperatorGroupGraph(graph)
         
-        Operator.__init__(self,self.graph, register = register)
+        Operator.__init__(self,self.graph)
+        self.register = register
 
         self._visibleOutputs = None
         self._visibleInputs = None
