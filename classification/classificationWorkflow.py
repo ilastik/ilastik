@@ -45,11 +45,8 @@ class Main(QMainWindow):
             self._normalize_data=False
             sys.argv.remove('notnormalize')
 
-        self.opPredict = None
-        self.opTrain = None
         self._colorTable16 = self._createDefault16ColorColorTable()
         
-        #self.g = Graph(7, 2048*1024**2*5)
         self.g = Graph()
         self.workflow = None
         self.fixableOperators = []
@@ -189,7 +186,7 @@ class Main(QMainWindow):
         
         #Check if the number of labels in the layer stack is equals to the number of Painted labels
         if checked==True:
-            labels =numpy.unique(numpy.asarray(self.opLabels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
+            labels =numpy.unique(numpy.asarray(self.workflow.labels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
             nPaintedLabels=labels.shape[0]
             nLabelsLayers = self.labelListModel.rowCount()
             selectedFeatures = numpy.asarray(self.featureDlg.featureTableWidget.createSelectedFeaturesBoolMatrix())
@@ -247,10 +244,10 @@ class Main(QMainWindow):
         
         self.labelListModel.insertRow(self.labelListModel.rowCount(), Label("Label %d" % (self.labelListModel.rowCount() + 1), color))
         nlabels = self.labelListModel.rowCount()
-        if self.opPredict is not None:
+        if self.workflow is not None:
             print "Label added, changing predictions"
             #re-train the forest now that we have more labels
-            self.opPredict.inputs['LabelsCount'].setValue(nlabels)
+            self.workflow.predict.inputs['LabelsCount'].setValue(nlabels)
             self.addPredictionLayer(nlabels-1, self.labelListModel._labels[nlabels-1])
         
         #make the new label selected
@@ -270,59 +267,31 @@ class Main(QMainWindow):
         ncurrent = self.labelListModel.rowCount()
         print "removing", nout, "out of ", ncurrent
         
-        if self.opPredict is not None:
-            self.opPredict.inputs['LabelsCount'].setValue(ncurrent-nout)
+        if self.workflow is not None:
+            self.workflow.predict.inputs['LabelsCount'].setValue(ncurrent-nout)
         for il in range(start, end+1):
             labelvalue = self.labelListModel._labels[il]
             self.removePredictionLayer(labelvalue)
-            self.opLabels.inputs["deleteLabel"].setValue(il+1)
+            self.workflow.labels.inputs["deleteLabel"].setValue(il+1)
             self.editor.scheduleSlicesRedraw()
             
     
     def startClassification(self):
-        if self.opTrain is None:
-            #initialize all classification operators
-            print "initializing classification..."
-            opMultiL = Op5ToMulti(self.g)    
-            opMultiL.inputs["Input0"].connect(self.opLabels.outputs["Output"])
-            
-            opMultiLblocks = Op5ToMulti(self.g)
-            opMultiLblocks.inputs["Input0"].connect(self.opLabels.outputs["nonzeroBlocks"])
-            self.opTrain = OpTrainRandomForestBlocked(self.g)
-            self.opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
-            self.opTrain.inputs['Images'].connect(self.workflow.features_cache.outputs["Output"])
-            self.opTrain.inputs["nonzeroLabelBlocks"].connect(opMultiLblocks.outputs["Outputs"])
-            self.opTrain.inputs['fixClassifier'].setValue(False)                
-            
-            opClassifierCache = OpArrayCache(self.g)
-            opClassifierCache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
-           
-            ################## Prediction
-            self.opPredict=OpPredictRandomForest(self.g)
-            nclasses = self.labelListModel.rowCount()
-            self.opPredict.inputs['LabelsCount'].setValue(nclasses)
-            self.opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output']) 
-            self.opPredict.inputs['Image'].connect(self.workflow.features.outputs["Output"])
+        nclasses = self.labelListModel.rowCount()
+        self.workflow.predict.inputs['LabelsCount'].setValue(nclasses)
 
-            pCache = OpSlicedBlockedArrayCache(self.g)
-            pCache.inputs["fixAtCurrent"].setValue(False)
-            pCache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
-            pCache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
-            pCache.inputs["Input"].connect(self.opPredict.outputs["PMaps"])
-            self.pCache = pCache
-  
-            #add prediction results for all classes as separate channels
-            for icl in range(nclasses):
-                self.addPredictionLayer(icl, self.labelListModel._labels[icl])
+        #add prediction results for all classes as separate channels
+        for icl in range(nclasses):
+            self.addPredictionLayer(icl, self.labelListModel._labels[icl])
         self.checkInteractive.setEnabled(True)
                                     
     def addPredictionLayer(self, icl, ref_label):
         
         selector=OpSingleChannelSelector(self.g)
-        selector.inputs["Input"].connect(self.pCache.outputs['Output'])
+        selector.inputs["Input"].connect(self.workflow.prediction_cache.outputs['Output'])
         selector.inputs["Index"].setValue(icl)
                 
-        self.pCache.inputs["fixAtCurrent"].setValue(not self.checkInteractive.isChecked())
+        self.workflow.prediction_cache.inputs["fixAtCurrent"].setValue(not self.checkInteractive.isChecked())
         
         predictsrc = LazyflowSource(selector.outputs["Output"][0])
         def srcName(newName):
@@ -346,7 +315,7 @@ class Main(QMainWindow):
         predictLayer.ref_object = ref_label
         #make sure that labels (index = 0) stay on top!
         self.layerstack.insert(1, predictLayer )
-        self.fixableOperators.append(self.pCache)
+        self.fixableOperators.append(self.workflow.prediction_cache)
                
     def removePredictionLayer(self, ref_label):
         for il, layer in enumerate(self.layerstack):
@@ -464,14 +433,7 @@ class Main(QMainWindow):
         
     def initLabels(self):
         #Add the layer to draw the labels, but don't add any labels
-        shape=self.inputProvider.outputs["Output"].shape
-        
-        self.opLabels = OpBlockedSparseLabelArray(self.g)                                
-        self.opLabels.inputs["shape"].setValue(shape[:-1] + (1,))
-        self.opLabels.inputs["blockShape"].setValue((1, 32, 32, 32, 1))
-        self.opLabels.inputs["eraser"].setValue(100)                
-        
-        self.labelsrc = LazyflowSinkSource(self.opLabels, self.opLabels.outputs["Output"], self.opLabels.inputs["Input"])
+        self.labelsrc = LazyflowSinkSource(self.workflow.labels, self.workflow.labels.outputs["Output"], self.workflow.labels.inputs["Input"])
         self.labelsrc.setObjectName("labels")
         
         transparent = QColor(0,0,0,0)
@@ -498,7 +460,7 @@ class Main(QMainWindow):
         self.DeleteButton.clicked.connect(model.deleteSelected)
         model.canDeleteSelected.connect(self.DeleteButton.setEnabled)     
         
-        self.opLabels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)      
+        self.workflow.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)      
         
         #finally, setup the editor to have the correct shape
         #doing this last ensures that all connections are setup already
