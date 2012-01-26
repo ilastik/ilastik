@@ -28,6 +28,8 @@ from featureDlg import FeatureDlg, FeatureEntry
 
 import vigra
 
+from pixel_classification_lazyflow import PixelClassificationLazyflow
+
 class Main(QMainWindow):    
     haveData        = pyqtSignal()
     dataReadyToView = pyqtSignal()
@@ -49,6 +51,7 @@ class Main(QMainWindow):
         
         #self.g = Graph(7, 2048*1024**2*5)
         self.g = Graph()
+        self.workflow = None
         self.fixableOperators = []
         
         self.featureDlg=None
@@ -287,7 +290,7 @@ class Main(QMainWindow):
             opMultiLblocks.inputs["Input0"].connect(self.opLabels.outputs["nonzeroBlocks"])
             self.opTrain = OpTrainRandomForestBlocked(self.g)
             self.opTrain.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
-            self.opTrain.inputs['Images'].connect(self.opFeatureCache.outputs["Output"])
+            self.opTrain.inputs['Images'].connect(self.workflow.features_cache.outputs["Output"])
             self.opTrain.inputs["nonzeroLabelBlocks"].connect(opMultiLblocks.outputs["Outputs"])
             self.opTrain.inputs['fixClassifier'].setValue(False)                
             
@@ -299,7 +302,7 @@ class Main(QMainWindow):
             nclasses = self.labelListModel.rowCount()
             self.opPredict.inputs['LabelsCount'].setValue(nclasses)
             self.opPredict.inputs['Classifier'].connect(opClassifierCache.outputs['Output']) 
-            self.opPredict.inputs['Image'].connect(self.opPF.outputs["Output"])
+            self.opPredict.inputs['Image'].connect(self.workflow.features.outputs["Output"])
 
             pCache = OpSlicedBlockedArrayCache(self.g)
             pCache.inputs["fixAtCurrent"].setValue(False)
@@ -452,25 +455,9 @@ class Main(QMainWindow):
         layer1.name = "Input data"
         layer1.ref_object = None
         self.layerstack.append(layer1)
-        
-        opImageList = Op5ToMulti(self.g)    
-        opImageList.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
-        
-        #init the features operator
-        opPF = OpPixelFeaturesPresmoothed(self.g)
-        opPF.inputs["Input"].connect(opImageList.outputs["Outputs"])
-        opPF.inputs["Scales"].setValue(self.featScalesList)
-        self.opPF=opPF
-        
-        #Caches the features
-        opFeatureCache = OpBlockedArrayCache(self.g)
-        opFeatureCache.inputs["innerBlockShape"].setValue((1,32,32,32,16))
-        opFeatureCache.inputs["outerBlockShape"].setValue((1,128,128,128,64))
-        opFeatureCache.inputs["Input"].connect(opPF.outputs["Output"])
-        opFeatureCache.inputs["fixAtCurrent"].setValue(False)  
-        self.opFeatureCache=opFeatureCache
-        
-        
+ 
+        self.workflow = PixelClassificationLazyflow( self.g, self.featScalesList, self.inputProvider.outputs["Output"])
+
         self.initLabels()
         self.startClassification()
         self.dataReadyToView.emit()
@@ -544,7 +531,7 @@ class Main(QMainWindow):
     def _onFeaturesChosen(self):
         selectedFeatures = self.featureDlg.featureTableWidget.createSelectedFeaturesBoolMatrix()
         print "new feature set:", selectedFeatures
-        self.opPF.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
+        self.workflow.features.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
     
     def _initFeatureDlg(self):
         dlg = self.featureDlg = FeatureDlg()
