@@ -527,6 +527,7 @@ class Slot(object):
         self.stype = stype(self)
         self.rtype = rtype
         self.meta = MetaDict()
+        self._subSlots = []
 
     @property
     def shape(self):
@@ -572,16 +573,47 @@ class Slot(object):
         
     def _writeIntoDestination( self, destination, value,roi ):
         return self.stype.writeIntoDestination(destination,value, roi)
-
-    @deprecated
+                           
     def __getitem__(self, key):
-        """
-        operator.slot[] is obsolete;
-        please use the operator.slot() api from now on, i.e. the callable interface...
-        """
-        assert self.meta.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
-        return self(pslice=key)
+        if self.level > 0:
+          return self._subSlots[key]
+        else:
+          assert self.meta.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
+          return self(pslice=key)
 
+
+    def __setitem__(self, key, value):
+        slot = self._subSlots[key]
+        if slot != value:
+            slot.disconnect()
+            self._subSlots[key] = value
+    
+            oldslot = slot        
+            newslot = value
+            for p in oldslot.partners:
+                newslot._connect(p)
+        
+    def __len__(self):
+        return len(self._subSlots)
+    
+ 
+    @property
+    def value(self):
+        return self._value
+
+    def setValue(self, value):
+        changed = True
+        try:
+          if value == self._value:
+            changed = False
+            print "SETTING VALUE TWO TIMES (Multi)", value
+        except:
+          pass
+        if changed:
+          self._value = value
+          for i,s in enumerate(self._subSlots):
+              s.setValue(self._value)
+          self._changed()    
 
     def __call__(self, *args, **kwargs):
       """
@@ -961,32 +993,8 @@ class MultiInputSlot(Slot):
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None, optional = False):
         super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
         self.partner = None
-        self.inputSlots = []
+        self._subSlots = []
     
-    @property
-    def value(self):
-        return self._value
-
-    def setValue(self, value):
-        changed = True
-        try:
-          if value == self._value:
-            changed = False
-            print "SETTING VALUE TWO TIMES (Multi)", value
-        except:
-          pass
-        if changed:
-          self._value = value
-          for i,s in enumerate(self.inputSlots):
-              s.setValue(self._value)
-          self._changed()
-
-    def __getitem__(self, key):
-        return self.inputSlots[key]
-    
-    def __len__(self):
-        return len(self.inputSlots)
-        
     def resize(self, size, notify = True, event = None):
         oldsize = len(self)
         
@@ -1005,9 +1013,9 @@ class MultiInputSlot(Slot):
     def _connectSubSlot(self,slot, notify = True):
       if type(slot) == int:
         index = slot
-        slot = self.inputSlots[slot]
+        slot = self._subSlots[slot]
       else:
-        index = self.inputSlots.index(slot)
+        index = self._subSlots.index(slot)
 
       if self.partner is not None:
           if self.partner.level > 0:
@@ -1025,7 +1033,7 @@ class MultiInputSlot(Slot):
             islot = InputSlot(self.name ,self, stype = type(self.stype))
         else:
             islot = MultiInputSlot(self.name,self, stype = type(self.stype), level = self.level - 1)
-        self.inputSlots.append(islot)
+        self._subSlots.append(islot)
         islot.name = self.name
         index = len(self)-1
         if notify:
@@ -1042,7 +1050,7 @@ class MultiInputSlot(Slot):
             islot = InputSlot(self.name,self, stype = type(self.stype))
         else:
             islot = MultiInputSlot(self.name,self, stype = type(self.stype), level = self.level - 1)
-        self.inputSlots.insert(index,islot)
+        self._subSlots.insert(index,islot)
         islot.name = self.name
         if notify:
           self._notifySubSlotInsert((islot,),tuple())
@@ -1073,9 +1081,9 @@ class MultiInputSlot(Slot):
         answer = True
         if self._value is None and self.partner is None:
             answer = False
-        if answer is False and len(self.inputSlots) > 0:
+        if answer is False and len(self._subSlots) > 0:
             answer = True
-            for s in self.inputSlots:
+            for s in self._subSlots:
                 if s.connected() is False:
                     answer = False
                     break
@@ -1122,7 +1130,7 @@ class MultiInputSlot(Slot):
                 # do a type check
                 self.connectOk(self.partner)
                 
-                # create new self.inputSlots for each outputSlot 
+                # create new self._subSlots for each outputSlot 
                 # of our partner 
                 if len(self) != len(partner):
                     self.resize(len(partner))
@@ -1160,46 +1168,46 @@ class MultiInputSlot(Slot):
                 pass
 
     def _notifyConnect(self, slot):
-        index = self.inputSlots.index(slot)
+        index = self._subSlots.index(slot)
         self.operator._notifySubConnect((self,slot), (index,))
                 
     
     def _notifySubConnect(self, slots, indexes):      
-        index = self.inputSlots.index(slots[0])
+        index = self._subSlots.index(slots[0])
         self.operator._notifySubConnect( (self,) + slots, (index,) +indexes)
 
     def _notifySubSlotInsert(self,slots,indexes,event = None):
-        index = self.inputSlots.index(slots[0])
+        index = self._subSlots.index(slots[0])
         self.operator._notifySubSlotInsert( (self,) + slots, (index,) + indexes, event = event)
 
     def _notifyDisconnect(self, slot):
-        index = self.inputSlots.index(slot)
+        index = self._subSlots.index(slot)
         self.operator._notifySubDisconnect((self, slot), (index,))
     
     def _notifySubDisconnect(self, slots, indexes):
-        index = self.inputSlots.index(slots[0])
+        index = self._subSlots.index(slots[0])
         self.operator._notifySubDisconnect((self,) + slots, (index,) + indexes)
         
     def _notifySubSlotRemove(self, slots, indexes, event = None):
         if len(slots)>0:
-            index = self.inputSlots.index(slots[0])
+            index = self._subSlots.index(slots[0])
             indexes = (index,) + indexes
         self.operator._notifySubSlotRemove((self,) + slots, indexes, event = event)
             
     def _notifySubSlotResize(self,slots,indexes,size,event = None):
         if len(slots) > 0:
-          index = self.inputSlots.index(slots[0])
+          index = self._subSlots.index(slots[0])
           indexes = (index,) + indexes
         self.operator._notifySubSlotResize((self,) + slots, indexes, size, event = event)
 
 
     def disconnect(self):
-        for slot in self.inputSlots:
+        for slot in self._subSlots:
             slot.disconnect()
         if self.partner is not None:
             self.operator._notifyDisconnect(self)
             self.partner.disconnectSlot(self)
-            self.inputSlots = []
+            self._subSlots = []
             self.partner = None
     
     def removeSlot(self, index, notify = True, event = None):
@@ -1210,11 +1218,11 @@ class MultiInputSlot(Slot):
     
     def _removeInputSlot(self, inputSlot, notify = True, event = None):
         try:
-            index = self.inputSlots.index(inputSlot)
+            index = self._subSlots.index(inputSlot)
         except:
             err =  "MultiInputSlot._removeInputSlot:"
             err += "  name='%s', operator='%s', operator=%r" % (self.name, self.operator.name, self.operator)
-            err += "  inputSlots = %r" % (self.inputSlots,)
+            err += "  inputSlots = %r" % (self._subSlots,)
             err += "  partner    = %r" % (self.partner,)
             raise RuntimeError(str)
             sys.exit(1)
@@ -1224,7 +1232,7 @@ class MultiInputSlot(Slot):
         # was still there
         if notify:
             self._notifySubSlotRemove((),(index,),event = event)
-        self.inputSlots.remove(inputSlot)
+        self._subSlots.remove(inputSlot)
 
         
 
@@ -1234,12 +1242,12 @@ class MultiInputSlot(Slot):
 
     def propagateDirty(self, slot, roi):
         print "MultiInput %r of %r is dirty" % (self.name, self.operator)
-        index = self.inputSlots.index(slot)
+        index = self._subSlots.index(slot)
         self.operator.notifySubSlotDirty((self,slot),(index,),roi)
         pass
     
     def notifySubSlotDirty(self, slots, indexes, roi):
-        index = self.inputSlots.index(slots[0])
+        index = self._subSlots.index(slots[0])
         self.operator.notifySubSlotDirty((self,)+slots,(index,) + indexes,roi)
         pass
    
@@ -1260,7 +1268,7 @@ class MultiInputSlot(Slot):
             "operator" : self.operator,
             "partner" : self.partner,
             "stype" : self.stype,
-            "inputSlots": self.inputSlots
+            "_subSlots": self._subSlots
             
         },patchBoard)
     
@@ -1277,7 +1285,7 @@ class MultiInputSlot(Slot):
             "operator" : "operator",
             "partner" : "partner",
             "stype" : "stype",
-            "inputSlots": "inputSlots"
+            "_subSlots": "_subSlots"
             
         },patchBoard)
             
@@ -1295,33 +1303,16 @@ class MultiOutputSlot(Slot):
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, optional = False, value = None):
         super(MultiOutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
         self._metaParent = operator
-        self.partners = []   
-        self.outputSlots = []
+        self.partners = []
     
-    def __getitem__(self, key):
-        return self.outputSlots[key]
-    
-    def __setitem__(self, key, value):
-        slot = self.outputSlots[key]
-        if slot != value:
-            slot.disconnect()
-            self.outputSlots[key] = value
-    
-            oldslot = slot        
-            newslot = value
-            for p in oldslot.partners:
-                newslot._connect(p)
-        
-    def __len__(self):
-        return len(self.outputSlots)
-    
-    def append(self, outputSlot, event = None):
-        outputSlot.operator = self
-        self.outputSlots.append(outputSlot)
-        index = len(self.outputSlots) - 1
+   
+    def append(self, subSlot, event = None):
+        subSlot.operator = self
+        self._subSlots.append(subSlot)
+        index = len(self._subSlots) - 1
         for p in self.partners:
             p.resize(len(self), event = event)
-            outputSlot._connect(p.inputSlots[index])
+            subSlot._connect(p.inputSlots[index])
     
     def _insertNew(self,index, event = None):
         oslot = OutputSlot(self.name,self,stype=type(self.stype))
@@ -1330,30 +1321,29 @@ class MultiOutputSlot(Slot):
 
     def insert(self, index, outputSlot, event = None):
         outputSlot.operator = self
-        self.outputSlots.insert(index,outputSlot)
+        self._subSlots.insert(index,outputSlot)
         for p in self.partners:
             pslot = p._insertNew(index, event = event)
             outputSlot._connect(pslot)
         
     def remove(self, outputSlot, event = None):
-        index = self.outputSlots.index(outputSlot)
+        index = self._subSlots.index(outputSlot)
         self.pop(index, event = event)
     
     def pop(self, index = -1, event = None):
-        oslot = self.outputSlots[index]
+        oslot = self._subSlots[index]
         for p in oslot.partners:
             if isinstance(p.operator, MultiInputSlot):
                 p.operator._removeInputSlot(p, event = event)
         
         oslot.disconnect()
-        oslot = self.outputSlots.pop(index)
-    
+        oslot = self._subSlots.pop(index)
     def _changed(self):
       if self.meta._dirty:
         for p in self.partners:
           p._changed()
 
-      for o in self.outputSlots:
+      for o in self._subSlots:
         o._changed()
 
     def _connect(self, partner, notify = True):
@@ -1384,7 +1374,7 @@ class MultiOutputSlot(Slot):
             else:
                 slot = MultiOutputSlot(self.name,self, stype = type(self.stype), level = self.level - 1)
             index = len(self)
-            self.outputSlots.append(slot)
+            self._subSlots.append(slot)
 
         
         while len(self) > size:
@@ -1395,19 +1385,19 @@ class MultiOutputSlot(Slot):
             assert len(p) == len(self)
                 
     def execute(self,slot,roi,result):
-        index = self.outputSlots.index(slot)
+        index = self._subSlots.index(slot)
         #TODO: remove this special case  once all operators are ported
         key = roiToSlice(roi.start,roi.stop)
         return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
 
 
     def getOutSlot(self, slot, key, result):
-        index = self.outputSlots.index(slot)
+        index = self._subSlots.index(slot)
         return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
 
     def getSubOutSlot(self, slots, indexes, key, result):
         try:
-            index = self.outputSlots.index(slots[0])
+            index = self._subSlots.index(slots[0])
         except:
             raise RuntimeError("MultiOutputSlot.getSubOutSlot: name=%r, operator.name=%r, slots=%r" % \
                                (self.name, self.operator.name, self.operator, slots))
