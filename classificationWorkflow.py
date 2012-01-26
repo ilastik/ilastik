@@ -4,12 +4,13 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import os, sys, numpy, copy
 
-from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt
+from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL
 from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
                         QMessageBox, qApp, QItemSelectionModel, QIcon, QTransform
 from PyQt4 import uic
 
 from lazyflow.graph import Graph
+from widgets.stackloader import OpStackChainBuilder,StackLoader
 from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
                                OpArrayPiper, OpPredictRandomForest, \
                                OpSingleChannelSelector, OpSparseLabelArray, \
@@ -20,7 +21,7 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
     AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
-
+from volumina.adaptors import Op5ifyer
 from labelListView import Label
 from labelListModel import LabelListModel
 
@@ -62,7 +63,7 @@ class Main(QMainWindow):
         self.initUic()
         
         #if the filename was specified on command line, load it
-        if len(sys.argv) >= 2:
+        if len(sys.argv) >= 2 and not '-stack' in sys.argv:
             def loadFile():
                 self._openFile(sys.argv[1:])
             QTimer.singleShot(0, loadFile)
@@ -353,10 +354,40 @@ class Main(QMainWindow):
                 break
     
     def openFile(self):
-        fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy and h5 files (*.npy *.h5)")
-        if fileNames.count() == 0:
-            return
-        self._openFile(fileNames)
+        if '-stack' in sys.argv:
+            self.stackLoader = StackLoader()
+            self.stackLoader.show()
+            self.connect(self.stackLoader.loadButton,  SIGNAL('clicked()'), self._stackLoad)
+            
+        else: 
+            fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy and h5 files (*.npy *.h5)")
+            if fileNames.count() == 0:
+                return
+            self._openFile(fileNames)
+    
+    def _stackLoad(self):
+        self.inputProvider = OpArrayPiper(self.g)
+        op5ifyer = Op5ifyer(self.g)
+        op5ifyer.inputs["input"].connect(self.stackLoader.ChainBuilder.outputs["output"])
+#        right now, the cache causes more problems then it solves
+#        cache = OpSlicedBlockedArrayCache(self.g)
+#        cache.inputs["Input"].connect(op5ifyer.outputs["output"])
+#        cache.inputs["fixAtCurrent"].setValue(False)
+#        cache.inputs["innerBlockShape"].setValue(((1,256,256,200,3),(1,256,200,256,3),(1,200,256,256,3)))
+#        cache.inputs["outerBlockShape"].setValue(((1,256,256,100,3),(1,256,100,256,3),(1,100,256,256,3)))
+#        self.raw = cache.outputs["Output"][:].allocate().wait()
+        self.raw = op5ifyer.outputs["output"][:].allocate().wait()
+        self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
+        self.raw = self.raw.view(vigra.VigraArray)
+        self.raw.axistags =  vigra.AxisTags(
+                vigra.AxisInfo('t',vigra.AxisType.Time),
+                vigra.AxisInfo('x',vigra.AxisType.Space),
+                vigra.AxisInfo('y',vigra.AxisType.Space),
+                vigra.AxisInfo('z',vigra.AxisType.Space),
+                vigra.AxisInfo('c',vigra.AxisType.Channels))
+        self.inputProvider.inputs["Input"].setValue(self.raw)
+        self.haveData.emit()
+        self.stackLoader.close()
         
     def _openFile(self, fileNames):
         self.inputProvider = None

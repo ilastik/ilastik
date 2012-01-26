@@ -9,7 +9,8 @@
 workflow2.py
 
 5d.npy
-
+d.h5
+mytools.py
 src/oli_quadViewSplitterOli.py
 
 src/oli_quadViewHUDandStatusBar.py
