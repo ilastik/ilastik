@@ -527,6 +527,45 @@ class Slot(object):
         self.rtype = rtype
         self.meta = MetaDict()
 
+    @property
+    def shape(self):
+      return self.meta.shape
+
+    @property
+    def dtype(self):
+      return self.meta.dtype
+
+    @property
+    def axistags(self):
+      return self.meta.axistags
+
+    @property
+    def _shape(self):
+        return self.meta.shape
+        
+    @_shape.setter
+    def _shape(self,value):
+      old = self.meta.shape
+      self.meta.shape = value
+
+    @property
+    def _axistags(self):
+      return self.meta.axistags
+        
+    @_axistags.setter
+    def _axistags(self, value):
+      old = self.meta.axistags
+      self.meta.axistags = value
+
+    @property
+    def _dtype(self):
+      return self.meta.dtype
+
+    @_dtype.setter
+    def _dtype(self, value):
+      old = self.meta.dtype
+      self.meta.dtype = value
+
     def _allocateDestination( self, key ):
         return self.stype.allocateDestination(key)
         
@@ -608,25 +647,10 @@ class InputSlot(Slot):
     to directly provide a value as input (i.e. .setValue(value) call)
     """
     
-    __slots__ = ["name", "operator", "partner", "level", 
-                 "_value", "stype", "rtype", "axistags", "shape", "dtype"]    
-    
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False):
         super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional)
         self.partner = None
  
-
-    @property
-    def shape(self):
-      return self.meta.shape
-
-    @property
-    def dtype(self):
-      return self.meta.dtype
-
-    @property
-    def axistags(self):
-      return self.meta.axistags
 
     def _changed(self, notify = True):
       if self.partner is not None:
@@ -826,9 +850,6 @@ class OutputSlot(Slot):
     this call returns an GetItemRequestObject.
     """    
     
-    __slots__ = ["name", "_metaParent", "level", "operator",
-                 "dtype", "shape", "axistags", "partners", "stype", "rtype",
-                 "_dirtyCallbacks"]    
     
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
         super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = 0)
@@ -838,44 +859,6 @@ class OutputSlot(Slot):
 
         self._dirtyCallbacks = []
     
-    @property
-    def shape(self):
-      return self.meta.shape
-
-    @property
-    def dtype(self):
-      return self.meta.dtype
-
-    @property
-    def axistags(self):
-      return self.meta.axistags
-
-    @property
-    def _shape(self):
-        return self.shape
-        
-    @_shape.setter
-    def _shape(self,value):
-      old = self.meta.shape
-      self.meta.shape = value
-
-    @property
-    def _axistags(self):
-      return self.axistags
-        
-    @_axistags.setter
-    def _axistags(self, value):
-      old = self.meta.axistags
-      self.meta.axistags = value
-
-    @property
-    def _dtype(self):
-      return self.dtype
-
-    @_dtype.setter
-    def _dtype(self, value):
-      old = self.meta.dtype
-      self.meta.dtype = value
 
     def _changed(self):
       if self.meta._dirty:
@@ -973,9 +956,6 @@ class MultiInputSlot(Slot):
     
     it contains nested lists of InputSlot objects.
     """
-    
-    __slots__ = ["name", "operator", "partner", "inputSlots", "level",
-                 "stype", "rtype", "_value","meta"]    
     
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None, optional = False):
         super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
@@ -1310,8 +1290,6 @@ class MultiOutputSlot(Slot):
     it contains nested lists of OutputSlot objects.
     """
     
-    __slots__ = ["name", "operator", "_metaParent",
-                 "partners", "outputSlots", "level", "stype", "rtype", "meta"]
     
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, optional = False, value = None):
         super(MultiOutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
