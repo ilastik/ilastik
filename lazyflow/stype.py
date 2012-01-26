@@ -43,6 +43,10 @@ class SlotType( object ):
       """
       return False
 
+    def connect(self,slot):
+      pass
+      
+
 class ArrayLike( SlotType ):
     def allocateDestination( self, roi ):
         shape = roi.stop - roi.start if roi else self.slot.meta.shape
@@ -83,6 +87,65 @@ class ArrayLike( SlotType ):
         return True
       else:
         return False
+
+
+class Struct( SlotType ):
+    
+    """
+    Sublass this type and define some class
+    variables of type Slot. Example:
+
+    class GraphType(Struct):
+      nodes = Slot(stype = ArrayLike)
+      edges = Slot(stype = ArrayLike)
+
+    
+    slots with stype=GraphType
+    will now have instance
+    InputSlot/OutputSlot instance 
+    attributes corresponding to these
+    names which behave like normal slots.
+    """
+
+    def __init__(self, slot):
+      SlotType.__init__(self, slot)
+      self._subSlots = {}
+      if slot.operator is not None:
+        self.graph = slot.operator.graph
+      else:
+        self.graph = None
+      for k,v in self.__class__.__dict__.items():
+        if hasattr(v,"_subSlots") and v != slot: #FIXME: really bad detection of type
+          v._type = slot._type
+          si = v.getInstance(operator=self)
+          self._subSlots[k] = si
+          setattr(slot,k,si)
+
+    def isConfigured(self):
+      configured = True
+      for k,v in self._subSlots.items():
+        if v._optional is False and v.connected() is False:
+          configured = False
+          break
+      return configured
+
+    def connect(self, slot):
+      for k,v in self._subSlots.items():
+        if hasattr(slot,k):
+          self._subSlots[k].connect(getattr(slot,k))
+          print "subslot ", k, "connected:", self._subSlots[k].partner,self._subSlots[k].connected(),self._subSlots[k].shape, self._subSlots[k].graph, self.slot.operator
+
+    
+    def execute(self,slot,roi,destination):
+      return self.slot.operator.execute(slot,roi,destination)
+
+    def _notifyDisconnect(self,slot):
+      pass
+
+    def _notifyConnect(self,slot):
+      pass
+
+
 
 class Opaque( SlotType ):
     def allocateDestination( self, roi ):

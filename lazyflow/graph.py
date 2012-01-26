@@ -60,6 +60,7 @@ import threading
 import rtype
 from roi import sliceToRoi, roiToSlice
 from lazyflow.stype import ArrayLike
+from lazyflow import stype
 
 greenlet.GREENLET_USE_GC = False #use garbage collection
 sys.setrecursionlimit(100000)
@@ -504,6 +505,39 @@ class GetItemRequestObject(object):
         assert 1==2, "Please use the .wait() method, () is deprecated !"
 
 
+class MetaDict(dict):
+  def __init__(self, other=False):
+    if(other):
+      dict.__init__(self,other)
+    else:
+      dict.__init__(self)
+    self._dirty = True
+    #TODO: remove this, only for backwards compatability
+    if not self.has_key("shape"):
+      self.shape = None
+    if not self.has_key("dtype"):
+      self.dtype = None
+    if not self.has_key("axistags"):
+      self.axistags = None
+
+  def __setattr__(self,name,value):
+    if self.has_key(name):
+      changed = True
+      try:
+        if self[name] == value:
+          changed = False
+      except:
+        pass
+      if changed:
+        self["_dirty"] = True
+    self[name] = value
+    return value
+
+  def __getattr__(self,name):
+    return self[name]
+
+  def copy(self):
+    return MetaDict(dict.copy(self))
 
 class Slot(object):
     """Common methods of all slot types."""
@@ -513,8 +547,10 @@ class Slot(object):
         return self.operator.graph
                         
     def __init__( self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
-        if self.__class__ == Slot: # make Slot constructor "private"
-            raise Exception("Slot can't be constructed directly; use one of the derived slot types")
+        #if self.__class__ == Slot: # make Slot constructor "private"
+            #raise Exception("Slot can't be constructed directly; use one of the derived slot types")
+        if not hasattr(self, "_type"):
+          self._type = None
         if type(stype) == str:
           stype = ArrayLike
         self.name = name
@@ -524,10 +560,11 @@ class Slot(object):
         self.level = level
         self._value = None
         self._defaultValue = value
-        self.stype = stype(self)
         self.rtype = rtype
         self.meta = MetaDict()
         self._subSlots = []
+        self._stypeType = stype #class of stype
+        self.stype = stype(self) #instance of stype
 
     @property
     def shape(self):
@@ -633,44 +670,20 @@ class Slot(object):
     #TODO RENAME? createInstance
     # def __copy__ ?, clone ?
     def getInstance(self, operator):
-        s = self.__class__(self.name, operator, stype = type(self.stype), rtype = self.rtype, value = self._defaultValue, optional = self._optional)
+        if self._type == "input":
+          if self.level > 0:
+            s = MultiInputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional)
+          else:
+            s = InputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional)
+        elif self._type == "output":
+          if self.level > 0:
+            s= MultiOutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional)
+          else:
+            s= OutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional)
         return s
 
 import copy
 
-class MetaDict(dict):
-  def __init__(self, other=False):
-    if(other):
-      dict.__init__(self,other)
-    else:
-      dict.__init__(self)
-    self._dirty = True
-    #TODO: remove this, only for backwards compatability
-    if not self.has_key("shape"):
-      self.shape = None
-    if not self.has_key("dtype"):
-      self.dtype = None
-    if not self.has_key("axistags"):
-      self.axistags = None
-
-  def __setattr__(self,name,value):
-    if self.has_key(name):
-      changed = True
-      try:
-        if self[name] == value:
-          changed = False
-      except:
-        pass
-      if changed:
-        self["_dirty"] = True
-    self[name] = value
-    return value
-
-  def __getattr__(self,name):
-    return self[name]
-
-  def copy(self):
-    return MetaDict(dict.copy(self))
 
 class InputSlot(Slot):
     """
@@ -681,6 +694,7 @@ class InputSlot(Slot):
     """
     
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False):
+        self._type = "input"
         super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional)
         self.partner = None
  
@@ -767,6 +781,7 @@ class InputSlot(Slot):
             self.partner = partner
             self.meta = partner.meta.copy()
             partner._connect(self)
+            self.stype.connect(partner)
             if self.stype.isConfigured():
                 self._changed()
     
@@ -784,24 +799,24 @@ class InputSlot(Slot):
         more then one slot
         """
         
-        assert self.operator is not None
-        
-        # check wether all slots are connected and notify operator            
-        if isinstance(self.operator,Operator):
-            allConnected = True
-            for slot in self.operator.inputs.values():
-                if slot._optional is False and slot.connected() is False:
-                    allConnected = False
-                    break
-            if allConnected:
-                self.operator._setupOutputs()
+        if self.operator is not None:
+          # check wether all slots are connected and notify operator            
+          if isinstance(self.operator,Operator):
+              allConnected = True
+              for slot in self.operator.inputs.values():
+                  if slot._optional is False and slot.connected() is False:
+                      allConnected = False
+                      break
+              if allConnected:
+                  self.operator._setupOutputs()
                 
     def disconnect(self):
         """
         Disconnect a InputSlot from its partner
         """
         #TODO: also reset ._value ??
-        self.operator._notifyDisconnect(self)
+        if self.operator is not None:
+          self.operator._notifyDisconnect(self)
         if self.partner is not None:
             self.partner.disconnectSlot(self)
         self.partner = None
@@ -885,6 +900,7 @@ class OutputSlot(Slot):
     
     
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
+        self._type = "output"
         super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = 0)
         self._metaParent = operator
         self.operator = operator
@@ -991,9 +1007,10 @@ class MultiInputSlot(Slot):
     """
     
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None, optional = False):
-        super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
+        self._type = "input"
         self.partner = None
         self._subSlots = []
+        super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
     
     def resize(self, size, notify = True, event = None):
         oldsize = len(self)
@@ -1127,6 +1144,7 @@ class MultiInputSlot(Slot):
                 self.partner = partner
                 self.meta = self.partner.meta.copy()
                 partner._connect(self)
+                self.stype.connect(partner)
                 # do a type check
                 self.connectOk(self.partner)
                 
@@ -1301,6 +1319,7 @@ class MultiOutputSlot(Slot):
     
     
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, optional = False, value = None):
+        self._type = "output"
         super(MultiOutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
         self._metaParent = operator
         self.partners = []
@@ -1504,8 +1523,13 @@ class OutputDict(dict):
 
 
 class OperatorMetaClass(type):
-    def __init__(cls,name,bases,classDict):
-        # support defining the slots directly in the class definition
+
+    def __new__(cls,name,bases,classDict):
+        cls = type.__new__(cls,name,bases,classDict)
+        
+        setattr(cls,"inputSlots", list(cls.inputSlots))
+        setattr(cls,"outputSlots", list(cls.outputSlots))
+        
         for k,v in cls.__dict__.items():
           if isinstance(v,InputSlot):
             v.name = k
@@ -1514,6 +1538,7 @@ class OperatorMetaClass(type):
           if isinstance(v,OutputSlot):
             v.name = k
             cls.outputSlots.append(v)
+        return cls
 
     def __call__(cls,*args,**kwargs):
       # type.__call__ calls instance.__init__ internally
@@ -1606,7 +1631,6 @@ class Operator(object):
             sys.exit(1)
           temp[i.name] = True
 
-        
         # replicate input slot connections
         # defined for the operator for the instance
         for i in self.inputSlots:
@@ -1621,7 +1645,7 @@ class Operator(object):
         # relicate output slots
         # defined for the operator for the instance 
         for o in self.outputSlots:
-            if not self.inputs.has_key(o.name):
+            if not self.outputs.has_key(o.name):
               oo = o.getInstance(self)
               self.outputs[o.name] = oo         
 
@@ -1637,7 +1661,7 @@ class Operator(object):
         self._setDefaultInputValues()
 
         if len(self.inputs.keys()) == 0:
-          self.notifyConnectAll()
+          self._setupOutputs()
 
     def connected(self):
       allConnected = True
@@ -1947,14 +1971,6 @@ class Operator(object):
 
 class OperatorWrapper(Operator):
     name = ""
-    
-    @property
-    def inputSlots(self):
-        return self._inputSlots
-    
-    @property
-    def outputSlots(self):
-        return self._outputSlots
     
     def __init__(self, operator, register = False):
         self.inputs = InputDict(self)
