@@ -1,7 +1,7 @@
 import glob, os
 
 
-tests=glob.glob('tests/*.py')  #List of all tests
+tests=glob.glob('tests/integration/*.py')  #List of all tests
 
 excludeList=[]  #exclude some test 
 swaplist=[] #Tuples of tests that have to be executed exactly in this order
@@ -22,7 +22,7 @@ swap(swaplist)
 
 def do(testname):
     if testname not in excludeList:
-        cmd = "cd tests && python " + test
+        cmd = "cd tests/integration && python " + test
         if os.system(cmd):
             raise RuntimeError, "fail to execute " + testname
     else:
