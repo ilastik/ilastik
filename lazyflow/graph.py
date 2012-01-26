@@ -511,11 +511,18 @@ class Slot(object):
     def graph(self):
         return self.operator.graph
                         
-    def __init__( self, stype = ArrayLike, rtype = rtype.SubRegion):
+    def __init__( self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
         if self.__class__ == Slot: # make Slot constructor "private"
             raise Exception("Slot can't be constructed directly; use one of the derived slot types")
         if type(stype) == str:
           stype = ArrayLike
+        self.name = name
+        self._optional = optional
+        self.name = name
+        self.operator = operator
+        self.level = level
+        self._value = None
+        self._defaultValue = value
         self.stype = stype(self)
         self.rtype = rtype
         self.meta = MetaDict()
@@ -550,6 +557,12 @@ class Slot(object):
     def get( self, roi ):
       return GetItemRequestObject(self,roi,None,0)        
 
+
+    #TODO RENAME? createInstance
+    # def __copy__ ?, clone ?
+    def getInstance(self, operator):
+        s = self.__class__(self.name, operator, stype = type(self.stype), rtype = self.rtype, value = self._defaultValue, optional = self._optional)
+        return s
 
 import copy
 
@@ -599,14 +612,8 @@ class InputSlot(Slot):
                  "_value", "stype", "rtype", "axistags", "shape", "dtype"]    
     
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False):
-        super(InputSlot, self).__init__(stype = stype, rtype=rtype)
-        self._optional = optional
-        self.name = name
-        self.operator = operator
+        super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional)
         self.partner = None
-        self.level = 0
-        self._value = None
-        self._defaultValue = value
  
 
     @property
@@ -744,11 +751,6 @@ class InputSlot(Slot):
         self.meta = MetaDict()
         
     
-    #TODO RENAME? createInstance
-    # def __copy__ ?, clone ?
-    def getInstance(self, operator):
-        s = InputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, value = self._defaultValue, optional = self._optional)
-        return s
             
     def setDirty(self, *args,**kwargs):
         """
@@ -828,11 +830,9 @@ class OutputSlot(Slot):
                  "dtype", "shape", "axistags", "partners", "stype", "rtype",
                  "_dirtyCallbacks"]    
     
-    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion):
-        super(OutputSlot, self).__init__(stype=stype, rtype=rtype)
-        self.name = name
+    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
+        super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = 0)
         self._metaParent = operator
-        self.level = 0
         self.operator = operator
         self.partners = []
 
@@ -933,12 +933,6 @@ class OutputSlot(Slot):
         for cb in self._dirtyCallbacks:
             cb[0](roi.toSlice(), **cb[1])
 
-    #FIXME __copy__ ?
-    def getInstance(self, operator):
-        s = OutputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype)
-        s.meta = MetaDict()
-        return s
-    
     def __setitem__(self, key, value):
         for p in self.partners:
             p[key] = value
@@ -984,15 +978,9 @@ class MultiInputSlot(Slot):
                  "stype", "rtype", "_value","meta"]    
     
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None, optional = False):
-        super(MultiInputSlot, self).__init__(stype=stype, rtype=rtype)
-        self._optional = optional
-        self.name = name
-        self.operator = operator
+        super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
         self.partner = None
         self.inputSlots = []
-        self.level = level
-        self._value = None
-        self._defaultValue = value
     
     @property
     def value(self):
@@ -1259,12 +1247,6 @@ class MultiInputSlot(Slot):
 
         
 
-    #TODO RENAME? createInstance
-    # def __copy__ ?
-    def getInstance(self, operator):
-        s = MultiInputSlot(self.name, operator, stype = type(self.stype), rtype = self.rtype, level = self.level, value = self._defaultValue, optional = self._optional)
-        return s
-            
     def setDirty(self, roi):
         assert self.operator is not None, "Slot %s cannot be set dirty, slot not belonging to any actual operator instance" % self.name
         self.operator.propagateDirty(self, roi)
@@ -1331,14 +1313,11 @@ class MultiOutputSlot(Slot):
     __slots__ = ["name", "operator", "_metaParent",
                  "partners", "outputSlots", "level", "stype", "rtype", "meta"]
     
-    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1):
-        super(MultiOutputSlot, self).__init__(stype=stype, rtype=rtype)
-        self.name = name
-        self.operator = operator
+    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, optional = False, value = None):
+        super(MultiOutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
         self._metaParent = operator
         self.partners = []   
         self.outputSlots = []
-        self.level = level
     
     def __getitem__(self, key):
         return self.outputSlots[key]
@@ -1455,12 +1434,6 @@ class MultiOutputSlot(Slot):
                                (self.name, self.operator.name, self.operator, slots))
         return self.operator.getSubOutSlot((self,) + slots, (index,) + indexes, key, result)
     
-    #TODO RENAME? createInstance
-    # def __copy__ ?
-    def getInstance(self, operator):
-        s = MultiOutputSlot(self.name, operator, stype = type(self.stype), level = self.level)
-        return s
-            
     def setDirty(self, roi):
         return
     
