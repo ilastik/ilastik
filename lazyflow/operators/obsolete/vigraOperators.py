@@ -1618,18 +1618,17 @@ class OpStackLoader(Operator):
     
     def notifyConnectAll(self):
         globString = self.inputs["globstring"].value
-        self.fileNameList = (glob.glob(globString))
-        self.fileNameList.sort()
+        self.fileNameList = sorted(glob.glob(globString))
+        
 
         if len(self.fileNameList) != 0:
             self.info = vigra.impex.ImageInfo(self.fileNameList[0])
             oslot = self.outputs["stack"]
             
             #build 4D shape out of 2DShape and Filelist
-            oslot._shape = (self.info.getShape()[0],self.info.getShape()[1],self.info.getShape()[2],len(self.fileNameList))
+            oslot._shape = (self.info.getShape()[0],self.info.getShape()[1],len(self.fileNameList),self.info.getShape()[2])
             oslot._dtype = self.info.getDtype()
             oslot._axistags = self.info.getAxisTags()
-            
         else:
             oslot = self.outputs["stack"]
             oslot._shape = None
@@ -1637,11 +1636,109 @@ class OpStackLoader(Operator):
             oslot._axistags = None
             
     def getOutSlot(self, slot, key, result):
-        
         i=0
-        for fileName in self.fileNameList[key[3]]:
-            result[:,:,:,i] = vigra.impex.readImage(fileName)[key[0],key[1],key[2]]
-            i = i+1        
+        for fileName in self.fileNameList[key[2]]:
+            assert (self.info.getShape() == vigra.impex.ImageInfo(fileName).getShape()), 'not all files have the same shape'
+            result[:,:,i,:] = vigra.impex.readImage(fileName)[key[0],key[1],key[3]]
+            i = i+1
+
+class OpGrayscaleInverter(Operator):
+    name = "Grayscale Inversion Operator"
+    category = "" #Pls set some standard categories
+
+    inputSlots = [InputSlot("input", stype = "array")]
+    outputSlots = [OutputSlot("output")]
+
+    def notifyConnectAll(self):
+
+        inputSlot = self.inputs["input"]
+
+        if inputSlot:
+            oslot = self.outputs["output"]
+
+            oslot._shape = inputSlot.shape
+            oslot._dtype = inputSlot.dtype
+            oslot._axistags = copy.copy(inputSlot.axistags)
+
+        else:
+            oslot = self.outputs["output"]
+
+            oslot._shape = None
+            oslot._dtype = None
+            oslot._axistags = None
+
+    def getOutSlot(self, slot, key, result):
+        
+        #this assumes that the last dimension is the channel. 
+        image = self.inputs["input"][:].allocate().wait()
+        for i in range(image.shape[-1]):
+            result[:,:,:,i] = 255-image[:,:,:,i]
+        return result
+
+class OpToUint8(Operator):
+    name = "UInt8 Conversion Operator"
+    category = "" #Pls set some standard categories
+    
+    inputSlots = [InputSlot("input", stype = "array")]
+    outputSlots = [OutputSlot("output")]
+    
+    
+    def notifyConnectAll(self):
+
+        inputSlot = self.inputs["input"]
+
+        if inputSlot:
+            oslot = self.outputs["output"]
+
+            oslot._shape = inputSlot.shape
+            oslot._dtype = numpy.uint8
+            oslot._axistags = copy.copy(inputSlot.axistags)
+
+        else:
+            oslot = self.outputs["output"]
+
+            oslot._shape = None
+            oslot._dtype = None
+            oslot._axistags = None
+
+        def getOutSlot(self, slot, key, result):
+        
+            image = self.inputs["input"][:].allocate().wait()
+            result[:] = image.numpy.astype('uint8')
+
+
+class OpRgbToGraysacle(Operator):
+    name = "Convert RGB Images to Grayscale"
+    category = "" #Pls set some standard categories
+
+    inputSlots = [InputSlot("input", stype = "array")]
+    outputSlots = [OutputSlot("output")]
+
+    def notifyConnectAll(self):
+
+        inputSlot = self.inputs["input"]
+
+        if inputSlot:
+            oslot = self.outputs["output"]
+            grayScaleChannel = 1,
+            oslot._shape = inputSlot.shape[:-1] + grayScaleChannel
+            oslot._dtype = inputSlot.dtype
+            oslot._axistags = copy.copy(inputSlot.axistags)
+        else:
+            oslot = self.outputs["output"]
+
+            oslot._shape = None
+            oslot._dtype = None
+            oslot._axistags = None
+
+    def getOutSlot(self, slot, key, result):
+        
+        #this assumes that the last dimension is the channel. 
+        image = self.inputs["input"][:].allocate().wait()
+        if image.shape[-1] > 1:
+            for i in range(image.shape[-1]):
+                result[:,:,:,0] = (numpy.round(0.299*image[:,:,:,0] + 0.587*image[:,:,:,1] + 0.114*image[:,:,:,2])).astype(int)
+ 
                 
            
         
