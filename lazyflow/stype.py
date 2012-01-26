@@ -27,7 +27,7 @@ class SlotType( object ):
       Slot types must implement this method.
 
       this method should extract valuable meta information
-      from the provied value and set up the self.slot.meta
+      from the provided value and set up the self.slot.meta
       MetaDict accordingly
       """
       pass
