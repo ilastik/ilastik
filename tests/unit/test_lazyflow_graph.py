@@ -1,4 +1,4 @@
-from nose.tools import assert_equal
+from nose.tools import assert_equal, ok_, eq_
 from nose import SkipTest
 
 class TestOperators:
@@ -625,6 +625,23 @@ class TestOperator:
         # operator = Operator(*args, **kwargs)
         # assert_equal(expected, operator.setupOutputs())
         raise SkipTest # TODO: implement your test here
+
+    def test__after_init(self):
+        from lazyflow.graph import Operator
+        # check, if _after_init is actually called after init
+        class FakeGraph(object):
+            def __getattribute__( self, name):
+                def callable( *args, **kwargs):
+                    pass
+                return callable
+
+        class MyOp(Operator):
+            def __init__( self, graph ):
+                super(MyOp, self).__init__(graph)
+                eq_(self.name, "")
+
+        op = MyOp(FakeGraph())
+        eq_(op.name, "MyOp")
 
 class TestOperatorWrapper:
     def test___init__(self):

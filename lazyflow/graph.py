@@ -45,6 +45,7 @@ import os
 import time
 import gc
 import string
+import types
 import itertools
 
 from h5dumprestore import instanceClassToString, stringToClass
@@ -1562,26 +1563,23 @@ class OutputDict(dict):
 
 
 class OperatorMetaClass(type):
-    def __new__(meta, classname, bases, classDict):
-        instance =  type.__new__(meta, classname, bases, classDict)
-        return instance
-
     def __init__(cls,name,bases,classDict):
         # support defining the slots directly in the class definition
         for k,v in cls.__dict__.items():
           if isinstance(v,InputSlot):
             v.name = k
             cls.inputSlots.append(v)
-            
 
           if isinstance(v,OutputSlot):
             v.name = k
             cls.outputSlots.append(v)
 
     def __call__(cls,*args,**kwargs):
+      # type.__call__ calls instance.__init__ internally
       instance = type.__call__(cls,*args,**kwargs)
       instance._after_init()
       return instance
+
 
 
 class Operator(object):
@@ -1620,36 +1618,37 @@ class Operator(object):
     
     __metaclass__ = OperatorMetaClass
 
-
     def __new__( cls, *args, **kwargs ):
-        cls = super(Operator, cls).__new__(cls)
-        cls.graph = args[0]
-        cls.operator = None
-        cls.inputs = InputDict(cls)
-        cls.outputs = OutputDict(cls)
-        cls.register = True
-        
+        ##
+        # before __init__
+        ##
+        obj = super(Operator, cls).__new__(cls)
+        obj.graph = None
+        obj.operator = None
+        obj.inputs = InputDict(obj)
+        obj.outputs = OutputDict(obj)
+        obj.register = True
 
-
-
+        ##
         # wrap old api
-        if hasattr(cls, "getOutSlot"):
+        ##
+        if hasattr(obj, "getOutSlot"):
             def getOutSlot_wrapper( self, slot, roi, result ):
                 pslice = roiToSlice(roi.start,roi.stop)
                 warn_deprecated( "getOutSlot() is superseded by execute()" )
                 return self.getOutSlot(slot,pslice,result)
-            import types
-            cls.execute = types.MethodType(getOutSlot_wrapper, cls)
-        return cls
+            obj.execute = types.MethodType(getOutSlot_wrapper, obj)
+        return obj
 
+    def __init__( self, graph ):
+        self.graph = graph
 
-
+    # continue initialization, when user overrides __init__
     def _after_init(self):
         #provide simple default name for lazy users
         if self.name == "": 
             self.name = type(self).__name__
         assert self.graph is not None, "Operators must be given a graph, they cannot exist alone!"
-        
         # check for slot uniqueness
         temp = {}
         for i in self.inputSlots:
