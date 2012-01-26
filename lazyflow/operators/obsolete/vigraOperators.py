@@ -1653,27 +1653,16 @@ class OpGrayscaleInverter(Operator):
 
         inputSlot = self.inputs["input"]
 
-        if inputSlot:
-            oslot = self.outputs["output"]
-
-            oslot._shape = inputSlot.shape
-            oslot._dtype = inputSlot.dtype
-            oslot._axistags = copy.copy(inputSlot.axistags)
-
-        else:
-            oslot = self.outputs["output"]
-
-            oslot._shape = None
-            oslot._dtype = None
-            oslot._axistags = None
+        oslot = self.outputs["output"]
+        oslot._shape = inputSlot.shape
+        oslot._dtype = inputSlot.dtype
+        oslot._axistags = copy.copy(inputSlot.axistags)
 
     def getOutSlot(self, slot, key, result):
         
         #this assumes that the last dimension is the channel. 
         image = self.inputs["input"][:].allocate().wait()
-        for i in range(image.shape[-1]):
-            result[:,:,:,i] = 255-image[:,:,:,i]
-        return result
+        result[:,:,:,:] = 255-image[:,:,:,:]
 
 class OpToUint8(Operator):
     name = "UInt8 Conversion Operator"
@@ -1687,19 +1676,11 @@ class OpToUint8(Operator):
 
         inputSlot = self.inputs["input"]
 
-        if inputSlot:
-            oslot = self.outputs["output"]
+        oslot = self.outputs["output"]
 
-            oslot._shape = inputSlot.shape
-            oslot._dtype = numpy.uint8
-            oslot._axistags = copy.copy(inputSlot.axistags)
-
-        else:
-            oslot = self.outputs["output"]
-
-            oslot._shape = None
-            oslot._dtype = None
-            oslot._axistags = None
+        oslot._shape = inputSlot.shape
+        oslot._dtype = numpy.uint8
+        oslot._axistags = copy.copy(inputSlot.axistags)
 
         def getOutSlot(self, slot, key, result):
         
@@ -1718,26 +1699,18 @@ class OpRgbToGraysacle(Operator):
 
         inputSlot = self.inputs["input"]
 
-        if inputSlot:
-            oslot = self.outputs["output"]
-            grayScaleChannel = 1,
-            oslot._shape = inputSlot.shape[:-1] + grayScaleChannel
-            oslot._dtype = inputSlot.dtype
-            oslot._axistags = copy.copy(inputSlot.axistags)
-        else:
-            oslot = self.outputs["output"]
-
-            oslot._shape = None
-            oslot._dtype = None
-            oslot._axistags = None
-
+        oslot = self.outputs["output"]
+        grayScaleChannel = 1,
+        oslot._shape = inputSlot.shape[:-1] + grayScaleChannel
+        oslot._dtype = inputSlot.dtype
+        oslot._axistags = copy.copy(inputSlot.axistags)
+    
     def getOutSlot(self, slot, key, result):
         
         #this assumes that the last dimension is the channel. 
         image = self.inputs["input"][:].allocate().wait()
         if image.shape[-1] > 1:
-            for i in range(image.shape[-1]):
-                result[:,:,:,0] = (numpy.round(0.299*image[:,:,:,0] + 0.587*image[:,:,:,1] + 0.114*image[:,:,:,2])).astype(int)
+            result[:,:,:,0] = (numpy.round(0.299*image[:,:,:,0] + 0.587*image[:,:,:,1] + 0.114*image[:,:,:,2])).astype(int)
  
                 
            
