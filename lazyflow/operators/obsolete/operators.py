@@ -588,7 +588,10 @@ if has_blist:
                 self.outputs["Output"]._dtype = numpy.uint8
                 self.outputs["Output"]._shape = shape
                 self.outputs["Output"]._axistags = vigra.defaultAxistags(len(shape))
-        
+                
+                self.inputs["Input"].meta.shape = shape
+
+
                 self.outputs["nonzeroValues"]._dtype = object
                 self.outputs["nonzeroValues"]._shape = (1,)
                 self.outputs["nonzeroValues"]._axistags = vigra.defaultAxistags(1)
@@ -724,6 +727,8 @@ if has_blist:
                   self.outputs["Output"]._dtype = numpy.uint8
                   self.outputs["Output"]._shape = self.shape
                   self.outputs["Output"]._axistags = vigra.defaultAxistags(len(self.shape))
+
+                  self.inputs["Input"].meta.shape = self.shape
           
                   self.outputs["nonzeroValues"]._dtype = object
                   self.outputs["nonzeroValues"]._shape = (1,)
@@ -1054,7 +1059,9 @@ class OpSlicedBlockedArrayCache(OperatorGroup):
     name = "OpSlicedBlockedArrayCache"
     description = ""
 
-    inputSlots = [InputSlot("Input"),InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent", value = False)]
+    Input = InputSlot()
+
+    inputSlots = [InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent", value = False)]
     outputSlots = [OutputSlot("Output")]    
 
     def _createInnerOperators(self):

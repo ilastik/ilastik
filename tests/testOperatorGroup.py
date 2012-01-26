@@ -66,7 +66,7 @@ class OperatorGroupA(OperatorGroup):
         return outputs
 
 
-operators.registerOperatorSubclasses()
+#operators.registerOperatorSubclasses()
 
 g = Graph()
 

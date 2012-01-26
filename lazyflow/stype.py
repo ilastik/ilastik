@@ -43,15 +43,6 @@ class SlotType( object ):
       """
       return False
 
-    def transformRoi(self, roi):
-      """
-      Slot types may implement this method.
-
-      this method may transform rois to a unified representation
-      to remove duplicate such transformations from operators.
-      """
-      return roi
-
 class ArrayLike( SlotType ):
     def allocateDestination( self, roi ):
         shape = roi.stop - roi.start if roi else self.slot.meta.shape
@@ -92,12 +83,6 @@ class ArrayLike( SlotType ):
         return True
       else:
         return False
-
-
-    def transformRoi(self,roi):
-        start, stop = sliceToRoi(roi, self.slot.shape)
-        key = roiToSlice(start,stop)
-        return key
 
 class Opaque( SlotType ):
     def allocateDestination( self, roi ):
