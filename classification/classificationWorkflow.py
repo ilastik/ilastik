@@ -22,7 +22,7 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
     AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
-
+from volumina.adaptors import Op5ifyer
 from labelListView import Label
 from labelListModel import LabelListModel
 
@@ -370,9 +370,16 @@ class Main(QMainWindow):
         self.inputProvider = OpArrayPiper(self.g)
         op5ifyer = Op5ifyer(self.g)
         op5ifyer.inputs["input"].connect(self.stackLoader.ChainBuilder.outputs["output"])
+        test = self.stackLoader.ChainBuilder.outputs["output"][:].allocate().wait()
         self.raw = op5ifyer.outputs["output"][:].allocate().wait()
-        self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
+        print '___________________op5ifyer___before______________________________________'
+        print 'shape   :',self.raw.shape
+        #HACKY
+        self.raw.shape = (1,) + self.raw.shape
+        print '___________________op5ifyer___after______________________________________'
+        print 'shape   :',self.raw.shape
         self.raw = self.raw.view(vigra.VigraArray)
+        self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
         self.raw.axistags =  vigra.AxisTags(
                 vigra.AxisInfo('t',vigra.AxisType.Time),
                 vigra.AxisInfo('x',vigra.AxisType.Space),
@@ -433,6 +440,7 @@ class Main(QMainWindow):
         #create a layer for each channel of the input:
         slicer=OpMultiArraySlicer2(self.g)
         slicer.inputs["Input"].connect(self.inputProvider.outputs["Output"])
+        
         slicer.inputs["AxisFlag"].setValue('c')
        
         nchannels = shape[-1]
