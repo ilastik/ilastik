@@ -277,7 +277,6 @@ class Main(QMainWindow):
             self.opLabels.inputs["deleteLabel"].setValue(il+1)
             self.editor.scheduleSlicesRedraw()
             
-    
     def startClassification(self):
         if self.opTrain is None:
             #initialize all classification operators
