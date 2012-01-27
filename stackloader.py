@@ -37,6 +37,7 @@ from lazyflow.graph import OperatorGroup, InputSlot, OutputSlot
 from lazyflow.operators.obsolete.vigraOperators import *
 
 
+
 from PyQt4 import QtCore, QtGui
 from shutil import rmtree
 
@@ -59,7 +60,6 @@ class OpStackChainBuilder(OperatorGroup):
         self.GrayConverter = OpRgbToGraysacle(self.graph)
     
     def notifyConnectAll(self):
-        
         #FIXME: get a system into the outslot setups. not complete or systematical.
         
         self.Loader.inputs["globstring"].setValue(self.inputs["globstring"].value)
@@ -89,17 +89,16 @@ class OpStackChainBuilder(OperatorGroup):
         elif not self.inputs["convert"].value and not self.inputs["invert"].value:
             
             self.OutPiper.inputs["Input"].connect(self.Loader.outputs["stack"])
-            
             self.outputs["output"]._dtype = self.Loader.outputs["stack"]._dtype
             self.outputs["output"]._axistags = self.Loader.outputs["stack"]._axistags
             self.outputs["output"]._shape = self.Loader.outputs["stack"]._shape
+            
     def getOutSlot(self, slot, key, result):
         
+        print 'bumpOutslot'
         if slot.name == "output":
-            if self.inputs["invert"].connected():
-                result = self.Inverter.outputs["output"][:].allocate().wait()
-            else:
-                result = self.Loader.outputs["stack"][:].allocate().wait()
+            req = self.OutPiper.outputs["Output"][key].allocate()
+        return req.wait()
         
     def getInnerInputs(self):
         inputs = {}
@@ -107,6 +106,7 @@ class OpStackChainBuilder(OperatorGroup):
         return  inputs
 
     def getInnerOutputs(self):
+        print 'bumpInnerOutslot'
         outputs = {}
         outputs["output"] = self.OutPiper.outputs["Output"]
         return outputs
