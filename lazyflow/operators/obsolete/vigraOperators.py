@@ -13,7 +13,6 @@ import math
 
 from threading import Lock
 
-
 class OpMultiArrayStackerOld(Operator):
     inputSlots = [MultiInputSlot("Images")]
     outputSlots = [OutputSlot("Output")]
