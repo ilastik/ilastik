@@ -60,7 +60,6 @@ class OpStackChainBuilder(OperatorGroup):
         self.GrayConverter = OpRgbToGraysacle(self.graph)
     
     def notifyConnectAll(self):
-        #FIXME: get a system into the outslot setups. not complete or systematical.
         
         self.Loader.inputs["globstring"].setValue(self.inputs["globstring"].value)
         
@@ -95,7 +94,6 @@ class OpStackChainBuilder(OperatorGroup):
             
     def getOutSlot(self, slot, key, result):
         
-        print 'bumpOutslot'
         if slot.name == "output":
             req = self.OutPiper.outputs["Output"][key].allocate()
         return req.wait()
