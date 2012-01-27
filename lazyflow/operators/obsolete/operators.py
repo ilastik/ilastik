@@ -333,7 +333,6 @@ class OpArrayCache(OpArrayPiper):
         self._cacheLock.release()
             
     def notifyConnect(self, slot):
-        print "kjsdahkjsahd",self, slot.name
         reconfigure = False
         if  self.inputs["fixAtCurrent"].connected():
             self._fixed =  self.inputs["fixAtCurrent"].value  

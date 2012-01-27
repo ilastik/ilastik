@@ -1628,7 +1628,10 @@ class OpStackLoader(Operator):
             #build 4D shape out of 2DShape and Filelist
             oslot._shape = (self.info.getShape()[0],self.info.getShape()[1],len(self.fileNameList),self.info.getShape()[2])
             oslot._dtype = self.info.getDtype()
+            zAxisInfo = vigra.AxisInfo(key='z',typeFlags = vigra.AxisType.Space)
             oslot._axistags = self.info.getAxisTags()
+            oslot._axistags.insert(2,zAxisInfo)
+        
         else:
             oslot = self.outputs["stack"]
             oslot._shape = None
