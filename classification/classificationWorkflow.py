@@ -370,7 +370,6 @@ class Main(QMainWindow):
         self.inputProvider = OpArrayPiper(self.g)
         op5ifyer = Op5ifyer(self.g)
         op5ifyer.inputs["input"].connect(self.stackLoader.ChainBuilder.outputs["output"])
-        test = self.stackLoader.ChainBuilder.outputs["output"][:].allocate().wait()
         self.raw = op5ifyer.outputs["output"][:].allocate().wait()
         print '___________________op5ifyer___before______________________________________'
         print 'shape   :',self.raw.shape
