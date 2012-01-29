@@ -24,7 +24,8 @@ from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLa
 from labelListView import Label
 from labelListModel import LabelListModel
 
-from featureDlg import FeatureDlg, FeatureEntry
+from tableWidget import FeatureEntry
+from featureDlg import FeatureDlg
 
 import vigra
 
