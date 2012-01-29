@@ -30,7 +30,7 @@ from PyQt4.QtGui import QVBoxLayout, QLabel, QHBoxLayout, QDialog, QToolButton, 
 import numpy
 import sys
 import qimage2ndarray
-import tableWidget
+import featureTableWidget
 import preView
 
 class FeatureDlg(QDialog):
@@ -48,7 +48,7 @@ class FeatureDlg(QDialog):
         
         self.tableAndViewGroupBox = QGroupBox(" Scales and Groups")
         self.tableAndViewGroupBox.setFlat(True)
-        self.featureTableWidget = tableWidget.FeatureTableWidget()
+        self.featureTableWidget = featureTableWidget.FeatureTableWidget()
         
         self.tableAndViewLayout = QVBoxLayout()
         self.tableAndViewLayout.setSizeConstraint(QLayout.SetNoConstraint)
@@ -131,15 +131,13 @@ class FeatureDlg(QDialog):
         self.reject()
         
         
-class FeatureEntry:
-    def __init__(self, name):
-        self.name = name
         
 if __name__ == "__main__":
     #make the program quit on Ctrl+C
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     from PyQt4.QtGui import QApplication
+    from featureTableWidget import FeatureEntry
     
     app = QApplication(sys.argv)
     
