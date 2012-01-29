@@ -341,8 +341,8 @@ class Main(QMainWindow):
     def _stackLoad(self):
         self.inputProvider = OpArrayPiper(self.g)
         op5ifyer = Op5ifyer(self.g)
-        op5ifyer.inputs["input"].connect(self.stackLoader.ChainBuilder.outputs["output"])
-        self.raw = op5ifyer.outputs["output"][:].allocate().wait()
+        op5ifyer.inputs["Input"].connect(self.stackLoader.ChainBuilder.outputs["output"])
+        self.raw = op5ifyer.outputs["Output"][:].allocate().wait()
         print '___________________op5ifyer___before______________________________________'
         print 'shape   :',self.raw.shape
         #HACKY
