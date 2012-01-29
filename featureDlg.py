@@ -137,6 +137,7 @@ if __name__ == "__main__":
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     from PyQt4.QtGui import QApplication
+    from tableWidget import FeatureEntry
     
     app = QApplication(sys.argv)
     

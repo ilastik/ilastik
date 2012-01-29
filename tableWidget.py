@@ -280,8 +280,8 @@ class FeatureTableWidgetItem(QTableWidgetItem):
 class FeatureTableWidget(QTableWidget):
     brushSizeChanged = pyqtSignal(float)
         
-    def __init__(self):
-        QTableWidget.__init__(self)
+    def __init__(self, parent = None):
+        QTableWidget.__init__(self, parent)
         # init
         # ------------------------------------------------
         #FIXME: move this somewhere else maybe?
