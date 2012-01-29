@@ -131,9 +131,6 @@ class FeatureDlg(QDialog):
         self.reject()
         
         
-class FeatureEntry:
-    def __init__(self, name):
-        self.name = name
         
 if __name__ == "__main__":
     #make the program quit on Ctrl+C

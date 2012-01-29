@@ -33,6 +33,9 @@ from PyQt4.QtGui import QVBoxLayout, QLabel, QPixmap, QPainter, \
                         QFont, QPen, QPolygon, QSlider, QImage
 from PyQt4.QtCore import Qt, QRect, QSize, QEvent, QPoint, pyqtSignal
 
+class FeatureEntry:
+    def __init__(self, name):
+        self.name = name
 
 #===============================================================================
 # FeatureTableWidgetVHeader
@@ -661,4 +664,21 @@ class SliderDlg(QDialog):
             return  self.sigma
         else:
             return self.oldSigma
+
+if __name__ == '__main__':
+    from PyQt4.QtGui import QApplication
+
+    app = QApplication([])
+    t = FeatureTableWidget()
+    t.createTableForFeatureDlg( \
+        {"Color": [FeatureEntry("Banana")],
+         "Edge": [FeatureEntry("Mango"),
+                  FeatureEntry("Cherry")] \
+        }, \
+        [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0] \
+    )
+    t.show()
+    app.exec_()
+
+
         
