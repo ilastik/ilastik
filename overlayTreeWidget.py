@@ -139,7 +139,7 @@ class OverlayTreeWidget(QTreeWidget):
         return QTreeWidget.event(self, event)
     
 
-class SimpleObject:
+class OverlayEntry:
     def __init__(self, name):
         self.name = name
 
@@ -151,13 +151,11 @@ if __name__ == "__main__":
     from PyQt4.QtGui import *
         
     app = QApplication(sys.argv)
-    app.setStyle("cleanlooks")
     
     ex1 = OverlayTreeWidget()
-    a = SimpleObject("Labels")
-    b = SimpleObject("Raw Data")
-    ex1.addOverlaysToTreeWidget({"Classification/Labels": a, "Raw Data": b}, [], [])
-    print ex1.createSelectedItemList()
+    a = OverlayEntry("Labels")
+    b = OverlayEntry("Raw Data")
+    ex1.addOverlaysToTreeWidget({"Classification/Labels": a, "Raw Data": b}, [], [], True)
     ex1.show()
     ex1.raise_()        
     

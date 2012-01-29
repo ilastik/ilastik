@@ -1,9 +1,9 @@
 from PyQt4.QtDesigner import QPyDesignerCustomWidgetPlugin
 from PyQt4.QtGui import QPixmap, QIcon, QColor
 
-from featureTableWidget import FeatureTableWidget, FeatureEntry
+from overlayTreeWidget import OverlayTreeWidget, OverlayEntry
 
-class PyFeatureTableWidgetPlugin(QPyDesignerCustomWidgetPlugin):
+class PyOverlayTreeWidgetPlugin(QPyDesignerCustomWidgetPlugin):
 
     def __init__(self, parent = None):
         QPyDesignerCustomWidgetPlugin.__init__(self)
@@ -18,18 +18,16 @@ class PyFeatureTableWidgetPlugin(QPyDesignerCustomWidgetPlugin):
         return self.initialized
     
     def createWidget(self, parent):
-        t = FeatureTableWidget(parent)
-        t.createTableForFeatureDlg( \
-            {"Color": [FeatureEntry("Banana")],
-             "Edge": [FeatureEntry("Mango"),
-                      FeatureEntry("Cherry")] \
-            }, \
-            [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0] \
-        )
-        return t
+        o = OverlayTreeWidget(parent)
+        a = OverlayEntry("Labels")
+        b = OverlayEntry("Raw Data")
+        p0 = OverlayEntry("Probability")
+        o.addOverlaysToTreeWidget({"Classification/Labels": a, "Classification/Probability 0": p0, "Raw Data": b}, [], [], True)
+    
+        return o
     
     def name(self):
-        return "FeatureTableWidget"
+        return "OverlayTreeWidget"
 
     def group(self):
         return "ilastik widgets"
@@ -48,10 +46,10 @@ class PyFeatureTableWidgetPlugin(QPyDesignerCustomWidgetPlugin):
     
     def domXml(self):
         return (
-               '<widget class="FeatureTableWidget" name=\"featureTableWidget\">\n'
+               '<widget class="OverlayTreeWidget" name=\"overlayTreeWidget\">\n'
                "</widget>\n"
                )
     
     def includeFile(self):
-        return "tableWidget"
+        return "overlayTreeWidget"
  
