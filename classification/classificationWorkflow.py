@@ -65,9 +65,9 @@ class Main(QMainWindow):
         self.initUic()
         
         #if the filename was specified on command line, load it
-        if len(sys.argv) >= 2 and not '-stack' in sys.argv:
-            def loadFile():
-                self._openFile(sys.argv[1:])
+        def loadFile():
+            self._openFile(sys.argv[1:])
+        if len(sys.argv) > 2:
             QTimer.singleShot(0, loadFile)
         
     def setIconToViewMenu(self):
@@ -76,9 +76,10 @@ class Main(QMainWindow):
     def initUic(self):
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
-        uic.loadUi(p+"designerElements/MainWindow.ui", self) 
+        uic.loadUi(p+"/classificationWorkflow.ui", self) 
         #connect the window and graph creation to the opening of the file
-        self.actionOpen.triggered.connect(self.openFile)
+        self.actionOpenFile.triggered.connect(self.openFile)
+        self.actionOpenStack.triggered.connect(self.openImageStack)
         self.actionQuit.triggered.connect(qApp.quit)
         
         def toggleDebugPatches(show):
@@ -326,17 +327,16 @@ class Main(QMainWindow):
                 self.layerstack.removeRows(il, 1)
                 break
     
+    def openImageStack(self):
+        self.stackLoader = StackLoader()
+        self.stackLoader.show()
+        self.stackLoader.loadButton.clicked.connect(self._stackLoad)
+
     def openFile(self):
-        if '-stack' in sys.argv:
-            self.stackLoader = StackLoader()
-            self.stackLoader.show()
-            self.connect(self.stackLoader.loadButton,  SIGNAL('clicked()'), self._stackLoad)
-            
-        else: 
-            fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy and h5 files (*.npy *.h5)")
-            if fileNames.count() == 0:
-                return
-            self._openFile(fileNames)
+        fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy and h5 files (*.npy *.h5)")
+        if fileNames.count() == 0:
+            return
+        self._openFile(fileNames)
     
     def _stackLoad(self):
         self.inputProvider = OpArrayPiper(self.g)

@@ -23,7 +23,7 @@
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="VolumeEditorWidget" name="volumeEditorWidget" native="true">
+      <widget class="VolumeEditorWidget" name="volumeEditorWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>99</horstretch>
@@ -164,7 +164,7 @@
                 </property>
                 <property name="icon">
                  <iconset>
-                  <normaloff>../icons/go-up.png</normaloff>../icons/go-up.png</iconset>
+                  <normaloff>icons/go-up.png</normaloff>icons/go-up.png</iconset>
                 </property>
                </widget>
               </item>
@@ -178,7 +178,7 @@
                 </property>
                 <property name="icon">
                  <iconset>
-                  <normaloff>../icons/go-down.png</normaloff>../icons/go-down.png</iconset>
+                  <normaloff>icons/go-down.png</normaloff>icons/go-down.png</iconset>
                 </property>
                </widget>
               </item>
@@ -192,7 +192,7 @@
                 </property>
                 <property name="icon">
                  <iconset>
-                  <normaloff>../icons/list-remove.png</normaloff>../icons/list-remove.png</iconset>
+                  <normaloff>icons/list-remove.png</normaloff>icons/list-remove.png</iconset>
                 </property>
                </widget>
               </item>
@@ -219,7 +219,7 @@
                 </property>
                 <property name="icon">
                  <iconset>
-                  <normaloff>../icons/list-add.png</normaloff>../icons/list-add.png</iconset>
+                  <normaloff>icons/list-add.png</normaloff>icons/list-add.png</iconset>
                 </property>
                </widget>
               </item>
@@ -248,7 +248,8 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="actionOpen"/>
+    <addaction name="actionOpenFile"/>
+    <addaction name="actionOpenStack"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuView">
@@ -281,18 +282,18 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionOpen"/>
+   <addaction name="actionOpenFile"/>
    <addaction name="actionQuit"/>
    <addaction name="actionFitToScreen"/>
    <addaction name="actionShowDebugPatches"/>
   </widget>
-  <action name="actionOpen">
+  <action name="actionOpenFile">
    <property name="icon">
     <iconset>
-     <normaloff>../icons/document-open.png</normaloff>../icons/document-open.png</iconset>
+     <normaloff>icons/document-open.png</normaloff>icons/document-open.png</iconset>
    </property>
    <property name="text">
-    <string>&amp;Open</string>
+    <string>&amp;Open File</string>
    </property>
    <property name="iconVisibleInMenu">
     <bool>true</bool>
@@ -301,7 +302,7 @@
   <action name="actionFitToScreen">
    <property name="icon">
     <iconset>
-     <normaloff>../icons/view-fullscreen.png</normaloff>../icons/view-fullscreen.png</iconset>
+     <normaloff>icons/view-fullscreen.png</normaloff>icons/view-fullscreen.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Zoom to &amp;fit</string>
@@ -316,7 +317,7 @@
   <action name="actionQuit">
    <property name="icon">
     <iconset>
-     <normaloff>../icons/process-stop.png</normaloff>../icons/process-stop.png</iconset>
+     <normaloff>icons/process-stop.png</normaloff>icons/process-stop.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Quit</string>
@@ -450,13 +451,17 @@
     <string>R</string>
    </property>
   </action>
+  <action name="actionOpenStack">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/document-open.png</normaloff>icons/document-open.png</iconset>
+   </property>
+   <property name="text">
+    <string>Open &amp;Stack</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>LabelListView</class>
-   <extends>QTableView</extends>
-   <header>labelListView</header>
-  </customwidget>
   <customwidget>
    <class>LayerWidget</class>
    <extends>QListView</extends>
@@ -466,6 +471,11 @@
    <class>VolumeEditorWidget</class>
    <extends>QWidget</extends>
    <header>volumina.volumeEditorWidget</header>
+  </customwidget>
+  <customwidget>
+   <class>LabelListView</class>
+   <extends>QTableView</extends>
+   <header>labelListView</header>
   </customwidget>
  </customwidgets>
  <resources/>
