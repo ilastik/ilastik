@@ -318,8 +318,9 @@ class TestOperatorChain():
 # i f   _ _ n a m e _ _   = =   " _ _ m a i n _ _ "                            *
 #*******************************************************************************
 if __name__ == "__main__":
-    
-    
+   
+    if not '-gui' in sys.argv and not '-test' in sys.argv:
+        raise RuntimeError("usage: pass either option -gui or option -test")
     
     # configuration=(intert?[True/False],converttoGrayscale?[True/False])
     if '-test' in sys.argv:
@@ -332,7 +333,6 @@ if __name__ == "__main__":
         testclass = TestOperatorChain(configuration=(True,False))
         testclass.stackAndTestConfig()
         
-
     if '-gui' in sys.argv:
         app = QtGui.QApplication([""])
         dialog = StackLoader()
