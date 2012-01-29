@@ -28,7 +28,7 @@ from volumina import colortables
 from labelListView import Label
 from labelListModel import LabelListModel
 
-from tableWidget import FeatureEntry
+from featureTableWidget import FeatureEntry
 from featureDlg import FeatureDlg
 
 import vigra
