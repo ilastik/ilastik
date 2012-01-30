@@ -1,7 +1,16 @@
+#make the program quit on Ctrl+C
+import signal
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+import sys
+
+from PyQt4 import uic
+from PyQt4.QtGui import QApplication
+
 class IlastikShell( object ):
     def __init__( self ):
-        self.main_widget = None
-        self.status_bar = None
+        self.window = uic.loadUi("ui/ilastikShell.ui")
+        self.appletWindowHook = self.window.tabWidget.workflowTab
 
 
 ### Applet = Pipeline + PipelineGui ###
@@ -22,6 +31,7 @@ class Pipeline( object ):
         self.opB = None
 
 ####
+qapp = QApplication(sys.argv)
 
 
 p1 = Pipeline()
@@ -37,7 +47,8 @@ p1Gui = PipelineGui( p1, resource )
 p2Gui = PipelineGui( p2, resource )
 
 shell = IlastikShell()
-shell.applet_stack.append(p1Gui)
-shell.applet_stack.append(p2Gui)
+shell.window.show()
+#shell.applet_stack.append(p1Gui)
+#shell.applet_stack.append(p2Gui)
 
-
+qapp.exec_()
