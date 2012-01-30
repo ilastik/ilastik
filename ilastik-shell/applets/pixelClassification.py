@@ -340,12 +340,6 @@ class PixelClassificationGui(QMainWindow):
         op5ifyer = Op5ifyer(self.g)
         op5ifyer.inputs["Input"].connect(self.stackLoader.ChainBuilder.outputs["output"])
         self.raw = op5ifyer.outputs["Output"][:].allocate().wait()
-        print '___________________op5ifyer___before______________________________________'
-        print 'shape   :',self.raw.shape
-        #HACKY
-        self.raw.shape = (1,) + self.raw.shape
-        print '___________________op5ifyer___after______________________________________'
-        print 'shape   :',self.raw.shape
         self.raw = self.raw.view(vigra.VigraArray)
         self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
         self.raw.axistags =  vigra.AxisTags(
