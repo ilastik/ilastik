@@ -67,7 +67,7 @@ class ArrayLike( SlotType ):
         return destination
 
     def isCompatible(self, value):
-        print "FIXME here"
+        warn_deprecated("FIXME here")
         return True
 
 

@@ -35,7 +35,6 @@ class DefaultConfigParser(ConfigParser.SafeConfigParser):
         """
         try:
             ans = ConfigParser.SafeConfigParser.get(self, section, option)
-            print ans
             return ans
         except (ConfigParser.NoSectionError, ConfigParser.NoOptionError), e:
             if default is not None:

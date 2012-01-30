@@ -215,6 +215,7 @@ class GetItemRequestObject(object):
             self.destination = self.slot._allocateDestination( self.roi )
         gr.currentRequest = self
         try:
+          assert(len(self.roi.toSlice()) == self.destination.ndim), "%r ndim=%r, shape=%r" % (self.roi.toSlice(), self.destination.ndim, self.destination.shape)
           ret = self.func(self.arg1,self.roi, self.destination)
           if ret == None:
               warn_deprecated("Old style operator with no return value in Op.execute() encountered: " + self.func.__self__.__class__.__name__)
@@ -249,6 +250,8 @@ class GetItemRequestObject(object):
 
     def writeInto(self, destination, priority = 0):
         self.destination = destination
+        if self.destination is not None:
+            assert(len(self.roi.toSlice()) == self.destination.ndim), "%r ndim=%r, shape=%r" % (self.roi.toSlice(), self.destination.ndim, self.destination.shape)
         self._priority = priority
         return self
 
@@ -609,6 +612,7 @@ class Slot(object):
         return self.stype.allocateDestination(key)
         
     def _writeIntoDestination( self, destination, value,roi ):
+        assert(len(roi.toSlice()) == destination.ndim), "%r ndim=%r, shape=%r" % (roi.toSlice(), destination.ndim, destination.shape)
         return self.stype.writeIntoDestination(destination,value, roi)
                            
     def __getitem__(self, key):
@@ -1702,7 +1706,7 @@ class Operator(object):
         if hasattr(roi,"toSlice"):
           self.notifyDirty(inputSlot,roi.toSlice())
         else:
-          print roi
+          print "propagateDirty: roi=", roi
           raise TypeError(".propagatedirty of Operator %r is not implemented !" % (self)) 
 
     def notifyDirty(self, inputSlot, key):
@@ -2807,16 +2811,16 @@ class Graph(object):
           sys.stdout.write("\n")
           sys.stdout.flush()
 
-          print "   Waiting for workers..."          
+          print "  Waiting for workers..."          
           for w in self.workers:
             w.signalWorkAvailable()
           while len(self.workers) > len(self.freeWorkers):
               time.sleep(0.1)
-              print len(self.workers),len(self.freeWorkers)
+              print "    #workers = %d, #free workers = %d" % (len(self.workers),len(self.freeWorkers))
           time.sleep(0.1)
           while len(self.workers) > len(self.freeWorkers):
               time.sleep(0.1)
-          print "   ok"
+          print "  ok"
           print "finished."
           self._runningGraphs.remove(self)
             
