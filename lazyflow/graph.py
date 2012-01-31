@@ -1104,7 +1104,8 @@ class MultiInputSlot(Slot):
                 if s.connected() is False:
                     answer = False
                     break
-        
+        if self.level > 0 and len(self._subSlots) == 0:
+          answer = False
         return answer
 
     def _requiredLength(self):
