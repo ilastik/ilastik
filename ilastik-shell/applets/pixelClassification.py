@@ -34,8 +34,10 @@ class PixelClassificationGui(QMainWindow):
     haveData        = pyqtSignal()
     dataReadyToView = pyqtSignal()
         
-    def __init__(self, argv):
+    def __init__(self, pipeline = None):
         QMainWindow.__init__(self)
+
+        self.pipeline = pipeline
         
         #Normalize the data if true
         self._normalize_data=True
@@ -48,7 +50,6 @@ class PixelClassificationGui(QMainWindow):
         self._colorTable16 = self._createDefault16ColorColorTable()
         
         self.g = Graph()
-        self.workflow = None
         self.fixableOperators = []
         
         self.featureDlg=None
@@ -187,7 +188,7 @@ class PixelClassificationGui(QMainWindow):
         
         #Check if the number of labels in the layer stack is equals to the number of Painted labels
         if checked==True:
-            labels =numpy.unique(numpy.asarray(self.workflow.labels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
+            labels =numpy.unique(numpy.asarray(self.pipeline.labels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
             nPaintedLabels=labels.shape[0]
             nLabelsLayers = self.labelListModel.rowCount()
             selectedFeatures = numpy.asarray(self.featureDlg.featureTableWidget.createSelectedFeaturesBoolMatrix())
@@ -245,10 +246,10 @@ class PixelClassificationGui(QMainWindow):
         
         self.labelListModel.insertRow(self.labelListModel.rowCount(), Label("Label %d" % (self.labelListModel.rowCount() + 1), color))
         nlabels = self.labelListModel.rowCount()
-        if self.workflow is not None:
+        if self.pipeline is not None:
             print "Label added, changing predictions"
             #re-train the forest now that we have more labels
-            self.workflow.predict.inputs['LabelsCount'].setValue(nlabels)
+            self.pipeline.predict.inputs['LabelsCount'].setValue(nlabels)
             self.addPredictionLayer(nlabels-1, self.labelListModel._labels[nlabels-1])
         
         #make the new label selected
@@ -268,17 +269,17 @@ class PixelClassificationGui(QMainWindow):
         ncurrent = self.labelListModel.rowCount()
         print "removing", nout, "out of ", ncurrent
         
-        if self.workflow is not None:
-            self.workflow.predict.inputs['LabelsCount'].setValue(ncurrent-nout)
+        if self.pipeline is not None:
+            self.pipeline.predict.inputs['LabelsCount'].setValue(ncurrent-nout)
         for il in range(start, end+1):
             labelvalue = self.labelListModel._labels[il]
             self.removePredictionLayer(labelvalue)
-            self.workflow.labels.inputs["deleteLabel"].setValue(il+1)
+            self.pipeline.labels.inputs["deleteLabel"].setValue(il+1)
             self.editor.scheduleSlicesRedraw()
             
     def startClassification(self):
         nclasses = self.labelListModel.rowCount()
-        self.workflow.predict.inputs['LabelsCount'].setValue(nclasses)
+        self.pipeline.predict.inputs['LabelsCount'].setValue(nclasses)
 
         #add prediction results for all classes as separate channels
         for icl in range(nclasses):
@@ -288,10 +289,10 @@ class PixelClassificationGui(QMainWindow):
     def addPredictionLayer(self, icl, ref_label):
         
         selector=OpSingleChannelSelector(self.g)
-        selector.inputs["Input"].connect(self.workflow.prediction_cache.outputs['Output'])
+        selector.inputs["Input"].connect(self.pipeline.prediction_cache.outputs['Output'])
         selector.inputs["Index"].setValue(icl)
                 
-        self.workflow.prediction_cache.inputs["fixAtCurrent"].setValue(not self.checkInteractive.isChecked())
+        self.pipeline.prediction_cache.inputs["fixAtCurrent"].setValue(not self.checkInteractive.isChecked())
         
         predictsrc = LazyflowSource(selector.outputs["Output"][0])
         def srcName(newName):
@@ -315,7 +316,7 @@ class PixelClassificationGui(QMainWindow):
         predictLayer.ref_object = ref_label
         #make sure that labels (index = 0) stay on top!
         self.layerstack.insert(1, predictLayer )
-        self.fixableOperators.append(self.workflow.prediction_cache)
+        self.fixableOperators.append(self.pipeline.prediction_cache)
                
     def removePredictionLayer(self, ref_label):
         for il, layer in enumerate(self.layerstack):
@@ -448,15 +449,13 @@ class PixelClassificationGui(QMainWindow):
         layer1.ref_object = None
         self.layerstack.append(layer1)
  
-        self.workflow = PixelClassificationLazyflow( self.g, self.featScalesList, self.inputProvider.outputs["Output"])
-
         self.initLabels()
         self.startClassification()
         self.dataReadyToView.emit()
         
     def initLabels(self):
         #Add the layer to draw the labels, but don't add any labels
-        self.labelsrc = LazyflowSinkSource(self.workflow.labels, self.workflow.labels.outputs["Output"], self.workflow.labels.inputs["Input"])
+        self.labelsrc = LazyflowSinkSource(self.pipeline.labels, self.pipeline.labels.outputs["Output"], self.pipeline.labels.inputs["Input"])
         self.labelsrc.setObjectName("labels")
         
         transparent = QColor(0,0,0,0)
@@ -483,7 +482,7 @@ class PixelClassificationGui(QMainWindow):
         self.DeleteButton.clicked.connect(model.deleteSelected)
         model.canDeleteSelected.connect(self.DeleteButton.setEnabled)     
         
-        self.workflow.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)      
+        self.pipeline.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)      
         
         #finally, setup the editor to have the correct shape
         #doing this last ensures that all connections are setup already
@@ -516,7 +515,7 @@ class PixelClassificationGui(QMainWindow):
     def _onFeaturesChosen(self):
         selectedFeatures = self.featureDlg.featureTableWidget.createSelectedFeaturesBoolMatrix()
         print "new feature set:", selectedFeatures
-        self.workflow.features.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
+        self.pipeline.features.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
     
     def _initFeatureDlg(self):
         dlg = self.featureDlg = FeatureDlg()
@@ -536,7 +535,12 @@ class PixelClassificationGui(QMainWindow):
 
 
 class PixelClassificationPipeline( object ):
-    def __init__( self, graph, feature_scales, array_like_input ):
+    def __init__( self, graph, array_like_input ):
+        #The old ilastik provided the following scale names:
+        #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
+        #The corresponding scales are:
+        feature_scales = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
+
         ##
         # IO
         ##
@@ -595,8 +599,10 @@ class PixelClassificationPipeline( object ):
         
         
 if __name__ == "__main__":
-    app = QApplication(sys.argv)        
-    t = PixelClassificationGui(sys.argv)
-    t.show()
+    app = QApplication(sys.argv)
+    g = Graph()
+    #pipeline = PixelClassificationPipeline( g, self.inputProvider.outputs["Output"])
+    pig = PixelClassificationGui(sys.argv)
+    pig.show()
 
     app.exec_()
