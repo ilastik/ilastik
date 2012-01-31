@@ -838,9 +838,10 @@ class InputSlot(Slot):
         """
         assert self.operator is not None, \
                "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
-        roi = self.rtype(self,*args,**kwargs)
-        print "Input %r of %r is dirty" % (self.name, self.operator)
-        self.operator.propagateDirty(self, roi)
+        if self.connected():
+          roi = self.rtype(self,*args,**kwargs)
+          print "Input %r of %r is dirty" % (self.name, self.operator)
+          self.operator.propagateDirty(self, roi)
     
     def connectOk(self, partner):
         # reimplement this method
