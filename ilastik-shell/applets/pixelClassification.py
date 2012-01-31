@@ -34,7 +34,7 @@ class PixelClassificationGui(QMainWindow):
     haveData        = pyqtSignal()
     dataReadyToView = pyqtSignal()
         
-    def __init__(self, pipeline = None):
+    def __init__(self, pipeline = None, graph = Graph() ):
         QMainWindow.__init__(self)
 
         self.pipeline = pipeline
@@ -49,7 +49,7 @@ class PixelClassificationGui(QMainWindow):
 
         self._colorTable16 = self._createDefault16ColorColorTable()
         
-        self.g = Graph()
+        self.g = graph
         self.fixableOperators = []
         
         self.featureDlg=None
@@ -65,7 +65,7 @@ class PixelClassificationGui(QMainWindow):
         #if the filename was specified on command line, load it
         def loadFile():
             self._openFile(sys.argv[1:])
-        if len(sys.argv) > 2:
+        if len(sys.argv) > 1:
             QTimer.singleShot(0, loadFile)
         
     def setIconToViewMenu(self):
@@ -449,6 +449,14 @@ class PixelClassificationGui(QMainWindow):
         layer1.ref_object = None
         self.layerstack.append(layer1)
  
+        ##
+        # connect pipeline to input
+        ##
+        shape = self.inputProvider.Output.meta.shape
+        self.pipeline.labels.shape.setValue(shape[:-1] + (1,))
+        self.pipeline.images.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
+
+
         self.initLabels()
         self.startClassification()
         self.dataReadyToView.emit()
@@ -535,7 +543,7 @@ class PixelClassificationGui(QMainWindow):
 
 
 class PixelClassificationPipeline( object ):
-    def __init__( self, graph, array_like_input ):
+    def __init__( self, graph ):
         #The old ilastik provided the following scale names:
         #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
         #The corresponding scales are:
@@ -549,8 +557,6 @@ class PixelClassificationPipeline( object ):
         self.features_cache = OpBlockedArrayCache( graph )
         self.labels = OpBlockedSparseLabelArray( graph )                                
 
-        self.images.inputs["Input0"].connect(array_like_input)
-
         self.features.inputs["Input"].connect(self.images.outputs["Outputs"])
         self.features.inputs["Scales"].setValue( feature_scales )        
 
@@ -559,10 +565,16 @@ class PixelClassificationPipeline( object ):
         self.features_cache.inputs["outerBlockShape"].setValue((1,128,128,128,64))
         self.features_cache.inputs["fixAtCurrent"].setValue(False)  
     
-        shape = array_like_input.meta.shape
-        self.labels.inputs["shape"].setValue(shape[:-1] + (1,))
         self.labels.inputs["blockShape"].setValue((1, 32, 32, 32, 1))
         self.labels.inputs["eraser"].setValue(100)    
+
+        ##
+        ## Entry point to the pipeline: 
+        ## self.images.inputs["Input0"].connect(array_like_input)
+        ## shape = array_like_input.meta.shape
+        ## self.labels.inputs["shape"].setValue(shape[:-1] + (1,))
+        ##
+
 
         
         ##
@@ -601,8 +613,8 @@ class PixelClassificationPipeline( object ):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     g = Graph()
-    #pipeline = PixelClassificationPipeline( g, self.inputProvider.outputs["Output"])
-    pig = PixelClassificationGui(sys.argv)
+    pipeline = PixelClassificationPipeline( g )
+    pig = PixelClassificationGui( pipeline, graph = g)
     pig.show()
 
     app.exec_()
