@@ -594,3 +594,9 @@ class PixelClassificationPipeline( object ):
         self.prediction_cache = pCache
         
         
+if __name__ == "__main__":
+    app = QApplication(sys.argv)        
+    t = PixelClassificationGui(sys.argv)
+    t.show()
+
+    app.exec_()
