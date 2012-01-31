@@ -1,6 +1,14 @@
+import io
 import os
 import os.path
 import ConfigParser
+
+default_config = \
+"""[verbosity]
+deprecation_warnings = true
+"""
+
+
 
 class DefaultConfigParser(ConfigParser.SafeConfigParser):
     """
@@ -13,6 +21,7 @@ class DefaultConfigParser(ConfigParser.SafeConfigParser):
         ConfigParser.SafeConfigParser.__init__(self)
         if not os.path.exists(CONFIG_DIR+"config"):
             self.configfile = open(CONFIG_DIR+"config", "w+")
+            self.configfile.write(default_config)
         else:
             self.configfile = open(CONFIG_DIR+"config", "r+")
         self.readfp(self.configfile)
@@ -26,7 +35,6 @@ class DefaultConfigParser(ConfigParser.SafeConfigParser):
         """
         try:
             ans = ConfigParser.SafeConfigParser.get(self, section, option)
-            print ans
             return ans
         except (ConfigParser.NoSectionError, ConfigParser.NoOptionError), e:
             if default is not None:

@@ -137,7 +137,7 @@ def sliceToRoi(s, shape=None, extendSingleton = True):
             ROI instance corresponding to slice
     """
     if type(s) == tuple or type(s) == list:
-      assert len(s) == len(shape)
+      assert len(s) == len(shape), "sliceToRoi failed: slice=%r, but shape=%r" % (s, shape)
       start = map(sTrl1, s)
       stop = map(sTrl2, shape,s)
     else: #this handles the [:] case
