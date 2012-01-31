@@ -29,9 +29,6 @@
 
 import glob
 import os
-import ilastik.gui
-from ilastik.gui import loadOptionsWidget
-from ilastik.core import loadOptionsMgr
 from lazyflow.graph import OperatorGroup, InputSlot, OutputSlot
 from lazyflow.operators.obsolete.vigraOperators import *
 
