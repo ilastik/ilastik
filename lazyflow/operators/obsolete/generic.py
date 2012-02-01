@@ -192,13 +192,6 @@ class OpMultiArrayStacker(Operator):
     description = "Stack inputs on any axis, including the ones which are not there yet"
     category = "Misc"
 
-    def notifySubConnect(self, slots, indexes):
-        
-        if self.inputs["AxisFlag"].partner is None or self.inputs["AxisIndex"].partner is None:
-            return
-        else :
-            self.setRightShape()
-        
     def notifyConnectAll(self):
         #This function is needed so that we don't depend on the order of connections.
         #If axis flag or axis index is connected after the input images, the shape is calculated

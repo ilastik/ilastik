@@ -82,9 +82,6 @@ class OpMultiArrayPiper(Operator):
                 oslot._shape = islot.shape
                 oslot._axistags = islot.axistags
     
-    def notifySubConnect(self, slots, indexes):
-        self.notifyConnectAll()
-
     def notifySubSlotInsert(self,slots,indexes):
         self.outputs["MultiOutput"]._insertNew(indexes[0])
 
@@ -131,9 +128,6 @@ class OpMultiMultiArrayPiper(Operator):
                     oslot._shape = islot.shape
                     oslot._axistags = islot.axistags
             
-    def notifySubConnect(self, slots, indexes):
-        self.notifyConnectAll()
-        
     def getOutSlot(self, slot, key, result):
         raise RuntimeError("OpMultiMultiPipler does not support getOutSlot")
 

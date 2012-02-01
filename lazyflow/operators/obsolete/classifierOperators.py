@@ -26,14 +26,6 @@ class OpTrainRandomForest(Operator):
             self.outputs["Classifier"].setDirty((slice(0,1,None),))            
              
     
-    def notifySubConnect(self, slots, indexes):
-        if self.inputs["fixClassifier"].connected():
-            if self.inputs["fixClassifier"].value == False:
-                self.outputs["Classifier"]._dtype = object
-                self.outputs["Classifier"]._shape = (1,)
-                self.outputs["Classifier"]._axistags  = "classifier"
-                self.outputs["Classifier"].setDirty((slice(0,1,None),))            
-             
     def getOutSlot(self, slot, key, result):
         
         featMatrix=[]
@@ -102,14 +94,6 @@ class OpTrainRandomForestBlocked(Operator):
             self.outputs["Classifier"].setDirty((slice(0,1,None),))            
              
     
-    def notifySubConnect(self, slots, indexes):
-        if self.inputs["fixClassifier"].connected():
-            if self.inputs["fixClassifier"].value == False:
-                self.outputs["Classifier"]._dtype = object
-                self.outputs["Classifier"]._shape = (1,)
-                self.outputs["Classifier"]._axistags  = "classifier"
-                self.outputs["Classifier"].setDirty((slice(0,1,None),))            
-             
     def getOutSlot(self, slot, key, result):
         
         featMatrix=[]
@@ -213,12 +197,6 @@ class OpPredictRandomForest(Operator):
         
         oslot._axistags = islot.axistags
         oslot._shape = islot.shape[:-1]+(nlabels,)
-    """    
-    def notifySubConnect(self, slots, indexes):
-        print "OpClassifier notifySubConnect"
-        self.notifyConnectAll()                 
-    """
-        
         
 
     def getOutSlot(self,slot, key, result):
