@@ -619,7 +619,11 @@ class Slot(object):
         if self.level > 0:
           return self._subSlots[key]
         else:
-          assert self.meta.shape is not None, "OutputSlot.__getitem__: self.shape=None (operator [self=%r] '%s'" % (self.operator, self.name)
+          try:
+            print self.operator.operator
+          except:
+            pass
+          assert self.meta.shape is not None, "OutputSlot.__getitem__: self.shape is None !!! (operator %r [self=%r] slot: %s, key=%r" % (self.operator.name, self.operator, self.name, key)
           return self(pslice=key)
 
 
@@ -794,6 +798,9 @@ class InputSlot(Slot):
             if notify:
               self.operator._notifyConnect(self)
             self._checkNotifyConnectAll()
+            if hasattr(self.operator, "outputs"):
+              for o in self.operator.outputs.values():
+                o._changed()
             
     def _checkNotifyConnectAll(self, notify = True):
         """
@@ -1127,9 +1134,16 @@ class MultiInputSlot(Slot):
     def _changed(self):
       if self.partner is not None:
         self.meta = self.partner.meta.copy()
+        self.resize(len(self.partner))
+        for i,s in enumerate(self._subSlots):
+          s.connect(self.partner[i])
+          
       if self.operator:
         self.operator._notifyConnect(self)
       self._checkNotifyConnectAll()
+      if hasattr(self.operator, "outputs"):
+        for o in self.operator.outputs.values():
+          o._changed()
         
     def connect(self,partner, notify = True):
         if partner is None:
@@ -1164,6 +1178,9 @@ class MultiInputSlot(Slot):
                 
                 if notify:
                   self.operator._notifyConnect(self)
+                  if hasattr(self.operator, "outputs"):
+                    for o in self.operator.outputs.values():
+                      o._changed()
                 self._checkNotifyConnectAll(notify = notify)
                 
             elif partner.level < self.level:
@@ -1335,36 +1352,32 @@ class MultiOutputSlot(Slot):
         subSlot.operator = self
         self._subSlots.append(subSlot)
         index = len(self._subSlots) - 1
-        for p in self.partners:
-            p.resize(len(self), event = event)
-            subSlot._connect(p.inputSlots[index])
+        self.meta._dirty = True
     
     def _insertNew(self,index, event = None):
         oslot = OutputSlot(self.name,self,stype=type(self.stype))
         self.insert(index,oslot, event = event)
+        self.meta._dirty = True
 
 
     def insert(self, index, outputSlot, event = None):
         outputSlot.operator = self
         self._subSlots.insert(index,outputSlot)
-        for p in self.partners:
-            pslot = p._insertNew(index, event = event)
-            outputSlot._connect(pslot)
+        self.meta._dirty = True
         
     def remove(self, outputSlot, event = None):
         index = self._subSlots.index(outputSlot)
         self.pop(index, event = event)
+        self.meta._dirty = True
     
     def pop(self, index = -1, event = None):
         oslot = self._subSlots[index]
-        for p in oslot.partners:
-            if isinstance(p.operator, MultiInputSlot):
-                p.operator._removeInputSlot(p, event = event)
-        
         oslot.disconnect()
         oslot = self._subSlots.pop(index)
+
     def _changed(self):
       if self.meta._dirty:
+        self.meta._dirty = False
         for p in self.partners:
           p._changed()
 
@@ -1393,6 +1406,8 @@ class MultiOutputSlot(Slot):
             self.remove(s)
             
     def resize(self, size, event = None):
+        if len(self) != size:
+          self.meta._dirty = True
         while len(self) < size:
             if self.level == 1:
                 slot = OutputSlot(self.name,self, stype = type(self.stype))
@@ -2194,9 +2209,9 @@ class OperatorWrapper(Operator):
             elif islot._value is not None:
                 self.innerOperators[i].inputs[inputSlot.name].setValue(islot._value)
                         
-      self.setupOutputs()
 
       self._connectInnerOutputs()
+      self.setupOutputs()
         
       for k,mslot in self.outputs.items():
         assert len(mslot) == len(self.innerOperators) == maxLen, "%d, %d" % (len(mslot), len(self.innerOperators))        
@@ -2473,7 +2488,7 @@ class OperatorGroup(Operator):
     def setupInputSlots(self):
         # this method must setupt the 
         # set self._visibleInputs
-        pass
+        pass                                           
         
     
     def setupOutputSlots(self):
