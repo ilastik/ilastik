@@ -308,8 +308,8 @@ class OpArrayBlockCache(OpArrayPiper):
         self._blockShape = blockShape
         self._immediateAlloc = immediateAlloc
 
-    def notifyConnect(self, inputSlot):
-        OpArrayPiper.notifyConnect(self, inputSlot)
+    def notifyConnectAll(self):
+        OpArrayPiper.notifyConnectAll(self)
         self._cache = numpy.ndarray(self.shape, dtype = object)
         
         if type(self._blockShape) != tuple:
@@ -365,8 +365,8 @@ class OpArraySliceCache(OpArrayPiper):
             blockShape = 64
         self._blockShape = blockShape
 
-    def notifyConnect(self, inputSlot):
-        OpArrayPiper.notifyConnect(self, inputSlot)
+    def notifyConnectAll(self):
+        OpArrayPiper.notifyConnectAll(self)
         
         if type(self._blockShape) != tuple:
             self._blockShape = (self._blockShape,)*len(self.shape)

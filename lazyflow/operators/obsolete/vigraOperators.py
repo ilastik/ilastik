@@ -37,9 +37,6 @@ class OpXToMulti(Operator):
                 self.outputs["Outputs"][i]._shape = slot.shape
                 i += 1       
 
-    def notifyDisonnect(self, slot):
-        self.notifyConnect(None)                        
-        
     def getSubOutSlot(self, slots, indexes, key, result):
         i = 0
         for sname in sorted(self.inputs.keys()):
