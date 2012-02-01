@@ -46,15 +46,14 @@ def detect_local_minima(arr):
     return numpy.where(detected_minima)       
 print "Preprocessing"
 
-assert(len(sys.argv)==3,"please specify input.h5 and output.h5 !")
-inputf = sys.argv[1]             
-outputf = sys.argv[2]
+if len(sys.argv) >= 2:
+  inputf = sys.argv[1]             
+else:
+  inputf="/home/cstraehl/Projects/PHD/benchmarks/denk-block-200/d-carving-200.h5"
 
 g = Graph()
 
 reader = operators.OpH5Reader(g)
-writer = operators.OpH5Writer(g)
-
 feature = operators.OpHessianOfGaussianEigenvalues(g)
 cache = operators.OpArrayCache(g)
 
@@ -62,39 +61,28 @@ cache = operators.OpArrayCache(g)
 reader.connect(Filename = inputf, hdf5Path = "volume/data")
 feature.connect(Input = reader.outputs["Image"], scale = 1.6)
 cache.connect(Input = feature.outputs["Output"])
-writer.connect(Image = cache.outputs["Output"], Filename = outputf, hdf5Path = "volume/data", blockShape = 88)
-
-writer.outputs["WriteImage"][0].allocate().wait()
-
-print
-print
-print "Input has shape=%r, output shape=%r" % (reader.outputs["Image"].shape, feature.outputs["Output"].shape)
-print
 
 
 
-result = cache.outputs["Output"][:].allocate().wait()
+volumeFeatures = cache.outputs["Output"][:].allocate().wait()[0,:,:,:,0]
 import scipy.ndimage
-print "A0"
-minima = scipy.ndimage.minimum_filter(result, size=2)
-print "A1"
-local_min = numpy.where(result == minima, 1, 0)
+minima = scipy.ndimage.minimum_filter(volumeFeatures, size=2)
+local_min = numpy.where(volumeFeatures == minima, 1, 0)
 
-print "A2"
 
 local_min_label, label_count = scipy.ndimage.measurements.label(local_min)
 
-print "A3"
 #local_min_ws = scipy.ndimage.watershed_ift(result,local_min_label)
-local_min_ws = adjacencyGraph.seededTurboWS(local_min_label[0,:,:,:,0],result[0,:,:,:,0])
+labelVolume = adjacencyGraph.seededTurboWS(local_min_label,volumeFeatures)
 #print local_min_ws
 
 
-print "A4"
-tresult = result[0,:,:,:,0]
-tlocal_min_ws = local_min_ws
-g = adjacencyGraph.buildAdjacencyGraph(tlocal_min_ws, tresult)
+g = adjacencyGraph.CooGraph()
+g.fromLabelVolume(labelVolume, volumeFeatures)
+
+ag = g.toAdj()
+ag.seededWS(numpy.array([[3,1],[1000,2]]).astype(numpy.int32))
 
 print "Finished"
-adjacencyGraph.buildGraphFromCOO(g[0],g[1],g[2])
+#adjacencyGraph.buildGraphFromCOO(g[0],g[1],g[2])
 print "Finished2"
