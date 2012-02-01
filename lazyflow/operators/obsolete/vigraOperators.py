@@ -13,69 +13,6 @@ import math
 
 from threading import Lock
 
-class OpMultiArrayStackerOld(Operator):
-    inputSlots = [MultiInputSlot("Images")]
-    outputSlots = [OutputSlot("Output")]
-
-    name = "Multi Array Stacker"
-    category = "Misc"
-
-    def notifySubConnect(self, slots, indexes):
-        dtypeDone = False        
-        c = 0
-        for inSlot in self.inputs["Images"]:
-            if inSlot.partner is not None:
-                if dtypeDone is False:
-                    self.outputs["Output"]._dtype = inSlot.dtype
-                    self.outputs["Output"]._axistags = copy.copy(inSlot.axistags)
-                    if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                        self.outputs["Output"]._axistags.insertChannelAxis()
-                    
-                if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                    c += 1
-                else:
-                    c += inSlot.shape[inSlot.axistags.channelIndex]
-        self.outputs["Output"]._shape = inSlot.shape[:-1] + (c,)    
-
-    
-    def getOutSlot(self, slot, key, result):
-        cnt = 0
-        written = 0
-        start, stop = roi.sliceToRoi(key, self.outputs["Output"].shape)
-        key = key[:-1]
-        requests = []
-        for i, inSlot in enumerate(self.inputs['Images']):
-            if inSlot.partner is not None:
-                req = None
-                if inSlot.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                    if cnt >= start[-1] and start[-1] + written < stop[-1]:
-                        req = inSlot[key].writeInto(result[..., cnt])
-                        written += 1
-                    cnt += 1
-                    
-                else:
-                    channels = inSlot.shape[inSlot.axistags.channelIndex]
-                    if cnt + channels >= start[-1] and start[-1] - cnt < channels and start[-1] + written < stop[-1]:
-                        
-                        begin = 0
-                        if cnt < start[-1]:
-                            begin = start[-1] - cnt
-                        end = channels
-                        if cnt + end > stop[-1]:
-                            end -= cnt + end - stop[-1]
-                        key_ = key + (slice(begin,end,None),)
-
-                        assert (end <= numpy.array(inSlot.shape)).all()
-                        assert (begin < numpy.array(inSlot.shape)).all(), "begin : %r, shape: %r" % (begin, inSlot.shape)
-                        req = inSlot[key_].writeInto(result[...,written:written+end-begin])
-                        written += end - begin
-                    cnt += channels
-               
-                if req is not None:
-                   requests.append(req)
-        
-        for r in requests:
-            r.wait()
 
 
 class OpXToMulti(Operator):
