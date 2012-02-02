@@ -4,8 +4,8 @@ from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, 
 import os, sys, numpy, copy
 
 from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL
-from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
-                        QMessageBox, qApp, QItemSelectionModel, QIcon, QTransform
+from PyQt4.QtGui import *
+
 from PyQt4 import uic
 
 from widgets.stackloader import OpStackChainBuilder,StackLoader
@@ -29,6 +29,16 @@ from featureTableWidget import FeatureEntry
 from featureDlg import FeatureDlg
 
 import vigra
+
+class AppletControl( QWidget ):
+    def __init__( self ):
+        QWidget.__init__( self )
+        QPushButton( "Click me", self )
+
+class AppletStatusBar( QStatusBar ):
+    def __init__( self ):
+        QStatusBar.__init__( self )
+        self.showMessage("I like status")
 
 class PixelClassificationGui(QMainWindow):    
     haveData        = pyqtSignal()
