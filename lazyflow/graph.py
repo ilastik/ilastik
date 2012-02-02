@@ -619,10 +619,6 @@ class Slot(object):
         if self.level > 0:
           return self._subSlots[key]
         else:
-          try:
-            print self.operator.operator
-          except:
-            pass
           assert self.meta.shape is not None, "OutputSlot.__getitem__: self.shape is None !!! (operator %r [self=%r] slot: %s, key=%r" % (self.operator.name, self.operator, self.name, key)
           return self(pslice=key)
 
