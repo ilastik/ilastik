@@ -48,9 +48,6 @@ class ListToMultiOperator(Operator):
         for o in self.outputs["Items"]:
             o._dtype = object
             o._shape = (1,)
-            for p in o.partners:
-                p.disconnect()
-                p.connect(o)
     
     def getSubOutSlot(self, slots, indexes, key, result):
         liste = self.inputs["List"].value
