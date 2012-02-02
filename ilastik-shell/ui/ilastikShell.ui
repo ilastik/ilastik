@@ -14,56 +14,91 @@
    <string>IlastikShell</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout">
+   <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
      <widget class="QSplitter" name="splitter">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="QToolBox" name="appletBar">
-       <property name="currentIndex">
-        <number>3</number>
-       </property>
-       <widget class="QWidget" name="page">
-        <property name="geometry">
-         <rect>
-          <x>0</x>
-          <y>0</y>
-          <width>318</width>
-          <height>411</height>
-         </rect>
-        </property>
-        <attribute name="label">
-         <string>Project</string>
-        </attribute>
-       </widget>
-       <widget class="QWidget" name="page_2">
-        <property name="geometry">
-         <rect>
-          <x>0</x>
-          <y>0</y>
-          <width>318</width>
-          <height>411</height>
-         </rect>
-        </property>
-        <attribute name="label">
-         <string>Classification</string>
-        </attribute>
-       </widget>
-       <widget class="QWidget" name="page_3">
-        <attribute name="label">
-         <string>Segmentation</string>
-        </attribute>
-       </widget>
-       <widget class="QWidget" name="page_4">
-        <attribute name="label">
-         <string>Objects</string>
-        </attribute>
-       </widget>
+      <widget class="QWidget" name="verticalLayoutWidget">
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <widget class="QToolBox" name="appletBar">
+          <property name="currentIndex">
+           <number>2</number>
+          </property>
+          <widget class="QWidget" name="page">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>345</width>
+             <height>140</height>
+            </rect>
+           </property>
+           <attribute name="label">
+            <string>Project</string>
+           </attribute>
+          </widget>
+          <widget class="QWidget" name="page_2">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>345</width>
+             <height>140</height>
+            </rect>
+           </property>
+           <attribute name="label">
+            <string>Classification</string>
+           </attribute>
+          </widget>
+          <widget class="QWidget" name="page_3">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>345</width>
+             <height>140</height>
+            </rect>
+           </property>
+           <attribute name="label">
+            <string>Segmentation</string>
+           </attribute>
+          </widget>
+          <widget class="QWidget" name="page_4">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>345</width>
+             <height>140</height>
+            </rect>
+           </property>
+           <attribute name="label">
+            <string>Objects</string>
+           </attribute>
+          </widget>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
       </widget>
       <widget class="QTabWidget" name="tabWidget">
        <property name="currentIndex">
-        <number>0</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="workflowTab">
         <attribute name="title">
