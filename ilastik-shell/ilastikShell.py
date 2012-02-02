@@ -31,9 +31,30 @@ class IlastikShell( QMainWindow ):
     def addApplet( self, applet ):
         self._applets.append(applet)
         self.appletBar.addItem( applet.controlWidget() , applet.name )
+        return len(self._applets) - 1
+
+    def currentIndex( self ):
+        raise NotImplementedError
+
+    def indexOf( self, applet ):
+        raise NotImplementedError
+
+    def insertApplet( self, index, applet ):
+        raise NotImplementedError
 
     def setCurrentIndex( self, index ):
-        
+        raise NotImplementedError
+
+    def __len__( self ):
+        raise NotImplementedError
+
+    def __getitem__( self, index ):
+        raise NotImplementedError
+
+    def __delitem__( self, index ):
+        raise NotImplementedError
+
+    
 
 
 if __name__ == "__main__":
