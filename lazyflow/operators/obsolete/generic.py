@@ -152,7 +152,8 @@ class OpMultiArraySlicer2(Operator):
     
         self.outputs["Slices"].resize(n)
         
-        for o in self.outputs["Slices"]:
+        for i in range(n):
+            o = self.outputs["Slices"][i]
             o._dtype=dtype
             o._axistags=copy.copy(outaxistags)
             o._shape=outshape 
