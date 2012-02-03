@@ -32,15 +32,7 @@ from ilastikshell.applet import Applet
 
 import vigra
 
-class AppletControl( QWidget ):
-    def __init__( self ):
-        QWidget.__init__( self )
-        QPushButton( "Click me", self )
 
-class AppletStatusBar( QStatusBar ):
-    def __init__( self ):
-        QStatusBar.__init__( self )
-        self.showMessage("I like status")
 
 class PixelClassificationGui(QMainWindow):    
     haveData        = pyqtSignal()
@@ -628,10 +620,10 @@ class PixelClassificationApplet( Applet ):
         self.graph = graph if graph else Graph()
         self.pipeline = pipeline if pipeline else PixelClassificationPipeline( self.graph )
 
-        self.centralWidget = PixelClassificationGui( self.pipeline, self.graph )
+        self._centralWidget = PixelClassificationGui( self.pipeline, self.graph )
 
-    def centralWidget( self ):
-        return self._centralWidget
+
+
         
 if __name__ == "__main__":
     #make the program quit on Ctrl+C
