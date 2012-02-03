@@ -28,7 +28,7 @@ from labelListModel import LabelListModel
 from featureTableWidget import FeatureEntry
 from featureDlg import FeatureDlg
 
-from ..applet import Applet
+from ilastikshell.applet import Applet
 
 import vigra
 
@@ -46,7 +46,7 @@ class PixelClassificationGui(QMainWindow):
     haveData        = pyqtSignal()
     dataReadyToView = pyqtSignal()
         
-    def __init__(self, pipeline = None, graph = Graph() ):
+    def __init__(self, pipeline = None, graph = None ):
         QMainWindow.__init__(self)
 
         self.pipeline = pipeline
@@ -61,7 +61,7 @@ class PixelClassificationGui(QMainWindow):
 
         self._colorTable16 = self._createDefault16ColorColorTable()
         
-        self.g = graph
+        self.g = graph if graph else Graph()
         self.fixableOperators = []
         
         self.featureDlg=None
@@ -623,18 +623,19 @@ class PixelClassificationPipeline( object ):
 
 
 class PixelClassificationApplet( Applet ):
-    def __init__( self ):
+    def __init__( self, pipeline = None, graph = None ):
         Applet.__init__( self, "Pixel Classification" )
-        self._centralWidget = PixelClassificationGui()
+        self.graph = graph if graph else Graph()
+        self.pipeline = pipeline if pipeline else PixelClassificationPipeline( self.graph )
+
+        self._centralWidget = PixelClassificationGui( self.pipeline, self.graph )
 
     def centralWidget( self ):
         return self._centralWidget
         
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    g = Graph()
-    pipeline = PixelClassificationPipeline( g )
-    pig = PixelClassificationGui( pipeline, graph = g)
-    pig.show()
+    pca = PixelClassificationApplet()
+    pca.centralWidget().show()
 
     app.exec_()
