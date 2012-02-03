@@ -28,6 +28,8 @@ from labelListModel import LabelListModel
 from featureTableWidget import FeatureEntry
 from featureDlg import FeatureDlg
 
+from ..applet import Applet
+
 import vigra
 
 class AppletControl( QWidget ):
@@ -618,7 +620,15 @@ class PixelClassificationPipeline( object ):
         pCache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
         pCache.inputs["Input"].connect(self.predict.outputs["PMaps"])
         self.prediction_cache = pCache
-        
+
+
+class PixelClassificationApplet( Applet ):
+    def __init__( self ):
+        Applet.__init__( self, "Pixel Classification" )
+        self._centralWidget = PixelClassificationGui()
+
+    def centralWidget( self ):
+        return self._centralWidget
         
 if __name__ == "__main__":
     app = QApplication(sys.argv)
