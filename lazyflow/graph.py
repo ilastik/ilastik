@@ -560,6 +560,7 @@ class Slot(object):
         self._optional = optional
         self.name = name
         self.operator = operator
+        self.partner = None
         self.level = level
         self._value = None
         self._defaultValue = value
@@ -568,6 +569,7 @@ class Slot(object):
         self._subSlots = []
         self._stypeType = stype #class of stype
         self.stype = stype(self) #instance of stype
+        self._clones = []
 
     @property
     def shape(self):
@@ -618,12 +620,6 @@ class Slot(object):
     def __getitem__(self, key):
         if self.level > 0:
             return self._subSlots[key]
-            #from PyQt4 import QtCore
-            #QtCore.pyqtRemoveInputHook()
-            #from IPython import embed
-            #embed()
-            
-            raise Exception("Slot %r (%r) of operator %r (%r) has no subslot with index %r, length of subslots is %r" % (self.name, self, self.operator, self.operator.name, key, len(self._subSlots)))
         else:
           assert self.meta.shape is not None, "OutputSlot.__getitem__: self.shape is None !!! (operator %r [self=%r] slot: %s, key=%r" % (self.operator.name, self.operator, self.name, key)
           return self(pslice=key)
@@ -653,7 +649,6 @@ class Slot(object):
         try:
           if value == self._value:
             changed = False
-            #print "SETTING VALUE TWO TIMES (Multi)", value
         except:
           pass
         if changed:
@@ -674,11 +669,20 @@ class Slot(object):
       return self.get( roi )
 
     def get( self, roi ):
-      return GetItemRequestObject(self,roi,None,0)        
+      if not isinstance(self.partner, (InputSlot, MultiInputSlot)):
+        return GetItemRequestObject(self,roi,None,0)        
+      else:
+        return GetItemRequestObject(self.partner, roi, None, 0)
 
 
-    #TODO RENAME? createInstance
-    # def __copy__ ?, clone ?
+    def _registerClone(self, slot):
+      if not slot in self._clones:
+        self._clones.append(slot)
+
+    def _unregisterClone(self, slot):
+      if slot in self._clones:
+        self._clones.remove(slot)
+
     def getInstance(self, operator, level = None):
         if level is None:
           level = self.level
@@ -694,8 +698,8 @@ class Slot(object):
             s= OutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional)
         return s
 
-import copy
-
+    def notifyDisconnect(self, slot):
+      pass
 
 class InputSlot(Slot):
     """
@@ -714,8 +718,9 @@ class InputSlot(Slot):
     def _changed(self, notify = True):
       if self.partner is not None:
         self.meta = self.partner.meta.copy()
-      #self._checkNotifyConnect(notify = notify)
       self._checkNotifyConnectAll(notify = notify)
+      for c in self._clones:
+        c._changed(notify)
 
     def setValue(self, value, notify = True):
         """
@@ -728,14 +733,13 @@ class InputSlot(Slot):
         try:
           if value == self._value:
             changed = False
-            #print "SETTING VALUE TWO TIMES", value
         except:
           pass
         if changed:
           if self.stype.isCompatible(value):
             self._value = value
             self.stype.setupMetaForValue(value)
-            self._changed(notify = notify)
+            self._changed()
 
     @property
     def value(self):
@@ -770,16 +774,13 @@ class InputSlot(Slot):
             self.disconnect()
             return    
             
-        if not isinstance(partner,(OutputSlot,MultiOutputSlot,Operator)):
+        if not isinstance(partner,(OutputSlot,MultiOutputSlot,Operator, InputSlot, MultiInputSlot)):
             self.setValue(partner)
             return
             
-        assert partner is None or isinstance(partner, (OutputSlot, MultiOutputSlot)), \
-               "InputSlot(name=%s, operator=%s).connect: partner has type %r" \
-               % (self.name, self.operator, type(partner))
-        
         if self.partner == partner and partner.level == self.level:
             return
+        
         self.disconnect()
         if partner.level > 0:
             partner.disconnectSlot(self)
@@ -792,7 +793,10 @@ class InputSlot(Slot):
         else:
             self.partner = partner
             self.meta = partner.meta.copy()
-            partner._connect(self)
+            if not isinstance(partner, InputSlot):
+              partner._connect(self)
+            else:
+              partner._registerClone(self)
             self.stype.connect(partner)
             if self.stype.isConfigured():
                 self._changed()
@@ -821,7 +825,10 @@ class InputSlot(Slot):
         """
         #TODO: also reset ._value ??
         if self.partner is not None:
-            self.partner.disconnectSlot(self)
+            if not isinstance(self.partner, (InputSlot, MultiInputSlot)):
+              self.partner.disconnectSlot(self)
+            else:
+              self.partner._unregisterClone(self)
         self.partner = None
         self.meta = MetaDict()
         
@@ -841,13 +848,9 @@ class InputSlot(Slot):
           roi = self.rtype(self,*args,**kwargs)
           print "Input %r of %r is dirty" % (self.name, self.operator)
           self.operator.propagateDirty(self, roi)
+          for c in self._clones:
+            c.setDirty(*args,**kwargs)
     
-    def connectOk(self, partner):
-        # reimplement this method
-        # if you want a more involved
-        # type checking
-        return True
-            
     def __setitem__(self, key, value):
         assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"     
         roi = self.rtype(self,pslice = key)
@@ -1031,6 +1034,8 @@ class MultiInputSlot(Slot):
           self._connectSubSlot(i, notify = False)
         
         self._checkNotifyConnectAll()
+        for c in self._clones:
+          c.resize(size, notify, event)
 
     def _connectSubSlot(self,slot, notify = True):
       if type(slot) == int:
@@ -1058,10 +1063,8 @@ class MultiInputSlot(Slot):
         self._subSlots.append(islot)
         islot.name = self.name
         index = len(self)-1
-        if notify:
-          self._notifySubSlotInsert((islot,),tuple(), event = event)
         if connect:
-          self._connectSubSlot(index)
+          self._connectSubSlot(index, notify = notify)
         if self._value is not None:
           islot.setValue(self._value)
         return islot
@@ -1074,10 +1077,8 @@ class MultiInputSlot(Slot):
             islot = MultiInputSlot(self.name,self, stype = type(self.stype), level = self.level - 1)
         self._subSlots.insert(index,islot)
         islot.name = self.name
-        if notify:
-          self._notifySubSlotInsert((islot,),tuple())
         if connect:
-          self._connectSubSlot(index)
+          self._connectSubSlot(index, notify = notify)
         if self._value is not None:
           islot.setValue(self._value)
 
@@ -1085,7 +1086,6 @@ class MultiInputSlot(Slot):
     
     
     def _checkNotifyConnectAll(self, notify = True):
-        
         # check wether all slots are connected and eventuall notify operator            
         if self.operator:
             allConnected = True
@@ -1107,8 +1107,6 @@ class MultiInputSlot(Slot):
                 if s.connected() is False:
                     answer = False
                     break
-        #if self.level > 0 and len(self._subSlots) == 0:
-        #  answer = False
         return answer
 
     def _requiredLength(self):
@@ -1131,13 +1129,15 @@ class MultiInputSlot(Slot):
         if self.partner.level == self.level:
           self.resize(len(self.partner))
       self._checkNotifyConnectAll()
+      for c in self._clones:
+        c._changed()
         
     def connect(self,partner, notify = True):
         if partner is None:
             self.disconnect()
             return
         
-        if not isinstance(partner,(OutputSlot,MultiOutputSlot,Operator)):
+        if not isinstance(partner,(OutputSlot,MultiOutputSlot,Operator,InputSlot, MultiInputSlot)):
             self.setValue(partner)
             return
           
@@ -1150,59 +1150,55 @@ class MultiInputSlot(Slot):
                     self.partner.disconnectSlot(self)
                 self.partner = partner
                 self.meta = self.partner.meta.copy()
-                partner._connect(self)
-                self.stype.connect(partner)
-                # do a type check
-                self.connectOk(self.partner)
                 
-                # create new self._subSlots for each outputSlot 
-                # of our partner 
                 if len(self) != len(partner):
                     self.resize(len(partner))
                     
-                for i in range(len(self.partner)):
-                    p = self.partner[i]
-                    self.partner[i]._connect(self[i])
-                
-                self._checkNotifyConnectAll(notify = notify)
-                if notify:
-                  if hasattr(self.operator, "outputs"):
-                    for o in self.operator.outputs.values():
-                      o._changed()
+                if not isinstance(partner, (InputSlot, MultiInputSlot)):
+                  partner._connect(self)
+                  for i in range(len(self.partner)):
+                      p = self.partner[i]
+                      self.partner[i]._connect(self[i])
+                else:
+                  partner._registerClone(self)
+                  for i in range(len(self.partner)):
+                      p = self.partner[i]
+                      self[i].connect(self.partner[i])
+
+                # call slot type connect function
+                self.stype.connect(partner)
+               
+                self._changed()
                 
             elif partner.level < self.level:
-                #if self.partner is not None:
-                #    self.partner.disconnectSlot(self)                
                 self.partner = partner
                 self.meta = self.partner.meta.copy()
                 for i, slot in enumerate(self._subSlots):                
                     slot.connect(partner)
-                    if self.operator is not None:
-                        self.operator._notifySubConnect((self,slot), (i,))
-                self._checkNotifyConnectAll(notify=notify)
+                self._changed()
+
             elif partner.level > self.level:
-                #if self.partner is not None:
-                #    self.partner.disconnectSlot(self)
-                partner.disconnectSlot(self)
-                #print "MultiInputSlot", self.name, "of op", self.operator.name, self.operator
+                if not isinstance(partner, (InputSlot, MultiInputSlot)):
+                  partner.disconnectSlot(self)
                 if lazyflow.verboseWrapping:
                   print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
                 if isinstance(self.operator,(OperatorWrapper, Operator, OperatorGroup)):
                     newop = OperatorWrapper(self.operator)
                     partner._connect(newop.inputs[self.name])
-                    #assert newop.inputs[self.name].level == self.level + 1, "%r, %s, %s, %d, %d" % (self.operator, self.operator.name, self.name, newop.inputs[self.name].level, self.level) 
                 else:
                     raise RuntimeError("Trying to connect a higher order slot to a subslot - NOT ALLOWED")
-            else:
-                pass
 
     def disconnect(self):
         for slot in self._subSlots:
             slot.disconnect()
         if self.partner is not None:
-            self.partner.disconnectSlot(self)
+            if not isinstance(self.partner, (InputSlot, MultiInputSlot)):
+              self.partner.disconnectSlot(self)
+            else:
+              self.partner._unregisterClone(self)
             self._subSlots = []
             self.partner = None
+        self.operator.notifyDisconnect(self)
     
     def removeSlot(self, index, notify = True, event = None):
         slot = index
@@ -1214,16 +1210,12 @@ class MultiInputSlot(Slot):
         try:
             index = self._subSlots.index(inputSlot)
         except:
-            err =  "MultiInputSlot._removeInputSlot:"
-            err += "  name='%s', operator='%s', operator=%r" % (self.name, self.operator.name, self.operator)
-            err += "  inputSlots = %r" % (self._subSlots,)
-            err += "  partner    = %r" % (self.partner,)
-            raise RuntimeError(str)
-            sys.exit(1)
-        inputSlot.disconnect()
+          pass
         self._subSlots.remove(inputSlot)
         if notify:
           self._checkNotifyConnectAll()
+        for c in self._clones:
+          c._changed()
 
         
 
@@ -1235,19 +1227,11 @@ class MultiInputSlot(Slot):
         print "MultiInput %r of %r is dirty" % (self.name, self.operator)
         index = self._subSlots.index(slot)
         self.operator.notifySubSlotDirty((self,slot),(index,),roi)
-        pass
     
     def notifySubSlotDirty(self, slots, indexes, roi):
         index = self._subSlots.index(slots[0])
         self.operator.notifySubSlotDirty((self,)+slots,(index,) + indexes,roi)
-        pass
    
-    def connectOk(self, partner):
-        # reimplement this method
-        # if you want a more involved
-        # type checking
-        return True
-
     @property
     def graph(self):
         return self.operator.graph
@@ -1393,12 +1377,6 @@ class MultiOutputSlot(Slot):
     def setDirty(self, roi):
         return
     
-    def connectOk(self, partner):
-        # reimplement this method
-        # if you want a more involved
-        # type checking
-        return True
-
     @property
     def graph(self):
         return self.operator.graph
@@ -1499,11 +1477,11 @@ class OperatorMetaClass(type):
         setattr(cls,"outputSlots", list(cls.outputSlots))
         
         for k,v in cls.__dict__.items():
-          if isinstance(v,InputSlot):
+          if isinstance(v,(InputSlot, MultiInputSlot)):
             v.name = k
             cls.inputSlots.append(v)
 
-          if isinstance(v,OutputSlot):
+          if isinstance(v,(OutputSlot, MultiOutputSlot)):
             v.name = k
             cls.outputSlots.append(v)
         return cls
@@ -1577,6 +1555,7 @@ class Operator(object):
     def __init__( self, graph, register = True ):
         self.graph = graph
         self.register = register
+        self._instantiate_slots()
         
 
     # continue initialization, when user overrides __init__
@@ -1599,6 +1578,19 @@ class Operator(object):
             sys.exit(1)
           temp[i.name] = True
 
+        self._instantiate_slots()
+
+        if self.register:
+            self.graph.registerOperator(self)
+
+        self._setDefaultInputValues()
+
+        if len(self.inputs.keys()) == 0:
+          self._setupOutputs()
+
+
+
+    def _instantiate_slots(self):
         # replicate input slot connections
         # defined for the operator for the instance
         for i in self.inputSlots:
@@ -1619,17 +1611,8 @@ class Operator(object):
 
         for k,v in self.outputs.items():
           self.__dict__[v.name] = v
-              # output slots are connected
-              # when the corresponding input slots
-              # of the partner operators are created  
 
-        if self.register:
-            self.graph.registerOperator(self)
 
-        self._setDefaultInputValues()
-
-        if len(self.inputs.keys()) == 0:
-          self._setupOutputs()
 
     def connected(self):
       allConnected = True
@@ -1700,6 +1683,8 @@ class Operator(object):
         for os in self.outputs.values():
             os.setDirty(slice(None,None,None))
 
+    def notifyDisconnect(self, slot):
+        pass
 
     def _notifyConnect(self, inputSlot):
         pass#self.notifyConnect(inputSlot)
@@ -1906,7 +1891,6 @@ class OperatorWrapper(Operator):
                     ii.setValue(islot._value)
                     
             self._setupOutputs()
-            #self._connectInnerOutputs()
     
     
             #connect output slots
@@ -1927,35 +1911,45 @@ class OperatorWrapper(Operator):
                     
     def _testRestoreOriginalOperator(self):
         #TODO: only restore to the level that is needed, not to the most upper one !
-        needWrapping = False
         for iname, islot in self.inputs.items():
             if islot.partner is not None:
                 if islot.partner.level > self.origInputs[iname].level:
-                    needWrapping = True
                     return
                 
-        if needWrapping is False:
-            if lazyflow.verboseWrapping:
-                print "Restoring original operator [self=%r] named '%s'" % (self, self.name)
-            print "fuck"
-            sys.exit(0)
-            op = self
-            while isinstance(op.operator, (OperatorWrapper)):
-                op = op.operator
-            op.operator.outputs = op.origOutputs
-            op.operator.inputs = op.origInputs
+        if lazyflow.verboseWrapping:
+            print "Restoring original operator [self=%r] named '%s'" % (self, self.name)
+
+        op = self
+        while isinstance(op.operator, (OperatorWrapper)):
             op = op.operator
-             
-            for k, islot in self.inputs.items():
-                if islot.partner is not None:
-                    op.inputs[k].connect(islot.partner)
+
+        op.operator.outputs = op.origOutputs
+        for o in op.operator.outputs.values():
+          setattr(op.operator, o.name, o)
+        
+        
+        op.operator.inputs = op.origInputs
+        for i in op.operator.inputs.values():
+          setattr(op.operator, i.name, i)
+
+        op = op.operator
+         
+
+        # restore current connections
+        for k, islot in self.inputs.items():
+            if islot.partner is not None:
+                op.inputs[k].connect(islot.partner)
+            elif islot._value is not None:
+                op.inputs[k].setValue(islot._value)
+
+        for k, oslot in self.outputs.items():
+            for p in oslot.partners:
+                op.outputs[k]._connect(p)
+
+        self._originalGraph.replaceOperator(self,op)
     
-            for k, oslot in self.outputs.items():
-                for p in oslot.partners:
-                    op.outputs[k]._connect(p)
-
-            self._originalGraph.replaceOperator(self,op)
-
+    def notifyDisconnect(self, slot):
+       self._testRestoreOriginalOperator() 
                     
     def notifyDirty(self, slot, key):
         pass
