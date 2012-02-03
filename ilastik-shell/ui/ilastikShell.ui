@@ -27,19 +27,6 @@
           <property name="currentIndex">
            <number>0</number>
           </property>
-          <widget class="QWidget" name="page">
-           <property name="geometry">
-            <rect>
-             <x>0</x>
-             <y>0</y>
-             <width>109</width>
-             <height>233</height>
-            </rect>
-           </property>
-           <attribute name="label">
-            <string>Project</string>
-           </attribute>
-          </widget>
          </widget>
         </item>
         <item>
@@ -73,7 +60,6 @@
        <property name="lineWidth">
         <number>2</number>
        </property>
-       <widget class="QWidget" name="page_2"/>
       </widget>
      </widget>
     </item>
