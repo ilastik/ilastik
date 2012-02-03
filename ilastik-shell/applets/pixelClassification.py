@@ -628,14 +628,18 @@ class PixelClassificationApplet( Applet ):
         self.graph = graph if graph else Graph()
         self.pipeline = pipeline if pipeline else PixelClassificationPipeline( self.graph )
 
-        self._centralWidget = PixelClassificationGui( self.pipeline, self.graph )
+        self.centralWidget = PixelClassificationGui( self.pipeline, self.graph )
 
     def centralWidget( self ):
         return self._centralWidget
         
 if __name__ == "__main__":
+    #make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     app = QApplication(sys.argv)
     pca = PixelClassificationApplet()
-    pca.centralWidget().show()
-
+    pca.centralWidget.show()
+    pca.controlWidget.show()
     app.exec_()

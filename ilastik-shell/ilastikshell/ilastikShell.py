@@ -16,15 +16,15 @@ class IlastikShell( QMainWindow ):
 
     def addApplet( self, applet ):
         self._applets.append(applet)
-        self.appletBar.addItem( applet.controlWidget() , applet.name )
-        self.appletStack.addWidget( applet.centralWidget() )
+        self.appletBar.addItem( applet.controlWidget , applet.name )
+        self.appletStack.addWidget( applet.centralWidget )
         return len(self._applets) - 1
 
     def currentIndex( self ):
         return self.appletBar.currentIndex()
 
     def indexOf( self, applet ):
-        return self.appletBar.indexOf(applet.controlWidget())
+        return self.appletBar.indexOf(applet.controlWidget)
 
     def setCurrentIndex( self, index ):
         self.appletBar.setCurrentIndex( index )
