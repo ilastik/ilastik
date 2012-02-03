@@ -1,4 +1,17 @@
-from PyQt4.QtGui import QLabel
+from PyQt4.QtGui import QLabel, QApplication
+
+def run_applet( applet_type, *args, **kwargs):
+    '''Run applet standalone.'''
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    
+    qapp = QApplication([])
+    applet = applet_type(*args, **kwargs)
+    applet.centralWidget.show()
+    applet.controlWidget.show()
+    qapp.exec_()
+
+
 
 class Applet( object ):
     @property
@@ -14,3 +27,6 @@ class Applet( object ):
         
         self._centralWidget = QLabel(name + " Central Widget")
         self._controlWidget = QLabel(name + " Control Widget")
+
+if __name__ == '__main__':
+    run_applet(Applet)
