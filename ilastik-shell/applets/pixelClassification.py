@@ -28,23 +28,17 @@ from labelListModel import LabelListModel
 from featureTableWidget import FeatureEntry
 from featureDlg import FeatureDlg
 
+from ilastikshell.applet import Applet
+
 import vigra
 
-class AppletControl( QWidget ):
-    def __init__( self ):
-        QWidget.__init__( self )
-        QPushButton( "Click me", self )
 
-class AppletStatusBar( QStatusBar ):
-    def __init__( self ):
-        QStatusBar.__init__( self )
-        self.showMessage("I like status")
 
 class PixelClassificationGui(QMainWindow):    
     haveData        = pyqtSignal()
     dataReadyToView = pyqtSignal()
         
-    def __init__(self, pipeline = None, graph = Graph() ):
+    def __init__(self, pipeline = None, graph = None ):
         QMainWindow.__init__(self)
 
         self.pipeline = pipeline
@@ -59,7 +53,7 @@ class PixelClassificationGui(QMainWindow):
 
         self._colorTable16 = self._createDefault16ColorColorTable()
         
-        self.g = graph
+        self.g = graph if graph else Graph()
         self.fixableOperators = []
         
         self.featureDlg=None
@@ -618,13 +612,26 @@ class PixelClassificationPipeline( object ):
         pCache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
         pCache.inputs["Input"].connect(self.predict.outputs["PMaps"])
         self.prediction_cache = pCache
-        
+
+
+class PixelClassificationApplet( Applet ):
+    def __init__( self, pipeline = None, graph = None ):
+        Applet.__init__( self, "Pixel Classification" )
+        self.graph = graph if graph else Graph()
+        self.pipeline = pipeline if pipeline else PixelClassificationPipeline( self.graph )
+
+        self._centralWidget = PixelClassificationGui( self.pipeline, self.graph )
+
+
+
         
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    g = Graph()
-    pipeline = PixelClassificationPipeline( g )
-    pig = PixelClassificationGui( pipeline, graph = g)
-    pig.show()
+    #make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
 
+    app = QApplication(sys.argv)
+    pca = PixelClassificationApplet()
+    pca.centralWidget.show()
+    pca.controlWidget.show()
     app.exec_()
