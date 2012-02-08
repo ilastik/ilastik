@@ -86,7 +86,7 @@ class OpTrainRandomForestBlocked(Operator):
                   MultiInputSlot("nonzeroLabelBlocks")]
     outputSlots = [OutputSlot("Classifier")]
     
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"]._dtype = object
             self.outputs["Classifier"]._shape = (1,)
@@ -94,8 +94,8 @@ class OpTrainRandomForestBlocked(Operator):
             self.outputs["Classifier"].setDirty((slice(0,1,None),))            
              
     
-    def getOutSlot(self, slot, key, result):
-        
+    def execute(self, slot, roi, result):
+        key = roi.toSlice()
         featMatrix=[]
         labelsMatrix=[]
         for i,labels in enumerate(self.inputs["Labels"]):
@@ -174,7 +174,7 @@ class OpPredictRandomForest(Operator):
     inputSlots = [InputSlot("Image"),InputSlot("Classifier"),InputSlot("LabelsCount",stype='integer')]
     outputSlots = [OutputSlot("PMaps")]
     
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         inputSlot = self.inputs["Image"]    
         nlabels=self.inputs["LabelsCount"].value
         
@@ -199,7 +199,8 @@ class OpPredictRandomForest(Operator):
         oslot._shape = islot.shape[:-1]+(nlabels,)
         
 
-    def getOutSlot(self,slot, key, result):
+    def execute(self,slot, roi, result):
+        key = roi.toSlice()
         nlabels=self.inputs["LabelsCount"].value
 
         RF=self.inputs["Classifier"].value
