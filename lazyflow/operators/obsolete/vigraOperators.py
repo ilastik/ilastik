@@ -20,7 +20,7 @@ class OpXToMulti(Operator):
     inputSlots = []
     outputSlots = []
         
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         length = 0
         for slot in self.inputs.values():
             if slot.connected():
@@ -103,10 +103,7 @@ class Op50ToMulti(OpXToMulti):
         inputSlots.append(InputSlot("Input%.2d"%(i), optional = True))
     outputSlots = [MultiOutputSlot("Outputs")]
 
-    
-
-
-
+                
 
 
 class OpPixelFeatures(OperatorGroup):
@@ -232,7 +229,8 @@ class OpPixelFeatures(OperatorGroup):
 
 
 
-class OpPixelFeaturesPresmoothed(OperatorGroup):
+
+class OpPixelFeaturesPresmoothed(Operator):
     name="OpPixelFeaturesPresmoothed"
     name="OpPixelFeatures"
     category = "Vigra filter"
@@ -240,21 +238,21 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
     inputSlots = [InputSlot("Input"), InputSlot("Matrix"), InputSlot("Scales")]
     outputSlots = [OutputSlot("Output"), OutputSlot("ArrayOfOperators")]
     
-    def _createInnerOperators(self):
-        # this method must setup the
-        # inner operators and connect them (internally)
-        
+    def __init__(self, graph, register = True):         
+        Operator.__init__(self, graph, register)   
         self.source = OpArrayPiper(self.graph)
-        
+        self.source.inputs["Input"].connect(self.inputs["Input"])        
+                
         self.stacker = OpMultiArrayStacker(self.graph)
         
         self.multi = Op50ToMulti(self.graph)
         
-        
         self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
         
+        self.outputs["Output"] = self.stacker.outputs["Output"] 
+     
         
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         if self.inputs["Scales"].connected() and self.inputs["Matrix"].connected():
 
             self.stacker.inputs["Images"].disconnect()
@@ -371,7 +369,8 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
             self.outputs["Output"]._axistags = self.stacker.outputs["Output"]._axistags            
             self.outputs["Output"]._shape = self.stacker.outputs["Output"]._shape            
     
-    def getOutSlot(self, slot, key, result):    
+    def execute(self, slot, roi, result): 
+        key = roi.toSlice()
         if slot == self.outputs["Output"]:
             cnt = 0
             written = 0
@@ -545,15 +544,7 @@ class OpPixelFeaturesPresmoothed(OperatorGroup):
                     except:
                         sourceArraysForSigmas[i] = None
 
-        
-    def getInnerInputs(self):
-        inputs = {}
-        inputs["Input"] = self.source.inputs["Input"]
-        return inputs
-        
-    def getInnerOutputs(self):
-        outputs = {}
-        return outputs
+
 
 
 def getAllExceptAxis(ndim,index,slicer):

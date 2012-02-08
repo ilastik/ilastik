@@ -16,6 +16,7 @@ from threading import current_thread, Lock, RLock
 import generic
 from lazyflow.graph import OperatorGroup
 import itertools
+from lazyflow.rtype import SubRegion
 
 try:
     import blist
@@ -37,13 +38,14 @@ class OpArrayPiper(Operator):
     inputSlots = [InputSlot("Input")]
     outputSlots = [OutputSlot("Output")]    
     
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         inputSlot = self.inputs["Input"]
         self.outputs["Output"]._dtype = inputSlot.dtype
         self.outputs["Output"]._shape = inputSlot.shape
         self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roi.toSlice()
         req = self.inputs["Input"][key].writeInto(result)
         res = req.wait()
         return res
@@ -326,7 +328,7 @@ class OpArrayCache(OpArrayPiper):
             self._cache = mem
         self._cacheLock.release()
             
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         reconfigure = False
         if  self.inputs["fixAtCurrent"].connected():
             self._fixed =  self.inputs["fixAtCurrent"].value  
@@ -336,7 +338,7 @@ class OpArrayCache(OpArrayPiper):
             if self._origBlockShape != newBShape and self.inputs["Input"].connected():
                 reconfigure = True
             self._origBlockShape = newBShape                
-            OpArrayPiper.notifyConnectAll(self)
+            OpArrayPiper.setupOutputs(self)
     
         if reconfigure and self.shape is not None:
             self._lock.acquire()
@@ -366,8 +368,9 @@ class OpArrayCache(OpArrayPiper):
             if  self.inputs["fixAtCurrent"].connected():
                 self._fixed =  self.inputs["fixAtCurrent"].value   
         
-    def getOutSlot(self,slot,key,result):
-        #return     
+    def execute(self,slot,roi,result):
+        #return  
+        key = roi.toSlice()
         self.graph._notifyMemoryHit()
         
         start, stop = sliceToRoi(key, self.shape)
@@ -691,28 +694,25 @@ if has_blist:
             
             self.outputs["Output"].setDirty(key)
     
-    class OpBlockedSparseLabelArray(OperatorGroup):
+    class OpBlockedSparseLabelArray(Operator):
         name = "Blocked Sparse Label Array"
         description = "simple cache for sparse label arrays"
            
         inputSlots = [InputSlot("Input", optional = True), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel", optional = True), InputSlot("blockShape")]
         outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates"), OutputSlot("nonzeroBlocks")]
         
-        def __init__(self, graph):
+        def __init__(self, graph, register = True):
+            Operator.__init__(self, graph, register)
             self.lock = threading.Lock()
             
             self._sparseNZ = None
             self._labelers = {}
             self.shape = None
             self.eraser = None
-            OperatorGroup.__init__(self, graph)
+          
             
             
-        def _createInnerOperators(self):
-            #Inner operators are created on demand            
-            pass
-            
-        def notifyConnectAll(self):
+        def setupOutputs(self):
             for slot in self.inputs.values():
               if slot.connected() is False:
                 continue
@@ -802,7 +802,8 @@ if has_blist:
                       self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
                       self.outputs["Output"][:] = self._denseArray #set output dirty
                     
-        def getOutSlot(self, slot, key, result):
+        def execute(self, slot, roi, result):
+            key = roi.toSlice()
             self.lock.acquire()
             assert(self.inputs["eraser"].connected() == True and self.inputs["shape"].connected() == True and self.inputs["blockShape"].connected()==True), \
             "OpDenseSparseArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % \
@@ -888,35 +889,30 @@ if has_blist:
         def notifyDirty(self, slot, key):
             if slot == self.inputs["Input"]:
                 self.outputs["Output"].setDirty(key)
-        
-            
-        def getInnerInputs(self):
-            inputs = {}
-            return inputs
-        
-        def getInnerOutputs(self):
-            outputs = {}
-            return outputs
             
             
 locking = threading.Lock()          
             
             
-class OpBlockedArrayCache(OperatorGroup):
+class OpBlockedArrayCache(Operator):
     name = "OpBlockedArrayCache"
     description = ""
 
     inputSlots = [InputSlot("Input"),InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent")]
     outputSlots = [OutputSlot("Output")]    
 
-    def _createInnerOperators(self):
-        
+    def __init__(self, graph, register = True):   
+        Operator.__init__(self, graph, register)
         self.source = OpArrayPiper(self.graph)
         self.fixerSource = OpArrayPiper(self.graph)
+        
+        self.source.inputs["Input"].connect(self.inputs["Input"])
+        self.fixerSource.inputs["Input"].connect(self.inputs["fixAtCurrent"])
+        
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         self._fixed = self.inputs["fixAtCurrent"].value  
-        self.fixerSource.inputs["Input"].setValue(self._fixed)
+        #self.fixerSource.inputs["Input"].setValue(self._fixed)
         self.fixerSource.inputs["Input"].setDirty(0)
         if not hasattr(self,"_blockState"):
             inputSlot = self.inputs["Input"]
@@ -957,11 +953,12 @@ class OpBlockedArrayCache(OperatorGroup):
             self._lock = Lock()
             
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
         #return
         
         #find the block key
-        start, stop = sliceToRoi(key, self.shape)
+        key = roi.toSlice()
+        start, stop = roi.start, roi.stop
         
         blockStart = (start / self._blockShape)
         blockStop = (stop * 1.0 / self._blockShape).ceil()
@@ -1013,7 +1010,11 @@ class OpBlockedArrayCache(OperatorGroup):
             if self._cache_list.has_key(b_ind):
                 op = self._cache_list[b_ind]
                 #req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
-                op.getOutSlot(op.outputs["Output"],smallkey,result[bigkey])
+
+                smallroi = SubRegion(op.outputs["Output"], start = smallstart , stop= smallstop)
+                op.execute(op.outputs["Output"],smallroi,result[bigkey])                
+                
+                ####op.getOutSlot(op.outputs["Output"],smallkey,result[bigkey])
                 #requests.append(req)
             else:
                 #When this block has never been in the cache and the current
@@ -1030,37 +1031,28 @@ class OpBlockedArrayCache(OperatorGroup):
             self.outputs["Output"].setDirty(key)
             
     def setInSlot(self,slot,key):
-        pass
-    
-    def getInnerInputs(self):
-        inputs = {}
-        inputs["Input"] = self.source.inputs["Input"]
-        inputs["fixAtCurrent"] = self.fixerSource.inputs["Input"]
-        return inputs
-        
-    def getInnerOutputs(self):
-        outputs = {}
-        return outputs
-        
+        pass        
                    
-        
 
 
 
-class OpSlicedBlockedArrayCache(OperatorGroup):
+class OpSlicedBlockedArrayCache(Operator):
     name = "OpSlicedBlockedArrayCache"
     description = ""
 
     Input = InputSlot()
 
     inputSlots = [InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent", value = False)]
-    outputSlots = [OutputSlot("Output")]    
-
-    def _createInnerOperators(self):
+    outputSlots = [OutputSlot("Output")]   
+    
+    def __init__(self, graph, register = True):      
+        Operator.__init__(self, graph, register)
         self.source = OpArrayPiper(self.graph)
         self.fixerSource = OpArrayPiper(self.graph)
+        self.source.inputs["Input"].connect(self.inputs["Input"])
+        #self.fixerSource.inputs["Input"].connect(self.inputs["fixAtCurrent"])
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         slot = self.inputs["fixAtCurrent"]
         if slot == self.inputs["fixAtCurrent"]:
             self._fixed = self.inputs["fixAtCurrent"].value  
@@ -1091,7 +1083,8 @@ class OpSlicedBlockedArrayCache(OperatorGroup):
                 self.outputs["Output"]._shape = self.inputs["Input"].shape            
 
             
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roi.toSlice()
         start,stop=sliceToRoi(key,self.shape)
         diff=numpy.array(stop)-numpy.array(start)
 
@@ -1123,15 +1116,6 @@ class OpSlicedBlockedArrayCache(OperatorGroup):
     def setInSlot(self,slot,key):
         pass
     
-    def getInnerInputs(self):
-        inputs = {}
-        inputs["Input"] = self.source.inputs["Input"]
-        inputs["fixAtCurrent"] = self.fixerSource.inputs["Input"]
-        return inputs
-        
-    def getInnerOutputs(self):
-        outputs = {}
-        return outputs
-        
+       
                    
         
