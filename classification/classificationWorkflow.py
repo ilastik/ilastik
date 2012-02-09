@@ -9,7 +9,7 @@ from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
                         QMessageBox, qApp, QItemSelectionModel, QIcon, QTransform
 from PyQt4 import uic
 
-from widgets.stackloader import OpStackChainBuilder,StackLoader
+from igms.stackloader import OpStackChainBuilder,StackLoader
 
 from lazyflow.graph import Graph
 from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
@@ -23,11 +23,11 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
     AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
 from volumina.adaptors import Op5ifyer
-from labelListView import Label
-from labelListModel import LabelListModel
+from igms.labelListView import Label
+from igms.labelListModel import LabelListModel
 
-from featureTableWidget import FeatureEntry
-from featureDlg import FeatureDlg
+from igms.featureTableWidget import FeatureEntry
+from igms.featureDlg import FeatureDlg
 
 import vigra
 

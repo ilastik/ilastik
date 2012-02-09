@@ -8,7 +8,7 @@ from PyQt4.QtGui import *
 
 from PyQt4 import uic
 
-from widgets.stackloader import OpStackChainBuilder,StackLoader
+from igms.stackloader import OpStackChainBuilder,StackLoader
 
 from lazyflow.graph import Graph
 from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
