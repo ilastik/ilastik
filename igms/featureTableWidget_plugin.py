@@ -1,10 +1,9 @@
 from PyQt4.QtDesigner import QPyDesignerCustomWidgetPlugin
 from PyQt4.QtGui import QPixmap, QIcon, QColor
 
-from labelListView import LabelListView
-from labelListModel import Label, LabelListModel
+from igms.featureTableWidget import FeatureTableWidget, FeatureEntry
 
-class PyLabelListViewPlugin(QPyDesignerCustomWidgetPlugin):
+class PyFeatureTableWidgetPlugin(QPyDesignerCustomWidgetPlugin):
 
     def __init__(self, parent = None):
         QPyDesignerCustomWidgetPlugin.__init__(self)
@@ -19,18 +18,18 @@ class PyLabelListViewPlugin(QPyDesignerCustomWidgetPlugin):
         return self.initialized
     
     def createWidget(self, parent):
-        red   = QColor(255,0,0)
-        green = QColor(0,255,0)
-        blue  = QColor(0,0,255)
-        model = LabelListModel([Label("Label 1", red), Label("Label 2", green), Label("Label 3", blue)])
-        
-        a=LabelListView(parent)
-        a.setModel(model)
-        
-        return a
+        t = FeatureTableWidget(parent)
+        t.createTableForFeatureDlg( \
+            {"Color": [FeatureEntry("Banana")],
+             "Edge": [FeatureEntry("Mango"),
+                      FeatureEntry("Cherry")] \
+            }, \
+            [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0] \
+        )
+        return t
     
     def name(self):
-        return "LabelListView"
+        return "FeatureTableWidget"
 
     def group(self):
         return "ilastik widgets"
@@ -49,10 +48,10 @@ class PyLabelListViewPlugin(QPyDesignerCustomWidgetPlugin):
     
     def domXml(self):
         return (
-               '<widget class="LabelListView" name=\"labelListView\">\n'
+               '<widget class="FeatureTableWidget" name=\"featureTableWidget\">\n'
                "</widget>\n"
                )
     
     def includeFile(self):
-        return "labelListView"
+        return "igms.tableWidget"
  
