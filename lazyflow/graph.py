@@ -80,7 +80,6 @@ class Operators(object):
     def registerOperatorSubclasses(cls):
         for o in itersubclasses(Operator):
             cls.register(o)
-        cls.operators.pop("OperatorGroup")
         cls.operators.pop("OperatorWrapper")
         #+cls.operators.pop("Operator")
 
@@ -1182,7 +1181,7 @@ class MultiInputSlot(Slot):
                   partner.disconnectSlot(self)
                 if lazyflow.verboseWrapping:
                   print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
-                if isinstance(self.operator,(OperatorWrapper, Operator, OperatorGroup)):
+                if isinstance(self.operator,(OperatorWrapper, Operator)):
                     newop = OperatorWrapper(self.operator)
                     partner._connect(newop.inputs[self.name])
                 else:
@@ -1862,7 +1861,7 @@ class OperatorWrapper(Operator):
                 self.inputs[islot.name] = ii
                 setattr(self,islot.name,ii)
                 op = self.operator
-                while isinstance(op.operator, (Operator, MultiInputSlot, OperatorGroup)):
+                while isinstance(op.operator, (Operator, MultiInputSlot)):
                     op = op.operator
                 op.inputs[islot.name] = ii
                 setattr(op,islot.name,ii)
@@ -2204,84 +2203,6 @@ class OperatorGroupGraph(object):
         return g        
         
         
-        
-        
-        
-        
-class OperatorGroup(Operator):
-    def __init__(self, graph, register = True):
-
-        # we use a fake graph, so that the sub operators
-        # of the group operator are not visible in the 
-        # operator list of the original graph
-        self._originalGraph = graph
-        self.graph = OperatorGroupGraph(graph)
-        
-        Operator.__init__(self,self.graph)
-        self.register = register
-
-        self._visibleOutputs = None
-        self._visibleInputs = None
-
-        self._createInnerOperators()
-        self._connectInnerOutputs()
-
-        self._setDefaultInputValues()
-
-        if self.register:
-            self._originalGraph.registerOperator(self)
-        
-    def _createInnerOperators(self):
-        # this method must setup the
-        # inner operators and connect them (internally)
-        pass
-        
-    def setupInputSlots(self):
-        # this method must setupt the 
-        # set self._visibleInputs
-        pass                                           
-        
-    
-    def setupOutputSlots(self):
-        # this method must setup 
-        # self._visibleOutputs
-        pass
-    
-    def _connectInnerOutputs(self):
-        outputs = self.getInnerOutputs()
-        
-        for key, value in outputs.items():
-            self.outputs[key] = value
-
-    def _getInnerInputs(self):
-        opInputs = self.getInnerInputs()
-        inputs = dict(self.inputs)
-        inputs.update(opInputs)
-        return inputs
-        
-                   
-    def getSubOutSlot(self, slots, indexes, key, result):               
-        slot = self._visibleOutputs[slots[0].name]
-        for ind in indexes:
-            slot = slot[ind]
-        slot[key].writeInto(result)
-
-    def getOutSlot(self, slot, key, result):
-        self._visibleOutputs[slot.name][key].writeInto(result)
-   
-    def _setupOutputs(self):
-      inputs = self._getInnerInputs()
-      for inputSlot in self.inputs.values():
-        if inputSlot != inputs[inputSlot.name]:
-            if inputSlot.partner is not None and inputs[inputSlot.name].partner != inputSlot.partner:
-                inputs[inputSlot.name].connect(inputSlot.partner)
-            elif inputSlot._value is not None and id(inputs[inputSlot.name]._value) != id(inputSlot._value):
-                inputs[inputSlot.name].setValue(inputSlot._value)
-      self.notifyConnectAll()
-      self.setupOutputs()
-      for o in self.outputs.values():
-        o._changed()
-
    
                         
 class Worker(Thread):

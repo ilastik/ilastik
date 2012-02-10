@@ -1,4 +1,4 @@
-#clang c++
+import cython
 cimport cython
 from cython.operator cimport dereference as deref
 import cython
@@ -8,6 +8,7 @@ from libcpp.queue cimport queue, priority_queue
 from libcpp.deque cimport deque
 from libcpp.vector cimport vector
 
+#clang c++
 # "cimport" is used to import special compile-time information
 # about the numpy module (this is stored in a file numpy.pxd which is
 # currently part of the Cython distribution).
@@ -30,6 +31,7 @@ cdef fused integer_t:
 
 cdef fused value_t:
   char
+  unsigned char
   int
   float
   double
@@ -54,7 +56,7 @@ cdef inline value_t maximum(value_t a, value_t b): return a if a>= b else b
 
 
 @cython.boundscheck(False) # turn of bounds-checking for entire function
-def seededTurboWS(np.ndarray[np.int32_t, ndim=3, mode="strided"] seeds,
+def seededTurboWS(np.ndarray[integer_t, ndim=3, mode="strided"] seeds,
                   np.ndarray[value_t, ndim=3, mode="strided"] involume, int queueCount = 255):
   """
   do a turbo watershed from the seeds in place
@@ -122,7 +124,7 @@ def seededTurboWS(np.ndarray[np.int32_t, ndim=3, mode="strided"] seeds,
       bestNeighborLevel = queueCount+1
       iterations += 1
 
-      if  seeds[tempCoord2.x,tempCoord2.y,tempCoord2.z] == 0 or waterLevel == 0:
+      if  seeds[tempCoord2.x,tempCoord2.y,tempCoord2.z] == 0:
         if tempCoord.x > 0:
           if seeds[tempCoord.x - 1, tempCoord.y, tempCoord.z] != 0:
             if (volume[tempCoord.x - 1, tempCoord.y,tempCoord.z] - volMin)*scaling < bestNeighborLevel:
@@ -209,12 +211,6 @@ cdef struct edge:
   int To
   float weight
   
-cdef edgeComp(edge a, edge b):
-  if a.weight > b.weight:
-    return True
-  else:
-    return False
-
 cdef struct vertex:
   vector[edge] edges
 
@@ -231,7 +227,7 @@ cdef class AdjGraph:
 
 
 
-  def seededWS(self, np.ndarray[dtype=np.int32_t, ndim=2] seeds):
+  def seededWS(self, np.ndarray[dtype=integer_t, ndim=2] seeds):
     
     cdef vector[vertex] vertices = deref(self.vertices) #TODO: copy not neccessary, find out about cython references
     
@@ -255,7 +251,6 @@ cdef class AdjGraph:
         for j in range(vertices[vertNum].edges.size()):
           if labelMap[vertices[vertNum].edges[j].To] == -1:
             queueNr =  int((vertices[vertNum].edges[j].weight-self.minWeight) * fract)
-            print queueNr
             queues[queueNr].push_back(vertices[vertNum].edges[j])
 
     cdef edge curE
@@ -263,14 +258,14 @@ cdef class AdjGraph:
     cdef int curV
     cdef int curLabel
 
-    for waterLevel in range(255):
+    for waterLevel in range(256):
       while not queues[waterLevel].empty():
         curE = queues[waterLevel].front()
         queues[waterLevel].pop_front()
         if labelMap[curE.To] == -1:
           curV = curE.To
           labelMap[curE.To] = labelMap[curE.From]
-
+          assert labelMap[curE.From] != -1
           # loop over outgoing edges
           for j  in range(vertices[curV].edges.size()):
             #if neighbor is not jet labeled
@@ -278,10 +273,46 @@ cdef class AdjGraph:
               # add him to the prio queues
               queueNr =  int((vertices[curV].edges[j].weight-self.minWeight) * fract)
               queueNr = maximum(queueNr, waterLevel)
-              print queueNr
               queues[queueNr].push_back(vertices[curV].edges[j])
 
+    for i in range(256):
+      print "Queue %r empty ? %r" % (i,queues[i].empty())
     return labelMap
+
+  def connected(self):
+    cdef edge e
+    cdef int v,j,to, i
+
+    cdef vector[int] visited
+    visited.resize(self.vertices.size())
+
+    cdef deque[int] q = deque[int]()
+
+    q.push_back(22)
+    visited[22] = 1
+
+    while q.size() > 0:
+      v = q.front()
+      q.pop_front()
+      visited[v] = 1
+      for j in range(0,deref(self.vertices)[v].edges.size()):
+        assert deref(self.vertices)[v].edges.size() > 0
+        e = deref(self.vertices)[v].edges[j]
+        to = e.To
+        if visited[to] == 0:
+          q.push_back(to)
+
+    cdef int num_visited = 0
+    cdef int num_notVisited = 0
+
+    for j in range(0,self.vertices.size()):
+      if visited[j] == 1:
+        num_visited += 1
+      else:
+        num_notVisited += 1
+        
+    print "VISITED=%r, NOT VISITED=%r" % (num_visited, num_notVisited)
+        
 
 
 
@@ -310,29 +341,25 @@ class CooGraph(object):
     g.vertices.resize(vertex_count)
 
     cdef int i,j
-    cdef edge e
+    cdef edge e1
     for i in range(coo_ind.shape[0]):
      
-      e.From = coo_ind[i,0]
-      e.To = coo_ind[i,1]
-      e.weight = coo_data[i]
+      e1.From = coo_ind[i,0]
+      e1.To = coo_ind[i,1]
+      e1.weight = coo_data[i]
 
-      deref(g.vertices)[e.From].edges.push_back(e)
+      deref(g.vertices)[e1.From].edges.push_back(e1)
 
-      e.From = coo_ind[i,1]
-      e.To = coo_ind[i,0]
-      deref(g.vertices)[e.From].edges.push_back(e)
+      if e1.weight > g.maxWeight:
+        g.maxWeight = e1.weight
 
-      if e.weight > g.maxWeight:
-        g.maxWeight = e.weight
-
-      if e.weight < g.minWeight:
-        g.minWeight = e.weight
+      if e1.weight < g.minWeight:
+        g.minWeight = e1.weight
 
     return g
 
 
-  def fromLabelVolume(self,np.ndarray[np.int32_t, ndim=3, mode="strided"] labelMap ,
+  def fromLabelVolume(self,np.ndarray[np.int32_t, ndim=3, mode="strided"] labelMap,
                           np.ndarray[value_t, ndim=3, mode="strided"] nodeMapIn):
     """
     builds the adjacency graph structure for an image.
@@ -361,7 +388,7 @@ class CooGraph(object):
     for x in range(0,sizeX):
       for y in range(0,sizeY):
         for z in range(0,sizeZ):
-          maxLabel = int_max(maxLabel,labelMap[x,y,z])  
+          maxLabel = maximum(maxLabel,labelMap[x,y,z])  
 
     bbb = np.zeros((maxLabel+1,), dtype=np.int32)
     cdef np.ndarray[dtype=DTYPE_t_i32,ndim=1] neighborCount = bbb
@@ -372,43 +399,40 @@ class CooGraph(object):
     for x in range(0,sizeX):
       for y in range(0,sizeY):
         for z in range(0,sizeZ):
+          a = labelMap[x,y,z]
           if x < sizeX-1:
-            a = labelMap[x,y,z]
             b = labelMap[x+1,y,z]
-            if a > b:
-              neighborCount[a] = neighborCount[a]+1
-              totalNeighborhoods += 1
-            if b > a:
-              neighborCount[b] = neighborCount[b]+1
-              totalNeighborhoods += 1
+            if a != b:
+              neighborCount[a] += 1
+              neighborCount[b] += 1
+              totalNeighborhoods += 2
           if y < sizeY-1:
-            a = labelMap[x,y,z]
             b = labelMap[x,y+1,z]
-            if a > b:
-              neighborCount[a] = neighborCount[a]+1
-              totalNeighborhoods += 1
-            if b > a:
-              neighborCount[b] = neighborCount[b]+1
-              totalNeighborhoods += 1
+            if a != b:
+              neighborCount[a] += 1
+              neighborCount[b] += 1
+              totalNeighborhoods += 2
           if z < sizeZ-1:
-            a = labelMap[x,y,z]
             b = labelMap[x,y,z+1]
-            if a > b:
-              neighborCount[a] = neighborCount[a]+1
-              totalNeighborhoods += 1
-            if b > a:
-              neighborCount[b] = neighborCount[b]+1
-              totalNeighborhoods += 1
+            if a != b:
+              neighborCount[a] += 1
+              neighborCount[b] += 1
+              totalNeighborhoods += 2
+    
+    for x in range(1,maxLabel):
+      assert neighborCount[x] != 0, "neighborCount[%r] = %r" % (x,neighborCount[x])
 
     cdef np.ndarray[dtype=np.int32_t,ndim=1] neighborOffset, offsetBackup
     neighborOffset = np.cumsum(neighborCount).astype(np.int32)
-    neighborOffset[1:] = neighborOffset[:-1]
-    neighborOffset[0] = 0
+    assert neighborOffset[-1] == totalNeighborhoods
     offsetBackup = neighborOffset.copy()
+    offsetBackup[1:] = neighborOffset[:-1]
+    offsetBackup[0] = 0
+    neighborOffset[:] = offsetBackup[:]
 
     neighborhood_t = np.dtype([('a', np.int32), ('b', np.int32), ('val', np.float32)])
 
-    bbb = np.ndarray((totalNeighborhoods+1,),dtype=neighborhood_t)
+    bbb = np.ndarray((totalNeighborhoods,),dtype=neighborhood_t)
     cdef np.ndarray[dtype=neighborhood_t_t, ndim=1]  neighbors = bbb
 
     print "count", totalNeighborhoods
@@ -420,77 +444,73 @@ class CooGraph(object):
     for x in range(0,sizeX):
       for y in range(0,sizeY):
         for z in range(0,sizeZ):
+          a = labelMap[x,y,z]
+          av = edgeMap[x,y,z]
           if x < sizeX-1:
-            a = labelMap[x,y,z]
             b = labelMap[x+1,y,z]
-            av = edgeMap[x,y,z]
             bv = edgeMap[x+1,y,z]
-            if a > b:
+            if a != b:
               neighbors[neighborOffset[a]].val = (av+bv)/2.0
-              neighbors[neighborOffset[a]].b = b
               neighbors[neighborOffset[a]].a = a
+              neighbors[neighborOffset[a]].b = b
               neighborOffset[a]+=1
-            if b > a:
-              neighbors[neighborOffset[b]].val  =  (av+bv)/2.0 
-              neighbors[neighborOffset[b]].b = a
+              neighbors[neighborOffset[b]].val = (av+bv)/2.0
               neighbors[neighborOffset[b]].a = b
+              neighbors[neighborOffset[b]].b = a
               neighborOffset[b]+=1
-
           if y < sizeY-1:
-            a = labelMap[x,y,z]
             b = labelMap[x,y+1,z]
-            av = edgeMap[x,y,z]
             bv = edgeMap[x,y+1,z]
-            if a > b:
-              neighbors[neighborOffset[a]].val  = (av+bv)/2.0
-              neighbors[neighborOffset[a]].b = b
+            if a != b:
+              neighbors[neighborOffset[a]].val = (av+bv)/2.0
               neighbors[neighborOffset[a]].a = a
+              neighbors[neighborOffset[a]].b = b
               neighborOffset[a]+=1
-            if b > a:
-              neighbors[neighborOffset[b]].val  =  (av+bv)/2.0 
-              neighbors[neighborOffset[b]].b = a
+              neighbors[neighborOffset[b]].val = (av+bv)/2.0
               neighbors[neighborOffset[b]].a = b
+              neighbors[neighborOffset[b]].b = a
               neighborOffset[b]+=1
-
           if z < sizeZ-1:
-            a = labelMap[x,y,z]
             b = labelMap[x,y,z+1]
-            av = edgeMap[x,y,z]
             bv = edgeMap[x,y,z+1]
-            if a > b:
-              neighbors[neighborOffset[a]].val  = (av+bv)/2.0
-              neighbors[neighborOffset[a]].b = b
+            if a != b:
+              neighbors[neighborOffset[a]].val = (av+bv)/2.0
               neighbors[neighborOffset[a]].a = a
+              neighbors[neighborOffset[a]].b = b
               neighborOffset[a]+=1
-            if b > a:
-              neighbors[neighborOffset[b]].val  =  (av+bv)/2.0 
-              neighbors[neighborOffset[b]].b = a
+              neighbors[neighborOffset[b]].val = (av+bv)/2.0
               neighbors[neighborOffset[b]].a = b
+              neighbors[neighborOffset[b]].b = a
               neighborOffset[b]+=1
 
 
     cdef int nsize
-    cdef int nMaxCount = neighbors.shape[0]
     cdef int lastA = -1
     cdef int lastB = -1
     cdef int i
+    cdef int l
+    for i in range(0,neighborOffset.shape[0]-1):
+      assert neighborOffset[i] == offsetBackup[i+1]
 
-    neighborOffset = offsetBackup[:]
-    # cdef np.ndarray[dtype=neighborhood_t_t, ndim=1]  tempn
+    neighborOffset[:] = offsetBackup[:]
 
     # sort teh neighborhood information
-    for i in range(neighborOffset.shape[0]-1):
-      neighbors[neighborOffset[i]:neighborOffset[i+1]].sort(order=('b','val'))
-      # neighbors[neighborOffset[i]:neighborOffset[i+1]]=tempn[:]
+    for i in range(1, neighborOffset.shape[0]-1):
+      l =  neighborOffset[i+1] - neighborOffset[i]
+      assert l != 0, "offset[%r] = %r, offset[%r] = %r" % (i,neighborOffset[i],i+1,neighborOffset[i+1])
+      tempn = neighbors[neighborOffset[i]:neighborOffset[i+1]]
+      tempn.sort(order=('b','val'))
+      neighbors[neighborOffset[i]:neighborOffset[i+1]]=tempn[:]
 
-    temp = neighbors[neighborOffset[-1]:].sort(order=('b','val'))
-    # neighbors[neighborOffset[-1]:]=temp
+    temp = neighbors[neighborOffset[-1]:]
+    temp.sort(order=('b','val'))
+    neighbors[neighborOffset[-1]:]=temp
 
     nsize = 0
     lastA = -1
     lastB = -1
     # determine size of coo matrix
-    for i in range(nMaxCount):
+    for i in range(neighbors.shape[0]):
       if neighbors[i].a != lastA or neighbors[i].b != lastB:
         lastA = neighbors[i].a
         lastB = neighbors[i].b
@@ -505,23 +525,29 @@ class CooGraph(object):
 
     cdef int j
     j = 0
-    lastA = -1
-    lastB = -1
+    lastA = neighbors[0].a
+    lastB = neighbors[0].b
+
+
     # FINALLY, construct the true graph
     for i in range(neighbors.shape[0]):
       if neighbors[i].a != lastA or neighbors[i].b != lastB:
-        lastA = neighbors[i].a
-        lastB = neighbors[i].b
         coo_ind[j,0] = lastA
         coo_ind[j,1] = lastB
         coo_data[j] = neighbors[i].val
+        lastA = neighbors[i].a
+        lastB = neighbors[i].b
+        assert lastA != lastB, "neighbor %r, edge %r: lastA=%r, lastB=%r" % (i,j,lastA, lastB)
         j += 1
 
+    coo_ind[j,0] = lastA
+    coo_ind[j,1] = lastB
+    coo_data[j] = neighbors[-1].val
 
     # returnthe tediously obtained results
     self.indices = coo_ind
     self.values = coo_data
-    self.num_vertices = neighbors.shape[0]
+    self.num_vertices = maxLabel + 1
     return self
 
 

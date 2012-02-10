@@ -67,22 +67,58 @@ cache.connect(Input = feature.outputs["Output"])
 volumeFeatures = cache.outputs["Output"][:].allocate().wait()[0,:,:,:,0]
 import scipy.ndimage
 minima = scipy.ndimage.minimum_filter(volumeFeatures, size=2)
-local_min = numpy.where(volumeFeatures == minima, 1, 0)
+local_min = numpy.where(volumeFeatures == minima, 1, 0).astype(numpy.uint8)
 
 
-local_min_label, label_count = scipy.ndimage.measurements.label(local_min)
+print "labeling image minima..."
+#local_min_label, label_count = scipy.ndimage.measurements.label(local_min)
+local_min_label= vigra.analysis.labelVolumeWithBackground(local_min)
+print "   done"
 
-#local_min_ws = scipy.ndimage.watershed_ift(result,local_min_label)
+print "executing watershed from minima..."
+#labelVolume = scipy.ndimage.watershed_ift(volumeFeatures.astype(numpy.uint8),local_min_label.astype(numpy.int32))
 labelVolume = adjacencyGraph.seededTurboWS(local_min_label,volumeFeatures)
-#print local_min_ws
+#labelVolume, count = vigra.analysis.watersheds(volumeFeatures.astype(numpy.float32), seeds = local_min_label.astype(numpy.uint32))
+#labelVolume = labelVolume.astype(numpy.int32)
+print "   done"
+
+#a = numpy.min(local_min_label)
+#b = numpy.max(local_min_label)
+#stuff = numpy.unique(local_min_label)
+#stuff2 = numpy.arange(a,b+1)
+#
+#assert stuff.shape[0] == stuff2.shape[0], "shape of unique labels = %r, shape of arange = %r" % (stuff.shape, stuff2.shape)
+
+#from PyQt4 import QtGui
+#import sys
+#qapp = QtGui.QApplication(sys.argv)
+#import volumina
+#viewer = volumina.api.Viewer()
+#viewer.addLayer(labelVolume.astype(numpy.uint32), display="randomcolors")
+#viewer.show()
+#qapp.exec_()
 
 
+print "Beginning graph construction..."
 g = adjacencyGraph.CooGraph()
 g.fromLabelVolume(labelVolume, volumeFeatures)
-
+print "   done"
+print "Converting to adjacency graph..."
 ag = g.toAdj()
-ag.seededWS(numpy.array([[3,1],[1000,2]]).astype(numpy.int32))
+print "   done"
+print "testing connectedness..."
+ag.connected()
+print "   done"
+seeds = numpy.array([[1000,2, 8888, 9999],[3,1, 3,1]]).T.astype(numpy.int32)
+print "SHAPE", seeds.shape
+print "executing seeded watershed..."
+segmentationResult = ag.seededWS(seeds)
+print "   done"
 
+print "label1.count = %r" % (numpy.sum(numpy.where(segmentationResult == 1, 1, 0)),)
+print "label3.count = %r" % (numpy.sum(numpy.where(segmentationResult == 3, 1, 0)),)
+print "labelother.count = %r" % (numpy.sum(numpy.where(segmentationResult == -1, 1, 0)),)
+print "Segmentation Result = %r" % (segmentationResult, )
 print "Finished"
 #adjacencyGraph.buildGraphFromCOO(g[0],g[1],g[2])
 print "Finished2"

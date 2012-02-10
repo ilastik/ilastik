@@ -106,18 +106,16 @@ class Op50ToMulti(OpXToMulti):
                 
 
 
-class OpPixelFeatures(OperatorGroup):
+class OpPixelFeatures(Operator):
     name="OpPixelFeatures"
     category = "Vigra filter"
     
     inputSlots = [InputSlot("Input"), InputSlot("Matrix"), InputSlot("Scales")]
     outputSlots = [OutputSlot("Output"), OutputSlot("ArrayOfOperators")]
     
-    def _createInnerOperators(self):
-        # this method must setup the
-        # inner operators and connect them (internally)
-        
-        self.source = OpArrayPiper(self.graph)
+    def __init__(self, graph, register = True):
+        Operator.__init__(self, graph, register)
+        self.oparray = []
         
         self.stacker = OpMultiArrayStacker(self.graph)
         
@@ -127,7 +125,13 @@ class OpPixelFeatures(OperatorGroup):
         self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
         
         
-    def notifyConnectAll(self):
+    def setupOutputs(self):
+
+        # disconnect previous operators
+        for r in self.oparray:
+          for o in r:
+            o.disconnect()
+
         if self.inputs["Scales"].connected() and self.inputs["Matrix"].connected():
 
             self.stacker.inputs["Images"].disconnect()
@@ -150,42 +154,43 @@ class OpPixelFeatures(OperatorGroup):
             i = 0
             for j in range(dimCol):
                 oparray[i].append(OpGaussianSmoothing(self.graph))
-                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["Input"].connect(self.inputs["Input"])
                 oparray[i][j].inputs["sigma"].setValue(self.scales[j])
             i = 1
             for j in range(dimCol):
                 oparray[i].append(OpLaplacianOfGaussian(self.graph))
-                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["Input"].connect(self.inputs["Input"])
                 oparray[i][j].inputs["scale"].setValue(self.scales[j])
             i = 2
             for j in range(dimCol):
                 oparray[i].append(OpStructureTensorEigenvalues(self.graph))
-                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["Input"].connect(self.inputs["Input"])
                 oparray[i][j].inputs["innerScale"].setValue(self.scales[j])
                 oparray[i][j].inputs["outerScale"].setValue(self.scales[j]*0.5)
             i = 3
             for j in range(dimCol):   
                 oparray[i].append(OpHessianOfGaussianEigenvalues(self.graph))
-                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["Input"].connect(self.inputs["Input"])
                 oparray[i][j].inputs["scale"].setValue(self.scales[j])
             
             i= 4
             for j in range(dimCol): 
                 oparray[i].append(OpGaussianGradientMagnitude(self.graph))
-                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["Input"].connect(self.inputs["Input"])
                 oparray[i][j].inputs["sigma"].setValue(self.scales[j])
             
             i= 5
             for j in range(dimCol): 
                 oparray[i].append(OpDifferenceOfGaussians(self.graph))
-                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                oparray[i][j].inputs["Input"].connect(self.inputs["Input"])
                 oparray[i][j].inputs["sigma0"].setValue(self.scales[j])            
                 oparray[i][j].inputs["sigma1"].setValue(self.scales[j]*0.66)
             
 
                 
             
-            
+            self.oparray = oparray
+
             self.outputs["ArrayOfOperators"][0] = oparray
             
             #disconnecting all Operators
@@ -203,7 +208,7 @@ class OpPixelFeatures(OperatorGroup):
             #additional connection with FakeOperator
             if (self.matrix==0).all():
                 fakeOp = OpGaussianSmoothing(self.graph)
-                fakeOp.inputs["Input"].connect(self.source.outputs["Output"])
+                fakeOp.inputs["Input"].connect(self.inputs["Input"])
                 fakeOp.inputs["sigma"].setValue(10)
                 self.multi.inputs["Input%02d" %(i*dimRow+j+1)].connect(fakeOp.outputs["Output"])
                 self.multi.inputs["Input%02d" %(i*dimRow+j+1)].disconnect() 
@@ -211,9 +216,9 @@ class OpPixelFeatures(OperatorGroup):
                 return
          
             
-            index = len(self.source.outputs["Output"].shape) - 1
+            index = len(self.inputs["Input"]) - 1
             self.stacker.inputs["AxisFlag"].setValue('c')
-            self.stacker.inputs["AxisIndex"].setValue(self.source.outputs["Output"]._axistags.index('c'))
+            self.stacker.inputs["AxisIndex"].setValue(self.inputs["Input"]._axistags.index('c'))
             self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
             
     

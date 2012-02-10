@@ -14,7 +14,6 @@ import sys
 import weakref
 from threading import current_thread, Lock, RLock
 import generic
-from lazyflow.graph import OperatorGroup
 import itertools
 from lazyflow.rtype import SubRegion
 
