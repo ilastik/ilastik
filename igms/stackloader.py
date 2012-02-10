@@ -29,7 +29,7 @@
 
 import glob
 import os
-from lazyflow.graph import OperatorGroup, InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.obsolete.vigraOperators import *
 
 
@@ -43,22 +43,22 @@ from shutil import rmtree
 #*******************************************************************************
 
 
-class OpStackChainBuilder(OperatorGroup):
+class OpStackChainBuilder(Operator):
     name = "OpStackChainBuilder"
     inputSlots = [InputSlot("globstring"),InputSlot("convert"),InputSlot("invert")]
     outputSlots = [OutputSlot("output")]
     
-    def _createInnerOperators(self):
+    def __init__(self, graph, register = True):
+        Operator.__init__(self, graph, register)
         
         self.Loader = OpStackLoader(self.graph)
         self.Inverter = OpGrayscaleInverter(self.graph)
         self.OutPiper = OpArrayPiper(self.graph)
         self.GrayConverter = OpRgbToGraysacle(self.graph)
     
-    def notifyConnectAll(self):
-        
-        self.Loader.inputs["globstring"].setValue(self.inputs["globstring"].value)
-        
+    def setupOutputs(self):
+        assert self.inputs["globstring"].shape is not None
+        self.Loader.inputs["globstring"].connect(self.inputs["globstring"])
         if self.inputs["invert"].value and not self.inputs["convert"].value:
             self.Inverter.inputs["input"].connect(self.Loader.outputs["stack"])
             self.OutPiper.inputs["Input"].connect(self.Inverter.outputs["output"])
@@ -94,17 +94,6 @@ class OpStackChainBuilder(OperatorGroup):
             req = self.OutPiper.outputs["Output"][key].allocate()
         return req.wait()
         
-    def getInnerInputs(self):
-        inputs = {}
-        inputs["input"] = self.Loader.inputs["globstring"]
-        return  inputs
-
-    def getInnerOutputs(self):
-        print 'bumpInnerOutslot'
-        outputs = {}
-        outputs["output"] = self.OutPiper.outputs["Output"]
-        return outputs
-
 
 #*******************************************************************************
 # S t a c k L o a d e r                                                        *
@@ -190,9 +179,8 @@ class StackLoader(QtGui.QDialog):
             self.ChainBuilder.inputs["convert"].setValue(False)
 
     def slotDir(self):
-        path = ilastik.gui.LAST_DIRECTORY
+        path = ""
         filename = QtGui.QFileDialog.getExistingDirectory(self, "Image Stack Directory", path)
-        ilastik.gui.LAST_DIRECTORY = QtCore.QFileInfo(filename).path()
         tempname = filename + '/*.png'
         #This is needed, because internally Qt always uses "/" separators,
         #which is a problem on Windows, as we don't use QDir to open dirs
