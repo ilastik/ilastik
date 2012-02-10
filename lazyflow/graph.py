@@ -1822,13 +1822,13 @@ class OperatorWrapper(Operator):
         self._eventCounter = 0
         self._processedEvents = {}       
         self._originalGraph = operator.graph
-        self.graph = OperatorGroupGraph(operator.graph)
+        self.graph = operator.graph
         self._connecting = False
         
         if operator is not None:
             self.name = operator.name
             self._originalGraph = operator.graph
-            self.graph = OperatorGroupGraph(operator.graph)
+            self.graph = operator.graph
 
             self._originalGraph.replaceOperator(self.operator, self)
 
@@ -2130,78 +2130,6 @@ class OperatorWrapper(Operator):
                 },patchBoard)    
 
         return op
-        
-        
-        
-        
-        
-class OperatorGroupGraph(object):
-    def __init__(self, originalGraph):
-        self._originalGraph = originalGraph
-        self.operators = []
-    
-    def _registerCache(self, op):    
-        self._originalGraph._registerCache(op)
-    
-    def _notifyMemoryAllocation(self, cache, size):
-        self._originalGraph._notifyMemoryAllocation(cache, size)
-    
-    def _notifyFreeMemory(self, size):
-        self._originalGraph._notifyFreeMemory(size)
-    
-    def _freeMemory(self, size):
-        self._originalGraph._freeMemory(size)
-    
-    def _notifyMemoryHit(self):
-        self._originalGraph._notifyMemoryHit()
-    
-    def putTask(self, reqObject):
-        self._originalGraph.putTask(reqObject)
-
-    def putFinalize(self, reqObject):
-        self._originalGraph.putFinalize(reqObject)
-
-    def finalize(self):
-        self._originalGraph.finalize()
-    
-    def registerOperator(self, op):
-        self.operators.append(op)
-    
-    def removeOperator(self, op):
-        assert op in self.operators, "Operator %r not a registered Operator" % op
-        self.operators.remove(op)
-        op.disconnect()
-
-    def replaceOperator(self,op1,op2):
-        index = self.operators.index(op1)
-        self.operators[index] = op2
-
-    @property
-    def suspended(self):
-        return self._originalGraph.suspended
-
-    @property
-    def freeWorkers(self):
-        return self._originalGraph.freeWorkers
- 
-    def dumpToH5G(self, h5g, patchBoard):
-        h5op = h5g.create_group("operators")
-        h5op.dumpObject(self.operators, patchBoard)
-        h5graph = h5g.create_group("originalGraph")
-        h5graph.dumpObject(self._originalGraph, patchBoard)
-
-    
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        h5graph = h5g["originalGraph"]        
-        ograph = h5graph.reconstructObject(patchBoard)               
-        g = OperatorGroupGraph(ograph)
-        patchBoard[h5g.attrs["id"]] = g 
-        h5ops = h5g["operators"]        
-        g.operators = h5ops.reconstructObject(patchBoard)
- 
-        return g        
-        
         
    
                         
