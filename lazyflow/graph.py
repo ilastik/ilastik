@@ -1579,9 +1579,6 @@ class Operator(object):
 
         self._instantiate_slots()
 
-        if self.register:
-            self.graph.registerOperator(self)
-
         self._setDefaultInputValues()
 
         if len(self.inputs.keys()) == 0:
@@ -1830,8 +1827,6 @@ class OperatorWrapper(Operator):
             self._originalGraph = operator.graph
             self.graph = operator.graph
 
-            self._originalGraph.replaceOperator(self.operator, self)
-
             self.comprehensionSlots = 1
             self.innerOperators = []
             self.comprehensionCount = 0
@@ -1944,8 +1939,6 @@ class OperatorWrapper(Operator):
         for k, oslot in self.outputs.items():
             for p in oslot.partners:
                 op.outputs[k]._connect(p)
-
-        self._originalGraph.replaceOperator(self,op)
     
     def notifyDisconnect(self, slot):
        self._testRestoreOriginalOperator() 
@@ -2473,19 +2466,6 @@ class Graph(object):
             w.signalWorkAvailable()
             w.join()
         self.stopGraph()
-
-    def registerOperator(self, op):
-        self.operators.append(op)
-    
-    def removeOperator(self, op):
-        assert op in self.operators, "Operator %r not a registered Operator" % op
-        self.operators.remove(op)
-        op.disconnect()
- 
-    def replaceOperator(self,op1,op2):
-        index = self.operators.index(op1)
-        self.operators[index] = op2
-
 
     def dumpToH5G(self, h5g, patchBoard):
         self.stopGraph()
