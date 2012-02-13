@@ -47,6 +47,10 @@ class Main(QMainWindow):
             print sys.argv
             self._normalize_data=False
             sys.argv.remove('notnormalize')
+        if len(sys.argv)==2:
+            def loadCommandlineFile():
+                self._openFile(sys.argv[1:])
+            QTimer.singleShot(0, loadCommandlineFile)
 
         self._colorTable16 = self._createDefault16ColorColorTable()
         
