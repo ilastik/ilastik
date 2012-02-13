@@ -113,13 +113,13 @@ class OpPixelFeatures(Operator):
     inputSlots = [InputSlot("Input"), InputSlot("Matrix"), InputSlot("Scales")]
     outputSlots = [OutputSlot("Output"), OutputSlot("ArrayOfOperators")]
     
-    def __init__(self, graph, register = True):
-        Operator.__init__(self, graph, register)
+    def __init__(self, parent):
+        Operator.__init__(self, parent)
         self.oparray = []
         
-        self.stacker = OpMultiArrayStacker(self.graph)
+        self.stacker = OpMultiArrayStacker(self)
         
-        self.multi = Op50ToMulti(self.graph)
+        self.multi = Op50ToMulti(self)
         
         
         self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
@@ -153,35 +153,35 @@ class OpPixelFeatures(Operator):
     
             i = 0
             for j in range(dimCol):
-                oparray[i].append(OpGaussianSmoothing(self.graph))
+                oparray[i].append(OpGaussianSmoothing(self))
                 oparray[i][j].inputs["Input"].connect(self.inputs["Input"])
                 oparray[i][j].inputs["sigma"].setValue(self.scales[j])
             i = 1
             for j in range(dimCol):
-                oparray[i].append(OpLaplacianOfGaussian(self.graph))
+                oparray[i].append(OpLaplacianOfGaussian(self))
                 oparray[i][j].inputs["Input"].connect(self.inputs["Input"])
                 oparray[i][j].inputs["scale"].setValue(self.scales[j])
             i = 2
             for j in range(dimCol):
-                oparray[i].append(OpStructureTensorEigenvalues(self.graph))
+                oparray[i].append(OpStructureTensorEigenvalues(self))
                 oparray[i][j].inputs["Input"].connect(self.inputs["Input"])
                 oparray[i][j].inputs["innerScale"].setValue(self.scales[j])
                 oparray[i][j].inputs["outerScale"].setValue(self.scales[j]*0.5)
             i = 3
             for j in range(dimCol):   
-                oparray[i].append(OpHessianOfGaussianEigenvalues(self.graph))
+                oparray[i].append(OpHessianOfGaussianEigenvalues(self))
                 oparray[i][j].inputs["Input"].connect(self.inputs["Input"])
                 oparray[i][j].inputs["scale"].setValue(self.scales[j])
             
             i= 4
             for j in range(dimCol): 
-                oparray[i].append(OpGaussianGradientMagnitude(self.graph))
+                oparray[i].append(OpGaussianGradientMagnitude(self))
                 oparray[i][j].inputs["Input"].connect(self.inputs["Input"])
                 oparray[i][j].inputs["sigma"].setValue(self.scales[j])
             
             i= 5
             for j in range(dimCol): 
-                oparray[i].append(OpDifferenceOfGaussians(self.graph))
+                oparray[i].append(OpDifferenceOfGaussians(self))
                 oparray[i][j].inputs["Input"].connect(self.inputs["Input"])
                 oparray[i][j].inputs["sigma0"].setValue(self.scales[j])            
                 oparray[i][j].inputs["sigma1"].setValue(self.scales[j]*0.66)
@@ -207,7 +207,7 @@ class OpPixelFeatures(Operator):
             
             #additional connection with FakeOperator
             if (self.matrix==0).all():
-                fakeOp = OpGaussianSmoothing(self.graph)
+                fakeOp = OpGaussianSmoothing(self)
                 fakeOp.inputs["Input"].connect(self.inputs["Input"])
                 fakeOp.inputs["sigma"].setValue(10)
                 self.multi.inputs["Input%02d" %(i*dimRow+j+1)].connect(fakeOp.outputs["Output"])
@@ -243,14 +243,14 @@ class OpPixelFeaturesPresmoothed(Operator):
     inputSlots = [InputSlot("Input"), InputSlot("Matrix"), InputSlot("Scales")]
     outputSlots = [OutputSlot("Output"), OutputSlot("ArrayOfOperators")]
     
-    def __init__(self, graph, register = True):         
-        Operator.__init__(self, graph, register)   
-        self.source = OpArrayPiper(self.graph)
+    def __init__(self, parent):         
+        Operator.__init__(self, parent)   
+        self.source = OpArrayPiper(self)
         self.source.inputs["Input"].connect(self.inputs["Input"])        
                 
-        self.stacker = OpMultiArrayStacker(self.graph)
+        self.stacker = OpMultiArrayStacker(self)
         
-        self.multi = Op50ToMulti(self.graph)
+        self.multi = Op50ToMulti(self)
         
         self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
         
@@ -290,35 +290,35 @@ class OpPixelFeaturesPresmoothed(Operator):
     
             i = 0
             for j in range(dimCol):
-                oparray[i].append(OpGaussianSmoothing(self.graph))
+                oparray[i].append(OpGaussianSmoothing(self))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
             i = 1
             for j in range(dimCol):
-                oparray[i].append(OpLaplacianOfGaussian(self.graph))
+                oparray[i].append(OpLaplacianOfGaussian(self))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["scale"].setValue(self.newScales[j])
             i = 2
             for j in range(dimCol):
-                oparray[i].append(OpStructureTensorEigenvalues(self.graph))
+                oparray[i].append(OpStructureTensorEigenvalues(self))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
                 oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
             i = 3
             for j in range(dimCol):   
-                oparray[i].append(OpHessianOfGaussianEigenvalues(self.graph))
+                oparray[i].append(OpHessianOfGaussianEigenvalues(self))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["scale"].setValue(self.newScales[j])
             
             i= 4
             for j in range(dimCol): 
-                oparray[i].append(OpGaussianGradientMagnitude(self.graph))
+                oparray[i].append(OpGaussianGradientMagnitude(self))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
             
             i= 5
             for j in range(dimCol): 
-                oparray[i].append(OpDifferenceOfGaussians(self.graph))
+                oparray[i].append(OpDifferenceOfGaussians(self))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])            
                 oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
@@ -344,7 +344,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             
             #additional connection with FakeOperator
             if (self.matrix==0).all():
-                fakeOp = OpGaussianSmoothing(self.graph)
+                fakeOp = OpGaussianSmoothing(self)
                 fakeOp.inputs["Input"].connect(self.source.outputs["Output"])
                 fakeOp.inputs["sigma"].setValue(10)
                 self.multi.inputs["Input%02d" %(i*dimRow+j+1)].connect(fakeOp.outputs["Output"])
@@ -572,8 +572,8 @@ class OpBaseVigraFilter(OpArrayPiper):
     supportsRoi = False
     supportsWindow = False
     
-    def __init__(self, graph, register = True):
-        OpArrayPiper.__init__(self, graph, register = register)
+    def __init__(self, parent):
+        OpArrayPiper.__init__(self, parent)
         
     def getOutSlot(self, slot, key, result, sourceArray = None):
         kwparams = {}        
@@ -1367,8 +1367,8 @@ class OpH5ReaderBigDataset(Operator):
     inputSlots = [InputSlot("Filenames"), InputSlot("hdf5Path", stype = "string")]
     outputSlots = [OutputSlot("Output")]
     
-    def __init__(self, graph):
-        Operator.__init__(self, graph)
+    def __init__(self, parent):
+        Operator.__init__(self, parent)
         
         self._lock = Lock()
         

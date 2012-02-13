@@ -229,8 +229,8 @@ class OpArrayCache(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("blockShape", value = 64), InputSlot("fixAtCurrent", value = False)]
     outputSlots = [OutputSlot("Output")]    
     
-    def __init__(self, graph, register = True, blockShape = None, immediateAlloc = True):
-        self._origBlockShape = blockShape
+    def __init__(self, parent):
+        self._origBlockShape = 64
         self._blockShape = None
         self._dirtyShape = None
         self._blockState = None
@@ -241,7 +241,7 @@ class OpArrayCache(OpArrayPiper):
         self._cacheLock = Lock()
         self._lazyAlloc = True
         self._cacheHits = 0
-        OpArrayPiper.__init__(self, graph, register = register)
+        OpArrayPiper.__init__(self, parent)
         self.graph._registerCache(self)
         
     def _memorySize(self):
@@ -571,12 +571,12 @@ if has_blist:
         inputSlots = [InputSlot("Input", optional = True), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel", optional = True)]
         outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates")]    
         
-        def __init__(self, graph):
+        def __init__(self, parent):
             self.lock = threading.Lock()
             self._denseArray = None
             self._sparseNZ = None
             self._oldShape = (0,)
-            Operator.__init__(self, graph)
+            Operator.__init__(self,parent)
             
         def notifyConnectAll(self):
           if (self._oldShape != self.inputs["shape"].value).all():
@@ -700,8 +700,8 @@ if has_blist:
         inputSlots = [InputSlot("Input", optional = True), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel", optional = True), InputSlot("blockShape")]
         outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates"), OutputSlot("nonzeroBlocks")]
         
-        def __init__(self, graph, register = True):
-            Operator.__init__(self, graph, register)
+        def __init__(self,parent):
+            Operator.__init__(self,parent)
             self.lock = threading.Lock()
             
             self._sparseNZ = None
@@ -876,7 +876,7 @@ if has_blist:
                 bigkey = roiToSlice(bigstart-start, bigstop-start)
                 smallkey = roiToSlice(smallstart, smallstop)
                 if not b_ind in self._labelers:
-                    self._labelers[b_ind]=OpSparseLabelArray(self.graph)
+                    self._labelers[b_ind]=OpSparseLabelArray(self)
                     self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
                     self._labelers[b_ind].inputs["eraser"].setValue(self.inputs["eraser"].value)
                     self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"])
@@ -900,10 +900,10 @@ class OpBlockedArrayCache(Operator):
     inputSlots = [InputSlot("Input"),InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent")]
     outputSlots = [OutputSlot("Output")]    
 
-    def __init__(self, graph, register = True):   
-        Operator.__init__(self, graph, register)
-        self.source = OpArrayPiper(self.graph)
-        self.fixerSource = OpArrayPiper(self.graph)
+    def __init__(self,parent):   
+        Operator.__init__(self,parent)
+        self.source = OpArrayPiper(self)
+        self.fixerSource = OpArrayPiper(self)
         
         self.source.inputs["Input"].connect(self.inputs["Input"])
         self.fixerSource.inputs["Input"].connect(self.inputs["fixAtCurrent"])
@@ -990,7 +990,7 @@ class OpBlockedArrayCache(Operator):
             
             if not self._fixed:
                 if not self._cache_list.has_key(b_ind):
-                    self._opSub_list[b_ind] = generic.OpSubRegion(self.graph)
+                    self._opSub_list[b_ind] = generic.OpSubRegion(self)
                     self._opSub_list[b_ind].inputs["Input"].connect(self.source.outputs["Output"])
                             
                     tstart = self._blockShape*self._flatBlockIndices[b_ind]
@@ -999,7 +999,7 @@ class OpBlockedArrayCache(Operator):
                     self._opSub_list[b_ind].inputs["Start"].setValue(tuple(tstart))
                     self._opSub_list[b_ind].inputs["Stop"].setValue(tuple(tstop))
             
-                    self._cache_list[b_ind] = OpArrayCache(self.graph)
+                    self._cache_list[b_ind] = OpArrayCache(self)
                     self._cache_list[b_ind].inputs["Input"].connect(self._opSub_list[b_ind].outputs["Output"])
                     #self._cache_list[b_ind].inputs["fixAtCurrent"].connect(self.fixerSource.outputs["Output"])
                     self._cache_list[b_ind].inputs["fixAtCurrent"].connect(self.fixerSource.outputs["Output"])
@@ -1044,10 +1044,10 @@ class OpSlicedBlockedArrayCache(Operator):
     inputSlots = [InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent", value = False)]
     outputSlots = [OutputSlot("Output")]   
     
-    def __init__(self, graph, register = True):      
-        Operator.__init__(self, graph, register)
-        self.source = OpArrayPiper(self.graph)
-        self.fixerSource = OpArrayPiper(self.graph)
+    def __init__(self, parent):      
+        Operator.__init__(self, parent)
+        self.source = OpArrayPiper(self)
+        self.fixerSource = OpArrayPiper(self)
         self.source.inputs["Input"].connect(self.inputs["Input"])
         #self.fixerSource.inputs["Input"].connect(self.inputs["fixAtCurrent"])
 
@@ -1070,7 +1070,7 @@ class OpSlicedBlockedArrayCache(Operator):
                 self._innerOps = []
                 
                 for i,innershape in enumerate(self._innerShapes):
-                    op = OpBlockedArrayCache(self.graph)
+                    op = OpBlockedArrayCache(self)
                     op.inputs["innerBlockShape"].setValue(innershape)
                     op.inputs["outerBlockShape"].setValue(self._outerShapes[i])
                     op.inputs["fixAtCurrent"].setValue(self._fixed)

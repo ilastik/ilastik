@@ -1551,9 +1551,26 @@ class Operator(object):
             obj.execute = types.MethodType(getOutSlot_wrapper, obj)
         return obj
 
-    def __init__( self, graph, register = True ):
-        self.graph = graph
-        self.register = register
+    def __init__( self, parent = None, graph = None, register = True ):
+        assert parent != None or graph != None
+        # preserve compatability with old operators
+        # that give the graph as first argument to 
+        # operators they instantiate
+        if parent is not None:
+          if isinstance(parent, Graph):
+            self.graph = parent
+            self._parent = None
+          else:
+            self._parent = parent
+            self.graph = self._parent.graph
+        if graph is not None:
+          if isinstance(graph, Graph):
+            self.graph = Graph
+            self._parent = None
+          elif not  isinstance(graph, bool):
+            self._parent = graph
+            self.graph = self._parent.graph
+
         self._instantiate_slots()
         
 
@@ -1562,7 +1579,7 @@ class Operator(object):
         #provide simple default name for lazy users
         if self.name == "": 
             self.name = type(self).__name__
-        assert self.graph is not None, "Operators must be given a graph, they cannot exist alone!"
+        assert self.graph is not None, "Operator %r: self.graph is None, the parent  (%r) given to the operator must have a valid .graph attribute! " % (self, self._parent)
         # check for slot uniqueness
         temp = {}
         for i in self.inputSlots:
@@ -1815,11 +1832,11 @@ class OperatorWrapper(Operator):
         self.inputs = InputDict(self)
         self.outputs = OutputDict(self)
         self.operator = operator
-        self.register = False
         self._eventCounter = 0
         self._processedEvents = {}       
         self._originalGraph = operator.graph
         self.graph = operator.graph
+        self._parent = operator._parent
         self._connecting = False
         
         if operator is not None:
@@ -1959,7 +1976,7 @@ class OperatorWrapper(Operator):
     
     def _createInnerOperator(self):
         if self.operator.__class__ is not OperatorWrapper:
-            opcopy = self.operator.__class__(self.graph, register = False)
+            opcopy = self.operator.__class__(parent = self)
         else:
             if lazyflow.verboseWrapping:
                 print "_createInnerOperator OperatorWrapper"

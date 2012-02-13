@@ -17,8 +17,8 @@ class OpA(graph.Operator):
   Output3 = graph.OutputSlot()
 
 
-  def __init__(self, g, register = True):
-    graph.Operator.__init__(self, g, register)
+  def __init__(self, parent):
+    graph.Operator.__init__(self,parent)
     self.configured = False
 
   def setupOutputs(self):

@@ -23,9 +23,9 @@ class OpA(graph.Operator):
   Input = graph.InputSlot()
   Output = graph.OutputSlot()
 
-  def __init__(self,g, register = True):
-    graph.Operator.__init__(self, g, register = register)
-    self.internalOp = OpB(self.graph)
+  def __init__(self,parent):
+    graph.Operator.__init__(self, parent)
+    self.internalOp = OpB(self)
     self.internalOp.Input.connect(self.Input)
     self.inputBackup = self.Input
 
