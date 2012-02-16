@@ -254,7 +254,6 @@ class OpPixelFeaturesPresmoothed(Operator):
         
         self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
         
-        self.outputs["Output"] = self.stacker.outputs["Output"] 
      
         
     def setupOutputs(self):
@@ -374,12 +373,13 @@ class OpPixelFeaturesPresmoothed(Operator):
             self.outputs["Output"]._axistags = self.stacker.outputs["Output"]._axistags            
             self.outputs["Output"]._shape = self.stacker.outputs["Output"]._shape            
     
-    def execute(self, slot, roi, result): 
-        key = roi.toSlice()
+    def execute(self, slot, rroi, result): 
+        key = rroi.toSlice()
         if slot == self.outputs["Output"]:
             cnt = 0
             written = 0
-            start, stop = roi.sliceToRoi(key, self.outputs["Output"]._shape)
+            start = rroi.start
+            stop = rroi.stop
             assert (stop<=self.outputs["Output"].shape).all()
             flag = 'c'
             __channelAxis=self.inputs["Input"].axistags.index('c')
