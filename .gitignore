@@ -1,3 +1,7 @@
 *.pyc
 *.kdev4
 .DS_Store
+
+.project
+
+.pydevproject
