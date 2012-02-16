@@ -9,7 +9,7 @@ from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
                         QMessageBox, qApp, QItemSelectionModel, QIcon, QTransform
 from PyQt4 import uic
 
-from widgets.stackloader import OpStackChainBuilder,StackLoader
+from igms.stackloader import OpStackChainBuilder,StackLoader
 
 from lazyflow.graph import Graph
 from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
@@ -23,11 +23,11 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
     AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
 from volumina.adaptors import Op5ifyer
-from labelListView import Label
-from labelListModel import LabelListModel
+from igms.labelListView import Label
+from igms.labelListModel import LabelListModel
 
-from featureTableWidget import FeatureEntry
-from featureDlg import FeatureDlg
+from igms.featureTableWidget import FeatureEntry
+from igms.featureDlg import FeatureDlg
 
 import vigra
 
@@ -47,6 +47,10 @@ class Main(QMainWindow):
             print sys.argv
             self._normalize_data=False
             sys.argv.remove('notnormalize')
+        if len(sys.argv)==2:
+            def loadCommandlineFile():
+                self._openFile(sys.argv[1:])
+            QTimer.singleShot(0, loadCommandlineFile)
 
         self._colorTable16 = self._createDefault16ColorColorTable()
         

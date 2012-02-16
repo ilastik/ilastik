@@ -475,7 +475,7 @@
   <customwidget>
    <class>LabelListView</class>
    <extends>QTableView</extends>
-   <header>labelListView</header>
+   <header>igms.labelListView</header>
   </customwidget>
  </customwidgets>
  <resources/>
