@@ -347,8 +347,9 @@ class Main(QMainWindow):
         fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy and h5 files (*.npy *.h5)")
         if fileNames.count() == 0:
             return
-        self._openFile(fileNames)
-    
+        #self._openFile(fileNames)
+        self._load()
+        
     def _save(self):
         
         hdf5Path = 'volume/data'
@@ -359,9 +360,28 @@ class Main(QMainWindow):
         for s in pathElements[:-1]:
             g = g.create_group(s)
         result = self.workflow.prediction_cache.outputs["Output"][0][:].allocate().wait()
-        print 'OOOOOOOOOOOOOOOOOO', result.shape
-        d = g.create_dataset(pathElements[-1],data=result)
+        print 'Fileshape ', result.shape
+        g.create_dataset(pathElements[-1],data=result.view('uint16'))
         f.close()
+    
+    def _load(self):
+        
+        hdf5Path = 'volume/data'
+        filename = './test.h5'
+        f = h5py.File(filename, 'r')
+        self.inputProvider = OpArrayPiper(self.g)
+        self.raw = f[hdf5Path][:]
+        self.raw = self.raw.view(vigra.VigraArray)
+        self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
+        self.raw.axistags =  vigra.AxisTags(
+                vigra.AxisInfo('t',vigra.AxisType.Time),
+                vigra.AxisInfo('x',vigra.AxisType.Space),
+                vigra.AxisInfo('y',vigra.AxisType.Space),
+                vigra.AxisInfo('z',vigra.AxisType.Space),
+                vigra.AxisInfo('c',vigra.AxisType.Channels))
+        self.inputProvider.inputs["Input"].setValue(self.raw)
+        self.haveData.emit()
+        
         
 
     def _stackLoad(self):
@@ -381,13 +401,6 @@ class Main(QMainWindow):
         self.haveData.emit()
         self.stackLoader.close()
         
-    def _save(self):
-#        p = os.path.split(__file__)[0]+'/'
-#        if p == "/": p = "."+p
-#        saveUi = uic.loadUi(p+"/saveDialog.ui")
-#        saveUi.exec_()
-        saveDlg = SaveDialog()
-        print saveDlg.exec_()
                 
             
     def _openFile(self, fileNames):
