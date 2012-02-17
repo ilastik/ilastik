@@ -368,7 +368,7 @@ class Main(QMainWindow):
 #        saveUi = uic.loadUi(p+"/saveDialog.ui")
 #        saveUi.exec_()
         saveDlg = SaveDialog()
-        print saveDlg.exec_()
+        saveDlg.exec_()
                 
             
     def _openFile(self, fileNames):
