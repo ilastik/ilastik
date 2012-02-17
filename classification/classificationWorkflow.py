@@ -1,8 +1,12 @@
 #make the program quit on Ctrl+C
 import signal
+from lazyflow.operators.obsolete.vigraOperators import OpH5Writer,\
+    OpH5WriterBigDataset
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import os, sys, numpy, copy
+
+import h5py
 
 from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL
 from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
@@ -345,6 +349,21 @@ class Main(QMainWindow):
             return
         self._openFile(fileNames)
     
+    def _save(self):
+        
+        hdf5Path = 'volume/data'
+        filename = './test.h5'
+        f = h5py.File(filename, 'w')
+        pathElements = hdf5Path.split("/")
+        g=f
+        for s in pathElements[:-1]:
+            g = g.create_group(s)
+        result = self.workflow.prediction_cache.outputs["Output"][0][:].allocate().wait()
+        print 'OOOOOOOOOOOOOOOOOO', result.shape
+        d = g.create_dataset(pathElements[-1],data=result)
+        f.close()
+        
+
     def _stackLoad(self):
         self.inputProvider = OpArrayPiper(self.g)
         op5ifyer = Op5ifyer(self.g)
