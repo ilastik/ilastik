@@ -10,7 +10,7 @@ import h5py
 
 from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL
 from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
-                        QMessageBox, qApp, QItemSelectionModel, QIcon, QTransform
+                        QMessageBox, qApp, QItemSelectionModel, QIcon, QTransform, QDialog
 from PyQt4 import uic
 
 from igms.stackloader import OpStackChainBuilder,StackLoader
@@ -32,10 +32,12 @@ from igms.labelListModel import LabelListModel
 
 from igms.featureTableWidget import FeatureEntry
 from igms.featureDlg import FeatureDlg
+from saveDialog import SaveDialog
 
 import vigra
 
 from pixel_classification_lazyflow import PixelClassificationLazyflow
+
 
 class Main(QMainWindow):    
     haveData        = pyqtSignal()
@@ -378,6 +380,15 @@ class Main(QMainWindow):
         self.inputProvider.inputs["Input"].setValue(self.raw)
         self.haveData.emit()
         self.stackLoader.close()
+        
+    def _save(self):
+#        p = os.path.split(__file__)[0]+'/'
+#        if p == "/": p = "."+p
+#        saveUi = uic.loadUi(p+"/saveDialog.ui")
+#        saveUi.exec_()
+        saveDlg = SaveDialog()
+        print saveDlg.exec_()
+                
             
     def _openFile(self, fileNames):
         self.inputProvider = None
