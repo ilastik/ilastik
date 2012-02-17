@@ -350,9 +350,10 @@ class Main(QMainWindow):
         self._openFile(fileNames)
     
     def _save(self):
+        saveDlg = SaveDialog()
+        filename = str(saveDlg.exec_())
         
         hdf5Path = 'volume/data'
-        filename = './test.h5'
         f = h5py.File(filename, 'w')
         pathElements = hdf5Path.split("/")
         g=f
@@ -380,15 +381,6 @@ class Main(QMainWindow):
         self.inputProvider.inputs["Input"].setValue(self.raw)
         self.haveData.emit()
         self.stackLoader.close()
-        
-    def _save(self):
-#        p = os.path.split(__file__)[0]+'/'
-#        if p == "/": p = "."+p
-#        saveUi = uic.loadUi(p+"/saveDialog.ui")
-#        saveUi.exec_()
-        saveDlg = SaveDialog()
-        saveDlg.exec_()
-                
             
     def _openFile(self, fileNames):
         self.inputProvider = None
