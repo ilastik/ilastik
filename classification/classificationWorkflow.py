@@ -85,6 +85,7 @@ class Main(QMainWindow):
         self.actionOpenFile.triggered.connect(self.openFile)
         self.actionOpenStack.triggered.connect(self.openImageStack)
         self.actionQuit.triggered.connect(qApp.quit)
+        self.actionSaveAs.triggered.connect(self._save)
         
         def toggleDebugPatches(show):
             self.editor.showDebugPatches = show
