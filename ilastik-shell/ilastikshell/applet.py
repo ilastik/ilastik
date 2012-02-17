@@ -22,11 +22,16 @@ class Applet( object ):
     def controlWidget( self ):
         return self._controlWidget
 
+    @property
+    def menuWidget( self ):
+        return self._menuWidget
+
     def __init__( self, name = "Example Applet" ):
         self.name = name
         
         self._centralWidget = QLabel(name + " Central Widget")
         self._controlWidget = QLabel(name + " Control Widget")
+        self._menuWidget = QLabel(name + " Menu Widget")
 
 if __name__ == '__main__':
     run_applet(Applet)
