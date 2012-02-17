@@ -16,13 +16,13 @@ class LoadFileDialog(QDialog):
         self.selectPathButton.clicked.connect(self.on_SelectPathButtonClicked)
 
     def on_SelectPathButtonClicked(self):
-        fileName = QFileDialog.getSaveFileName(self, "Save File", os.path.abspath(__file__))
+        fileName = QFileDialog.getOpenFileName(self, "Open File", os.path.abspath(__file__))
         self.lineEdit.setText(fileName)
 
         
     def exec_(self):
         if QDialog.exec_(self) == QDialog.Accepted:
-            return  "filePath"
+            return  self.lineEdit.text()
         else:
             return "Cancel"
         

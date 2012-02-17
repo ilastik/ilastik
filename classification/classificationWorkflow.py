@@ -33,6 +33,7 @@ from igms.labelListModel import LabelListModel
 from igms.featureTableWidget import FeatureEntry
 from igms.featureDlg import FeatureDlg
 from saveDialog import SaveDialog
+from loadFileDlg import LoadFileDialog
 
 import vigra
 
@@ -88,7 +89,7 @@ class Main(QMainWindow):
         if p == "/": p = "."+p
         uic.loadUi(p+"/classificationWorkflow.ui", self) 
         #connect the window and graph creation to the opening of the file
-        self.actionOpenFile.triggered.connect(self.openFile)
+        self.actionOpenFile.triggered.connect(self._load)
         self.actionOpenStack.triggered.connect(self.openImageStack)
         self.actionQuit.triggered.connect(qApp.quit)
         self.actionSaveAs.triggered.connect(self._save)
@@ -367,8 +368,9 @@ class Main(QMainWindow):
     
     def _load(self):
         
+        loadDlg = LoadFileDialog()
+        filename = str(loadDlg.exec_())
         hdf5Path = 'volume/data'
-        filename = './test.h5'
         f = h5py.File(filename, 'r')
         self.inputProvider = OpArrayPiper(self.g)
         self.raw = f[hdf5Path][:]
