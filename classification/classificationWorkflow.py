@@ -351,9 +351,10 @@ class Main(QMainWindow):
         self._load()
         
     def _save(self):
+        saveDlg = SaveDialog()
+        filename = str(saveDlg.exec_())
         
         hdf5Path = 'volume/data'
-        filename = './test.h5'
         f = h5py.File(filename, 'w')
         pathElements = hdf5Path.split("/")
         g=f
@@ -401,8 +402,6 @@ class Main(QMainWindow):
         self.haveData.emit()
         self.stackLoader.close()
         
-                
-            
     def _openFile(self, fileNames):
         self.inputProvider = None
         fName, fExt = os.path.splitext(str(fileNames[0]))
