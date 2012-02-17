@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QDialog
+from PyQt4.QtGui import QDialog, QFileDialog
 from PyQt4 import uic
 import os
 
@@ -16,7 +16,8 @@ class SaveDialog(QDialog):
         
     def exec_(self):
         if QDialog.exec_(self) == QDialog.Accepted:
-            return  "SavePath"
+            fileNames = QFileDialog.getSaveFileName(self, "Save File", os.path.abspath(__file__))
+            return  fileNames
         else:
             return "Cancel"
         

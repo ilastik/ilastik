@@ -28,7 +28,7 @@ from igms.labelListModel import LabelListModel
 
 from igms.featureTableWidget import FeatureEntry
 from igms.featureDlg import FeatureDlg
-from saveAsDialog import SaveDialog
+from saveDialog import SaveDialog
 
 import vigra
 
