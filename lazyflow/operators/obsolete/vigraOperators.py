@@ -1250,7 +1250,7 @@ class OpH5Writer(Operator):
           stop = numpy.minimum(nshape,start+nBlockShape)
 
           s = roi.roiToSlice(start,stop)
-          req = self.inputs["Image"][s].allocate()
+          req = self.inputs["Image"][s]
           
           req.notify(writeResult,blockNr = bnr, roiSlice=s)
           requests.append(req)
