@@ -3,6 +3,7 @@ from PyQt4.QtCore import QRegExp, Qt
 from PyQt4 import uic
 import os
 from opStackWriter import OpStackWriter
+from lazyflow.operators.ioOperators import OpH5Writer 
 
 
 class SaveDialog(QDialog):
@@ -79,6 +80,19 @@ class SaveDialog(QDialog):
                 key.append(slice(int(r.cap(i+1)), int(r.cap(i+3))-1))
                 j+=1
         return key
+    
+    def createKeyForSubvolumeH5(self):
+        r = self.lineEditVolumeShape.validator().regExp()
+        r.indexIn(self.lineEditVolumeShape.displayText())
+        j = 0
+        start = []
+        stop = []
+        for i in range(r.captureCount()):
+            if not i % 4:
+                start.append(int(r.cap(i+1)))
+                stop.append(int(r.cap(i+3)))
+                j+=1
+        return [start, stop]
         
     
     def setLineEditVolumeShape(self):
@@ -118,7 +132,20 @@ class SaveDialog(QDialog):
                 writer.inputs["Filetype"].setValue(str(self.comboBoxFileTypes.currentText()))
                 writer.outputs["WritePNGStack"][key].allocate().wait()
             if self.radioButtonH5.isChecked():
-                pass
+                h5Key = self.createKeyForSubvolumeH5()
+                writerH5 = OpH5Writer(self.graph)
+                writerH5.inputs["filename"].setValue(str(self.folderPath + "/" + self.lineEditFileName.displayText() + ".h5"))
+                writerH5.inputs["hdf5Path"].setValue("")
+                writerH5.inputs["input"].connect(self.workflow.images.outputs["Outputs"][0])
+                writerH5.inputs["blockShape"].setValue(5)
+                writerH5.inputs["dataType"].setValue("uint8")
+                writerH5.inputs["roi"].setValue(h5Key)
+                writerH5.inputs["normalize"].setValue([0,255])
+                writerH5.outputs["WriteImage"][:].allocate().wait()
+                
+                
+
+                
             
             
             return

@@ -1,7 +1,6 @@
 #make the program quit on Ctrl+C
 import signal
-from lazyflow.operators.obsolete.vigraOperators import OpH5Writer,\
-    OpH5WriterBigDataset
+from lazyflow.operators.obsolete.vigraOperators import OpH5WriterBigDataset
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import os, sys, numpy, copy
