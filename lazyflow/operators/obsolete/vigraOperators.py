@@ -12,6 +12,7 @@ from generic import OpMultiArrayStacker, getSubKeyWithFlags, popFlagsFromTheKey
 import math
 
 from threading import Lock
+from lazyflow.roi import roiToSlice
 
 
 
@@ -1171,98 +1172,6 @@ class OpH5Reader(Operator):
         #self.ff.write(str(start)+'   '+str(stop)+'   ***  '+str(dif)+' \n')
         
 
-        
-class OpH5Writer(Operator):
-    name = "H5 File Writer"
-    category = "Output"
-    
-    inputSlots = [InputSlot("Filename", stype = "filestring"), InputSlot("hdf5Path", stype = "string"), InputSlot("Image"), InputSlot("blockShape")]
-    outputSlots = [OutputSlot("WriteImage")]
-
-    def notifyConnectAll(self):        
-        self.outputs["WriteImage"]._shape = (1,)
-        self.outputs["WriteImage"]._dtype = object
-#            filename = self.inputs["Filename"][0].allocate().wait()[0]
-#            hdf5Path = self.inputs["hdf5Path"][0].allocate().wait()[0]
-#
-#            imSlot = self.inputs["Image"]
-#            
-#            axistags = copy.copy(imSlot.axistags)
-#            
-#            image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
-#                        
-#            def closure():
-#                f = h5py.File(filename, 'w')
-#                g = f
-#                pathElements = hdf5Path.split("/")
-#                for s in pathElements[:-1]:
-#                    g = g.create_group(s)
-#                g.create_dataset(pathElements[-1],data = image)
-#                f.close()
-#    
-#            self.inputs["Image"][:].writeInto(image).notify(closure)
-    
-    def getOutSlot(self, slot, key, result):
-        filename = self.inputs["Filename"].value
-        hdf5Path = self.inputs["hdf5Path"].value
-
-        imSlot = self.inputs["Image"]
-        
-        axistags = copy.copy(imSlot.axistags)
-        
-        image = numpy.ndarray(imSlot.shape, dtype=imSlot.dtype)
-        
-        
-        f = h5py.File(filename, 'w')
-        g = f
-        pathElements = hdf5Path.split("/")
-        for s in pathElements[:-1]:
-            g = g.create_group(s)
-        d = g.create_dataset(pathElements[-1],data = image)
-
-        """
-        now, request the input in blocks
-        and write the results out
-        """
-        bs = self.inputs["blockShape"].value
-        if type(bs) != tuple:
-          assert(type(bs) == int)
-          bs = (bs,)*len(image.shape)
-
-
-        nBlockShape = numpy.array(bs)
-        nshape = numpy.array(image.shape)
-        blocks = numpy.ceil(nshape*1.0 / nBlockShape).astype(numpy.int32)
-        blockIndices = numpy.nonzero(numpy.ones(blocks))
-
-        def writeResult(result,blockNr, roiSlice):
-          d[roiSlice] = result[:]
-          print "writing block %d at %r" % (blockNr, roiSlice)
-        
-        requests = []
-        
-        for bnr in range(len(blockIndices[0])):
-          indices = [blockIndices[0][bnr]*nBlockShape[0],]
-          for i in range(1,len(nshape)):
-            indices.append(blockIndices[i][bnr]*nBlockShape[i])
-          nIndices = numpy.array(indices)
-          start =  nIndices
-          stop = numpy.minimum(nshape,start+nBlockShape)
-
-          s = roi.roiToSlice(start,stop)
-          req = self.inputs["Image"][s]
-          
-          req.notify(writeResult,blockNr = bnr, roiSlice=s)
-          requests.append(req)
-       
-        for req in requests:
-          req.wait()
-        
-        f.close()
-        
-        result[0] = True
-        
-        
         
 class OpH5WriterBigDataset(Operator):
     name = "H5 File Writer BigDataset"
