@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>421</width>
-    <height>344</height>
+    <width>597</width>
+    <height>393</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,16 +15,44 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
+    <widget class="QLabel" name="labelFolderPath">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="layoutDirection">
+      <enum>Qt::LeftToRight</enum>
+     </property>
+     <property name="text">
+      <string>TextLabel</string>
+     </property>
+     <property name="scaledContents">
+      <bool>false</bool>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QLineEdit" name="lineEdit">
+      <widget class="QLineEdit" name="lineEditFileName">
        <property name="text">
-        <string>dummy.h5</string>
+        <string>Untitled</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="selectPathButton">
+      <widget class="QPushButton" name="buttonSelectPath">
        <property name="text">
         <string>Select Path</string>
        </property>
@@ -35,34 +63,80 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QLabel" name="label">
-       <property name="minimumSize">
-        <size>
-         <width>70</width>
-         <height>0</height>
-        </size>
-       </property>
+      <widget class="QLabel" name="labelFiletype">
        <property name="text">
-        <string>Format:</string>
+        <string>Filetype:</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="comboBox">
-       <property name="minimumSize">
-        <size>
-         <width>100</width>
-         <height>0</height>
-        </size>
+      <widget class="QComboBox" name="comboBoxFileTypes">
+       <property name="enabled">
+        <bool>true</bool>
        </property>
        <item>
         <property name="text">
-         <string>h5</string>
+         <string>png</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>npy</string>
+         <string>jpeg</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>bmp</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>gif</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>hdr</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>jpg</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>pbm</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>pnm</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>ppm</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>ras</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>tif</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>tiff</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>xv</string>
         </property>
        </item>
       </widget>
@@ -85,15 +159,52 @@
    <item>
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
-      <string>Options</string>
+      <string>GroupBox</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
-       <widget class="QCheckBox" name="checkBox">
+       <layout class="QHBoxLayout" name="horizontalLayout_8">
+        <item>
+         <widget class="QRadioButton" name="radioButtonH5">
+          <property name="text">
+           <string>h5</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioButtonStack">
+          <property name="text">
+           <string>Stack</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelVolumeInfo">
         <property name="text">
-         <string>normalize</string>
+         <string>TextLabel</string>
         </property>
        </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="lineEditVolumeShape"/>
       </item>
      </layout>
     </widget>
@@ -123,6 +234,15 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>buttonBox</tabstop>
+  <tabstop>lineEditFileName</tabstop>
+  <tabstop>buttonSelectPath</tabstop>
+  <tabstop>comboBoxFileTypes</tabstop>
+  <tabstop>radioButtonH5</tabstop>
+  <tabstop>radioButtonStack</tabstop>
+  <tabstop>lineEditVolumeShape</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>

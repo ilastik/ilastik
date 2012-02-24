@@ -85,7 +85,10 @@ class Main(QMainWindow):
             self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
         
     def initUic(self):
-        p = os.path.split(__file__)[0]+'/'
+        try:
+            p = os.path.split(__file__)[0]+'/'
+        except:
+            p = '.'
         if p == "/": p = "."+p
         uic.loadUi(p+"/classificationWorkflow.ui", self) 
         #connect the window and graph creation to the opening of the file
@@ -353,8 +356,10 @@ class Main(QMainWindow):
         
     def _save(self):
         saveDlg = SaveDialog()
+        saveDlg.setWorkflow(self.workflow, self.g)
         filename = str(saveDlg.exec_())
         
+        '''
         hdf5Path = 'volume/data'
         f = h5py.File(filename, 'w')
         pathElements = hdf5Path.split("/")
@@ -365,7 +370,18 @@ class Main(QMainWindow):
         print 'Fileshape ', result.shape
         g.create_dataset(pathElements[-1],data=result.view('uint16'))
         f.close()
-    
+        '''
+        #print self.workflow.prediction_cache.outputs["Output"][0].shape
+        #print self.workflow.prediction_cache.outputs["Output"][0].dtype
+        #print self.workflow.prediction_cache.outputs["Output"][0].axistags
+        #print type(self.workflow.prediction_cache.outputs["Output"][0])
+        
+        
+        print self.workflow.images.outputs["Outputs"][0].shape
+        print self.workflow.images.outputs["Outputs"][0].dtype
+        print self.workflow.images.outputs["Outputs"][0].axistags
+        print type(self.workflow.images.outputs["Outputs"][0])
+
     def _load(self):
         
         loadDlg = LoadFileDialog()
