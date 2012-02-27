@@ -167,11 +167,10 @@ class GetItemRequestObject(object):
             self.arg1 = slot
         else:
             # we are in the ._value case of an inputSlot
-            gr = greenlet.getcurrent()
-            if isinstance(gr,CustomGreenlet):
-                self.parentRequest = gr.currentRequest    
-                assert gr.currentRequest is not None
-            self.wait() #this sets self._finished and copies the results over
+             if self.destination is None:
+                self.destination = self.slot._allocateDestination(self.roi)
+             self.destination = self.slot._writeIntoDestination(self.destination, self.slot._value, self.roi)
+             self._finished = True
         if not self._finished:
             gr = greenlet.getcurrent()
             if isinstance(gr,CustomGreenlet):
@@ -256,7 +255,10 @@ class GetItemRequestObject(object):
 
     @deprecated
     def allocate(self, priority = 0):
-        return self.writeInto( None, priority)
+        if self.destination is None:
+          return self.writeInto( None, priority)
+        else:
+          return self
 
     def wait(self, timeout = 0):
         """
@@ -349,8 +351,8 @@ class GetItemRequestObject(object):
               pass
         else: # not (isinstance(self.slot, OutputSlot) or self.slot._value is None)
             if self.destination is None:
-                self.destination = self.slot._allocateDestination(self.roi)
-            self.destination = self.slot._writeIntoDestination(self.destination, self.slot._value, self.roi)
+              self.destination = self.slot._allocateDestination(self.roi)
+            self.slot._writeIntoDestination(self.destination, self.slot._value, self.roi)
         self._finished = True
         if self.canceled is False:
           assert self.destination is not None
@@ -613,7 +615,6 @@ class Slot(object):
         return self.stype.allocateDestination(key)
         
     def _writeIntoDestination( self, destination, value,roi ):
-        assert(len(roi.toSlice()) == destination.ndim), "%r ndim=%r, shape=%r" % (roi.toSlice(), destination.ndim, destination.shape)
         return self.stype.writeIntoDestination(destination,value, roi)
                            
     def __getitem__(self, key):

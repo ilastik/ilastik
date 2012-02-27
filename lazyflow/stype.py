@@ -58,6 +58,8 @@ class ArrayLike( SlotType ):
         return storage
 
     def writeIntoDestination( self, destination, value, roi ):
+        if not isinstance(destination, list):
+         assert(len(roi.toSlice()) == destination.ndim), "%r ndim=%r, shape=%r" % (roi.toSlice(), destination.ndim, destination.shape)
         sl = roiToSlice(roi.start, roi.stop)
         try:
             destination[:] = value[sl]
