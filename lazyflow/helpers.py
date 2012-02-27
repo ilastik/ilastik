@@ -1,4 +1,4 @@
-import os
+import os,numpy
 from lazyflow.config import CONFIG
 
 
@@ -77,3 +77,30 @@ def detectCPUs():
         if ncpus > 0:
             return ncpus
     return 1 # Default
+
+def generateRandomKeys(shape):
+    """
+    for a given shape of any dimension this method returns a list of slicings 
+    which is bounded by the shape
+    """
+    
+    dim = len(shape)
+    tmp = numpy.zeros((len(shape),2))
+    while len([x for x in tmp if x[0]!=x[1]]) < dim:
+        tmp = numpy.random.rand(dim,2)
+        for i in range(dim):
+                tmp[i,:] *= shape[i]
+                tmp[i,:] = numpy.sort(numpy.round(tmp[i,:]))
+    key = [slice(int(x[0]),int(x[1]),None) for x in tmp]
+    return key
+
+def generateRandomRoi(shape):
+    """
+    for a given shape of any dimension this method returns a roi which is 
+    bounded by the shape
+    """
+    roi = [[0,0]]
+    while len([x for x in roi if not abs(x[0]-x[1])<=1]) < len(shape):
+        roi = [sorted([numpy.random.randint(dim),numpy.random.randint(dim)]) for dim in shape]
+    roi = [[x[0] for x in roi],[x[1] for x in roi]]
+    return roi
