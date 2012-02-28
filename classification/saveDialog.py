@@ -128,8 +128,8 @@ class SaveDialog(QDialog):
                 key = self.createKeyForSubvolume()
                 writer = OpStackWriter(self.graph)
                 writer.inputs["input"].connect(self.workflow.images.outputs["Outputs"][0])
-                writer.inputs["Filepath"].setValue(str(self.folderPath + "/" + self.lineEditFileName.displayText()))
-                writer.inputs["Filetype"].setValue(str(self.comboBoxFileTypes.currentText()))
+                writer.inputs["filepath"].setValue(str(self.folderPath + "/" + self.lineEditFileName.displayText()))
+                writer.inputs["filetype"].setValue(str(self.comboBoxFileTypes.currentText()))
                 writer.outputs["WritePNGStack"][key].allocate().wait()
             if self.radioButtonH5.isChecked():
                 h5Key = self.createKeyForSubvolumeH5()

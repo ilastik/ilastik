@@ -4,9 +4,11 @@ import vigra
 
 
 class OpStackWriter(Operator):
-    name = "PNG Stack Writer"
+    name = "Stack File Writer"
+    category = "Output"
     
-    inputSlots = [InputSlot("Filepath", stype = "string"), InputSlot("Filetype", stype = "string"), InputSlot("input")]
+    inputSlots = [InputSlot("filepath", stype = "string"), \
+                  InputSlot("input")]
     outputSlots = [OutputSlot("WritePNGStack")]
     
     def setupOutputs(self):
@@ -14,11 +16,13 @@ class OpStackWriter(Operator):
         self.outputs["WritePNGStack"]._dtype = object
     
     def execute(self,slot,roi,result):
-        print "OpStackWirter.roi", roi
         image = self.inputs["input"][roi.toSlice()].allocate().wait()
-        print '  image has shape', image.shape
-        filepath = self.inputs["Filepath"].value
-        filetype = self.inputs["Filetype"].value
 
+        filepath = self.inputs["filepath"].value
+        filepath = filepath.split(".")
+        filetype = filepath[-1]
+        filepath = filepath[0:-1]
+        filepath = "/".join(filepath)
+        
         for i in range(image.shape[3]):
             vigra.impex.writeImage(image[0,:,:,i,0],filepath+"_%04d." % (i)+filetype)

@@ -1,6 +1,7 @@
 #make the program quit on Ctrl+C
 import signal
 from lazyflow.operators.obsolete.vigraOperators import OpH5WriterBigDataset
+from lazyflow.operators.ioOperators import OpH5Writer
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import os, sys, numpy, copy
@@ -31,7 +32,7 @@ from igms.labelListModel import LabelListModel
 
 from igms.featureTableWidget import FeatureEntry
 from igms.featureDlg import FeatureDlg
-from saveDialog import SaveDialog
+from exportDlg import ExportDialog
 from loadFileDlg import LoadFileDialog
 
 import vigra
@@ -354,9 +355,9 @@ class Main(QMainWindow):
         self._load()
         
     def _save(self):
-        saveDlg = SaveDialog()
-        saveDlg.setWorkflow(self.workflow, self.g)
-        filename = str(saveDlg.exec_())
+        exportDlg = ExportDialog()
+        exportDlg.setWorkflow(self.workflow, self.g)
+        exportDlg.exec_()
         
         '''
         hdf5Path = 'volume/data'
@@ -376,10 +377,10 @@ class Main(QMainWindow):
         #print type(self.workflow.prediction_cache.outputs["Output"][0])
         
         
-        print self.workflow.images.outputs["Outputs"][0].shape
-        print self.workflow.images.outputs["Outputs"][0].dtype
-        print self.workflow.images.outputs["Outputs"][0].axistags
-        print type(self.workflow.images.outputs["Outputs"][0])
+        #print self.workflow.images.outputs["Outputs"][0].shape
+        #print self.workflow.images.outputs["Outputs"][0].dtype
+        #print self.workflow.images.outputs["Outputs"][0].axistags
+        #print type(self.workflow.images.outputs["Outputs"][0])
 
     def _load(self):
         
