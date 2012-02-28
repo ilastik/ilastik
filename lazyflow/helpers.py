@@ -78,29 +78,37 @@ def detectCPUs():
             return ncpus
     return 1 # Default
 
-def generateRandomKeys(shape):
+def generateRandomKeys(maxShape,minShape = 0,minWidth = 0):
     """
     for a given shape of any dimension this method returns a list of slicings 
-    which is bounded by the shape
+    which is bounded by maxShape and minShape and has the minimum Width minWidth
+    in all dimensions
     """
-    
-    dim = len(shape)
-    tmp = numpy.zeros((len(shape),2))
-    while len([x for x in tmp if x[0]!=x[1]]) < dim:
-        tmp = numpy.random.rand(dim,2)
-        for i in range(dim):
-                tmp[i,:] *= shape[i]
+    if not minShape:
+        minShape = tuple(numpy.zeros_like(list(maxShape)))
+    assert len(maxShape) == len(minShape),'Dimensions of Shape do not match!'
+    maxDim = len(maxShape)
+    tmp = numpy.zeros((maxDim,2))
+    while len([x for x in tmp if not x[1]-x[0] <= minWidth]) < maxDim:
+        tmp = numpy.random.rand(maxDim,2)
+        for i in range(maxDim):
+                tmp[i,:] *= (maxShape[i]-minShape[i])
+                tmp[i,:] += minShape[i]
                 tmp[i,:] = numpy.sort(numpy.round(tmp[i,:]))
     key = [slice(int(x[0]),int(x[1]),None) for x in tmp]
     return key
 
-def generateRandomRoi(shape):
+def generateRandomRoi(maxShape,minShape = 0,minWidth = 0):
     """
     for a given shape of any dimension this method returns a roi which is 
-    bounded by the shape
+    bounded by maxShape and minShape and has the minimum Width in minWidth
+    in all dimensions
     """
+    if not minShape:
+        minShape = tuple(numpy.zeros_like(maxShape))
+    assert len(maxShape) == len(minShape),'Dimensions of Shape do not match!'
     roi = [[0,0]]
-    while len([x for x in roi if not abs(x[0]-x[1])<=1]) < len(shape):
-        roi = [sorted([numpy.random.randint(dim),numpy.random.randint(dim)]) for dim in shape]
+    while len([x for x in roi if not abs(x[0]-x[1]) < minWidth]) < len(maxShape):
+        roi = [sorted([numpy.random.randint(minDim,maxDim),numpy.random.randint(minDim,maxDim)]) for minDim,maxDim in zip(minShape,maxShape)]
     roi = [[x[0] for x in roi],[x[1] for x in roi]]
     return roi
