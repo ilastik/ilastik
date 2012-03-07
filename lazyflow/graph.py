@@ -665,7 +665,7 @@ class Slot(object):
       of the Roi type. this allows lazyflow to support different
       types of rois without knowing anything about them.
       """
-      roi = self.rtype(self,*args, **kwargs) if (args or kwargs) else None
+      roi = self.rtype(self,*args, **kwargs)
       return self.get( roi )
 
     def get( self, roi ):
