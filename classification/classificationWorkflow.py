@@ -348,7 +348,7 @@ class Main(QMainWindow):
         self.stackLoader.loadButton.clicked.connect(self._stackLoad)
 
     def openFile(self):
-        fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy and h5 files (*.npy *.h5)")
+        fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__))
         if fileNames.count() == 0:
             return
         #self._openFile(fileNames)
@@ -356,31 +356,12 @@ class Main(QMainWindow):
         
     def _save(self):
         exportDlg = ExportDialog()
-        exportDlg.setWorkflow(self.workflow, self.g)
+        exportDlg.setInput(self.workflow.images.outputs["Outputs"][0], self.g)
         exportDlg.exec_()
-        
-        '''
-        hdf5Path = 'volume/data'
-        f = h5py.File(filename, 'w')
-        pathElements = hdf5Path.split("/")
-        g=f
-        for s in pathElements[:-1]:
-            g = g.create_group(s)
-        result = self.workflow.prediction_cache.outputs["Output"][0][:].allocate().wait()
-        print 'Fileshape ', result.shape
-        g.create_dataset(pathElements[-1],data=result.view('uint16'))
-        f.close()
-        '''
         #print self.workflow.prediction_cache.outputs["Output"][0].shape
         #print self.workflow.prediction_cache.outputs["Output"][0].dtype
         #print self.workflow.prediction_cache.outputs["Output"][0].axistags
         #print type(self.workflow.prediction_cache.outputs["Output"][0])
-        
-        
-        #print self.workflow.images.outputs["Outputs"][0].shape
-        #print self.workflow.images.outputs["Outputs"][0].dtype
-        #print self.workflow.images.outputs["Outputs"][0].axistags
-        #print type(self.workflow.images.outputs["Outputs"][0])
 
     def _load(self):
         
