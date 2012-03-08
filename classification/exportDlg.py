@@ -4,6 +4,7 @@ from PyQt4 import uic
 import os
 from opStackWriter import OpStackWriter
 from lazyflow.operators.ioOperators import OpH5Writer 
+from roi import TinyVector
 
 class ExportDialog(QDialog):
     def __init__(self, parent=None):
@@ -115,13 +116,13 @@ class ExportDialog(QDialog):
 # output formats
 #===============================================================================
     def on_radioButtonH5Clicked(self):
-        self.widgetOptionsHDF5.setDisabled(False)
-        self.widgetOptionsStack.setDisabled(True)
+        self.widgetOptionsHDF5.setVisible(True)
+        self.widgetOptionsStack.setVisible(False)
         self.correctFilePathSuffix()
         
     def on_radioButtonStackClicked(self):
-        self.widgetOptionsHDF5.setDisabled(True)
-        self.widgetOptionsStack.setDisabled(False)
+        self.widgetOptionsHDF5.setVisible(False)
+        self.widgetOptionsStack.setVisible(True)
         self.correctFilePathSuffix()
         
 #===============================================================================
@@ -156,9 +157,11 @@ class ExportDialog(QDialog):
             if r.cap(1) == "" or r.cap(2) == "" or r.cap(3) == "" or \
             int(r.cap(1)) > int(r.cap(3)) or int(r.cap(3)) > int(self.input.shape[i])-1:
                 p.setColor(QPalette.Base, Qt.red)
+                p.setColor(QPalette.Text,Qt.white)
                 isValid = False
             else:
                 p.setColor(QPalette.Base, Qt.white)
+                p.setColor(QPalette.Text,Qt.black)
             self.lineEditOutputShapeList[i].setPalette(p)
         if isValid:
             self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(True)
@@ -197,7 +200,7 @@ class ExportDialog(QDialog):
             r.indexIn(self.lineEditOutputShapeList[i].displayText())
             start.append(int(r.cap(1)))
             stop.append(int(r.cap(3)))
-        return [start, stop]
+        return [TinyVector(start), TinyVector(stop)]
 
 
 
@@ -213,6 +216,7 @@ class ExportDialog(QDialog):
                 
             if self.radioButtonH5.isChecked():
                 h5Key = self.createRoiForOutputShape()
+                print h5Key, "###############################################"
                 writerH5 = OpH5Writer(self.graph)
                 writerH5.inputs["filename"].setValue(str(self.lineEditFilePath.displayText()))
                 writerH5.inputs["hdf5Path"].setValue(str(self.lineEditHdf5Path.displayText()))
