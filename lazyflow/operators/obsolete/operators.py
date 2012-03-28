@@ -13,6 +13,7 @@ import gc
 import sys
 import weakref
 from threading import current_thread, Lock, RLock
+from lazyflow import request
 import generic
 import itertools
 from lazyflow.rtype import SubRegion
@@ -46,8 +47,8 @@ class OpArrayPiper(Operator):
     def execute(self, slot, roi, result):
         key = roi.toSlice()
         req = self.inputs["Input"][key].writeInto(result)
-        res = req.wait()
-        return res
+        req.wait()
+        return result
 
     def notifyDirty(self,slot,key):
         self.outputs["Output"].setDirty(key)
@@ -237,8 +238,8 @@ class OpArrayCache(OpArrayPiper):
         self._dirtyState = None
         self._fixed = False
         self._cache = None
-        self._lock = RLock()
-        self._cacheLock = Lock()
+        self._lock = Lock()
+        self._cacheLock = request.Lock()#greencall.Lock()
         self._lazyAlloc = True
         self._cacheHits = 0
         OpArrayPiper.__init__(self, parent)
@@ -259,7 +260,8 @@ class OpArrayCache(OpArrayPiper):
                 self._cache.resize((1,))
             except ValueError:
                 freed = 0
-                print "WARN: OpArrayCache: freeing failed due to view references"
+                if lazyflow.verboseMemory:
+                    print "WARN: OpArrayCache: freeing failed due to view references"
             if freed > 0:
                 if lazyflow.verboseMemory:
                     print "OpArrayCache: freed cache of shape", fshape
@@ -410,7 +412,7 @@ class OpArrayCache(OpArrayPiper):
         half = tileArray.shape[0]/2
         dirtyRequests = []
 
-        def onCancel():
+        def onCancel(req):
             return False # indicate that this request cannot be canceled
             
         for i in range(tileArray.shape[1]):

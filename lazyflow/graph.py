@@ -32,10 +32,8 @@ import numpy
 import vigra
 import sys
 import copy
-import psutil
-import atexit
 import traceback
-
+import psutil
 
 if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".")[1]) < 3:
     print "Lazyflow: Please install a psutil python module version of at least >= 0.3.0"
@@ -53,17 +51,13 @@ from helpers import itersubclasses, detectCPUs, deprecated, warn_deprecated
 from collections import deque
 from Queue import Queue, LifoQueue, Empty, PriorityQueue
 from threading import Thread, Event, current_thread, Lock
-import greenlet
 import weakref
-import threading
-
+from request import Request
 import rtype
 from roi import sliceToRoi, roiToSlice
 from lazyflow.stype import ArrayLike
 from lazyflow import stype
 
-greenlet.GREENLET_USE_GC = False #use garbage collection
-sys.setrecursionlimit(1000)
 
 
 
@@ -82,432 +76,6 @@ class Operators(object):
             cls.register(o)
         cls.operators.pop("OperatorWrapper")
         #+cls.operators.pop("Operator")
-
-
-class CopyOnWriteView(object):
-    
-    def __init__(self, shape, dtype):
-        self._data = None
-        self._allocated = False
-        self.shape = shape
-        self.dtype = dtype
-        
-    def __setitem__(self,key, value):
-        if key == slice(None,None):
-            if isinstance(value, numpy.ndarray):
-                self._data = value
-                self._allocated = False
-                return value
-        if self._allocated is False:
-            temp = None
-            if self._data is not None:
-                temp = self._data
-            self._data = numpy.ndarray(self.shape, self.dtype)
-            if temp is not None:
-                self._data[:] = temp
-            self._allocated = True
-        self._data[key] = value
-        return value
-    
-    def __getitem__(self,key):
-        return self._data[key]
-      
-class CustomGreenlet(greenlet.greenlet):
-    __slots__ = ("lastRequest","currentRequest","thread")
-
-
-def patchForeignCurrentThread():
-  setattr(current_thread(), "finishedRequestGreenlets", deque())#PriorityQueue())
-  setattr(current_thread(), "workAvailableEvent", Event())
-  setattr(current_thread(), "process", psutil.Process(os.getpid()))
-  setattr(current_thread(), "lastRequest", None)
-  setattr(current_thread(), "greenlet", None)
-
-#patch main thread
-patchForeignCurrentThread()
-
-class GetItemRequestObject(object):
-    """ 
-    Enables the syntax
-    InputSlot[:,:].writeInto(array).wait() or
-    InputSlot[:,:].writeInto(array).notify(someFunction)
-    
-    It is returned by a call to the __getitem__ method of Slot.
- 
-    """
-
-    __slots__ = ["roi", "destination", "slot", "func", "canceled",
-                 "_finished", "inProcess", "parentRequest", "childRequests",
-                 "graph", "waitQueue", "notifyQueue", "cancelQueue",
-                 "_requestLevel", "arg1", "lock", "_priority"]
-        
-    def __init__(self, slot, roi, destination, priority):        
-        self.roi = roi
-        self._priority = priority
-        self.destination = destination
-        self.slot = slot
-        self.func = None
-        self.canceled = False
-        self._finished = False
-        self.inProcess = False
-        self.parentRequest = None
-        self.childRequests = {}
-        #self.requestID = graph.lastRequestID.next()
-        self.graph = slot.graph
-        self.waitQueue = deque()
-        self.notifyQueue = deque()
-        self.cancelQueue = deque()
-        self._requestLevel = -1
-        self.lock = Lock()
-        if isinstance(slot, InputSlot) and self.slot._value is None:
-            self.func = slot.partner.operator.execute
-            self.arg1 = slot.partner            
-        elif isinstance(slot, OutputSlot):
-            self.func =  slot.operator.execute
-            self.arg1 = slot
-        else:
-            # we are in the ._value case of an inputSlot
-             if self.destination is None:
-                self.destination = self.slot._allocateDestination(self.roi)
-             self.destination = self.slot._writeIntoDestination(self.destination, self.slot._value, self.roi)
-             self._finished = True
-        if not self._finished:
-            gr = greenlet.getcurrent()
-            if isinstance(gr,CustomGreenlet):
-                # we delay the firing of an request until
-                # another one arrives 
-                # by this we make sure that one call path
-                # through the graph is done in one greenlet/thread
-                
-                self._burstLastRequest(gr)
-                self.parentRequest = gr.currentRequest
-                gr.currentRequest.lock.acquire()
-                gr.currentRequest.childRequests[self] = self
-                self._requestLevel = gr.currentRequest._requestLevel + self._priority + 1
-                gr.lastRequest = self
-                gr.currentRequest.lock.release()
-
-            else:
-                # we are in a unknownnnon worker thread
-                tr = current_thread()
-                if not hasattr(tr,"lastRequest"):
-                  #some bad person called our library from a completely unknown strange thread
-                  patchForeignCurrentThread()
-                lr = tr.lastRequest
-                tr.lastRequest = self
-                if lr is not None:
-                  lr.lock.acquire()
-                  if lr.inProcess is False:
-                    lr.inProcess = True
-                    lr.lock.release()
-                    lr._putOnTaskQueue()
-                  else:
-                    lr.lock.release()
-                self._requestLevel = self._priority
-            
-
-    def _execute(self, gr):
-        self.inProcess = True
-        temp = gr.currentRequest
-        if self.destination is None:
-            self.destination = self.slot._allocateDestination( self.roi )
-        gr.currentRequest = self
-        try:
-          assert(len(self.roi.toSlice()) == self.destination.ndim), "%r ndim=%r, shape=%r" % (self.roi.toSlice(), self.destination.ndim, self.destination.shape)
-          ret = self.func(self.arg1,self.roi, self.destination)
-          if ret == None:
-              warn_deprecated("Old style operator with no return value in Op.execute() encountered: " + self.func.__self__.__class__.__name__)
-          else:
-              self.destination = ret
-        except Exception,e:
-          if isinstance(self.slot, InputSlot):
-            print
-            print "ERROR: Exception in Operator %s (%r)" % (self.slot.partner.operator.name, self.slot.partner.operator)
-          else:
-            pass 
-          traceback.print_exc(e)
-          sys.exit(1)
-        self._finalize()        
-        gr.currentRequest = temp
-
-    def _putOnTaskQueue(self):
-        self.graph.putTask(self)
-    
-    def getResult(self):
-        assert self._finished, "Please make sure the request is completed before calling getResult()!"
-        return self.destination
-    
-    def adjustPriority(self, delta):
-        self.lock.acquire()
-        self._priority += delta 
-        self._requestLevel += delta
-        childs = tuple(self.childRequests.values())
-        self.lock.release()
-        for c in childs:
-            c.adjustPriority(delta)
-
-    def writeInto(self, destination, priority = 0):
-        self.destination = destination
-        if self.destination is not None:
-            assert(len(self.roi.toSlice()) == self.destination.ndim), "%r ndim=%r, shape=%r" % (self.roi.toSlice(), self.destination.ndim, self.destination.shape)
-        self._priority = priority
-        return self
-
-    @deprecated
-    def allocate(self, priority = 0):
-        if self.destination is None:
-          return self.writeInto( None, priority)
-        else:
-          return self
-
-    def wait(self, timeout = 0):
-        """
-        calling .wait() on an RequestObject is a blocking
-        call that will only return once the results
-        of a requested Slot are calculated and stored in
-        the  result area.
-        """
-        if isinstance(self.slot, OutputSlot) or self.slot._value is None:
-            self.lock.acquire()
-            gr = greenlet.getcurrent()
-            if not self._finished:
-                if self.inProcess:   
-                    if isinstance(gr,CustomGreenlet):
-                        self.waitQueue.append((gr.thread, gr.currentRequest, gr))
-                        gr.currentRequest.childRequests[self] = self
-                        self.lock.release()
-
-                        # reprioritize this request if running requests
-                        # requestlevel is higher then that of the request
-                        # on which we are waiting -> prevent starving of
-                        # high prio requests through resources blocked
-                        # by low prio requests.
-                        if gr.currentRequest._requestLevel > self._requestLevel:
-                            delta = gr.currentRequest._requestLevel - self._requestLevel
-                            self.adjustPriority(delta)
-                        
-                        self._burstLastRequest(gr)
-                        gr.thread.greenlet.switch(None)
-                    else:
-                        tr = current_thread()
-                        if not hasattr(tr,"lastRequest"):
-                          #some bad person called our library from a completely unknown strange thread
-                          patchForeignCurrentThread()
-                        lr = tr.lastRequest
-                        tr.lastRequest = None
-                        if lr is not None and lr != self:
-                          lr.lock.acquire()
-                          if lr.inProcess is False:
-                            lr.inProcess = True
-                            lr.lock.release()
-                            lr._putOnTaskQueue()
-                          else:
-                            lr.lock.release()
-                        cgr = CustomGreenlet(self.wait)
-                        cgr.lastRequest = None
-                        cgr.currentRequest = self
-                        cgr.thread = tr                        
-                        self.lock.release()
-                        tr.greenlet = gr
-                        cgr.switch(self)
-                        self._waitFor(cgr,tr) #wait for finish
-                else:
-                    if isinstance(gr,CustomGreenlet):
-                        self._burstLastRequest(gr)
-                        self.inProcess = True
-                        self.lock.release()
-                        self._execute(gr)
-                    else:
-                        tr = current_thread()
-                        if not hasattr(tr,"lastRequest"):
-                          #some bad person called our library from a completely unknown strange thread
-                          patchForeignCurrentThread()
-
-                        lr = tr.lastRequest
-                        tr.lastRequest = None
-                        if lr is not None and lr != self:
-                          lr.lock.acquire()
-                          if lr.inProcess is False:
-                            lr.inProcess = True
-                            lr.lock.release()
-                            lr._putOnTaskQueue()
-                          else:
-                            lr.lock.release()
-                        cgr = CustomGreenlet(self._execute)
-                        cgr.currentRequest = self
-                        cgr.thread = tr
-                        cgr.lastRequest = None
-                        self.inProcess = True
-                        self.lock.release()
-                        tr.greenlet = gr
-                        
-                        cgr.switch(cgr)
-                        self._waitFor(cgr,tr) #wait for finish
-            else:
-                self.lock.release()
-            try:
-              gr.currentRequest.childRequests.pop(self)
-            except:
-              pass
-        else: # not (isinstance(self.slot, OutputSlot) or self.slot._value is None)
-            if self.destination is None:
-              self.destination = self.slot._allocateDestination(self.roi)
-            self.slot._writeIntoDestination(self.destination, self.slot._value, self.roi)
-        self._finished = True
-        if self.canceled is False:
-          assert self.destination is not None
-          return self.destination
-        else:
-          return None
-  
-      
-    def _waitFor(self, cgr, tr):
-        while not cgr.dead:
-            tr.workAvailableEvent.wait()
-            tr.workAvailableEvent.clear()
-            while len(tr.finishedRequestGreenlets) > 0:
-                prio,req, gr = tr.finishedRequestGreenlets.pop()#get(block = False)
-                gr.currentRequest = req                 
-                gr.switch()
-                del gr
-        del cgr
-
-
-    def _burstLastRequest(self,gr):
-        lr = gr.lastRequest
-        gr.lastRequest = None
-        if lr is not None and lr != self:            
-            lr.lock.acquire()
-            if lr.inProcess is False and lr.canceled is False:
-                lr.inProcess = True
-                lr.lock.release()
-                lr._putOnTaskQueue()
-            else:
-                lr.lock.release()
-       
-    def notify(self, closure, **kwargs): 
-        """
-        calling .notify(someFunction) on an RequestObject is a NON-blocking
-        call that will return immediately.
-        once the results are calculated and stored in the result
-        are, the provided someFunction will be called by lazyflow.
-        """
-        self.lock.acquire()
-        if self._finished is True:
-            self.lock.release()
-            assert self.destination is not None
-            closure(self.destination, **kwargs)
-        else:
-            self.notifyQueue.append((closure, kwargs))
-            if not self.inProcess:
-                self.inProcess = True
-                self.lock.release()
-                self._putOnTaskQueue()
-            else:
-              self.lock.release()
-            
-    def onCancel(self, closure, **kwargs):
-        self.lock.acquire()       
-        if self.canceled:
-            self.lock.release()
-            closure(**kwargs)
-        else:
-            self.cancelQueue.append((closure, kwargs))
-            self.lock.release()
-
-    def _finalize(self):
-        self.lock.acquire()
-        self._finished = True
-        self.cancelQueue = deque()
-        self.childRequests = {}
-        nq = self.notifyQueue
-        wq = self.waitQueue
-
-        self.notifyQueue = deque()
-        self.waitQueue = deque()
-
-        self.lock.release()
-        p = self.parentRequest
-        self.parentRequest = None
-        gr = greenlet.getcurrent()
-        if p is not None:
-            l = p._requestLevel + 1
-            p._requestLevel = l
-            
-        if self.graph.suspended is False or self.parentRequest is not None:
-            if self.canceled is False:
-                while len(nq) > 0:
-                    try:
-                        func, kwargs = nq.pop()
-                    except:
-                        break
-                    func(self.destination, **kwargs)
-    
-            while len(wq) > 0:
-                w = wq.pop()
-                tr, req, gr = w
-                req.lock.acquire()
-                if not req.canceled:
-                    tr.finishedRequestGreenlets.append((-req._requestLevel,req,gr))#put((-req._requestLevel, req, gr))
-                    req.lock.release()
-                    tr.workAvailableEvent.set()
-                else:
-                  req.lock.release()
-        else:
-            self.graph.putFinalize(self)
-        
-
-        
-    def _cancel(self):
-        self.lock.acquire()
-        canceled = True
-        if len(self.waitQueue) == 0:
-          if not self._finished:
-              while canceled and len(self.cancelQueue) > 0:
-                  try:
-                      closure, kwargs = self.cancelQueue.pop()
-                  except:
-                      break
-                  
-                  canceled = canceld and not (closure(**kwargs) == False)
-
-          self.lock.release()
-          if canceled:
-            self.canceled = True
-            self._finalize()
-          return canceled
-        else:
-          self.lock.release()
-          return False
-
-    def _cancelChildren(self,level):
-            self.lock.acquire()
-            childs = tuple(self.childRequests.values())
-            self.childRequests = {}
-            self.lock.release()
-            for r in childs:
-                r.cancel(level = level + 1)            
-
-    def _cancelParents(self):
-        if not self._finished:
-            if self._cancel():
-              if self.parentRequest is not None:
-                self.parentRequest._cancelParents()
-
-
-    def cancel(self, level = 0):
-        if not self._finished:
-            if self._cancel():
-              self._cancelChildren(level = level)
-              return True
-            else:
-              print "NOT CANCELING CHILDREN level=%d" % level, self
-              return False
-
-        
-    def __call__(self):
-        assert 1==2, "Please use the .wait() method, () is deprecated !"
-
 
 class MetaDict(dict):
   def __init__(self, other=False):
@@ -542,6 +110,8 @@ class MetaDict(dict):
 
   def copy(self):
     return MetaDict(dict.copy(self))
+
+
 
 class Slot(object):
     """Common methods of all slot types."""
@@ -668,11 +238,24 @@ class Slot(object):
       roi = self.rtype(self,*args, **kwargs)
       return self.get( roi )
 
+    def _requestFunctionWrapper(self, roi, destination):
+      if destination is None:
+        destination = self._allocateDestination(roi)
+      if isinstance(self, InputSlot):
+        has_val = (self._value is not None)
+        if has_val:
+          self._writeIntoDestination(destination, self._value, roi)
+          tres = destination
+        else:
+          tres = self.partner._requestFunctionWrapper( roi, destination)
+          pass
+      elif isinstance(self, OutputSlot):
+        tres = self.operator.execute(self, roi, destination)
+        pass
+      return destination
+
     def get( self, roi ):
-      if not isinstance(self.partner, (InputSlot, MultiInputSlot)):
-        return GetItemRequestObject(self,roi,None,0)        
-      else:
-        return GetItemRequestObject(self.partner, roi, None, 0)
+      return Request(self._requestFunctionWrapper,roi = roi,destination = None)        
 
 
     def _registerClone(self, slot):
@@ -2153,371 +1736,52 @@ class OperatorWrapper(Operator):
         
    
                         
-class Worker(Thread):
-    def __init__(self, graph):
-        Thread.__init__(self)
-        self.graph = graph
-        self.working = False
-        self.daemon = True # kill automatically on application exit!
-        self.finishedRequestGreenlets = deque()#PriorityQueue()
-        self.currentRequest = None
-        self.requests = deque()
-        self.process = psutil.Process(os.getpid())
-        self.number =  len(self.graph.workers)
-        self.workAvailableEvent = Event()
-        self.workAvailableEvent.clear()
-        self.openUserRequests = set()
-        self.greenlet = None
-    
-    def signalWorkAvailable(self): 
-        self.workAvailableEvent.set()
-        
-        
-    def run(self):
-        ct = current_thread()
-        self.greenlet = greenlet.getcurrent()
-        prioLastReq = 0
-        while self.graph.running:
-            if not self.workAvailableEvent.isSet():
-                self.graph.freeWorkers.add(self)
-            self.workAvailableEvent.wait()#(0.2)
-            try:
-                self.graph.freeWorkers.remove(self)
-            except:
-                pass
-            self.workAvailableEvent.clear()
-            
-            didSomething = True
-
-            while didSomething:
-                didSomething = False
-                while len(self.finishedRequestGreenlets) > 0:
-                    prioFinReq, req, gr = self.finishedRequestGreenlets.pop()#get(block = False)
-                    gr.currentRequest = req                 
-                    if req.canceled is False:
-                        gr.switch()
-                    del gr
-                    didSomething = True
-                        
-                
-                task = None
-                try:
-                    prioLastReq,task = self.graph.tasks.get(block = False)#timeout = 1.0)
-                except Empty:
-                    prioLastReq = 0
-                    pass                
-                if task is not None:
-                    didSomething = True
-                    reqObject = task
-                    if reqObject.canceled is False:
-                        gr = CustomGreenlet(reqObject._execute)
-                        gr.lastRequest = None
-                        gr.currentRequest = reqObject
-                        gr.thread = self
-                        gr.switch( gr)
-                        del gr
-                        
-                if didSomething is False: # only start a new request if nothing else was done
-                    task = None
-                    try:
-                        pr,task = self.graph.newTasks.get(block = False)#timeout = 1.0)
-                    except Empty:
-                        pass               
-                    if task is not None:
-                        didSomething = True
-                        reqObject = task
-                        if reqObject.canceled is False:
-                            gr = CustomGreenlet(reqObject._execute)
-                            gr.thread = self
-                            gr.lastRequest = None
-                            gr.currentRequest = reqObject
-                            gr.switch( gr)
-                            del gr
-        self.graph.workers.remove(self)
-
-    
 class Graph(object):
+  pass
 
-    _runningGraphs = [] 
+  def stopGraph(self):
+    pass
 
-    @atexit.register
-    def stopGraphs():
-       for g in Graph._runningGraphs:
-          g.stopGraph()
+  def resumeGraph(self):
+    pass
+
+  def _registerCache(self, cache):
+    pass
+
+  def _notifyMemoryHit(self, *args, **kwargs):
+    pass
+
+  def _notifyMemoryAllocation(self, *args, **kwargs):
+    pass
+
+  def _notifyFreeMemory(self, *args, **kwargs):
+    pass
 
 
-    def __init__(self, numThreads = None, softMaxMem =  None):
-        self.operators = []
-        self.tasks = PriorityQueue() #Lifo <-> depth first, fifo <-> breath first
-        self.newTasks = PriorityQueue() #Lifo <-> depth first, fifo <-> breath first
-        self.workers = []
-        self.freeWorkers = set()
-        self.running = True
-        self.suspended = False
-        self.stopped = False
-        
-        self._suspendedRequests = deque()
-        self._suspendedNotifyFinish = deque()
-        
-        if numThreads is None:
-            self.numThreads = detectCPUs()
-            if self.numThreads <= 2:
-              self.numThreads += 1
-            if self.numThreads > 3:
-                self.numThreads -= 1
-        else:
-            self.numThreads = numThreads
-        self.lastRequestID = itertools.count()
-        self.process = psutil.Process(os.getpid())
-        
-        self._memoryAccessCounter = itertools.count()
-        if softMaxMem is None:
-            softMaxMem = psutil.avail_phymem()
-            try:
-                softMaxMem += psutil.cached_phymem()
-            except:
-                pass
-        print "GRAPH: using %d Threads" % (self.numThreads)
-        print "GRAPH: using target size of %dMB of Memory" % (softMaxMem / 1024**2)
-        self.softMaxMem = softMaxMem # in bytes
-        self.softCacheMem = softMaxMem * 0.5
-        self._registeredCaches = deque()
-        self._allocatedCaches = deque()
-        self._usedCacheMemory = 0
-        self._memAllocLock = threading.Lock()
-        Graph._runningGraphs.append(self)
-        self._startWorkers()
-        
-    def _startWorkers(self):
-        self.workers = []
-        self.freeWorkers = set()
-        self.tasks = PriorityQueue()
-        for i in xrange(self.numThreads):
-            w = Worker(self)
-            self.workers.append(w)
-            w.start()
-            self.freeWorkers.add(w)        
-    
-    def _memoryUsage(self):
-        return self.process.get_memory_info().vms
-    
-    def _registerCache(self, op):
-        self._memAllocLock.acquire()
-        if op not in self._registeredCaches:
-            self._registeredCaches.append(op)
-        self._memAllocLock.release()
-    
-    def _notifyMemoryAllocation(self, cache, size):
-        if self._usedCacheMemory + size > self.softCacheMem:
-            print "Graph._notifyMemoryAllocation: _usedCacheMemory + size = %f MB > softCacheMem = %f MB" \
-                  % ((self._usedCacheMemory + size)/1024.0**2, self.softCacheMem/1024.0**2)
-            self._freeMemory(size*3) #leave a little room
-        self._memAllocLock.acquire()
-        self._usedCacheMemory += size
-        
-        if lazyflow.verboseMemory:
-            print "Graph._notifyMemoryAllocation: _usedCacheMemory      = %f MB" % ((self._usedCacheMemory)/1024.0**2,)
-            print "                               get_memory_info().vms = %f MB" % (self.process.get_memory_info().vms/1024.0**2,)
+  def dumpToH5G(self, h5g, patchBoard):
+      self.stopGraph()
+      h5g.dumpSubObjects({
+                  "operators" : self.operators,
+                  "numThreads": self.numThreads,
+                  "softMaxMem": self.softMaxMem
+              },patchBoard)    
+      self.resumeGraph()
 
-        self._memAllocLock.release()
-        if cache not in self._allocatedCaches:
-            self._allocatedCaches.append(cache)
-    
-    
-    def _notifyFreeMemory(self, size):
-        self._memAllocLock.acquire()
-        self._usedCacheMemory -= size
-        if lazyflow.verboseMemory:
-            print "Graph._notifyFreeMemory: freeing %f MB, now _usedCacheMemory = %f MB" % (size/1024.0**2, (self._usedCacheMemory)/1024.0**2,)
-        self._memAllocLock.release()
-    
-    def _freeMemory(self, size):
+  
+  @classmethod
+  def reconstructFromH5G(cls, h5g, patchBoard):
+      numThreads = h5g["numThreads"].reconstructObject()
+      softMaxMem = h5g["softMaxMem"].reconstructObject()
 
-        freesize = size*3
-        freesize = min(self.softCacheMem*0.5, freesize)
-        freesize = max(freesize, self.softCacheMem * 0.2)
-        if lazyflow.verboseMemory:
-            print "Graph._freeMemory: freesize = %f MB" % ((freesize)/1024.0**2,)
-
-        freedMem = 0
-        i = 0
-        maxCount = len(self._allocatedCaches)
-        while len(self._allocatedCaches) > 0 and i < maxCount:
-            i +=1            
-            if freedMem < freesize: #c._memorySize() > 1024
-                try:
-                    c = self._allocatedCaches.popleft()
-                except:
-                    c = None
-                if c is not None:
-                    fmc = 0
-                    if c._memorySize() > 1024:
-                    #FIXME: handle very small chunks
-                        fmc = c._freeMemory()
-                        freedMem += fmc
-                    if fmc == 0: #freeing did not succeed
-                        self._allocatedCaches.append(c)
-            else:
-                break
-        self._memAllocLock.acquire()
-        self._usedCacheMemory = self._usedCacheMemory - freedMem
-        self._memAllocLock.release()
-        gc.collect()
-        usedMem2 = self.process.get_memory_info().vms
-        print "Graph._freeMemory: freed memory %f MB of get_memory_info().vms = %f MB" % (freedMem/1024.0**2, usedMem2/1024.0**2,)
-
-    def _notifyMemoryHit(self):
-        accesses = self._memoryAccessCounter.next()
-        if accesses > 30:
-            self._memoryAccessCounter = itertools.count() #reset counter
-            # calculate the exponential moving average for the caches            
-            #prevent manipulation of deque during calculation
-            self._memAllocLock.acquire()
-            for c in self._registeredCaches:
-                ch = c._cacheHits
-                ch = ch * 0.2
-                c._cacheHits = ch
-
-            self._allocatedCaches = deque(sorted(self._allocatedCaches, key=lambda x: x._cacheHits))
-            self._memAllocLock.release()
-
-            
-    def putTask(self, reqObject):
-        if self.suspended is False:
-            task = reqObject
-            if task.parentRequest is not None:
-                self.tasks.put((-task._requestLevel,task))
-            else:
-                self.newTasks.put((-task._requestLevel,task))
-            if len(self.freeWorkers) > 0:
-                try:
-                    w = self.freeWorkers.pop()
-                    w.signalWorkAvailable()
-                    time.sleep(0)
-                except:
-                    pass
-        else:
-            self._suspendedRequests.append(reqObject)
-
-    def putFinalize(self, reqObject):
-        self._suspendedNotifyFinish.append(reqObject)
-    
-    def stopGraph(self):
-        if not self.stopped:
-            print "Graph: stopping..."        
-            self.stopped = True
-            self.suspendGraph()
-
-    def suspendGraph(self):
-        if not self.suspended:
-          tasks = []
-          while not self.newTasks.empty():
-              try:
-                  t = self.newTasks.get(block = False)
-                  tasks.append(t)
-              except:
-                  break
-          while not self.tasks.empty():
-              try:
-                  t = self.tasks.get(block = False)
-                  tasks.append(t)
-              except:
-                  break
-          runningRequests = []
-          for t in tasks:
-              prio, req = t
-              if req.parentRequest is not None:
-                  self.putTask(req)
-                  runningRequests.append(req)
-              else:
-                  self._suspendedRequests.append(req)
-
-          waitFor = sorted(runningRequests, key=lambda x: -x._requestLevel)
-          if len(waitFor) == 0:
-              print "   no requests that need to be waited for"
-          
-          for i,req in enumerate(waitFor):
-              s = "    Waiting for request %6d/%6d" % (i+1,len(waitFor))
-              sys.stdout.write(s)
-              sys.stdout.flush()
-              req.wait()
-              sys.stdout.write("\b"*len(s))
-          self.suspended = True
-
-          sys.stdout.write("\n")
-          sys.stdout.flush()
-
-          print "  Waiting for workers..."          
-          for w in self.workers:
-            w.signalWorkAvailable()
-          while len(self.workers) > len(self.freeWorkers):
-              time.sleep(0.1)
-              print "    #workers = %d, #free workers = %d" % (len(self.workers),len(self.freeWorkers))
-          time.sleep(0.1)
-          while len(self.workers) > len(self.freeWorkers):
-              time.sleep(0.1)
-          print "  ok"
-          print "finished."
-          self._runningGraphs.remove(self)
-            
-    def resumeGraph(self):        
-        if self.stopped:
-            self.stopped = False
-            self._suspendedRequests = deque()
-            self._suspendedNotifyFinish = deque()
-            for w in self.workers:
-                w.openUserRequests = set()            
-            print "Graph: resuming %d requests" % len(self._suspendedRequests)
-            self.suspended = False
-            
-            while len(self._suspendedNotifyFinish) > 0:
-                try:
-                    r = self._suspendedNotifyFinish.pop()
-                except:
-                    break
-                r._finalize()
-                
-            while len(self._suspendedRequests) > 0:
-                try:
-                    r = self._suspendedRequests.pop()
-                except:
-                    break
-                self.putTask(r)
-            self._runningGraphs.append(self)
-            print "finished."
-
-        
-    def finalize(self):
-        self.running = False
-        for w in self.workers:
-            w.signalWorkAvailable()
-            w.join()
-        self.stopGraph()
-
-    def dumpToH5G(self, h5g, patchBoard):
-        self.stopGraph()
-        h5g.dumpSubObjects({
-                    "operators" : self.operators,
-                    "numThreads": self.numThreads,
-                    "softMaxMem": self.softMaxMem
-                },patchBoard)    
-        self.resumeGraph()
-
-    
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        numThreads = h5g["numThreads"].reconstructObject()
-        softMaxMem = h5g["softMaxMem"].reconstructObject()
-
-        g = Graph(numThreads = numThreads, softMaxMem = softMaxMem)
-        patchBoard[h5g.attrs["id"]] = g 
-        g.stopGraph()
-        
-        h5g.reconstructSubObjects(g, {
-                    "operators": "operators",
-                    "numThreads": "numThreads",
-                    "softMaxMem" : "softMaxMem"
-                },patchBoard)    
-        g.resumeGraph()
-        return g
+      g = Graph(numThreads = numThreads, softMaxMem = softMaxMem)
+      patchBoard[h5g.attrs["id"]] = g 
+      g.stopGraph()
+      
+      h5g.reconstructSubObjects(g, {
+                  "operators": "operators",
+                  "numThreads": "numThreads",
+                  "softMaxMem" : "softMaxMem"
+              },patchBoard)    
+      g.resumeGraph()
+      return g
  

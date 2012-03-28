@@ -439,13 +439,17 @@ class OpPixelFeaturesPresmoothed(Operator):
                     treadKey.insert(__timeAxis, key[__timeAxis])
                 else:
                     treadKey.insert(__timeAxis-1, key[__timeAxis])
-            treadKey.insert(__channelAxis, slice(None,None,None))
+            if  self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
+              treadKey =  popFlagsFromTheKey(treadKey,__axistags,'c')
+            else:
+              treadKey.insert(__channelAxis, slice(None,None,None))
+            
             treadKey=tuple(treadKey)
             
             req = self.inputs["Input"][treadKey].allocate()
             
             __sourceArray = req.wait()
-
+            req.result = None
             req.destination = None
             if __sourceArray.dtype is not numpy.float32:
                 __sourceArrayF = __sourceArray.astype(numpy.float32)
@@ -538,6 +542,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 #print "result: ", result.shape, "inslot:", inSlot.shape
                                 
                                 destArea = result[tuple(reskey)]
+                                print oldkey, destArea.shape, sourceArraysForSigmas[j].shape
                                 oslot.operator.getOutSlot(oslot,tuple(oldkey),destArea, sourceArray = sourceArraysForSigmas[j])
                                 written += 1
                             cnt += 1
@@ -601,7 +606,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         shape = self.outputs["Output"].shape
         
         axistags = self.inputs["Input"].axistags
-        
+        hasChannelAxis = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels)
         channelAxis=self.inputs["Input"].axistags.index('c')
         hasTimeAxis = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Time)
         timeAxis=self.inputs["Input"].axistags.index('t')
@@ -639,7 +644,6 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         if self.supportsRoi is False and largestSigma > 5:
             print "WARNING: operator", self.name, "does not support roi !!"
-        
         
         i2 = 0          
         for i in range(int(numpy.floor(1.0 * oldstart[channelAxis]/channelsPerChannel)),int(numpy.ceil(1.0 * oldstop[channelAxis]/channelsPerChannel))):
@@ -712,7 +716,6 @@ class OpBaseVigraFilter(OpArrayPiper):
                 #print tresKey, twriteKey, resultArea.shape, temp.shape
                 vres = resultArea[tresKey]
                 if supportsOut:
-                    print "SSSSSSSSSSSSSSSSSSS"
                     if self.supportsRoi:
                         vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
                         try:

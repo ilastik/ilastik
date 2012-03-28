@@ -1,4 +1,4 @@
-import numpy
+import numpy, vigra
 from roi import roiToSlice, sliceToRoi
 from helpers import warn_deprecated
 
@@ -59,13 +59,13 @@ class ArrayLike( SlotType ):
 
     def writeIntoDestination( self, destination, value, roi ):
         if not isinstance(destination, list):
-         assert(len(roi.toSlice()) == destination.ndim), "%r ndim=%r, shape=%r" % (roi.toSlice(), destination.ndim, destination.shape)
+         assert(roi.dim == destination.ndim), "%r ndim=%r, shape=%r" % (roi.toSlice(), destination.ndim, destination.shape)
         sl = roiToSlice(roi.start, roi.stop)
         try:
             destination[:] = value[sl]
         except TypeError:
             warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
-            destination = [value]
+            destination[:] = value
         return destination
 
     def isCompatible(self, value):
@@ -79,6 +79,8 @@ class ArrayLike( SlotType ):
         self.slot.meta.dtype = value.dtype
         if hasattr(value,"axistags"):
           self.slot.meta.axistags = value.axistags
+        else:
+          self.slot.meta.axistags = vigra.defaultAxistags(len(value.shape))
       else:
         self.slot.meta.shape = (1,)
         self.slot.meta.dtype = object

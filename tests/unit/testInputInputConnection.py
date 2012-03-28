@@ -55,10 +55,10 @@ class TestInputInputConnection(object):
   def test_value(self):
     self.op.Input.setValue(True)
     result = self.op.Output[:].allocate().wait()[0]
-    assert result == True
+    assert result == True, "result = %r" % result
     self.op.Input.setValue(False)
     result = self.op.Output[:].allocate().wait()[0]
-    assert result == False
+    assert result == False, "result = %r" % result
 
   def test_disconnect(self):
     self.op.internalOp.Input.disconnect()

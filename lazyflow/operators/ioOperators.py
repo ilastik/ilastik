@@ -20,7 +20,6 @@ class OpH5Writer(Operator):
     
     def execute(self, slot, roi, result):
         
-        
         inputRoi = self.inputs["roi"].value
         key = roiToSlice(inputRoi[0], inputRoi[1])
         filename = self.inputs["filename"].value
@@ -28,8 +27,11 @@ class OpH5Writer(Operator):
         imSlot = self.inputs["input"]
         image = numpy.ndarray(imSlot.shape, dtype=self.inputs["dataType"].value)[key]
         
-        #create H5File and DataSet
-        f = h5py.File(filename, 'w')
+        try:
+          #create H5File and DataSet
+          f = h5py.File(filename, 'w')
+        except:
+          return
         g = f
         
         #check for valid hdf5 path, if not valid, use default
@@ -96,13 +98,11 @@ class OpH5Writer(Operator):
 
             s = roiToSlice(start,stop)
             req = self.inputs["input"][s]
-            
             req.notify(writeResult,blockNr = bnr, roiSlice=s)
             requests.append(req)
-        
         #execute requests
         for req in requests:
-            req.wait()
+          req.wait()
         
         f.close()
         
