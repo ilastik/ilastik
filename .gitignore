@@ -3,5 +3,5 @@
 .DS_Store
 
 .project
-
+*.h5
 .pydevproject

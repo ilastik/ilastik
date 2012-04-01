@@ -241,7 +241,7 @@
      <x>0</x>
      <y>0</y>
      <width>961</width>
-     <height>24</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -250,6 +250,7 @@
     </property>
     <addaction name="actionOpenFile"/>
     <addaction name="actionOpenStack"/>
+    <addaction name="actionSaveAs"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuView">
@@ -458,6 +459,11 @@
    </property>
    <property name="text">
     <string>Open &amp;Stack</string>
+   </property>
+  </action>
+  <action name="actionSaveAs">
+   <property name="text">
+    <string>Save as</string>
    </property>
   </action>
  </widget>

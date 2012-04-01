@@ -51,6 +51,7 @@ class PixelClassificationLazyflow( object ):
         self.predict=OpPredictRandomForest( graph )
         self.predict.inputs['Classifier'].connect(self.classifier_cache.outputs['Output']) 
         self.predict.inputs['Image'].connect(self.features.outputs["Output"])
+        
 
         pCache = OpSlicedBlockedArrayCache( graph )
         pCache.inputs["fixAtCurrent"].setValue(False)
