@@ -1,12 +1,16 @@
 #make the program quit on Ctrl+C
 import signal
+from lazyflow.operators.obsolete.vigraOperators import OpH5WriterBigDataset
+from lazyflow.operators.ioOperators import OpH5Writer, OpStackLoader
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import os, sys, numpy, copy
 
+import h5py
+
 from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL
 from PyQt4.QtGui import QColor, QMainWindow, QApplication, QFileDialog, \
-                        QMessageBox, qApp, QItemSelectionModel, QIcon, QTransform
+                        QMessageBox, qApp, QItemSelectionModel, QIcon, QTransform, QDialog
 from PyQt4 import uic
 
 from igms.stackloader import OpStackChainBuilder,StackLoader
@@ -28,10 +32,13 @@ from igms.labelListModel import LabelListModel
 
 from igms.featureTableWidget import FeatureEntry
 from igms.featureDlg import FeatureDlg
+from exportDlg import ExportDialog
+from loadFileDlg import LoadFileDialog
 
 import vigra
 
 from pixel_classification_lazyflow import PixelClassificationLazyflow
+
 
 class Main(QMainWindow):    
     haveData        = pyqtSignal()
@@ -78,13 +85,17 @@ class Main(QMainWindow):
             self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
         
     def initUic(self):
-        p = os.path.split(__file__)[0]+'/'
+        try:
+            p = os.path.split(__file__)[0]+'/'
+        except:
+            p = '.'
         if p == "/": p = "."+p
         uic.loadUi(p+"/classificationWorkflow.ui", self) 
         #connect the window and graph creation to the opening of the file
-        self.actionOpenFile.triggered.connect(self.openFile)
+        self.actionOpenFile.triggered.connect(self._load)
         self.actionOpenStack.triggered.connect(self.openImageStack)
         self.actionQuit.triggered.connect(qApp.quit)
+        self.actionSaveAs.triggered.connect(self._save)
         
         def toggleDebugPatches(show):
             self.editor.showDebugPatches = show
@@ -337,16 +348,29 @@ class Main(QMainWindow):
         self.stackLoader.loadButton.clicked.connect(self._stackLoad)
 
     def openFile(self):
-        fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__), "Numpy and h5 files (*.npy *.h5)")
+        fileNames = QFileDialog.getOpenFileNames(self, "Open Image", os.path.abspath(__file__))
         if fileNames.count() == 0:
             return
-        self._openFile(fileNames)
-    
-    def _stackLoad(self):
+        #self._openFile(fileNames)
+        self._load()
+        
+    def _save(self):
+        exportDlg = ExportDialog()
+        exportDlg.setInput(self.workflow.images.outputs["Outputs"][0], self.g)
+        exportDlg.exec_()
+        #print self.workflow.prediction_cache.outputs["Output"][0].shape
+        #print self.workflow.prediction_cache.outputs["Output"][0].dtype
+        #print self.workflow.prediction_cache.outputs["Output"][0].axistags
+        #print type(self.workflow.prediction_cache.outputs["Output"][0])
+
+    def _load(self):
+        
+        loadDlg = LoadFileDialog()
+        filename = str(loadDlg.exec_())
+        hdf5Path = 'volume/data'
+        f = h5py.File(filename, 'r')
         self.inputProvider = OpArrayPiper(self.g)
-        op5ifyer = Op5ifyer(self.g)
-        op5ifyer.inputs["Input"].connect(self.stackLoader.ChainBuilder.outputs["output"])
-        self.raw = op5ifyer.outputs["Output"][:].allocate().wait()
+        self.raw = f[hdf5Path][:]
         self.raw = self.raw.view(vigra.VigraArray)
         self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
         self.raw.axistags =  vigra.AxisTags(
@@ -357,8 +381,24 @@ class Main(QMainWindow):
                 vigra.AxisInfo('c',vigra.AxisType.Channels))
         self.inputProvider.inputs["Input"].setValue(self.raw)
         self.haveData.emit()
+        
+        
+
+    def _stackLoad(self):
+        self.inputProvider = OpArrayPiper(self.g)
+        axistags =  vigra.AxisTags(
+            vigra.AxisInfo('t',vigra.AxisType.Time),
+            vigra.AxisInfo('x',vigra.AxisType.Space),
+            vigra.AxisInfo('y',vigra.AxisType.Space),
+            vigra.AxisInfo('z',vigra.AxisType.Space),
+            vigra.AxisInfo('c',vigra.AxisType.Channels))
+        self.raw = self.stackLoader.ChainBuilder.outputs["output"]().wait()
+        self.raw = vigra.VigraArray(self.raw,axistags = axistags)
+        self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
+        self.inputProvider.inputs["Input"].setValue(self.raw)
+        self.haveData.emit()
         self.stackLoader.close()
-            
+        
     def _openFile(self, fileNames):
         self.inputProvider = None
         fName, fExt = os.path.splitext(str(fileNames[0]))

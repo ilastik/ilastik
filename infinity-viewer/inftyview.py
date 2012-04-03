@@ -37,7 +37,7 @@ class OpH5StackReader5d( Operator ):
         self.outputs["array5d"]._shape = shape
         # self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
         fns = self.inputs["h5fns"].value
         assert key[-1] == slice(0,1,None)
         temporal = key[0]

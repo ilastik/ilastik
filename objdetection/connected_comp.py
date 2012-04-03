@@ -15,14 +15,15 @@ class OpThreshold(Operator):
     inputSlots = [InputSlot("Input"),InputSlot("Channel",stype='integer'),InputSlot("Threshold")]
     outputSlots = [OutputSlot("Output")]
     
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         inputSlot = self.inputs["Input"]
         
         self.outputs["Output"]._shape = inputSlot.shape[:-1]+(1,)
         self.outputs["Output"]._dtype = numpy.uint8
         self.outputs["Output"]._axistags = inputSlot.axistags
     
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roi.toSlice()
         shape = self.inputs["Input"].shape
         rstart, rstop = sliceToRoi(key, shape)  
         rstop[-1] = shape[-1]
@@ -32,7 +33,8 @@ class OpThreshold(Operator):
         ch = self.inputs["Channel"].value
         th = self.inputs["Threshold"].value
         result[...,0] = numpy.where(pred[...,ch]>th, 1, 0)
-        
+        return result
+    
 class OpConnectedComponents(Operator):
     #perform connected components. By default, cc is done with background label 0, i.e.
     #objects of label 0 are not counted.
@@ -60,7 +62,7 @@ class OpConnectedComponents(Operator):
             if not self.inputs["Background"].connected():
                 self.inputs["Background"].setValue(0)
     
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         print "in notify connect all"
         inputSlot = self.inputs["Input"]
         if inputSlot.axistags is None:
@@ -71,8 +73,9 @@ class OpConnectedComponents(Operator):
         self.outputs["Output"]._dtype = numpy.uint32
         self.outputs["Output"]._axistags= inputSlot.axistags
         
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
         
+        key = roi.toSlice()
         timeAxis = None
         channelAxis = None
         newkey = [slice(None, None, None) for x in key]
@@ -143,7 +146,7 @@ class OpConnectedComponents(Operator):
         else:
             print "ERROR: unsupported number of dimensions", ndim
             return
-            
+        return result
         #nei = self.inputs["Neighborhood"].value
         #if len(image.shape)==2 and nei!=4 and nei!=8:
             #print "Neighborhood value of ", nei, "not possible in 2d"
