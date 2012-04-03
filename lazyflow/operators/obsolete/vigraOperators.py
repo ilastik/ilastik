@@ -1497,28 +1497,31 @@ class OpToUint8(Operator):
 
 class OpRgbToGraysacle(Operator):
     name = "Convert RGB Images to Grayscale"
-    category = "" #Pls set some standard categories
+    category = "" 
 
     inputSlots = [InputSlot("input", stype = "array")]
     outputSlots = [OutputSlot("output")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
 
         inputSlot = self.inputs["input"]
 
         oslot = self.outputs["output"]
-        grayScaleChannel = 1,
-        oslot._shape = inputSlot.shape[:-1] + grayScaleChannel
+        oslot._shape = inputSlot.shape[:-1] + (1,)
         oslot._dtype = inputSlot.dtype
         oslot._axistags = copy.copy(inputSlot.axistags)
     
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
         
-        #this assumes that the last dimension is the channel. 
-        image = self.inputs["input"][:].allocate().wait()
-        if image.shape[-1] > 1:
+        
+        image = self.inputs["input"](roi).wait()
+        channelKey = self.outputs["output"]._axistags.channelIndex
+        if image.shape[channelKey] > 1:
+            #this assumes that the last dimension is the channel. 
             result[:,:,:,0] = (numpy.round(0.299*image[:,:,:,0] + 0.587*image[:,:,:,1] + 0.114*image[:,:,:,2])).astype(int)
- 
+        else:
+            result[:] = image
+        return result
                 
            
         
