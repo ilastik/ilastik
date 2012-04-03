@@ -31,6 +31,7 @@ import glob
 import os
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.obsolete.vigraOperators import *
+from lazyflow.operators.ioOperators import OpStackLoader
 
 
 
@@ -62,6 +63,10 @@ class OpStackChainBuilder(Operator):
         if self.inputs["invert"].value and not self.inputs["convert"].value:
             self.Inverter.inputs["input"].connect(self.Loader.outputs["stack"])
             self.OutPiper.inputs["Input"].connect(self.Inverter.outputs["output"])
+            
+            self.outputs["output"]._dtype = self.Inverter.outputs["output"]._dtype
+            self.outputs["output"]._axistags = self.Inverter.outputs["output"]._axistags
+            self.outputs["output"]._shape = self.Inverter.outputs["output"]._shape
         
         elif self.inputs["convert"].value and not self.inputs["invert"].value:
             self.GrayConverter.inputs["input"].connect(self.Loader.outputs["stack"])
@@ -72,7 +77,6 @@ class OpStackChainBuilder(Operator):
             self.outputs["output"]._shape = self.GrayConverter.outputs["output"]._shape
             
         elif self.inputs["convert"].value and self.inputs["invert"].value:
-
             self.Inverter.inputs["input"].connect(self.Loader.outputs["stack"])
             self.GrayConverter.inputs["input"].connect(self.Inverter.outputs["output"])
             self.OutPiper.inputs["Input"].connect(self.GrayConverter.outputs["output"])
@@ -82,14 +86,13 @@ class OpStackChainBuilder(Operator):
             self.outputs["output"]._shape = self.GrayConverter.outputs["output"]._shape
 
         elif not self.inputs["convert"].value and not self.inputs["invert"].value:
-            
             self.OutPiper.inputs["Input"].connect(self.Loader.outputs["stack"])
             self.outputs["output"]._dtype = self.Loader.outputs["stack"]._dtype
             self.outputs["output"]._axistags = self.Loader.outputs["stack"]._axistags
             self.outputs["output"]._shape = self.Loader.outputs["stack"]._shape
             
-    def getOutSlot(self, slot, key, result):
-        
+    def execute(self, slot, roi, result):
+        key = roi.toSlice()
         if slot.name == "output":
             req = self.OutPiper.outputs["Output"][key].allocate()
         return req.wait()
@@ -150,9 +153,6 @@ class StackLoader(QtGui.QDialog):
         self.connect(self.loadButton, QtCore.SIGNAL('clicked()'), self.slotLoad)
         self.cancelButton = QtGui.QPushButton("&Cancel")
         self.connect(self.cancelButton, QtCore.SIGNAL('clicked()'), self.reject)
-        self.previewFilesButton = QtGui.QPushButton("&Preview files")
-        self.connect(self.previewFilesButton, QtCore.SIGNAL('clicked()'), self.slotPreviewFiles)
-        tempLayout.addWidget(self.previewFilesButton)
         tempLayout.addStretch()
         tempLayout.addWidget(self.cancelButton)
         tempLayout.addWidget(self.loadButton)
@@ -186,11 +186,6 @@ class StackLoader(QtGui.QDialog):
         #which is a problem on Windows, as we don't use QDir to open dirs
         self.path.setText(str(QtCore.QDir.convertSeparators(tempname)))
         
-
-    def slotPreviewFiles(self):
-        self.fileTableWidget = loadOptionsWidget.previewTable(self.fileList)
-        self.fileTableWidget.exec_()
-
     def slotLoad(self):    
         result = self.ChainBuilder.outputs["output"][:].allocate().wait()
         print result.shape
@@ -264,8 +259,8 @@ class TestOperatorChain():
 
         #OBTAIN THE RESULT
         #-----------------------------------------------------------------------
-
-        result = OpChain.outputs["output"][:].allocate().wait()
+        
+        result = OpChain.outputs["output"]().wait()
         
         
         #TEST THE RESULT
@@ -317,7 +312,7 @@ if __name__ == "__main__":
         testclass.stackAndTestConfig()
         testclass = TestOperatorChain(configuration=(True,False))
         testclass.stackAndTestConfig()
-        
+
     if '-gui' in sys.argv:
         app = QtGui.QApplication([""])
         dialog = StackLoader()
