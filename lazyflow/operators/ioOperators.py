@@ -1,4 +1,4 @@
-import vigra,numpy,h5py
+import vigra,numpy,h5py,glob
 from lazyflow.graph import Operator,OutputSlot,InputSlot
 from lazyflow.roi import roiToSlice
 
@@ -22,7 +22,7 @@ class OpH5Writer(Operator):
         
         
         inputRoi = self.inputs["roi"].value
-        key = roiToSlice(inputRoi[0], inputRoi[1],self.inputs["input"].shape)
+        key = roiToSlice(inputRoi[0], inputRoi[1])
         filename = self.inputs["filename"].value
         hdf5Path = self.inputs["hdf5Path"].value
         imSlot = self.inputs["input"]
@@ -107,6 +107,44 @@ class OpH5Writer(Operator):
         f.close()
         
         result[0] = True
+
+class OpStackLoader(Operator):
+    name = "Image Stack Reader"
+    category = "Input"
+    
+    inputSlots = [InputSlot("globstring", stype = "string")]
+    outputSlots = [OutputSlot("stack")]
+    
+    def setupOutputs(self):
+        globString = self.inputs["globstring"].value
+        self.fileNameList = sorted(glob.glob(globString))
+        
+
+        if len(self.fileNameList) != 0:
+            self.info = vigra.impex.ImageInfo(self.fileNameList[0])
+            oslot = self.outputs["stack"]
+            
+            #build 4D shape out of 2DShape and Filelist
+            oslot._shape = (self.info.getShape()[0],self.info.getShape()[1],len(self.fileNameList),self.info.getShape()[2])
+            oslot._dtype = self.info.getDtype()
+            zAxisInfo = vigra.AxisInfo(key='z',typeFlags = vigra.AxisType.Space)
+            oslot._axistags = self.info.getAxisTags()
+            oslot._axistags.insert(2,zAxisInfo)
+        
+        else:
+            oslot = self.outputs["stack"]
+            oslot._shape = None
+            oslot._dtype = None
+            oslot._axistags = None
+            
+    def execute(self, slot, roi, result):
+        i=0
+        key = roi.toSlice()
+        for fileName in self.fileNameList[key[2]]:
+            assert (self.info.getShape() == vigra.impex.ImageInfo(fileName).getShape()), 'not all files have the same shape'
+            result[:,:,i,:] = vigra.impex.readImage(fileName)[key[0],key[1],key[3]]
+            i = i+1
+
 
 class OpStackWriter(Operator):
     name = "Stack File Writer"
