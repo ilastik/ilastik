@@ -4,7 +4,7 @@ from PyQt4 import uic
 import os
 from opStackWriter import OpStackWriter
 from lazyflow.operators.ioOperators import OpH5Writer 
-from roi import TinyVector
+from lazyflow.roi import TinyVector
 
 class ExportDialog(QDialog):
     def __init__(self, parent=None):

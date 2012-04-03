@@ -1,7 +1,7 @@
 #make the program quit on Ctrl+C
 import signal
 from lazyflow.operators.obsolete.vigraOperators import OpH5WriterBigDataset
-from lazyflow.operators.ioOperators import OpH5Writer
+from lazyflow.operators.ioOperators import OpH5Writer, OpStackLoader
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import os, sys, numpy, copy
@@ -386,22 +386,15 @@ class Main(QMainWindow):
 
     def _stackLoad(self):
         self.inputProvider = OpArrayPiper(self.g)
-        op5ifyer = Op5ifyer(self.g)
-        op5ifyer.inputs["Input"].connect(self.stackLoader.ChainBuilder.outputs["output"])
-        self.raw = op5ifyer.outputs["Output"][:].allocate().wait()
-        self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
-        self.inputProvider = OpArrayPiper(self.g)
         axistags =  vigra.AxisTags(
             vigra.AxisInfo('t',vigra.AxisType.Time),
             vigra.AxisInfo('x',vigra.AxisType.Space),
-            vigra.AxisInfo('z',vigra.AxisType.Space),
             vigra.AxisInfo('y',vigra.AxisType.Space),
+            vigra.AxisInfo('z',vigra.AxisType.Space),
             vigra.AxisInfo('c',vigra.AxisType.Channels))
+        self.raw = self.stackLoader.ChainBuilder.outputs["output"]().wait()
         self.raw = vigra.VigraArray(self.raw,axistags = axistags)
-        print '***************************************************'
-        print self.raw.dtype
-        print self.raw.axistags
-        print self.raw.shape
+        self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
         self.inputProvider.inputs["Input"].setValue(self.raw)
         self.haveData.emit()
         self.stackLoader.close()
