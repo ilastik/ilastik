@@ -629,7 +629,10 @@ class PixelClassificationPipeline( object ):
 
 class PixelClassificationApplet( Applet ):
     def __init__( self, pipeline = None, graph = None ):
-        Applet.__init__( self, "Pixel Classification" )
+        # (No need to call the base class constructor here.)
+        # Applet.__init__( self, "Pixel Classification" )
+
+        self.name = "Pixel Classification"
         self.graph = graph if graph else Graph()
         self.pipeline = pipeline if pipeline else PixelClassificationPipeline( self.graph )
 
@@ -643,6 +646,8 @@ class PixelClassificationApplet( Applet ):
         
         # For now, the central widget owns the applet bar gui
         self._controlWidget = self._centralWidget.getAppletBarUi()
+        
+        self._serializableItems = []
         
 if __name__ == "__main__":
     #make the program quit on Ctrl+C

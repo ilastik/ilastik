@@ -1,5 +1,7 @@
 from PyQt4.QtGui import QLabel, QApplication
 
+from test.serializationTestItems import ExampleSerializableItem
+
 def run_applet( applet_type, *args, **kwargs):
     '''Run applet standalone.'''
     import signal
@@ -11,9 +13,19 @@ def run_applet( applet_type, *args, **kwargs):
     applet.controlWidget.show()
     qapp.exec_()
 
-
-
 class Applet( object ):
+    def __init__( self, name = "Example Applet" ):
+        """ Example constructor for testing purposes only.
+            No need to be called from subclasses."""
+        self.name = name
+        
+        self._centralWidget = QLabel(name + " Central Widget")
+        self._controlWidget = QLabel(name + " Control Widget")
+        self._menuWidget = QLabel(name + " Menu Widget")
+        
+        # Only a single serializable item for this example applet
+        self._serializableItems = [ExampleSerializableItem(self.name)]
+
     @property
     def centralWidget( self ):
         return self._centralWidget
@@ -26,12 +38,10 @@ class Applet( object ):
     def menuWidget( self ):
         return self._menuWidget
 
-    def __init__( self, name = "Example Applet" ):
-        self.name = name
-        
-        self._centralWidget = QLabel(name + " Central Widget")
-        self._controlWidget = QLabel(name + " Control Widget")
-        self._menuWidget = QLabel(name + " Menu Widget")
+    @property
+    def serializableItems(self):
+        """ Return a list of serialization.SerializableItem objects for loading/saving """ 
+        return self._serializableItems
 
 if __name__ == '__main__':
     run_applet(Applet)
