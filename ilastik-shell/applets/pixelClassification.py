@@ -32,15 +32,13 @@ from ilastikshell.applet import Applet
 
 import vigra
 
-
-
-class PixelClassificationGui(QMainWindow):    
+class PixelClassificationGui(QMainWindow):
     haveData        = pyqtSignal()
     dataReadyToView = pyqtSignal()
         
     def __init__(self, pipeline = None, graph = None ):
         QMainWindow.__init__(self)
-
+        
         self.pipeline = pipeline
         
         #Normalize the data if true
@@ -64,7 +62,8 @@ class PixelClassificationGui(QMainWindow):
         #The corresponding scales are:
         self.featScalesList=[0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
         
-        self.initUic()
+        self.initCentralUic()
+        self.initAppletBarUic()
         
         #if the filename was specified on command line, load it
         def loadFile():
@@ -75,14 +74,15 @@ class PixelClassificationGui(QMainWindow):
     def setIconToViewMenu(self):
             self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
         
-    def initUic(self):
+    def initCentralUic(self):
+        # We don't know where the user is running this script from,
+        #  so locate the .ui file relative to this .py file's path
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
         uic.loadUi(p+"/classificationWorkflow.ui", self) 
         #connect the window and graph creation to the opening of the file
         self.actionOpenFile.triggered.connect(self.openFile)
         self.actionOpenStack.triggered.connect(self.openImageStack)
-        self.actionQuit.triggered.connect(qApp.quit)
         
         def toggleDebugPatches(show):
             self.editor.showDebugPatches = show
@@ -147,15 +147,34 @@ class PixelClassificationGui(QMainWindow):
         self.dataReadyToView.connect(self.initEditor)
         
         self.layerstack = LayerStackModel()
+                            
+        self.interactionComboBox.currentIndexChanged.connect(self.changeInteractionMode)
+        self.interactionComboBox.setEnabled(False)
+
+        self._initFeatureDlg()
         
+    def getAppletBarUi(self):
+        return self._appletBarUi
+    
+    def initAppletBarUic(self):
+        # We don't know where the user is running this script from,
+        #  so locate the .ui file relative to this .py file's path
+        p = os.path.split(__file__)[0]+'/'
+        if p == "/": p = "."+p
+        _appletBarUi = uic.loadUi(p+"/pixelClassificationAppletBar.ui") # Don't pass self: applet ui is separate from the main ui
+
+        # We own the applet bar ui
+        self._appletBarUi = _appletBarUi
+
+        # Initialize the label list model
         model = LabelListModel()
-        self.labelListView.setModel(model)
-        self.labelListModel=model
-        
-        self.labelListModel.rowsAboutToBeRemoved.connect(self.onLabelAboutToBeRemoved)
-        self.labelListModel.labelSelected.connect(self.switchLabel)
+        _appletBarUi.labelListView.setModel(model)
+        _appletBarUi.labelListModel=model
+        _appletBarUi.labelListModel.rowsAboutToBeRemoved.connect(self.onLabelAboutToBeRemoved)
+        _appletBarUi.labelListModel.labelSelected.connect(self.switchLabel)
         
         def onDataChanged(topLeft, bottomRight):
+            """Handle changes to the label list selections."""
             firstRow = topLeft.row()
             lastRow  = bottomRight.row()
         
@@ -166,26 +185,20 @@ class PixelClassificationGui(QMainWindow):
                 assert(firstRow == lastRow) #only one data item changes at a time
 
                 #in this case, the actual data (for example color) has changed
-                self.switchColor(firstRow+1, self.labelListModel[firstRow].color)
+                self.switchColor(firstRow+1, _appletBarUi.labelListModel[firstRow].color)
                 self.editor.scheduleSlicesRedraw()
             else:
                 #this column is used for the 'delete' buttons, we don't care
                 #about data changed here
                 pass
-            
-        self.labelListModel.dataChanged.connect(onDataChanged)
-        
-        self.AddLabelButton.clicked.connect(self.addLabel)
-        
-        self.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
 
-        self.checkInteractive.setEnabled(False)
-        self.checkInteractive.toggled.connect(self.toggleInteractive)   
+        # Connect Applet GUI to our event handlers
+        _appletBarUi.AddLabelButton.clicked.connect(self.addLabel)
+        _appletBarUi.checkInteractive.setEnabled(False)
+        _appletBarUi.checkInteractive.toggled.connect(self.toggleInteractive)
+        _appletBarUi.labelListModel.dataChanged.connect(onDataChanged)
+        _appletBarUi.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
 
-        self.interactionComboBox.currentIndexChanged.connect(self.changeInteractionMode)
-        self.interactionComboBox.setEnabled(False)
-
-        self._initFeatureDlg()
         
     def toggleInteractive(self, checked):
         print "toggling interactive mode to '%r'" % checked
@@ -194,18 +207,18 @@ class PixelClassificationGui(QMainWindow):
         if checked==True:
             labels =numpy.unique(numpy.asarray(self.pipeline.labels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
             nPaintedLabels=labels.shape[0]
-            nLabelsLayers = self.labelListModel.rowCount()
+            nLabelsLayers = self._appletBarUi.labelListModel.rowCount()
             selectedFeatures = numpy.asarray(self.featureDlg.featureTableWidget.createSelectedFeaturesBoolMatrix())
             
             if nPaintedLabels!=nLabelsLayers:
-                self.checkInteractive.setCheckState(0)
+                self._appletBarUi.checkInteractive.setCheckState(0)
                 mexBox=QMessageBox()
                 mexBox.setText("Did you forget to paint some labels?")
-                mexBox.setInformativeText("Painted Labels %d \nNumber Active Labels Layers %d"%(nPaintedLabels,self.labelListModel.rowCount()))
+                mexBox.setInformativeText("Painted Labels %d \nNumber Active Labels Layers %d"%(nPaintedLabels,self._appletBarUi.labelListModel.rowCount()))
                 mexBox.exec_()
                 return
             if (selectedFeatures==0).all():
-                self.checkInteractive.setCheckState(0)
+                self._appletBarUi.checkInteractive.setCheckState(0)
                 mexBox=QMessageBox()
                 mexBox.setText("The are no features selected ")
                 mexBox.exec_()
@@ -214,11 +227,11 @@ class PixelClassificationGui(QMainWindow):
             self.g.stopGraph()
             self.g.resumeGraph()
                 
-        self.AddLabelButton.setEnabled(not checked)
-        self.SelectFeaturesButton.setEnabled(not checked)
+        self._appletBarUi.AddLabelButton.setEnabled(not checked)
+        self._appletBarUi.SelectFeaturesButton.setEnabled(not checked)
         for o in self.fixableOperators:
             o.inputs["fixAtCurrent"].setValue(not checked)
-        self.labelListModel.allowRemove(not checked)
+        self._appletBarUi.labelListModel.allowRemove(not checked)
         
         self.editor.scheduleSlicesRedraw()
 
@@ -229,11 +242,11 @@ class PixelClassificationGui(QMainWindow):
         print "interaction mode switched to", modes[index]
 
     def switchLabel(self, row):
-        print "switching to label=%r" % (self.labelListModel[row])
+        print "switching to label=%r" % (self._appletBarUi.labelListModel[row])
         #+1 because first is transparent
         #FIXME: shouldn't be just row+1 here
         self.editor.brushingModel.setDrawnNumber(row+1)
-        self.editor.brushingModel.setBrushColor(self.labelListModel[row].color)
+        self.editor.brushingModel.setBrushColor(self._appletBarUi.labelListModel[row].color)
         
     def switchColor(self, row, color):
         print "label=%d changes color to %r" % (row, color)
@@ -243,22 +256,22 @@ class PixelClassificationGui(QMainWindow):
     
     def addLabel(self):
         color = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
-        numLabels = len(self.labelListModel)
+        numLabels = len(self._appletBarUi.labelListModel)
         if numLabels < len(self._colorTable16):
             color = self._colorTable16[numLabels]
         self.labellayer.colorTable.append(color.rgba())
         
-        self.labelListModel.insertRow(self.labelListModel.rowCount(), Label("Label %d" % (self.labelListModel.rowCount() + 1), color))
-        nlabels = self.labelListModel.rowCount()
+        self._appletBarUi.labelListModel.insertRow(self._appletBarUi.labelListModel.rowCount(), Label("Label %d" % (self._appletBarUi.labelListModel.rowCount() + 1), color))
+        nlabels = self._appletBarUi.labelListModel.rowCount()
         if self.pipeline is not None:
             print "Label added, changing predictions"
             #re-train the forest now that we have more labels
             self.pipeline.predict.inputs['LabelsCount'].setValue(nlabels)
-            self.addPredictionLayer(nlabels-1, self.labelListModel._labels[nlabels-1])
+            self.addPredictionLayer(nlabels-1, self._appletBarUi.labelListModel._labels[nlabels-1])
         
         #make the new label selected
-        index = self.labelListModel.index(nlabels-1, 1)
-        self.labelListModel._selectionModel.select(index, QItemSelectionModel.ClearAndSelect)
+        index = self._appletBarUi.labelListModel.index(nlabels-1, 1)
+        self._appletBarUi.labelListModel._selectionModel.select(index, QItemSelectionModel.ClearAndSelect)
         
         #FIXME: this should watch for model changes   
         #drawing will be enabled when the first label is added  
@@ -270,25 +283,25 @@ class PixelClassificationGui(QMainWindow):
         #the interface only allows to remove one label at a time?
         
         nout = start-end+1
-        ncurrent = self.labelListModel.rowCount()
+        ncurrent = self._appletBarUi.labelListModel.rowCount()
         print "removing", nout, "out of ", ncurrent
         
         if self.pipeline is not None:
             self.pipeline.predict.inputs['LabelsCount'].setValue(ncurrent-nout)
         for il in range(start, end+1):
-            labelvalue = self.labelListModel._labels[il]
+            labelvalue = self._appletBarUi.labelListModel._labels[il]
             self.removePredictionLayer(labelvalue)
             self.pipeline.labels.inputs["deleteLabel"].setValue(il+1)
             self.editor.scheduleSlicesRedraw()
             
     def startClassification(self):
-        nclasses = self.labelListModel.rowCount()
+        nclasses = self._appletBarUi.labelListModel.rowCount()
         self.pipeline.predict.inputs['LabelsCount'].setValue(nclasses)
 
         #add prediction results for all classes as separate channels
         for icl in range(nclasses):
-            self.addPredictionLayer(icl, self.labelListModel._labels[icl])
-        self.checkInteractive.setEnabled(True)
+            self.addPredictionLayer(icl, self._appletBarUi.labelListModel._labels[icl])
+        self._appletBarUi.checkInteractive.setEnabled(True)
                                     
     def addPredictionLayer(self, icl, ref_label):
         
@@ -296,7 +309,7 @@ class PixelClassificationGui(QMainWindow):
         selector.inputs["Input"].connect(self.pipeline.prediction_cache.outputs['Output'])
         selector.inputs["Index"].setValue(icl)
                 
-        self.pipeline.prediction_cache.inputs["fixAtCurrent"].setValue(not self.checkInteractive.isChecked())
+        self.pipeline.prediction_cache.inputs["fixAtCurrent"].setValue(not self._appletBarUi.checkInteractive.isChecked())
         
         predictsrc = LazyflowSource(selector.outputs["Output"][0])
         def srcName(newName):
@@ -622,8 +635,14 @@ class PixelClassificationApplet( Applet ):
 
         self._centralWidget = PixelClassificationGui( self.pipeline, self.graph )
 
-
-
+        # To save some typing, the menu bar is defined in the .ui file 
+        #  along with the rest of the central widget.
+        # However, we must expose it here as an applet property if we 
+        #  want it to show up properly in the shell
+        self._menuWidget = self._centralWidget.menuBar
+        
+        # For now, the central widget owns the applet bar gui
+        self._controlWidget = self._centralWidget.getAppletBarUi()
         
 if __name__ == "__main__":
     #make the program quit on Ctrl+C
