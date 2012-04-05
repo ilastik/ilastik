@@ -535,28 +535,36 @@ class PixelClassificationGui(QMainWindow):
     
     
     def onFeatureButtonClicked(self):
+        # Refresh the feature matrix in case it has changed since the last time we were opened
+        # (e.g. if the user loaded a project from disk)
+        pipelineFeatures = self.pipeline.features.inputs['Matrix'].value
+        if pipelineFeatures is not None:
+            self.featureDlg.selectedFeatureBoolMatrix = pipelineFeatures
+        
+        # Now open the feature selection dialog
         self.featureDlg.show()
     
-    def _onFeaturesChosen(self):
-        selectedFeatures = self.featureDlg.featureTableWidget.createSelectedFeaturesBoolMatrix()
+    def _onNewFeaturesFromFeatureDlg(self):
+        selectedFeatures = self.featureDlg.getSelectedFeatureMatrix()
         print "new feature set:", selectedFeatures
         self.pipeline.features.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
     
     def _initFeatureDlg(self):
-        dlg = self.featureDlg = FeatureDlg()
+        self.featureDlg = FeatureDlg()
         
-        dlg.setWindowTitle("Features")
-        dlg.createFeatureTable({"Features": [FeatureEntry("Gaussian smoothing"), \
-                                             FeatureEntry("Laplacian of Gaussian"), \
-                                             FeatureEntry("Structure Tensor Eigenvalues"), \
-                                             FeatureEntry("Hessian of Gaussian EV"),  \
-                                             FeatureEntry("Gaussian Gradient Magnitude"), \
-                                             FeatureEntry("Difference Of Gaussian")]}, \
-                               self.featScalesList)
-        dlg.setImageToPreView(None)
+        self.featureDlg.setWindowTitle("Features")
+        self.featureDlg.createFeatureTable({"Features":
+                                                [FeatureEntry("Gaussian smoothing"), \
+                                                 FeatureEntry("Laplacian of Gaussian"), \
+                                                 FeatureEntry("Structure Tensor Eigenvalues"), \
+                                                 FeatureEntry("Hessian of Gaussian EV"),  \
+                                                 FeatureEntry("Gaussian Gradient Magnitude"), \
+                                                 FeatureEntry("Difference Of Gaussian")]}, \
+                                           self.featScalesList)
+        self.featureDlg.setImageToPreView(None)
         m = [[1,0,0,0,0,0,0],[1,0,0,0,0,0,0],[0,0,0,0,0,0,0],[1,0,0,0,0,0,0],[1,0,0,0,0,0,0],[1,0,0,0,0,0,0]]
-        dlg.featureTableWidget.setSelectedFeatureBoolMatrix(m)
-        dlg.accepted.connect(self._onFeaturesChosen)
+        self.featureDlg.selectedFeatureBoolMatrix = numpy.asarray(m)
+        self.featureDlg.accepted.connect(self._onNewFeaturesFromFeatureDlg)
 
 
 class PixelClassificationPipeline( object ):
@@ -626,6 +634,97 @@ class PixelClassificationPipeline( object ):
         pCache.inputs["Input"].connect(self.predict.outputs["PMaps"])
         self.prediction_cache = pCache
 
+class PixelClassificationSerializer(object):
+    """ Encapsulate the serialization scheme for pixel classification workflow parameters and datasets."""
+    def __init__(self, pipeline):
+        self.pipeline = pipeline
+    
+    def serializeToHdf5(self, hdf5Group):
+        pass
+    
+    def deserializeFromHdf5(self, hdf5Group):
+        # The group we were given is the root (file).
+        # Check the version
+        ilastikVersion = hdf5Group["ilastikVersion"].value
+
+        # TODO: Fix this when the version number scheme is more thought out
+        if ilastikVersion == 0.6:
+            pass
+
+    def isDirty(self, hdf5Group):
+        """ Return true if the current state of this item 
+            (in memory) does not match the state of the HDF5 group on disk. """
+        return True
+
+    def unload(self):
+        """ Called if either
+            (1) the user closed the project or
+            (2) the project opening process needs to be aborted for some reason
+                (e.g. not all items could be deserialized properly due to a corrupted ilp)
+            This way we can avoid invalid state due to a partially loaded project. """ 
+        pass
+
+class Ilastik05ImportDeserializer(object):
+    """Special (de)serializer for importing ilastik 0.5 projects.
+       For now, this class is import-only.  Only the deserialize function is implemented.
+       If the project is not an ilastik0.5 project, this serializer does nothing."""
+    def __init__(self, pipeline):
+        self.pipeline = pipeline
+    
+    def serializeToHdf5(self, hdf5Group):
+        """Not implemented. (See above.)"""
+        pass
+    
+    def deserializeFromHdf5(self, hdf5Group):
+        """If (and only if) the given hdf5Group is the root-level group of an 
+           ilastik 0.5 project, then the project is imported.  The pipeline is updated 
+           with the saved parameters and datasets."""
+        # The group we were given is the root (file).
+        # Check the version
+        ilastikVersion = hdf5Group["ilastikVersion"].value
+
+        # The pixel classification workflow supports importing projects in the old 0.5 format
+        if ilastikVersion == 0.5:
+            print "Deserializing ilastik 0.5 project..."
+            
+            # In ilastik 0.5, features were grouped into user-friendly selections.  We have to split these 
+            #  selections apart again into the actual features that must be computed.
+            userFriendlyFeatureMatrix = hdf5Group['Project']['FeatureSelection']['UserSelection'].value
+            assert( userFriendlyFeatureMatrix.shape == (4, 7) )
+            
+            # Here's how features map to the old "feature groups"
+            # (Note: Nothing maps to the orientation group.)
+            # TODO: It is terrible that these indexes are hard-coded.
+            featureToGroup = { 0 : 0,  # Gaussian Smoothing -> Color
+                               1 : 1,  # Laplacian of Gaussian -> Edge
+                               2 : 3,  # Structure Tensor Eigenvalues -> Texture
+                               3 : 3,  # Eigenvalues of Hessian of Gaussian -> Texture
+                               4 : 1,  # Gradient Magnitude of Gaussian -> Edge
+                               5 : 1 } # Difference of Gaussians -> Edge
+
+            # Create a feature selection matrix of the correct shape
+            # TODO: The shape shouldn't be hard-coded.
+            pipeLineSelectedFeatureMatrix = numpy.array(numpy.zeros((6,7)), dtype=bool)
+
+            # For each feature, determine which group's settings to take
+            for featureIndex, featureGroupIndex in featureToGroup.items():
+                # Copy the whole row of selections from the feature group
+                pipeLineSelectedFeatureMatrix[featureIndex] = userFriendlyFeatureMatrix[featureGroupIndex]            
+            
+            # Finally, update the pipeline with the feature selections
+            self.pipeline.features.inputs['Matrix'].setValue(pipeLineSelectedFeatureMatrix)
+
+    def isDirty(self, hdf5Group):
+        """Always returns False because we don't support saving to ilastik0.5 projects"""
+        return False
+
+    def unload(self):
+        """ Called if either
+            (1) the user closed the project or
+            (2) the project opening process needs to be aborted for some reason
+                (e.g. not all items could be deserialized properly due to a corrupted ilp)
+            This way we can avoid invalid state due to a partially loaded project. """ 
+        pass
 
 class PixelClassificationApplet( Applet ):
     def __init__( self, pipeline = None, graph = None ):
@@ -640,15 +739,18 @@ class PixelClassificationApplet( Applet ):
 
         # To save some typing, the menu bar is defined in the .ui file 
         #  along with the rest of the central widget.
-        # However, we must expose it here as an applet property if we 
+        # However, we must expose it here as an applet property since we 
         #  want it to show up properly in the shell
         self._menuWidget = self._centralWidget.menuBar
         
         # For now, the central widget owns the applet bar gui
         self._controlWidget = self._centralWidget.getAppletBarUi()
         
-        self._serializableItems = []
-        
+        self._serializableItems = [
+                                    PixelClassificationSerializer(self.pipeline), # Default serializer for new projects
+                                    Ilastik05ImportDeserializer(self.pipeline)    # Legacy (v0.5) importer
+                                  ]
+
 if __name__ == "__main__":
     #make the program quit on Ctrl+C
     import signal

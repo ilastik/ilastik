@@ -19,6 +19,7 @@ pc = PixelClassificationApplet()
 from ilastikshell.applet import Applet
 from PyQt4.QtGui import QMenuBar, QMenu
 defaultApplet = Applet()
+
 # Normally applets would provide their own menu items,
 # but for this test we'll add them here (i.e. from the outside).
 defaultApplet._menuWidget = QMenuBar()
@@ -27,6 +28,7 @@ defaultMenu = QMenu("Default Applet", defaultApplet._menuWidget)
 defaultMenu.addAction("Default Action 1")
 defaultMenu.addAction("Default Action 2")
 defaultApplet._menuWidget.addMenu(defaultMenu)
+defaultApplet._serializableItems = []
 
 shell = IlastikShell()
 shell.addApplet(pc)

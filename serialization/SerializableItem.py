@@ -5,10 +5,10 @@ class SerializableItem(object):
     def __init__(self):
         pass
     
-    def serializeToHdf5(self, hd5Group):
+    def serializeToHdf5(self, hdf5Group):
         pass
     
-    def deserializeFromHdf5(self, hd5Group):
+    def deserializeFromHdf5(self, hdf5Group):
         pass
 
     def isDirty(self, hdf5Group):
@@ -23,3 +23,4 @@ class SerializableItem(object):
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
             This way we can avoid invalid state due to a partially loaded project. """ 
         pass
+
