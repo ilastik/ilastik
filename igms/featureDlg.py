@@ -93,6 +93,17 @@ class FeatureDlg(QDialog):
     # methods
     # ------------------------------------------------
     
+    @property
+    def selectedFeatureBoolMatrix(self):
+        """Return the bool matrix of features that the user selected."""
+        return self.featureTableWidget.createSelectedFeaturesBoolMatrix()
+
+    @selectedFeatureBoolMatrix.setter
+    def selectedFeatureBoolMatrix(self, newMatrix):
+        """Populate the table of selected features with the provided matrix."""
+        print "Setting feature matrix with shape: " + str(newMatrix.shape)
+        self.featureTableWidget.setSelectedFeatureBoolMatrix(newMatrix)
+    
     def createFeatureTable(self, features, sigmas, brushNames=None):
         self.featureTableWidget.createTableForFeatureDlg(features, sigmas, brushNames)
     
