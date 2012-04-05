@@ -1,11 +1,13 @@
 from PyQt4 import uic
 from PyQt4 import Qt
 from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
-                        QMenuBar, QFrame, QLabel, QStackedLayout, QStackedWidget, qApp
+                        QMenuBar, QFrame, QLabel, QStackedLayout, \
+                        QStackedWidget, qApp, QFileDialog
 from PyQt4 import QtCore
 
 import h5py
 import traceback
+import os
 
 class _ShellMenuBar( QWidget ):
     def __init__( self, parent ):
@@ -100,12 +102,19 @@ class IlastikShell( QMainWindow ):
     def __getitem__( self, index ):
         return self._applets[index]
 
-    # Menu Action handlers
-    hardCodedFileName = "/home/bergs/workspace/sample_data/dummyProject.ilp6"
-
     def onOpenProjectActionTriggered(self):
         print "Open Project action triggered"
-        projectFileName = IlastikShell.hardCodedFileName
+        projectFileName = QFileDialog.getOpenFileName(
+           self, "Open Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*ilp)")
+        
+        # If the user cancelled, stop now
+        if projectFileName.isNull():
+            return
+        
+        # Convert from QString to str
+        projectFileName = str(projectFileName)
+        print "Opening Project: " + projectFileName
+
         # Open the file as an HDF5 file
         h5File = h5py.File(projectFileName, "r") # Should be no need to write
 
@@ -127,7 +136,17 @@ class IlastikShell( QMainWindow ):
     
     def onSaveProjectActionTriggered(self):
         print "Save Project action triggered"
-        projectFileName = IlastikShell.hardCodedFileName
+        projectFileName = QFileDialog.getSaveFileName(
+           self, "Save Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*ilp)")
+        
+        # If the user cancelled, stop now
+        if projectFileName.isNull():
+            return
+        
+        # Convert from QString to str
+        projectFileName = str(projectFileName)
+        print "Saving Project: " + projectFileName
+
         # Open the file as an HDF5 file
         # For now, always start from scratch ("w").
         # In the future, maybe check the file's existing data to see if it really needs to be overwritten
