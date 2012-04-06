@@ -58,15 +58,25 @@ class ArrayLike( SlotType ):
         return storage
 
     def writeIntoDestination( self, destination, value, roi ):
-        if not isinstance(destination, list):
-         assert(roi.dim == destination.ndim), "%r ndim=%r, shape=%r" % (roi.toSlice(), destination.ndim, destination.shape)
-        sl = roiToSlice(roi.start, roi.stop)
-        try:
-            destination[:] = value[sl]
-        except TypeError:
+        if destination is not None:
+          if not isinstance(destination, list):
+           assert(roi.dim == destination.ndim), "%r ndim=%r, shape=%r" % (roi.toSlice(), destination.ndim, destination.shape)
+          sl = roiToSlice(roi.start, roi.stop)
+          try:
+              destination[:] = value[sl]
+          except TypeError:
+              warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
+              destination[:] = value
+        else:
+          sl = roiToSlice(roi.start, roi.stop)
+          try:
+            destination = value[sl]
+          except:
             warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
-            destination[:] = value
+            destination = [value]
         return destination
+
+    
 
     def isCompatible(self, value):
         warn_deprecated("FIXME here")

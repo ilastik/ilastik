@@ -112,6 +112,38 @@ class MetaDict(dict):
     return MetaDict(dict.copy(self))
 
 
+class ValueRequest(object):
+  """
+  Pseudo request that behaves like a Request.Request object
+
+  this object is used to prevent the heavy construction of complete Request
+  objects in simple cases where they are not needed.
+  """
+  def __init__(self, value):
+    self.result = value
+
+  def wait(self):
+    return self.result
+
+  def notify(self, callback, *args, **kwargs):
+    callback(*args, **kwargs)
+
+  def onCancel(self, callback, *args, **kwargs):
+    pass
+
+  def allocate(self, priority = 0):
+    return self
+
+  def writeInto(self, destination):
+    if isinstance(destination, numpy.ndarray):
+      destination[:] = self.result
+    else:
+      destination[:] = self.result
+    return self
+
+  def getResult(self):
+    return self.result
+
 
 class Slot(object):
     """Common methods of all slot types."""
@@ -180,12 +212,6 @@ class Slot(object):
     def _dtype(self, value):
       old = self.meta.dtype
       self.meta.dtype = value
-
-    def _allocateDestination( self, key ):
-        return self.stype.allocateDestination(key)
-        
-    def _writeIntoDestination( self, destination, value,roi ):
-        return self.stype.writeIntoDestination(destination,value, roi)
                            
     def __getitem__(self, key):
         if self.level > 0:
@@ -240,22 +266,25 @@ class Slot(object):
 
     def _requestFunctionWrapper(self, roi, destination):
       if destination is None:
-        destination = self._allocateDestination(roi)
-      if isinstance(self, InputSlot):
-        has_val = (self._value is not None)
-        if has_val:
-          self._writeIntoDestination(destination, self._value, roi)
-          tres = destination
-        else:
-          tres = self.partner._requestFunctionWrapper( roi, destination)
-          pass
-      elif isinstance(self, OutputSlot):
-        tres = self.operator.execute(self, roi, destination)
-        pass
+        destination = self.stype.allocateDestination(roi)
+      tres = self.operator.execute(self, roi, destination)
       return destination
 
-    def get( self, roi ):
-      return Request(self._requestFunctionWrapper,roi = roi,destination = None)        
+    def get( self, roi, destination = None ):
+      if self._value is not None:
+        # this handles the case of an inputslot
+        # having a ._value
+        # --> construct cheaper request object for this case
+        result = self.stype.writeIntoDestination(destination, self._value, roi)
+        return ValueRequest(result)
+      elif self.partner is not None:
+        # this handles the case of an inputslot
+        # --> just relay the request
+        return self.partner.get(roi, destination)
+      else:
+        # normal case
+        # --> construct heavy request object..
+        return Request(self._requestFunctionWrapper,roi = roi,destination = destination)        
 
 
     def _registerClone(self, slot):
