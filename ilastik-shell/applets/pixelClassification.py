@@ -634,6 +634,7 @@ class PixelClassificationPipeline( object ):
         pCache.inputs["Input"].connect(self.predict.outputs["PMaps"])
         self.prediction_cache = pCache
 
+
 class PixelClassificationSerializer(object):
     """ Encapsulate the serialization scheme for pixel classification workflow parameters and datasets."""
     def __init__(self, pipeline):
@@ -648,10 +649,12 @@ class PixelClassificationSerializer(object):
         ilastikVersion = hdf5Group["ilastikVersion"].value
 
         # TODO: Fix this when the version number scheme is more thought out
-        if ilastikVersion == 0.6:
-            pass
+        if ilastikVersion != 0.6:
+            # This class is for 0.6 projects only.
+            # v0.5 projects are handled in a different serializer (below).
+            return
 
-    def isDirty(self, hdf5Group):
+    def isDirty(self):
         """ Return true if the current state of this item 
             (in memory) does not match the state of the HDF5 group on disk. """
         return True
@@ -675,23 +678,45 @@ class Ilastik05ImportDeserializer(object):
         """Not implemented. (See above.)"""
         pass
     
-    def deserializeFromHdf5(self, hdf5Group):
+    def deserializeFromHdf5(self, hdf5File):
         """If (and only if) the given hdf5Group is the root-level group of an 
            ilastik 0.5 project, then the project is imported.  The pipeline is updated 
            with the saved parameters and datasets."""
         # The group we were given is the root (file).
         # Check the version
-        ilastikVersion = hdf5Group["ilastikVersion"].value
+        ilastikVersion = hdf5File["ilastikVersion"].value
 
         # The pixel classification workflow supports importing projects in the old 0.5 format
         if ilastikVersion == 0.5:
             print "Deserializing ilastik 0.5 project..."
-            
+            self.importProjectAttributes(hdf5File) # (e.g. description, labeler, etc.)
+            self.importFeatureSelections(hdf5File)
+            self.importClassifier(hdf5File)
+            self.importDataSets(hdf5File)
+            self.importLabelSets(hdf5File)
+    
+    def importProjectAttributes(self, hdf5File):
+        description = hdf5File["Project"]["Description"].value
+        labeler = hdf5File["Project"]["Labeler"].value
+        name = hdf5File["Project"]["Name"].value
+        # TODO: Actually store these values and show them in the GUI somewhere . . .
+        
+    def importFeatureSelections(self, hdf5File):
+        """Import the feature selections from the v0.5 project file"""
+        # Create a feature selection matrix of the correct shape (all false by default)
+        # TODO: The shape shouldn't be hard-coded.
+        pipeLineSelectedFeatureMatrix = numpy.array(numpy.zeros((6,7)), dtype=bool)
+
+        try:
             # In ilastik 0.5, features were grouped into user-friendly selections.  We have to split these 
             #  selections apart again into the actual features that must be computed.
-            userFriendlyFeatureMatrix = hdf5Group['Project']['FeatureSelection']['UserSelection'].value
+            userFriendlyFeatureMatrix = hdf5File['Project']['FeatureSelection']['UserSelection'].value
+        except KeyError:
+            # If the project file doesn't specify feature selections,
+            #  we'll just use the default (blank) selections as initialized above
+            pass
+        else:            
             assert( userFriendlyFeatureMatrix.shape == (4, 7) )
-            
             # Here's how features map to the old "feature groups"
             # (Note: Nothing maps to the orientation group.)
             # TODO: It is terrible that these indexes are hard-coded.
@@ -702,19 +727,30 @@ class Ilastik05ImportDeserializer(object):
                                4 : 1,  # Gradient Magnitude of Gaussian -> Edge
                                5 : 1 } # Difference of Gaussians -> Edge
 
-            # Create a feature selection matrix of the correct shape
-            # TODO: The shape shouldn't be hard-coded.
-            pipeLineSelectedFeatureMatrix = numpy.array(numpy.zeros((6,7)), dtype=bool)
-
             # For each feature, determine which group's settings to take
             for featureIndex, featureGroupIndex in featureToGroup.items():
                 # Copy the whole row of selections from the feature group
-                pipeLineSelectedFeatureMatrix[featureIndex] = userFriendlyFeatureMatrix[featureGroupIndex]            
-            
-            # Finally, update the pipeline with the feature selections
-            self.pipeline.features.inputs['Matrix'].setValue(pipeLineSelectedFeatureMatrix)
-
-    def isDirty(self, hdf5Group):
+                pipeLineSelectedFeatureMatrix[featureIndex] = userFriendlyFeatureMatrix[featureGroupIndex]
+        
+        # Finally, update the pipeline with the feature selections
+        self.pipeline.features.inputs['Matrix'].setValue(pipeLineSelectedFeatureMatrix)
+        
+    def importClassifier(self, hdf5File):
+        """Import the random forest classifier (if any) from the v0.5 project file."""
+        # ilastik 0.5 can SAVE the RF, but it can't load it back (vigra doesn't provide a function for that).
+        # For now, we simply emulate that behavior.
+        # (Technically, v0.5 would retrieve the user's "number of trees" setting, 
+        #  but this applet doesn't expose that setting to the user anyway.)
+        pass
+        
+    def importDataSets(self, hdf5File):
+        # _openHdf5Data
+        pass
+    
+    def importLabelSets(self, hdf5File):
+        pass
+    
+    def isDirty(self):
         """Always returns False because we don't support saving to ilastik0.5 projects"""
         return False
 
