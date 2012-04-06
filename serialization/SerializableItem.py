@@ -11,9 +11,10 @@ class SerializableItem(object):
     def deserializeFromHdf5(self, hdf5Group):
         pass
 
-    def isDirty(self, hdf5Group):
+    def isDirty(self):
         """ Return true if the current state of this item 
-            (in memory) does not match the state of the HDF5 group on disk. """
+            (in memory) does not match the state of the HDF5 group on disk.
+            SerializableItems are responsible for tracking their own dirty/notdirty state."""
         pass
 
     def unload(self):
