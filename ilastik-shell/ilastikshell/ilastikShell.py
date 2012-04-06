@@ -2,7 +2,7 @@ from PyQt4 import uic
 from PyQt4 import Qt
 from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QMenuBar, QFrame, QLabel, QStackedLayout, \
-                        QStackedWidget, qApp, QFileDialog
+                        QStackedWidget, qApp, QFileDialog, QKeySequence
 from PyQt4 import QtCore
 
 import h5py
@@ -44,6 +44,7 @@ class _ShellMenuBar( QWidget ):
         # Menu item: Quit
         self._quitAction = self._generalMenu.addAction("&Quit")
         self._quitAction.triggered.connect(parent.onQuitActionTriggered)
+        self._quitAction.setShortcut( QKeySequence.Quit )
 
         # Create a menu bar widget and populate it with the general menu
         self._generalMenuBar = QMenuBar(self)
