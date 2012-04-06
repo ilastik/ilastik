@@ -20,6 +20,7 @@ def patchIfForeignThread(thread):
     setattr(thread, "requests", deque())
     setattr(thread, "finishedGreenlets", deque())
     setattr(thread, "last_request", None)
+    setattr(thread, "current_request", None)
 
 def wakeUp(thread):
   try:
@@ -40,6 +41,7 @@ class Worker(Thread):
     self.running = True
     self.processing = False
     self.last_request = None
+    self.current_request = None
     #self.socket = zmq.Socket(context,zmq.SUB)
     #self.socket.bind("inproc://%d" % self.wid)
     self.requests = deque()#PriorityQueue()
@@ -73,7 +75,8 @@ class Worker(Thread):
     threading_local = threading.current_thread()
     setattr(threading_local, "request", None)
     # cache value for less dict lookups
-    requests = self.machine.requests
+    requests0 = self.machine.requests0
+    requests1 = self.machine.requests1
     freeWorkers = self.machine.freeWorkers
 
     while self.running:
@@ -88,46 +91,49 @@ class Worker(Thread):
         freeWorkers.remove(self)
       except KeyError:
         pass
-      while len(self.finishedGreenlets) != 0 or not requests.empty():#requests.empty() is False:
+      didRequest = True
+      while len(self.finishedGreenlets) != 0 or didRequest:
         #self.event.clear()
         self.workAvailable = False
         # first process all finished greenlets
         while not len(self.finishedGreenlets) == 0:
           gr = self.finishedGreenlets.popleft()
           if gr.request.canceled is False:
+            self.current_request = gr.request
             gr.switch()
         
-        # if not len(self.requests) == 0:
-        #   # processan new request dedicated to this worker if available
-        #   req = self.requests.pop()
-        #   
-        #   if req.finished is False and req.canceled is False:
-        #     didSomething = True
-        #     gr = CustomGreenlet(req._execute)
-        #     threading_local.request = req
-        #     gr.last_request = None
-        #     gr.thread = self
-        #     gr.request = req
-        #     gr.switch()
-        
-        # processan anonymous new request if available
-        count = 0
-        while not requests.empty() and count < 2:
-          req = None
+        # processan higher priority request if available
+        didRequest = False
+        req = None
+        try:
+          req = requests1.pop()
+          didRequest = True
+          #prio, req = requests.get(block=False)
+        except: 
+          # requests was empty..
+          pass
+        if req is not None and req.finished is False and req.canceled is False:
+          gr = CustomGreenlet(req._execute)
+          threading_local.current_request = req
+          gr.thread = self
+          gr.request = req
+          gr.switch()
+
+        if didRequest is False:
+          # only do a low priority request if no higher priority request
+          # was available
           try:
-            #req = requests.popleft()
-            prio, req = requests.get(block=False)
+            req = requests0.pop()
+            didRequest = True
           except: 
-            # self.machine.requests was empty..
+            # requests was empty..
             pass
           if req is not None and req.finished is False and req.canceled is False:
             gr = CustomGreenlet(req._execute)
-            gr.last_request = None
-            threading_local.request = req
+            threading_local.current_request = req
             gr.thread = self
             gr.request = req
             gr.switch()
-          count += 1
 
 
 
@@ -154,8 +160,9 @@ class ThreadPool(object):
 
   def __init__(self):
     self._finished = False
-    self.requests = PriorityQueue()
-    #self.requests = deque()
+    #self.requests = PriorityQueue()
+    self.requests0 = deque()
+    self.requests1 = deque()
     self.workers = set()
     self.freeWorkers = set()
     self.numThreads = detectCPUs()
@@ -172,18 +179,16 @@ class ThreadPool(object):
     worker is free, put it to the threadpool request queue,
     the first free worker will take it from there.
     """
-    #self.requests.append(request)
-    self.requests.put((request.prio,request))
+    #self.requests.put((request.prio,request))
+    if request.prio == 0:
+      self.requests0.append(request)
+    else:
+      self.requests1.append(request)
     try:
       w = self.freeWorkers.pop()
-      #w.requests.append(request.prio,request)
       wakeUp(w)
-    except KeyError:
-      # make sure to wake one worker
-      # this is needed if all workers finished since trying
-      # to pop a free worker from the list
-      wakeUp(self.lastWorker)
-    time.sleep(0)
+    except:
+      pass
 
   def stopThreadPool(self):
     """
@@ -225,7 +230,7 @@ class CustomGreenlet(greenlet.greenlet):
   small heler class that wraps a greenlet and provides
   additional attributes.
   """
-  __slots__ = ("thread", "request", "last_request")
+  __slots__ = ("thread", "request")
 
 
 
@@ -291,19 +296,18 @@ class Request(object):
   various types of callbacks can be provided that notify
   of cancellation, finished computation etc.
   """
-  def __init__(self, function, *args, **kwargs):
+  def __init__(self, function, **kwargs):
     self.running = False
     self.finished = False
     self.canceled = False
     self.processing = False
     self.lock = threading.Lock()
     self.function = function
-    self.args = args
     self.kwargs = kwargs
     self.callbacks_cancel = []
     self.callbacks_finish = []
     self.waiting_greenlets = []
-    self.waiting_locks = []
+    #self.waiting_locks = []
     self.child_requests = set()
     self.result = None
     self.parent_request = None
@@ -380,48 +384,51 @@ class Request(object):
         patchIfForeignThread(cur_tr)
 
         if not isinstance(cur_gr, CustomGreenlet):
-          #print "custom wait !!!"
-          # we are not in a CustmGreenlet,  i.e. we
-          # come from a foreign thread and are
-          # not in a proper context
+          self._execute()
+          # #print "custom wait !!!"
+          # # we are not in a CustmGreenlet,  i.e. we
+          # # come from a foreign thread and are
+          # # not in a proper context
 
-          # create greenlet for execution
-          gr = CustomGreenlet(self._execute)
-          gr.last_request = None
-          gr.thread = cur_tr
-          gr.request = self
+          # # create greenlet for execution
+          # gr = CustomGreenlet(self._execute)
+          # gr.last_request = None
+          # gr.thread = cur_tr
+          # gr.request = self
 
-          # get the wakeup lock for the thread we are waiting in
-          lock = cur_tr.wlock
-          try:
-            lock.release()
-          except:
-            pass
-          lock.acquire()
-          # #event = cur_tr.event
-          # #event.clear()
-          # self.onFinish(Request._releaseLock, lock)
-          # #self.onFinish(Request._setEvent, event)
+          # # get the wakeup lock for the thread we are waiting in
+          # lock = cur_tr.wlock
+          # try:
+          #   lock.release()
+          # except:
+          #   pass
+          # lock.acquire()
+          # # #event = cur_tr.event
+          # # #event.clear()
+          # # self.onFinish(Request._releaseLock, lock)
+          # # #self.onFinish(Request._setEvent, event)
+          # 
+          # gr.switch()
+
+          # # wait until greenlet is finished
+          # # this loop implements the part of the worker
+          # # run function that is neccessary to be compliant
+          # while not gr.dead:
+          #   # wait for wakeup, i.e. new finished greenlet
+          #   #event.wait()
+          #   #event.clear()
+          #   lock.acquire()
+          #   while len(cur_tr.finishedGreenlets) != 0:
+          #     fgr = cur_tr.finishedGreenlets.popleft()
+          #     if not fgr.request.canceled:
+          #       fgr.switch()
           
-          gr.switch()
-
-          # wait until greenlet is finished
-          # this loop implements the part of the worker
-          # run function that is neccessary to be compliant
-          while not gr.dead:
-            # wait for wakeup, i.e. new finished greenlet
-            #event.wait()
-            #event.clear()
-            lock.acquire()
-            while len(cur_tr.finishedGreenlets) != 0:
-              fgr = cur_tr.finishedGreenlets.popleft()
-              if not fgr.request.canceled:
-                fgr.switch()
+          #print "s",
         else:
           # we are in a proper thread and a proper CustomGreenlet
           # -> just execute
           self._execute()
-
+          #print "g",
       else:
         # wait for results
         if isinstance(cur_tr, Worker):
@@ -431,6 +438,7 @@ class Request(object):
           self.lock.release()
           # switch back to parent 
           cur_gr.parent.switch()
+          #print "+",
         else:
           lock = cur_tr.wlock
           try:
@@ -438,18 +446,24 @@ class Request(object):
           except:
             pass
           lock.acquire()
-          self.waiting_locks.append(lock)
-          #self.callbacks_finish.append((Request._releaseLock, (lock,), {}))    
+          #self.waiting_locks.append(lock)
+          self.callbacks_finish.append((Request._releaseLock, {"lock" : lock}))    
           self.lock.release()
           lock.acquire()
+          #print "w",
+    else:
+      #print "f",
+      pass
     return self.result
   
   def submit(self):
     """
     asynchronous execution in background
     """
+    if self.finished or self.canceled:
+      return
     self.lock.acquire()
-    if not self.running and not self.finished and not self.canceled:
+    if not self.running:
       self.running = True
       self.lock.release()
       global_thread_pool.putRequest(self)
@@ -471,7 +485,7 @@ class Request(object):
       callback(self, *args,**kwargs)
     return self
 
-  def onFinish(self, callback, *args, **kwargs):
+  def onFinish(self, callback, **kwargs):
     """
     execute function asynchronously and
     call the specified callback function with the given
@@ -479,7 +493,7 @@ class Request(object):
     """
     self.lock.acquire()
     if not self.finished:
-      self.callbacks_finish.append((callback, args, kwargs))
+      self.callbacks_finish.append((callback, kwargs))
       self.lock.release()
     else:
       self.lock.release()
@@ -524,20 +538,20 @@ class Request(object):
     if self.canceled:
       return
     
-    cur_gr = greenlet.getcurrent()
-    req_backup = cur_gr.request 
-    cur_gr.request = self
+    cur_tr = threading.current_thread()
+    req_backup = cur_tr.current_request 
+    cur_tr.current_request = self
 
     # do the actual work
-    self.result = self.function(*self.args, **self.kwargs)
+    self.result = self.function(**self.kwargs)
 
     self.lock.acquire()
     self.processing = True
     self.finished = True
     waiting_greenlets = self.waiting_greenlets
     self.waiting_greenlets = None
-    waiting_locks = self.waiting_locks
-    self.waiting_locks = None   
+    # waiting_locks = self.waiting_locks
+    # self.waiting_locks = None   
     callbacks_finish = self.callbacks_finish
     self.callbacks_finish = None
     self.lock.release()
@@ -554,19 +568,19 @@ class Request(object):
         self.parent_request.prio = self.prio - 1
     #self.lock.release()
     
-    for l in waiting_locks:
-      l.release()
-
-    for c in callbacks_finish:
-      # call the callback tuples
-      c[0](self, *c[1],**c[2])
-
     for gr in waiting_greenlets:
       # greenlets ready to continue in the quee of the corresponding workers
       gr.thread.finishedGreenlets.append(gr)
       wakeUp(gr.thread)
+ 
+    #for l in waiting_locks:
+    #  l.release()
 
-    cur_gr.request = req_backup
+    for c in callbacks_finish:
+      # call the callback tuples
+      c[0](self, **c[1])          
+
+    cur_tr.current_request = req_backup
 
   
   #
@@ -575,16 +589,16 @@ class Request(object):
   #
 
   
-  def _wrapperFinishCallback(self, function, *args, **kwargs):
-    return function(self.result, *args, **kwargs)
+  def _wrapperFinishCallback(self, real_callback, **kwargs):
+    real_callback(self.result, **kwargs)
 
 
-  def notify(self, callback, *args, **kwargs):
+  def notify(self, function, **kwargs):
     """
     convenience function, setup a callback for finished computation
     and start the computation in the background
     """
-    self.onFinish(Request._wrapperFinishCallback, callback, *args, **kwargs)
+    self.onFinish( Request._wrapperFinishCallback, real_callback = function, **kwargs)
     self.submit()
     return self
 
@@ -602,7 +616,7 @@ class Request(object):
 
 
 if __name__ == "__main__":
-  def callback(req):
+  def callback(s):
     pass
     #print "callback: finished ", req
 
@@ -619,14 +633,14 @@ if __name__ == "__main__":
     print s
     return s
 
-  req = Request( test, "hallo !")
+  req = Request( test, s = "hallo !")
   req.notify(callback)
   assert req.wait() == "hallo !"
 
 
   requests = []
   for i in range(10):
-    req = Request( test, "hallo %d" %i)
+    req = Request( test, s = "hallo %d" %i)
     requests.append(req)
 
 

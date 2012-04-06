@@ -18,25 +18,19 @@ eventA = threading.Event()
 eventB = threading.Event()
 lockA = threading.Lock()
 lockB = threading.Lock()
+lockA.acquire()
 
 class A(threading.Thread):
   def run(self):
     for i in range(1,mcount):
       lockA.acquire()
-      try:
-        lockA.release()
-      except:
-        pass
+      lockB.release()
 
 class B(threading.Thread):
   def run(self):
-    lockA.acquire()
     for i in range(1,mcount):
-      try:
-        lockA.release()
-      except:
-        pass
-      lockA.acquire()
+      lockB.acquire()
+      lockA.release()
 
 # import zmq
 # context = zmq.Context(1)
