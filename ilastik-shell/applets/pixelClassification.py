@@ -33,7 +33,6 @@ from ilastikshell.applet import Applet
 import vigra
 
 class PixelClassificationGui(QMainWindow):
-    haveData        = pyqtSignal()
     dataReadyToView = pyqtSignal()
         
     def __init__(self, pipeline = None, graph = None ):
@@ -143,7 +142,6 @@ class PixelClassificationGui(QMainWindow):
         self.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
         self.actionRubberBandZoom.triggered.connect(rubberBandZoom)
         
-        self.haveData.connect(self.initGraph)
         self.dataReadyToView.connect(self.initEditor)
         
         self.layerstack = LayerStackModel()
@@ -367,7 +365,7 @@ class PixelClassificationGui(QMainWindow):
                 vigra.AxisInfo('z',vigra.AxisType.Space),
                 vigra.AxisInfo('c',vigra.AxisType.Channels))
         self.inputProvider.inputs["Input"].setValue(self.raw)
-        self.haveData.emit()
+        self.initGraph()
         self.stackLoader.close()
             
     def _openFile(self, fileNames):
@@ -381,8 +379,8 @@ class PixelClassificationGui(QMainWindow):
             self.inputProvider = createArrayPiperFromHdf5File(fileNames)
         else:
             raise RuntimeError("opening filenames=%r not supported yet" % fileNames)
-        
-        self.haveData.emit()
+
+        self.initGraph()
     
     def createArrayPiperFromNpyFile(self, fileNames):
         """Open given .npy file(s) and produce an array piper operator with the data."""
