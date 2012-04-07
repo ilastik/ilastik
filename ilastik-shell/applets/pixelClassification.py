@@ -32,9 +32,7 @@ from ilastikshell.applet import Applet
 
 import vigra
 
-class PixelClassificationGui(QMainWindow):
-    dataReadyToView = pyqtSignal()
-        
+class PixelClassificationGui(QMainWindow):        
     def __init__(self, pipeline = None, graph = None ):
         QMainWindow.__init__(self)
         
@@ -143,9 +141,7 @@ class PixelClassificationGui(QMainWindow):
         self.actionFitImage.triggered.connect(fitImage)
         self.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
         self.actionRubberBandZoom.triggered.connect(rubberBandZoom)
-        
-        self.dataReadyToView.connect(self.initEditor)
-        
+                
         self.layerstack = LayerStackModel()
                             
         self.interactionComboBox.currentIndexChanged.connect(self.changeInteractionMode)
@@ -354,7 +350,7 @@ class PixelClassificationGui(QMainWindow):
         self._openFile(fileNames)
     
     def _stackLoad(self):
-        self.inputProvider = OpArrayPiper(self.g)
+        inputProvider = OpArrayPiper(self.g)
         op5ifyer = Op5ifyer(self.g)
         op5ifyer.inputs["Input"].connect(self.stackLoader.ChainBuilder.outputs["output"])
         self.raw = op5ifyer.outputs["Output"][:].allocate().wait()
@@ -366,23 +362,23 @@ class PixelClassificationGui(QMainWindow):
                 vigra.AxisInfo('y',vigra.AxisType.Space),
                 vigra.AxisInfo('z',vigra.AxisType.Space),
                 vigra.AxisInfo('c',vigra.AxisType.Channels))
-        self.inputProvider.inputs["Input"].setValue(self.raw)
-        self.initGraph()
+        inputProvider.inputs["Input"].setValue(self.raw)
+        self.pipeline.setInputData(inputProvider)
         self.stackLoader.close()
             
     def _openFile(self, fileNames):
         """Open the given image file(s) and load them into our pipeline."""
-        self.inputProvider = None
+        inputProvider = None
         fName, fExt = os.path.splitext(str(fileNames[0]))
         print "Opening Files %r" % fileNames
         if fExt=='.npy':
-            self.inputProvider = self.createArrayPiperFromNpyFile(fileNames)
+            inputProvider = self.createArrayPiperFromNpyFile(fileNames)
         elif fExt=='.h5':
-            self.inputProvider = createArrayPiperFromHdf5File(fileNames)
+            inputProvider = createArrayPiperFromHdf5File(fileNames)
         else:
             raise RuntimeError("opening filenames=%r not supported yet" % fileNames)
 
-        self.initGraph(self.inputProvider)
+        self.pipeline.setInputData(inputProvider)
     
     def createArrayPiperFromNpyFile(self, fileNames):
         """Open given .npy file(s) and produce an array piper operator with the data."""
@@ -421,9 +417,6 @@ class PixelClassificationGui(QMainWindow):
         inputProvider.inputs["Input"].connect(readerCache.outputs["Output"])
         return inputProvider
     
-    def initGraph(self, inputProvider):
-        self.pipeline.setInputData(inputProvider)
-
     def handleGraphInputChanged(self, newInputProvider):
         """Update our view of the data with the new dataset, as provided in the newInputProvider operator.""" 
         shape = newInputProvider.outputs["Output"].shape
@@ -483,7 +476,7 @@ class PixelClassificationGui(QMainWindow):
  
         self.initLabels()
         self.startClassification()
-        self.dataReadyToView.emit()
+        self.initEditor(newInputProvider)
         
     def initLabels(self):
         #Add the layer to draw the labels, but don't add any labels
@@ -496,8 +489,8 @@ class PixelClassificationGui(QMainWindow):
         self.labellayer.ref_object = None
         self.layerstack.append(self.labellayer)    
     
-    def initEditor(self):
-        shape=self.inputProvider.outputs["Output"].shape
+    def initEditor(self, newInputProvider):
+        shape = newInputProvider.outputs["Output"].shape
         
         self.editor = VolumeEditor(self.layerstack, labelsink=self.labelsrc)
 
