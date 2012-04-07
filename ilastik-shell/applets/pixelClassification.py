@@ -3,7 +3,7 @@ from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, 
 
 import os, sys, numpy, copy
 
-from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL
+from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject
 from PyQt4.QtGui import *
 
 from PyQt4 import uic
@@ -54,6 +54,8 @@ class PixelClassificationGui(QMainWindow):
         self.fixableOperators = []
         
         self.featureDlg=None
+        
+        self.pipeline.inputDataChangedSignal.connect(self.handleGraphInputChanged)
 
         
         #The old ilastik provided the following scale names:
@@ -380,7 +382,7 @@ class PixelClassificationGui(QMainWindow):
         else:
             raise RuntimeError("opening filenames=%r not supported yet" % fileNames)
 
-        self.initGraph()
+        self.initGraph(self.inputProvider)
     
     def createArrayPiperFromNpyFile(self, fileNames):
         """Open given .npy file(s) and produce an array piper operator with the data."""
@@ -419,8 +421,12 @@ class PixelClassificationGui(QMainWindow):
         inputProvider.inputs["Input"].connect(readerCache.outputs["Output"])
         return inputProvider
     
-    def initGraph(self):
-        shape = self.inputProvider.outputs["Output"].shape
+    def initGraph(self, inputProvider):
+        self.pipeline.setInputData(inputProvider)
+
+    def handleGraphInputChanged(self, newInputProvider):
+        """Update our view of the data with the new dataset, as provided in the newInputProvider operator.""" 
+        shape = newInputProvider.outputs["Output"].shape
         srcs    = []
         minMax = []
         
@@ -428,7 +434,7 @@ class PixelClassificationGui(QMainWindow):
         
         #create a layer for each channel of the input:
         slicer=OpMultiArraySlicer2(self.g)
-        slicer.inputs["Input"].connect(self.inputProvider.outputs["Output"])
+        slicer.inputs["Input"].connect(newInputProvider.outputs["Output"])
         
         slicer.inputs["AxisFlag"].setValue('c')
        
@@ -475,14 +481,6 @@ class PixelClassificationGui(QMainWindow):
         layer1.ref_object = None
         self.layerstack.append(layer1)
  
-        ##
-        # connect pipeline to input
-        ##
-        shape = self.inputProvider.Output.meta.shape
-        self.pipeline.labels.shape.setValue(shape[:-1] + (1,))
-        self.pipeline.images.inputs["Input0"].connect(self.inputProvider.outputs["Output"])
-
-
         self.initLabels()
         self.startClassification()
         self.dataReadyToView.emit()
@@ -576,8 +574,14 @@ class PixelClassificationGui(QMainWindow):
         self.featureDlg.accepted.connect(self._onNewFeaturesFromFeatureDlg)
 
 
-class PixelClassificationPipeline( object ):
+class PixelClassificationPipeline( QObject ):
+    """Represents the pipeline of pixel classification operations.  
+       Inherits from QObject because it provides signals."""
+
+    inputDataChangedSignal = pyqtSignal(object)
+    
     def __init__( self, graph ):
+        QObject.__init__(self)
         #The old ilastik provided the following scale names:
         #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
         #The corresponding scales are:
@@ -643,7 +647,15 @@ class PixelClassificationPipeline( object ):
         pCache.inputs["Input"].connect(self.predict.outputs["PMaps"])
         self.prediction_cache = pCache
 
-
+    def setInputData(self, inputProvider):
+        """Set the pipeline input data, which is given as an operator in inputProvider."""
+        shape = inputProvider.Output.meta.shape
+        self.labels.shape.setValue(shape[:-1] + (1,))
+        self.images.inputs["Input0"].connect(inputProvider.outputs["Output"])
+        
+        # Notify the GUI that our input data changed
+        self.inputDataChangedSignal.emit(inputProvider)
+    
 class PixelClassificationSerializer(object):
     """ Encapsulate the serialization scheme for pixel classification workflow parameters and datasets."""
     def __init__(self, pipeline):
