@@ -371,45 +371,56 @@ class PixelClassificationGui(QMainWindow):
         self.stackLoader.close()
             
     def _openFile(self, fileNames):
+        """Open the given image file(s) and load them into our pipeline."""
         self.inputProvider = None
         fName, fExt = os.path.splitext(str(fileNames[0]))
         print "Opening Files %r" % fileNames
         if fExt=='.npy':
-            fileName = fileNames[0]
-            if len(fileNames)>1:
-                print "WARNING: only the first file will be read, multiple file prediction not supported yet"
-            fName, fExt = os.path.splitext(str(fileName))
-            self.raw = numpy.load(str(fileName))
-            self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
-            self.inputProvider = OpArrayPiper(self.g)
-            self.raw = self.raw.view(vigra.VigraArray)
-            self.raw.axistags =  vigra.AxisTags(
-                vigra.AxisInfo('t',vigra.AxisType.Time),
-                vigra.AxisInfo('x',vigra.AxisType.Space),
-                vigra.AxisInfo('y',vigra.AxisType.Space),
-                vigra.AxisInfo('z',vigra.AxisType.Space),
-                vigra.AxisInfo('c',vigra.AxisType.Channels))
-            self.inputProvider.inputs["Input"].setValue(self.raw)
+            self.inputProvider = self.createArrayPiperFromNpyFile(fileNames)
         elif fExt=='.h5':
-            readerNew=OpH5ReaderBigDataset(self.g)
-            
-            
-            readerNew.inputs["Filenames"].setValue(fileNames)
-            readerNew.inputs["hdf5Path"].setValue("volume/data")
-
-            readerCache =  OpSlicedBlockedArrayCache(self.g)
-            readerCache.inputs["fixAtCurrent"].setValue(False)
-            readerCache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
-            readerCache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
-            readerCache.inputs["Input"].connect(readerNew.outputs["Output"])
-
-            self.inputProvider = OpArrayPiper(self.g)
-            self.inputProvider.inputs["Input"].connect(readerCache.outputs["Output"])
+            self.inputProvider = createArrayPiperFromHdf5File(fileNames)
         else:
             raise RuntimeError("opening filenames=%r not supported yet" % fileNames)
         
         self.haveData.emit()
-       
+    
+    def createArrayPiperFromNpyFile(self, fileNames):
+        """Open given .npy file(s) and produce an array piper operator with the data."""
+        fileName = fileNames[0]
+        if len(fileNames)>1:
+            print "WARNING: only the first file will be read, multiple file prediction not supported yet"
+        fName, fExt = os.path.splitext(str(fileName))
+        self.raw = numpy.load(str(fileName))
+        self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
+        inputProvider = OpArrayPiper(self.g)
+        self.raw = self.raw.view(vigra.VigraArray)
+        self.raw.axistags =  vigra.AxisTags(
+            vigra.AxisInfo('t',vigra.AxisType.Time),
+            vigra.AxisInfo('x',vigra.AxisType.Space),
+            vigra.AxisInfo('y',vigra.AxisType.Space),
+            vigra.AxisInfo('z',vigra.AxisType.Space),
+            vigra.AxisInfo('c',vigra.AxisType.Channels))
+        inputProvider.inputs["Input"].setValue(self.raw)
+        
+        return inputProvider
+
+    def createArrayPiperFromHdf5File(self, fileNames):
+        """Open given .h5 file(s) and produce an array piper operator with the data."""
+        readerNew=OpH5ReaderBigDataset(self.g)
+        
+        readerNew.inputs["Filenames"].setValue(fileNames)
+        readerNew.inputs["hdf5Path"].setValue("volume/data")
+
+        readerCache =  OpSlicedBlockedArrayCache(self.g)
+        readerCache.inputs["fixAtCurrent"].setValue(False)
+        readerCache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
+        readerCache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
+        readerCache.inputs["Input"].connect(readerNew.outputs["Output"])
+
+        inputProvider = OpArrayPiper(self.g)
+        inputProvider.inputs["Input"].connect(readerCache.outputs["Output"])
+        return inputProvider
+    
     def initGraph(self):
         shape = self.inputProvider.outputs["Output"].shape
         srcs    = []
