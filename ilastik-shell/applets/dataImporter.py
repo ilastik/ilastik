@@ -63,6 +63,27 @@ class DataImporter(object):
         inputProvider = OpArrayPiper(self.graph)
         inputProvider.inputs["Input"].connect(readerCache.outputs["Output"])
         return inputProvider
+    
+    def createArrayPiperFromHdf5Dataset(self, hdf5Dataset):
+        """
+        Given an HDF5 group, extract the data as a vigra numpy array and return an OpArrayPiper.
+        """
+        # Extract the numpy data from the hdf5 dataset
+        rawNumpyData = hdf5Dataset.value
+        
+        # View the data as a vigra array
+        rawVigraData = rawNumpyData.view(vigra.VigraArray)
+        rawVigraData.axistags = vigra.AxisTags(
+            vigra.AxisInfo('t',vigra.AxisType.Time),
+            vigra.AxisInfo('x',vigra.AxisType.Space),
+            vigra.AxisInfo('y',vigra.AxisType.Space),
+            vigra.AxisInfo('z',vigra.AxisType.Space),
+            vigra.AxisInfo('c',vigra.AxisType.Channels))
+                
+        # Create the array piper operator
+        inputProvider = OpArrayPiper(self.graph)
+        inputProvider.inputs["Input"].setValue(rawVigraData)        
+        return inputProvider
 
 if __name__ == "__main__":
     pass    

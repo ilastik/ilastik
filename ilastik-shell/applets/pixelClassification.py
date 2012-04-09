@@ -510,7 +510,7 @@ class PixelClassificationGui(QMainWindow):
         self.featureDlg.show()
     
     def _onNewFeaturesFromFeatureDlg(self):
-        selectedFeatures = self.featureDlg.getSelectedFeatureMatrix()
+        selectedFeatures = self.featureDlg.selectedFeatureBoolMatrix
         print "new feature set:", selectedFeatures
         self.pipeline.features.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
     
@@ -538,8 +538,15 @@ class PixelClassificationPipeline( QObject ):
 
     inputDataChangedSignal = pyqtSignal(object)
     
-    def __init__( self, graph ):
+    @property
+    def graph(self):
+        return self._graph
+
+    def __init__( self, pipelineGraph ):
         QObject.__init__(self)
+
+        self._graph = pipelineGraph
+                
         #The old ilastik provided the following scale names:
         #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
         #The corresponding scales are:
@@ -548,10 +555,10 @@ class PixelClassificationPipeline( QObject ):
         ##
         # IO
         ##
-        self.images = Op5ToMulti( graph )
-        self.features = OpPixelFeaturesPresmoothed( graph )
-        self.features_cache = OpBlockedArrayCache( graph )
-        self.labels = OpBlockedSparseLabelArray( graph )                                
+        self.images = Op5ToMulti( self.graph )
+        self.features = OpPixelFeaturesPresmoothed( self.graph )
+        self.features_cache = OpBlockedArrayCache( self.graph )
+        self.labels = OpBlockedSparseLabelArray( self.graph )                                
 
         self.features.inputs["Input"].connect(self.images.outputs["Outputs"])
         self.features.inputs["Scales"].setValue( feature_scales )        
@@ -576,29 +583,29 @@ class PixelClassificationPipeline( QObject ):
         ##
         # training
         ##
-        opMultiL = Op5ToMulti( graph )    
+        opMultiL = Op5ToMulti( self.graph )    
         opMultiL.inputs["Input0"].connect(self.labels.outputs["Output"])
 
-        opMultiLblocks = Op5ToMulti( graph )
+        opMultiLblocks = Op5ToMulti( self.graph )
         opMultiLblocks.inputs["Input0"].connect(self.labels.outputs["nonzeroBlocks"])
-        train = OpTrainRandomForestBlocked( graph )
+        train = OpTrainRandomForestBlocked( self.graph )
         train.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
         train.inputs['Images'].connect(self.features_cache.outputs["Output"])
         train.inputs["nonzeroLabelBlocks"].connect(opMultiLblocks.outputs["Outputs"])
         train.inputs['fixClassifier'].setValue(False)                
 
-        self.classifier_cache = OpArrayCache( graph )
+        self.classifier_cache = OpArrayCache( self.graph )
         self.classifier_cache.inputs["Input"].connect(train.outputs['Classifier'])
 
 
         ##
         # prediction
         ##
-        self.predict=OpPredictRandomForest( graph )
+        self.predict=OpPredictRandomForest( self.graph )
         self.predict.inputs['Classifier'].connect(self.classifier_cache.outputs['Output']) 
         self.predict.inputs['Image'].connect(self.features.outputs["Output"])
 
-        pCache = OpSlicedBlockedArrayCache( graph )
+        pCache = OpSlicedBlockedArrayCache( self.graph )
         pCache.inputs["fixAtCurrent"].setValue(False)
         pCache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
         pCache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
@@ -607,15 +614,20 @@ class PixelClassificationPipeline( QObject ):
 
     def setInputData(self, inputProvider):
         """Set the pipeline input data, which is given as an operator in inputProvider."""
-        shape = inputProvider.Output.meta.shape
+        # The label data shape should match the as the input data, except it has only one channel
+        shape = inputProvider.Output.meta.shape        
         self.labels.shape.setValue(shape[:-1] + (1,))
+
+        # Connect the input data to the pipeline
         self.images.inputs["Input0"].connect(inputProvider.outputs["Output"])
         
-        # Notify the GUI that our input data changed
+        # Notify the GUI, etc. that our input data changed
         self.inputDataChangedSignal.emit(inputProvider)
     
 class PixelClassificationSerializer(object):
-    """ Encapsulate the serialization scheme for pixel classification workflow parameters and datasets."""
+    """
+    Encapsulate the serialization scheme for pixel classification workflow parameters and datasets.
+    """
     def __init__(self, pipeline):
         self.pipeline = pipeline
     
@@ -634,8 +646,10 @@ class PixelClassificationSerializer(object):
             return
 
     def isDirty(self):
-        """ Return true if the current state of this item 
-            (in memory) does not match the state of the HDF5 group on disk. """
+        """
+        Return true if the current state of this item 
+        (in memory) does not match the state of the HDF5 group on disk.
+        """
         return True
 
     def unload(self):
@@ -669,10 +683,10 @@ class Ilastik05ImportDeserializer(object):
         if ilastikVersion == 0.5:
             print "Deserializing ilastik 0.5 project..."
             self.importProjectAttributes(hdf5File) # (e.g. description, labeler, etc.)
-            self.importFeatureSelections(hdf5File)
-            self.importClassifier(hdf5File)
             self.importDataSets(hdf5File)
             self.importLabelSets(hdf5File)
+            self.importFeatureSelections(hdf5File)
+            self.importClassifier(hdf5File)
     
     def importProjectAttributes(self, hdf5File):
         description = hdf5File["Project"]["Description"].value
@@ -681,7 +695,9 @@ class Ilastik05ImportDeserializer(object):
         # TODO: Actually store these values and show them in the GUI somewhere . . .
         
     def importFeatureSelections(self, hdf5File):
-        """Import the feature selections from the v0.5 project file"""
+        """
+        Import the feature selections from the v0.5 project file
+        """
         # Create a feature selection matrix of the correct shape (all false by default)
         # TODO: The shape shouldn't be hard-coded.
         pipeLineSelectedFeatureMatrix = numpy.array(numpy.zeros((6,7)), dtype=bool)
@@ -715,7 +731,10 @@ class Ilastik05ImportDeserializer(object):
         self.pipeline.features.inputs['Matrix'].setValue(pipeLineSelectedFeatureMatrix)
         
     def importClassifier(self, hdf5File):
-        """Import the random forest classifier (if any) from the v0.5 project file."""
+        """
+        Import the random forest classifier (if any) from the v0.5 project file.
+        """
+        # Not implemented:
         # ilastik 0.5 can SAVE the RF, but it can't load it back (vigra doesn't provide a function for that).
         # For now, we simply emulate that behavior.
         # (Technically, v0.5 would retrieve the user's "number of trees" setting, 
@@ -723,8 +742,18 @@ class Ilastik05ImportDeserializer(object):
         pass
         
     def importDataSets(self, hdf5File):
-        # _openHdf5Data
-        pass
+        """
+        Locate the raw input data from the v0.5 project file and give it to our pipeline.
+        """
+        # Locate the dataset within the hdf5File
+        dataset = hdf5File["DataSets"]["dataItem00"]["data"]
+        
+        importer = DataImporter(self.pipeline.graph)
+        inputProvider = importer.createArrayPiperFromHdf5Dataset(dataset)
+        
+        # Connect the new input operator to our pipeline
+        #  (Pipeline signals the GUI.)
+        self.pipeline.setInputData(inputProvider)
     
     def importLabelSets(self, hdf5File):
         pass
