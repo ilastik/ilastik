@@ -2,12 +2,23 @@
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-from PyQt4.QtGui import QApplication
+from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 
 from ilastikshell.ilastikShell import IlastikShell
 from applets.pixelClassification import PixelClassificationApplet
 
 app = QApplication([])
+
+# Splash Screen
+splashImage = QPixmap("ilastik-splash.png")
+#painter = QtGui.QPainter()
+#painter.begin(splashImage)
+#painter.drawText(QtCore.QPointF(270,110), ilastik.core.readInBuildInfo())
+#painter.end()
+
+splashScreen = QSplashScreen(splashImage)
+splashScreen.show()
+
 
 #g = Graph()
 #pipeline = PixelClassificationPipeline( g )
@@ -34,5 +45,8 @@ shell = IlastikShell()
 shell.addApplet(pc)
 shell.addApplet(defaultApplet)
 shell.show()
+
+# Hide the splash screen
+splashScreen.finish(shell)
 
 app.exec_()
