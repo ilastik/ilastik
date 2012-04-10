@@ -34,7 +34,7 @@ import vigra
 
 from dataImporter import DataImporter
 
-class PixelClassificationGui(QMainWindow):        
+class PixelClassificationGui(QMainWindow):
     def __init__(self, pipeline = None, graph = None ):
         QMainWindow.__init__(self)
         
@@ -771,6 +771,9 @@ class Ilastik05ImportDeserializer(object):
         pass
 
 class PixelClassificationApplet( Applet ):
+    """
+    Implements the pixel classification "applet", which allows the ilastik shell to use it.
+    """
     def __init__( self, pipeline = None, graph = None ):
         # (No need to call the base class constructor here.)
         # Applet.__init__( self, "Pixel Classification" )
@@ -790,11 +793,15 @@ class PixelClassificationApplet( Applet ):
         # For now, the central widget owns the applet bar gui
         self._controlWidget = self._centralWidget.getAppletBarUi()
         
+        # We provide two independent serializing objects:
+        #  one for the current scheme and one for importing old projects.
         self._serializableItems = [
                                     PixelClassificationSerializer(self.pipeline), # Default serializer for new projects
                                     Ilastik05ImportDeserializer(self.pipeline)    # Legacy (v0.5) importer
                                   ]
-
+#
+# Test
+#
 if __name__ == "__main__":
     #make the program quit on Ctrl+C
     import signal

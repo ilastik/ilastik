@@ -10,6 +10,11 @@ import traceback
 import os
 
 class _ShellMenuBar( QWidget ):
+    """
+    The main window menu bar.
+    Only the "General" menu is provided by the shell.
+    Applets can add their own custom menus, which appear next to the General menu.
+    """
     def __init__( self, parent ):
         QWidget.__init__(self, parent=parent)
         
@@ -63,6 +68,9 @@ class _ShellMenuBar( QWidget ):
         return self._layout.currentWidget()
 
 class IlastikShell( QMainWindow ):
+    """
+    The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
+    """
     def __init__( self, workflow = [], parent = None, flags = QtCore.Qt.WindowFlags(0) ):
         QMainWindow.__init__(self, parent = parent, flags = flags )
         import inspect, os
@@ -79,6 +87,9 @@ class IlastikShell( QMainWindow ):
 
         self.appletBar.currentChanged.connect(self.appletStack.setCurrentIndex)
         self.appletBar.currentChanged.connect(self._menuBar.setCurrentIndex)
+        
+        # By default, make the splitter control expose a reasonable width of the applet bar
+        self.splitter.setSizes([300,1])
 
     def addApplet( self, applet ):
         self._applets.append(applet)
