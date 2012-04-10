@@ -39,9 +39,9 @@ class OpArrayPiper(Operator):
     
     def setupOutputs(self):
         inputSlot = self.inputs["Input"]
-        self.outputs["Output"]._dtype = inputSlot.dtype
-        self.outputs["Output"]._shape = inputSlot.shape
-        self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
+        self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
+        self.outputs["Output"].meta.shape = inputSlot.meta.shape
+        self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     def execute(self, slot, roi, result):
         key = roi.toSlice()
@@ -57,11 +57,11 @@ class OpArrayPiper(Operator):
 
     @property
     def shape(self):
-        return self.outputs["Output"]._shape
+        return self.outputs["Output"].meta.shape
     
     @property
     def dtype(self):
-        return self.outputs["Output"]._dtype
+        return self.outputs["Output"].meta.dtype
 
 
 
@@ -79,9 +79,9 @@ class OpMultiArrayPiper(Operator):
         for i,islot in enumerate(self.inputs["MultiInput"]):
             oslot = self.outputs["MultiOutput"][i]
             if islot.partner is not None:
-                oslot._dtype = islot.dtype
-                oslot._shape = islot.shape
-                oslot._axistags = islot.axistags
+                oslot._dtype = islot.meta.dtype
+                oslot._shape = islot.meta.shape
+                oslot._axistags = islot.meta.axistags
     
     def notifySubSlotInsert(self,slots,indexes):
         self.outputs["MultiOutput"]._insertNew(indexes[0])
@@ -125,9 +125,9 @@ class OpMultiMultiArrayPiper(Operator):
             for ii,islot in enumerate(mislot):
                 oslot = self.outputs["MultiOutput"][i][ii]
                 if islot.partner is not None:
-                    oslot._dtype = islot.dtype
-                    oslot._shape = islot.shape
-                    oslot._axistags = islot.axistags
+                    oslot.meta.dtype = islot.meta.dtype
+                    oslot.meta.shape = islot.meta.shape
+                    oslot.meta.axistags = islot.meta.axistags
             
     def getOutSlot(self, slot, key, result):
         raise RuntimeError("OpMultiMultiPipler does not support getOutSlot")
@@ -582,20 +582,20 @@ if has_blist:
           if (self._oldShape != self.inputs["shape"].value).all():
                 shape = self.inputs["shape"].value
                 self._oldShape = shape
-                self.outputs["Output"]._dtype = numpy.uint8
-                self.outputs["Output"]._shape = shape
-                self.outputs["Output"]._axistags = vigra.defaultAxistags(len(shape))
+                self.outputs["Output"].meta.dtype = numpy.uint8
+                self.outputs["Output"].meta.shape = shape
+                self.outputs["Output"].meta.axistags = vigra.defaultAxistags(len(shape))
                 
                 self.inputs["Input"].meta.shape = shape
 
 
-                self.outputs["nonzeroValues"]._dtype = object
-                self.outputs["nonzeroValues"]._shape = (1,)
-                self.outputs["nonzeroValues"]._axistags = vigra.defaultAxistags(1)
+                self.outputs["nonzeroValues"].meta.dtype = object
+                self.outputs["nonzeroValues"].meta.shape = (1,)
+                self.outputs["nonzeroValues"].meta.axistags = vigra.defaultAxistags(1)
                 
-                self.outputs["nonzeroCoordinates"]._dtype = object
-                self.outputs["nonzeroCoordinates"]._shape = (1,)
-                self.outputs["nonzeroCoordinates"]._axistags = vigra.defaultAxistags(1)
+                self.outputs["nonzeroCoordinates"].meta.dtype = object
+                self.outputs["nonzeroCoordinates"].meta.shape = (1,)
+                self.outputs["nonzeroCoordinates"].meta.axistags = vigra.defaultAxistags(1)
     
                 self._denseArray = numpy.zeros(shape, numpy.uint8)
                 self._sparseNZ =  blist.sorteddict()  
@@ -706,8 +706,8 @@ if has_blist:
             
             self._sparseNZ = None
             self._labelers = {}
-            self.shape = None
-            self.eraser = None
+            self._cacheShape = None
+            self._cacheEraser = None
           
             
             
@@ -716,47 +716,47 @@ if has_blist:
               if slot.connected() is False:
                 continue
               if slot.name == "shape":
-                  self.shape = self.inputs["shape"].value
-                  self.outputs["Output"]._dtype = numpy.uint8
-                  self.outputs["Output"]._shape = self.shape
-                  self.outputs["Output"]._axistags = vigra.defaultAxistags(len(self.shape))
+                  self._cacheShape = self.inputs["shape"].value
+                  self.outputs["Output"].meta.dtype = numpy.uint8
+                  self.outputs["Output"].meta.shape = self._cacheShape
+                  self.outputs["Output"].meta.axistags = vigra.defaultAxistags(len(self._cacheShape))
 
-                  self.inputs["Input"].meta.shape = self.shape
+                  self.inputs["Input"].meta.shape = self._cacheShape
           
-                  self.outputs["nonzeroValues"]._dtype = object
-                  self.outputs["nonzeroValues"]._shape = (1,)
-                  self.outputs["nonzeroValues"]._axistags = vigra.defaultAxistags(1)
+                  self.outputs["nonzeroValues"].meta.dtype = object
+                  self.outputs["nonzeroValues"].meta.shape = (1,)
+                  self.outputs["nonzeroValues"].meta.axistags = vigra.defaultAxistags(1)
                   
-                  self.outputs["nonzeroCoordinates"]._dtype = object
-                  self.outputs["nonzeroCoordinates"]._shape = (1,)
-                  self.outputs["nonzeroCoordinates"]._axistags = vigra.defaultAxistags(1)
+                  self.outputs["nonzeroCoordinates"].meta.dtype = object
+                  self.outputs["nonzeroCoordinates"].meta.shape = (1,)
+                  self.outputs["nonzeroCoordinates"].meta.axistags = vigra.defaultAxistags(1)
 
-                  self.outputs["nonzeroBlocks"]._dtype = object
-                  self.outputs["nonzeroBlocks"]._shape = (1,)
-                  self.outputs["nonzeroBlocks"]._axistags = vigra.defaultAxistags(1)
+                  self.outputs["nonzeroBlocks"].meta.dtype = object
+                  self.outputs["nonzeroBlocks"].meta.shape = (1,)
+                  self.outputs["nonzeroBlocks"].meta.axistags = vigra.defaultAxistags(1)
       
                   #Filled on request
                   self._sparseNZ =  blist.sorteddict()
               
               if slot.name == "eraser":
-                  self.eraser = self.inputs["eraser"].value
+                  self._cacheEraser = self.inputs["eraser"].value
                   for l in self._labelers.values():
-                      l.inputs['eraser'].setValue(self.eraser)
+                      l.inputs['eraser'].setValue(self._cacheEraser)
               
               if slot.name == "blockShape":
                   self._origBlockShape = self.inputs["blockShape"].value
                   
                   if type(self._origBlockShape) != tuple:
-                      self._blockShape = (self._origBlockShape,)*len(self.shape)
+                      self._blockShape = (self._origBlockShape,)*len(self._cacheShape)
                   else:
                       self._blockShape = self._origBlockShape
                       
-                  self._blockShape = numpy.minimum(self._blockShape, self.shape)
+                  self._blockShape = numpy.minimum(self._blockShape, self._cacheShape)
           
-                  self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+                  self._dirtyShape = numpy.ceil(1.0 * numpy.array(self._cacheShape) / numpy.array(self._blockShape))
                   
                   if lazyflow.verboseMemory:
-                      print "Reconfigured Sparse labels with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
+                      print "Reconfigured Sparse labels with ", self._cacheShape, self._blockShape, self._dirtyShape, self._origBlockShape
                   #FIXME: we don't really need this blockState thing
                   self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
                   
@@ -810,7 +810,7 @@ if has_blist:
             if slot.name == "Output":
                 #result[:] = self._denseArray[key]
                 #find the block key
-                start, stop = sliceToRoi(key, self.shape)
+                start, stop = sliceToRoi(key, self._cacheShape)
                 blockStart = (1.0 * start / self._blockShape).floor()
                 blockStop = (1.0 * stop / self._blockShape).ceil()
                 blockKey = roiToSlice(blockStart,blockStop)
@@ -848,7 +848,7 @@ if has_blist:
                 for b_ind in self._labelers.keys():
                     offset = self._blockShape*self._flatBlockIndices[b_ind]
                     bigstart = offset
-                    bigstop = numpy.minimum(offset + self._blockShape, self.shape)                    
+                    bigstop = numpy.minimum(offset + self._blockShape, self._cacheShape)                    
                     bigkey = roiToSlice(bigstart, bigstop)
                     slicelist.append(bigkey)
                 
@@ -859,11 +859,11 @@ if has_blist:
             return result
             
         def setInSlot(self, slot, key, value):
-            start, stop = sliceToRoi(key, self.shape)
+            start, stop = sliceToRoi(key, self._cacheShape)
             
             blockStart = (1.0 * start / self._blockShape).floor()
             blockStop = (1.0 * stop / self._blockShape).ceil()
-            blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
+            blockStop = numpy.where(stop == self._cacheShape, self._dirtyShape, blockStop)
             blockKey = roiToSlice(blockStart,blockStop)
             innerBlocks = self._blockNumbers[blockKey]
             for b_ind in innerBlocks.ravel():
@@ -916,14 +916,14 @@ class OpBlockedArrayCache(Operator):
         if not hasattr(self,"_blockState"):
             inputSlot = self.inputs["Input"]
             
-            self.outputs["Output"]._dtype = inputSlot.dtype
-            self.outputs["Output"]._shape = inputSlot.shape
-            self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
+            self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
+            self.outputs["Output"].meta.shape = inputSlot.meta.shape
+            self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
             
             self._fixed = self.inputs["fixAtCurrent"].value        
             
             self._blockShape = self.inputs["outerBlockShape"].value
-            self.shape = self.inputs["Input"].shape
+            self.shape = self.inputs["Input"].meta.shape
             
             self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
                 
@@ -1063,7 +1063,7 @@ class OpSlicedBlockedArrayCache(Operator):
         if self.inputs["Input"].connected() and self.inputs["fixAtCurrent"].connected() and self.inputs["innerBlockShape"].connected() and self.inputs["outerBlockShape"].connected():
             slot = self.inputs["Input"]
             if slot != self.inputs["fixAtCurrent"]:            
-                self.shape = self.inputs["Input"].shape            
+                self.shape = self.inputs["Input"].meta.shape            
                 self._lock = Lock()            
                 self._outerShapes = self.inputs["outerBlockShape"].value
                 self._innerShapes = self.inputs["innerBlockShape"].value
@@ -1077,9 +1077,9 @@ class OpSlicedBlockedArrayCache(Operator):
                     op.inputs["Input"].connect(self.source.outputs["Output"])                
                     self._innerOps.append(op)
     
-                self.outputs["Output"]._dtype = self.inputs["Input"].dtype            
-                self.outputs["Output"]._axistags = copy.copy(self.inputs["Input"].axistags)            
-                self.outputs["Output"]._shape = self.inputs["Input"].shape            
+                self.outputs["Output"].meta.dtype = self.inputs["Input"].meta.dtype            
+                self.outputs["Output"].meta.axistags = copy.copy(self.inputs["Input"].meta.axistags)            
+                self.outputs["Output"].meta.shape = self.inputs["Input"].meta.shape            
 
             
     def execute(self, slot, roi, result):
