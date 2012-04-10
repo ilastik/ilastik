@@ -209,7 +209,7 @@ class PixelClassificationGui(QMainWindow):
         
         #Check if the number of labels in the layer stack is equals to the number of Painted labels
         if checked==True:
-            labels =numpy.unique(numpy.asarray(self.pipeline.labels.outputs["nonzeroValues"][:].allocate().wait()[0]))           
+            labels = self.pipeline.getUniqueLabels()
             nPaintedLabels=labels.shape[0]
             nLabelsLayers = self._appletBarUi.labelListModel.rowCount()
             selectedFeatures = numpy.asarray(self.featureDlg.featureTableWidget.createSelectedFeaturesBoolMatrix())
@@ -502,7 +502,7 @@ class PixelClassificationGui(QMainWindow):
     def onFeatureButtonClicked(self):
         # Refresh the feature matrix in case it has changed since the last time we were opened
         # (e.g. if the user loaded a project from disk)
-        pipelineFeatures = self.pipeline.features.inputs['Matrix'].value
+        pipelineFeatures = self.pipeline.featureBoolMatrix
         if pipelineFeatures is not None:
             self.featureDlg.selectedFeatureBoolMatrix = pipelineFeatures
         
@@ -512,7 +512,7 @@ class PixelClassificationGui(QMainWindow):
     def _onNewFeaturesFromFeatureDlg(self):
         selectedFeatures = self.featureDlg.selectedFeatureBoolMatrix
         print "new feature set:", selectedFeatures
-        self.pipeline.features.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
+        self.pipeline.featureBoolMatrix = numpy.asarray(selectedFeatures)
     
     def _initFeatureDlg(self):
         self.featureDlg = FeatureDlg()
@@ -612,11 +612,23 @@ class PixelClassificationPipeline( QObject ):
         pCache.inputs["Input"].connect(self.predict.outputs["PMaps"])
         self.prediction_cache = pCache
 
+    @property
+    def featureBoolMatrix(self):
+        return self.features.inputs['Matrix'].value
+    
+    @featureBoolMatrix.setter
+    def featureBoolMatrix(self, newMatrix):
+        self.features.inputs['Matrix'].setValue(newMatrix)
+        
+    def getUniqueLabels(self):
+        return numpy.unique(numpy.asarray(self.labels.outputs["nonzeroValues"][:].allocate().wait()[0]))
+
     def setInputData(self, inputProvider):
         """Set the pipeline input data, which is given as an operator in inputProvider."""
+
         # The label data shape should match the as the input data, except it has only one channel
         shape = inputProvider.Output.meta.shape        
-        self.labels.shape.setValue(shape[:-1] + (1,))
+        self.labels.inputs["shape"].setValue(shape[:-1] + (1,))
 
         # Connect the input data to the pipeline
         self.images.inputs["Input0"].connect(inputProvider.outputs["Output"])
@@ -812,3 +824,5 @@ if __name__ == "__main__":
     pca.centralWidget.show()
     pca.controlWidget.show()
     app.exec_()
+
+
