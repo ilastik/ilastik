@@ -1766,9 +1766,13 @@ class OperatorWrapper(Operator):
    
                         
 class Graph(object):
-  pass
+  def __init__(self, numThreads=-1):
+    pass
 
   def stopGraph(self):
+    pass
+
+  def finalize(self):
     pass
 
   def resumeGraph(self):

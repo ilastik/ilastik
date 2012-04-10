@@ -497,7 +497,7 @@ class Request(object):
       self.lock.release()
     else:
       self.lock.release()
-      callback(self,*args,**kwargs)
+      callback(self,**kwargs)
     return self
 
 
@@ -505,13 +505,14 @@ class Request(object):
     """
     cancel a running request
     """
+    self.lock.acquire()
     if not self.finished: 
       callbacks_cancel = self.callbacks_cancel
       self.callbacks_cancel = []
       child_requests = self.child_requests
       self.child_requests = set()
+      self.lock.release()
       
-      print "truly trying to cancel"
       canceled = True
       for c in callbacks_cancel:
         # call the callback tuples
