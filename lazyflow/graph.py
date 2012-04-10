@@ -1626,7 +1626,16 @@ class Operator(object):
         for k,v in self.outputs.items():
           self.__dict__[v.name] = v
 
-
+    def __setattr__(self, name, value):
+      """
+      This method safeguards that operators do not overwrite slot names with
+      custom instance attributes.
+      """
+      if self.__dict__.has_key("inputs") and self.__dict__.has_key("outputs"):
+        if self.inputs.has_key(name) or self.outputs.has_key(name):
+          assert isinstance(value, Slot), "ERROR: trying to set attribute %r of operator %r to value %r, which is not of type Slot !" % (name, self, value)
+      object.__setattr__(self,name,value)
+      
 
     def connected(self):
       allConnected = True
