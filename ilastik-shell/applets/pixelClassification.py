@@ -202,6 +202,7 @@ class PixelClassificationGui(QMainWindow):
         _appletBarUi.checkInteractive.toggled.connect(self.toggleInteractive)
         _appletBarUi.labelListModel.dataChanged.connect(onDataChanged)
         _appletBarUi.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
+        _appletBarUi.trainAndPredictButton.clicked.connect(self.onTrainAndPredictButtonClicked)
 
         
     def toggleInteractive(self, checked):
@@ -229,14 +230,16 @@ class PixelClassificationGui(QMainWindow):
                 return
         else:
             self.g.stopGraph()
-            self.g.resumeGraph()
-                
+            self.g.resumeGraph()                
+
         self._appletBarUi.AddLabelButton.setEnabled(not checked)
         self._appletBarUi.SelectFeaturesButton.setEnabled(not checked)
-        for o in self.fixableOperators:
-            o.inputs["fixAtCurrent"].setValue(not checked)
+        self._appletBarUi.trainAndPredictButton.setEnabled(not checked)
         self._appletBarUi.labelListModel.allowRemove(not checked)
         
+        for o in self.fixableOperators:
+            o.inputs["fixAtCurrent"].setValue(not checked)
+
         self.editor.scheduleSlicesRedraw()
 
     def changeInteractionMode( self, index ):
@@ -306,7 +309,47 @@ class PixelClassificationGui(QMainWindow):
         for icl in range(nclasses):
             self.addPredictionLayer(icl, self._appletBarUi.labelListModel._labels[icl])
         self._appletBarUi.checkInteractive.setEnabled(True)
-                                    
+    
+    def onTrainAndPredictButtonClicked(self):
+        """
+        The user clicked "Train and Predict".
+        Handle this event by asking the pipeline for a prediction over the entire output region.
+        """
+        # "unfix" any operator inputs that were frozen before
+        for o in self.fixableOperators:
+            o.inputs["fixAtCurrent"].setValue(False)
+
+        # Can't change labels while we're in the middle of a prediction
+        self._appletBarUi.labelListModel.allowRemove(False)
+        
+        # Disable the parts of the GUI that can't be used while we're predicting . . .
+        self._appletBarUi.AddLabelButton.setEnabled(False)
+        self._appletBarUi.SelectFeaturesButton.setEnabled(False)
+        self._appletBarUi.trainAndPredictButton.setEnabled(False)
+
+        # Closure to call when the prediction is finished
+        def onPredictionComplete(predictionResults):
+            
+            print "Prediction shape=", predictionResults.shape
+            
+            # Re-enable the GUI
+            self._appletBarUi.AddLabelButton.setEnabled(True)
+            self._appletBarUi.SelectFeaturesButton.setEnabled(True)
+            self._appletBarUi.trainAndPredictButton.setEnabled(True)
+            
+            # Re-fix the operators now that the computation is complete.
+           # for o in self.fixableOperators:
+           #     o.inputs["fixAtCurrent"].setValue(True)
+
+            # Redraw the image in the GUI
+            self.editor.scheduleSlicesRedraw()
+
+        # Request the prediction for the entire image stack.
+        # Call our callback when it's finished
+#        self.pipeline.prediction_cache.outputs['Output'][0][:].notify( onPredictionComplete )
+        predictionResults = self.pipeline.prediction_cache.outputs['Output'][0][:].wait()
+        onPredictionComplete(predictionResults)
+    
     def addPredictionLayer(self, icl, ref_label):
         
         selector=OpSingleChannelSelector(self.g)

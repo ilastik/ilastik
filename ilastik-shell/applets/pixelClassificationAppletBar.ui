@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>260</width>
-    <height>325</height>
+    <height>374</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -36,8 +36,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>258</width>
-     <height>322</height>
+     <width>261</width>
+     <height>371</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -84,6 +84,13 @@
       </property>
       <property name="text">
        <string>Select Features</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="trainAndPredictButton">
+      <property name="text">
+       <string>Train and Predict</string>
       </property>
      </widget>
     </item>
