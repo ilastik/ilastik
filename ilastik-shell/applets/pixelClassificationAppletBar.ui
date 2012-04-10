@@ -75,26 +75,6 @@
      </widget>
     </item>
     <item>
-     <widget class="QPushButton" name="SelectFeaturesButton">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="text">
-       <string>Select Features</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QPushButton" name="trainAndPredictButton">
-      <property name="text">
-       <string>Train and Predict</string>
-      </property>
-     </widget>
-    </item>
-    <item>
      <widget class="QCheckBox" name="checkInteractive">
       <property name="enabled">
        <bool>true</bool>

@@ -78,6 +78,7 @@ class IlastikShell( QMainWindow ):
         print("ilastikShell.py path: " + ilastikShellFilePath)
         uic.loadUi( ilastikShellFilePath + "/ui/ilastikShell.ui", self )
         self._applets = []
+        self.appletBarMapping = {}
 
         self._menuBar = _ShellMenuBar( self )
         self.setMenuWidget( self._menuBar  )
@@ -85,28 +86,42 @@ class IlastikShell( QMainWindow ):
         for applet in workflow:
             self.addApplet(applet)
 
-        self.appletBar.currentChanged.connect(self.appletStack.setCurrentIndex)
-        self.appletBar.currentChanged.connect(self._menuBar.setCurrentIndex)
+        self.appletBar.currentChanged.connect(self.handleAppletBarIndexChange)
         
         # By default, make the splitter control expose a reasonable width of the applet bar
         self.splitter.setSizes([300,1])
 
+    def handleAppletBarIndexChange(self, appletBarIndex):
+        if len(self.appletBarMapping) != 0:
+            applet_index = self.appletBarMapping[appletBarIndex]
+            self.appletStack.setCurrentIndex(applet_index)
+            self._menuBar.setCurrentIndex(applet_index)        
+
     def addApplet( self, applet ):
         self._applets.append(applet)
-        self.appletBar.addItem( applet.controlWidget , applet.name )
+        applet_index = len(self._applets) - 1
         self.appletStack.addWidget( applet.centralWidget )
         self._menuBar.addAppletMenuWidget( applet.menuWidget )
-        return len(self._applets) - 1
 
-    def currentIndex( self ):
-        return self.appletBar.currentIndex()
+        # Add all of the applet bar's items to the toolbox widget        
+        for controlName, controlGuiItem in applet.controlWidgets:
+            self.appletBar.addItem(controlGuiItem, controlName)            
+            
+            # Since each applet can contribute more than one applet bar item, 
+            #  we need to keep track of which applet this item is associated with
+            self.appletBarMapping[self.appletBar.count()-1] = applet_index
 
-    def indexOf( self, applet ):
-        return self.appletBar.indexOf(applet.controlWidget)
+        return applet_index
 
-    def setCurrentIndex( self, index ):
-        self.appletBar.setCurrentIndex( index )
-        self._menuBar.setCurrentIndex( index )
+#    def currentIndex( self ):
+#        return self.appletBar.currentIndex()
+
+#    def indexOf( self, applet ):
+#        return self.appletBar.indexOf(applet.controlWidget)
+
+#    def setCurrentIndex( self, index ):
+#        self.appletBar.setCurrentIndex( index )
+#        self._menuBar.setCurrentIndex( index )
 
     def __len__( self ):
         return self.appletBar.count()

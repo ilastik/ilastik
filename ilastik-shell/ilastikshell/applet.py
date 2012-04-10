@@ -31,8 +31,9 @@ class Applet( object ):
         return self._centralWidget
 
     @property
-    def controlWidget( self ):
-        return self._controlWidget
+    def controlWidgets( self ):
+        """ A list of the control widgets to be displayed in the left-hand side bar for this applet"""
+        return self._controlWidgets
 
     @property
     def menuWidget( self ):
