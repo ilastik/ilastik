@@ -379,56 +379,8 @@ class Request(object):
       if not self.running:
         self.running = True
         self.lock.release()
-        
-        # make sure we have a proper waiting thread
         patchIfForeignThread(cur_tr)
-
-        if not isinstance(cur_gr, CustomGreenlet):
-          self._execute()
-          # #print "custom wait !!!"
-          # # we are not in a CustmGreenlet,  i.e. we
-          # # come from a foreign thread and are
-          # # not in a proper context
-
-          # # create greenlet for execution
-          # gr = CustomGreenlet(self._execute)
-          # gr.last_request = None
-          # gr.thread = cur_tr
-          # gr.request = self
-
-          # # get the wakeup lock for the thread we are waiting in
-          # lock = cur_tr.wlock
-          # try:
-          #   lock.release()
-          # except:
-          #   pass
-          # lock.acquire()
-          # # #event = cur_tr.event
-          # # #event.clear()
-          # # self.onFinish(Request._releaseLock, lock)
-          # # #self.onFinish(Request._setEvent, event)
-          # 
-          # gr.switch()
-
-          # # wait until greenlet is finished
-          # # this loop implements the part of the worker
-          # # run function that is neccessary to be compliant
-          # while not gr.dead:
-          #   # wait for wakeup, i.e. new finished greenlet
-          #   #event.wait()
-          #   #event.clear()
-          #   lock.acquire()
-          #   while len(cur_tr.finishedGreenlets) != 0:
-          #     fgr = cur_tr.finishedGreenlets.popleft()
-          #     if not fgr.request.canceled:
-          #       fgr.switch()
-          
-          #print "s",
-        else:
-          # we are in a proper thread and a proper CustomGreenlet
-          # -> just execute
-          self._execute()
-          #print "g",
+        self._execute()
       else:
         # wait for results
         if isinstance(cur_tr, Worker):
@@ -438,7 +390,6 @@ class Request(object):
           self.lock.release()
           # switch back to parent 
           cur_gr.parent.switch()
-          #print "+",
         else:
           lock = cur_tr.wlock
           try:
@@ -450,10 +401,6 @@ class Request(object):
           self.callbacks_finish.append((Request._releaseLock, {"lock" : lock}))    
           self.lock.release()
           lock.acquire()
-          #print "w",
-    else:
-      #print "f",
-      pass
     return self.result
   
   def submit(self):
