@@ -439,13 +439,17 @@ class OpPixelFeaturesPresmoothed(Operator):
                     treadKey.insert(__timeAxis, key[__timeAxis])
                 else:
                     treadKey.insert(__timeAxis-1, key[__timeAxis])
-            treadKey.insert(__channelAxis, slice(None,None,None))
+            if  self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
+              treadKey =  popFlagsFromTheKey(treadKey,__axistags,'c')
+            else:
+              treadKey.insert(__channelAxis, slice(None,None,None))
+            
             treadKey=tuple(treadKey)
             
             req = self.inputs["Input"][treadKey].allocate()
             
             __sourceArray = req.wait()
-
+            req.result = None
             req.destination = None
             if __sourceArray.dtype is not numpy.float32:
                 __sourceArrayF = __sourceArray.astype(numpy.float32)
@@ -538,6 +542,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 #print "result: ", result.shape, "inslot:", inSlot.shape
                                 
                                 destArea = result[tuple(reskey)]
+                                print oldkey, destArea.shape, sourceArraysForSigmas[j].shape
                                 oslot.operator.getOutSlot(oslot,tuple(oldkey),destArea, sourceArray = sourceArraysForSigmas[j])
                                 written += 1
                             cnt += 1
@@ -601,7 +606,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         shape = self.outputs["Output"].shape
         
         axistags = self.inputs["Input"].axistags
-        
+        hasChannelAxis = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels)
         channelAxis=self.inputs["Input"].axistags.index('c')
         hasTimeAxis = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Time)
         timeAxis=self.inputs["Input"].axistags.index('t')
@@ -639,7 +644,6 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         if self.supportsRoi is False and largestSigma > 5:
             print "WARNING: operator", self.name, "does not support roi !!"
-        
         
         i2 = 0          
         for i in range(int(numpy.floor(1.0 * oldstart[channelAxis]/channelsPerChannel)),int(numpy.ceil(1.0 * oldstop[channelAxis]/channelsPerChannel))):
@@ -712,7 +716,6 @@ class OpBaseVigraFilter(OpArrayPiper):
                 #print tresKey, twriteKey, resultArea.shape, temp.shape
                 vres = resultArea[tresKey]
                 if supportsOut:
-                    print "SSSSSSSSSSSSSSSSSSS"
                     if self.supportsRoi:
                         vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
                         try:
@@ -1448,41 +1451,6 @@ class OpH5ReaderSmoothedDataset(Operator):
         
         return indexFile
     
-class OpStackLoader(Operator):
-    name = "Image Stack Reader"
-    category = "Input"
-    
-    inputSlots = [InputSlot("globstring", stype = "string")]
-    outputSlots = [OutputSlot("stack")]
-    
-    def notifyConnectAll(self):
-        globString = self.inputs["globstring"].value
-        self.fileNameList = sorted(glob.glob(globString))
-        
-
-        if len(self.fileNameList) != 0:
-            self.info = vigra.impex.ImageInfo(self.fileNameList[0])
-            oslot = self.outputs["stack"]
-            
-            #build 4D shape out of 2DShape and Filelist
-            oslot._shape = (self.info.getShape()[0],self.info.getShape()[1],len(self.fileNameList),self.info.getShape()[2])
-            oslot._dtype = self.info.getDtype()
-            zAxisInfo = vigra.AxisInfo(key='z',typeFlags = vigra.AxisType.Space)
-            oslot._axistags = self.info.getAxisTags()
-            oslot._axistags.insert(2,zAxisInfo)
-        
-        else:
-            oslot = self.outputs["stack"]
-            oslot._shape = None
-            oslot._dtype = None
-            oslot._axistags = None
-            
-    def getOutSlot(self, slot, key, result):
-        i=0
-        for fileName in self.fileNameList[key[2]]:
-            assert (self.info.getShape() == vigra.impex.ImageInfo(fileName).getShape()), 'not all files have the same shape'
-            result[:,:,i,:] = vigra.impex.readImage(fileName)[key[0],key[1],key[3]]
-            i = i+1
 
 class OpGrayscaleInverter(Operator):
     name = "Grayscale Inversion Operator"
@@ -1532,28 +1500,31 @@ class OpToUint8(Operator):
 
 class OpRgbToGraysacle(Operator):
     name = "Convert RGB Images to Grayscale"
-    category = "" #Pls set some standard categories
+    category = "" 
 
     inputSlots = [InputSlot("input", stype = "array")]
     outputSlots = [OutputSlot("output")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
 
         inputSlot = self.inputs["input"]
 
         oslot = self.outputs["output"]
-        grayScaleChannel = 1,
-        oslot._shape = inputSlot.shape[:-1] + grayScaleChannel
+        oslot._shape = inputSlot.shape[:-1] + (1,)
         oslot._dtype = inputSlot.dtype
         oslot._axistags = copy.copy(inputSlot.axistags)
     
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
         
-        #this assumes that the last dimension is the channel. 
-        image = self.inputs["input"][:].allocate().wait()
-        if image.shape[-1] > 1:
+        
+        image = self.inputs["input"](roi).wait()
+        channelKey = self.outputs["output"]._axistags.channelIndex
+        if image.shape[channelKey] > 1:
+            #this assumes that the last dimension is the channel. 
             result[:,:,:,0] = (numpy.round(0.299*image[:,:,:,0] + 0.587*image[:,:,:,1] + 0.114*image[:,:,:,2])).astype(int)
- 
+        else:
+            result[:] = image
+        return result
                 
            
         

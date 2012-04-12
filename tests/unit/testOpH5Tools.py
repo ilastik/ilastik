@@ -7,7 +7,7 @@ import h5py
 
 class TestOpH5Writer(unittest.TestCase):
     
-    def setUp(self,dimension = (5,20,20,20,5),testdirectory = './opWriterTest/',filename = 'writeTestFile.h5',hdf5path = 'volume/data'):
+    def setUp(self,dimension = (5,20,20,20,5),testdirectory = './opWriterTest',filename = '/writeTestFile.h5',hdf5path = 'volume/data'):
         
         self.dim = dimension
         self.testdir = testdirectory
