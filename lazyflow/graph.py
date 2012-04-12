@@ -1259,7 +1259,7 @@ class Operator(object):
 
     def _setDefaultInputValues(self):
       for i in self.inputs.values():
-        if i._defaultValue is not None:
+        if i._value is None and i._defaultValue is not None:
           i.setValue(i._defaultValue)
          
     def _getOriginalOperator(self):
@@ -1516,12 +1516,13 @@ class OperatorWrapper(Operator):
             for islot in self.origInputs.values():
                 ii = self.inputs[islot.name]
                 partner = islot.partner
-                islot.disconnect()
+                value = islot._value
                 self.operator.inputs[islot.name] = ii
                 if partner is not None:
                     partner._connect(ii)
-                if islot._value is not None:
-                    ii.setValue(islot._value)
+                if value is not None:
+                    ii.setValue(value)
+                islot.disconnect()
                     
             self._setupOutputs()
     
