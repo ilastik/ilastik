@@ -1297,7 +1297,7 @@ class OpH5ReaderBigDataset(Operator):
         if len(d.shape) == 5:
             axistags= vigra.VigraArray.defaultAxistags('txyzc')
         else:
-            raise RuntimeError("OpH5ReaderBigDataset: Not implemented for shape=%r" % d.shape)
+            raise RuntimeError("OpH5ReaderBigDataset: Not implemented for shape=%r" % repr(d.shape))
         self.outputs["Output"]._axistags=axistags
             
         f.close()
