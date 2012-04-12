@@ -292,6 +292,7 @@ class Main(QMainWindow):
             labelvalue = self.labelListModel._labels[il]
             self.removePredictionLayer(labelvalue)
             self.workflow.labels.inputs["deleteLabel"].setValue(il+1)
+            self.workflow.labels.inputs["deleteLabel"].setValue(-1)
             self.editor.scheduleSlicesRedraw()
             
     def startClassification(self):
