@@ -3,7 +3,7 @@ import psutil
 import atexit
 from collections import deque
 from Queue import Queue, LifoQueue, Empty, PriorityQueue
-from threading import Thread, Event, current_thread
+from threading import Thread, current_thread
 import greenlet
 import threading
 from helpers import detectCPUs
@@ -15,7 +15,6 @@ sys.setrecursionlimit(1000)
 def patchIfForeignThread(thread):
   if not hasattr(thread, "finishedGreenlets"):
     setattr(thread, "wlock", threading.Lock())
-    setattr(thread, "event", threading.Event())
     setattr(thread, "workAvailable", False)
     setattr(thread, "requests", deque())
     setattr(thread, "finishedGreenlets", deque())
@@ -26,7 +25,6 @@ def wakeUp(thread):
   try:
     thread.workAvailable = True
     thread.wlock.release()
-    #thread.event.set()
   except:
     pass
 
@@ -49,7 +47,6 @@ class Worker(Thread):
     self.process = psutil.Process(os.getpid())
     self.wlock = threading.Lock()
     self.wlock.acquire()
-    self.event = threading.Event()
     self.workAvailable = False
 
 
@@ -72,8 +69,6 @@ class Worker(Thread):
     self.join()
 
   def run(self):
-    threading_local = threading.current_thread()
-    setattr(threading_local, "request", None)
     # cache value for less dict lookups
     requests0 = self.machine.requests0
     requests1 = self.machine.requests1
@@ -83,7 +78,6 @@ class Worker(Thread):
       self.processing = False
       freeWorkers.add(self)
       #print "Worker %r sleeping..." % self
-      #self.event.wait()
       self.wlock.acquire()
       self.processing = True
       #print "Worker %r working..." % self
@@ -93,7 +87,6 @@ class Worker(Thread):
         pass
       didRequest = True
       while len(self.finishedGreenlets) != 0 or didRequest:
-        #self.event.clear()
         self.workAvailable = False
         # first process all finished greenlets
         while not len(self.finishedGreenlets) == 0:
@@ -107,14 +100,14 @@ class Worker(Thread):
         req = None
         try:
           req = requests1.pop()
-          didRequest = True
           #prio, req = requests.get(block=False)
         except: 
           # requests was empty..
           pass
         if req is not None and req.finished is False and req.canceled is False:
+          didRequest = True
           gr = CustomGreenlet(req._execute)
-          threading_local.current_request = req
+          self.current_request = req
           gr.thread = self
           gr.request = req
           gr.switch()
@@ -124,16 +117,23 @@ class Worker(Thread):
           # was available
           try:
             req = requests0.pop()
-            didRequest = True
           except: 
             # requests was empty..
             pass
           if req is not None and req.finished is False and req.canceled is False:
+            didRequest = True
             gr = CustomGreenlet(req._execute)
-            threading_local.current_request = req
+            self.current_request = req
             gr.thread = self
             gr.request = req
             gr.switch()
+        
+        # reset the wait lock state, otherwise the surrounding while self.running loop will always be executed twice
+        try:
+          self.wlock.release()
+        except:
+          pass
+        self.wlock.acquire()
 
 
 
@@ -351,14 +351,6 @@ class Request(object):
     except:
       pass
   
-  def _setEvent(self, event):
-    """
-    helper function that sets an event. this is used by the wait
-    method to provide a possiblity for an non-worker thread to wait
-    for completion of a request.
-    """
-    event.set()
-
   def wait(self, timeout = 0):
     """
     synchronous wait for exectution of function
