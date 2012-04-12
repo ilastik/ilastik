@@ -880,8 +880,8 @@ if has_blist:
                 if not b_ind in self._labelers:
                     self._labelers[b_ind]=OpSparseLabelArray(self)
                     self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
-                    self._labelers[b_ind].inputs["eraser"].setValue(self.inputs["eraser"].value)
-                    self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"])
+                    self._labelers[b_ind].inputs["eraser"].connect(self.inputs["eraser"])
+                    self._labelers[b_ind].inputs["deleteLabel"].connect(self.inputs["deleteLabel"])
                     
                 self._labelers[b_ind].inputs["Input"][smallkey] = value[tuple(bigkey)].squeeze()
             

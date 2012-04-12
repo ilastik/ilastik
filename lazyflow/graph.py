@@ -340,7 +340,7 @@ class InputSlot(Slot):
         or other entitiy as input the the InputSlot instead
         of connecting it to a partner OutputSlot.
         """
-        assert self.partner == None, "InputSlot %s (%r): Cannot dot setValue, because it is connected !" %(self.name, self)
+        assert self.partner == None or isinstance(self.partner, InputSlot), "InputSlot %s (%r): Cannot dot setValue, because it is connected !" %(self.name, self)
         changed = True
         try:
           if value == self._value:
