@@ -33,6 +33,7 @@ from ilastikshell.applet import Applet
 import vigra
 
 from dataImporter import DataImporter
+from simpleSignal import SimpleSignal
 
 class PixelClassificationGui(QMainWindow):
     def __init__(self, pipeline = None, graph = None ):
@@ -74,7 +75,7 @@ class PixelClassificationGui(QMainWindow):
             
             # Connect the new input operator to our pipeline
             self.pipeline.setInputData(inputProvider)
-
+    
         if len(sys.argv) > 1:
             QTimer.singleShot(0, loadFile)
         
@@ -312,7 +313,7 @@ class PixelClassificationGui(QMainWindow):
         #drawing will be enabled when the first label is added  
         self.changeInteractionMode( 1 )
         self.interactionComboBox.setEnabled(True)
-    
+            
     def onLabelAboutToBeRemoved(self, parent, start, end):
         #the user deleted a label, reshape prediction and remove the layer
         #the interface only allows to remove one label at a time?
@@ -603,21 +604,17 @@ class PixelClassificationGui(QMainWindow):
         self.featureDlg.selectedFeatureBoolMatrix = numpy.asarray(m)
         self.featureDlg.accepted.connect(self._onNewFeaturesFromFeatureDlg)
 
-
-class PixelClassificationPipeline( QObject ):
-    """Represents the pipeline of pixel classification operations.  
-       Inherits from QObject because it provides signals."""
-
-    inputDataChangedSignal = pyqtSignal(object)
-    
+class PixelClassificationPipeline( object ):
+    """
+    Represents the pipeline of pixel classification operations.  
+    """
     @property
     def graph(self):
         return self._graph
 
     def __init__( self, pipelineGraph ):
-        QObject.__init__(self)
-
         self._graph = pipelineGraph
+        self.inputDataChangedSignal = SimpleSignal()
                 
         #The old ilastik provided the following scale names:
         #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
@@ -678,7 +675,7 @@ class PixelClassificationPipeline( QObject ):
         self.predict.inputs['Image'].connect(self.features.outputs["Output"])
 
         pCache = OpSlicedBlockedArrayCache( self.graph )
-        pCache.inputs["fixAtCurrent"].setValue(False)
+        pCache.inputs["fixAtCurrent"].setValue(True)
         pCache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
         pCache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
         pCache.inputs["Input"].connect(self.predict.outputs["PMaps"])
@@ -696,17 +693,19 @@ class PixelClassificationPipeline( QObject ):
         return numpy.unique(numpy.asarray(self.labels.outputs["nonzeroValues"][:].allocate().wait()[0]))
 
     def setInputData(self, inputProvider):
-        """Set the pipeline input data, which is given as an operator in inputProvider."""
-
-        # The label data shape should match the as the input data, except it has only one channel
-        shape = inputProvider.Output.meta.shape        
-        self.labels.inputs["shape"].setValue(shape[:-1] + (1,))
+        """
+        Set the pipeline input data, which is given as an operator in inputProvider.
+        """
+        # The label shape should match the as the input data, except it has only one channel
+        # The label operator is a sparse array whose shape is determined by an INPUT, not an attribute of the slot.meta
+        shape = inputProvider.Output.meta.shape
+        self.labels.inputs["shape"].setValue(shape[:-1] + (1,)) #<-- Note that "shape" is an INPUT SLOT here.
 
         # Connect the input data to the pipeline
         self.images.inputs["Input0"].connect(inputProvider.outputs["Output"])
-        
+
         # Notify the GUI, etc. that our input data changed
-        self.inputDataChangedSignal.emit(inputProvider)
+        self.inputDataChangedSignal.emit(inputProvider)        
     
 class PixelClassificationSerializer(object):
     """
