@@ -35,6 +35,11 @@ import vigra
 from dataImporter import DataImporter
 from simpleSignal import SimpleSignal
 
+class Tool():
+    Navigation = 0
+    Paint = 1
+    Erase = 2
+
 class PixelClassificationGui(QMainWindow):
     def __init__(self, pipeline = None, graph = None ):
         QMainWindow.__init__(self)
@@ -57,7 +62,6 @@ class PixelClassificationGui(QMainWindow):
         self.featureDlg=None
         
         self.pipeline.inputDataChangedSignal.connect(self.handleGraphInputChanged)
-
         
         #The old ilastik provided the following scale names:
         #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
