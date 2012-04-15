@@ -9,6 +9,16 @@ import h5py
 import traceback
 import os
 
+class ShellActions(object):
+    """
+    The shell provides the applet constructors with access to his GUI actions.
+    They are provided in this class.
+    """
+    def __init__(self):
+        self.openProjectAction = None
+        self.saveProjectAction = None
+        self.QuitAction = None
+
 class _ShellMenuBar( QWidget ):
     """
     The main window menu bar.
@@ -17,6 +27,9 @@ class _ShellMenuBar( QWidget ):
     """
     def __init__( self, parent ):
         QWidget.__init__(self, parent=parent)
+
+        # Any actions we add to the shell GUI will be stored in this member
+        self.actions = ShellActions()
         
         # Our menu will consist of two pieces:
         #  - A "general" menu that is always visible on the left
@@ -39,17 +52,17 @@ class _ShellMenuBar( QWidget ):
         self._generalMenu = QMenu("General", self)
 
         # Menu item: Open Project 
-        self._openProjectAction = self._generalMenu.addAction("&Open Project...")
-        self._openProjectAction.triggered.connect(parent.onOpenProjectActionTriggered)
+        self.actions.openProjectAction = self._generalMenu.addAction("&Open Project...")
+        self.actions.openProjectAction.triggered.connect(parent.onOpenProjectActionTriggered)
 
         # Menu item: Save Project
-        self._saveProjectAction = self._generalMenu.addAction("&Save Project...")
-        self._saveProjectAction.triggered.connect(parent.onSaveProjectActionTriggered)
+        self.actions.saveProjectAction = self._generalMenu.addAction("&Save Project...")
+        self.actions.saveProjectAction.triggered.connect(parent.onSaveProjectActionTriggered)
 
         # Menu item: Quit
-        self._quitAction = self._generalMenu.addAction("&Quit")
-        self._quitAction.triggered.connect(parent.onQuitActionTriggered)
-        self._quitAction.setShortcut( QKeySequence.Quit )
+        self.actions.quitAction = self._generalMenu.addAction("&Quit")
+        self.actions.quitAction.triggered.connect(parent.onQuitActionTriggered)
+        self.actions.quitAction.setShortcut( QKeySequence.Quit )
 
         # Create a menu bar widget and populate it with the general menu
         self._generalMenuBar = QMenuBar(self)
@@ -98,6 +111,9 @@ class IlastikShell( QMainWindow ):
             self._menuBar.setCurrentIndex(applet_index)        
 
     def addApplet( self, applet ):
+        # Give the applet access to the shell actions, in case it needs to trigger/respond to them
+        applet.acceptShellActions( self._menuBar.actions )
+
         self._applets.append(applet)
         applet_index = len(self._applets) - 1
         self.appletStack.addWidget( applet.centralWidget )

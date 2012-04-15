@@ -43,6 +43,13 @@ class Applet( object ):
     def serializableItems(self):
         """ Return a list of serialization.SerializableItem objects for loading/saving """ 
         return self._serializableItems
+    
+    def acceptShellActions(self, shellActions):
+        """
+        Called when the applet is added to the shell.
+        Applets can retain access to the shell actions if they need to trigger or respond to them.
+        """
+        pass
 
 if __name__ == '__main__':
     run_applet(Applet)

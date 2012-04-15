@@ -24,18 +24,59 @@ class DataSetInfo(object):
         eq &= (self.fileNamesAndInfos == other.fileNamesAndInfos)
         
 
-class ProjectInfo(object):
+class ProjectAttributes(object):
     """
-    Stores project info.  Uses 'simple signals' to notify views of any updates.
+    Simple struct-like class for storing basic project attributes.
     """
     def __init__(self):
         self.projectName = ""
         self.labeler = ""
         self.description = ""
-        self.dataSetInfos = []
+    
+    def __eq__(self, other):
+        eq = True
+        eq &= (self.projectName == other.projectName)
+        eq &= (self.labeler == other.labeler)
+        eq &= (self.description == other.description)
 
-        self.dataSetsChanged = SimpleSignal()
-        self.projectAttributesChanged = SimpleSignal()
+class ProjectInfo(object):
+    """
+    Stores project info.  Uses 'simple signals' to notify views of any updates.
+    """
+    def __init__(self):
+        self._projectAttributes = ProjectAttributes()
+        self.projectAttributesChangedSignal = SimpleSignal()
+
+        self._dataSetInfos = []
+        self.dataSetsChangedSignal = SimpleSignal()
+    
+    @property
+    def projectAttributes(self):
+        """
+        Access the project attribute fields.
+        Note: Do not modify the attributes directly.
+              Assign new attributes via the setter fn (below).
+        """
+        return self._projectAttributes
+    
+    @projectAttributes.setter
+    def projectAttributes(self, newProjectAttributes):
+        self._projectAttributes = newProjectAttributes
+        self.projectAttributesChangedSignal.emit()
+        
+    @property
+    def dataSetInfos(self):
+        """
+        Provide access to the list of datasets.
+        Note: Do not modify this list or its elements.
+              Assign new values via the setter fn (below).
+        """
+        return self._dataSetInfos
+    
+    @dataSetInfos.setter
+    def dataSetInfos(self, newInfos):
+        self._dataSetInfos = newInfos
+        self.dataSetsChangedSignal.emit()
 
 class InputDataSelectionGui( QWidget ):
     """
@@ -45,9 +86,12 @@ class InputDataSelectionGui( QWidget ):
     def __init__(self, projectInfo):
         QWidget.__init__(self)
         
+        self.projectOpenAction = None
+        self.projectSaveAction = None
+        
         self._projectInfo = projectInfo
-        self._projectInfo.projectAttributesChanged.connect(self.handleProjectAttributesChangedExternally)
-        self._projectInfo.dataSetsChanged.connect(self.handleDataSetsChangedExternally)
+        self._projectInfo.projectAttributesChangedSignal.connect(self.handleProjectAttributesChangedExternally)
+        self._projectInfo.dataSetsChangedSignal.connect(self.handleDataSetsChangedExternally)
         
         self.initMainUi()
         self.initAppletBarUi()
@@ -76,8 +120,16 @@ class InputDataSelectionGui( QWidget ):
     
     def handleProjectAttributesChangedExternally(self):
         # Show the new project attributes
-        #self.
-        pass
+        self.projectNameEdit.setText(self._projectInfo.projectAttributes.projectName)
+        self.labelerEdit.setText(self._projectInfo.projectAttributes.labeler)
+        self.descriptionEdit.setText(self._projectInfo.projectAttributes.description)
+
+    def acceptShellActions(self, shellActions):
+        """
+        Connect appropriate GUI elements to shell actions.
+        """
+        self._appletBarUi.openProjectButton.clicked.connect(shellActions.openProjectAction.trigger)
+        self._appletBarUi.saveProjectButton.clicked.connect(shellActions.saveProjectAction.trigger)
 
 class ProjectInfoSerializer(object):
     def __init__(self):
@@ -104,6 +156,9 @@ class ProjectInfoSerializer(object):
         pass
 
 class Ilastik05ProjectInfoImportDeserializer(object):
+    """
+    Imports the project metadata (e.g. project name) from an v0.5 .ilp file.
+    """
     def __init__(self, projectInfo):
         self.projectInfo = projectInfo
     
@@ -111,15 +166,33 @@ class Ilastik05ProjectInfoImportDeserializer(object):
         pass
     
     def deserializeFromHdf5(self, hdf5File):
-        labeler = hdf5File["Project/Labeler"].value
-        name = hdf5File["Project/Name"].value
-        description = hdf5File["Project/Description"].value
+        projectAttributes = ProjectAttributes()
+
+        # Read in what values we can, without failing if any of them are missing
+        try:
+            projectAttributes.labeler = hdf5File["Project/Labeler"].value
+        except KeyError:
+            pass
+
+        try:
+            projectAttributes.projectName = hdf5File["Project/Name"].value
+        except KeyError:
+            pass
+            
+        try:
+            projectAttributes.description = hdf5File["Project/Description"].value
+        except KeyError:
+            pass
+        
+        # Now give the values to the project info
+        self.projectInfo.projectAttributes = projectAttributes
 
     def isDirty(self):
-        """ Return true if the current state of this item 
-            (in memory) does not match the state of the HDF5 group on disk.
-            SerializableItems are responsible for tracking their own dirty/notdirty state."""
-        pass
+        """
+        For now, this class is import-only.
+        We always report our data as "clean" because we have nothing to write.
+        """
+        return False
 
     def unload(self):
         """ Called if either
@@ -150,4 +223,10 @@ class InputDataSelectionApplet( Applet ):
 
         # No serializable items for now ...
         self._serializableItems = [ Ilastik05ProjectInfoImportDeserializer(self._projectInfo) ]
+    
+    def acceptShellActions(self, shellActions):
+        """
+        (See base class for details.)
+        """ 
+        self._centralWidget.acceptShellActions(shellActions)
 

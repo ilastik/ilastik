@@ -82,7 +82,7 @@
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout_10">
     <item>
-     <widget class="QLineEdit" name="labeler_3">
+     <widget class="QLineEdit" name="labelerEdit">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
         <horstretch>0</horstretch>
@@ -262,7 +262,7 @@ p, li { white-space: pre-wrap; }
    </property>
    <layout class="QVBoxLayout" name="verticalLayout_4">
     <item>
-     <widget class="QTextEdit" name="description_3">
+     <widget class="QTextEdit" name="descriptionEdit">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
         <horstretch>0</horstretch>

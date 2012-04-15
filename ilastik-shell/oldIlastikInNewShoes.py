@@ -7,7 +7,7 @@ from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 from ilastikshell.ilastikShell import IlastikShell
 
 from applets.pixelClassification import PixelClassificationApplet
-#from applets.inputDataSelectionApplet import InputDataSelectionApplet
+from applets.inputDataSelectionApplet import InputDataSelectionApplet
 
 app = QApplication([])
 
@@ -29,6 +29,30 @@ splashScreen.show()
 
 #inputDataSelectionApplet
 
+splashScreen = QSplashScreen(splashImage)
+splashScreen.show()
+
+
+#g = Graph()
+#pipeline = PixelClassificationPipeline( g )
+#pig = PixelClassificationGui( pipeline, graph = g)
+#pig.show()
+
+
+#from ilastikshell.applet import Applet
+#from PyQt4.QtGui import QMenuBar, QMenu
+#defaultApplet = Applet()
+## Normally applets would provide their own menu items,
+## but for this test we'll add them here (i.e. from the outside).
+#defaultApplet._menuWidget = QMenuBar()
+#defaultApplet._menuWidget.setNativeMenuBar( False ) # Native menus are broken on Ubuntu at the moment
+#defaultMenu = QMenu("Default Applet", defaultApplet._menuWidget)
+#defaultMenu.addAction("Default Action 1")
+#defaultMenu.addAction("Default Action 2")
+#defaultApplet._menuWidget.addMenu(defaultMenu)
+#defaultApplet._serializableItems = []
+
+inputDataSelectionApplet = InputDataSelectionApplet()
 pc = PixelClassificationApplet()
 
 #from ilastikshell.applet import Applet
@@ -45,6 +69,7 @@ pc = PixelClassificationApplet()
 #defaultApplet._serializableItems = []
 
 shell = IlastikShell()
+shell.addApplet(inputDataSelectionApplet)
 shell.addApplet(pc)
 #shell.addApplet(defaultApplet)
 shell.show()
