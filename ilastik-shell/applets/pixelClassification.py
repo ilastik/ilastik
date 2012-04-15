@@ -40,6 +40,11 @@ class PixelClassificationGui(QMainWindow):
         QMainWindow.__init__(self)
         
         self.pipeline = pipeline
+
+        # Subscribe to pipeline data changes so we can update the GUI appropriately
+        self.pipeline.inputDataChangedSignal.connect(self.handleGraphInputChanged)
+        self.pipeline.featuresChangedSignal.connect(self.onFeaturesSelectionsChanged)
+        self.pipeline.labelsChangedSignal.connect(self.handlePipelineLabelsChanged)
         
         #Normalize the data if true
         self._normalize_data=True
@@ -55,10 +60,7 @@ class PixelClassificationGui(QMainWindow):
         self.fixableOperators = []
         
         self.featureDlg=None
-        
-        self.pipeline.inputDataChangedSignal.connect(self.handleGraphInputChanged)
-
-        
+                
         #The old ilastik provided the following scale names:
         #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
         #The corresponding scales are:
@@ -66,6 +68,8 @@ class PixelClassificationGui(QMainWindow):
         
         self.initCentralUic()
         self.initAppletBarUic()
+
+        self.initLabelGui()
         
         #if the filename was specified on command line, load it
         def loadFile():
@@ -205,7 +209,7 @@ class PixelClassificationGui(QMainWindow):
                 pass
 
         # Connect Applet GUI to our event handlers
-        _labelControlUi.AddLabelButton.clicked.connect(self.addLabel)
+        _labelControlUi.AddLabelButton.clicked.connect(self.handleAddLabelButtonClicked)
         _labelControlUi.checkInteractive.setEnabled(False)
         _labelControlUi.checkInteractive.toggled.connect(self.toggleInteractive)
         _labelControlUi.labelListModel.dataChanged.connect(onDataChanged)
@@ -254,7 +258,7 @@ class PixelClassificationGui(QMainWindow):
             if (selectedFeatures==0).all():
                 self._labelControlUi.checkInteractive.setCheckState(0)
                 mexBox=QMessageBox()
-                mexBox.setText("The are no features selected ")
+                mexBox.setText("There are no features selected ")
                 mexBox.exec_()
                 return
         else:
@@ -290,7 +294,34 @@ class PixelClassificationGui(QMainWindow):
         self.editor.brushingModel.setBrushColor(color)
         self.editor.scheduleSlicesRedraw()
     
-    def addLabel(self):
+    def handlePipelineLabelsChanged(self):
+        """
+        This function is called when the number of labels has changed without our knowledge.
+        We need to add/remove labels until we have the right number
+        """
+        # Get the number of labels in the label data
+        uniqueLabels = self.pipeline.getUniqueLabels()
+
+        # Add rows until we have the right number
+        while self._labelControlUi.labelListModel.rowCount() < uniqueLabels.shape[0]:
+            self.addLabelToGui()
+        
+        # Remove rows until we have the right number
+        while self._labelControlUi.labelListModel.rowCount() > uniqueLabels.shape[0]:
+            self.removeLastLabelFromGui()
+
+    def handleAddLabelButtonClicked(self):
+        """
+        The user clicked the "Add Label" button.  Update the GUI and pipeline.
+        """
+        labelnum = self.addLabelToGui()
+        self.addLabelToPipeline(labelnum)    
+    
+    def addLabelToGui(self):
+        """
+        Add a new label to the label list GUI control.
+        Return the new number of labels in the control.
+        """
         color = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
         numLabels = len(self._labelControlUi.labelListModel)
         if numLabels < len(self._colorTable16):
@@ -299,12 +330,7 @@ class PixelClassificationGui(QMainWindow):
         
         self._labelControlUi.labelListModel.insertRow(self._labelControlUi.labelListModel.rowCount(), Label("Label %d" % (self._labelControlUi.labelListModel.rowCount() + 1), color))
         nlabels = self._labelControlUi.labelListModel.rowCount()
-        if self.pipeline is not None:
-            print "Label added, changing predictions"
-            #re-train the forest now that we have more labels
-            self.pipeline.predict.inputs['LabelsCount'].setValue(nlabels)
-            self.addPredictionLayer(nlabels-1, self._labelControlUi.labelListModel._labels[nlabels-1])
-        
+
         #make the new label selected
         index = self._labelControlUi.labelListModel.index(nlabels-1, 1)
         self._labelControlUi.labelListModel._selectionModel.select(index, QItemSelectionModel.ClearAndSelect)
@@ -313,7 +339,25 @@ class PixelClassificationGui(QMainWindow):
         #drawing will be enabled when the first label is added  
         self.changeInteractionMode( 1 )
         self.interactionComboBox.setEnabled(True)
-            
+
+        self.addPredictionLayer(nlabels-1, self._labelControlUi.labelListModel._labels[nlabels-1])
+        
+        return nlabels
+    
+    def addLabelToPipeline(self, newLabel):
+        if self.pipeline is not None:
+            print "Label added, changing predictions"
+            #re-train the forest now that we have more labels
+            self.pipeline.predict.inputs['LabelsCount'].setValue(newLabel)
+    
+    def removeLastLabelFromGui(self):
+        """
+        Programmatically (i.e. not from the GUI) reduce the size of the label list by one.
+        """
+        numRows = self._labelControlUi.labelListModel.rowCount()        
+        # This will trigger the signal that calls onLabelAboutToBeRemoved()
+        self._labelControlUi.labelListModel.removeRow(numRows-1)
+
     def onLabelAboutToBeRemoved(self, parent, start, end):
         #the user deleted a label, reshape prediction and remove the layer
         #the interface only allows to remove one label at a time?
@@ -327,6 +371,8 @@ class PixelClassificationGui(QMainWindow):
         for il in range(start, end+1):
             labelvalue = self._labelControlUi.labelListModel._labels[il]
             self.removePredictionLayer(labelvalue)
+            
+            # Is it okay to delete labels that don't exist?  Hopefully so...
             self.pipeline.labels.inputs["deleteLabel"].setValue(il+1)
             self.editor.scheduleSlicesRedraw()
             
@@ -433,6 +479,9 @@ class PixelClassificationGui(QMainWindow):
         importer = DataImporter( self.g )
         inputProvider = importer.openFile(fileNames)
         
+        print "Input Shape = ", inputProvider.Output.meta.shape
+        print "Input dtype = ", inputProvider.Output.meta.dtype
+        
         # Connect the operator to the pipeline input
         self.pipeline.setInputData(inputProvider)
     
@@ -511,11 +560,10 @@ class PixelClassificationGui(QMainWindow):
         layer1.ref_object = None
         self.layerstack.append(layer1)
  
-        self.initLabels()
         self.startClassification()
         self.initEditor(newInputProvider)
         
-    def initLabels(self):
+    def initLabelGui(self):
         #Add the layer to draw the labels, but don't add any labels
         self.labelsrc = LazyflowSinkSource(self.pipeline.labels, self.pipeline.labels.outputs["Output"], self.pipeline.labels.inputs["Input"])
         self.labelsrc.setObjectName("labels")
@@ -585,6 +633,12 @@ class PixelClassificationGui(QMainWindow):
         selectedFeatures = self.featureDlg.selectedFeatureBoolMatrix
         print "new feature set:", selectedFeatures
         self.pipeline.featureBoolMatrix = numpy.asarray(selectedFeatures)
+
+    def onFeaturesSelectionsChanged(self):
+        """
+        Called when the pipeline's matrix of selected features is changed.
+        """
+        # Update the caption text.
         self._featureSelectionUi.caption.setText( "(Selected %d features)" % numpy.sum(self.pipeline.featureBoolMatrix) )
     
     def _initFeatureDlg(self):
@@ -615,6 +669,8 @@ class PixelClassificationPipeline( object ):
     def __init__( self, pipelineGraph ):
         self._graph = pipelineGraph
         self.inputDataChangedSignal = SimpleSignal()
+        self.featuresChangedSignal = SimpleSignal()
+        self.labelsChangedSignal = SimpleSignal()
                 
         #The old ilastik provided the following scale names:
         #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
@@ -688,6 +744,7 @@ class PixelClassificationPipeline( object ):
     @featureBoolMatrix.setter
     def featureBoolMatrix(self, newMatrix):
         self.features.inputs['Matrix'].setValue(newMatrix)
+        self.featuresChangedSignal.emit()
         
     def getUniqueLabels(self):
         return numpy.unique(numpy.asarray(self.labels.outputs["nonzeroValues"][:].allocate().wait()[0]))
@@ -705,7 +762,20 @@ class PixelClassificationPipeline( object ):
         self.images.inputs["Input0"].connect(inputProvider.outputs["Output"])
 
         # Notify the GUI, etc. that our input data changed
-        self.inputDataChangedSignal.emit(inputProvider)        
+        self.inputDataChangedSignal.emit(inputProvider)
+        
+    def setLabels(self, labelData):
+        """
+        Change the pipeline label data.
+        """
+        # The label data should have the correct shape (last dimension should be 1)
+        assert labelData.shape[-1] == 1
+        self.labels.inputs["shape"].setValue(labelData.shape)        
+
+        # Load the entire set of labels into the graph
+        self.labels.inputs["Input"][:] = labelData
+        
+        self.labelsChangedSignal.emit()
     
 class PixelClassificationSerializer(object):
     """
@@ -768,7 +838,9 @@ class Ilastik05ImportDeserializer(object):
             self.importProjectAttributes(hdf5File) # (e.g. description, labeler, etc.)
             self.importDataSets(hdf5File)
             self.importLabelSets(hdf5File)
-            self.importFeatureSelections(hdf5File)
+            
+            # FIXME: Commenting out feature importing for now.
+            #self.importFeatureSelections(hdf5File)
             self.importClassifier(hdf5File)
     
     def importProjectAttributes(self, hdf5File):
@@ -811,7 +883,7 @@ class Ilastik05ImportDeserializer(object):
                 pipeLineSelectedFeatureMatrix[featureIndex] = userFriendlyFeatureMatrix[featureGroupIndex]
         
         # Finally, update the pipeline with the feature selections
-        self.pipeline.features.inputs['Matrix'].setValue(pipeLineSelectedFeatureMatrix)
+        self.pipeline.featureBoolMatrix = pipeLineSelectedFeatureMatrix
         
     def importClassifier(self, hdf5File):
         """
@@ -829,17 +901,28 @@ class Ilastik05ImportDeserializer(object):
         Locate the raw input data from the v0.5 project file and give it to our pipeline.
         """
         # Locate the dataset within the hdf5File
-        dataset = hdf5File["DataSets"]["dataItem00"]["data"]
+        try:
+            dataset = hdf5File["DataSets"]["dataItem00"]["data"]
+        except KeyError:
+            pass
+        else:
+            importer = DataImporter(self.pipeline.graph)
+            inputProvider = importer.createArrayPiperFromHdf5Dataset(dataset)
         
-        importer = DataImporter(self.pipeline.graph)
-        inputProvider = importer.createArrayPiperFromHdf5Dataset(dataset)
-        
-        # Connect the new input operator to our pipeline
-        #  (Pipeline signals the GUI.)
-        self.pipeline.setInputData(inputProvider)
+            # Connect the new input operator to our pipeline
+            #  (Pipeline signals the GUI.)
+            self.pipeline.setInputData(inputProvider)
     
     def importLabelSets(self, hdf5File):
-        pass
+        try:
+            data = hdf5File['DataSets/dataItem00/labels/data'].value
+            print "data[0,0,0,0,0] = ", data[0,0,0,0,0]
+        except KeyError:
+            return # We'll get a KeyError if this project doesn't contain stored data.  That's allowed.
+                
+        self.pipeline.setLabels(data)
+
+        print "Pipeline labels: ", self.pipeline.getUniqueLabels()
     
     def isDirty(self):
         """Always returns False because we don't support saving to ilastik0.5 projects"""
