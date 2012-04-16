@@ -251,13 +251,13 @@ class PixelClassificationGui(QMainWindow):
                              Tool.Erase      : _labelControlUi.eraserToolButton }
         
         self.brushSizes = [ (1,  ""),
-                            (3,  " Tiny"),
-                            (5,  " Small"),
-                            (7,  " Medium"),
-                            (11, " Large"),
-                            (23, " Huge"),
-                            (31, " Megahuge"),
-                            (61, " Gigahuge") ]
+                            (3,  "Tiny"),
+                            (5,  "Small"),
+                            (7,  "Medium"),
+                            (11, "Large"),
+                            (23, "Huge"),
+                            (31, "Megahuge"),
+                            (61, "Gigahuge") ]
 
         for size, name in self.brushSizes:
             _labelControlUi.brushSizeComboBox.addItem( str(size) + " " + name )
