@@ -560,6 +560,7 @@ class PixelClassificationGui(QMainWindow):
         layer1.ref_object = None
         self.layerstack.append(layer1)
  
+        self.initLabelGui()
         self.startClassification()
         self.initEditor(newInputProvider)
         
