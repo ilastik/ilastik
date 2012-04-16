@@ -40,11 +40,21 @@ class Tool():
     Paint = 1
     Erase = 2
 
+def getPathToLocalDirectory():
+    # Determines the path of this python file so we can refer to other files relative to it.
+    p = os.path.split(__file__)[0]+'/'
+    if p == "/":
+        p = "."+p
+    return p
+
 class PixelClassificationGui(QMainWindow):
     def __init__(self, pipeline = None, graph = None ):
         QMainWindow.__init__(self)
         
         self.pipeline = pipeline
+        
+        # Editor will be initialized when data is loaded
+        self.editor = None
         
         #Normalize the data if true
         self._normalize_data=True
@@ -213,6 +223,68 @@ class PixelClassificationGui(QMainWindow):
         _labelControlUi.checkInteractive.setEnabled(False)
         _labelControlUi.checkInteractive.toggled.connect(self.toggleInteractive)
         _labelControlUi.labelListModel.dataChanged.connect(onDataChanged)
+        
+        # Initialize the arrow tool button with an icon and handler
+        iconPath = getPathToLocalDirectory() + "/icons/arrow.png"
+        arrowIcon = QIcon(iconPath)
+        _labelControlUi.arrowToolButton.setIcon(arrowIcon)
+        _labelControlUi.arrowToolButton.setCheckable(True)
+        _labelControlUi.arrowToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Navigation) )
+
+        # Initialize the paint tool button with an icon and handler
+        paintBrushIconPath = getPathToLocalDirectory() + "/icons/paintbrush.png"
+        paintBrushIcon = QIcon(paintBrushIconPath)
+        _labelControlUi.paintToolButton.setIcon(paintBrushIcon)
+        _labelControlUi.paintToolButton.setCheckable(True)
+        _labelControlUi.paintToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Paint) )
+
+        # Initialize the erase tool button with an icon and handler
+        eraserIconPath = getPathToLocalDirectory() + "/icons/eraser.png"
+        eraserIcon = QIcon(eraserIconPath)
+        _labelControlUi.eraserToolButton.setIcon(eraserIcon)
+        _labelControlUi.eraserToolButton.setCheckable(True)
+        _labelControlUi.eraserToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Erase) )
+        
+        # This maps tool types to the buttons that enable them
+        self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
+                             Tool.Paint      : _labelControlUi.paintToolButton,
+                             Tool.Erase      : _labelControlUi.eraserToolButton }
+        
+        self.brushSizes = [ (1,  ""),
+                            (3,  " Tiny"),
+                            (5,  " Small"),
+                            (7,  " Medium"),
+                            (11, " Large"),
+                            (23, " Huge"),
+                            (31, " Megahuge"),
+                            (61, " Gigahuge") ]
+
+        for size, name in self.brushSizes:
+            _labelControlUi.brushSizeComboBox.addItem( str(size) + " " + name )
+        
+    def handleToolButtonClicked(self, checked, toolId):
+        """
+        Called when the user clicks any of the "tool" buttons in the label applet bar GUI.
+        """
+        # If the user turns off a tool, default back to the arrow
+        if not checked:
+            self.toolButtons[Tool.Navigation].setChecked(True)
+        # If the user is checking a new button
+        else:
+            # Uncheck all the other buttons
+            for tool, button in self.toolButtons.items():
+                if tool != toolId:
+                    button.setChecked(False)
+        
+            # Change the navigation mode
+            if toolId == Tool.Navigation:
+                self.changeInteractionMode(0)
+            elif toolId == Tool.Paint:
+                self.changeInteractionMode(1)
+                self._labelControlUi.brushSizeCaption.setText("Brush Size:")
+            elif toolId == Tool.Erase:
+                # FIX ME
+                self._labelControlUi.brushSizeCaption.setText("Eraser Size:")
 
     @property
     def featureSelectionUi(self):
@@ -276,10 +348,11 @@ class PixelClassificationGui(QMainWindow):
         self.editor.scheduleSlicesRedraw()
 
     def changeInteractionMode( self, index ):
-        modes = {0: "navigation", 1: "brushing"}
-        self.editor.setInteractionMode( modes[index] )
-        self.interactionComboBox.setCurrentIndex(index)
-        print "interaction mode switched to", modes[index]
+        if self.editor is not None:
+            modes = {0: "navigation", 1: "brushing"}
+            self.editor.setInteractionMode( modes[index] )
+            self.interactionComboBox.setCurrentIndex(index)
+            print "interaction mode switched to", modes[index]
 
     def switchLabel(self, row):
         print "switching to label=%r" % (self._labelControlUi.labelListModel[row])

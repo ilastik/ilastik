@@ -31,7 +31,7 @@
         <item>
          <widget class="QToolBox" name="appletBar">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
             <horstretch>1</horstretch>
             <verstretch>1</verstretch>
            </sizepolicy>
