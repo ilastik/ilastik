@@ -249,8 +249,6 @@ class Slot(object):
           pass
         if changed:
           self._value = value
-          for i,s in enumerate(self._subSlots):
-              s.setValue(self._value)
           self._changed()    
 
     def __call__(self, *args, **kwargs):
@@ -330,7 +328,7 @@ class InputSlot(Slot):
     def _changed(self, notify = True):
       if self.partner is not None:
         self.meta = self.partner.meta.copy()
-      self._checkNotifyConnectAll(notify = notify)
+      self._configureOperator(notify = notify)
       for c in self._clones:
         c._changed(notify)
 
@@ -368,6 +366,12 @@ class InputSlot(Slot):
             return self._value
 
     def connected(self):
+        answer = True
+        if self._value is None and self.partner is None:
+            answer = False
+        return answer
+    
+    def configured(self):
         answer = True
         if self._value is None and self.partner is None or not self.stype.isConfigured():
             answer = False
@@ -413,23 +417,16 @@ class InputSlot(Slot):
             if self.stype.isConfigured():
                 self._changed()
     
-    def _checkNotifyConnectAll(self, notify = True):
+    def _configureOperator(self, notify = True):
         """
-        notify operator of connection
-        the operator may do a compatibility
-        check that involves
-        more then one slot
+        call setupOutputs of Operator if all slots
+        of the operator are connected and configured
         """
         
         if self.operator is not None:
           # check wether all slots are connected and notify operator            
-          allConnected = True
-          for slot in self.operator.inputs.values():
-              if slot._optional is False and slot.connected() is False:
-                  allConnected = False
-                  break
-          if allConnected:
-              self.operator._setupOutputs()
+          if self.operator.configured():
+            self.operator._setupOutputs()
                 
     def disconnect(self):
         """
@@ -632,6 +629,33 @@ class MultiInputSlot(Slot):
         self.inputs = {}
         super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
     
+    def setValue(self, value):
+        """
+        set all values of subslots to the same value
+        """
+        changed = True
+        try:
+          if value == self._value:
+            changed = False
+        except:
+          pass
+        if changed:
+          self._value = value
+          for i,s in enumerate(self._subSlots):
+              s.setValue(self._value[i])
+          self._changed()    
+    
+    def setValues(self, values):
+        """
+        set values of subslots with arraylike object
+        resizes the multinputslot with the length of the values array
+        """
+        changed = True
+        self.resize(len(values))
+        for i,s in enumerate(self._subSlots):
+            s.setValue(values[i])
+        self._changed()    
+    
     def resize(self, size, notify = True, event = None):
         oldsize = len(self)
         if self.partner and len(self.partner) != size:
@@ -645,7 +669,7 @@ class MultiInputSlot(Slot):
         for i in range(0,size):
           self._connectSubSlot(i, notify = False)
         
-        self._checkNotifyConnectAll()
+        self._configureOperator()
         for c in self._clones:
           c.resize(size, notify, event)
 
@@ -697,15 +721,15 @@ class MultiInputSlot(Slot):
         return islot
     
     
-    def _checkNotifyConnectAll(self, notify = True):
+    def _configureOperator(self, notify = True):
         # check wether all slots are connected and eventuall notify operator            
         if self.operator:
-            allConnected = True
+            allConfigured = True
             for slot in self.operator.inputs.values():
-                if slot._optional is False and not slot.connected():
-                    allConnected = False
+                if slot._optional is False and not slot.configured():
+                    allConfigured = False
                     break
-            if allConnected:
+            if allConfigured:
               self.operator._setupOutputs()
         
     
@@ -720,6 +744,19 @@ class MultiInputSlot(Slot):
                     answer = False
                     break
         return answer
+
+    def configured(self):
+        answer = True
+        if (self._value is None and self.partner is None) or not self.stype.isConfigured():
+            answer = False
+        if answer is False and len(self._subSlots) > 0:
+            answer = True
+            for s in self._subSlots:
+                if s.configured() is False:
+                    answer = False
+                    break
+        return answer
+
 
     def _requiredLength(self):
         if self.partner is not None:
@@ -740,7 +777,7 @@ class MultiInputSlot(Slot):
         self.meta = self.partner.meta.copy()
         if self.partner.level == self.level:
           self.resize(len(self.partner))
-      self._checkNotifyConnectAll()
+      self._configureOperator()
       for c in self._clones:
         c._changed()
         
@@ -825,7 +862,7 @@ class MultiInputSlot(Slot):
           pass
         self._subSlots.remove(inputSlot)
         if notify:
-          self._checkNotifyConnectAll()
+          self._configureOperator()
         for c in self._clones:
           c._changed()
 
@@ -1250,12 +1287,29 @@ class Operator(object):
       
 
     def connected(self):
+      """
+      Returns True if all input slots that are non-optional are
+      connected.
+      """
       allConnected = True
       for slot in self.inputs.values():
           if slot._optional is False and slot.connected() is False:
               allConnected = False
-      if allConnected:
-        pass
+              break
+      return allConnected
+
+    def configured(self):
+      """
+      Returns True if all input slots that are non-optional are
+      connected and configured.
+      """
+      allConfigured = True
+      for slot in self.inputs.values():
+          if slot._optional is False and slot.configured() is False:
+              allConfigured = False
+              break
+      return allConfigured
+
 
     def _setDefaultInputValues(self):
       for i in self.inputs.values():

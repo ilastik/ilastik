@@ -11,6 +11,7 @@ class OpA(graph.Operator):
   Input1 = graph.InputSlot()                # required slot
   Input2 = graph.InputSlot(optional = True) # optional slot
   Input3 = graph.InputSlot(value = 3)       # required slot with default value, i.e. already connected
+  Input4 = graph.MultiInputSlot(level = 1)       # required slot with default value, i.e. already connected
 
   Output1 = graph.OutputSlot()
   Output2 = graph.OutputSlot()
@@ -19,10 +20,10 @@ class OpA(graph.Operator):
 
   def __init__(self, parent):
     graph.Operator.__init__(self,parent)
-    self.configured = False
+    self._configured = False
 
   def setupOutputs(self):
-    self.configured = True
+    self._configured = True
     self.Output1.meta.shape = self.Input1.meta.shape
     self.Output1.meta.dtype = self.Input1.meta.dtype
     self.Output2.meta.shape = self.Input1.meta.shape
@@ -55,25 +56,55 @@ class TestOperator_setupOutputs(object):
     # check that operator is not configuerd initiallia
     # since it has a slot without default value 
     op = OpA(self.g)
-    assert op.configured == False
+    assert op._configured == False
+    
+    # check that operator is not configuerd initiallia
+    op.Input1.setValue(1)
+    assert op._configured == False
 
     # check that the operator is configued
     # after connecting the slot without default value
     op.Input1.setValue(1)
-    assert op.configured == True
-    op.configured = False
+    op.Input4.setValues([1,2])
+    assert op._configured == True
+    op._configured = False
     
     # check that the operatir is reconfigured
     # when connecting the slot with default value
     # to another value
     op.Input3.setValue(2)
-    assert op.configured == True
+    assert op._configured == True
 
+
+  def test_set_values(self):
+    op = OpA(self.g)
+    
+    # check that Input4 is not connected
+    assert op.Input4.connected() is False 
+    
+    op.Input4.setValues([1])
+
+    # check that the length of Input4 is 1
+    assert len(op.Input4) == 1
+    
+    # check that Input4 is now connected and configured
+    assert op.Input4.connected()
+    assert op.Input4.configured()
+    
+    op.Input4.setValues([1,2])
+
+    # check that the length of Input4 is 1
+    assert len(op.Input4) == 2
+
+    # check that the values of the subslots are correct
+    assert op.Input4[0].value == 1
+    assert op.Input4[1].value == 2
 
 
   def test_default_value(self):
     op = OpA(self.g)
     op.Input1.setValue(1)
+    op.Input4.setValues([1])
 
 
     # check that the slot with default value
@@ -95,9 +126,11 @@ class TestOperator_setupOutputs(object):
     # of connecting
     op1 = OpA(self.g)
     op1.Input1.setValue(1)
+    op1.Input4.setValues([1])
     op2 = OpA(self.g)
     op2.Input1.connect(op1.Output1)
-    assert op2.configured == True
+    op2.Input4.setValues([1])
+    assert op2._configured == True
 
 
   def test_deferred_connect_propagate(self):
@@ -106,11 +139,13 @@ class TestOperator_setupOutputs(object):
     # of connecting after configuring the first operator
     # in the chain
     op1 = OpA(self.g)
+    op1.Input4.setValues([1])
     op2 = OpA(self.g)
     op2.Input1.connect(op1.Output1)
-    assert op2.configured == False
+    op2.Input4.setValues([1])
+    assert op2._configured == False
     op1.Input1.setValue(1)
-    assert op2.configured == True
+    assert op2._configured == True
   
 
 
@@ -129,8 +164,10 @@ class TestOperator_meta(object):
     # is correctly passed on between the slots
     op1 = OpA(self.g)
     op1.Input1.setValue(numpy.ndarray((10,)))
+    op1.Input4.setValues([1])
     op2 = OpA(self.g)
     op2.Input1.connect(op1.Output1)
+    op2.Input4.setValues([1])
     assert op2.Output1.meta.shape == (10,)
 
 
@@ -142,6 +179,8 @@ class TestOperator_meta(object):
     # between the slots
     op1 = OpA(self.g)
     op2 = OpA(self.g)
+    op1.Input4.setValues([1,2])
+    op2.Input4.setValues([1,2])
     op2.Input1.connect(op1.Output1)
     op1.Input1.setValue(numpy.ndarray((10,)))
     assert op2.Output1.meta.shape == (10,)
