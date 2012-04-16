@@ -173,9 +173,6 @@ class PixelClassificationGui(QMainWindow):
         self.actionRubberBandZoom.triggered.connect(rubberBandZoom)
                 
         self.layerstack = LayerStackModel()
-                            
-        self.interactionComboBox.currentIndexChanged.connect(self.changeInteractionMode)
-        self.interactionComboBox.setEnabled(False)
 
         self._initFeatureDlg()
         
@@ -273,25 +270,18 @@ class PixelClassificationGui(QMainWindow):
         """
         Called when the user clicks any of the "tool" buttons in the label applet bar GUI.
         """
-        # If the user turns off a tool, default back to the arrow
+        # Users can only *switch between* tools, not turn them off.
+        # If they try to, re-select the button automatically.
         if not checked:
-            self.toolButtons[Tool.Navigation].setChecked(True)
+            self.toolButtons[toolId].setChecked(True)
         # If the user is checking a new button
         else:
             # Uncheck all the other buttons
             for tool, button in self.toolButtons.items():
                 if tool != toolId:
                     button.setChecked(False)
-        
-            # Change the navigation mode
-            if toolId == Tool.Navigation:
-                self.changeInteractionMode(0)
-            elif toolId == Tool.Paint:
-                self.changeInteractionMode(1)
-                self._labelControlUi.brushSizeCaption.setText("Brush Size:")
-            elif toolId == Tool.Erase:
-                # FIX ME
-                self._labelControlUi.brushSizeCaption.setText("Eraser Size:")
+
+            self.changeInteractionMode( toolId )
 
     @property
     def featureSelectionUi(self):
@@ -354,12 +344,40 @@ class PixelClassificationGui(QMainWindow):
 
         self.editor.scheduleSlicesRedraw()
 
-    def changeInteractionMode( self, index ):
+    def changeInteractionMode( self, toolId ):
+        """
+        Implement the GUI's response to the user selecting a new tool.
+        """
         if self.editor is not None:
-            modes = {0: "navigation", 1: "brushing"}
-            self.editor.setInteractionMode( modes[index] )
-            self.interactionComboBox.setCurrentIndex(index)
-            print "interaction mode switched to", modes[index]
+            
+            # The volume editor expects one of two specific names
+            modeNames = { Tool.Navigation   : "navigation",
+                          Tool.Paint        : "brushing",
+                          Tool.Erase        : "brushing" }
+
+            # Update the applet bar caption
+            if toolId == Tool.Navigation:
+                # Hide the brush size control
+                self._labelControlUi.brushSizeCaption.hide()
+                self._labelControlUi.brushSizeComboBox.hide()
+            elif toolId == Tool.Paint:
+                # Show the brush size control and set its caption
+                self._labelControlUi.brushSizeCaption.show()
+                self._labelControlUi.brushSizeComboBox.show()
+                self._labelControlUi.brushSizeCaption.setText("Brush Size:")
+                # If necessary, tell the brushing model to stop erasing
+                if self.editor.brushingModel.erasing:
+                    self.editor.brushingModel.disableErasing()
+            elif toolId == Tool.Erase:
+                # Show the brush size control and set its caption
+                self._labelControlUi.brushSizeCaption.show()
+                self._labelControlUi.brushSizeComboBox.show()
+                self._labelControlUi.brushSizeCaption.setText("Eraser Size:")
+                # If necessary, tell the brushing model to start erasing
+                if not self.editor.brushingModel.erasing:
+                    self.editor.brushingModel.setErasing()
+            
+            self.editor.setInteractionMode( modeNames[toolId] )
 
     def switchLabel(self, row):
         print "switching to label=%r" % (self._labelControlUi.labelListModel[row])
@@ -390,6 +408,13 @@ class PixelClassificationGui(QMainWindow):
         while self._labelControlUi.labelListModel.rowCount() > uniqueLabels.shape[0]:
             self.removeLastLabelFromGui()
 
+        # Select a label by default so the brushing controller doesn't get confused.
+        if len(uniqueLabels) > 0:
+            selectedRow = self._labelControlUi.labelListModel.selectedRow()
+            if selectedRow == -1:
+                selectedRow = 0 
+            self.switchLabel(selectedRow)
+
     def handleAddLabelButtonClicked(self):
         """
         The user clicked the "Add Label" button.  Update the GUI and pipeline.
@@ -415,10 +440,9 @@ class PixelClassificationGui(QMainWindow):
         index = self._labelControlUi.labelListModel.index(nlabels-1, 1)
         self._labelControlUi.labelListModel._selectionModel.select(index, QItemSelectionModel.ClearAndSelect)
         
-        #FIXME: this should watch for model changes   
-        #drawing will be enabled when the first label is added  
-        self.changeInteractionMode( 1 )
-        self.interactionComboBox.setEnabled(True)
+        #FIXME: this should watch for model changes
+        #drawing will be enabled when the first label is added
+        self.changeInteractionMode( Tool.Navigation )
 
         self.addPredictionLayer(nlabels-1, self._labelControlUi.labelListModel._labels[nlabels-1])
         
@@ -696,8 +720,8 @@ class PixelClassificationGui(QMainWindow):
             self.DeleteButton.clicked.connect(model.deleteSelected)
             model.canDeleteSelected.connect(self.DeleteButton.setEnabled)     
             
-            self.pipeline.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)      
-            
+            self.pipeline.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)
+                        
             # Give the editor a default "last focus" axis to avoid crashes later on
             #self.editor.lastImageViewFocus(2)
         
