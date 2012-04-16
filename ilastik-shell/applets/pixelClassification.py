@@ -641,12 +641,12 @@ class PixelClassificationGui(QMainWindow):
         
         # Before we append the input data to the viewer,
         # Delete any previous input data layers
-
-        # Append our new layer to the stack
         self.removeLayersFromEditorStack(layer1.name)
-        self.layerstack.append(layer1)
+
+        # The input data layer should always be on the bottom of the stack (last)
+        #  so we can always see the labels and predictions.
+        self.layerstack.insert(len(self.layerstack), layer1)
  
-        self.initLabelGui()
         self.startClassification()
         self.initEditor(newInputProvider)
         
@@ -671,7 +671,9 @@ class PixelClassificationGui(QMainWindow):
 
         # Remove any existing label layer before adding this one.
         self.removeLayersFromEditorStack(self.labellayer.name)
-        self.layerstack.append(self.labellayer)
+        
+        # Labels should be first (on top)
+        self.layerstack.insert(0, self.labellayer)
     
     def initEditor(self, newInputProvider):
         """
