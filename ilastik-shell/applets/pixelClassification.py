@@ -99,7 +99,9 @@ class PixelClassificationGui(QMainWindow):
             QTimer.singleShot(0, loadFile)
         
     def setIconToViewMenu(self):
-            self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
+        if self.editor._lastImageViewFocus is None:
+            print "Why is this index None?"
+        self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
         
     def initCentralUic(self):
         # We don't know where the user is running this script from,
@@ -636,12 +638,27 @@ class PixelClassificationGui(QMainWindow):
         
         layer1.name = "Input data"
         layer1.ref_object = None
+        
+        # Before we append the input data to the viewer,
+        # Delete any previous input data layers
+
+        # Append our new layer to the stack
+        self.removeLayersFromEditorStack(layer1.name)
         self.layerstack.append(layer1)
  
         self.initLabelGui()
         self.startClassification()
         self.initEditor(newInputProvider)
         
+    def removeLayersFromEditorStack(self, layerName):
+        """
+        Remove the layer with the given name from the GUI image stack.
+        """
+        # Delete in reverse order so we can remove rows as we go
+        for i in reversed(range(0, len(self.layerstack))):
+            if self.layerstack[i].name == layerName:
+                self.layerstack.removeRows(i, 1)
+
     def initLabelGui(self):
         #Add the layer to draw the labels, but don't add any labels
         self.labelsrc = LazyflowSinkSource(self.pipeline.labels, self.pipeline.labels.outputs["Output"], self.pipeline.labels.inputs["Input"])
@@ -651,31 +668,42 @@ class PixelClassificationGui(QMainWindow):
         self.labellayer = ColortableLayer(self.labelsrc, colorTable = [transparent.rgba()] )
         self.labellayer.name = "Labels"
         self.labellayer.ref_object = None
+
+        # Remove any existing label layer before adding this one.
+        self.removeLayersFromEditorStack(self.labellayer.name)
         self.layerstack.append(self.labellayer)
     
     def initEditor(self, newInputProvider):
-        shape = newInputProvider.outputs["Output"].shape
-        
-        self.editor = VolumeEditor(self.layerstack, labelsink=self.labelsrc)
-
-        self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
-        #drawing will be enabled when the first label is added  
-        self.editor.setInteractionMode( 'navigation' )
-        self.volumeEditorWidget.init(self.editor)
-        model = self.editor.layerStack
-        self.layerWidget.init(model)
-        self.UpButton.clicked.connect(model.moveSelectedUp)
-        model.canMoveSelectedUp.connect(self.UpButton.setEnabled)
-        self.DownButton.clicked.connect(model.moveSelectedDown)
-        model.canMoveSelectedDown.connect(self.DownButton.setEnabled)
-        self.DeleteButton.clicked.connect(model.deleteSelected)
-        model.canDeleteSelected.connect(self.DeleteButton.setEnabled)     
-        
-        self.pipeline.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)      
+        """
+        Initialize the Volume Editor GUI.
+        """
+        # Only construct the editor once
+        if self.editor is None:
+            self.editor = VolumeEditor(self.layerstack, labelsink=self.labelsrc)
+    
+            self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
+            #drawing will be enabled when the first label is added  
+            self.editor.setInteractionMode( 'navigation' )
+            self.volumeEditorWidget.init(self.editor)
+            model = self.editor.layerStack
+            self.layerWidget.init(model)
+            self.UpButton.clicked.connect(model.moveSelectedUp)
+            model.canMoveSelectedUp.connect(self.UpButton.setEnabled)
+            self.DownButton.clicked.connect(model.moveSelectedDown)
+            model.canMoveSelectedDown.connect(self.DownButton.setEnabled)
+            self.DeleteButton.clicked.connect(model.deleteSelected)
+            model.canDeleteSelected.connect(self.DeleteButton.setEnabled)     
+            
+            self.pipeline.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)      
+            
+            # Give the editor a default "last focus" axis to avoid crashes later on
+            #self.editor.lastImageViewFocus(2)
         
         #finally, setup the editor to have the correct shape
         #doing this last ensures that all connections are setup already
+        shape = newInputProvider.outputs["Output"].shape
         self.editor.dataShape = shape
+        
     
     def _createDefault16ColorColorTable(self):
         c = []
@@ -919,7 +947,7 @@ class Ilastik05ImportDeserializer(object):
             self.importLabelSets(hdf5File)
             
             # FIXME: Commenting out feature importing for now.
-            #self.importFeatureSelections(hdf5File)
+            self.importFeatureSelections(hdf5File)
             self.importClassifier(hdf5File)
     
     def importProjectAttributes(self, hdf5File):
