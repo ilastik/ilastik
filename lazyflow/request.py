@@ -7,6 +7,7 @@ from threading import Thread, current_thread
 import greenlet
 import threading
 from helpers import detectCPUs
+import math
 
 greenlet.GREENLET_USE_GC = False #use garbage collection
 sys.setrecursionlimit(1000)
@@ -167,7 +168,7 @@ class ThreadPool(object):
     self.freeWorkers = set()
     self.numThreads = detectCPUs()
     self.lastWorker = None
-    for i in range(self.numThreads/2):
+    for i in range(int(math.ceil(self.numThreads/2))):
       w = Worker(self)
       self.workers.add(w)
       w.start()
