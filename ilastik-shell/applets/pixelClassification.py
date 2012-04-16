@@ -266,6 +266,10 @@ class PixelClassificationGui(QMainWindow):
         for size, name in self.brushSizes:
             _labelControlUi.brushSizeComboBox.addItem( str(size) + " " + name )
         
+        _labelControlUi.brushSizeComboBox.currentIndexChanged.connect(self.onBrushSizeChange)
+        self.paintBrushSizeIndex = 0
+        self.eraserSizeIndex = 0
+        
     def handleToolButtonClicked(self, checked, toolId):
         """
         Called when the user clicks any of the "tool" buttons in the label applet bar GUI.
@@ -365,19 +369,50 @@ class PixelClassificationGui(QMainWindow):
                 self._labelControlUi.brushSizeCaption.show()
                 self._labelControlUi.brushSizeComboBox.show()
                 self._labelControlUi.brushSizeCaption.setText("Brush Size:")
+                
                 # If necessary, tell the brushing model to stop erasing
                 if self.editor.brushingModel.erasing:
                     self.editor.brushingModel.disableErasing()
+                # Set the brushing size
+                brushSize = self.brushSizes[self.paintBrushSizeIndex][0]
+                self.editor.brushingModel.setBrushSize(brushSize)
+
+                # Make sure the GUI reflects the correct size
+                self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
+                
             elif toolId == Tool.Erase:
                 # Show the brush size control and set its caption
                 self._labelControlUi.brushSizeCaption.show()
                 self._labelControlUi.brushSizeComboBox.show()
                 self._labelControlUi.brushSizeCaption.setText("Eraser Size:")
+                
                 # If necessary, tell the brushing model to start erasing
                 if not self.editor.brushingModel.erasing:
                     self.editor.brushingModel.setErasing()
-            
+                # Set the brushing size
+                eraserSize = self.brushSizes[self.eraserSizeIndex][0]
+                self.editor.brushingModel.setBrushSize(eraserSize)
+                
+                # Make sure the GUI reflects the correct size
+                self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
+
             self.editor.setInteractionMode( modeNames[toolId] )
+
+    def onBrushSizeChange(self, index):
+        """
+        Handle the user's new brush size selection.
+        Note: The editor's brushing model currently maintains only a single 
+              brush size, which is used for both painting and erasing. 
+              However, we maintain two different sizes for the user and swap 
+              them depending on which tool is selected.
+        """
+        newSize = self.brushSizes[index][0]
+        if self.editor.brushingModel.erasing:
+            self.eraserSizeIndex = index
+            self.editor.brushingModel.setBrushSize(newSize)
+        else:
+            self.paintBrushSizeIndex = index
+            self.editor.brushingModel.setBrushSize(newSize)
 
     def switchLabel(self, row):
         print "switching to label=%r" % (self._labelControlUi.labelListModel[row])
