@@ -1,0 +1,68 @@
+TODO Document
+
+cleanup existing code:
+* remove examples directory
+* write 2 examples for operators with the new api
+* remove all unused operatores from the codebase
+* port the remaining ones to the new api
+* write unit tests for each operator which test
+  the operators compatability with many possible dimensions and axis
+  cponfigurations
+
+evolve api:
+* use roi specification for all operator/slot calls
+  setDirty
+  setInslot
+  setSubInSlot
+  getSubOutSlot
+
+ 
+Regarding the cleanup of the operators using the old api the following table indicates old idioms and their new replacement:  
+   
+   
+   o l d                                                      ->          n e w
+----------------------------------------------------------------------------------------------------------
+
+# the specification of the input and output slots has changed as follows
+
+class OpA(Operator):                                          ->     class OpA(Operator):       
+  inputSlots  = [InputSlot("Image"), InputSlot("scale") ]               Image = InputSlot()     
+  outputSlots = [OutptSlot("Output")]                                   scale = InputSlot()     
+                                                                                                
+                                                                        Outputs = OutputSlot()  
+----------------------------------------------------------------------------------------------------------
+
+# slots have a meta data dictionary that can be used to store additional information
+# about a slots data type (e.g. shape, dtype etc)
+
+self.inputs["Image"].shape                                    ->   self.inputs["Image"].meta.shape
+self.inputs["Image"].dtype                                    ->   self.inputs["Image"].meta.dtype
+self.inputs["Image"].axistags                                 ->   self.inputs["Image"].meta.axistags
+
+self.outputs["Output"]._shape  =                              ->   self.outputs["Output"].meta.shape    =
+self.outputs["Output"]._dtype  =                              ->   self.outputs["Output"].meta.dtype    =
+self.outputs["Output"]._axistags =                            ->   self.outputs["Output"].meta.axistags = 
+----------------------------------------------------------------------------------------------------------
+
+# The notifyConnectAll method of operators was renamed to setupOutputs
+
+class OpA(Operator):                                          ->    class OpA(Operator):          
+  def notifyConnectAll(self):                                 ->      def setupOutputs(self):
+----------------------------------------------------------------------------------------------------------
+
+# The notifyConnect method was removed without replacement !
+# the corresponding behavior has to be implemented in the new setupOutputs method
+
+class OpA(Operator):                                          -> 
+  def notifyConnect(self, slot):                              -> 
+----------------------------------------------------------------------------------------------------------
+
+# the getOutSlot method of operators was renamed to execute and the arguments to the method changed !
+# previously it accepted a key (a tuple of slicing objects) now it must accept a roi object (see rtype.py)
+
+class OpA(Operator):                                          ->    class OpA(Operator):          
+  def getOutSlot(self, slot, key, result):                                       ->      def execute(self, slot, roi, result)
+----------------------------------------------------------------------------------------------------------
+
+
+
