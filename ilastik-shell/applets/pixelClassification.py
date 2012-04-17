@@ -437,11 +437,11 @@ class PixelClassificationGui(QMainWindow):
 
         # Add rows until we have the right number
         while self._labelControlUi.labelListModel.rowCount() < uniqueLabels.shape[0]:
-            self.addLabelToGui()
+            self.addNewLabel()
         
         # Remove rows until we have the right number
         while self._labelControlUi.labelListModel.rowCount() > uniqueLabels.shape[0]:
-            self.removeLastLabelFromGui()
+            self.removeLastLabel()
 
         # Select a label by default so the brushing controller doesn't get confused.
         if len(uniqueLabels) > 0:
@@ -454,10 +454,9 @@ class PixelClassificationGui(QMainWindow):
         """
         The user clicked the "Add Label" button.  Update the GUI and pipeline.
         """
-        labelnum = self.addLabelToGui()
-        self.addLabelToPipeline(labelnum)    
+        labelnum = self.addNewLabel()
     
-    def addLabelToGui(self):
+    def addNewLabel(self):
         """
         Add a new label to the label list GUI control.
         Return the new number of labels in the control.
@@ -479,23 +478,30 @@ class PixelClassificationGui(QMainWindow):
         #drawing will be enabled when the first label is added
         self.changeInteractionMode( Tool.Navigation )
 
+        if self.pipeline is not None:
+            print "Label added, changing predictions"
+            #re-train the forest now that we have more labels
+            if self.pipeline.maxLabel < nlabels:
+                self.pipeline.maxLabel = nlabels
+
         self.addPredictionLayer(nlabels-1, self._labelControlUi.labelListModel._labels[nlabels-1])
         
         return nlabels
     
-    def addLabelToPipeline(self, newLabel):
-        if self.pipeline is not None:
-            print "Label added, changing predictions"
-            #re-train the forest now that we have more labels
-            self.pipeline.predict.inputs['LabelsCount'].setValue(newLabel)
-    
-    def removeLastLabelFromGui(self):
+    def removeLastLabel(self):
         """
         Programmatically (i.e. not from the GUI) reduce the size of the label list by one.
         """
         numRows = self._labelControlUi.labelListModel.rowCount()        
         # This will trigger the signal that calls onLabelAboutToBeRemoved()
         self._labelControlUi.labelListModel.removeRow(numRows-1)
+        numRows = numRows-1
+    
+        if self.pipeline is not None:
+            print "Label removed, changing predictions"
+            #re-train the forest now that we have fewer labels
+            if self.pipeline.maxLabel > numRows:
+                self.pipeline.maxLabel = numRows
 
     def onLabelAboutToBeRemoved(self, parent, start, end):
         #the user deleted a label, reshape prediction and remove the layer
@@ -515,10 +521,8 @@ class PixelClassificationGui(QMainWindow):
             self.pipeline.labels.inputs["deleteLabel"].setValue(il+1)
             self.editor.scheduleSlicesRedraw()
             
-    def startClassification(self):
+    def setupPredicationLayers(self):
         nclasses = self._labelControlUi.labelListModel.rowCount()
-        self.pipeline.predict.inputs['LabelsCount'].setValue(nclasses)
-
         #add prediction results for all classes as separate channels
         for icl in range(nclasses):
             self.addPredictionLayer(icl, self._labelControlUi.labelListModel._labels[icl])
@@ -932,18 +936,40 @@ class PixelClassificationPipeline( object ):
         # Notify the GUI, etc. that our input data changed
         self.inputDataChangedSignal.emit(inputProvider)
         
-    def setLabels(self, labelData):
+    def setAllLabelData(self, labelData):
         """
-        Change the pipeline label data.
+        Replace ALL of the input label data with the given array.
+        Label shape is adjusted if necessary.
         """
         # The label data should have the correct shape (last dimension should be 1)
         assert labelData.shape[-1] == 1
-        self.labels.inputs["shape"].setValue(labelData.shape)        
+        self.labels.inputs["shape"].setValue(labelData.shape)
 
         # Load the entire set of labels into the graph
         self.labels.inputs["Input"][:] = labelData
         
         self.labelsChangedSignal.emit()
+    
+    @property
+    def maxLabel(self):
+        """
+        Return the maximum number of labels the classifier can currently use.
+        """
+        return self.predict.inputs['LabelsCount'].value
+
+    @maxLabel.setter
+    def maxLabel(self, highestLabel):
+        """
+        Change the maximum number of label classes the prediction operator can handle.
+        """
+        # Count == highest label because 0 isn't a valid label
+        self.predict.inputs['LabelsCount'].setValue(highestLabel)
+        
+    def connectToConfigurationNotification(self, callbackFn):
+        """
+        Register the given callback to be notified when pipeline configuration is complete (or changed).
+        """
+        self.prediction_cache.connectToConfigurationNotifications(callbackFn)
     
 class PixelClassificationSerializer(object):
     """
@@ -1006,8 +1032,6 @@ class Ilastik05ImportDeserializer(object):
             self.importProjectAttributes(hdf5File) # (e.g. description, labeler, etc.)
             self.importDataSets(hdf5File)
             self.importLabelSets(hdf5File)
-            
-            # FIXME: Commenting out feature importing for now.
             self.importFeatureSelections(hdf5File)
             self.importClassifier(hdf5File)
     
@@ -1088,7 +1112,7 @@ class Ilastik05ImportDeserializer(object):
         except KeyError:
             return # We'll get a KeyError if this project doesn't contain stored data.  That's allowed.
                 
-        self.pipeline.setLabels(data)
+        self.pipeline.setAllLabelData(data)
 
         print "Pipeline labels: ", self.pipeline.getUniqueLabels()
     
