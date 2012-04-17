@@ -642,7 +642,7 @@ class MultiInputSlot(Slot):
         if changed:
           self._value = value
           for i,s in enumerate(self._subSlots):
-              s.setValue(self._value[i])
+              s.setValue(self._value)
           self._changed()    
     
     def setValues(self, values):

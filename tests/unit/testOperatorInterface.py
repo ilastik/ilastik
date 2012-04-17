@@ -91,15 +91,20 @@ class TestOperator_setupOutputs(object):
     assert op.Input4.connected()
     assert op.Input4.configured()
     
-    op.Input4.setValues([1,2])
 
-    # check that the length of Input4 is 1
+    # check that the length of Input4 is 2
+    op.Input4.setValues([1,2])
     assert len(op.Input4) == 2
 
     # check that the values of the subslots are correct
     assert op.Input4[0].value == 1
     assert op.Input4[1].value == 2
 
+    #check that the normal setValue propagates to all subslots
+    op.Input4.setValue(3)
+    assert len(op.Input4) == 2
+    assert op.Input4[0].value == 3
+    assert op.Input4[1].value == 3
 
   def test_default_value(self):
     op = OpA(self.g)
