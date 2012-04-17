@@ -168,7 +168,7 @@ class ThreadPool(object):
     self.freeWorkers = set()
     self.numThreads = detectCPUs()
     self.lastWorker = None
-    for i in range(int(math.ceil(self.numThreads/2))):
+    for i in range(int(math.ceil(self.numThreads/2.0))):
       w = Worker(self)
       self.workers.add(w)
       w.start()
