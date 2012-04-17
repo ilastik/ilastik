@@ -642,7 +642,7 @@ class MultiInputSlot(Slot):
         if changed:
           self._value = value
           for i,s in enumerate(self._subSlots):
-              s.setValue(self._value[i])
+              s.setValue(self._value)
           self._changed()    
     
     def setValues(self, values):
@@ -1203,6 +1203,7 @@ class Operator(object):
 
     def __init__( self, parent = None, graph = None, register = True ):
         assert parent != None or graph != None
+        self._configurationNotificationCallbacks = []
         # preserve compatability with old operators
         # that give the graph as first argument to 
         # operators they instantiate
@@ -1222,6 +1223,7 @@ class Operator(object):
             self.graph = self._parent.graph
 
         self._instantiate_slots()
+        
         
 
     # continue initialization, when user overrides __init__
@@ -1394,10 +1396,21 @@ class Operator(object):
     def _setupOutputs(self):
       self.setupOutputs()
 
-      #notify outputs of probably changed meta informatio
+      #notify outputs of probably changed meta information
       for k,v in self.outputs.items():
         v._changed()
+    
+      # Call anyone who wanted to be notified of configuration changes
+      for fn in self._configurationNotificationCallbacks:
+          fn()
 
+    def connectToConfigurationNotification(self, callbackFn):
+        """
+        Subscribe the provided callback function to configuration notifications.
+        The callback will be called immediately after this operator's setupOutputs() function is called.
+        """
+        self._configurationNotificationCallbacks.append(callbackFn)
+    
     def setupOutputs(self):
       """
       This method is called when all input slots of an operator are
@@ -1514,6 +1527,7 @@ class OperatorWrapper(Operator):
         self.graph = operator.graph
         self._parent = operator._parent
         self._connecting = False
+        self._configurationNotificationCallbacks = []
         
         if operator is not None:
             self.name = operator.name
@@ -1738,6 +1752,7 @@ class OperatorWrapper(Operator):
       self._ensureOutputSize([],[], maxLen)
       self._connectInnerOutputs()
       self.setupOutputs()
+      
         
       for k,mslot in self.outputs.items():
         assert len(mslot) == len(self.innerOperators) == maxLen, "%d, %d" % (len(mslot), len(self.innerOperators))        
@@ -1747,7 +1762,10 @@ class OperatorWrapper(Operator):
         o._changed()
 
       self._connecting = False
-
+      
+      # Call anyone who wanted to be notified of configuration changes
+      for fn in self._configurationNotificationCallbacks:
+          fn()
     
     def _ensureOutputSize(self,slots,indexes,size,event = None):
         oldSize = len(self.innerOperators)
