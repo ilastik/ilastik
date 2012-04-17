@@ -174,6 +174,11 @@ class Slot(object):
         self.stype = stype(self) #instance of stype
         self._clones = []
 
+        self._callbacks_changed = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots meta dict was changed (i.e. shape change, dtype change etc.)
+        self._callbacks_dirty = dict() # callback dictionary (function : kw_arguments), the functions are called when the slot gets dirty
+        self._callbacks_connect = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots is connected
+        self._callbacks_disconnect = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots is disconnected
+
     @property
     def shape(self):
       return self.meta.shape
@@ -212,6 +217,77 @@ class Slot(object):
     def _dtype(self, value):
       old = self.meta.dtype
       self.meta.dtype = value
+
+
+
+    def notifyDirty(self, function, **kwargs):
+      """
+      calls the corresponding function when the slot gets dirty
+      first argument of the function is the slot, second argument the roi
+      the keyword arguments follow
+      """
+      self._callbacks_dirty[function] = kwargs
+
+    
+    def notifyMetaChanged(self, function, **kwargs):
+      """
+      calls the corresponding function when the slot meta information is changed
+      first argument of the function is the slot
+      the keyword arguments follow
+      """
+      self._callbacks_changed[function] = kwargs
+    
+    def notifyConnect(self, function, **kwargs):
+      """
+      calls the corresponding function when the slot is connected
+      first argument of the function is the slot
+      the keyword arguments follow
+      """
+      self._callbacks_connect[function] = kwargs
+    
+    def notifyDisconnect(self, function, **kwargs):
+      """
+      calls the corresponding function when the slot is disconnected
+      first argument of the function is the slot
+      the keyword arguments follow
+      """
+      self._callbacks_disconnect[function] = kwargs
+    
+    def unregisterDirty(self, function):
+      """
+      unregister a dirty callback
+      """
+      try:
+        self._callbacks_dirty.pop(function)
+      except KeyError:
+        pass
+    
+    def unregisterConnect(self, function):
+      """
+      unregister a connect callback
+      """
+      try:
+        self._callbacks_connect.pop(function)
+      except KeyError:
+        pass
+
+    def unregisterDisconnect(self, function):
+      """
+      unregister a disconnect callback
+      """
+      try:
+        self._callbacks_disconnect.pop(function)
+      except KeyError:
+        pass
+
+    def unregisterMetaChanged(self, function):
+      """
+      unregister a changed callback
+      """
+      try:
+        self._callbacks_changed.pop(function)
+      except KeyError:
+        pass
                            
     def __getitem__(self, key):
         if self.level > 0:
@@ -248,8 +324,16 @@ class Slot(object):
         except:
           pass
         if changed:
+          sekf._value = None
+          # call disconnectcallbacks
+          for f,kw in self._callbacks_disconnect.iteritems():
+            f(self, **kw)
           self._value = value
           self._changed()    
+
+          # call connect callbacks
+          for f,kw in self._callbacks_connect.iteritems():
+            f(self, **kw)
 
     def __call__(self, *args, **kwargs):
       """
@@ -308,8 +392,12 @@ class Slot(object):
             s= OutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional)
         return s
 
-    def notifyDisconnect(self, slot):
+    def onDisconnect(self, slot):
       pass
+
+
+
+
 
 class InputSlot(Slot):
     """
@@ -329,6 +417,11 @@ class InputSlot(Slot):
       if self.partner is not None:
         self.meta = self.partner.meta.copy()
       self._configureOperator(notify = notify)
+
+      # call changed callbacks
+      for f, kw in self._callbacks_changed.iteritems():
+        f(self, **kw)
+
       for c in self._clones:
         c._changed(notify)
 
@@ -338,7 +431,6 @@ class InputSlot(Slot):
         or other entitiy as input the the InputSlot instead
         of connecting it to a partner OutputSlot.
         """
-        assert self.partner == None or isinstance(self.partner, InputSlot), "InputSlot %s (%r): Cannot dot setValue, because it is connected !" %(self.name, self)
         changed = True
         try:
           if value == self._value:
@@ -347,8 +439,14 @@ class InputSlot(Slot):
           pass
         if changed:
           if self.stype.isCompatible(value):
+            # call disconnect callbacks
+            for f, kw in self._callbacks_disconnect.iteritems():
+              f(self,**kw)
             self._value = value
             self.stype.setupMetaForValue(value)
+            # call connect callbacks
+            for f, kw in self._callbacks_connect.iteritems():
+              f(self,**kw)
             self._changed()
 
     @property
@@ -414,6 +512,9 @@ class InputSlot(Slot):
             else:
               partner._registerClone(self)
             self.stype.connect(partner)
+            # call connect callbacks
+            for f, kw in self._callbacks_connect.iteritems():
+              f(self,**kw)
             if self.stype.isConfigured():
                 self._changed()
     
@@ -440,6 +541,10 @@ class InputSlot(Slot):
               self.partner._unregisterClone(self)
         self.partner = None
         self.meta = MetaDict()
+
+        # call callbacks
+        for f,kw in self._callbacks_disconnect.iteritems():
+          f(self, **kw)
         
     
             
@@ -455,6 +560,11 @@ class InputSlot(Slot):
                "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
         if self.connected():
           roi = self.rtype(self,*args,**kwargs)
+
+          # call callbacks
+          for f,kw in self._callbacks_dirty.iteritems():
+            f(self, roi, **kw)
+
           print "Input %r of %r is dirty" % (self.name, self.operator)
           self.operator.propagateDirty(self, roi)
           for c in self._clones:
@@ -528,6 +638,10 @@ class OutputSlot(Slot):
     def _changed(self):
       if self.meta._dirty:
         self.meta._dirty = False
+        # call changed callbacks
+        for f, kw in self._callbacks_changed.iteritems():
+          f(self, **kw)
+
         for p in self.partners:
           p._changed()
 
@@ -640,9 +754,15 @@ class MultiInputSlot(Slot):
         except:
           pass
         if changed:
+          # call disconnect callbacks
+          for f, kw in self._callbacks_disconnect.iteritems():
+            f(self,**kw)
           self._value = value
           for i,s in enumerate(self._subSlots):
               s.setValue(self._value)
+          # call connect callbacks
+          for f, kw in self._callbacks_connect.iteritems():
+            f(self,**kw)
           self._changed()    
     
     def setValues(self, values):
@@ -650,10 +770,16 @@ class MultiInputSlot(Slot):
         set values of subslots with arraylike object
         resizes the multinputslot with the length of the values array
         """
+        # call disconnect callbacks
+        for f, kw in self._callbacks_disconnect.iteritems():
+          f(self,**kw)
         changed = True
         self.resize(len(values))
         for i,s in enumerate(self._subSlots):
             s.setValue(values[i])
+        # call connect callbacks
+        for f, kw in self._callbacks_connect.iteritems():
+          f(self,**kw)
         self._changed()    
     
     def resize(self, size, notify = True, event = None):
@@ -777,6 +903,10 @@ class MultiInputSlot(Slot):
         self.meta = self.partner.meta.copy()
         if self.partner.level == self.level:
           self.resize(len(self.partner))
+      # call changed callbacks
+      for f, kw in self._callbacks_changed.iteritems():
+        f(self,**kw)
+
       self._configureOperator()
       for c in self._clones:
         c._changed()
@@ -816,6 +946,10 @@ class MultiInputSlot(Slot):
 
                 # call slot type connect function
                 self.stype.connect(partner)
+                
+                # call connect callbacks
+                for f, kw in self._callbacks_connect.iteritems():
+                  f(self,**kw)
                
                 self._changed()
                 
@@ -824,6 +958,9 @@ class MultiInputSlot(Slot):
                 self.meta = self.partner.meta.copy()
                 for i, slot in enumerate(self._subSlots):                
                     slot.connect(partner)
+                # call connect callbacks
+                for f, kw in self._callbacks_connect.iteritems():
+                  f(self,**kw)
                 self._changed()
 
             elif partner.level > self.level:
@@ -847,7 +984,11 @@ class MultiInputSlot(Slot):
               self.partner._unregisterClone(self)
             self._subSlots = []
             self.partner = None
-        self.operator.notifyDisconnect(self)
+        
+        # call disconnect callbacks
+        for f, kw in self._callbacks_disconnect.iteritems():
+          f(self,**kw)
+        self.operator.onDisconnect(self)
     
     def removeSlot(self, index, notify = True, event = None):
         slot = index
@@ -962,6 +1103,9 @@ class MultiOutputSlot(Slot):
     def _changed(self):
       if self.meta._dirty:
         self.meta._dirty = False
+        # call changed callbacks
+        for f, kw in self._callbacks_changed.iteritems():
+          f(self, **kw)
         for p in self.partners:
           p._changed()
 
@@ -1372,7 +1516,7 @@ class Operator(object):
         for os in self.outputs.values():
             os.setDirty(slice(None,None,None))
 
-    def notifyDisconnect(self, slot):
+    def onDisconnect(self, slot):
         pass
 
     def _notifyConnect(self, inputSlot):
@@ -1634,7 +1778,7 @@ class OperatorWrapper(Operator):
             for p in oslot.partners:
                 op.outputs[k]._connect(p)
     
-    def notifyDisconnect(self, slot):
+    def onDisconnect(self, slot):
        self._testRestoreOriginalOperator() 
                     
     def notifyDirty(self, slot, key):
