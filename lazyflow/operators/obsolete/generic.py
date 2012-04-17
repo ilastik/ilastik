@@ -307,7 +307,7 @@ class OpSingleChannelSelector(Operator):
         
         index=self.inputs["Index"].value
         #FIXME: check the axistags for a multichannel image
-        assert self.inputs["Input"].shape[-1]>index, "Requested channel out of Range"       
+        assert self.inputs["Input"].shape[-1] > index, ("Requested channel, %d, is out of Range" % index)   
         newKey = key[:-1]
         newKey += (slice(0,self.inputs["Input"].shape[-1],None),)        
         
