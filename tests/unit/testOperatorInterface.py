@@ -147,7 +147,36 @@ class TestOperator_setupOutputs(object):
     op1.Input1.setValue(1)
     assert op2._configured == True
   
+  def test_notifyConfigured(self):
+    # Check that clients can subscribe to be notified 
+    #  whenever an operator is fully connected and configured.
+    op1 = OpA(self.g)
+    op1.Input4.setValues([1])
+    op2 = OpA(self.g)
+    
+    # We need to share this variable with the closure's scope below,
+    #  so we have to wrap it in a class.
+    class CheckedFields(object):
+        def __init__(self):
+            self.receivedNotification = False
+    fields = CheckedFields()
+    
+    expectedX = 'x param'
+    expectedY = 'y param'
+    # Connect a callback
+    def handleConfiguredNotification(x, y):
+        assert x == expectedX
+        assert y == expectedY
+        fields.receivedNotification = True
+        
+    op2.notifyConfigured( handleConfiguredNotification, x=expectedX, y=expectedY )
 
+    op2.Input1.connect(op1.Output1)
+    op2.Input4.setValues([1])
+    
+    assert fields.receivedNotification == False
+    op1.Input1.setValue(1)
+    assert fields.receivedNotification == True      
 
 class TestOperator_meta(object):
 

@@ -1401,15 +1401,23 @@ class Operator(object):
         v._changed()
     
       # Call anyone who wanted to be notified of configuration changes
-      for fn in self._configurationNotificationCallbacks:
-          fn()
+      for fn, kwargs in self._configurationNotificationCallbacks:
+          fn(**kwargs)
 
-    def connectToConfigurationNotification(self, callbackFn):
+    def notifyConfigured(self, callbackFn, **kwargs):
         """
         Subscribe the provided callback function to configuration notifications.
         The callback will be called immediately after this operator's setupOutputs() function is called.
         """
-        self._configurationNotificationCallbacks.append(callbackFn)
+        self._configurationNotificationCallbacks.append( (callbackFn, kwargs) )
+        
+    def disconnectNotifyConfigured(self, callbackFn, **kwargs):
+        """
+        Unsubscribe the given callback from the "configured" callback list.
+        """
+        # A ValueError here is probably a real problem in the client code,
+        #  so we won't catch that exception.
+        self._configurationNotificationCallbacks.remove( (callbackFn, kwargs) )
     
     def setupOutputs(self):
       """
@@ -1527,7 +1535,6 @@ class OperatorWrapper(Operator):
         self.graph = operator.graph
         self._parent = operator._parent
         self._connecting = False
-        self._configurationNotificationCallbacks = []
         
         if operator is not None:
             self.name = operator.name
@@ -1544,6 +1551,9 @@ class OperatorWrapper(Operator):
             
             self._inputSlots = []
             self._outputSlots = []
+            
+            # replicate callbacks
+            self._configurationNotificationCallbacks = self.operator._configurationNotificationCallbacks
             
             # replicate input slot definitions
             for islot in self.operator.inputSlots:
@@ -1764,8 +1774,8 @@ class OperatorWrapper(Operator):
       self._connecting = False
       
       # Call anyone who wanted to be notified of configuration changes
-      for fn in self._configurationNotificationCallbacks:
-          fn()
+      for fn, kwargs in self._configurationNotificationCallbacks:
+          fn(**kwargs)
     
     def _ensureOutputSize(self,slots,indexes,size,event = None):
         oldSize = len(self.innerOperators)
