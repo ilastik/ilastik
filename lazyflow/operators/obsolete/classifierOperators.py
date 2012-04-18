@@ -91,7 +91,9 @@ class OpTrainRandomForestBlocked(Operator):
             self.outputs["Classifier"]._dtype = object
             self.outputs["Classifier"]._shape = (1,)
             self.outputs["Classifier"]._axistags  = "classifier"
-            self.outputs["Classifier"].setDirty((slice(0,1,None),))            
+            
+            # No need to set dirty here: notifyDirty handles it.
+            #self.outputs["Classifier"].setDirty((slice(0,1,None),))            
              
     
     def execute(self, slot, roi, result):
