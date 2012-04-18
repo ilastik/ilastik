@@ -916,7 +916,7 @@ class OpBlockedArrayCache(Operator):
         inputSlot = self.inputs["Input"]
         shape = inputSlot.meta.shape
         if shape != self.Output.meta.shape:
-          self.configured = False
+          self._configured = False
 
         if not self._configured:
             self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
