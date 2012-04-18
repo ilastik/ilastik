@@ -53,10 +53,11 @@ class PixelClassificationGui(QMainWindow):
         
         self.pipeline = pipeline
 
-        # Subscribe to pipeline data changes so we can update the GUI appropriately
+        # Subscribe to various pipeline events so we can respond appropriately in the GUI
         self.pipeline.inputDataChangedSignal.connect(self.handleGraphInputChanged)
         self.pipeline.featuresChangedSignal.connect(self.onFeaturesSelectionsChanged)
         self.pipeline.labelsChangedSignal.connect(self.handlePipelineLabelsChanged)
+        self.pipeline.pipelineConfiguredSignal.connect(self.setupPredicationLayers)
         
         # Editor will be initialized when data is loaded
         self.editor = None
@@ -72,10 +73,9 @@ class PixelClassificationGui(QMainWindow):
         self._colorTable16 = self._createDefault16ColorColorTable()
         
         self.g = graph if graph else Graph()
-        self.fixableOperators = []
+        self.fixableOperators = [self.pipeline.prediction_cache]
         
         self.featureDlg=None        
-        self.pipeline.inputDataChangedSignal.connect(self.handleGraphInputChanged)
         #The old ilastik provided the following scale names:
         #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
         #The corresponding scales are:
@@ -85,6 +85,9 @@ class PixelClassificationGui(QMainWindow):
         self.initAppletBarUic()
 
         self.initLabelGui()
+        
+        # Track 
+        self.predictionLayerGuiLabels = set()
         
         #if the filename was specified on command line, load it
         def loadFile():
@@ -270,6 +273,9 @@ class PixelClassificationGui(QMainWindow):
         self.paintBrushSizeIndex = 0
         self.eraserSizeIndex = 0
         
+        self._labelControlUi.checkInteractive.setEnabled(True)
+
+        
     def handleToolButtonClicked(self, checked, toolId):
         """
         Called when the user clicks any of the "tool" buttons in the label applet bar GUI.
@@ -454,7 +460,7 @@ class PixelClassificationGui(QMainWindow):
         """
         The user clicked the "Add Label" button.  Update the GUI and pipeline.
         """
-        labelnum = self.addNewLabel()
+        self.addNewLabel()
     
     def addNewLabel(self):
         """
@@ -482,9 +488,7 @@ class PixelClassificationGui(QMainWindow):
             print "Label added, changing predictions"
             #re-train the forest now that we have more labels
             if self.pipeline.maxLabel < nlabels:
-                self.pipeline.maxLabel = nlabels
-
-        self.addPredictionLayer(nlabels-1, self._labelControlUi.labelListModel._labels[nlabels-1])
+                self.pipeline.setMaxLabel( nlabels )
         
         return nlabels
     
@@ -501,7 +505,7 @@ class PixelClassificationGui(QMainWindow):
             print "Label removed, changing predictions"
             #re-train the forest now that we have fewer labels
             if self.pipeline.maxLabel > numRows:
-                self.pipeline.maxLabel = numRows
+                self.pipeline.setMaxLabel( numRows )
 
     def onLabelAboutToBeRemoved(self, parent, start, end):
         #the user deleted a label, reshape prediction and remove the layer
@@ -521,12 +525,28 @@ class PixelClassificationGui(QMainWindow):
             self.pipeline.labels.inputs["deleteLabel"].setValue(il+1)
             self.editor.scheduleSlicesRedraw()
             
-    def setupPredicationLayers(self):
+    def setupPredicationLayers(self): #, cacheIsConfigured):
+        """
+        Add all prediction label layers to the volume editor
+        """
+        # Can't do anything if the cache isn't configured yet
+#        if not cacheIsConfigured:
+#            return
+
+        newGuiLabels = set()        
         nclasses = self._labelControlUi.labelListModel.rowCount()
-        #add prediction results for all classes as separate channels
+        # Add prediction results for all classes as separate channels
         for icl in range(nclasses):
-            self.addPredictionLayer(icl, self._labelControlUi.labelListModel._labels[icl])
-        self._labelControlUi.checkInteractive.setEnabled(True)
+            layerGuiLabel = self._labelControlUi.labelListModel._labels[icl]            
+            newGuiLabels.add(layerGuiLabel)
+            # Only add this prediction layer if it isn't already shown in the viewer
+            if layerGuiLabel not in self.predictionLayerGuiLabels:
+                self.addPredictionLayer(icl, layerGuiLabel)
+
+        # Eliminate any old layers that we don't want any more
+        for oldGuiLabel in (self.predictionLayerGuiLabels - newGuiLabels): #<-- set difference
+            self.removePredictionLayer(oldGuiLabel)
+        self.predictionLayerGuiLabels = newGuiLabels
     
     def onTrainAndPredictButtonClicked(self):
         """
@@ -569,12 +589,14 @@ class PixelClassificationGui(QMainWindow):
         onPredictionComplete(predictionResults)
     
     def addPredictionLayer(self, icl, ref_label):
-        
+        """
+        Add a prediction layer to the editor.
+        """
         selector=OpSingleChannelSelector(self.g)
         selector.inputs["Input"].connect(self.pipeline.prediction_cache.outputs['Output'])
         selector.inputs["Index"].setValue(icl)
-                
-        self.pipeline.prediction_cache.inputs["fixAtCurrent"].setValue(not self._labelControlUi.checkInteractive.isChecked())
+        
+##      self.pipeline.prediction_cache.inputs["fixAtCurrent"].setValue(not self._labelControlUi.checkInteractive.isChecked())
         
         predictsrc = LazyflowSource(selector.outputs["Output"][0])
         def srcName(newName):
@@ -595,10 +617,11 @@ class PixelClassificationGui(QMainWindow):
         setLayerName(ref_label.name)
         ref_label.nameChanged.connect(setLayerName)
         
+        # Attach a new field to identify this layer so we can find it later
         predictLayer.ref_object = ref_label
+
         #make sure that labels (index = 0) stay on top!
         self.layerstack.insert(1, predictLayer )
-        self.fixableOperators.append(self.pipeline.prediction_cache)
                
     def removePredictionLayer(self, ref_label):
         for il, layer in enumerate(self.layerstack):
@@ -709,8 +732,7 @@ class PixelClassificationGui(QMainWindow):
         # The input data layer should always be on the bottom of the stack (last)
         #  so we can always see the labels and predictions.
         self.layerstack.insert(len(self.layerstack), layer1)
- 
-        self.startClassification()
+
         self.initEditor(newInputProvider)
         
     def removeLayersFromEditorStack(self, layerName):
@@ -840,9 +862,14 @@ class PixelClassificationPipeline( object ):
 
     def __init__( self, pipelineGraph ):
         self._graph = pipelineGraph
-        self.inputDataChangedSignal = SimpleSignal()
-        self.featuresChangedSignal = SimpleSignal()
-        self.labelsChangedSignal = SimpleSignal()
+        
+        ## Signals (non-qt) ##
+        self.inputDataChangedSignal = SimpleSignal()     # Input data loaded/changed
+        self.featuresChangedSignal = SimpleSignal()      # New/changed feature selections
+        self.labelsChangedSignal = SimpleSignal()        # New/changed label data
+        self.pipelineConfiguredSignal = SimpleSignal()   # Pipeline is fully configured (all inputs are connected and have data)
+        self.predictionMetaChangeSignal = SimpleSignal() # The prediction cache has changed its shape (or dtype).
+                                                         #  The prediction cache's output configuration status is passed as the parameter.
                 
         #The old ilastik provided the following scale names:
         #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
@@ -859,7 +886,8 @@ class PixelClassificationPipeline( object ):
 
         self.features.inputs["Input"].connect(self.images.outputs["Outputs"])
         self.features.inputs["Scales"].setValue( feature_scales )        
-
+        print self.features.inputs["Scales"]
+        assert self.features.Scales.configured() , " features.Scales not configured because _value=%r, meta.shape = %r" % (self.features.Scales._value,self.features.Scales.meta.shape )
         self.features_cache.inputs["Input"].connect(self.features.outputs["Output"])
         self.features_cache.inputs["innerBlockShape"].setValue((1,32,32,32,16))
         self.features_cache.inputs["outerBlockShape"].setValue((1,128,128,128,64))
@@ -889,7 +917,8 @@ class PixelClassificationPipeline( object ):
         train.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
         train.inputs['Images'].connect(self.features_cache.outputs["Output"])
         train.inputs["nonzeroLabelBlocks"].connect(opMultiLblocks.outputs["Outputs"])
-        train.inputs['fixClassifier'].setValue(False)                
+        train.inputs['fixClassifier'].setValue(False)
+        self.train = train
 
         self.classifier_cache = OpArrayCache( self.graph )
         self.classifier_cache.inputs["Input"].connect(train.outputs['Classifier'])
@@ -903,12 +932,22 @@ class PixelClassificationPipeline( object ):
         self.predict.inputs['Image'].connect(self.features.outputs["Output"])
 
         pCache = OpSlicedBlockedArrayCache( self.graph )
+        pCache.name = "PredictionCache"
         pCache.inputs["fixAtCurrent"].setValue(True)
         pCache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
         pCache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
         pCache.inputs["Input"].connect(self.predict.outputs["PMaps"])
         self.prediction_cache = pCache
 
+        # The prediction cache is the final stage our pipeline.
+        # When it is configured, signal that the whole pipeline is configured
+        self.prediction_cache.notifyConfigured( self.pipelineConfiguredSignal.emit )
+        
+        def emitPredictionMetaChangeSignal():
+            """Closure to emit the prediction meta changed signal with the correct parameter."""
+            self.predictionMetaChangeSignal.emit( self.prediction_cache.outputs["Output"].configured() )
+#        self.prediction_cache.outputs["Output"].notifyMetaChanged(emitPredictionMetaChangeSignal)
+        self.prediction_cache.notifyConfigured(self.pipelineConfiguredSignal.emit)
     @property
     def featureBoolMatrix(self):
         return self.features.inputs['Matrix'].value
@@ -957,20 +996,13 @@ class PixelClassificationPipeline( object ):
         """
         return self.predict.inputs['LabelsCount'].value
 
-    @maxLabel.setter
-    def maxLabel(self, highestLabel):
+    def setMaxLabel(self, highestLabel):
         """
         Change the maximum number of label classes the prediction operator can handle.
         """
         # Count == highest label because 0 isn't a valid label
         self.predict.inputs['LabelsCount'].setValue(highestLabel)
-        
-    def connectToConfigurationNotification(self, callbackFn):
-        """
-        Register the given callback to be notified when pipeline configuration is complete (or changed).
-        """
-        self.prediction_cache.connectToConfigurationNotifications(callbackFn)
-    
+            
 class PixelClassificationSerializer(object):
     """
     Encapsulate the serialization scheme for pixel classification workflow parameters and datasets.
