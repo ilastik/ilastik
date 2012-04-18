@@ -641,6 +641,7 @@ class MultiInputSlot(Slot):
           pass
         if changed:
           self._value = value
+          self.stype.setupMetaForValue(value)
           for i,s in enumerate(self._subSlots):
               s.setValue(self._value)
           self._changed()    
