@@ -1823,6 +1823,7 @@ class OperatorWrapper(Operator):
     def _createInnerOperator(self):
         if self.operator.__class__ is not OperatorWrapper:
             opcopy = self.operator.__class__(parent = self)
+            opcopy.name = self.operator.name
         else:
             if lazyflow.verboseWrapping:
                 print "_createInnerOperator OperatorWrapper"
