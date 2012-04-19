@@ -3,8 +3,8 @@ from PyQt4.QtGui import QLabel, QApplication
 from utility.simpleSignal import SimpleSignal
 
 class Applet( object ):
-    def __init__( self ):
-        self.name = None
+    def __init__( self, name ):
+        self.name = name
 
         # Status signal.
         # Shell uses it for the status bar.
@@ -77,14 +77,14 @@ class Applet( object ):
         """
         pass
           
-    def setVolumeEditor(self, editor):
-        """
-        Accept the provided volume editor object for display within the applet's central widget (if any).
-        Applets may share volume editors.
-        The volume editor is instantiated externally by the workflow manager, and passed to the applet via this function.
-        Applets may add and remove layers to the editor via the editor's layerstack member.
-        """
-        pass
+#    def setVolumeEditor(self, editor):
+#        """
+#        Accept the provided volume editor object for display within the applet's central widget (if any).
+#        Applets may share volume editors.
+#        The volume editor is instantiated externally by the workflow manager, and passed to the applet via this function.
+#        Applets may add and remove layers to the editor via the editor's layerstack member.
+#        """
+#        pass
 
 def run_applet( applet_type, *args, **kwargs):
     '''Run applet standalone.'''

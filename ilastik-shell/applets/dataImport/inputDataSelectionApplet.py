@@ -201,12 +201,9 @@ class InputDataSelectionApplet( Applet ):
     Implements the pixel classification "applet", which allows the ilastik shell to use it.
     """
     def __init__( self ):
-        # (No need to call the base class constructor here.)
-        # Applet.__init__( self )
+        Applet.__init__( self, "Input Data Selection" )
         
         self._projectInfo = ProjectInfo()
-
-        self.name = "Input Data Selection"
         self._centralWidget = InputDataSelectionGui(self._projectInfo)
 
         # No menu items for this applet, just give an empty menu

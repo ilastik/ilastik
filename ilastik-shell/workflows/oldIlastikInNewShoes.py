@@ -9,20 +9,24 @@ from ilastikshell.ilastikShell import IlastikShell
 from applets.pixelClassification import PixelClassificationApplet
 from applets.dataImport import InputDataSelectionApplet
 
+from lazyflow.graph import Graph
+
 app = QApplication([])
 
 # Splash Screen
 splashImage = QPixmap("ilastik-splash.png")
 splashScreen = QSplashScreen(splashImage)
 splashScreen.show()
-splashScreen = QSplashScreen(splashImage)
-splashScreen.show()
+
 inputDataSelectionApplet = InputDataSelectionApplet()
-pc = PixelClassificationApplet()
+
+# Create a graph to be shared among all the applets
+graph = Graph()
+pcApplet = PixelClassificationApplet(graph)
 
 shell = IlastikShell()
 shell.addApplet(inputDataSelectionApplet)
-shell.addApplet(pc)
+shell.addApplet(pcApplet)
 shell.show()
 
 # Hide the splash screen

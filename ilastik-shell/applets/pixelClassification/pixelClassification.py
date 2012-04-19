@@ -20,7 +20,7 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
                                OpH5ReaderBigDataset, OpSlicedBlockedArrayCache, OpPixelFeaturesPresmoothed
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
-    AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
+                         AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
 from volumina.adaptors import Op5ifyer
 from labelListView import Label
 from labelListModel import LabelListModel
@@ -1168,15 +1168,12 @@ class PixelClassificationApplet( Applet ):
     """
     Implements the pixel classification "applet", which allows the ilastik shell to use it.
     """
-    def __init__( self, pipeline = None, graph = None ):
-        # (No need to call the base class constructor here.)
-        # Applet.__init__( self, "Pixel Classification" )
+    def __init__( self, graph ):
+        Applet.__init__( self, "Pixel Classification" )
+        pipeline = PixelClassificationPipeline( graph )
 
-        self.name = "Pixel Classification"
-        self.graph = graph if graph else Graph()
-        self.pipeline = pipeline if pipeline else PixelClassificationPipeline( self.graph )
-
-        self._centralWidget = PixelClassificationGui( self.pipeline, self.graph )
+        # Instantiate the main GUI, which creates the applet drawers (for now)
+        self._centralWidget = PixelClassificationGui( pipeline, graph )
 
         # To save some typing, the menu bar is defined in the .ui file 
         #  along with the rest of the central widget.
@@ -1191,8 +1188,8 @@ class PixelClassificationApplet( Applet ):
         
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.
-        self._serializableItems = [PixelClassificationSerializer(self.pipeline), # Default serializer for new projects
-                                   Ilastik05ImportDeserializer(self.pipeline)]   # Legacy (v0.5) importer
+        self._serializableItems = [PixelClassificationSerializer(pipeline), # Default serializer for new projects
+                                   Ilastik05ImportDeserializer(pipeline)]   # Legacy (v0.5) importer
     
     @property
     def centralWidget( self ):
