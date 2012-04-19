@@ -1,6 +1,6 @@
 import numpy
 
-from lazyflow.graph import Operators, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 from lazyflow.roi import sliceToRoi, roiToSlice, block_view
 from Queue import Empty
 from collections import deque

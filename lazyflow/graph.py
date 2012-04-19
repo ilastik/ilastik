@@ -59,25 +59,11 @@ from lazyflow.stype import ArrayLike
 from lazyflow import stype
 
 
-
-
-class Operators(object):
-    
-    operators = {}
-    
-    @classmethod
-    def register(cls, opcls):
-        cls.operators[opcls.__name__] = opcls
-        print "registered operator %s (%s)" % (opcls.name, opcls.__name__)
-
-    @classmethod
-    def registerOperatorSubclasses(cls):
-        for o in itersubclasses(Operator):
-            cls.register(o)
-        cls.operators.pop("OperatorWrapper")
-        #+cls.operators.pop("Operator")
-
 class MetaDict(dict):
+  """
+  Helper class that manages the dirty state of the meta data of a slot.
+  changing a meta dicts attributes sets it _dirty flag True.
+  """
   def __init__(self, other=False):
     if(other):
       dict.__init__(self,other)
@@ -93,6 +79,9 @@ class MetaDict(dict):
       self.axistags = None
 
   def __setattr__(self,name,value):
+    """
+    Provide convenient acces to the metadict, allows using the . notation instead of [] access
+    """
     if self.has_key(name):
       changed = True
       try:
@@ -106,15 +95,21 @@ class MetaDict(dict):
     return value
 
   def __getattr__(self,name):
+    """
+    Provide convenient acces to the metadict, allows using the . notation instead of [] access
+    """
     return self[name]
 
   def copy(self):
+    """
+    Construct a copy of the meta dict
+    """
     return MetaDict(dict.copy(self))
 
 
 class ValueRequest(object):
   """
-  Pseudo request that behaves like a Request.Request object
+  Pseudo request that behaves like a request.Request object
 
   this object is used to prevent the heavy construction of complete Request
   objects in simple cases where they are not needed.
@@ -146,78 +141,55 @@ class ValueRequest(object):
 
 
 class Slot(object):
-    """Common methods of all slot types."""
+    """
+    Base class for InputSlot, OutputSlot, MultiInputSlot and MultiOutputSlot
+    """
 
     @property
     def graph(self):
         return self.operator.graph
                         
     def __init__( self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
-        #if self.__class__ == Slot: # make Slot constructor "private"
-            #raise Exception("Slot can't be constructed directly; use one of the derived slot types")
+        """
+        Constructor of the Slot class.
+
+        Arguments:
+          name      : user readable name of the slot, is normally assigned automatically by the Operator
+          operator  : the parent operator of a slot
+          stype     : the slot type (see stype.py)
+          rtype     : the region of interest type (see rtype.py)
+          value     : the default value of the slot
+          optional  : if True this means the slot needs a value or connection for its parent operator to be functional
+          level     : defines the dimensionality of the slot, 0 = single element (e.g. single numpy.ndarray), 1 = list of elements (e.g. list of strings), 2 = list of list of elements 
+        """
         if not hasattr(self, "_type"):
           self._type = None
         if type(stype) == str:
           stype = ArrayLike
-        self.name = name
-        self._optional = optional
-        self.name = name
-        self.operator = operator
-        self.partner = None
-        self.level = level
-        self._value = None
-        self._defaultValue = value
-        self.rtype = rtype
-        self.meta = MetaDict()
-        self._subSlots = []
-        self._stypeType = stype #class of stype
-        self.stype = stype(self) #instance of stype
-        self._clones = []
+        self.name = name              # a user readable name for the slot
+        self._optional = optional     # defines wether the slot needs a connection or value for a functional operator
+        self.operator = operator      # the parent operator of the slot
+        self.partner = None           # in the case of an InputSlot or MultiInputSlot this is the slot to wich it is connected
+        self.level = level            # defines the dimensionality of the slot, 0 = single element (e.g. single numpy.ndarray), 1 = list of elements (e.g. list of strings), 2 = list of list of elements
+        self._value = None            # in the case of an InputSlot or MultiInputSlot one can directly assign a value to a slot instead of connecting it to a partner, this attribute holds the value
+        self._defaultValue = value    # a InputSlot or MultiInputSlot can 
+        self.rtype = rtype            # the region of interest type of the slot ( rtype.py)
+        self.meta = MetaDict()        # the MetaDict that holds the slots meta information
+        self._subSlots = []           # in the case of an MultiInputSlot or MultiOutputSlot this holds the sub-Input/Output slots 
+        self._stypeType = stype       # the slot type class
+        self.stype = stype(self)      # the slot type instance
+        self._clones = []             # this holds a list of clone slots, which occur on InputSlot - InputSlot connections
 
-        self._callbacks_changed = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots meta dict was changed (i.e. shape change, dtype change etc.)
-        self._callbacks_dirty = dict() # callback dictionary (function : kw_arguments), the functions are called when the slot gets dirty
-        self._callbacks_connect = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots is connected
+        self._callbacks_changed = dict()    # callback dictionary (function : kw_arguments), the functions are called when the slots meta dict was changed (i.e. shape change, dtype change etc.)
+        self._callbacks_dirty = dict()      # callback dictionary (function : kw_arguments), the functions are called when the slot gets dirty
+        self._callbacks_connect = dict()    # callback dictionary (function : kw_arguments), the functions are called when the slots is connected
         self._callbacks_disconnect = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots is disconnected
 
-    @property
-    def shape(self):
-      return self.meta.shape
-
-    @property
-    def dtype(self):
-      return self.meta.dtype
-
-    @property
-    def axistags(self):
-      return self.meta.axistags
-
-    @property
-    def _shape(self):
-        return self.meta.shape
-        
-    @_shape.setter
-    def _shape(self,value):
-      old = self.meta.shape
-      self.meta.shape = value
-
-    @property
-    def _axistags(self):
-      return self.meta.axistags
-        
-    @_axistags.setter
-    def _axistags(self, value):
-      old = self.meta.axistags
-      self.meta.axistags = value
-
-    @property
-    def _dtype(self):
-      return self.meta.dtype
-
-    @_dtype.setter
-    def _dtype(self, value):
-      old = self.meta.dtype
-      self.meta.dtype = value
-
+    #
+    #
+    #  A p i    M e t h o d s
+    #
+    #
 
 
     def notifyDirty(self, function, **kwargs):
@@ -288,8 +260,38 @@ class Slot(object):
         self._callbacks_changed.pop(function)
       except KeyError:
         pass
+    
+    def get( self, roi, destination = None ):
+      """
+      This method is used to retrieve the actual content of a Slot.
+
+      Arguments:
+        roi         : the region of interest, e.g. a subregion in the case of an ArrayLike stype
+        destination : this may define a destination area for the request, for example a ndarray into which the results should be written in the case of an ArrayLike stype
+
+      Returns:
+        a request.Request object.
+      """
+      if self._value is not None:
+        # this handles the case of an inputslot
+        # having a ._value
+        # --> construct cheaper request object for this case
+        result = self.stype.writeIntoDestination(destination, self._value, roi)
+        return ValueRequest(result)
+      elif self.partner is not None:
+        # this handles the case of an inputslot
+        # --> just relay the request
+        return self.partner.get(roi, destination)
+      else:
+        # normal case
+        # --> construct heavy request object..
+        return Request(self._requestFunctionWrapper,roi = roi,destination = destination)        
+
                            
     def __getitem__(self, key):
+        """
+        This method provied access to the subslots of a MultiSlot.
+        """
         if self.level > 0:
             return self._subSlots[key]
         else:
@@ -298,6 +300,9 @@ class Slot(object):
 
 
     def __setitem__(self, key, value):
+        """
+        This method provied access to the subslots of a MultiSlot.
+        """
         slot = self._subSlots[key]
         if slot != value:
             slot.disconnect()
@@ -309,14 +314,29 @@ class Slot(object):
                 newslot._connect(p)
         
     def __len__(self):
+        """
+        In the case of a MultiSlot this returns the number of subslots, i.e. the length of the list
+        """
         return len(self._subSlots)
     
  
     @property
     def value(self):
+        """
+        This method directly returns the full content of a slot.
+        Is mainly used when region of interest specification make no sense, e.g. in the case of
+        slots which hold a single integer or float value
+        """
         return self._value
 
     def setValue(self, value):
+        """
+        This method can be used to directly assign a value to an InputSlot or MultiInputSlot.
+
+        Usually a slot is either connected to another slot from which it retrieves
+        the content when it is queried, or it directly holds a value itself.
+        This method can be used to set such a value.
+        """
         changed = True
         try:
           if value == self._value:
@@ -337,8 +357,6 @@ class Slot(object):
 
     def __call__(self, *args, **kwargs):
       """
-      new API
-
       the slot relays all arguments to the __init__ method
       of the Roi type. this allows lazyflow to support different
       types of rois without knowing anything about them.
@@ -346,27 +364,18 @@ class Slot(object):
       roi = self.rtype(self,*args, **kwargs)
       return self.get( roi )
 
+
+
+    #
+    #
+    #  P r i v a t e  M e t h o d s
+    #
+
     def _requestFunctionWrapper(self, roi, destination):
       if destination is None:
         destination = self.stype.allocateDestination(roi)
       tres = self.operator.execute(self, roi, destination)
       return destination
-
-    def get( self, roi, destination = None ):
-      if self._value is not None:
-        # this handles the case of an inputslot
-        # having a ._value
-        # --> construct cheaper request object for this case
-        result = self.stype.writeIntoDestination(destination, self._value, roi)
-        return ValueRequest(result)
-      elif self.partner is not None:
-        # this handles the case of an inputslot
-        # --> just relay the request
-        return self.partner.get(roi, destination)
-      else:
-        # normal case
-        # --> construct heavy request object..
-        return Request(self._requestFunctionWrapper,roi = roi,destination = destination)        
 
 
     def _registerClone(self, slot):
@@ -377,7 +386,12 @@ class Slot(object):
       if slot in self._clones:
         self._clones.remove(slot)
 
-    def getInstance(self, operator, level = None):
+    def _getInstance(self, operator, level = None):
+        """
+        This method constructs a copy of the slot
+        this method is used when creating an Instance of an Operator.
+        All defined Input and Output slots of the Class are cloned and inserted into the instance of the Operator. 
+        """
         if level is None:
           level = self.level
         if self._type == "input":
@@ -394,6 +408,50 @@ class Slot(object):
 
     def onDisconnect(self, slot):
       pass
+
+    #
+    #  
+    #  B a c k w a r d s   c o m p a t a b i l i t y
+    #
+
+    @property
+    def shape(self):
+      return self.meta.shape
+
+    @property
+    def dtype(self):
+      return self.meta.dtype
+
+    @property
+    def axistags(self):
+      return self.meta.axistags
+
+    @property
+    def _shape(self):
+        return self.meta.shape
+        
+    @_shape.setter
+    def _shape(self,value):
+      old = self.meta.shape
+      self.meta.shape = value
+
+    @property
+    def _axistags(self):
+      return self.meta.axistags
+        
+    @_axistags.setter
+    def _axistags(self, value):
+      old = self.meta.axistags
+      self.meta.axistags = value
+
+    @property
+    def _dtype(self):
+      return self.meta.dtype
+
+    @_dtype.setter
+    def _dtype(self, value):
+      old = self.meta.dtype
+      self.meta.dtype = value
 
 
 
@@ -1405,7 +1463,7 @@ class Operator(object):
         # defined for the operator for the instance
         for i in self.inputSlots:
             if not self.inputs.has_key(i.name):
-              ii = i.getInstance(self)
+              ii = i._getInstance(self)
               ii.connect(i.partner)
               self.inputs[i.name] = ii
 
@@ -1416,7 +1474,7 @@ class Operator(object):
         # defined for the operator for the instance 
         for o in self.outputSlots:
             if not self.outputs.has_key(o.name):
-              oo = o.getInstance(self)
+              oo = o._getInstance(self)
               self.outputs[o.name] = oo         
 
         for k,v in self.outputs.items():
@@ -1703,18 +1761,18 @@ class OperatorWrapper(Operator):
             # replicate input slot definitions
             for islot in self.operator.inputSlots:
                 level = islot.level + 1
-                self._inputSlots.append(islot.getInstance(self,level = level))
+                self._inputSlots.append(islot._getInstance(self,level = level))
     
             # replicate output slot definitions
             for oslot in self.outputSlots:
                 level = oslot.level + 1
-                self._outputSlots.append(oslot.getInstance(self, level = level))
+                self._outputSlots.append(oslot._getInstance(self, level = level))
     
                     
             # replicate input slots for the instance
             for islot in self.operator.inputs.values():
                 level = islot.level + 1
-                ii = islot.getInstance(self,level)
+                ii = islot._getInstance(self,level)
                 self.inputs[islot.name] = ii
                 setattr(self,islot.name,ii)
                 op = self.operator
@@ -1726,7 +1784,7 @@ class OperatorWrapper(Operator):
             # replicate output slots for the instance
             for oslot in self.operator.outputs.values():
                 level = oslot.level + 1
-                oo = oslot.getInstance(self,level)
+                oo = oslot._getInstance(self,level)
                 self.outputs[oslot.name] = oo
                 setattr(self,oslot.name,oo)
                 op = self.operator
