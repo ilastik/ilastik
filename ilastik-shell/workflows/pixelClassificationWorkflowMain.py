@@ -14,7 +14,7 @@ from lazyflow.graph import Graph
 app = QApplication([])
 
 # Splash Screen
-splashImage = QPixmap("ilastik-splash.png")
+splashImage = QPixmap("../ilastik-splash.png")
 splashScreen = QSplashScreen(splashImage)
 splashScreen.show()
 
