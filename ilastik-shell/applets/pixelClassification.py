@@ -57,7 +57,7 @@ class PixelClassificationGui(QMainWindow):
         self.pipeline.inputDataChangedSignal.connect(self.handleGraphInputChanged)
         self.pipeline.featuresChangedSignal.connect(self.onFeaturesSelectionsChanged)
         self.pipeline.labelsChangedSignal.connect(self.handlePipelineLabelsChanged)
-        self.pipeline.pipelineConfiguredSignal.connect(self.setupPredicationLayers)
+        self.pipeline.predictionMetaChangeSignal.connect(self.setupPredicationLayers)
         
         # Editor will be initialized when data is loaded
         self.editor = None
@@ -525,13 +525,13 @@ class PixelClassificationGui(QMainWindow):
             self.pipeline.labels.inputs["deleteLabel"].setValue(il+1)
             self.editor.scheduleSlicesRedraw()
             
-    def setupPredicationLayers(self): #, cacheIsConfigured):
+    def setupPredicationLayers(self, cacheIsConfigured):
         """
         Add all prediction label layers to the volume editor
         """
         # Can't do anything if the cache isn't configured yet
-#        if not cacheIsConfigured:
-#            return
+        if not cacheIsConfigured:
+            return
 
         newGuiLabels = set()        
         nclasses = self._labelControlUi.labelListModel.rowCount()
@@ -941,13 +941,12 @@ class PixelClassificationPipeline( object ):
 
         # The prediction cache is the final stage our pipeline.
         # When it is configured, signal that the whole pipeline is configured
-        self.prediction_cache.notifyConfigured( self.pipelineConfiguredSignal.emit )
+        #self.prediction_cache.notifyConfigured( self.pipelineConfiguredSignal.emit )
         
-        def emitPredictionMetaChangeSignal():
+        def emitPredictionMetaChangeSignal(slot):
             """Closure to emit the prediction meta changed signal with the correct parameter."""
-            self.predictionMetaChangeSignal.emit( self.prediction_cache.outputs["Output"].configured() )
-#        self.prediction_cache.outputs["Output"].notifyMetaChanged(emitPredictionMetaChangeSignal)
-        self.prediction_cache.notifyConfigured(self.pipelineConfiguredSignal.emit)
+            self.predictionMetaChangeSignal.emit( self.prediction_cache.configured() )
+        self.prediction_cache.outputs["Output"][0].notifyMetaChanged(emitPredictionMetaChangeSignal)
     @property
     def featureBoolMatrix(self):
         return self.features.inputs['Matrix'].value
