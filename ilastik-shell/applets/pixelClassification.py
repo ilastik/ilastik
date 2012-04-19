@@ -516,13 +516,20 @@ class PixelClassificationGui(QMainWindow):
         print "removing", nout, "out of ", ncurrent
         
         if self.pipeline is not None:
-            self.pipeline.predict.inputs['LabelsCount'].setValue(ncurrent-nout)
+            self.pipeline.setMaxLabel(ncurrent-nout)
         for il in range(start, end+1):
             labelvalue = self._labelControlUi.labelListModel._labels[il]
             self.removePredictionLayer(labelvalue)
-            
-            # Is it okay to delete labels that don't exist?  Hopefully so...
+
+            # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
+            #  to search through the entire list of labels and delete the entries for the matching label.
             self.pipeline.labels.inputs["deleteLabel"].setValue(il+1)
+            
+            # We need to "reset" the deleteLabel input to -1 when we're finished.
+            #  Otherwise, you can never delete the same label twice in a row.
+            #  (Only *changes* to the input are acted upon.)
+            self.pipeline.labels.inputs["deleteLabel"].setValue(-1)
+
             self.editor.scheduleSlicesRedraw()
             
     def setupPredicationLayers(self, cacheIsConfigured):
@@ -576,17 +583,15 @@ class PixelClassificationGui(QMainWindow):
             self._predictionControlUi.trainAndPredictButton.setEnabled(True)
             
             # Re-fix the operators now that the computation is complete.
-           # for o in self.fixableOperators:
-           #     o.inputs["fixAtCurrent"].setValue(True)
+            for o in self.fixableOperators:
+                o.inputs["fixAtCurrent"].setValue(True)
 
             # Redraw the image in the GUI
             self.editor.scheduleSlicesRedraw()
 
         # Request the prediction for the entire image stack.
         # Call our callback when it's finished
-#        self.pipeline.prediction_cache.outputs['Output'][0][:].notify( onPredictionComplete )
-        predictionResults = self.pipeline.prediction_cache.outputs['Output'][0][:].wait()
-        onPredictionComplete(predictionResults)
+        self.pipeline.prediction_cache.outputs['Output'][0][:].notify( onPredictionComplete )
     
     def addPredictionLayer(self, icl, ref_label):
         """
