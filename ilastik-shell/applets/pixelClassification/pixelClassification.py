@@ -32,8 +32,8 @@ from ilastikshell.applet import Applet
 
 import vigra
 
-from dataImporter import DataImporter
-from simpleSignal import SimpleSignal
+from utility.dataImporter import DataImporter
+from utility.simpleSignal import SimpleSignal
 
 class Tool():
     Navigation = 0
@@ -300,7 +300,7 @@ class PixelClassificationGui(QMainWindow):
         #  so locate the .ui file relative to this .py file's path
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
-        self._featureSelectionUi = uic.loadUi(p+"/featureSelectionControls.ui") # Don't pass self: applet ui is separate from the main ui
+        self._featureSelectionUi = uic.loadUi(p+"../featureSelection/featureSelectionControls.ui") # Don't pass self: applet ui is separate from the main ui
         self._featureSelectionUi.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
 
     @property
@@ -1193,6 +1193,22 @@ class PixelClassificationApplet( Applet ):
         #  one for the current scheme and one for importing old projects.
         self._serializableItems = [PixelClassificationSerializer(self.pipeline), # Default serializer for new projects
                                    Ilastik05ImportDeserializer(self.pipeline)]   # Legacy (v0.5) importer
+    
+    @property
+    def centralWidget( self ):
+        return self._centralWidget
+
+    @property
+    def appletDrawers(self):
+        return self._controlWidgets
+    
+    @property
+    def menuWidget( self ):
+        return self._menuWidget
+
+    @property
+    def dataSerializers(self):
+        return self._serializableItems
 
 #
 # Test

@@ -1,5 +1,7 @@
 from PyQt4.QtGui import QLabel, QApplication
 
+from utility.simpleSignal import SimpleSignal
+
 class Applet( object ):
     def __init__( self ):
         self.name = None

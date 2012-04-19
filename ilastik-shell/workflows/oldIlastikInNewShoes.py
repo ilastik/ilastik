@@ -7,7 +7,7 @@ from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 from ilastikshell.ilastikShell import IlastikShell
 
 from applets.pixelClassification import PixelClassificationApplet
-from applets.inputDataSelectionApplet import InputDataSelectionApplet
+from applets.dataImport import InputDataSelectionApplet
 
 app = QApplication([])
 

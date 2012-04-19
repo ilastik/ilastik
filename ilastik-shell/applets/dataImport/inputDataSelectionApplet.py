@@ -1,4 +1,5 @@
 from ilastikshell.applet import Applet
+import utility
 
 from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject
 from PyQt4.QtGui import *
@@ -6,7 +7,7 @@ from PyQt4.QtGui import *
 from PyQt4 import uic
 import os
 
-from simpleSignal import SimpleSignal
+from utility.simpleSignal import SimpleSignal
 
 class DataSetInfo(object):
     """
@@ -95,20 +96,13 @@ class InputDataSelectionGui( QWidget ):
         
         self.initMainUi()
         self.initAppletBarUi()
-        
-    def getPathToLocalDirectory(self):
-        # Determines the path of this python file so we can refer to other files relative to it.
-        p = os.path.split(__file__)[0]+'/'
-        if p == "/":
-            p = "."+p
-        return p
-    
+            
     def initMainUi(self):
-        p = self.getPathToLocalDirectory()
+        p = utility.getPathToLocalDirectory(__file__)
         uic.loadUi(p+"/inputDataSelection.ui", self)
         
     def initAppletBarUi(self):
-        p = self.getPathToLocalDirectory()
+        p = utility.getPathToLocalDirectory(__file__)
         self._appletBarUi = uic.loadUi(p+"/inputDataSelectionAppletBar.ui")
     
     def getAppletBarUi(self):
@@ -224,7 +218,23 @@ class InputDataSelectionApplet( Applet ):
         # No serializable items for now ...
         self._serializableItems = [ Ilastik05ProjectInfoImportDeserializer(self._projectInfo) ]
     
-    def acceptShellActions(self, shellActions):
+    @property
+    def centralWidget( self ):
+        return self._centralWidget
+
+    @property
+    def appletDrawers(self):
+        return self._controlWidgets
+    
+    @property
+    def menuWidget( self ):
+        return self._menuWidget
+
+    @property
+    def dataSerializers(self):
+        return self._serializableItems
+
+    def setShellActions(self, shellActions):
         """
         (See base class for details.)
         """ 

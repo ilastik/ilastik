@@ -112,15 +112,15 @@ class IlastikShell( QMainWindow ):
 
     def addApplet( self, applet ):
         # Give the applet access to the shell actions, in case it needs to trigger/respond to them
-        applet.acceptShellActions( self._menuBar.actions )
+        applet.setShellActions( self._menuBar.actions )
 
         self._applets.append(applet)
         applet_index = len(self._applets) - 1
         self.appletStack.addWidget( applet.centralWidget )
         self._menuBar.addAppletMenuWidget( applet.menuWidget )
 
-        # Add all of the applet bar's items to the toolbox widget        
-        for controlName, controlGuiItem in applet.controlWidgets:
+        # Add all of the applet bar's items to the toolbox widget
+        for controlName, controlGuiItem in applet.appletDrawers:
             self.appletBar.addItem(controlGuiItem, controlName)            
             
             # Since each applet can contribute more than one applet bar item, 
@@ -128,16 +128,6 @@ class IlastikShell( QMainWindow ):
             self.appletBarMapping[self.appletBar.count()-1] = applet_index
 
         return applet_index
-
-#    def currentIndex( self ):
-#        return self.appletBar.currentIndex()
-
-#    def indexOf( self, applet ):
-#        return self.appletBar.indexOf(applet.controlWidget)
-
-#    def setCurrentIndex( self, index ):
-#        self.appletBar.setCurrentIndex( index )
-#        self._menuBar.setCurrentIndex( index )
 
     def __len__( self ):
         return self.appletBar.count()
@@ -164,7 +154,7 @@ class IlastikShell( QMainWindow ):
         try:            
             # Applet serializable items are given the whole file (root group) for now
             for applet in self._applets:
-                for item in applet.serializableItems:
+                for item in applet.dataSerializers:
                     item.deserializeFromHdf5(h5File)
         except:
             print "Project Open Action failed due to the following exception:"
@@ -172,7 +162,7 @@ class IlastikShell( QMainWindow ):
             
             print "Aborting Project Open Action"
             for applet in self._applets:
-                for item in applet.serializableItems:
+                for item in applet.dataSerializers:
                     item.unload()
         
         h5File.close()
@@ -198,7 +188,7 @@ class IlastikShell( QMainWindow ):
         try:        
             # Applet serializable items are given the whole file (root group) for now
             for applet in self._applets:
-                for item in applet.serializableItems:
+                for item in applet.dataSerializers:
                     item.serializeToHdf5(h5File)
         except:
             print "Project Save Action failed due to the following exception:"
@@ -212,7 +202,7 @@ class IlastikShell( QMainWindow ):
         # Check each of the serializable items to see if the user might need to save first
         unSavedDataExists = False
         for applet in self._applets:
-            for item in applet.serializableItems:
+            for item in applet.dataSerializers:
                 if unSavedDataExists:
                     break
                 else:
