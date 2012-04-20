@@ -179,13 +179,13 @@ class Slot(object):
         self._subSlots = []           # in the case of an MultiInputSlot or MultiOutputSlot this holds the sub-Input/Output slots 
         self._stypeType = stype       # the slot type class
         self.stype = stype(self)      # the slot type instance
-        self._clones = []             # this holds a list of clone slots, which occur on InputSlot - InputSlot connections
 
         self._callbacks_changed = dict()    # callback dictionary (function : kw_arguments), the functions are called when the slots meta dict was changed (i.e. shape change, dtype change etc.)
         self._callbacks_dirty = dict()      # callback dictionary (function : kw_arguments), the functions are called when the slot gets dirty
         self._callbacks_connect = dict()    # callback dictionary (function : kw_arguments), the functions are called when the slots is connected
         self._callbacks_disconnect = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots is disconnected
         self._callbacks_resize = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots is resized
+        self.partners = set()
 
     #
     #
@@ -308,16 +308,10 @@ class Slot(object):
                 if len(self) != len(partner):
                     self.resize(len(partner))
                     
-                if not isinstance(partner, (InputSlot, MultiInputSlot)):
-                  partner.partners.add(self)
-                  for i in range(len(self.partner)):
-                      p = self.partner[i]
-                      self[i].connect(p)
-                else:
-                  partner._registerClone(self)
-                  for i in range(len(self.partner)):
-                      p = self.partner[i]
-                      self[i].connect(self.partner[i])
+                partner.partners.add(self)
+                for i in range(len(self.partner)):
+                    p = self.partner[i]
+                    self[i].connect(p)
 
                 # call slot type connect function
                 self.stype.connect(partner)
@@ -359,10 +353,7 @@ class Slot(object):
         self._subSlots = []
 
         if self.partner is not None:
-            if not isinstance(self.partner, (InputSlot, MultiInputSlot)):
-              self.partner.disconnectSlot(self)
-            else:
-              self.partner._unregisterClone(self)
+            self.partner.disconnectSlot(self)
         self.partner = None
         self._value = None
         self.meta = MetaDict()
@@ -386,6 +377,7 @@ class Slot(object):
         oldsize = len(self)
         if self.partner and len(self.partner) != size:
           self.partner.resize(size)
+
         while size > len(self):
             self._appendNew(notify=False,connect=False)
             
@@ -396,7 +388,7 @@ class Slot(object):
           self._connectSubSlot(i, notify = False)
         
         self._configureOperator()
-        for c in self._clones:
+        for c in self.partners:
           c.resize(size, notify, event)
 
     
@@ -441,7 +433,7 @@ class Slot(object):
 
           print "Input %r of %r is dirty" % (self.name, self.operator)
           self.operator.propagateDirty(self, roi)
-          for c in self._clones:
+          for c in self.partners:
             c.setDirty(*args,**kwargs)
           
           # call callbacks
@@ -597,14 +589,6 @@ class Slot(object):
       return destination
 
 
-    def _registerClone(self, slot):
-      if not slot in self._clones:
-        self._clones.append(slot)
-
-    def _unregisterClone(self, slot):
-      if slot in self._clones:
-        self._clones.remove(slot)
-
     def _getInstance(self, operator, level = None):
         """
         This method constructs a copy of the slot
@@ -638,7 +622,7 @@ class Slot(object):
         self.meta._dirty = False
       
       self._configureOperator()
-      for c in self._clones:
+      for c in self.partners:
         c._changed()
     
       # call changed callbacks
@@ -654,6 +638,10 @@ class Slot(object):
           # check wether all slots are connected and notify operator            
           if self.operator.configured():
             self.operator._setupOutputs()
+    
+    def disconnectSlot(self, partner):
+        if partner in self.partners:
+            self.partners.remove(partner)
     
     
     def _requiredLength(self):
@@ -734,7 +722,7 @@ class Slot(object):
         self._subSlots.remove(slot)
         if notify:
           self._configureOperator()
-        for c in self._clones:
+        for c in self.partners:
           c._changed()
 
 
@@ -853,10 +841,6 @@ class OutputSlot(Slot):
         for p in self.partners:
             p.disconnect()
             
-    def disconnectSlot(self, partner):
-        if partner in self.partners:
-            self.partners.remove(partner)
-           
     def registerDirtyCallback(self, function, **kwargs):
         self.notifyDirty(function, **kwargs)
     
@@ -984,9 +968,7 @@ class MultiOutputSlot(Slot):
         for s in slots:
             s.disconnect()
 
-    def disconnectSlot(self, partner):
-        if partner in self.partners:
-            self.partners.remove(partner)
+           
 
     def resize(self, size, event = None):
         if len(self) != size:
