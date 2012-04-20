@@ -166,6 +166,7 @@ class Slot(object):
           self._type = None
         if type(stype) == str:
           stype = ArrayLike
+        self.partners = set()
         self.name = name              # a user readable name for the slot
         self._optional = optional     # defines wether the slot needs a connection or value for a functional operator
         self.operator = operator      # the parent operator of the slot
@@ -308,10 +309,10 @@ class Slot(object):
                     self.resize(len(partner))
                     
                 if not isinstance(partner, (InputSlot, MultiInputSlot)):
-                  partner._connect(self)
+                  partner.partners.add(self)
                   for i in range(len(self.partner)):
                       p = self.partner[i]
-                      self.partner[i]._connect(self[i])
+                      self[i].connect(p)
                 else:
                   partner._registerClone(self)
                   for i in range(len(self.partner)):
@@ -345,7 +346,7 @@ class Slot(object):
                   print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
                 if isinstance(self.operator,(OperatorWrapper, Operator)):
                     newop = OperatorWrapper(self.operator)
-                    partner._connect(newop.inputs[self.name])
+                    newop.inputs[self.name].connect(partner)
                 else:
                     raise RuntimeError("Trying to connect a higher order slot to a subslot - NOT ALLOWED")
     
@@ -473,7 +474,7 @@ class Slot(object):
               oldslot = slot        
               newslot = value
               for p in oldslot.partners:
-                  newslot._connect(p)
+                  p.connect(newslot)
         else:
           assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"     
           roi = self.rtype(self,pslice = key)
@@ -688,7 +689,7 @@ class Slot(object):
       if self.partner is not None:
           if self.partner.level == self.level:
               if len(self.partner) > index:
-                  self.partner[index]._connect(slot, notify = notify)
+                  slot.connect(self.partner[index])
           else:
               slot.connect(self.partner)
       if self._value is not None:
@@ -701,18 +702,15 @@ class Slot(object):
         Construct a new subSlot of correct type and level and append
         it to the list of subslots
         """
-        if self.level <= 1:
-            islot = InputSlot(self.name ,self, stype = type(self.stype))
-        else:
-            islot = MultiInputSlot(self.name,self, stype = type(self.stype), level = self.level - 1)
-        self._subSlots.append(islot)
-        islot.name = self.name
+        slot = self._getInstance(self, level = self.level - 1)
+        self._subSlots.append(slot)
+        slot.name = self.name
         index = len(self)-1
-        if connect:
+        if connect and self.partner is not None:
           self._connectSubSlot(index, notify = notify)
         if self._value is not None:
-          islot.setValue(self._value)
-        return islot
+          slot.setValue(self._value)
+        return slot
 
 
     def _insertNew(self, index, notify = True, connect = True):
@@ -720,18 +718,19 @@ class Slot(object):
         Construct a new subslot of correct type and level and insert
         it to the list of subslots
         """
-        if self.level == 1:
-            islot = InputSlot(self.name,self, stype = type(self.stype))
-        else:
-            islot = MultiInputSlot(self.name,self, stype = type(self.stype), level = self.level - 1)
-        self._subSlots.insert(index,islot)
-        islot.name = self.name
-        if connect:
+        slot = self._getInstance(self, level = self.level - 1)
+        self._subSlots.insert(index,slot)
+        slot.name = self.name
+        if connect and self.partner is not None:
           self._connectSubSlot(index, notify = notify)
         if self._value is not None:
-          islot.setValue(self._value)
-
-        return islot
+          slot.setValue(self._value)
+        return slot
+    
+    def pop(self, index = -1, event = None):
+        if index < 0:
+          index = len(self) + index
+        self.removeSlot(index)
     
     
     def removeSlot(self, index, notify = True, event = None):
@@ -848,7 +847,6 @@ class OutputSlot(Slot):
         super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = 0)
         self._metaParent = operator
         self.operator = operator
-        self.partners = []
 
         self._dirtyCallbacks = []
     
@@ -859,17 +857,11 @@ class OutputSlot(Slot):
         # call changed callbacks
         for f, kw in self._callbacks_changed.iteritems():
           f(self, **kw)
-
-        for p in self.partners:
+        partners = self.partners.copy()
+        for p in partners:
           p._changed()
 
 
-    def _connect(self, partner, notify = True):
-        if partner not in self.partners:
-            self.partners.append(partner)
-        #Re-run the connect anyway, because we might want to
-        #propagate information like this
-        partner.connect(self, notify = notify)
         
     def disconnect(self):
         for p in self.partners:
@@ -880,15 +872,10 @@ class OutputSlot(Slot):
             self.partners.remove(partner)
            
     def registerDirtyCallback(self, function, **kwargs):
-        self._dirtyCallbacks.append([function, kwargs])
+        self.notifyDirty(function, **kwargs)
     
     def unregisterDirtyCallback(self, function):
-        element = None
-        for e in self._dirtyCallbacks:
-            if e[0] == function:
-                element = e
-        if element is not None:
-            self._dirtyCallbacks.remove(element)
+        self.unregisterDirty(function)
             
     def setDirty(self, *args, **kwargs):
         """
@@ -975,7 +962,6 @@ class MultiOutputSlot(Slot):
         self._type = "output"
         super(MultiOutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
         self._metaParent = operator
-        self.partners = []
     
    
     def append(self, subSlot, event = None):
@@ -1000,11 +986,6 @@ class MultiOutputSlot(Slot):
         self.pop(index, event = event)
         self.meta._dirty = True
     
-    def pop(self, index = -1, event = None):
-        oslot = self._subSlots[index]
-        oslot.disconnect()
-        oslot = self._subSlots.pop(index)
-        self.meta._dirty = True
 
     def _changed(self):
       if self.meta._dirty:
@@ -1018,13 +999,6 @@ class MultiOutputSlot(Slot):
       for o in self._subSlots:
         o._changed()
 
-    def _connect(self, partner, notify = True):
-        if partner not in self.partners:
-            self.partners.append(partner)
-        #Re-run the connect anyway, because we might want to
-        #propagate information like this
-        partner.connect(self, notify = notify)
-        
     def disconnect(self):
         slots = self[:]
         for s in slots:
@@ -1034,11 +1008,6 @@ class MultiOutputSlot(Slot):
         if partner in self.partners:
             self.partners.remove(partner)
 
-    def clearAllSlots(self):
-        slots = self[:]
-        for s in slots:
-            self.remove(s)
-            
     def resize(self, size, event = None):
         if len(self) != size:
           self.meta._dirty = True
@@ -1647,7 +1616,7 @@ class OperatorWrapper(Operator):
                 value = islot._value
                 self.operator.inputs[islot.name] = ii
                 if partner is not None:
-                    partner._connect(ii)
+                    ii.connect(partner)
                 if value is not None:
                     ii.setValue(value)
                 islot.disconnect()
@@ -1661,7 +1630,7 @@ class OperatorWrapper(Operator):
                 partners = copy.copy(oslot.partners)
                 oslot.disconnect()
                 for p in partners:         
-                    oo._connect(p)
+                    p.connect(oo)
             
         self._setDefaultInputValues()
 
@@ -1706,7 +1675,7 @@ class OperatorWrapper(Operator):
 
         for k, oslot in self.outputs.items():
             for p in oslot.partners:
-                op.outputs[k]._connect(p)
+                p.connect(op.outputs[k])
     
     def onDisconnect(self, slot):
        self._testRestoreOriginalOperator() 
