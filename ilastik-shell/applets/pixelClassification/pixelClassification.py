@@ -109,7 +109,7 @@ class PixelClassificationGui(QMainWindow):
         #  so locate the .ui file relative to this .py file's path
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
-        uic.loadUi(p+"/classificationWorkflow.ui", self) 
+        uic.loadUi(p+"/centralWidget.ui", self) 
         #connect the window and graph creation to the opening of the file
         self.actionOpenFile.triggered.connect(self.openFile)
         self.actionOpenStack.triggered.connect(self.openImageStack)
@@ -192,7 +192,7 @@ class PixelClassificationGui(QMainWindow):
         #  so locate the .ui file relative to this .py file's path
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
-        _labelControlUi = uic.loadUi(p+"/pixelClassificationAppletBar.ui") # Don't pass self: applet ui is separate from the main ui
+        _labelControlUi = uic.loadUi(p+"/labelingDrawer.ui") # Don't pass self: applet ui is separate from the main ui
 
         # We own the applet bar ui
         self._labelControlUi = _labelControlUi
@@ -300,6 +300,8 @@ class PixelClassificationGui(QMainWindow):
         #  so locate the .ui file relative to this .py file's path
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
+        # TODO: The feature selection ui is located in a separate directory because it should really be part of its own applet.
+        #       For now, we load the ui and deal with feature selection manually in this applet.
         self._featureSelectionUi = uic.loadUi(p+"../featureSelection/featureSelectionControls.ui") # Don't pass self: applet ui is separate from the main ui
         self._featureSelectionUi.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
 
@@ -312,7 +314,7 @@ class PixelClassificationGui(QMainWindow):
         #  so locate the .ui file relative to this .py file's path
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
-        self._predictionControlUi = uic.loadUi(p+"/predictionControls.ui") # Don't pass self: applet ui is separate from the main ui
+        self._predictionControlUi = uic.loadUi(p+"/predictionDrawer.ui") # Don't pass self: applet ui is separate from the main ui
         self._predictionControlUi.trainAndPredictButton.clicked.connect(self.onTrainAndPredictButtonClicked)
 
     def toggleInteractive(self, checked):
