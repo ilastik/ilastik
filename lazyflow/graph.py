@@ -713,20 +713,6 @@ class Slot(object):
         return slot
 
 
-    def _insertNew(self, index, notify = True, connect = True):
-        """
-        Construct a new subslot of correct type and level and insert
-        it to the list of subslots
-        """
-        slot = self._getInstance(self, level = self.level - 1)
-        self._subSlots.insert(index,slot)
-        slot.name = self.name
-        if connect and self.partner is not None:
-          self._connectSubSlot(index, notify = notify)
-        if self._value is not None:
-          slot.setValue(self._value)
-        return slot
-    
     def pop(self, index = -1, event = None):
         if index < 0:
           index = len(self) + index
@@ -970,12 +956,6 @@ class MultiOutputSlot(Slot):
         index = len(self._subSlots) - 1
         self.meta._dirty = True
     
-    def _insertNew(self,index, event = None):
-        oslot = OutputSlot(self.name,self,stype=type(self.stype))
-        self.insert(index,oslot, event = event)
-        self.meta._dirty = True
-
-
     def insert(self, index, outputSlot, event = None):
         outputSlot.operator = self
         self._subSlots.insert(index,outputSlot)
