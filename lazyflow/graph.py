@@ -335,7 +335,7 @@ class Slot(object):
 
             elif partner.level > self.level:
                 if not isinstance(partner, (InputSlot, MultiInputSlot)):
-                  partner.disconnectSlot(self)
+                  partner.partners.discard(self)
                 if lazyflow.verboseWrapping:
                   print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
                 if isinstance(self.operator,(OperatorWrapper, Operator)):
@@ -353,7 +353,7 @@ class Slot(object):
         self._subSlots = []
 
         if self.partner is not None:
-            self.partner.disconnectSlot(self)
+            self.partner.partners.discard(self)
         self.partner = None
         self._value = None
         self.meta = MetaDict()
@@ -428,17 +428,21 @@ class Slot(object):
         """
         assert self.operator is not None, \
                "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
-        if self.connected():
-          roi = self.rtype(self,*args,**kwargs)
+        if self.stype.isConfigured():
+          if not isinstance(args[0],rtype.Roi):
+            roi = self.rtype(self, *args, **kwargs)
+          else:
+            roi = args[0]
 
-          print "Input %r of %r is dirty" % (self.name, self.operator)
-          self.operator.propagateDirty(self, roi)
           for c in self.partners:
             c.setDirty(*args,**kwargs)
           
           # call callbacks
           for f,kw in self._callbacks_dirty.iteritems():
             f(self, roi, **kw)
+          
+          if self._type == "input":
+            self.operator.propagateDirty(self, roi)
 
 
                            
@@ -639,11 +643,6 @@ class Slot(object):
           if self.operator.configured():
             self.operator._setupOutputs()
     
-    def disconnectSlot(self, partner):
-        if partner in self.partners:
-            self.partners.remove(partner)
-    
-    
     def _requiredLength(self):
         """
         Returns the required number of subslots
@@ -838,8 +837,7 @@ class OutputSlot(Slot):
 
         
     def disconnect(self):
-        for p in self.partners:
-            p.disconnect()
+        return
             
     def registerDirtyCallback(self, function, **kwargs):
         self.notifyDirty(function, **kwargs)
@@ -847,29 +845,6 @@ class OutputSlot(Slot):
     def unregisterDirtyCallback(self, function):
         self.unregisterDirty(function)
             
-    def setDirty(self, *args, **kwargs):
-        """
-        This method can be called by an operator
-        to indicate that a region (identified by key)
-        has changed and needs recalculation.
-        
-        the method notifies all InputSlots that are connected to
-        this output slot
-        """
-
-        if not self.stype.isConfigured():
-            return
-        if not isinstance(args[0],rtype.Roi):
-          roi = self.rtype(self, *args, **kwargs)
-        else:
-          roi = args[0]
-
-        for p in self.partners:
-            p.setDirty(roi) #set everything dirty
-            
-        for cb in self._dirtyCallbacks:
-            cb[0](roi.toSlice(), **cb[1])
-
     def __setitem__(self, key, value):
         for p in self.partners:
             p[key] = value
@@ -1003,9 +978,6 @@ class MultiOutputSlot(Slot):
             raise RuntimeError("MultiOutputSlot.getSubOutSlot: name=%r, operator.name=%r, slots=%r" % \
                                (self.name, self.operator.name, self.operator, slots))
         return self.operator.getSubOutSlot((self,) + slots, (index,) + indexes, key, result)
-    
-    def setDirty(self, roi):
-        return
     
     @property
     def graph(self):
