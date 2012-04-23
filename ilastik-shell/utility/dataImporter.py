@@ -49,7 +49,7 @@ class DataImporter(object):
         """
         Open given .h5 file(s) and produce an array piper operator with the data.
         """
-        readerNew=OpH5ReaderBigDataset(self.g)
+        readerNew=OpH5ReaderBigDataset(self.graph)
         
         readerNew.inputs["Filenames"].setValue(fileNames)
         readerNew.inputs["hdf5Path"].setValue("volume/data")
@@ -86,4 +86,19 @@ class DataImporter(object):
         return inputProvider
 
 if __name__ == "__main__":
-    pass    
+    from lazyflow.graph import Graph
+    graph = Graph()
+#    di = DataImporter(graph)
+#    piper = di.createArrayPiperFromHdf5File(['test.h5'])
+#    print piper.Output[:].wait().shape
+
+#    from lazyflow.operators import OpH5Reader
+#    h5Reader = OpH5Reader(graph)
+#    h5Reader.Filename.setValue('test.h5')
+#    h5Reader.hdf5Path.setValue('volume/data')
+#    h5Reader.Image[:].wait().shape
+    
+    
+    
+    
+    
