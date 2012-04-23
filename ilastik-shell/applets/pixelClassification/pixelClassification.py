@@ -369,6 +369,9 @@ class PixelClassificationGui(QMainWindow):
             # Make sure the GUI reflects the correct size
             self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
             
+            # Make sure we're using the correct label color
+            self.switchLabel( self._labelControlUi.labelListModel.selectedRow() )
+            
         elif toolId == Tool.Erase:
             # Show the brush size control and set its caption
             self._labelControlUi.brushSizeCaption.show()
@@ -461,7 +464,7 @@ class PixelClassificationGui(QMainWindow):
 
         #make the new label selected
         index = self._labelControlUi.labelListModel.index(nlabels-1, 1)
-        self._labelControlUi.labelListModel._selectionModel.select(index, QItemSelectionModel.ClearAndSelect)
+        self._labelControlUi.labelListView.selectRow(nlabels-1)
         
         #FIXME: this should watch for model changes
         #drawing will be enabled when the first label is added
