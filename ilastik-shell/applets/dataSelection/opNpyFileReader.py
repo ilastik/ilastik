@@ -70,7 +70,9 @@ if __name__ == "__main__":
         for y in range(0,11):
             assert a[x,y] == x+y
  
-
+    # Clean up: Delete the test file.
+    import os
+    os.remove(testDataFileName)
 
 
 
