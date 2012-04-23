@@ -1,24 +1,62 @@
+from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+
 from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, OpArrayPiper, Op5ToMulti, OpBlockedSparseLabelArray, OpArrayCache, \
                                OpTrainRandomForestBlocked, OpPredictRandomForest, OpSlicedBlockedArrayCache
 
 from utility.simpleSignal import SimpleSignal
 import numpy
 
-class PixelClassificationPipeline( object ):
+class PixelClassificationPipeline( Operator ):
     """
-    Represents the pipeline of pixel classification operations.3
-    TODO: Convert this into a single "top-level" operator.
+    Represents the pipeline of pixel classification operations.
+    Implemented as a composite operator so it can serve an applet "top-level" operator.
     """
+    name="OpPixelClassification"
+    category = "Top-level"
+    
+    # Graph inputs
+    inputSlots = [
+      # A matrix of bool values representing the features and scales 
+      #  to provide to the classifier.
+      # Format of the matrix is hardcoded for now.
+       InputSlot("FeatureMatrix"), 
+       
+       # The raw input image data
+       MultiInputSlot("InputImages"),
+       
+       # The user-provided label data associated with each image.
+       # Must consist of consecutive label values, starting with 1.
+       # (Zero represents no label for that pixel.)
+       # Shapes must match the input image shapes.n
+       MultiInputSlot("Labels"),
+       
+       # The value of the highest label in the label data.
+       InputSlot("MaxLabelValue")
+    ]
+    
+    # Graph Outputs
+    outputSlots = [
+       # The computed feature images that were provided to the classifier.
+       # (Useful for display purposes.)
+       MultiOutputSlot("Features"),
+       
+       # The probability maps for each label class after classification.
+       MultiOutputSlot("PredictionProbabilities")
+   ]
+
     @property
     def graph(self):
         return self._graph
 
     def __init__( self, pipelineGraph ):
+        """
+        Instantiate all internal operators and connect them together.
+        """
         self._graph = pipelineGraph
         
         ## Signals (non-qt) ##
         self.inputDataChangedSignal = SimpleSignal()     # Input data loaded/changed
-        self.featuresChangedSignal = SimpleSignal()      # New/changed feature selections
+#        self.featuresChangedSignal = SimpleSignal()      # New/changed feature selections
         self.labelsChangedSignal = SimpleSignal()        # New/changed label data
         self.pipelineConfiguredSignal = SimpleSignal()   # Pipeline is fully configured (all inputs are connected and have data)
         self.predictionMetaChangeSignal = SimpleSignal() # The prediction cache has changed its shape (or dtype).
@@ -100,14 +138,14 @@ class PixelClassificationPipeline( object ):
             """Closure to emit the prediction meta changed signal with the correct parameter."""
             self.predictionMetaChangeSignal.emit( self.prediction_cache.configured() )
         self.prediction_cache.outputs["Output"][0].notifyMetaChanged(emitPredictionMetaChangeSignal)
-    @property
-    def featureBoolMatrix(self):
-        return self.features.inputs['Matrix'].value
-    
-    @featureBoolMatrix.setter
-    def featureBoolMatrix(self, newMatrix):
-        self.features.inputs['Matrix'].setValue(newMatrix)
-        self.featuresChangedSignal.emit()
+#    @property
+#    def featureBoolMatrix(self):
+#        return self.features.inputs['Matrix'].value
+#    
+#    @featureBoolMatrix.setter
+#    def featureBoolMatrix(self, newMatrix):
+#        self.features.inputs['Matrix'].setValue(newMatrix)
+#        self.featuresChangedSignal.emit()
         
     def getUniqueLabels(self):
         return numpy.unique(numpy.asarray(self.labels.outputs["nonzeroValues"][:].allocate().wait()[0]))
@@ -154,4 +192,32 @@ class PixelClassificationPipeline( object ):
         """
         # Count == highest label because 0 isn't a valid label
         self.predict.inputs['LabelsCount'].setValue(highestLabel)
-            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
