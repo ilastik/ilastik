@@ -1,5 +1,4 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpArrayPiper
 
 import vigra
 import numpy
@@ -14,7 +13,7 @@ class OpNpyFileReader(Operator):
 
     def __init__(self, graph):
         super(OpNpyFileReader, self).__init__(self, graph=graph)
-        self._piper = OpArrayPiper(graph)
+        self.rawVigraArray = None
 
     def setupOutputs(self):
         """
@@ -26,25 +25,23 @@ class OpNpyFileReader(Operator):
         rawNumpyArray = numpy.load(str(fileName), 'r')
 
         # Cast to vigra array
-        rawVigraArray = rawNumpyArray.view(vigra.VigraArray)
-        rawVigraArray.axistags =  vigra.AxisTags(
+        self.rawVigraArray = rawNumpyArray.view(vigra.VigraArray)
+        self.rawVigraArray.axistags =  vigra.AxisTags(
             vigra.AxisInfo('t',vigra.AxisType.Time),
             vigra.AxisInfo('x',vigra.AxisType.Space),
             vigra.AxisInfo('y',vigra.AxisType.Space),
             vigra.AxisInfo('z',vigra.AxisType.Space),
             vigra.AxisInfo('c',vigra.AxisType.Channels))
-
-        self._piper.Input.setValue(rawVigraArray)
  
-        # Our output slot should match the shape of the piper
-        self.Output.meta.dtype = self._piper.Input.meta.dtype
-        self.Output.meta.axistags = copy.copy(self._piper.Input.meta.axistags)
-        self.Output.meta.shape = self._piper.Input.meta.shape
+        # Our output slot should match the shape of the array on disk
+        self.Output.meta.dtype = self.rawVigraArray.dtype
+        self.Output.meta.axistags = copy.copy(self.rawVigraArray.axistags)
+        self.Output.meta.shape = self.rawVigraArray.shape
    
     def execute(self, slot, roi, result):
-        # Simply copy our array piper's output into the result
+        # Simply copy the appropriate slice of array data into the result
         key = roi.toSlice()
-        self._piper.Output[key].writeInto(result).wait()
+        result[:] = self.rawVigraArray[key]
 
 ##
 ## Simple Test
@@ -63,11 +60,11 @@ if __name__ == "__main__":
     # Now read back our test data using an OpNpyFileReader operator
     import lazyflow.graph
     graph = lazyflow.graph.Graph()
-    npyPiper = OpNpyFileReader(graph)
-    npyPiper.FileName.setValue(testDataFileName)
+    npyReader = OpNpyFileReader(graph)
+    npyReader.FileName.setValue(testDataFileName)
 
     # Read the entire file and verify the contents
-    a = npyPiper.Output[:].wait()
+    a = npyReader.Output[:].wait()
     assert a.shape == (10,11)
     for x in range(0,10):
         for y in range(0,11):
