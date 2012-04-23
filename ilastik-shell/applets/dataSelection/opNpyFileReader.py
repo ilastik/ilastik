@@ -12,7 +12,7 @@ class OpNpyFileReader(Operator):
     Output = OutputSlot()
 
     def __init__(self, graph):
-        super(OpNpyFileReader, self).__init__(self, graph=graph)
+        super(OpNpyFileReader, self).__init__(graph=graph)
         self.rawVigraArray = None
 
     def setupOutputs(self):
