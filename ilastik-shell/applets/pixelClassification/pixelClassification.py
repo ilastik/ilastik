@@ -57,9 +57,12 @@ class PixelClassificationGui(QMainWindow):
 
         # Subscribe to various pipeline events so we can respond appropriately in the GUI
         self.pipeline.inputDataChangedSignal.connect(self.handleGraphInputChanged)
-        self.pipeline.featuresChangedSignal.connect(self.onFeaturesSelectionsChanged)
         self.pipeline.labelsChangedSignal.connect(self.handlePipelineLabelsChanged)
         self.pipeline.predictionMetaChangeSignal.connect(self.setupPredicationLayers)
+
+        # Subscribe to feature selection changes directly from the graph.
+        self.pipeline.features.inputs["Matrix"].notifyConnect( self.onFeaturesSelectionsChanged ) # In case of setValue
+        self.pipeline.features.inputs["Matrix"].notifyDirty( self.onFeaturesSelectionsChanged ) # In case of dirty data from the partner operator
         
         # Editor will be initialized when data is loaded
         self.editor = None
@@ -825,7 +828,7 @@ class PixelClassificationGui(QMainWindow):
     def onFeatureButtonClicked(self):
         # Refresh the feature matrix in case it has changed since the last time we were opened
         # (e.g. if the user loaded a project from disk)
-        pipelineFeatures = self.pipeline.featureBoolMatrix
+        pipelineFeatures = self.pipeline.features.inputs['Matrix'].value
         if pipelineFeatures is not None:
             self.featureDlg.selectedFeatureBoolMatrix = pipelineFeatures
         
@@ -835,14 +838,16 @@ class PixelClassificationGui(QMainWindow):
     def _onNewFeaturesFromFeatureDlg(self):
         selectedFeatures = self.featureDlg.selectedFeatureBoolMatrix
         print "new feature set:", selectedFeatures
-        self.pipeline.featureBoolMatrix = numpy.asarray(selectedFeatures)
+        
+        # Give the new features to the pipeline 
+        self.pipeline.features.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
 
-    def onFeaturesSelectionsChanged(self):
+    def onFeaturesSelectionsChanged(self, slot):
         """
         Called when the pipeline's matrix of selected features is changed.
         """
         # Update the caption text.
-        self._featureSelectionUi.caption.setText( "(Selected %d features)" % numpy.sum(self.pipeline.featureBoolMatrix) )
+        self._featureSelectionUi.caption.setText( "(Selected %d features)" % numpy.sum(self.pipeline.features.inputs['Matrix'].value) )
     
     def _initFeatureDlg(self):
         self.featureDlg = FeatureDlg()
@@ -966,7 +971,7 @@ class Ilastik05ImportDeserializer(object):
                 pipeLineSelectedFeatureMatrix[featureIndex] = userFriendlyFeatureMatrix[featureGroupIndex]
         
         # Finally, update the pipeline with the feature selections
-        self.pipeline.featureBoolMatrix = pipeLineSelectedFeatureMatrix
+        self.pipeline.features.inputs['Matrix'].setValue( pipeLineSelectedFeatureMatrix )
         
     def importClassifier(self, hdf5File):
         """
