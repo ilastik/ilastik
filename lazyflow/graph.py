@@ -194,13 +194,14 @@ class Slot(object):
     #
 
 
-    def notifyDirty(self, function, **kwargs):
+    def notifyDirty(self, function, *args, **kwargs):
       """
       calls the corresponding function when the slot gets dirty
       first argument of the function is the slot, second argument the roi
       the keyword arguments follow
       """
-      self._callbacks_dirty[function] = kwargs
+      print "function", function, "registered for dirty with args", args, kwargs
+      self._callbacks_dirty[function] = (args, kwargs)
 
     
     def notifyMetaChanged(self, function, **kwargs):
@@ -439,7 +440,7 @@ class Slot(object):
           
           # call callbacks
           for f,kw in self._callbacks_dirty.iteritems():
-            f(self, roi, **kw)
+            f(self, roi, *kw[0], **kw[1])
           
           if self._type == "input":
             self.operator.propagateDirty(self, roi)
@@ -850,34 +851,6 @@ class OutputSlot(Slot):
             p[key] = value
 
     
-    def dumpToH5G(self, h5g, patchBoard):
-        h5g.dumpSubObjects({
-            "name" : self.name,
-            "level" : self.level,
-            "operator" : self.operator,
-            "partners" : self.partners,
-            "stype" : self.stype
-            
-        },patchBoard)
-    
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        
-        s = cls("temp")
-
-        patchBoard[h5g.attrs["id"]] = s
-        
-        h5g.reconstructSubObjects(s,{
-            "name" : "name",
-            "level" : "level",
-            "operator" : "operator",
-            "partners" : "partners",
-            "stype" : "stype"
-            
-        },patchBoard)
-            
-        return s
-        
 
 class MultiInputSlot(Slot):
     """
@@ -909,21 +882,6 @@ class MultiOutputSlot(Slot):
         self._metaParent = operator
     
    
-    def append(self, subSlot, event = None):
-        subSlot.operator = self
-        self._subSlots.append(subSlot)
-        index = len(self._subSlots) - 1
-        self.meta._dirty = True
-    
-    def insert(self, index, outputSlot, event = None):
-        outputSlot.operator = self
-        self._subSlots.insert(index,outputSlot)
-        self.meta._dirty = True
-        
-    def remove(self, outputSlot, event = None):
-        index = self._subSlots.index(outputSlot)
-        self.pop(index, event = event)
-        self.meta._dirty = True
     
 
     def _changed(self):
@@ -984,36 +942,6 @@ class MultiOutputSlot(Slot):
         return self.operator.graph
 
 
-    def dumpToH5G(self, h5g, patchBoard):
-        h5g.dumpSubObjects({
-            "name" : self.name,
-            "level" : self.level,
-            "operator" : self.operator,
-            "partners" : self.partners,
-            "stype" : self.stype,
-            "outputSlots" : self.outputSlots
-            
-        },patchBoard)
-    
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        
-        s = cls("temp")
-
-        patchBoard[h5g.attrs["id"]] = s
-        
-        h5g.reconstructSubObjects(s,{
-            "name" : "name",
-            "level" : "level",
-            "operator" : "operator",
-            "partners" : "partners",
-            "stype" : "stype",
-            "outputSlots" : "outputSlots"
-            
-        },patchBoard)
-            
-        return s
-
 
 class InputDict(dict):
     
@@ -1031,14 +959,6 @@ class InputDict(dict):
           return getattr(self.operator, key)
         else:
           raise Exception("Operator %s (class: %s) has no input slot named '%s'. available input slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
-
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        temp = InputDict()
-        patchBoard[h5g.attrs["id"]] = temp
-        for i,g in h5g.items():
-            temp[str(i)] = g.reconstructObject(patchBoard)
-        return temp
 
 
 
@@ -1058,16 +978,6 @@ class OutputDict(dict):
           return getattr(self.operator, key)
         else:
           raise Exception("Operator %s (class: %s) has no output slot named '%s'. available output slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
-
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        temp = OutputDict()
-        patchBoard[h5g.attrs["id"]] = temp
-        for i,g in h5g.items():
-            temp[str(i)] = g.reconstructObject(patchBoard)
-        return temp
-
-
 
 
 class OperatorMetaClass(type):
@@ -1446,34 +1356,6 @@ class Operator(object):
         pass
 
     
-    def dumpToH5G(self, h5g, patchBoard):
-        h5inputs = h5g.create_group("inputs")
-        h5inputs.dumpObject(self.inputs)
-
-        h5outputs = h5g.create_group("outputs")
-        h5outputs.dumpObject(self.outputs)
-        
-        h5graph = h5g.create_group("graph")
-        h5graph.dumpObject(self.graph)
-    
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        
-        h5graph = h5g["graph"]        
-        g = h5graph.reconstructObject(patchBoard)        
-        op = stringToClass(h5g.attrs["className"])(g)
-
-        patchBoard[h5g.attrs["id"]] = op        
-        
-        h5inputs = h5g["inputs"]
-        op.inputs = h5inputs.reconstructObject(patchBoard)
-        
-        h5outputs = h5g["outputs"]
-        op.outputs = h5outputs.reconstructObject(patchBoard)
-        
-        return op
-        
-
 
 class OperatorWrapper(Operator):
     name = ""
@@ -1766,41 +1648,6 @@ class OperatorWrapper(Operator):
         assert 1==2
 
 
-    def dumpToH5G(self, h5g, patchBoard):
-        h5g.dumpSubObjects({
-                    "graph" : self.graph,
-                    "operator": self.operator,
-                    "origInputs": self.origInputs,
-                    "origOutputs": self.origOutputs,
-                    "_inputSlots": self._inputSlots,
-                    "_outputSlots": self._outputSlots,
-                    "inputs": self.inputs,
-                    "outputs": self.outputs,
-                    "innerOperators": self.innerOperators                    
-                },patchBoard)    
-                
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        
-        op = stringToClass(h5g.attrs["className"])(None)
-        
-        patchBoard[h5g.attrs["id"]] = op
-        
-        h5g.reconstructSubObjects(op, {
-                    "graph" : "graph",
-                    "operator" : "operator",
-                    "origInputs": "origInputs",
-                    "origOutputs": "origOutputs",
-                    "_inputSlots": "_inputSlots",
-                    "_outputSlots": "_outputSlots",
-                    "inputs": "inputs",
-                    "outputs": "outputs",
-                    "innerOperators": "innerOperators"                    
-                },patchBoard)    
-
-        return op
-        
-   
                         
 class Graph(object):
   def __init__(self, numThreads=-1):
@@ -1827,31 +1674,3 @@ class Graph(object):
   def _notifyFreeMemory(self, *args, **kwargs):
     pass
 
-
-  def dumpToH5G(self, h5g, patchBoard):
-      self.stopGraph()
-      h5g.dumpSubObjects({
-                  "operators" : self.operators,
-                  "numThreads": self.numThreads,
-                  "softMaxMem": self.softMaxMem
-              },patchBoard)    
-      self.resumeGraph()
-
-  
-  @classmethod
-  def reconstructFromH5G(cls, h5g, patchBoard):
-      numThreads = h5g["numThreads"].reconstructObject()
-      softMaxMem = h5g["softMaxMem"].reconstructObject()
-
-      g = Graph(numThreads = numThreads, softMaxMem = softMaxMem)
-      patchBoard[h5g.attrs["id"]] = g 
-      g.stopGraph()
-      
-      h5g.reconstructSubObjects(g, {
-                  "operators": "operators",
-                  "numThreads": "numThreads",
-                  "softMaxMem" : "softMaxMem"
-              },patchBoard)    
-      g.resumeGraph()
-      return g
- 
