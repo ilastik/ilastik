@@ -2,7 +2,7 @@ class DataSelectionSerializer(object):
     """
     Serializes the user's input data selections to an ilastik v0.6 project file.
     """
-    def __init__(self):
+    def __init__(self, mainOperator):
         pass
     
     def serializeToHdf5(self, hdf5Group):

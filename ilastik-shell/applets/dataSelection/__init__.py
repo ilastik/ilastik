@@ -1,1 +1,1 @@
-from dataSelection import *
+from dataSelectionApplet import *

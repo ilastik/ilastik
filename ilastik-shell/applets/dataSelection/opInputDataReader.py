@@ -28,6 +28,8 @@ class OpInputDataReader(Operator):
         TODO: Handle datasets of non-standard (non-5d) dimensions.
         """
         fileName = self.FileName.value
+        assert type(fileName) == str
+        
         fileExtension = os.path.splitext(fileName)[1].lower()
         fileExtension = fileExtension.lstrip('.') # Remove leading dot
         
@@ -39,6 +41,7 @@ class OpInputDataReader(Operator):
             npyReader.FileName.setValue(fileName)
             self.internalOperator = npyReader
             self.internalOutput = npyReader.Output
+        # HDF5
         elif fileExtension == 'h5':
             h5Reader = OpH5Reader(graph=self.graph)
             h5Reader.Filename.setValue(fileName)

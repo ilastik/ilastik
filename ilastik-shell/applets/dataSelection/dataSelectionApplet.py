@@ -1,11 +1,15 @@
 from lazyflow.operators import OpImageReader
 from ilastikshell.applet import Applet
 
-from opDataSelection import OpDataSelection
+#from opDataSelection import OpDataSelection
+from opMultiInputDataReader import OpMultiInputDataReader
+
+from opInputDataReader import OpInputDataReader
 
 from dataSelectionSerializer import DataSelectionSerializer
 from dataSelectionPreferencesManager import DataSelectionPreferencesManager
 from dataSelectionGui import DataSelectionGui
+
 
 class DataSelectionApplet( Applet ):
     """
@@ -13,12 +17,12 @@ class DataSelectionApplet( Applet ):
     which are provided as outputs in the corresponding top-level applet operator.
     """
     def __init__( self, graph ):
-        super(DataSelectionApplet, self).__init__( self, "Data Selection" )
+        super(DataSelectionApplet, self).__init__("Data Selection")
         
         # Create a data selection top-level operator on the main graph
         # This operator object represents the "model" or master state of the applet which 
         #  the other components of the applet will manipulate and/or listen to for changes.
-        self._topLevelOperator = OpDataSelection(graph)
+        self._topLevelOperator = OpMultiInputDataReader(graph)
 
         # Instantiate the main GUI, which creates the applet drawers (for now)
         self._centralWidget = DataSelectionGui( self._topLevelOperator )
@@ -30,7 +34,7 @@ class DataSelectionApplet( Applet ):
         self._menuWidget = self._centralWidget.menuBar
         
         # The central widget owns the applet drawer gui
-        self._drawers = [ ("Datasets", self._centralWidget.datasetDrawer) ]
+        self._drawers = [ ("Dataset Selection", self._centralWidget.drawer) ]
 
         # A separate object handles serializing the user's selections
         self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator) ]
