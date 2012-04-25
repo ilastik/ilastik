@@ -1,2 +1,2 @@
 from helpers import getPathToLocalDirectory
-
+from simpleSignal import SimpleSignal
