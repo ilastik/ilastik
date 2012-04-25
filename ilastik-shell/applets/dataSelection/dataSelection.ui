@@ -52,37 +52,12 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="removeFileButton">
-        <property name="text">
-         <string>Remove</string>
-        </property>
-        <property name="icon">
-         <iconset>
-          <normaloff>../../../gui/icons/32x32/actions/media-seek-backward.png</normaloff>../../../gui/icons/32x32/actions/media-seek-backward.png</iconset>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="Line" name="line">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="advancedLabel">
-        <property name="text">
-         <string>Advanced</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="loadStackButton">
+       <widget class="QPushButton" name="addStackButton">
         <property name="toolTip">
          <string>This allows to create a 3D volume from files stored in a folder.</string>
         </property>
         <property name="text">
-         <string>Load Stack</string>
+         <string>Add Stack</string>
         </property>
         <property name="default">
          <bool>true</bool>
@@ -93,22 +68,13 @@
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="loadFileButton">
-        <property name="toolTip">
-         <string>Advanced options for loading an image or volume from a file. You can create multi-channel files from single files.</string>
-        </property>
+       <widget class="QPushButton" name="removeFileButton">
         <property name="text">
-         <string>Load File</string>
+         <string>Remove</string>
         </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="thumbnailImage">
-        <property name="text">
-         <string/>
-        </property>
-        <property name="pixmap">
-         <pixmap>gui/placeholder.png</pixmap>
+        <property name="icon">
+         <iconset>
+          <normaloff>../../../gui/icons/32x32/actions/media-seek-backward.png</normaloff>../../../gui/icons/32x32/actions/media-seek-backward.png</iconset>
         </property>
        </widget>
       </item>
@@ -154,6 +120,16 @@
       <column>
        <property name="text">
         <string>DatasetID</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Invert Colors</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Convert To Grayscale</string>
        </property>
       </column>
      </widget>

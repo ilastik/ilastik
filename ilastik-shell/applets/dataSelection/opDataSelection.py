@@ -56,14 +56,14 @@ class OpDataSelection(Operator):
                 # If the user wants to invert the image,
                 #  insert an intermediate inversion operator on this subslot
                 if self.InvertFlags[i].value:
-                    inverter = OpGrayscaleInverter(graph=graph)
+                    inverter = OpGrayscaleInverter(graph=self.graph)
                     inverter.input.connect(providerSlot)
                     providerSlot = inverter.output
                 
                 # If the user wants to convert to grayscale,
                 #  insert an intermediate rgb-to-grayscale operator on this subslot
                 if self.GrayConvertFlags[i].value:
-                    converter = OpRgbToGraysacle(graph=graph)
+                    converter = OpRgbToGraysacle(graph=self.graph)
                     converter.input.connect(providerSlot)
                     providerSlot = converter.output
                 

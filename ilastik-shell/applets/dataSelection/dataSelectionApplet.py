@@ -1,10 +1,7 @@
 from lazyflow.operators import OpImageReader
 from ilastikshell.applet import Applet
 
-#from opDataSelection import OpDataSelection
-from opMultiInputDataReader import OpMultiInputDataReader
-
-from opInputDataReader import OpInputDataReader
+from opDataSelection import OpDataSelection
 
 from dataSelectionSerializer import DataSelectionSerializer
 from dataSelectionPreferencesManager import DataSelectionPreferencesManager
@@ -22,7 +19,7 @@ class DataSelectionApplet( Applet ):
         # Create a data selection top-level operator on the main graph
         # This operator object represents the "model" or master state of the applet which 
         #  the other components of the applet will manipulate and/or listen to for changes.
-        self._topLevelOperator = OpMultiInputDataReader(graph)
+        self._topLevelOperator = OpDataSelection(graph)
 
         # Instantiate the main GUI, which creates the applet drawers (for now)
         self._centralWidget = DataSelectionGui( self._topLevelOperator )
