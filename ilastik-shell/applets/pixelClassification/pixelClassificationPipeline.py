@@ -6,7 +6,7 @@ from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, 
 from utility.simpleSignal import SimpleSignal
 import numpy
 
-class PixelClassificationPipeline( Operator ):
+class PixelClassificationPipeline( object ):
     """
     Represents the pipeline of pixel classification operations.
     Implemented as a composite operator so it can serve an applet "top-level" operator.
