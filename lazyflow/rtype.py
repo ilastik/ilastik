@@ -19,8 +19,8 @@ class SubRegion(Roi):
         elif start is None and pslice is None:
             self.start, self.stop = sliceToRoi(slice(None,None,None),self.slot.meta.shape)
         else:
-            self.start = start
-            self.stop = stop
+            self.start = TinyVector(start)
+            self.stop = TinyVector(stop)
         self.axistags = None
         self.dim = len(self.start)
     

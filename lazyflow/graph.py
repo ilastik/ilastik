@@ -496,10 +496,14 @@ class Slot(object):
         slots which hold a single integer or float value
         """
         if self.partner is not None:
+            # outputslot-inputsslot, inputslot-inputslot and outputslot-outputslot case
             temp = self[:].allocate().wait()[0]
             return temp
+        elif self._value is None:
+            # outputslot case
+            return self(start = (0,), stop = (1,)).wait()[0]
         else:
-            assert self._value is not None, "Slot %s (%r): Cannot access .value since slot is not connected and setValue has not been called !" %(self.name, self)
+            # _value case
             return self._value
 
     def setValue(self, value, notify = True):
@@ -795,9 +799,9 @@ class InputSlot(Slot):
     to directly provide a value as input (i.e. .setValue(value) call)
     """
     
-    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False):
+    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False, level = 0):
         self._type = "input"
-        super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional)
+        super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
     
 
 class OutputSlot(Slot):
