@@ -5,10 +5,10 @@ class SerializableItem(object):
     def __init__(self):
         pass
     
-    def serializeToHdf5(self, hdf5Group):
+    def serializeToHdf5(self, hdf5File):
         pass
     
-    def deserializeFromHdf5(self, hdf5Group):
+    def deserializeFromHdf5(self, hdf5File):
         pass
 
     def isDirty(self):
