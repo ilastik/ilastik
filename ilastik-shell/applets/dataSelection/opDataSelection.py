@@ -10,8 +10,10 @@ class OpDataSelection(Operator):
     name = "OpDataSelection"
     category = "Top-level"
 
-    # Input data (typically from our own gui, not from others)
+    # Input data
     FileNames = MultiInputSlot(stype='filestring')
+    
+    # Dataset Guids
     
     # Input formatting options (indexes MUST match the FileNames input)
     InvertFlags = MultiInputSlot(stype='bool')

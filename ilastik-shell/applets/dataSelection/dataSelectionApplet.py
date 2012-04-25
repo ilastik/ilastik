@@ -21,6 +21,9 @@ class DataSelectionApplet( Applet ):
         #  the other components of the applet will manipulate and/or listen to for changes.
         self._topLevelOperator = OpDataSelection(graph)
 
+        # Serialization settings are managed by a 
+        self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator) ]
+
         # Instantiate the main GUI, which creates the applet drawers (for now)
         self._centralWidget = DataSelectionGui( self._topLevelOperator )
 
@@ -32,9 +35,6 @@ class DataSelectionApplet( Applet ):
         
         # The central widget owns the applet drawer gui
         self._drawers = [ ("Dataset Selection", self._centralWidget.drawer) ]
-
-        # A separate object handles serializing the user's selections
-        self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator) ]
         
         # Preferences manager
         self._preferencesManager = DataSelectionPreferencesManager()
