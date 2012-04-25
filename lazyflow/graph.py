@@ -552,6 +552,9 @@ class Slot(object):
         self._changed()    
 
     def connected(self):
+        """
+        Returns True if the slot is conencted to a partner slot or has a _value assigned as input
+        """
         answer = True
         if self._value is None and self.partner is None:
             answer = False
@@ -564,6 +567,9 @@ class Slot(object):
         return answer
 
     def configured(self):
+        """
+        Returns if the slot (and all its subslots) is connected or optional 
+        """
         answer = True
         if (self._value is None and self.partner is None) or not self.stype.isConfigured():
             answer = False
