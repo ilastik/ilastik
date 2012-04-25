@@ -1,6 +1,7 @@
 from opNpyFileReader import OpNpyFileReader
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 from lazyflow.operators import OpImageReader, OpH5Reader
+from lazyflow.operators.ioOperators import OpStackLoader
 
 import vigra
 import os
@@ -13,7 +14,7 @@ class OpMultiInputDataReader(Operator):
     name = "OpMultiInputDataReader"
     category = "Input"
     
-    FileNames = MultiInputSlot(stype='filestring')
+    FileNames = MultiInputSlot(stype='filestring') # Also used as a globstring input! (for stacks)
     Outputs = MultiOutputSlot()
 
     def __init__(self, graph):
@@ -45,9 +46,14 @@ class OpMultiInputDataReader(Operator):
             newOperator = None
             newOutput = None
             # Check all supported types
+            # Stack (filename is the globstring)
+            if '*' in fileName:
+                stackReader = OpStackLoader(graph=self.graph)
+                stackReader.globstring.setValue(fileName)
+                newOperator = stackReader
+                newOutput = stackReader.stack
             # Numpy
-            if fileExtension == 'npy':
-                # Create an internal operator
+            elif fileExtension == 'npy':
                 npyReader = OpNpyFileReader(graph=self.graph)
                 npyReader.FileName.setValue(fileName)
                 newOperator = npyReader
