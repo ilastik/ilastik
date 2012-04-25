@@ -166,6 +166,7 @@ class Slot(object):
           self._type = None
         if type(stype) == str:
           stype = ArrayLike
+        self.partners = set()
         self.name = name              # a user readable name for the slot
         self._optional = optional     # defines wether the slot needs a connection or value for a functional operator
         self.operator = operator      # the parent operator of the slot
@@ -178,12 +179,13 @@ class Slot(object):
         self._subSlots = []           # in the case of an MultiInputSlot or MultiOutputSlot this holds the sub-Input/Output slots 
         self._stypeType = stype       # the slot type class
         self.stype = stype(self)      # the slot type instance
-        self._clones = []             # this holds a list of clone slots, which occur on InputSlot - InputSlot connections
 
         self._callbacks_changed = dict()    # callback dictionary (function : kw_arguments), the functions are called when the slots meta dict was changed (i.e. shape change, dtype change etc.)
         self._callbacks_dirty = dict()      # callback dictionary (function : kw_arguments), the functions are called when the slot gets dirty
         self._callbacks_connect = dict()    # callback dictionary (function : kw_arguments), the functions are called when the slots is connected
         self._callbacks_disconnect = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots is disconnected
+        self._callbacks_resize = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots is resized
+        self.partners = set()
 
     #
     #
@@ -192,13 +194,14 @@ class Slot(object):
     #
 
 
-    def notifyDirty(self, function, **kwargs):
+    def notifyDirty(self, function, *args, **kwargs):
       """
       calls the corresponding function when the slot gets dirty
       first argument of the function is the slot, second argument the roi
       the keyword arguments follow
       """
-      self._callbacks_dirty[function] = kwargs
+      print "function", function, "registered for dirty with args", args, kwargs
+      self._callbacks_dirty[function] = (args, kwargs)
 
     
     def notifyMetaChanged(self, function, **kwargs):
@@ -224,6 +227,14 @@ class Slot(object):
       the keyword arguments follow
       """
       self._callbacks_disconnect[function] = kwargs
+    
+    def notifyResize(self, function, **kwargs):
+      """
+      calls the corresponding function when the slot is resized
+      first argument of the function is the slot
+      the keyword arguments follow
+      """
+      self._callbacks_resize[function] = kwargs
     
     def unregisterDirty(self, function):
       """
@@ -261,6 +272,127 @@ class Slot(object):
       except KeyError:
         pass
     
+    def unregisterResize(self, function):
+      """
+      unregister a resize callback
+      """
+      try:
+        self._callbacks_resize.pop(function)
+      except KeyError:
+        pass
+    
+    def connect(self,partner, notify = True):
+        """
+        Connect a slot to another slot
+
+        Arguments:
+          partner   : the slot to which this slot is conencted
+        """
+        if partner is None:
+            self.disconnect()
+            return
+        
+        if not isinstance(partner,(OutputSlot,MultiOutputSlot,Operator,InputSlot, MultiInputSlot)):
+            self.setValue(partner)
+            return
+          
+        if self.partner == partner and partner.level == self.level:
+            return
+        if self.level == 0:
+          self.disconnect()
+        
+        if partner is not None:
+            if partner.level == self.level:
+                self.partner = partner
+                self.meta = self.partner.meta.copy()
+                
+                if len(self) != len(partner):
+                    self.resize(len(partner))
+                    
+                partner.partners.add(self)
+                for i in range(len(self.partner)):
+                    p = self.partner[i]
+                    self[i].connect(p)
+
+                # call slot type connect function
+                self.stype.connect(partner)
+                
+                # call connect callbacks
+                for f, kw in self._callbacks_connect.iteritems():
+                  f(self,**kw)
+
+                if self.level > 0 or self.stype.isConfigured():
+                  self._changed()
+                
+            elif partner.level < self.level:
+                self.partner = partner
+                self.meta = self.partner.meta.copy()
+                for i, slot in enumerate(self._subSlots):                
+                    slot.connect(partner)
+                # call connect callbacks
+                for f, kw in self._callbacks_connect.iteritems():
+                  f(self,**kw)
+                self._changed()
+
+            elif partner.level > self.level:
+                if not isinstance(partner, (InputSlot, MultiInputSlot)):
+                  partner.partners.discard(self)
+                if lazyflow.verboseWrapping:
+                  print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
+                if isinstance(self.operator,(OperatorWrapper, Operator)):
+                    newop = OperatorWrapper(self.operator)
+                    newop.inputs[self.name].connect(partner)
+                else:
+                    raise RuntimeError("Trying to connect a higher order slot to a subslot - NOT ALLOWED")
+    
+    def disconnect(self):
+        """
+        Disconnect a InputSlot from its partner
+        """
+        for slot in self._subSlots:
+            slot.disconnect()
+        self._subSlots = []
+
+        if self.partner is not None:
+            self.partner.partners.discard(self)
+        self.partner = None
+        self._value = None
+        self.meta = MetaDict()
+
+        # call callbacks
+        for f,kw in self._callbacks_disconnect.iteritems():
+          f(self, **kw)
+        
+        self.operator.onDisconnect(self)
+    
+
+    def resize(self, size, notify = True, event = None):
+        """
+        Resizes a slot to the desired length
+
+        Arguments:
+          size    : the desired number of subslots
+        """
+        if self.level == 0:
+          return
+        oldsize = len(self)
+        if self.partner and len(self.partner) != size:
+          self.partner.resize(size)
+
+        while size > len(self):
+            self._appendNew(notify=False,connect=False)
+            
+        while size < len(self):
+            self.removeSlot(self[-1], notify = False)
+
+        for i in range(0,size):
+          self._connectSubSlot(i, notify = False)
+        
+        self._configureOperator()
+        for c in self.partners:
+          c.resize(size, notify, event)
+
+    
     def get( self, roi, destination = None ):
       """
       This method is used to retrieve the actual content of a Slot.
@@ -286,6 +418,33 @@ class Slot(object):
         # normal case
         # --> construct heavy request object..
         return Request(self._requestFunctionWrapper,roi = roi,destination = destination)        
+    
+    def setDirty(self, *args,**kwargs):
+        """
+        this method is called by a partnering OutputSlot
+        when its content changes.
+        
+        the key parameter identifies the changed region
+        of an numpy.ndarray
+        """
+        assert self.operator is not None, \
+               "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
+        if self.stype.isConfigured():
+          if not isinstance(args[0],rtype.Roi):
+            roi = self.rtype(self, *args, **kwargs)
+          else:
+            roi = args[0]
+
+          for c in self.partners:
+            c.setDirty(*args,**kwargs)
+          
+          # call callbacks
+          for f,kw in self._callbacks_dirty.iteritems():
+            f(self, roi, *kw[0], **kw[1])
+          
+          if self._type == "input":
+            self.operator.propagateDirty(self, roi)
+
 
                            
     def __getitem__(self, key):
@@ -303,15 +462,24 @@ class Slot(object):
         """
         This method provied access to the subslots of a MultiSlot.
         """
-        slot = self._subSlots[key]
-        if slot != value:
-            slot.disconnect()
-            self._subSlots[key] = value
-    
-            oldslot = slot        
-            newslot = value
-            for p in oldslot.partners:
-                newslot._connect(p)
+        if isinstance(value, Slot):
+          slot = self._subSlots[key]
+          if slot != value:
+              slot.disconnect()
+              self._subSlots[key] = value
+      
+              oldslot = slot        
+              newslot = value
+              for p in oldslot.partners:
+                  p.connect(newslot)
+        else:
+          assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"     
+          roi = self.rtype(self,pslice = key)
+          if self._value is not None:
+              self._value[key] = value
+              self.setDirty(roi) # only propagate the dirty key at the very beginning of the chain
+          self.operator.setInSlot(self,key,value)
+
         
     def __len__(self):
         """
@@ -327,9 +495,18 @@ class Slot(object):
         Is mainly used when region of interest specification make no sense, e.g. in the case of
         slots which hold a single integer or float value
         """
-        return self._value
+        if self.partner is not None:
+            # outputslot-inputsslot, inputslot-inputslot and outputslot-outputslot case
+            temp = self[:].allocate().wait()[0]
+            return temp
+        elif self._value is None:
+            # outputslot case
+            return self(start = (0,), stop = (1,)).wait()[0]
+        else:
+            # _value case
+            return self._value
 
-    def setValue(self, value):
+    def setValue(self, value, notify = True):
         """
         This method can be used to directly assign a value to an InputSlot or MultiInputSlot.
 
@@ -344,16 +521,65 @@ class Slot(object):
         except:
           pass
         if changed:
-          sekf._value = None
-          # call disconnectcallbacks
-          for f,kw in self._callbacks_disconnect.iteritems():
-            f(self, **kw)
+          #if self.stype.isCompatible(value):
+          # call disconnect callbacks
+          for f, kw in self._callbacks_disconnect.iteritems():
+            f(self,**kw)
           self._value = value
-          self._changed()    
-
+          self.stype.setupMetaForValue(value)
+          for i,s in enumerate(self._subSlots):
+              s.setValue(self._value)
+          self._changed()
           # call connect callbacks
-          for f,kw in self._callbacks_connect.iteritems():
-            f(self, **kw)
+          for f, kw in self._callbacks_connect.iteritems():
+            f(self,**kw)
+    
+    def setValues(self, values):
+        """
+        set values of subslots with arraylike object
+        resizes the multinputslot with the length of the values array
+        """
+        # call disconnect callbacks
+        for f, kw in self._callbacks_disconnect.iteritems():
+          f(self,**kw)
+        changed = True
+        self.resize(len(values))
+        for i,s in enumerate(self._subSlots):
+            s.setValue(values[i])
+        # call connect callbacks
+        for f, kw in self._callbacks_connect.iteritems():
+          f(self,**kw)
+        self._changed()    
+
+    def connected(self):
+        """
+        Returns True if the slot is conencted to a partner slot or has a _value assigned as input
+        """
+        answer = True
+        if self._value is None and self.partner is None:
+            answer = False
+        if answer is False and len(self._subSlots) > 0:
+            answer = True
+            for s in self._subSlots:
+                if s.connected() is False:
+                    answer = False
+                    break
+        return answer
+
+    def configured(self):
+        """
+        Returns if the slot (and all its subslots) is connected or optional 
+        """
+        answer = True
+        if (self._value is None and self.partner is None) or not self.stype.isConfigured():
+            answer = False
+        if answer is False and len(self._subSlots) > 0:
+            answer = True
+            for s in self._subSlots:
+                if s.configured() is False and s._optional is False:
+                    answer = False
+                    break
+        return answer
 
     def __call__(self, *args, **kwargs):
       """
@@ -378,14 +604,6 @@ class Slot(object):
       return destination
 
 
-    def _registerClone(self, slot):
-      if not slot in self._clones:
-        self._clones.append(slot)
-
-    def _unregisterClone(self, slot):
-      if slot in self._clones:
-        self._clones.remove(slot)
-
     def _getInstance(self, operator, level = None):
         """
         This method constructs a copy of the slot
@@ -408,6 +626,128 @@ class Slot(object):
 
     def onDisconnect(self, slot):
       pass
+
+
+    def _changed(self):
+      if self.partner is not None:
+        self.meta = self.partner.meta.copy()
+        if self.level > 0 and self.partner.level == self.level:
+          self.resize(len(self.partner))
+      elif self.meta._dirty:
+        self.meta._dirty = False
+      
+      self._configureOperator()
+      for c in self.partners:
+        c._changed()
+    
+      # call changed callbacks
+      for f, kw in self._callbacks_changed.iteritems():
+        f(self, **kw)
+    
+    def _configureOperator(self, notify = True):
+        """
+        call setupOutputs of Operator if all slots
+        of the operator are connected and configured
+        """
+        if self.operator is not None:
+          # check wether all slots are connected and notify operator            
+          if self.operator.configured():
+            self.operator._setupOutputs()
+    
+    def _requiredLength(self):
+        """
+        Returns the required number of subslots
+        """
+        if self.partner is not None:
+            if self.partner.level == self.level:
+                return len(self.partner)
+            elif self.partner.level < self.level:
+                return 1
+        elif self._value is not None:
+            return 1
+        else:
+            return 0
+
+    def _setupOutputs(self):
+      """
+      """
+      self._changed()
+    
+    def _connectSubSlot(self,slot, notify = True):
+      """
+      Connect a subslot either to the partner, or set the correct
+      value in case of  self._value != None
+      """
+      if type(slot) == int:
+        index = slot
+        slot = self._subSlots[slot]
+      else:
+        index = self._subSlots.index(slot)
+
+      if self.partner is not None:
+          if self.partner.level == self.level:
+              if len(self.partner) > index:
+                  slot.connect(self.partner[index])
+          else:
+              slot.connect(self.partner)
+      if self._value is not None:
+          slot.setValue(self._value, notify = notify)    
+
+
+                    
+    def _appendNew(self, notify = True, event = None, connect = True):
+        """
+        Construct a new subSlot of correct type and level and append
+        it to the list of subslots
+        """
+        slot = self._getInstance(self, level = self.level - 1)
+        self._subSlots.append(slot)
+        slot.name = self.name
+        index = len(self)-1
+        if connect and self.partner is not None:
+          self._connectSubSlot(index, notify = notify)
+        if self._value is not None:
+          slot.setValue(self._value)
+        return slot
+
+
+    def pop(self, index = -1, event = None):
+        if index < 0:
+          index = len(self) + index
+        self.removeSlot(index)
+    
+    
+    def removeSlot(self, index, notify = True, event = None):
+        """
+        Remove a slot from the list of subslots
+
+        Arguments:
+          slot    : either an index or the subslot instance
+        """
+        if type(index) is int:
+            slot = self[index]
+        else:
+            slot = index
+            index = self._subSlots.index(slot)
+        self._subSlots.remove(slot)
+        if notify:
+          self._configureOperator()
+        for c in self.partners:
+          c._changed()
+
+
+    def propagateDirty(self, slot, roi):
+        index = self._subSlots.index(slot)
+        self.operator.notifySubSlotDirty((self,slot),(index,),roi)
+    
+    def notifySubSlotDirty(self, slots, indexes, roi):
+        index = self._subSlots.index(slots[0])
+        self.operator.notifySubSlotDirty((self,)+slots,(index,) + indexes,roi)
+    
+    @property
+    def graph(self):
+        return self.operator.graph
+
 
     #
     #  
@@ -465,208 +805,11 @@ class InputSlot(Slot):
     to directly provide a value as input (i.e. .setValue(value) call)
     """
     
-    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False):
+    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False, level = 0):
         self._type = "input"
-        super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional)
-        self.partner = None
- 
-
-    def _changed(self, notify = True):
-      if self.partner is not None:
-        self.meta = self.partner.meta.copy()
-      self._configureOperator(notify = notify)
-
-      # call changed callbacks
-      for f, kw in self._callbacks_changed.iteritems():
-        f(self, **kw)
-
-      for c in self._clones:
-        c._changed(notify)
-
-    def setValue(self, value, notify = True):
-        """
-        This methods allows to directly provide an array
-        or other entitiy as input the the InputSlot instead
-        of connecting it to a partner OutputSlot.
-        """
-        changed = True
-        try:
-          if value == self._value:
-            changed = False
-        except:
-          pass
-        if changed:
-          if self.stype.isCompatible(value):
-            # call disconnect callbacks
-            for f, kw in self._callbacks_disconnect.iteritems():
-              f(self,**kw)
-            self._value = value
-            self.stype.setupMetaForValue(value)
-            # call connect callbacks
-            for f, kw in self._callbacks_connect.iteritems():
-              f(self,**kw)
-            self._changed()
-
-    @property
-    def value(self):
-        """
-        a convenience method for retrieving the value
-        from an (1,) shaped ndarray of dtype object, 
-        used slots that contain single strings, floats, integers etc.
-        """
-        if self.partner is not None:
-            temp = self[:].allocate().wait()[0]
-            return temp
-        else:
-            assert self._value is not None, "InputSlot %s (%r): Cannot access .value since slot is not connected and setValue has not been called !" %(self.name, self)
-            return self._value
-
-    def connected(self):
-        answer = True
-        if self._value is None and self.partner is None:
-            answer = False
-        return answer
+        super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
     
-    def configured(self):
-        answer = True
-        if self._value is None and self.partner is None or not self.stype.isConfigured():
-            answer = False
-        return answer
 
-
-    def connect(self, partner, notify = True):
-        """
-        connects the InputSlot to a partner OutputSlot
-        
-        when all InputSlots of an Operator are connected (or
-        are given a value by calling .setvalue(value))
-        the Operator is notified via its notifyConnectAll() method.
-        """
-        if partner is None:
-            self.disconnect()
-            return    
-            
-        if not isinstance(partner,(OutputSlot,MultiOutputSlot,Operator, InputSlot, MultiInputSlot)):
-            self.setValue(partner)
-            return
-            
-        if self.partner == partner and partner.level == self.level:
-            return
-        
-        self.disconnect()
-        if partner.level > 0:
-            partner.disconnectSlot(self)
-            if lazyflow.verboseWrapping:
-                print "Operator [self=%r] '%s', slot '%s':" % (self.operator, self.operator.name, self.name)
-                print "  -> wrapping because operator.level=0 and partner.level=%d" % partner.level
-            newop = OperatorWrapper(self.operator)
-            newop.inputs[self.name].connect(partner)
-            
-        else:
-            self.partner = partner
-            self.meta = partner.meta.copy()
-            if not isinstance(partner, InputSlot):
-              partner._connect(self)
-            else:
-              partner._registerClone(self)
-            self.stype.connect(partner)
-            # call connect callbacks
-            for f, kw in self._callbacks_connect.iteritems():
-              f(self,**kw)
-            if self.stype.isConfigured():
-                self._changed()
-    
-    def _configureOperator(self, notify = True):
-        """
-        call setupOutputs of Operator if all slots
-        of the operator are connected and configured
-        """
-        
-        if self.operator is not None:
-          # check wether all slots are connected and notify operator            
-          if self.operator.configured():
-            self.operator._setupOutputs()
-                
-    def disconnect(self):
-        """
-        Disconnect a InputSlot from its partner
-        """
-        #TODO: also reset ._value ??
-        if self.partner is not None:
-            if not isinstance(self.partner, (InputSlot, MultiInputSlot)):
-              self.partner.disconnectSlot(self)
-            else:
-              self.partner._unregisterClone(self)
-        self.partner = None
-        self.meta = MetaDict()
-
-        # call callbacks
-        for f,kw in self._callbacks_disconnect.iteritems():
-          f(self, **kw)
-        
-    
-            
-    def setDirty(self, *args,**kwargs):
-        """
-        this method is called by a partnering OutputSlot
-        when its content changes.
-        
-        the key parameter identifies the changed region
-        of an numpy.ndarray
-        """
-        assert self.operator is not None, \
-               "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
-        if self.connected():
-          roi = self.rtype(self,*args,**kwargs)
-
-          # call callbacks
-          for f,kw in self._callbacks_dirty.iteritems():
-            f(self, roi, **kw)
-
-          print "Input %r of %r is dirty" % (self.name, self.operator)
-          self.operator.propagateDirty(self, roi)
-          for c in self._clones:
-            c.setDirty(*args,**kwargs)
-    
-    def __setitem__(self, key, value):
-        assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"     
-        roi = self.rtype(self,pslice = key)
-        if self._value is not None:
-            self._value[key] = value
-            self.setDirty(roi) # only propagate the dirty key at the very beginning of the chain
-        
-        self.operator.setInSlot(self,key,value)
-        
-    def dumpToH5G(self, h5g, patchBoard):
-        h5g.dumpSubObjects({
-            "name" : self.name,
-            "level" : self.level,
-            "operator" : self.operator,
-            "partner" : self.partner,
-            "value" : self._value,
-            "stype" : self.stype
-            
-        },patchBoard)
-    
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        
-        s = cls("temp")
-
-        patchBoard[h5g.attrs["id"]] = s
-        
-        h5g.reconstructSubObjects(s,{
-            "name" : "name",
-            "level" : "level",
-            "operator" : "operator",
-            "partner" : "partner",
-            "value" : "_value",
-            "stype" : "stype"
-            
-        },patchBoard)
-
-        return s
-    
 class OutputSlot(Slot):
     """
     The base class for output slots, it provides methods
@@ -688,7 +831,6 @@ class OutputSlot(Slot):
         super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = 0)
         self._metaParent = operator
         self.operator = operator
-        self.partners = []
 
         self._dirtyCallbacks = []
     
@@ -699,93 +841,26 @@ class OutputSlot(Slot):
         # call changed callbacks
         for f, kw in self._callbacks_changed.iteritems():
           f(self, **kw)
-
-        for p in self.partners:
+        partners = self.partners.copy()
+        for p in partners:
           p._changed()
 
 
-    def _connect(self, partner, notify = True):
-        if partner not in self.partners:
-            self.partners.append(partner)
-        #Re-run the connect anyway, because we might want to
-        #propagate information like this
-        partner.connect(self, notify = notify)
         
     def disconnect(self):
-        for p in self.partners:
-            p.disconnect()
+        return
             
-    def disconnectSlot(self, partner):
-        if partner in self.partners:
-            self.partners.remove(partner)
-           
     def registerDirtyCallback(self, function, **kwargs):
-        self._dirtyCallbacks.append([function, kwargs])
+        self.notifyDirty(function, **kwargs)
     
     def unregisterDirtyCallback(self, function):
-        element = None
-        for e in self._dirtyCallbacks:
-            if e[0] == function:
-                element = e
-        if element is not None:
-            self._dirtyCallbacks.remove(element)
+        self.unregisterDirty(function)
             
-    def setDirty(self, *args, **kwargs):
-        """
-        This method can be called by an operator
-        to indicate that a region (identified by key)
-        has changed and needs recalculation.
-        
-        the method notifies all InputSlots that are connected to
-        this output slot
-        """
-
-        if not self.stype.isConfigured():
-            return
-        if not isinstance(args[0],rtype.Roi):
-          roi = self.rtype(self, *args, **kwargs)
-        else:
-          roi = args[0]
-
-        for p in self.partners:
-            p.setDirty(roi) #set everything dirty
-            
-        for cb in self._dirtyCallbacks:
-            cb[0](roi.toSlice(), **cb[1])
-
     def __setitem__(self, key, value):
         for p in self.partners:
             p[key] = value
 
     
-    def dumpToH5G(self, h5g, patchBoard):
-        h5g.dumpSubObjects({
-            "name" : self.name,
-            "level" : self.level,
-            "operator" : self.operator,
-            "partners" : self.partners,
-            "stype" : self.stype
-            
-        },patchBoard)
-    
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        
-        s = cls("temp")
-
-        patchBoard[h5g.attrs["id"]] = s
-        
-        h5g.reconstructSubObjects(s,{
-            "name" : "name",
-            "level" : "level",
-            "operator" : "operator",
-            "partners" : "partners",
-            "stype" : "stype"
-            
-        },patchBoard)
-            
-        return s
-        
 
 class MultiInputSlot(Slot):
     """
@@ -801,319 +876,6 @@ class MultiInputSlot(Slot):
         self.inputs = {}
         super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
     
-    def setValue(self, value):
-        """
-        set all values of subslots to the same value
-        """
-        changed = True
-        try:
-          if value == self._value:
-            changed = False
-        except:
-          pass
-        if changed:
-          # call disconnect callbacks
-          for f, kw in self._callbacks_disconnect.iteritems():
-            f(self,**kw)
-          self._value = value
-          self.stype.setupMetaForValue(value)
-          for i,s in enumerate(self._subSlots):
-              s.setValue(self._value)
-          # call connect callbacks
-          for f, kw in self._callbacks_connect.iteritems():
-            f(self,**kw)
-          self._changed()    
-    
-    def setValues(self, values):
-        """
-        set values of subslots with arraylike object
-        resizes the multinputslot with the length of the values array
-        """
-        # call disconnect callbacks
-        for f, kw in self._callbacks_disconnect.iteritems():
-          f(self,**kw)
-        changed = True
-        self.resize(len(values))
-        for i,s in enumerate(self._subSlots):
-            s.setValue(values[i])
-        # call connect callbacks
-        for f, kw in self._callbacks_connect.iteritems():
-          f(self,**kw)
-        self._changed()    
-    
-    def resize(self, size, notify = True, event = None):
-        oldsize = len(self)
-        if self.partner and len(self.partner) != size:
-          self.partner.resize(size)
-        while size > len(self):
-            self._appendNew(notify=False,connect=False)
-            
-        while size < len(self):
-            self._removeInputSlot(self[-1], notify = False)
-
-        for i in range(0,size):
-          self._connectSubSlot(i, notify = False)
-        
-        self._configureOperator()
-        for c in self._clones:
-          c.resize(size, notify, event)
-
-    def _connectSubSlot(self,slot, notify = True):
-      if type(slot) == int:
-        index = slot
-        slot = self._subSlots[slot]
-      else:
-        index = self._subSlots.index(slot)
-
-      if self.partner is not None:
-          if self.partner.level == self.level:
-              if len(self.partner) > index:
-                  self.partner[index]._connect(slot, notify = notify)
-          else:
-              slot.connect(self.partner)
-      if self._value is not None:
-          slot.setValue(self._value, notify = notify)    
-
-
-                    
-    def _appendNew(self, notify = True, event = None, connect = True):
-        if self.level <= 1:
-            islot = InputSlot(self.name ,self, stype = type(self.stype))
-        else:
-            islot = MultiInputSlot(self.name,self, stype = type(self.stype), level = self.level - 1)
-        self._subSlots.append(islot)
-        islot.name = self.name
-        index = len(self)-1
-        if connect:
-          self._connectSubSlot(index, notify = notify)
-        if self._value is not None:
-          islot.setValue(self._value)
-        return islot
-
-
-    def _insertNew(self, index, notify = True, connect = True):
-        if self.level == 1:
-            islot = InputSlot(self.name,self, stype = type(self.stype))
-        else:
-            islot = MultiInputSlot(self.name,self, stype = type(self.stype), level = self.level - 1)
-        self._subSlots.insert(index,islot)
-        islot.name = self.name
-        if connect:
-          self._connectSubSlot(index, notify = notify)
-        if self._value is not None:
-          islot.setValue(self._value)
-
-        return islot
-    
-    
-    def _configureOperator(self, notify = True):
-        # check wether all slots are connected and eventuall notify operator            
-        if self.operator:
-            allConfigured = True
-            for slot in self.operator.inputs.values():
-                if slot._optional is False and not slot.configured():
-                    allConfigured = False
-                    break
-            if allConfigured:
-              self.operator._setupOutputs()
-        
-    
-    def connected(self):
-        answer = True
-        if self._value is None and self.partner is None:
-            answer = False
-        if answer is False and len(self._subSlots) > 0:
-            answer = True
-            for s in self._subSlots:
-                if s.connected() is False:
-                    answer = False
-                    break
-        return answer
-
-    def configured(self):
-        answer = True
-        if (self._value is None and self.partner is None) or not self.stype.isConfigured():
-            answer = False
-        if answer is False and len(self._subSlots) > 0:
-            answer = True
-            for s in self._subSlots:
-                if s.configured() is False:
-                    answer = False
-                    break
-        return answer
-
-
-    def _requiredLength(self):
-        if self.partner is not None:
-            if self.partner.level == self.level:
-                return len(self.partner)
-            elif self.partner.level < self.level:
-                return 1
-        elif self._value is not None:
-            return 1
-        else:
-            return 0
-
-    def _setupOutputs(self):
-      self._changed()
-
-    def _changed(self):
-      if self.partner is not None:
-        self.meta = self.partner.meta.copy()
-        if self.partner.level == self.level:
-          self.resize(len(self.partner))
-      # call changed callbacks
-      for f, kw in self._callbacks_changed.iteritems():
-        f(self,**kw)
-
-      self._configureOperator()
-      for c in self._clones:
-        c._changed()
-        
-    def connect(self,partner, notify = True):
-        if partner is None:
-            self.disconnect()
-            return
-        
-        if not isinstance(partner,(OutputSlot,MultiOutputSlot,Operator,InputSlot, MultiInputSlot)):
-            self.setValue(partner)
-            return
-          
-        if self.partner == partner and partner.level == self.level:
-            return
-        
-        if partner is not None:
-            if partner.level == self.level:
-                if self.partner is not None:
-                    self.partner.disconnectSlot(self)
-                self.partner = partner
-                self.meta = self.partner.meta.copy()
-                
-                if len(self) != len(partner):
-                    self.resize(len(partner))
-                    
-                if not isinstance(partner, (InputSlot, MultiInputSlot)):
-                  partner._connect(self)
-                  for i in range(len(self.partner)):
-                      p = self.partner[i]
-                      self.partner[i]._connect(self[i])
-                else:
-                  partner._registerClone(self)
-                  for i in range(len(self.partner)):
-                      p = self.partner[i]
-                      self[i].connect(self.partner[i])
-
-                # call slot type connect function
-                self.stype.connect(partner)
-                
-                # call connect callbacks
-                for f, kw in self._callbacks_connect.iteritems():
-                  f(self,**kw)
-               
-                self._changed()
-                
-            elif partner.level < self.level:
-                self.partner = partner
-                self.meta = self.partner.meta.copy()
-                for i, slot in enumerate(self._subSlots):                
-                    slot.connect(partner)
-                # call connect callbacks
-                for f, kw in self._callbacks_connect.iteritems():
-                  f(self,**kw)
-                self._changed()
-
-            elif partner.level > self.level:
-                if not isinstance(partner, (InputSlot, MultiInputSlot)):
-                  partner.disconnectSlot(self)
-                if lazyflow.verboseWrapping:
-                  print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
-                if isinstance(self.operator,(OperatorWrapper, Operator)):
-                    newop = OperatorWrapper(self.operator)
-                    partner._connect(newop.inputs[self.name])
-                else:
-                    raise RuntimeError("Trying to connect a higher order slot to a subslot - NOT ALLOWED")
-
-    def disconnect(self):
-        for slot in self._subSlots:
-            slot.disconnect()
-        if self.partner is not None:
-            if not isinstance(self.partner, (InputSlot, MultiInputSlot)):
-              self.partner.disconnectSlot(self)
-            else:
-              self.partner._unregisterClone(self)
-            self._subSlots = []
-            self.partner = None
-        
-        # call disconnect callbacks
-        for f, kw in self._callbacks_disconnect.iteritems():
-          f(self,**kw)
-        self.operator.onDisconnect(self)
-    
-    def removeSlot(self, index, notify = True, event = None):
-        slot = index
-        if type(index) is int:
-            slot = self[index]
-        self._removeInputSlot(slot, notify, event = event)
-    
-    def _removeInputSlot(self, inputSlot, notify = True, event = None):
-        try:
-            index = self._subSlots.index(inputSlot)
-        except:
-          pass
-        self._subSlots.remove(inputSlot)
-        if notify:
-          self._configureOperator()
-        for c in self._clones:
-          c._changed()
-
-        
-
-    def setDirty(self, roi):
-        assert self.operator is not None, "Slot %s cannot be set dirty, slot not belonging to any actual operator instance" % self.name
-        self.operator.propagateDirty(self, roi)
-
-    def propagateDirty(self, slot, roi):
-        print "MultiInput %r of %r is dirty" % (self.name, self.operator)
-        index = self._subSlots.index(slot)
-        self.operator.notifySubSlotDirty((self,slot),(index,),roi)
-    
-    def notifySubSlotDirty(self, slots, indexes, roi):
-        index = self._subSlots.index(slots[0])
-        self.operator.notifySubSlotDirty((self,)+slots,(index,) + indexes,roi)
-   
-    @property
-    def graph(self):
-        return self.operator.graph
-
-    def dumpToH5G(self, h5g, patchBoard):
-        h5g.dumpSubObjects({
-            "name" : self.name,
-            "level" : self.level,
-            "operator" : self.operator,
-            "partner" : self.partner,
-            "stype" : self.stype,
-            "_subSlots": self._subSlots
-            
-        },patchBoard)
-    
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        
-        s = cls("temp")
-
-        patchBoard[h5g.attrs["id"]] = s
-        
-        h5g.reconstructSubObjects(s,{
-            "name" : "name",
-            "level" : "level",
-            "operator" : "operator",
-            "partner" : "partner",
-            "stype" : "stype",
-            "_subSlots": "_subSlots"
-            
-        },patchBoard)
-            
-        return s
 
 
 class MultiOutputSlot(Slot):
@@ -1128,36 +890,9 @@ class MultiOutputSlot(Slot):
         self._type = "output"
         super(MultiOutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
         self._metaParent = operator
-        self.partners = []
     
    
-    def append(self, subSlot, event = None):
-        subSlot.operator = self
-        self._subSlots.append(subSlot)
-        index = len(self._subSlots) - 1
-        self.meta._dirty = True
     
-    def _insertNew(self,index, event = None):
-        oslot = OutputSlot(self.name,self,stype=type(self.stype))
-        self.insert(index,oslot, event = event)
-        self.meta._dirty = True
-
-
-    def insert(self, index, outputSlot, event = None):
-        outputSlot.operator = self
-        self._subSlots.insert(index,outputSlot)
-        self.meta._dirty = True
-        
-    def remove(self, outputSlot, event = None):
-        index = self._subSlots.index(outputSlot)
-        self.pop(index, event = event)
-        self.meta._dirty = True
-    
-    def pop(self, index = -1, event = None):
-        oslot = self._subSlots[index]
-        oslot.disconnect()
-        oslot = self._subSlots.pop(index)
-        self.meta._dirty = True
 
     def _changed(self):
       if self.meta._dirty:
@@ -1171,27 +906,13 @@ class MultiOutputSlot(Slot):
       for o in self._subSlots:
         o._changed()
 
-    def _connect(self, partner, notify = True):
-        if partner not in self.partners:
-            self.partners.append(partner)
-        #Re-run the connect anyway, because we might want to
-        #propagate information like this
-        partner.connect(self, notify = notify)
-        
     def disconnect(self):
         slots = self[:]
         for s in slots:
             s.disconnect()
 
-    def disconnectSlot(self, partner):
-        if partner in self.partners:
-            self.partners.remove(partner)
+           
 
-    def clearAllSlots(self):
-        slots = self[:]
-        for s in slots:
-            self.remove(s)
-            
     def resize(self, size, event = None):
         if len(self) != size:
           self.meta._dirty = True
@@ -1226,43 +947,10 @@ class MultiOutputSlot(Slot):
                                (self.name, self.operator.name, self.operator, slots))
         return self.operator.getSubOutSlot((self,) + slots, (index,) + indexes, key, result)
     
-    def setDirty(self, roi):
-        return
-    
     @property
     def graph(self):
         return self.operator.graph
 
-
-    def dumpToH5G(self, h5g, patchBoard):
-        h5g.dumpSubObjects({
-            "name" : self.name,
-            "level" : self.level,
-            "operator" : self.operator,
-            "partners" : self.partners,
-            "stype" : self.stype,
-            "outputSlots" : self.outputSlots
-            
-        },patchBoard)
-    
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        
-        s = cls("temp")
-
-        patchBoard[h5g.attrs["id"]] = s
-        
-        h5g.reconstructSubObjects(s,{
-            "name" : "name",
-            "level" : "level",
-            "operator" : "operator",
-            "partners" : "partners",
-            "stype" : "stype",
-            "outputSlots" : "outputSlots"
-            
-        },patchBoard)
-            
-        return s
 
 
 class InputDict(dict):
@@ -1282,14 +970,6 @@ class InputDict(dict):
         else:
           raise Exception("Operator %s (class: %s) has no input slot named '%s'. available input slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
 
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        temp = InputDict()
-        patchBoard[h5g.attrs["id"]] = temp
-        for i,g in h5g.items():
-            temp[str(i)] = g.reconstructObject(patchBoard)
-        return temp
-
 
 
 class OutputDict(dict):
@@ -1308,16 +988,6 @@ class OutputDict(dict):
           return getattr(self.operator, key)
         else:
           raise Exception("Operator %s (class: %s) has no output slot named '%s'. available output slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
-
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        temp = OutputDict()
-        patchBoard[h5g.attrs["id"]] = temp
-        for i,g in h5g.items():
-            temp[str(i)] = g.reconstructObject(patchBoard)
-        return temp
-
-
 
 
 class OperatorMetaClass(type):
@@ -1510,7 +1180,7 @@ class Operator(object):
       """
       allConfigured = True
       for slot in self.inputs.values():
-          if slot._optional is False and slot.configured() is False:
+         if slot._optional is False and slot.configured() is False:
               allConfigured = False
               break
       return allConfigured
@@ -1696,34 +1366,6 @@ class Operator(object):
         pass
 
     
-    def dumpToH5G(self, h5g, patchBoard):
-        h5inputs = h5g.create_group("inputs")
-        h5inputs.dumpObject(self.inputs)
-
-        h5outputs = h5g.create_group("outputs")
-        h5outputs.dumpObject(self.outputs)
-        
-        h5graph = h5g.create_group("graph")
-        h5graph.dumpObject(self.graph)
-    
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        
-        h5graph = h5g["graph"]        
-        g = h5graph.reconstructObject(patchBoard)        
-        op = stringToClass(h5g.attrs["className"])(g)
-
-        patchBoard[h5g.attrs["id"]] = op        
-        
-        h5inputs = h5g["inputs"]
-        op.inputs = h5inputs.reconstructObject(patchBoard)
-        
-        h5outputs = h5g["outputs"]
-        op.outputs = h5outputs.reconstructObject(patchBoard)
-        
-        return op
-        
-
 
 class OperatorWrapper(Operator):
     name = ""
@@ -1800,7 +1442,7 @@ class OperatorWrapper(Operator):
                 value = islot._value
                 self.operator.inputs[islot.name] = ii
                 if partner is not None:
-                    partner._connect(ii)
+                    ii.connect(partner)
                 if value is not None:
                     ii.setValue(value)
                 islot.disconnect()
@@ -1814,7 +1456,7 @@ class OperatorWrapper(Operator):
                 partners = copy.copy(oslot.partners)
                 oslot.disconnect()
                 for p in partners:         
-                    oo._connect(p)
+                    p.connect(oo)
             
         self._setDefaultInputValues()
 
@@ -1859,7 +1501,7 @@ class OperatorWrapper(Operator):
 
         for k, oslot in self.outputs.items():
             for p in oslot.partners:
-                op.outputs[k]._connect(p)
+                p.connect(op.outputs[k])
     
     def onDisconnect(self, slot):
        self._testRestoreOriginalOperator() 
@@ -2016,41 +1658,6 @@ class OperatorWrapper(Operator):
         assert 1==2
 
 
-    def dumpToH5G(self, h5g, patchBoard):
-        h5g.dumpSubObjects({
-                    "graph" : self.graph,
-                    "operator": self.operator,
-                    "origInputs": self.origInputs,
-                    "origOutputs": self.origOutputs,
-                    "_inputSlots": self._inputSlots,
-                    "_outputSlots": self._outputSlots,
-                    "inputs": self.inputs,
-                    "outputs": self.outputs,
-                    "innerOperators": self.innerOperators                    
-                },patchBoard)    
-                
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-        
-        op = stringToClass(h5g.attrs["className"])(None)
-        
-        patchBoard[h5g.attrs["id"]] = op
-        
-        h5g.reconstructSubObjects(op, {
-                    "graph" : "graph",
-                    "operator" : "operator",
-                    "origInputs": "origInputs",
-                    "origOutputs": "origOutputs",
-                    "_inputSlots": "_inputSlots",
-                    "_outputSlots": "_outputSlots",
-                    "inputs": "inputs",
-                    "outputs": "outputs",
-                    "innerOperators": "innerOperators"                    
-                },patchBoard)    
-
-        return op
-        
-   
                         
 class Graph(object):
   def __init__(self, numThreads=-1):
@@ -2077,31 +1684,3 @@ class Graph(object):
   def _notifyFreeMemory(self, *args, **kwargs):
     pass
 
-
-  def dumpToH5G(self, h5g, patchBoard):
-      self.stopGraph()
-      h5g.dumpSubObjects({
-                  "operators" : self.operators,
-                  "numThreads": self.numThreads,
-                  "softMaxMem": self.softMaxMem
-              },patchBoard)    
-      self.resumeGraph()
-
-  
-  @classmethod
-  def reconstructFromH5G(cls, h5g, patchBoard):
-      numThreads = h5g["numThreads"].reconstructObject()
-      softMaxMem = h5g["softMaxMem"].reconstructObject()
-
-      g = Graph(numThreads = numThreads, softMaxMem = softMaxMem)
-      patchBoard[h5g.attrs["id"]] = g 
-      g.stopGraph()
-      
-      h5g.reconstructSubObjects(g, {
-                  "operators": "operators",
-                  "numThreads": "numThreads",
-                  "softMaxMem" : "softMaxMem"
-              },patchBoard)    
-      g.resumeGraph()
-      return g
- 
