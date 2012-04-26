@@ -3,11 +3,7 @@ import vigra,numpy
 from lazyflow.graph import Graph,Operator,InputSlot,OutputSlot
 from lazyflow.operators import OpArrayPiper
 from lazyflow.helpers import generateRandomRoi
-from lazyflow.roi import roiToSlice
 
-<<<<<<< HEAD
-class TestRoiInterdaxe(TestCase):
-=======
 class OpRoiTest(Operator):
     
     inputSlots = [InputSlot("input")]
@@ -26,7 +22,6 @@ class OpRoiTest(Operator):
         return result
 
 class TestRoiInterdace(TestCase):
->>>>>>> b82d1af... added roi test for use of roi inside of operators
     
     def setUp(self):
         self.testVol = vigra.VigraArray((200,200,200))
@@ -41,10 +36,6 @@ class TestRoiInterdace(TestCase):
         
         for i in range(20):
             roi = generateRandomRoi((200,200,200))
-<<<<<<< HEAD
-            print roi 
-            self.op.outputs["Output"](start=roi[0], stop=roi[1]).wait()
-=======
             result=self.op.outputs["Output"](start=roi[0], stop=roi[1]).wait()
     
     def test_RoiOp(self):
@@ -52,4 +43,3 @@ class TestRoiInterdace(TestCase):
         for i in range(20):
             roi = generateRandomRoi((200,200,200))
             result=self.roiOp.outputs["output"](start=roi[0], stop=roi[1]).wait()
->>>>>>> b82d1af... added roi test for use of roi inside of operators
