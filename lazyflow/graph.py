@@ -1134,7 +1134,7 @@ class Operator(object):
             self.graph = self._parent.graph
         if graph is not None:
           if isinstance(graph, Graph):
-            self.graph = Graph
+            self.graph = graph
             self._parent = None
           elif not  isinstance(graph, bool):
             self._parent = graph
