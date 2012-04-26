@@ -184,7 +184,8 @@ class Slot(object):
         self._callbacks_dirty = dict()      # callback dictionary (function : kw_arguments), the functions are called when the slot gets dirty
         self._callbacks_connect = dict()    # callback dictionary (function : kw_arguments), the functions are called when the slots is connected
         self._callbacks_disconnect = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots is disconnected
-        self._callbacks_resize = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots is resized
+        self._callbacks_resize = dict() # callback dictionary (function : kw_arguments), the functions are called before the slots is resized
+        self._callbacks_resized = dict() # callback dictionary (function : kw_arguments), the functions are called after the slots is resized          
         self.partners = set()
 
     #
@@ -230,11 +231,23 @@ class Slot(object):
     
     def notifyResize(self, function, **kwargs):
       """
-      calls the corresponding function when the slot is resized
+      calls the corresponding function before the slot is resized
       first argument of the function is the slot
+      second argument is the old size and the third
+      argument is the new size
       the keyword arguments follow
       """
       self._callbacks_resize[function] = kwargs
+    
+    def notifyResized(self, function, **kwargs):
+      """
+      calls the corresponding function after the slot is resized
+      first argument of the function is the slot
+      second argument is the old size and the third
+      argument is the new size
+      the keyword arguments follow
+      """
+      self._callbacks_resized[function] = kwargs
     
     def unregisterDirty(self, function):
       """
@@ -278,6 +291,15 @@ class Slot(object):
       """
       try:
         self._callbacks_resize.pop(function)
+      except KeyError:
+        pass
+    
+    def unregisterResized(self, function):
+      """
+      unregister a resized callback
+      """
+      try:
+        self._callbacks_resized.pop(function)
       except KeyError:
         pass
     
@@ -376,6 +398,13 @@ class Slot(object):
         if self.level == 0:
           return
         oldsize = len(self)
+        if size == oldsize:
+          return
+        
+        # call before resize callbacks
+        for f,kw in self._callbacks_resize.iteritems():
+          f(self, oldsize, size, **kw)
+
         if self.partner and len(self.partner) != size:
           self.partner.resize(size)
 
@@ -387,6 +416,10 @@ class Slot(object):
 
         for i in range(0,size):
           self._connectSubSlot(i, notify = False)
+        
+        # call after resize callbacks
+        for f,kw in self._callbacks_resized.iteritems():
+          f(self, oldsize, size, **kw)
         
         self._configureOperator()
         for c in self.partners:
@@ -914,8 +947,16 @@ class MultiOutputSlot(Slot):
            
 
     def resize(self, size, event = None):
-        if len(self) != size:
-          self.meta._dirty = True
+        oldsize = len(self)
+
+        if oldsize == size:
+          return
+
+        # call before resize callbacks
+        for f, kw in self._callbacks_resize.iteritems():
+          f(self, oldsize, newsize **kw)
+
+        self.meta._dirty = True
         while len(self) < size:
             if self.level == 1:
                 slot = OutputSlot(self.name,self, stype = type(self.stype))
@@ -927,6 +968,10 @@ class MultiOutputSlot(Slot):
         
         while len(self) > size:
             self.pop()
+        
+        # call after resize callbacks
+        for f, kw in self._callbacks_resized.iteritems():
+          f(self, oldsize, size, **kw)
 
     def execute(self,slot,roi,result):
         index = self._subSlots.index(slot)
