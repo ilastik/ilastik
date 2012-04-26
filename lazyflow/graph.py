@@ -314,7 +314,7 @@ class Slot(object):
             self.disconnect()
             return
         
-        if not isinstance(partner,(OutputSlot,MultiOutputSlot,Operator,InputSlot, MultiInputSlot)):
+        if not isinstance(partner,Slot):
             self.setValue(partner)
             return
           
@@ -666,12 +666,11 @@ class Slot(object):
         self.meta = self.partner.meta.copy()
         if self.level > 0 and self.partner.level == self.level:
           self.resize(len(self.partner))
-      elif self.meta._dirty:
-        self.meta._dirty = False
       
       self._configureOperator()
       for c in self.partners:
         c._changed()
+      self.meta._dirty = False
     
       # call changed callbacks
       for f, kw in self._callbacks_changed.iteritems():
@@ -869,6 +868,10 @@ class OutputSlot(Slot):
     
 
     def _changed(self):
+      if self.partner is not None:
+        self.meta = self.partner.meta.copy()
+        if self.level > 0 and self.partner.level == self.level:
+          self.resize(len(self.partner))
       if self.meta._dirty:
         self.meta._dirty = False
         # call changed callbacks
@@ -929,7 +932,6 @@ class MultiOutputSlot(Slot):
 
     def _changed(self):
       if self.meta._dirty:
-        self.meta._dirty = False
         # call changed callbacks
         for f, kw in self._callbacks_changed.iteritems():
           f(self, **kw)
@@ -938,6 +940,7 @@ class MultiOutputSlot(Slot):
 
       for o in self._subSlots:
         o._changed()
+      self.meta._dirty = False
 
     def disconnect(self):
         slots = self[:]
@@ -1582,21 +1585,11 @@ class OperatorWrapper(Operator):
         for name, oslot in self.outputs.items():
             oslot.pop(index)
 
-    def _connectInnerOutputsForIndex(self, index):
-        innerOp = self.innerOperators[index]
-        for key,mslot in self.outputs.items():            
-            mslot[index] = innerOp.outputs[key]
-
-            
     def _connectInnerOutputs(self):
-        #for k,mslot in self.outputs.items():
-        #    #assert isinstance(mslot,MultiOutputSlot)
-        #    mslot.resize(len(self.innerOperators))
-
         for key,mslot in self.outputs.items():
             for index, innerOp in enumerate(self.innerOperators):
                 if innerOp is not None and index < len(mslot):
-                  mslot[index] = innerOp.outputs[key]
+                  mslot[index].connect(innerOp.outputs[key])
 
     def _ensureInputSize(self, numMax = 0, event = None):
         
@@ -1631,9 +1624,6 @@ class OperatorWrapper(Operator):
         for name, oslot in self.outputs.items():
             oslot.resize(maxLen,event = event)
 
-        #for name, oslot in self.outputs.items():
-        #    oslot.resize(maxLen)
-
         return maxLen
 
     def _setupOutputs(self):
@@ -1652,7 +1642,6 @@ class OperatorWrapper(Operator):
                         
       self._ensureOutputSize([],[], maxLen)
       self._connectInnerOutputs()
-      self.setupOutputs()
       
         
       for k,mslot in self.outputs.items():
@@ -1689,6 +1678,8 @@ class OperatorWrapper(Operator):
 
 
     def getSubOutSlot(self, slots, indexes, key, result):
+        # this should never be called
+        assert 1 == 2
         if len(indexes) == 1:
             return self.innerOperators[indexes[0]].getOutSlot(self.innerOperators[indexes[0]].outputs[slots[0].name], key, result)
         else:
