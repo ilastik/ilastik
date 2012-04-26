@@ -11,12 +11,15 @@ class OpFeatureSelection(Operator):
     name = "OpFeatureSelection"
     category = "Top-level"
 
-    # Multiple images
+    # Multiple input images
     InputImages = MultiInputSlot()
 
-    # Same set of selections applied to all images
-    Matrix = InputSlot()
-    Scales = InputSlot()
+    # The following input slots are applied uniformly to all input images
+    Scales = InputSlot() # The list of possible scales to use when computing features
+    Matrix = InputSlot() # A matrix of bools indicating which features to output.
+                         # The matrix rows correspond to feature types (see OpPixelFeaturesPresmoothed)
+                         # The matrix columns correspond to the scales provided in the Scales input,
+                         #  which requires that the number of matrix columns must match len(Scales.value)
     
     # Features are presented in the channels of the output images
     # Output can be optionally accessed via an internal cache.
@@ -80,7 +83,7 @@ class OpFeatureSelection(Operator):
             return res
         elif slot.name == 'CachedOutputImages':
             # Cached result
-            req = self.internalCaches[indexes[0]][key].Output.writeInto(result)
+            req = self.internalCaches.Output[indexes[0]][key].writeInto(result)
             res = req.wait()
             return res
 
