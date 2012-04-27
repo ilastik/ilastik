@@ -307,7 +307,7 @@ class PixelClassificationGui(QMainWindow):
         if p == "/": p = "."+p
         # TODO: The feature selection ui is located in a separate directory because it should really be part of its own applet.
         #       For now, we load the ui and deal with feature selection manually in this applet.
-        self._featureSelectionUi = uic.loadUi(p+"../featureSelection/featureSelectionControls.ui") # Don't pass self: applet ui is separate from the main ui
+        self._featureSelectionUi = uic.loadUi(p+"../featureSelection/featureSelectionDrawer.ui") # Don't pass self: applet ui is separate from the main ui
         self._featureSelectionUi.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
 
     @property
