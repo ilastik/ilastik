@@ -53,7 +53,7 @@ class FeatureSelectionGui(QMainWindow):
         """
         Load the ui file for the applet drawer, which we own.
         """
-        localDir = utility.getPathToLocalDirectory(__file__)
+        localDir = os.path.split(__file__)[0]
         # (We don't pass self here because we keep the drawer ui in a separate object.)
         self.drawer = uic.loadUi(localDir+"/featureSelectionDrawer.ui")
         self.drawer.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
@@ -67,7 +67,7 @@ class FeatureSelectionGui(QMainWindow):
         Load the GUI from the ui file into this class and connect it with event handlers.
         """
         # Load the ui file into this class (find it in our own directory)
-        localDir = utility.getPathToLocalDirectory(__file__)
+        localDir = os.path.split(__file__)[0]
         uic.loadUi(localDir+"/centralWidget.ui", self)
             
     def initFeatureDlg(self):
