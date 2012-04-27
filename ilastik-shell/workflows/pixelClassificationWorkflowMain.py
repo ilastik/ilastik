@@ -7,7 +7,7 @@ from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 from ilastikshell.ilastikShell import IlastikShell
 
 from applets.pixelClassification import PixelClassificationApplet
-from applets.dataImport import InputDataSelectionApplet
+from applets.projectMetadata import ProjectMetadataApplet
 from applets.dataSelection import DataSelectionApplet
 from applets.featureSelection import FeatureSelectionApplet
 from lazyflow.graph import Graph
@@ -26,7 +26,7 @@ graph = Graph()
 # Create the applets for our workflow
 dataSelectionApplet = DataSelectionApplet(graph)
 featureSelectionApplet = FeatureSelectionApplet(graph)
-inputDataSelectionApplet = InputDataSelectionApplet()
+projectMetadataApplet = ProjectMetadataApplet()
 pcApplet = PixelClassificationApplet(graph)
 
 # Get handles to each of the applet top-level operators
@@ -39,7 +39,7 @@ opFeatures.InputImages.connect( opData.OutputImages )
 shell = IlastikShell()
 shell.addApplet(dataSelectionApplet)
 shell.addApplet(featureSelectionApplet)
-shell.addApplet(inputDataSelectionApplet)
+shell.addApplet(projectMetadataApplet)
 shell.addApplet(pcApplet)
 shell.show()
 
