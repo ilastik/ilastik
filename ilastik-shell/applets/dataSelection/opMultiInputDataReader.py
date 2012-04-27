@@ -5,6 +5,7 @@ from lazyflow.operators.ioOperators import OpStackLoader
 
 import vigra
 import os
+import copy
 
 class OpMultiInputDataReader(Operator):
     """
@@ -79,7 +80,7 @@ class OpMultiInputDataReader(Operator):
             self.internalOutputs.append(newOutput)
             self.Outputs[i].meta.dtype = newOutput.meta.dtype
             self.Outputs[i].meta.shape = newOutput.meta.shape
-            self.Outputs[i].meta.axistags = newOutput.meta.axistags
+            self.Outputs[i].meta.axistags = copy.copy(newOutput.meta.axistags)
     
     def getSubOutSlot(self, slots, indexes, key, result):
         req = self.internalOutputs[indexes[0]][key].writeInto(result)
