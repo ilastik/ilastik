@@ -877,13 +877,15 @@ if has_blist:
                 smallstop = bigstop - offset
                 bigkey = roiToSlice(bigstart-start, bigstop-start)
                 smallkey = roiToSlice(smallstart, smallstop)
-                if not b_ind in self._labelers:
-                    self._labelers[b_ind]=OpSparseLabelArray(self)
-                    self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
-                    self._labelers[b_ind].inputs["eraser"].connect(self.inputs["eraser"])
-                    self._labelers[b_ind].inputs["deleteLabel"].connect(self.inputs["deleteLabel"])
-                    
-                self._labelers[b_ind].inputs["Input"][smallkey] = value[tuple(bigkey)].squeeze()
+                smallvalues = value[tuple(bigkey)]
+                if (smallvalues != 0 ).any():
+                  if not b_ind in self._labelers:
+                      self._labelers[b_ind]=OpSparseLabelArray(self)
+                      self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
+                      self._labelers[b_ind].inputs["eraser"].connect(self.inputs["eraser"])
+                      self._labelers[b_ind].inputs["deleteLabel"].connect(self.inputs["deleteLabel"])
+                      
+                  self._labelers[b_ind].inputs["Input"][smallkey] = smallvalues.squeeze()
             
             self.outputs["Output"].setDirty(key)
         

@@ -130,10 +130,7 @@ class ValueRequest(object):
     return self
 
   def writeInto(self, destination):
-    if isinstance(destination, numpy.ndarray):
-      destination[:] = self.result
-    else:
-      destination[:] = self.result
+    destination[:] = self.result
     return self
 
   def getResult(self):
