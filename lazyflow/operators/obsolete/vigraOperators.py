@@ -270,7 +270,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             dimCol = len(self.scales)
             dimRow = self.matrix.shape[0]
             
-            assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same"
+            assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)
             assert dimRow==6, "Right now the features are fixed"
     
             oparray = []

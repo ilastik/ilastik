@@ -421,7 +421,6 @@ class Slot(object):
         for f,kw in self._callbacks_resized.iteritems():
           f(self, oldsize, size, **kw)
         
-        self._configureOperator()
         for c in self.partners:
           c.resize(size, notify, event)
 
@@ -530,14 +529,17 @@ class Slot(object):
         """
         if self.partner is not None:
             # outputslot-inputsslot, inputslot-inputslot and outputslot-outputslot case
-            temp = self[:].allocate().wait()[0]
-            return temp
+            temp = self[:].allocate().wait()
         elif self._value is None:
             # outputslot case
-            return self(start = (0,), stop = (1,)).wait()[0]
+            temp =  self[:].allocate().wait()
         else:
             # _value case
             return self._value
+        if isinstance(temp, numpy.ndarray) and temp.shape != (1,):
+          return temp
+        else:
+          return temp[0]
 
     def setValue(self, value, notify = True):
         """
@@ -560,6 +562,7 @@ class Slot(object):
             f(self,**kw)
           self._value = value
           self.stype.setupMetaForValue(value)
+          self.meta._dirty = True
           for i,s in enumerate(self._subSlots):
               s.setValue(self._value)
           self._changed()
@@ -666,17 +669,20 @@ class Slot(object):
         self.meta = self.partner.meta.copy()
         if self.level > 0 and self.partner.level == self.level:
           self.resize(len(self.partner))
-      
-      self._configureOperator()
-      for c in self.partners:
-        c._changed()
-      self.meta._dirty = False
+
+      if self.meta._dirty:
+        if self._type == "output":
+          for o in self._subSlots:
+            o._changed()
+        for c in self.partners:
+          c._changed()
+        self.meta._dirty = False
     
-      # call changed callbacks
-      for f, kw in self._callbacks_changed.iteritems():
-        f(self, **kw)
+        # call changed callbacks
+        for f, kw in self._callbacks_changed.iteritems():
+          f(self, **kw)
     
-    def _configureOperator(self, notify = True):
+    def _configureOperator(self, slot, oldSize = 0, newSize = 0, notify = True):
         """
         call setupOutputs of Operator if all slots
         of the operator are connected and configured
@@ -762,8 +768,6 @@ class Slot(object):
             slot = index
             index = self._subSlots.index(slot)
         self._subSlots.remove(slot)
-        if notify:
-          self._configureOperator()
         for c in self.partners:
           c._changed()
 
@@ -840,6 +844,9 @@ class InputSlot(Slot):
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False, level = 0):
         self._type = "input"
         super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
+        # configure operator in case of slot change
+        self.notifyMetaChanged(self._configureOperator)
+        self.notifyResized(self._configureOperator)
     
 
 class OutputSlot(Slot):
@@ -867,22 +874,6 @@ class OutputSlot(Slot):
         self._dirtyCallbacks = []
     
 
-    def _changed(self):
-      if self.partner is not None:
-        self.meta = self.partner.meta.copy()
-        if self.level > 0 and self.partner.level == self.level:
-          self.resize(len(self.partner))
-      if self.meta._dirty:
-        self.meta._dirty = False
-        # call changed callbacks
-        for f, kw in self._callbacks_changed.iteritems():
-          f(self, **kw)
-        partners = self.partners.copy()
-        for p in partners:
-          p._changed()
-
-
-        
     def disconnect(self):
         return
             
@@ -911,7 +902,9 @@ class MultiInputSlot(Slot):
         self._subSlots = []
         self.inputs = {}
         super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
-    
+        # configure operator in case of slot change
+        self.notifyMetaChanged(self._configureOperator)
+        self.notifyResized(self._configureOperator)
 
 
 class MultiOutputSlot(Slot):
@@ -927,20 +920,6 @@ class MultiOutputSlot(Slot):
         super(MultiOutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
         self._metaParent = operator
     
-   
-    
-
-    def _changed(self):
-      if self.meta._dirty:
-        # call changed callbacks
-        for f, kw in self._callbacks_changed.iteritems():
-          f(self, **kw)
-        for p in self.partners:
-          p._changed()
-
-      for o in self._subSlots:
-        o._changed()
-      self.meta._dirty = False
 
     def disconnect(self):
         slots = self[:]
@@ -1582,8 +1561,18 @@ class OperatorWrapper(Operator):
         op.disconnect()
         index = self.innerOperators.index(op)
         self.innerOperators.remove(op)
+
         for name, oslot in self.outputs.items():
             oslot.pop(index)
+
+        for name, islot in self.inputs.items():
+            islot.pop(index)
+    
+    def _connectInnerInputs(self):
+        for key,mslot in self.inputs.items():
+            for index, innerOp in enumerate(self.innerOperators):
+                if innerOp is not None and index < len(mslot):
+                  innerOp.inputs[key].connect(mslot[index])
 
     def _connectInnerOutputs(self):
         for key,mslot in self.outputs.items():
@@ -1632,14 +1621,7 @@ class OperatorWrapper(Operator):
       self._connecting = True
       inputSlot = self.inputs.values()[0]
       maxLen = self._ensureInputSize()
-      for inputSlot in self.inputs.values():
-        for i in range(len(inputSlot)):
-            islot = inputSlot[i]
-            if islot.partner is not None:
-                self.innerOperators[i].inputs[inputSlot.name].connect(islot.partner)
-            elif islot._value is not None:
-                self.innerOperators[i].inputs[inputSlot.name].setValue(islot._value)
-                        
+      self._connectInnerInputs()
       self._ensureOutputSize([],[], maxLen)
       self._connectInnerOutputs()
       

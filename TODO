@@ -8,6 +8,7 @@ cleanup existing code:
 * write unit tests for each operator which test
   the operators compatability with many possible dimensions and axis
   cponfigurations
+* clean up Operator.__init__ with graph/operator
 
 evolve api:
 * use roi specification for all operator/slot calls
