@@ -1472,7 +1472,7 @@ class OpGrayscaleInverter(Operator):
         
         #this assumes that the last dimension is the channel. 
         image = self.inputs["input"][:].allocate().wait()
-        result[:,:,:,:] = 255-image[:,:,:,:]
+        result[...] = 255-image[...]
 
 class OpToUint8(Operator):
     name = "UInt8 Conversion Operator"
@@ -1498,7 +1498,7 @@ class OpToUint8(Operator):
             result[:] = image.numpy.astype('uint8')
 
 
-class OpRgbToGraysacle(Operator):
+class OpRgbToGrayscale(Operator):
     name = "Convert RGB Images to Grayscale"
     category = "" 
 
@@ -1519,11 +1519,29 @@ class OpRgbToGraysacle(Operator):
         
         image = self.inputs["input"](roi).wait()
         channelKey = self.outputs["output"]._axistags.channelIndex
-        if image.shape[channelKey] > 1:
-            #this assumes that the last dimension is the channel. 
-            result[:,:,:,0] = (numpy.round(0.299*image[:,:,:,0] + 0.587*image[:,:,:,1] + 0.114*image[:,:,:,2])).astype(int)
-        else:
+        numChannels = image.shape[channelKey]
+
+        if numChannels == 1:
             result[:] = image
+        else:            
+            # Construct the proper red, green and blue slicings based on the position of the channel axis
+            dimsBeforeChannel = channelKey
+            dimsAfterChannel = len(image.shape) - dimsBeforeChannel - 1
+            wholeSlice = slice(None, None, None)
+            graySlicingTuple  = dimsBeforeChannel*(wholeSlice,) + (0,)+ dimsAfterChannel*(wholeSlice,)
+            redSlicingTuple   = dimsBeforeChannel*(wholeSlice,) + (0,)+ dimsAfterChannel*(wholeSlice,)
+            greenSlicingTuple = dimsBeforeChannel*(wholeSlice,) + (1,)+ dimsAfterChannel*(wholeSlice,)
+            blueSlicingTuple  = dimsBeforeChannel*(wholeSlice,) + (2,)+ dimsAfterChannel*(wholeSlice,)
+
+            if numChannels == 3:
+                result[graySlicingTuple] = (numpy.round( 0.299*image[redSlicingTuple]
+                                                       + 0.587*image[greenSlicingTuple] 
+                                                       + 0.114*image[blueSlicingTuple] )).astype(int)
+            elif numChannels == 2:
+                # Not sure what correct behavior for two channels should be.
+                # For now, just average them.
+                result[graySlicingTuple] = (numpy.round( 0.5*image[redSlicingTuple]
+                                                       + 0.5*image[greenSlicingTuple])).astype(int)
         return result
                 
            
