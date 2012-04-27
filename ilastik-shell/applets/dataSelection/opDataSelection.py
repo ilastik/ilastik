@@ -1,7 +1,8 @@
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 
 from opMultiInputDataReader import OpMultiInputDataReader
-from lazyflow.operators.obsolete.vigraOperators import OpGrayscaleInverter, OpRgbToGraysacle
+from lazyflow.operators.obsolete.vigraOperators import OpGrayscaleInverter, OpRgbToGrayscale
+import copy
 
 class OpDataSelection(Operator):
     """
@@ -65,7 +66,7 @@ class OpDataSelection(Operator):
                 # If the user wants to convert to grayscale,
                 #  insert an intermediate rgb-to-grayscale operator on this subslot
                 if self.GrayConvertFlags[i].value:
-                    converter = OpRgbToGraysacle(graph=self.graph)
+                    converter = OpRgbToGrayscale(graph=self.graph)
                     converter.input.connect(providerSlot)
                     providerSlot = converter.output
                 
@@ -75,7 +76,7 @@ class OpDataSelection(Operator):
                 # Copy the metadata from the provider we ended up with
                 self.OutputImages[i].meta.dtype = providerSlot.meta.dtype
                 self.OutputImages[i].meta.shape = providerSlot.meta.shape
-                self.OutputImages[i].meta.axistags = providerSlot.meta.axistags
+                self.OutputImages[i].meta.axistags = copy.copy(providerSlot.meta.axistags)
 
     def getSubOutSlot(self, slots, indexes, key, result):
         # Request the output from the appropriate internal operator output.
