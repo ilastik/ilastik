@@ -723,7 +723,13 @@ if has_blist:
                   self.outputs["Output"].meta.shape = self._cacheShape
                   self.outputs["Output"].meta.axistags = vigra.defaultAxistags(len(self._cacheShape))
 
-                  self.inputs["Input"].meta.shape = self._cacheShape
+                  # FIXME: This is a super-special case because we are changing an INPUT shape from within setupOutputs!
+                  if self.inputs["Input"].meta.shape != self._cacheShape:
+                      self.inputs["Input"].meta.shape = self._cacheShape
+                      # If we're wrapped, then we have to propagate this shape change BACKWARDS.
+                      if self.inputs['Input'].partner is not None:
+                          self.inputs['Input'].partner.meta.shape = self._cacheShape
+                      #self.inputs["Input"]._changed()
           
                   self.outputs["nonzeroValues"].meta.dtype = object
                   self.outputs["nonzeroValues"].meta.shape = (1,)
