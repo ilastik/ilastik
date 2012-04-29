@@ -903,6 +903,12 @@ class MultiInputSlot(Slot):
         self.notifyMetaChanged(self._configureOperator)
         self.notifyResized(self._configureOperator)
 
+    def setInSlot(self, slot, key, value):
+        # Forward to our slot's partner(s)
+        if type(self.operator) == OperatorWrapper:
+            for p in slot.partners:
+                p.operator.setInSlot(p, key, value)
+            
 
 class MultiOutputSlot(Slot):
     """
