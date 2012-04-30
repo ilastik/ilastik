@@ -667,10 +667,10 @@ class Slot(object):
         if self.level > 0 and self.partner.level == self.level:
           self.resize(len(self.partner))
 
+      if self._type == "output":
+        for o in self._subSlots:
+          o._changed()
       if self.meta._dirty:
-        if self._type == "output":
-          for o in self._subSlots:
-            o._changed()
         for c in self.partners:
           c._changed()
         self.meta._dirty = False
