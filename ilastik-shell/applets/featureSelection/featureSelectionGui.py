@@ -25,9 +25,24 @@ class FeatureSelectionGui(QMainWindow):
     Manages all GUI elements in the data selection applet.
     This class itself is the central widget and also owns/manages the applet drawer widgets.
     """
-    
+
+    # Constants    
     ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
     DefaultColorTable = None
+    # Note: The order of these feature names must match the OpPixelFeaturesPresmoothed operator
+#    FeatureNames = [ "Gaussian smoothing",
+#                     "Laplacian of Gaussian",
+#                     "Structure Tensor Eigenvalues",
+#                     "Hessian of Gaussian EV",
+#                     "Gaussian Gradient Magnitude",
+#                     "Difference Of Gaussian" ]
+
+    FeatureNames = [ "G-smooth",
+                     "L-of-G",
+                     "ST EVs",
+                     "H-of-G EVs",
+                     "G. Grad Mag",
+                     "Diff of G." ]
 
     def __init__(self, topLevelOperator):
         super(FeatureSelectionGui, self).__init__()
@@ -76,14 +91,8 @@ class FeatureSelectionGui(QMainWindow):
         """
         self.featureDlg = FeatureDlg()
         self.featureDlg.setWindowTitle("Features")
-        self.featureDlg.createFeatureTable({"Features":
-                                                [FeatureEntry("Gaussian smoothing"), \
-                                                 FeatureEntry("Laplacian of Gaussian"), \
-                                                 FeatureEntry("Structure Tensor Eigenvalues"), \
-                                                 FeatureEntry("Hessian of Gaussian EV"),  \
-                                                 FeatureEntry("Gaussian Gradient Magnitude"), \
-                                                 FeatureEntry("Difference Of Gaussian")]}, \
-                                           self.ScalesList)
+        self.featureDlg.createFeatureTable( { "Features": [ FeatureEntry(s) for s in self.FeatureNames ] },
+                                            self.ScalesList)
         self.featureDlg.setImageToPreView(None)
 
         # Create a matrix of False values
@@ -176,19 +185,19 @@ class FeatureSelectionGui(QMainWindow):
         # Now add a layer for each feature
         # TODO: This assumes only one input image for now.
         # TODO: This assumes the channel is the last axis 
-        numChannels = self.mainOperator.CachedOutputImages[0].shape[-1]
-        for channelIndex in range(0, numChannels):
-            if channelIndex < len(self.DefaultColorTable):
+        numFeatureChannels = self.mainOperator.CachedOutputImages[0].shape[-1]
+        for featureChannelIndex in reversed(range(0, numFeatureChannels)):
+            if featureChannelIndex < len(self.DefaultColorTable):
                 # Choose the next color from our default color table
-                color = self.DefaultColorTable[channelIndex]
+                color = self.DefaultColorTable[featureChannelIndex]
             else:
                 # Choose a random color
                 color = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
             
-            label = labelListModel.Label( str(channelIndex), color )
-            self.addFeatureLayer(channelIndex, label)
+            label = labelListModel.Label( str(featureChannelIndex), color )
+            self.addFeatureLayer(featureChannelIndex, label)
 
-    def addFeatureLayer(self, channelIndex, ref_label):
+    def addFeatureLayer(self, featureChannelIndex, ref_label):
         """
         Display a feature in the layer editor.
         """
@@ -196,16 +205,29 @@ class FeatureSelectionGui(QMainWindow):
         # TODO: This assumes only one input image for now.
         selector=OpSingleChannelSelector(self.mainOperator.graph)
         selector.Input.connect(self.mainOperator.CachedOutputImages[0])
-        selector.Index.setValue(channelIndex)
+        selector.Index.setValue(featureChannelIndex)
+        
+        # Determine the name for this feature
+        # TODO: This assumes only one input image for now.
+        channelAxis = self.mainOperator.InputImages[0].meta.axistags.channelIndex
+        numOriginalChannels = self.mainOperator.InputImages[0].meta.shape[channelAxis]
+        originalChannel = featureChannelIndex % numOriginalChannels
+        featureNameIndex = featureChannelIndex / numOriginalChannels
+        channelNames = ['R', 'G', 'B']
+        # FIXME: It shouldn't be necessary to dig down into the operator to access these names.
+        #        Perhaps the operator should provide them as an output?
+        featureName = self.mainOperator.internalFeatureOps[0].featureNames[ featureNameIndex ]
+        if numOriginalChannels > 1:
+            featureName += " (" + channelNames[originalChannel] + ")"
         
         featureSource = LazyflowSource(selector.Output)
-        featureSource.setObjectName("Feature %s" % ref_label.name)
+        featureSource.setObjectName(featureName)
         featureLayer = AlphaModulatedLayer(featureSource, tintColor=ref_label.color, normalize = None )
         featureLayer.name = featureSource.objectName()
 
         # By default, only the first feature is visible
         featureLayer.opacity = 1.0
-        featureLayer.visible = (channelIndex == 0)
+        featureLayer.visible = (featureChannelIndex == 0)
         self.layerstack.insert(0, featureLayer )
 
     def createDefault16ColorColorTable(self):
