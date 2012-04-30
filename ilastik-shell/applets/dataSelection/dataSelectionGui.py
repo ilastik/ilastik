@@ -47,6 +47,11 @@ class DataSelectionGui(QMainWindow):
         localDir = os.path.split(__file__)[0]+'/'
         # (We don't pass self here because we keep the drawer ui in a separate object.)
         self.drawer = uic.loadUi(localDir+"/dataSelectionDrawer.ui")
+
+        # Set up our handlers
+        self.drawer.addFileButton.clicked.connect(self.handleAddFileButtonClicked)
+        self.drawer.addStackButton.clicked.connect(self.handleAddStackButtonClicked)
+        self.drawer.removeFileButton.clicked.connect(self.handleRemoveButtonClicked)
     
     def initCentralUic(self):
         """
@@ -68,10 +73,7 @@ class DataSelectionGui(QMainWindow):
         # (Leave the checkbox column widths alone.  They will be auto-sized.)
         self.fileInfoTableWidget.verticalHeader().hide()
 
-        # Set up our handlers
-        self.addFileButton.clicked.connect(self.handleAddFileButtonClicked)
-        self.addStackButton.clicked.connect(self.handleAddStackButtonClicked)
-        self.removeFileButton.clicked.connect(self.handleRemoveButtonClicked)
+        # Set up handlers
         self.fileInfoTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
         
     def handleAddFileButtonClicked(self):
