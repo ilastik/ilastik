@@ -2,12 +2,17 @@ from PyQt4 import uic
 from PyQt4 import Qt
 from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QMenuBar, QFrame, QLabel, QStackedLayout, \
-                        QStackedWidget, qApp, QFileDialog, QKeySequence
+                        QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox
 from PyQt4 import QtCore
 
 import h5py
 import traceback
 import os
+
+import logging
+logger = logging.getLogger(__name__)
+
+ILASTIK_VERSION = 0.6
 
 class ShellActions(object):
     """
@@ -51,6 +56,10 @@ class _ShellMenuBar( QWidget ):
         # Create a menu for "General" (non-applet) actions
         self._generalMenu = QMenu("General", self)
 
+        # Menu item: New Project 
+        self.actions.newProjectAction = self._generalMenu.addAction("&New Project...")
+        self.actions.newProjectAction.triggered.connect(parent.onNewProjectActionTriggered)
+
         # Menu item: Open Project 
         self.actions.openProjectAction = self._generalMenu.addAction("&Open Project...")
         self.actions.openProjectAction.triggered.connect(parent.onOpenProjectActionTriggered)
@@ -58,6 +67,8 @@ class _ShellMenuBar( QWidget ):
         # Menu item: Save Project
         self.actions.saveProjectAction = self._generalMenu.addAction("&Save Project...")
         self.actions.saveProjectAction.triggered.connect(parent.onSaveProjectActionTriggered)
+        # Can't save until a project is loaded for the first time
+        self.actions.saveProjectAction.setEnabled(False)
 
         # Menu item: Quit
         self.actions.quitAction = self._generalMenu.addAction("&Quit")
@@ -88,7 +99,6 @@ class IlastikShell( QMainWindow ):
         QMainWindow.__init__(self, parent = parent, flags = flags )
         import inspect, os
         ilastikShellFilePath = os.path.dirname(inspect.getfile(inspect.currentframe()))
-        print("ilastikShell.py path: " + ilastikShellFilePath)
         uic.loadUi( ilastikShellFilePath + "/ui/ilastikShell.ui", self )
         self._applets = []
         self.appletBarMapping = {}
@@ -103,6 +113,8 @@ class IlastikShell( QMainWindow ):
         
         # By default, make the splitter control expose a reasonable width of the applet bar
         self.splitter.setSizes([300,1])
+        
+        self.currentProjectFile = None
 
     def handleAppletBarIndexChange(self, appletBarIndex):
         if len(self.appletBarMapping) != 0:
@@ -131,72 +143,151 @@ class IlastikShell( QMainWindow ):
 
     def __getitem__( self, index ):
         return self._applets[index]
+    
+    def ensureNoCurrentProject(self):
+        projectClosed = True
+        if self.currentProjectFile is not None:
+            if self.isProjectDataDirty():
+                message = "Your current project is about to be closed, but it has unsaved changes which will be lost.\n"
+                message += "Are you sure you want to proceed?"
+                buttons = QMessageBox.Yes | QMessageBox.Cancel
+                response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
+                projectClosed = (response == QMessageBox.Yes)
 
-    def onOpenProjectActionTriggered(self):
-        print "Open Project action triggered"
-        projectFileName = QFileDialog.getOpenFileName(
-           self, "Open Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*ilp)")
+            if projectClosed:
+                self.currentProjectFile.close()
+                self.currentProjectFile = None
+        return projectClosed
+    
+    def onNewProjectActionTriggered(self):
+        logger.debug("New Project action triggered")
         
-        # If the user cancelled, stop now
-        if projectFileName.isNull():
+        # Make sure the user is finished with the currently open project
+        if not self.ensureNoCurrentProject():
             return
         
-        # Convert from QString to str
-        projectFileName = str(projectFileName)
-        print "Opening Project: " + projectFileName
+        fileSelected = False
+        while not fileSelected:
+            projectFilePath = QFileDialog.getSaveFileName(
+               self, "Create Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*.ilp)")
+            
+            # If the user cancelled, stop now
+            if projectFilePath.isNull():
+                return
+    
+            projectFilePath = str(projectFilePath)
+            fileSelected = True
+            
+            # Add extension if necessary
+            fileExtension = os.path.splitext(projectFilePath)[1].lower()
+            if fileExtension != '.ilp':
+                projectFilePath += ".ilp"
+                # Since we changed the file path, we need to re-check if we're overwriting an existing file.
+                message = "A file named '" + projectFilePath + "' already exists in this location.\n"
+                message += "Are you sure you want to overwrite it with a blank project?"
+                buttons = QMessageBox.Yes | QMessageBox.Cancel
+                response = QMessageBox.warning(self, "Overwrite existing project?", message, buttons, defaultButton=QMessageBox.Cancel)
+                if response == QMessageBox.Cancel:
+                    # Try again...
+                    fileSelected = False
+
+        # Create the blank project file
+        h5File = h5py.File(projectFilePath, "w")
+        h5File.create_dataset("ilastikVersion", data=ILASTIK_VERSION)
+        
+        self.loadProject(h5File)
+
+    def onOpenProjectActionTriggered(self):
+        logger.debug("Open Project action triggered")
+
+        # Make sure the user is finished with the currently open project
+        if not self.ensureNoCurrentProject():
+            return
+
+        projectFilePath = QFileDialog.getOpenFileName(
+           self, "Open Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*.ilp)")
+
+        # If the user canceled, stop now        
+        if projectFilePath.isNull():
+            return
+
+        projectFilePath = str(projectFilePath)
+        self.openExistingProjectFile(projectFilePath)
+        logger.info("Opening Project: " + projectFilePath)
 
         # Open the file as an HDF5 file
-        h5File = h5py.File(projectFileName, "r") # Should be no need to write
-
+        hdf5File = h5py.File(projectFilePath)
+        self.loadProject(hdf5File)
+    
+    def loadProject(self, hdf5File):
+        """
+        Load the data from the given hdf5File (which should already be open).
+        """
+        assert self.currentProjectFile is None
+        
+        # Save this as the current project
+        self.currentProjectFile = hdf5File
         try:            
             # Applet serializable items are given the whole file (root group) for now
             for applet in self._applets:
                 for item in applet.dataSerializers:
-                    item.deserializeFromHdf5(h5File)
+                    item.deserializeFromHdf5(self.currentProjectFile)
         except:
-            print "Project Open Action failed due to the following exception:"
+            logger.error("Project Open Action failed due to the following exception:")
             traceback.print_exc()
             
-            print "Aborting Project Open Action"
+            logger.error("Aborting Project Open Action")
             for applet in self._applets:
                 for item in applet.dataSerializers:
                     item.unload()
-        
-        h5File.close()
+
+        # Now that a project is loaded, the user is allowed to save
+        self._menuBar.actions.saveProjectAction.setEnabled(True)
     
     def onSaveProjectActionTriggered(self):
-        print "Save Project action triggered"
-        projectFileName = QFileDialog.getSaveFileName(
-           self, "Save Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*ilp)")
+        logger.debug("Save Project action triggered")
         
-        # If the user cancelled, stop now
-        if projectFileName.isNull():
-            return
-        
-        # Convert from QString to str
-        projectFileName = str(projectFileName)
-        print "Saving Project: " + projectFileName
-
-        # Open the file as an HDF5 file
-        # For now, always start from scratch ("w").
-        # In the future, maybe check the file's existing data to see if it really needs to be overwritten
-        h5File = h5py.File(projectFileName, "w") 
+        assert self.currentProjectFile != None
 
         try:        
             # Applet serializable items are given the whole file (root group) for now
             for applet in self._applets:
                 for item in applet.dataSerializers:
-                    item.serializeToHdf5(h5File)
+                    item.serializeToHdf5(self.currentProjectFile)
         except:
-            print "Project Save Action failed due to the following exception:"
+            logger.error("Project Save Action failed due to the following exception:")
             traceback.print_exc()            
 
-        h5File.close()
+        # Flush any changes we made to disk, but don't close the file.
+        self.currentProjectFile.flush()
         
     def onQuitActionTriggered(self):
-        print "Quit Action Triggered"
+        """
+        The user wants to quit the application.
+        Check his project for unsaved data and ask if he really means it.
+        """
+        logger.info("Quit Action Triggered")
         
-        # Check each of the serializable items to see if the user might need to save first
+        if self.isProjectDataDirty():
+            message = "Your project has unsaved data.  Are you sure you want to discard your changes and quit?"
+            buttons = QMessageBox.Discard | QMessageBox.Cancel
+            response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
+            if response == QMessageBox.Cancel:
+                return
+
+        if self.currentProjectFile is not None:
+            self.currentProjectFile.close()
+        self.currentProjectFile = None
+
+        qApp.quit()
+
+    def isProjectDataDirty(self):
+        """
+        Check all serializable items in our workflow if they have any unsaved data.
+        """
+        if self.currentProjectFile is None:
+            return False
+
         unSavedDataExists = False
         for applet in self._applets:
             for item in applet.dataSerializers:
@@ -204,12 +295,7 @@ class IlastikShell( QMainWindow ):
                     break
                 else:
                     unSavedDataExists = item.isDirty()
-
-        if unSavedDataExists:
-            print "TODO: Prompt user to save his data before exiting."
-        
-        qApp.quit()
-    
+        return unSavedDataExists
 #
 # Simple standalone test for the IlastikShell
 #
