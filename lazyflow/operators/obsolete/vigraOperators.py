@@ -255,8 +255,13 @@ class OpPixelFeaturesPresmoothed(Operator):
         
         self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
         
-     
-        
+        self._featureNames = []
+    
+    # TODO: Make this an output slot instead of a class property
+    @property
+    def featureNames(self):
+        return self._featureNames
+    
     def setupOutputs(self):
         if self.inputs["Scales"].connected() and self.inputs["Matrix"].connected():
 
@@ -273,9 +278,12 @@ class OpPixelFeaturesPresmoothed(Operator):
             assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)
             assert dimRow==6, "Right now the features are fixed"
     
+                
+            featureNameArray =[]
             oparray = []
             for j in range(dimRow):
                 oparray.append([])
+                featureNameArray.append([])
     
             self.newScales = []
             for j in range(dimCol):
@@ -286,35 +294,39 @@ class OpPixelFeaturesPresmoothed(Operator):
                     self.newScales.append(self.scales[j])
                     
                 print "Replacing scale %f with new scale %f" %(self.scales[j], self.newScales[j])
-                
     
             i = 0
             for j in range(dimCol):
                 oparray[i].append(OpGaussianSmoothing(self))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
+                featureNameArray[i].append("G-smooth (s=" + str(self.newScales[j]) + ")")
             i = 1
             for j in range(dimCol):
                 oparray[i].append(OpLaplacianOfGaussian(self))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["scale"].setValue(self.newScales[j])
+                featureNameArray[i].append("L-of-G (s=" + str(self.newScales[j]) + ")")
             i = 2
             for j in range(dimCol):
                 oparray[i].append(OpStructureTensorEigenvalues(self))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
                 oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
+                featureNameArray[i].append("ST EVs (s=" + str(self.newScales[j]) + ")")
             i = 3
             for j in range(dimCol):   
                 oparray[i].append(OpHessianOfGaussianEigenvalues(self))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["scale"].setValue(self.newScales[j])
+                featureNameArray[i].append("H-of-G EVs (s=" + str(self.newScales[j]) + ")")
             
             i= 4
             for j in range(dimCol): 
                 oparray[i].append(OpGaussianGradientMagnitude(self))
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
+                featureNameArray[i].append("GG Mag (s=" + str(self.newScales[j]) + ")")
             
             i= 5
             for j in range(dimCol): 
@@ -322,10 +334,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                 oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                 oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])            
                 oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
-            
-
-                
-            
+                featureNameArray[i].append("Diff-of-G (s=" + str(self.newScales[j]) + ")")            
             
             self.outputs["ArrayOfOperators"][0] = oparray
             
@@ -334,6 +343,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                 for j in range(dimCol):
                     self.multi.inputs["Input%02d" %(i*dimRow+j)].disconnect() 
             
+            self._featureNames = []
             #connect individual operators
             for i in range(dimRow):
                 for j in range(dimCol):
@@ -341,6 +351,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     if val:
                         self.multi.inputs["Input%02d" %(i*dimRow+j)].connect(oparray[i][j].outputs["Output"])
                         print "connected  Input%02d of self.multi" %(i*dimRow+j)
+                        self._featureNames.append(featureNameArray[i][j])
             
             #additional connection with FakeOperator
             if (self.matrix==0).all():
@@ -372,11 +383,11 @@ class OpPixelFeaturesPresmoothed(Operator):
                 
             self.outputs["Output"]._dtype = numpy.float32            
             self.outputs["Output"]._axistags = self.stacker.outputs["Output"]._axistags            
-            self.outputs["Output"]._shape = self.stacker.outputs["Output"]._shape            
-    
-    def execute(self, slot, rroi, result): 
-        key = rroi.toSlice()
+            self.outputs["Output"]._shape = self.stacker.outputs["Output"]._shape
+            
+    def execute(self, slot, rroi, result):
         if slot == self.outputs["Output"]:
+            key = rroi.toSlice()
             cnt = 0
             written = 0
             start = rroi.start
