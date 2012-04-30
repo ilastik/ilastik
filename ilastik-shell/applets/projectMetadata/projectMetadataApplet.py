@@ -39,10 +39,3 @@ class ProjectMetadataApplet( Applet ):
     @property
     def dataSerializers(self):
         return self._serializableItems
-
-    def setShellActions(self, shellActions):
-        """
-        (See base class for details.)
-        """ 
-        self._centralWidget.acceptShellActions(shellActions)
-

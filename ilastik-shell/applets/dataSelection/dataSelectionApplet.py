@@ -1,4 +1,3 @@
-from lazyflow.operators import OpImageReader
 from ilastikshell.applet import Applet
 
 from opDataSelection import OpDataSelection
@@ -6,7 +5,6 @@ from opDataSelection import OpDataSelection
 from dataSelectionSerializer import DataSelectionSerializer
 from dataSelectionPreferencesManager import DataSelectionPreferencesManager
 from dataSelectionGui import DataSelectionGui
-
 
 class DataSelectionApplet( Applet ):
     """
@@ -62,9 +60,3 @@ class DataSelectionApplet( Applet ):
     @property
     def appletPreferencesManager(self):
          return self._preferencesManager
-     
-    def setShellActions(self, shellActions):
-        """
-        TODO: Take appropriate action in response to a quit action.
-        """
-        pass

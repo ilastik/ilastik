@@ -34,7 +34,7 @@ class _ShellMenuBar( QWidget ):
         # Our menu will consist of two pieces:
         #  - A "general" menu that is always visible on the left
         #  - An "applet" menu-ish widget that is visible on the right
-        # Our top-level layout is an HBox for holding the two sections        
+        # Our top-level layout is an HBox for holding the two sections
         self._layout = QHBoxLayout( self )
         self._layout.setSpacing(0)
         self.setLayout( self._layout )
@@ -111,9 +111,6 @@ class IlastikShell( QMainWindow ):
             self._menuBar.setCurrentIndex(applet_index)        
 
     def addApplet( self, applet ):
-        # Give the applet access to the shell actions, in case it needs to trigger/respond to them
-        applet.setShellActions( self._menuBar.actions )
-
         self._applets.append(applet)
         applet_index = len(self._applets) - 1
         self.appletStack.addWidget( applet.centralWidget )

@@ -60,9 +60,3 @@ class FeatureSelectionApplet( Applet ):
     @property
     def appletPreferencesManager(self):
          return self._preferencesManager
-     
-    def setShellActions(self, shellActions):
-        """
-        TODO: Take appropriate action in response to a quit action.
-        """
-        pass

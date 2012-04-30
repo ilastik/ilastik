@@ -63,29 +63,6 @@ class Applet( object ):
         """
         return None
 
-    ###
-    ### Inputs provided to the Applet from the shell or workflow manager
-    ###
-
-    def setShellActions(self, shellActions):
-        """
-        Accept the given shell actions object and connect callbacks to it as needed.
-        
-        The shell provides a few actions that applets may choose to react to (load, save, etc.).
-        This function is called when the applet is added to the shell.
-        Applets can retain access to the shell actions if they need to trigger or respond to them.
-        """
-        pass
-          
-#    def setVolumeEditor(self, editor):
-#        """
-#        Accept the provided volume editor object for display within the applet's central widget (if any).
-#        Applets may share volume editors.
-#        The volume editor is instantiated externally by the workflow manager, and passed to the applet via this function.
-#        Applets may add and remove layers to the editor via the editor's layerstack member.
-#        """
-#        pass
-
 def run_applet( applet_type, *args, **kwargs):
     '''Run applet standalone.'''
     import signal
