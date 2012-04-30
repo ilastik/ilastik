@@ -25,17 +25,12 @@ from volumina.adaptors import Op5ifyer
 from labelListView import Label
 from labelListModel import LabelListModel
 
-from featureTableWidget import FeatureEntry
-from featureDlg import FeatureDlg
-
 from ilastikshell.applet import Applet
 
 import vigra
 
 from utility.dataImporter import DataImporter
 from utility.simpleSignal import SimpleSignal
-
-from pixelClassificationPipeline import PixelClassificationPipeline
 
 class Tool():
     Navigation = 0
@@ -56,13 +51,25 @@ class PixelClassificationGui(QMainWindow):
         self.pipeline = pipeline
 
         # Subscribe to various pipeline events so we can respond appropriately in the GUI
-        self.pipeline.inputDataChangedSignal.connect(self.handleGraphInputChanged)
-        self.pipeline.labelsChangedSignal.connect(self.handlePipelineLabelsChanged)
-        self.pipeline.predictionMetaChangeSignal.connect(self.setupPredicationLayers)
+        # TODO: Assumes only one image.
+        def handleInputListChanged(slot):
+            """This closure is called when a new input image is connected to the multi-input slot."""
+            if len(self.pipeline.InputImages) > 0:
+                # Subscribe to changes on the graph input.
+                self.pipeline.InputImages[0].notifyConnect(self.handleGraphInputChanged)
+                self.handleGraphInputChanged(self.pipeline.InputImages[0])
+        self.pipeline.InputImages.notifyMetaChanged(handleInputListChanged)
 
-        # Subscribe to feature selection changes directly from the graph.
-        self.pipeline.features.inputs["Matrix"].notifyConnect( self.onFeaturesSelectionsChanged ) # In case of setValue
-        self.pipeline.features.inputs["Matrix"].notifyDirty( self.onFeaturesSelectionsChanged ) # In case of dirty data from the partner operator
+        self.pipeline.labelsChangedSignal.connect(self.handlePipelineLabelsChanged)
+        #self.pipeline.predictionMetaChangeSignal.connect(self.setupPredictionLayers)
+
+        def handleOutputListChanged(slot):
+            """This closure is called when an image is added or removed from the output."""
+            if len(self.pipeline.CachedPredictionProbabilities) > 0:
+                # Subscribe to changes on the graph input.
+                self.pipeline.CachedPredictionProbabilities[0].notifyMetaChanged(self.setupPredictionLayers)
+                self.setupPredictionLayers( self.pipeline.CachedPredictionProbabilities[0] )
+        self.pipeline.CachedPredictionProbabilities.notifyMetaChanged(handleOutputListChanged)
         
         # Editor will be initialized when data is loaded
         self.editor = None
@@ -80,7 +87,6 @@ class PixelClassificationGui(QMainWindow):
         self.g = graph if graph else Graph()
         self.fixableOperators = [self.pipeline.prediction_cache]
         
-        self.featureDlg=None        
         #The old ilastik provided the following scale names:
         #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
         #The corresponding scales are:
@@ -89,23 +95,11 @@ class PixelClassificationGui(QMainWindow):
         self.initCentralUic()
         self.initAppletBarUic()
 
-        self.initLabelGui()
-        
+#        self.initLabelGui()
+#        
         # Track 
         self.predictionLayerGuiLabels = set()
-        
-        #if the filename was specified on command line, load it
-        def loadFile():
-            # Put the data into an operator
-            importer = DataImporter( self.g )
-            inputProvider = importer.openFile(sys.argv[1:])
-            
-            # Connect the new input operator to our pipeline
-            self.pipeline.setInputData(inputProvider)
-    
-        if len(sys.argv) > 1:
-            QTimer.singleShot(0, loadFile)
-        
+
     def setIconToViewMenu(self):
         self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
         
@@ -116,8 +110,8 @@ class PixelClassificationGui(QMainWindow):
         if p == "/": p = "."+p
         uic.loadUi(p+"/centralWidget.ui", self) 
         #connect the window and graph creation to the opening of the file
-        self.actionOpenFile.triggered.connect(self.openFile)
-        self.actionOpenStack.triggered.connect(self.openImageStack)
+        #self.actionOpenFile.triggered.connect(self.openFile)
+        #self.actionOpenStack.triggered.connect(self.openImageStack)
         
         def toggleDebugPatches(show):
             self.editor.showDebugPatches = show
@@ -180,12 +174,9 @@ class PixelClassificationGui(QMainWindow):
                 
         self.layerstack = LayerStackModel()
 
-        self._initFeatureDlg()
-        
     def initAppletBarUic(self):
         # We have four different applet bar controls
         self.initLabelUic()
-        self.initFeatureSelectonControlsUic()
         self.initPredictionControlsUic()
     
     @property
@@ -297,20 +288,6 @@ class PixelClassificationGui(QMainWindow):
             self.changeInteractionMode( toolId )
 
     @property
-    def featureSelectionUi(self):
-        return self._featureSelectionUi
-
-    def initFeatureSelectonControlsUic(self):
-        # We don't know where the user is running this script from,
-        #  so locate the .ui file relative to this .py file's path
-        p = os.path.split(__file__)[0]+'/'
-        if p == "/": p = "."+p
-        # TODO: The feature selection ui is located in a separate directory because it should really be part of its own applet.
-        #       For now, we load the ui and deal with feature selection manually in this applet.
-        self._featureSelectionUi = uic.loadUi(p+"../featureSelection/featureSelectionDrawer.ui") # Don't pass self: applet ui is separate from the main ui
-        self._featureSelectionUi.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
-
-    @property
     def predictionControlUi(self):
         return self._predictionControlUi
 
@@ -330,7 +307,6 @@ class PixelClassificationGui(QMainWindow):
             labels = self.pipeline.getUniqueLabels()
             nPaintedLabels=labels.shape[0]
             nLabelsLayers = self._labelControlUi.labelListModel.rowCount()
-            selectedFeatures = numpy.asarray(self.featureDlg.featureTableWidget.createSelectedFeaturesBoolMatrix())
             
             if nPaintedLabels!=nLabelsLayers:
                 self._labelControlUi.checkInteractive.setCheckState(0)
@@ -339,7 +315,8 @@ class PixelClassificationGui(QMainWindow):
                 mexBox.setInformativeText("Painted Labels %d \nNumber Active Labels Layers %d"%(nPaintedLabels,self._labelControlUi.labelListModel.rowCount()))
                 mexBox.exec_()
                 return
-            if (selectedFeatures==0).all():
+            # TODO: Assumes only one input image
+            if self.pipeline.FeatureImages[0].meta.shape==None:
                 self._labelControlUi.checkInteractive.setCheckState(0)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
@@ -351,7 +328,6 @@ class PixelClassificationGui(QMainWindow):
 
         self._labelControlUi.AddLabelButton.setEnabled(not checked)
         self._labelControlUi.labelListModel.allowRemove(not checked)
-        self._featureSelectionUi.SelectFeaturesButton.setEnabled(not checked)
         self._predictionControlUi.trainAndPredictButton.setEnabled(not checked)
         
         for o in self.fixableOperators:
@@ -494,8 +470,8 @@ class PixelClassificationGui(QMainWindow):
         if self.pipeline is not None:
             print "Label added, changing predictions"
             #re-train the forest now that we have more labels
-            if self.pipeline.maxLabel < nlabels:
-                self.pipeline.setMaxLabel( nlabels )
+            if self.pipeline.NumClasses.value < nlabels:
+                self.pipeline.NumClasses.setValue( nlabels )
         
         return nlabels
     
@@ -511,8 +487,8 @@ class PixelClassificationGui(QMainWindow):
         if self.pipeline is not None:
             print "Label removed, changing predictions"
             #re-train the forest now that we have fewer labels
-            if self.pipeline.maxLabel > numRows:
-                self.pipeline.setMaxLabel( numRows )
+            if self.pipeline.NumClasses.value > numRows:
+                self.pipeline.NumClasses.setValue( numRows )
 
     def onLabelAboutToBeRemoved(self, parent, start, end):
         #the user deleted a label, reshape prediction and remove the layer
@@ -523,30 +499,30 @@ class PixelClassificationGui(QMainWindow):
         print "removing", nout, "out of ", ncurrent
         
         if self.pipeline is not None:
-            self.pipeline.setMaxLabel(ncurrent-nout)
+            self.pipeline.NumClasses.setValue( ncurrent-nout )
         for il in range(start, end+1):
             labelvalue = self._labelControlUi.labelListModel._labels[il]
             self.removePredictionLayer(labelvalue)
 
             # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
             #  to search through the entire list of labels and delete the entries for the matching label.
-            self.pipeline.labels.inputs["deleteLabel"].setValue(il+1)
+            self.pipeline.opLabelArray.inputs["deleteLabel"].setValue(il+1)
             
             # We need to "reset" the deleteLabel input to -1 when we're finished.
             #  Otherwise, you can never delete the same label twice in a row.
             #  (Only *changes* to the input are acted upon.)
-            self.pipeline.labels.inputs["deleteLabel"].setValue(-1)
+            self.pipeline.opLabelArray.inputs["deleteLabel"].setValue(-1)
 
             self.editor.scheduleSlicesRedraw()
             
-    def setupPredicationLayers(self, cacheIsConfigured):
+    def setupPredictionLayers(self, predictionOutputSlot):
         """
         Add all prediction label layers to the volume editor
         """
-        # Can't do anything if the cache isn't configured yet
-        if not cacheIsConfigured:
-            return
-
+#        configured = predictionOutputSlot.configured
+#        # Can't do anything if the cache isn't configured yet
+#        if not cacheIsConfigured:
+#            return
         newGuiLabels = set()        
         nclasses = self._labelControlUi.labelListModel.rowCount()
         # Add prediction results for all classes as separate channels
@@ -576,7 +552,8 @@ class PixelClassificationGui(QMainWindow):
         
         # Disable the parts of the GUI that can't be used while we're predicting . . .
         self._labelControlUi.AddLabelButton.setEnabled(False)
-        self._featureSelectionUi.SelectFeaturesButton.setEnabled(False)
+        # TODO: Need a way to disable upstream inputs while this is going on . . .
+        #self._featureSelectionUi.SelectFeaturesButton.setEnabled(False)
         self._predictionControlUi.trainAndPredictButton.setEnabled(False)
 
         # Closure to call when the prediction is finished
@@ -586,7 +563,7 @@ class PixelClassificationGui(QMainWindow):
             
             # Re-enable the GUI
             self._labelControlUi.AddLabelButton.setEnabled(True)
-            self._featureSelectionUi.SelectFeaturesButton.setEnabled(True)
+#            self._featureSelectionUi.SelectFeaturesButton.setEnabled(True)
             self._predictionControlUi.trainAndPredictButton.setEnabled(True)
             
             # Re-fix the operators now that the computation is complete.
@@ -642,48 +619,11 @@ class PixelClassificationGui(QMainWindow):
                 self.layerstack.removeRows(il, 1)
                 break
     
-    def openImageStack(self):
-        self.stackLoader = StackLoader()
-        self.stackLoader.show()
-        self.stackLoader.loadButton.clicked.connect(self._stackLoad)
-
-    def openFile(self):
-        fileNames = QFileDialog.getOpenFileNames(
-            self, "Open Image", os.path.abspath(__file__), "Numpy and h5 files (*.npy *.h5)")
-        if fileNames.count() == 0:
-            return
-        
-        # Put the data into an operator
-        importer = DataImporter( self.g )
-        inputProvider = importer.openFile(fileNames)
-        
-        print "Input Shape = ", inputProvider.Output.meta.shape
-        print "Input dtype = ", inputProvider.Output.meta.dtype
-        
-        # Connect the operator to the pipeline input
-        self.pipeline.setInputData(inputProvider)
-    
-    def _stackLoad(self):
-        inputProvider = OpArrayPiper(self.g)
-        op5ifyer = Op5ifyer(self.g)
-        op5ifyer.inputs["Input"].connect(self.stackLoader.ChainBuilder.outputs["output"])
-        self.raw = op5ifyer.outputs["Output"][:].allocate().wait()
-        self.raw = self.raw.view(vigra.VigraArray)
-        self.min, self.max = numpy.min(self.raw), numpy.max(self.raw)
-        self.raw.axistags =  vigra.AxisTags(
-                vigra.AxisInfo('t',vigra.AxisType.Time),
-                vigra.AxisInfo('x',vigra.AxisType.Space),
-                vigra.AxisInfo('y',vigra.AxisType.Space),
-                vigra.AxisInfo('z',vigra.AxisType.Space),
-                vigra.AxisInfo('c',vigra.AxisType.Channels))
-        inputProvider.inputs["Input"].setValue(self.raw)
-        self.pipeline.setInputData(inputProvider)
-        self.stackLoader.close()
-            
-
-    def handleGraphInputChanged(self, newInputProvider):
-        """Update our view of the data with the new dataset, as provided in the newInputProvider operator.""" 
-        shape = newInputProvider.outputs["Output"].shape
+    def handleGraphInputChanged(self, slot):
+        """
+        The input data to our top-level operator has changed.
+        """
+        shape = self.pipeline.InputImages[0].shape
         srcs    = []
         minMax = []
         
@@ -691,7 +631,7 @@ class PixelClassificationGui(QMainWindow):
         
         #create a layer for each channel of the input:
         slicer=OpMultiArraySlicer2(self.g)
-        slicer.inputs["Input"].connect(newInputProvider.outputs["Output"])
+        slicer.inputs["Input"].connect(self.pipeline.InputImages[0])
         
         slicer.inputs["AxisFlag"].setValue('c')
        
@@ -745,7 +685,8 @@ class PixelClassificationGui(QMainWindow):
         #  so we can always see the labels and predictions.
         self.layerstack.insert(len(self.layerstack), layer1)
 
-        self.initEditor(newInputProvider)
+        self.initLabelGui()
+        self.initEditor()
         
     def removeLayersFromEditorStack(self, layerName):
         """
@@ -757,8 +698,9 @@ class PixelClassificationGui(QMainWindow):
                 self.layerstack.removeRows(i, 1)
 
     def initLabelGui(self):
-        #Add the layer to draw the labels, but don't add any labels
-        self.labelsrc = LazyflowSinkSource(self.pipeline.labels, self.pipeline.labels.outputs["Output"], self.pipeline.labels.inputs["Input"])
+        # Add the layer to draw the labels, but don't add any labels
+        # TODO: Assumes only one input image
+        self.labelsrc = LazyflowSinkSource(self.pipeline.opLabelArray, self.pipeline.opLabelArray.outputs["Output"][0], self.pipeline.opLabelArray.inputs["Input"][0])
         self.labelsrc.setObjectName("labels")
         
         transparent = QColor(0,0,0,0)
@@ -772,7 +714,7 @@ class PixelClassificationGui(QMainWindow):
         # Labels should be first (on top)
         self.layerstack.insert(0, self.labellayer)
     
-    def initEditor(self, newInputProvider):
+    def initEditor(self):
         """
         Initialize the Volume Editor GUI.
         """
@@ -793,14 +735,14 @@ class PixelClassificationGui(QMainWindow):
             self.DeleteButton.clicked.connect(model.deleteSelected)
             model.canDeleteSelected.connect(self.DeleteButton.setEnabled)     
             
-            self.pipeline.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)
+            self.pipeline.opLabelArray.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)
                         
             # Give the editor a default "last focus" axis to avoid crashes later on
             #self.editor.lastImageViewFocus(2)
         
         #finally, setup the editor to have the correct shape
         #doing this last ensures that all connections are setup already
-        shape = newInputProvider.outputs["Output"].shape
+        shape = self.pipeline.InputImages[0].shape
         self.editor.dataShape = shape
         
     
@@ -823,250 +765,6 @@ class PixelClassificationGui(QMainWindow):
         c.append(QColor(240, 230, 140)) #khaki
         c.append(QColor(69, 69, 69))    # dark grey
         return c
-    
-    
-    def onFeatureButtonClicked(self):
-        # Refresh the feature matrix in case it has changed since the last time we were opened
-        # (e.g. if the user loaded a project from disk)
-        pipelineFeatures = self.pipeline.features.inputs['Matrix'].value
-        if pipelineFeatures is not None:
-            self.featureDlg.selectedFeatureBoolMatrix = pipelineFeatures
-        
-        # Now open the feature selection dialog
-        self.featureDlg.show()
-    
-    def _onNewFeaturesFromFeatureDlg(self):
-        selectedFeatures = self.featureDlg.selectedFeatureBoolMatrix
-        print "new feature set:", selectedFeatures
-        
-        # Give the new features to the pipeline 
-        self.pipeline.features.inputs['Matrix'].setValue(numpy.asarray(selectedFeatures))
-
-    def onFeaturesSelectionsChanged(self, slot):
-        """
-        Called when the pipeline's matrix of selected features is changed.
-        """
-        # Update the caption text.
-        self._featureSelectionUi.caption.setText( "(Selected %d features)" % numpy.sum(self.pipeline.features.inputs['Matrix'].value) )
-    
-    def _initFeatureDlg(self):
-        self.featureDlg = FeatureDlg()
-        
-        self.featureDlg.setWindowTitle("Features")
-        self.featureDlg.createFeatureTable({"Features":
-                                                [FeatureEntry("Gaussian smoothing"), \
-                                                 FeatureEntry("Laplacian of Gaussian"), \
-                                                 FeatureEntry("Structure Tensor Eigenvalues"), \
-                                                 FeatureEntry("Hessian of Gaussian EV"),  \
-                                                 FeatureEntry("Gaussian Gradient Magnitude"), \
-                                                 FeatureEntry("Difference Of Gaussian")]}, \
-                                           self.featScalesList)
-        self.featureDlg.setImageToPreView(None)
-        m = [[1,0,0,0,0,0,0],[1,0,0,0,0,0,0],[0,0,0,0,0,0,0],[1,0,0,0,0,0,0],[1,0,0,0,0,0,0],[1,0,0,0,0,0,0]]
-        self.featureDlg.selectedFeatureBoolMatrix = numpy.asarray(m)
-        self.featureDlg.accepted.connect(self._onNewFeaturesFromFeatureDlg)
-
-
-class PixelClassificationSerializer(object):
-    """
-    Encapsulate the serialization scheme for pixel classification workflow parameters and datasets.
-    """
-    def __init__(self, pipeline):
-        self.pipeline = pipeline
-    
-    def serializeToHdf5(self, hdf5Group):
-        pass
-    
-    def deserializeFromHdf5(self, hdf5Group):
-        # The group we were given is the root (file).
-        # Check the version
-        ilastikVersion = hdf5Group["ilastikVersion"].value
-
-        # TODO: Fix this when the version number scheme is more thought out
-        if ilastikVersion != 0.6:
-            # This class is for 0.6 projects only.
-            # v0.5 projects are handled in a different serializer (below).
-            return
-
-    def isDirty(self):
-        """
-        Return true if the current state of this item 
-        (in memory) does not match the state of the HDF5 group on disk.
-        """
-        return True
-
-    def unload(self):
-        """ Called if either
-            (1) the user closed the project or
-            (2) the project opening process needs to be aborted for some reason
-                (e.g. not all items could be deserialized properly due to a corrupted ilp)
-            This way we can avoid invalid state due to a partially loaded project. """ 
-        pass
-
-class Ilastik05ImportDeserializer(object):
-    """Special (de)serializer for importing ilastik 0.5 projects.
-       For now, this class is import-only.  Only the deserialize function is implemented.
-       If the project is not an ilastik0.5 project, this serializer does nothing."""
-    def __init__(self, pipeline):
-        self.pipeline = pipeline
-    
-    def serializeToHdf5(self, hdf5Group):
-        """Not implemented. (See above.)"""
-        pass
-    
-    def deserializeFromHdf5(self, hdf5File):
-        """If (and only if) the given hdf5Group is the root-level group of an 
-           ilastik 0.5 project, then the project is imported.  The pipeline is updated 
-           with the saved parameters and datasets."""
-        # The group we were given is the root (file).
-        # Check the version
-        ilastikVersion = hdf5File["ilastikVersion"].value
-
-        # The pixel classification workflow supports importing projects in the old 0.5 format
-        if ilastikVersion == 0.5:
-            print "Deserializing ilastik 0.5 project..."
-            self.importProjectAttributes(hdf5File) # (e.g. description, labeler, etc.)
-            self.importDataSets(hdf5File)
-            self.importLabelSets(hdf5File)
-            self.importFeatureSelections(hdf5File)
-            self.importClassifier(hdf5File)
-    
-    def importProjectAttributes(self, hdf5File):
-        description = hdf5File["Project"]["Description"].value
-        labeler = hdf5File["Project"]["Labeler"].value
-        name = hdf5File["Project"]["Name"].value
-        # TODO: Actually store these values and show them in the GUI somewhere . . .
-        
-    def importFeatureSelections(self, hdf5File):
-        """
-        Import the feature selections from the v0.5 project file
-        """
-        # Create a feature selection matrix of the correct shape (all false by default)
-        # TODO: The shape shouldn't be hard-coded.
-        pipeLineSelectedFeatureMatrix = numpy.array(numpy.zeros((6,7)), dtype=bool)
-
-        try:
-            # In ilastik 0.5, features were grouped into user-friendly selections.  We have to split these 
-            #  selections apart again into the actual features that must be computed.
-            userFriendlyFeatureMatrix = hdf5File['Project']['FeatureSelection']['UserSelection'].value
-        except KeyError:
-            # If the project file doesn't specify feature selections,
-            #  we'll just use the default (blank) selections as initialized above
-            pass
-        else:            
-            assert( userFriendlyFeatureMatrix.shape == (4, 7) )
-            # Here's how features map to the old "feature groups"
-            # (Note: Nothing maps to the orientation group.)
-            # TODO: It is terrible that these indexes are hard-coded.
-            featureToGroup = { 0 : 0,  # Gaussian Smoothing -> Color
-                               1 : 1,  # Laplacian of Gaussian -> Edge
-                               2 : 3,  # Structure Tensor Eigenvalues -> Texture
-                               3 : 3,  # Eigenvalues of Hessian of Gaussian -> Texture
-                               4 : 1,  # Gradient Magnitude of Gaussian -> Edge
-                               5 : 1 } # Difference of Gaussians -> Edge
-
-            # For each feature, determine which group's settings to take
-            for featureIndex, featureGroupIndex in featureToGroup.items():
-                # Copy the whole row of selections from the feature group
-                pipeLineSelectedFeatureMatrix[featureIndex] = userFriendlyFeatureMatrix[featureGroupIndex]
-        
-        # Finally, update the pipeline with the feature selections
-        self.pipeline.features.inputs['Matrix'].setValue( pipeLineSelectedFeatureMatrix )
-        
-    def importClassifier(self, hdf5File):
-        """
-        Import the random forest classifier (if any) from the v0.5 project file.
-        """
-        # Not implemented:
-        # ilastik 0.5 can SAVE the RF, but it can't load it back (vigra doesn't provide a function for that).
-        # For now, we simply emulate that behavior.
-        # (Technically, v0.5 would retrieve the user's "number of trees" setting, 
-        #  but this applet doesn't expose that setting to the user anyway.)
-        pass
-        
-    def importDataSets(self, hdf5File):
-        """
-        Locate the raw input data from the v0.5 project file and give it to our pipeline.
-        """
-        # Locate the dataset within the hdf5File
-        try:
-            dataset = hdf5File["DataSets"]["dataItem00"]["data"]
-        except KeyError:
-            pass
-        else:
-            importer = DataImporter(self.pipeline.graph)
-            inputProvider = importer.createArrayPiperFromHdf5Dataset(dataset)
-        
-            # Connect the new input operator to our pipeline
-            #  (Pipeline signals the GUI.)
-            self.pipeline.setInputData(inputProvider)
-    
-    def importLabelSets(self, hdf5File):
-        try:
-            data = hdf5File['DataSets/dataItem00/labels/data'].value
-            print "data[0,0,0,0,0] = ", data[0,0,0,0,0]
-        except KeyError:
-            return # We'll get a KeyError if this project doesn't contain stored data.  That's allowed.
-                
-        self.pipeline.setAllLabelData(data)
-
-        print "Pipeline labels: ", self.pipeline.getUniqueLabels()
-    
-    def isDirty(self):
-        """Always returns False because we don't support saving to ilastik0.5 projects"""
-        return False
-
-    def unload(self):
-        """ Called if either
-            (1) the user closed the project or
-            (2) the project opening process needs to be aborted for some reason
-                (e.g. not all items could be deserialized properly due to a corrupted ilp)
-            This way we can avoid invalid state due to a partially loaded project. """ 
-        pass
-
-class PixelClassificationApplet( Applet ):
-    """
-    Implements the pixel classification "applet", which allows the ilastik shell to use it.
-    """
-    def __init__( self, graph ):
-        Applet.__init__( self, "Pixel Classification" )
-        pipeline = PixelClassificationPipeline( graph )
-
-        # Instantiate the main GUI, which creates the applet drawers (for now)
-        self._centralWidget = PixelClassificationGui( pipeline, graph )
-
-        # To save some typing, the menu bar is defined in the .ui file 
-        #  along with the rest of the central widget.
-        # However, we must expose it here as an applet property since we 
-        #  want it to show up properly in the shell
-        self._menuWidget = self._centralWidget.menuBar
-        
-        # For now, the central widget owns the applet bar gui
-        self._controlWidgets = [ ("Feature Selection", self._centralWidget.featureSelectionUi),
-                                 ("Label Marking", self._centralWidget.labelControlUi),
-                                 ("Prediction", self._centralWidget.predictionControlUi) ]
-        
-        # We provide two independent serializing objects:
-        #  one for the current scheme and one for importing old projects.
-        self._serializableItems = [PixelClassificationSerializer(pipeline), # Default serializer for new projects
-                                   Ilastik05ImportDeserializer(pipeline)]   # Legacy (v0.5) importer
-    
-    @property
-    def centralWidget( self ):
-        return self._centralWidget
-
-    @property
-    def appletDrawers(self):
-        return self._controlWidgets
-    
-    @property
-    def menuWidget( self ):
-        return self._menuWidget
-
-    @property
-    def dataSerializers(self):
-        return self._serializableItems
-
 #
 # Test
 #

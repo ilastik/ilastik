@@ -5,139 +5,101 @@ from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, 
 
 from utility.simpleSignal import SimpleSignal
 import numpy
+import copy
 
-class OpPixelClassification( object ):
+class OpPixelClassification( Operator ):
     """
-    Represents the pipeline of pixel classification operations.
-    Implemented as a composite operator so it can serve an applet "top-level" operator.
+    Top-level operator for the 
     """
     name="OpPixelClassification"
     category = "Top-level"
     
     # Graph inputs
-    inputSlots = [
-      # A matrix of bool values representing the features and scales 
-      #  to provide to the classifier.
-      # Format of the matrix is hardcoded for now.
-       InputSlot("FeatureMatrix"), 
-       
-       # The raw input image data
-       MultiInputSlot("InputImages"),
-       
-       # The user-provided label data associated with each image.
-       # Must consist of consecutive label values, starting with 1.
-       # (Zero represents no label for that pixel.)
-       # Shapes must match the input image shapes.n
-       MultiInputSlot("Labels"),
-       
-       # The value of the highest label in the label data.
-       InputSlot("MaxLabelValue")
-    ]
     
-    # Graph Outputs
-    outputSlots = [
-       # The computed feature images that were provided to the classifier.
-       # (Useful for display purposes.)
-       MultiOutputSlot("Features"),
-       
-       # The probability maps for each label class after classification.
-       MultiOutputSlot("PredictionProbabilities")
-   ]
+    InputImages = MultiInputSlot() # Original input data.  Used for display only.
 
-    @property
-    def graph(self):
-        return self._graph
+    NumClasses = InputSlot() # The number of possible labels in the image
+    LabelImages = MultiInputSlot(optional = True) # Input for providing label data from an external source
 
-    def __init__( self, pipelineGraph ):
+    FeatureImages = MultiInputSlot() # Computed feature images (each channel is a different feature)
+    CachedFeatureImages = MultiInputSlot() # Cached feature data.
+
+    PredictionProbabilities = MultiOutputSlot() # Classification predictions
+    CachedPredictionProbabilities = MultiOutputSlot() # Classification predictions (via a cache)
+
+    def __init__( self, graph ):
         """
         Instantiate all internal operators and connect them together.
         """
-        self._graph = pipelineGraph
+        super(OpPixelClassification, self).__init__(graph=graph)
         
-        ## Signals (non-qt) ##
+#        ## Signals (non-qt) ##
         self.inputDataChangedSignal = SimpleSignal()     # Input data loaded/changed
 #        self.featuresChangedSignal = SimpleSignal()      # New/changed feature selections
         self.labelsChangedSignal = SimpleSignal()        # New/changed label data
         self.pipelineConfiguredSignal = SimpleSignal()   # Pipeline is fully configured (all inputs are connected and have data)
         self.predictionMetaChangeSignal = SimpleSignal() # The prediction cache has changed its shape (or dtype).
                                                          #  The prediction cache's output configuration status is passed as the parameter.
-                
-        #The old ilastik provided the following scale names:
-        #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
-        #The corresponding scales are:
-        feature_scales = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
+        # Create internal operators
+        self.opInputShapeReader = OpShapeReader(self.graph)
+        self.opLabelArray = OpBlockedSparseLabelArray( self.graph )
+        self.opTrain = OpTrainRandomForestBlocked( self.graph )
+        self.predict=OpPredictRandomForest( self.graph )
+        self.prediction_cache = OpSlicedBlockedArrayCache( self.graph )
 
-        ##
-        # IO
-        ##
-        self.images = Op5ToMulti( self.graph )
-        self.features = OpPixelFeaturesPresmoothed( self.graph )
-        self.features_cache = OpBlockedArrayCache( self.graph )
-        self.labels = OpBlockedSparseLabelArray( self.graph )                                
-
-        self.features.inputs["Input"].connect(self.images.outputs["Outputs"])
-        self.features.inputs["Scales"].setValue( feature_scales )        
-        print self.features.inputs["Scales"]
-        assert self.features.Scales.configured() , " features.Scales not configured because _value=%r, meta.shape = %r" % (self.features.Scales._value,self.features.Scales.meta.shape )
-        self.features_cache.inputs["Input"].connect(self.features.outputs["Output"])
-        self.features_cache.inputs["innerBlockShape"].setValue((1,32,32,32,16))
-        self.features_cache.inputs["outerBlockShape"].setValue((1,128,128,128,64))
-        self.features_cache.inputs["fixAtCurrent"].setValue(False)  
-    
-        self.labels.inputs["blockShape"].setValue((1, 32, 32, 32, 1))
-        self.labels.inputs["eraser"].setValue(100)    
-
-        ##
-        ## Entry point to the pipeline: 
-        ## self.images.inputs["Input0"].connect(array_like_input)
-        ## shape = array_like_input.meta.shape
-        ## self.labels.inputs["shape"].setValue(shape[:-1] + (1,))
-        ##
-
-
+        self.opInputShapeReader.Input.connect( self.InputImages ) #<-- Note: Now opInputShapeReader is wrapped
+        self.opLabelArray.inputs["shape"].connect( self.opInputShapeReader.OutputShape ) #<-- Note: now opLabelArray is wrapped
+        self.opLabelArray.inputs["blockShape"].setValue((1, 32, 32, 32, 1))
+        self.opLabelArray.inputs["eraser"].setValue(100)
         
+        # Initialize the delete input to -1, which means "no label".
+        # Now changing this input to a positive value will cause label deletions.
+        # (The deleteLabel input is monitored for changes.)
+        self.opLabelArray.inputs["deleteLabel"].setValue(-1)
+
         ##
         # training
         ##
-        opMultiL = Op5ToMulti( self.graph )    
-        opMultiL.inputs["Input0"].connect(self.labels.outputs["Output"])
-
-        opMultiLblocks = Op5ToMulti( self.graph )
-        opMultiLblocks.inputs["Input0"].connect(self.labels.outputs["nonzeroBlocks"])
-        train = OpTrainRandomForestBlocked( self.graph )
-        train.inputs['Labels'].connect(opMultiL.outputs["Outputs"])
-        train.inputs['Images'].connect(self.features_cache.outputs["Output"])
-        train.inputs["nonzeroLabelBlocks"].connect(opMultiLblocks.outputs["Outputs"])
-        train.inputs['fixClassifier'].setValue(False)
-        self.train = train
+        # TODO: Replace these OpXToMulti operators with a MultiArrayPiper
+#        opMultiL = Op5ToMulti( graph=self.graph )
+#        opMultiL.inputs["Input0"].connect()
+#
+#        opMultiLblocks = Op5ToMulti( graph=self.graph )
+#        opMultiLblocks.inputs["Input0"].connect()
+        
+        self.opTrain.inputs['Labels'].connect(self.opLabelArray.outputs["Output"])
+        self.opTrain.inputs['Images'].connect(self.CachedFeatureImages)
+        self.opTrain.inputs["nonzeroLabelBlocks"].connect(self.opLabelArray.outputs["nonzeroBlocks"])
+        self.opTrain.inputs['fixClassifier'].setValue(False)
 
         self.classifier_cache = OpArrayCache( self.graph )
-        self.classifier_cache.inputs["Input"].connect(train.outputs['Classifier'])
-
+        self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
         ##
         # prediction
         ##
-        self.predict=OpPredictRandomForest( self.graph )
         self.predict.inputs['Classifier'].connect(self.classifier_cache.outputs['Output']) 
-        self.predict.inputs['Image'].connect(self.features.outputs["Output"])
+        self.predict.inputs['Image'].connect(self.FeatureImages)
+        self.predict.inputs['LabelsCount'].connect(self.NumClasses)
+        
+        # 
+        self.prediction_cache.name = "PredictionCache"
+        self.prediction_cache.inputs["fixAtCurrent"].setValue(True)
+        self.prediction_cache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
+        self.prediction_cache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
+        self.prediction_cache.inputs["Input"].connect(self.predict.outputs["PMaps"])
 
-        pCache = OpSlicedBlockedArrayCache( self.graph )
-        pCache.name = "PredictionCache"
-        pCache.inputs["fixAtCurrent"].setValue(True)
-        pCache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
-        pCache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
-        pCache.inputs["Input"].connect(self.predict.outputs["PMaps"])
-        self.prediction_cache = pCache
+        # Default value for inputs
+        self.NumClasses.setValue(0)
 
         # The prediction cache is the final stage our pipeline.
         # When it is configured, signal that the whole pipeline is configured
         #self.prediction_cache.notifyConfigured( self.pipelineConfiguredSignal.emit )
         
-        def emitPredictionMetaChangeSignal(slot):
-            """Closure to emit the prediction meta changed signal with the correct parameter."""
-            self.predictionMetaChangeSignal.emit( self.prediction_cache.configured() )
-        self.prediction_cache.outputs["Output"][0].notifyMetaChanged(emitPredictionMetaChangeSignal)
+#        def emitPredictionMetaChangeSignal(slot):
+#            """Closure to emit the prediction meta changed signal with the correct parameter."""
+#            self.predictionMetaChangeSignal.emit( self.prediction_cache.configured() )
+#        self.prediction_cache.outputs["Output"][0].notifyMetaChanged(emitPredictionMetaChangeSignal)
 #    @property
 #    def featureBoolMatrix(self):
 #        return self.features.inputs['Matrix'].value
@@ -147,17 +109,40 @@ class OpPixelClassification( object ):
 #        self.features.inputs['Matrix'].setValue(newMatrix)
 #        self.featuresChangedSignal.emit()
         
+    def setupOutputs(self):
+        numImages = len(self.InputImages)
+        self.PredictionProbabilities.resize(numImages)
+        self.CachedPredictionProbabilities.resize(numImages)
+        for i in range( 0, numImages ):
+            self.PredictionProbabilities[i].meta.shape = self.predict.PMaps[i].meta.shape
+            self.PredictionProbabilities[i].meta.dtype = self.predict.PMaps[i].meta.dtype
+            self.PredictionProbabilities[i].meta.axistags = copy.copy(self.predict.PMaps[i].meta.axistags)
+            
+            self.CachedPredictionProbabilities[i].meta.shape = self.prediction_cache.Output[i].meta.shape
+            self.CachedPredictionProbabilities[i].meta.dtype = self.prediction_cache.Output[i].meta.dtype
+            self.CachedPredictionProbabilities[i].meta.axistags = copy.copy(self.prediction_cache.Output[i].meta.axistags)
+
+    def getSubOutSlot(self, slots, indexes, key, result):
+        slot = slots[0]
+        if slot.name == "PredictionProbabilities":
+            req = self.predict[indexes[0]][key].writeInto(result)
+            res = req.wait()
+            return res
+        elif slot.name == "CachedPredictionProbabilities":
+            req = self.prediction_cache[indexes[0]][key].writeInto(result)
+            res = req.wait()
+            return res
+        else:
+            assert False, "Invalid output slot."
+        
     def getUniqueLabels(self):
-        return numpy.unique(numpy.asarray(self.labels.outputs["nonzeroValues"][:].allocate().wait()[0]))
+        # TODO: Assumes only one image
+        return numpy.unique(numpy.asarray(self.opLabelArray.outputs["nonzeroValues"][0][:].allocate().wait()[0]))
 
     def setInputData(self, inputProvider):
         """
         Set the pipeline input data, which is given as an operator in inputProvider.
         """
-        # The label shape should match the as the input data, except it has only one channel
-        # The label operator is a sparse array whose shape is determined by an INPUT, not an attribute of the slot.meta
-        shape = inputProvider.Output.meta.shape
-        self.labels.inputs["shape"].setValue(shape[:-1] + (1,)) #<-- Note that "shape" is an INPUT SLOT here.
 
         # Connect the input data to the pipeline
         self.images.inputs["Input0"].connect(inputProvider.outputs["Output"])
@@ -179,22 +164,33 @@ class OpPixelClassification( object ):
         
         self.labelsChangedSignal.emit()
     
-    @property
-    def maxLabel(self):
-        """
-        Return the maximum number of labels the classifier can currently use.
-        """
-        return self.predict.inputs['LabelsCount'].value
+#    @property
+#    def maxLabel(self):
+#        """
+#        Return the maximum number of labels the classifier can currently use.
+#        """
+#        return self.predict.inputs['LabelsCount'].value
+#
+#    def setMaxLabel(self, highestLabel):
+#        """
+#        Change the maximum number of label classes the prediction operator can handle.
+#        """
+#        # Count == highest label because 0 isn't a valid label
+#        self.predict.inputs['LabelsCount'].setValue(highestLabel)
 
-    def setMaxLabel(self, highestLabel):
-        """
-        Change the maximum number of label classes the prediction operator can handle.
-        """
-        # Count == highest label because 0 isn't a valid label
-        self.predict.inputs['LabelsCount'].setValue(highestLabel)
 
-
-
+class OpShapeReader(Operator):
+    Input = InputSlot()
+    OutputShape = OutputSlot(stype='shapetuple')
+    
+    def setupOutputs(self):
+        self.OutputShape.meta.shape = (1,)
+        self.OutputShape.meta.axistags = 'shapetuple'
+        self.OutputShape.meta.dtype = tuple
+    
+    def execute(self, slot, roi, result):
+        # Our 'result' is simply the shape of our input, but with only one channel
+        result[0] = self.Input.meta.shape[:-1] + (1,)
 
 
 

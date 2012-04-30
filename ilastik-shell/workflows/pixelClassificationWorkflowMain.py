@@ -24,22 +24,26 @@ splashScreen.show()
 graph = Graph()
 
 # Create the applets for our workflow
+projectMetadataApplet = ProjectMetadataApplet()
 dataSelectionApplet = DataSelectionApplet(graph)
 featureSelectionApplet = FeatureSelectionApplet(graph)
-projectMetadataApplet = ProjectMetadataApplet()
 pcApplet = PixelClassificationApplet(graph)
 
 # Get handles to each of the applet top-level operators
 opData = dataSelectionApplet.topLevelOperator
 opFeatures = featureSelectionApplet.topLevelOperator
+opClassify = pcApplet.topLevelOperator
 
 # Connect the operators together
 opFeatures.InputImages.connect( opData.OutputImages )
+opClassify.InputImages.connect( opData.OutputImages )
+opClassify.FeatureImages.connect( opFeatures.OutputImages )
+opClassify.CachedFeatureImages.connect( opFeatures.CachedOutputImages )
 
 shell = IlastikShell()
+shell.addApplet(projectMetadataApplet)
 shell.addApplet(dataSelectionApplet)
 shell.addApplet(featureSelectionApplet)
-shell.addApplet(projectMetadataApplet)
 shell.addApplet(pcApplet)
 shell.show()
 

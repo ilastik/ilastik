@@ -1,1 +1,1 @@
-from pixelClassification import *
+from pixelClassificationApplet import *
