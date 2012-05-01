@@ -675,9 +675,9 @@ class Slot(object):
           c._changed()
         self.meta._dirty = False
     
-        # call changed callbacks
-        for f, kw in self._callbacks_changed.iteritems():
-          f(self, **kw)
+      # call changed callbacks
+      for f, kw in self._callbacks_changed.iteritems():
+        f(self, **kw)
     
     def _configureOperator(self, slot, oldSize = 0, newSize = 0, notify = True):
         """
