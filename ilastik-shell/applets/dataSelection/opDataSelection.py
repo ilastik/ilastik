@@ -1,6 +1,7 @@
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 
-from opMultiInputDataReader import OpMultiInputDataReader
+from opProjectDatasetReader import OpProjectDatasetReader
+from opInputDataReader import OpInputDataReader
 from lazyflow.operators.obsolete.vigraOperators import OpGrayscaleInverter, OpRgbToGrayscale
 import copy
 
@@ -10,15 +11,28 @@ class OpDataSelection(Operator):
     """
     name = "OpDataSelection"
     category = "Top-level"
+    
+    class DatasetInfo():
+        """
+        Struct-like class for describing dataset info.
+        """
+        class Location():
+            FileSystem = 0
+            ProjectInternal = 1
 
-    # Input data
-    FileNames = MultiInputSlot(stype='filestring')
-    
-    # Dataset Guids
-    
-    # Input formatting options (indexes MUST match the FileNames input)
-    InvertFlags = MultiInputSlot(stype='bool')
-    GrayConvertFlags = MultiInputSlot(stype='bool')
+        def __init__(self):
+            self.location = OpDataSelection.DatasetInfo.Location.FileSystem # Whether the data will be found/stored on the filesystem or in the project file
+            self.filePath = ""              # The original path to the data
+            self.internalPath = ""          # The internal path to the data (if storing to project)
+            self.invertColors = False       # Flag to invert colors before outputting
+            self.convertToGrayscale = False # Flag to convert to grayscale before outputting
+
+    # The project hdf5 File object (already opened)
+    # Optional, but MUST be connected first if its connected
+    ProjectFile = InputSlot(stype='object', optional=True)
+
+    # Array of DatasetInfo objects (see above)
+    DatasetInfos = MultiInputSlot(stype='object')
 
     # Output data
     OutputImages = MultiOutputSlot()
@@ -26,69 +40,83 @@ class OpDataSelection(Operator):
     def __init__(self, graph):
         super(OpDataSelection, self).__init__(graph=graph)
 
-        # Create an internal operator for reading data
-        self.multiReader = OpMultiInputDataReader(graph=graph)        
-
-        # FIXME: MultiInputSlot-to-MultiInputSlot clones don't work, so we can't make this connection.
-        # Instead, we copy the slot values manually (below)
-        # self.multiReader.FileNames.connect(self.FileNames)
-        
-        # Each output subslot comes from a different operator.
-        # Keep track of the subslot outputs in this list.
+        # Create an internal operator for reading data from disk
+        self.readers = []
         self.providerSlots = []
         
     def setupOutputs(self):
-        # We can't do anything unless all input slots are the same length
-        if len(self.FileNames) == len(self.InvertFlags) == len(self.GrayConvertFlags):
-            # Ensure the proper number of outputs
-            self.OutputImages.resize(len(self.FileNames))
-    
-            # Rebuild the list of provider slots from scratch
-            self.providerSlots = []
+        numInputs = len(self.DatasetInfos)
+        # Ensure the proper number of outputs
+        self.OutputImages.resize(numInputs)
 
-            # FIXME: MultiInputSlot-to-MultiInputSlot clones don't work, so we have to set the value manually...
-            self.multiReader.FileNames.resize( len(self.FileNames) )
-            for i in range(0, len(self.FileNames)):
-                self.multiReader.FileNames[i].setValue(self.FileNames[i].value)
-    
-            for i in range(len(self.FileNames)):
-                
-                # By default, our output is the raw multi-reader output
-                providerSlot = self.multiReader.Outputs[i]
-    
-                # If the user wants to invert the image,
-                #  insert an intermediate inversion operator on this subslot
-                if self.InvertFlags[i].value:
-                    inverter = OpGrayscaleInverter(graph=self.graph)
-                    inverter.input.connect(providerSlot)
-                    providerSlot = inverter.output
-                
-                # If the user wants to convert to grayscale,
-                #  insert an intermediate rgb-to-grayscale operator on this subslot
-                if self.GrayConvertFlags[i].value:
-                    converter = OpRgbToGrayscale(graph=self.graph)
-                    converter.input.connect(providerSlot)
-                    providerSlot = converter.output
-                
-                # Remember which operator is providing the output on this subslot
-                self.providerSlots.append(providerSlot)
-    
-                # Copy the metadata from the provider we ended up with
-                self.OutputImages[i].meta.dtype = providerSlot.meta.dtype
-                self.OutputImages[i].meta.shape = providerSlot.meta.shape
-                self.OutputImages[i].meta.axistags = copy.copy(providerSlot.meta.axistags)
+        # Rebuild the list of provider slots from scratch
+        self.providerSlots = []
+
+        for i in range(numInputs):
+            datasetInfo = self.DatasetInfos[i].value
+
+            # Data only comes from the project file if the user said so AND it exists in the project
+            datasetInProject = (datasetInfo.location == OpDataSelection.DatasetInfo.Location.ProjectInternal)
+            datasetInProject &= self.ProjectFile.connected() and \
+                                datasetInfo.internalPath in self.ProjectFile.value
+            
+            # If we should find the data in the project file, use a dataset reader
+            if datasetInProject:
+                reader = OpProjectDatasetReader(graph=self.graph)
+                reader.ProjectFile.setValue(self.ProjectFile.value)
+                reader.InternalPath.setValue(datasetInfo.internalPath)
+                providerSlot = reader.OutputImage
+            else:
+                # Use a normal (filesystem) reader
+                reader = OpInputDataReader(graph=self.graph)
+                reader.FilePath.setValue(datasetInfo.filePath)
+                providerSlot = reader.Output            
+
+            # If the user wants to invert the image,
+            #  insert an intermediate inversion operator on this subslot
+            if datasetInfo.invertColors:
+                inverter = OpGrayscaleInverter(graph=self.graph)
+                inverter.input.connect(providerSlot)
+                providerSlot = inverter.output
+            
+            # If the user wants to convert to grayscale,
+            #  insert an intermediate rgb-to-grayscale operator on this subslot
+            if datasetInfo.convertToGrayscale:
+                converter = OpRgbToGrayscale(graph=self.graph)
+                converter.input.connect(providerSlot)
+                providerSlot = converter.output
+            
+            # Store the operator that is providing the output for this subslot
+            self.providerSlots.append(providerSlot)
+
+            # Copy the metadata from the provider we ended up with
+            self.OutputImages[i].meta.dtype = providerSlot.meta.dtype
+            self.OutputImages[i].meta.shape = providerSlot.meta.shape
+            self.OutputImages[i].meta.axistags = copy.copy(providerSlot.meta.axistags)
 
     def getSubOutSlot(self, slots, indexes, key, result):
         # Request the output from the appropriate internal operator output.
-        req = self.providerSlots[indexes[0]][key].writeInto(result)
-        res = req.wait()
-        return res
+        request = self.providerSlots[indexes[0]][key].writeInto(result)
+        return request.wait()
 
+# TODO: Put this in a unit test
 if __name__ == "__main__":
     import os
     import numpy
     import vigra
     import lazyflow
+    import h5py
+
+    testNpyFileName = 'testImage1.npy'
+    testPngFileName = 'testImage2.png'
+    projectFileName = 'testProject.ilp'
+
+    # Clean up: Delete any lingering test files from the previous run.
+    for f in [testNpyFileName, testPngFileName, projectFileName]:
+        try:
+            os.remove(f)
+        except:
+            pass
 
     # Create a couple test images of different types
     # TODO: Use a temporary directory for this instead of the cwd.
@@ -96,7 +124,6 @@ if __name__ == "__main__":
     for x in range(0,10):
         for y in range(0,11):
             a[x,y] = x+y
-    testNpyFileName = 'testImage1.npy'
     numpy.save(testNpyFileName, a)
     
     a = numpy.zeros((100,200,3))
@@ -104,24 +131,90 @@ if __name__ == "__main__":
         for y in range(a.shape[1]):
             for c in range(a.shape[2]):
                 a[x,y,c] = (x+y) % 256
-    testPngFileName = 'testImage2.png'
     vigra.impex.writeImage(a, testPngFileName)
-
-    # Now read back our test data using an OpInputDataReader operator
+    
+    # Now read back our test data using an operator
     graph = lazyflow.graph.Graph()
     reader = OpDataSelection(graph=graph)
-    reader.FileNames.setValues([testNpyFileName, testPngFileName,  # Raw
-                                testNpyFileName, testPngFileName,  # Inverted
-                                testNpyFileName, testPngFileName,  # Rgb-to-Gray
-                                testNpyFileName, testPngFileName]) # Inverted AND Rgb-to-gray
-    reader.InvertFlags.setValues([False, False,
-                                  True,  True,
-                                  False, False,
-                                  True,  True])
-    reader.GrayConvertFlags.setValues([False, False,
-                                       False, False,
-                                       True,  True,
-                                       True,  True])
+
+    # Create a 'project' file and give it some data
+    internalDir = 'datasets'
+    internalName = 'dataset1'
+    internalPath = internalDir + '/' + internalName
+    projectFile = h5py.File(projectFileName)
+    projectFile.create_group(internalDir)
+    projectFile[internalDir].create_dataset(internalName, data=a) # Use the same data as the png data (above)
+    projectFile.flush()
+    reader.ProjectFile.setValue(projectFile)
+
+    # Create a list of dataset infos . . .
+    datasetInfos = []
+    
+    # npy
+    info = OpDataSelection.DatasetInfo()
+    # Will be read from the filesystem since the data won't be found in the project file.
+    info.location = OpDataSelection.DatasetInfo.Location.ProjectInternal
+    info.filePath = testNpyFileName
+    info.internalPath = ""
+    info.invertColors = False
+    info.convertToGrayscale = False
+    datasetInfos.append(info)
+    
+    # png
+    info = OpDataSelection.DatasetInfo()
+    info.location = OpDataSelection.DatasetInfo.Location.FileSystem
+    info.filePath = testPngFileName
+    info.internalPath = ""
+    info.invertColors = False
+    info.convertToGrayscale = False
+    datasetInfos.append(info)
+    
+    # npy inverted
+    info = OpDataSelection.DatasetInfo()
+    info.location = OpDataSelection.DatasetInfo.Location.FileSystem
+    info.filePath = testNpyFileName
+    info.internalPath = ""
+    info.invertColors = True
+    info.convertToGrayscale = False
+    datasetInfos.append(info)
+    
+    # png inverted
+    info = OpDataSelection.DatasetInfo()
+    info.location = OpDataSelection.DatasetInfo.Location.FileSystem
+    info.filePath = testPngFileName
+    info.internalPath = ""
+    info.invertColors = True
+    info.convertToGrayscale = False
+    datasetInfos.append(info)
+
+    # png grayscale
+    info = OpDataSelection.DatasetInfo()
+    info.location = OpDataSelection.DatasetInfo.Location.FileSystem
+    info.filePath = testPngFileName
+    info.internalPath = ""
+    info.invertColors = False
+    info.convertToGrayscale = True
+    datasetInfos.append(info)
+    
+    # png grayscale & inverted
+    info = OpDataSelection.DatasetInfo()
+    info.location = OpDataSelection.DatasetInfo.Location.FileSystem
+    info.filePath = testPngFileName
+    info.internalPath = ""
+    info.invertColors = True
+    info.convertToGrayscale = True
+    datasetInfos.append(info)
+    
+    # From project
+    info = OpDataSelection.DatasetInfo()
+    info.location = OpDataSelection.DatasetInfo.Location.ProjectInternal
+    info.filePath = "This string should be ignored..."
+    info.internalPath = internalPath
+    info.invertColors = False
+    info.convertToGrayscale = False
+    datasetInfos.append(info)
+
+    reader.DatasetInfos.setValues(datasetInfos)
 
     # Read the test files using the data selection operator and verify the contents
     npyData = reader.OutputImages[0][...].wait()
@@ -129,12 +222,12 @@ if __name__ == "__main__":
     
     invertedNpyData = reader.OutputImages[2][...].wait()
     invertedPngData = reader.OutputImages[3][...].wait()
+    
+    grayscalePngData = reader.OutputImages[4][...].wait()
 
-    grayscaleNpyData = reader.OutputImages[4][...].wait()
-    grayscalePngData = reader.OutputImages[5][...].wait()
+    invertedGrayscalePngData = reader.OutputImages[5][...].wait()
 
-    invertedGrayscaleNpyData = reader.OutputImages[6][...].wait()
-    invertedGrayscalePngData = reader.OutputImages[7][...].wait()
+    projectInternalData = reader.OutputImages[6][...].wait()
 
     # Check raw images
     assert npyData.shape == (10,11,1)
@@ -178,9 +271,13 @@ if __name__ == "__main__":
                                                                       + 0.587*invertedPngData[x,y,1] 
                                                                       + 0.114*invertedPngData[x,y,2] ))
 
+    assert projectInternalData.shape == pngData.shape
+    assert (projectInternalData == pngData).all()
+    
     # Clean up: Delete the test files.
     os.remove(testNpyFileName)
     os.remove(testPngFileName)
+    os.remove(projectFileName)
 
 
 

@@ -7,7 +7,16 @@ from opMultiInputDataReader import OpMultiInputDataReader
 
 from functools import partial
 import os
+import sys
+import copy
 import utility # This is the ilastik shell utility module
+
+import logging
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler(sys.stdout)
+handler.addFilter(logging.Filter(__name__))
+logger.addHandler(handler)
+logger.setLevel(logging.WARN)
 
 class Column():
     """ Enum for table column positions """
@@ -118,24 +127,23 @@ class DataSelectionGui(QMainWindow):
         Add the given filenames to both the GUI table and the top-level operator inputs.
         """
         # Allocate additional subslots in the operator inputs.
-        oldNumFiles = len(self.mainOperator.FileNames)
-        self.mainOperator.FileNames.resize( oldNumFiles+len(fileNames) )
-        self.mainOperator.InvertFlags.resize( oldNumFiles+len(fileNames) )
-        self.mainOperator.GrayConvertFlags.resize( oldNumFiles+len(fileNames) )
+        oldNumFiles = len(self.mainOperator.DatasetInfos)
+        self.mainOperator.DatasetInfos.resize( oldNumFiles+len(fileNames) )
 
         # Assign values to the new inputs we just allocated.
         for i in range(0, len(fileNames)):
-            self.mainOperator.FileNames[i+oldNumFiles].setValue( fileNames[i] )
-            # (No inversion/conversion by default)
-            self.mainOperator.InvertFlags[i+oldNumFiles].setValue( False )
-            self.mainOperator.GrayConvertFlags[i+oldNumFiles].setValue( False )
+            datasetInfo = OpDataSelection.DatasetInfo()
+            datasetInfo.filePath = fileNames[i]
+            datasetInfo.invertColors = False
+            datasetInfo.convertToGrayscale = False
+            self.mainOperator.DatasetInfos[i+oldNumFiles].setValue( datasetInfo )
 
         # Which rows do we need to add to the GUI?
         oldNumRows = self.fileInfoTableWidget.rowCount()
-        numFiles = len(self.mainOperator.FileNames)
+        numFiles = len(self.mainOperator.DatasetInfos)
 
         # Make room in the table widget for the new rows
-        self.fileInfoTableWidget.setRowCount( len(self.mainOperator.FileNames) )
+        self.fileInfoTableWidget.setRowCount( numFiles )
 
         # Update the contents of the new rows in the GUI.        
         self.updateTableRows(oldNumRows, numFiles)
@@ -146,7 +154,7 @@ class DataSelectionGui(QMainWindow):
         """
         # Update the data in the new rows
         for row in range(startRow, stopRow):
-            filePath = self.mainOperator.FileNames[row].value
+            filePath = self.mainOperator.DatasetInfos[row].value.filePath
             fileName = os.path.split(filePath)[1]
 
             tableWidget = self.fileInfoTableWidget
@@ -162,17 +170,17 @@ class DataSelectionGui(QMainWindow):
             # Create and add the checkbox for color inversion
             invertCheckbox = QCheckBox()
             invertCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Invert, invertCheckbox) )
-            invertCheckbox.setChecked( self.mainOperator.InvertFlags[row].value )
+            invertCheckbox.setChecked( self.mainOperator.DatasetInfos[row].value.invertColors )
             tableWidget.setCellWidget( row, Column.Invert, invertCheckbox)
             
             # Create and add the checkbox for grayscale conversion
             convertToGrayCheckbox = QCheckBox()
             convertToGrayCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Grayscale, convertToGrayCheckbox) )
-            invertCheckbox.setChecked( self.mainOperator.GrayConvertFlags[row].value )
+            invertCheckbox.setChecked( self.mainOperator.DatasetInfos[row].value.convertToGrayscale )
             tableWidget.setCellWidget( row, Column.Grayscale, convertToGrayCheckbox)
 
         # The gui and the operator should be in sync
-        assert tableWidget.rowCount() == len(self.mainOperator.FileNames)
+        assert tableWidget.rowCount() == len(self.mainOperator.DatasetInfos)
     
     def updateStorageOptionComboBox(self, row, filePath):
         """
@@ -204,12 +212,16 @@ class DataSelectionGui(QMainWindow):
         assert changedRow != -1
 
         # Get the directory by inspecting the original operator path
-        oldPath = self.mainOperator.FileNames[changedRow].value
+        oldPath = self.mainOperator.DatasetInfos[changedRow].value.filePath
         directory = os.path.split(oldPath)[0]
         newPath = directory + '/' + str(fileNameWidget.text())
 
-        # TODO: First check to make sure this file exists!        
-        self.mainOperator.FileNames[changedRow].setValue( newPath )
+        # Be sure to copy so the slot notices the change when we setValue()
+        datasetInfo = copy.copy(self.mainOperator.DatasetInfos[changedRow].value)
+        datasetInfo.filePath = newPath
+
+        # TODO: First check to make sure this file exists!
+        self.mainOperator.DatasetInfos[changedRow].setValue( datasetInfo )
 
         # Update the storage option combo to show the new path        
         self.updateStorageOptionComboBox(changedRow, newPath)
@@ -231,13 +243,13 @@ class DataSelectionGui(QMainWindow):
             # Remove from the GUI
             self.fileInfoTableWidget.removeRow(row)
             # Remove from the operator input
-            self.mainOperator.FileNames.removeSlot(row)
+            self.mainOperator.DatasetInfos.removeSlot(row)
             
         # The gui and the operator should be in sync
-        assert self.fileInfoTableWidget.rowCount() == len(self.mainOperator.FileNames)
+        assert self.fileInfoTableWidget.rowCount() == len(self.mainOperator.DatasetInfos)
 
     def handleStorageOptionComboIndexChanged(self, combo, newIndex):
-        print "Combo selection changed: ", combo.itemText(1), newIndex
+        logger.debug("Combo selection changed: " + combo.itemText(1) + str(newIndex))
         # TODO: Store the new storage option selection.
         #       (Affects serialization.)
         
@@ -275,14 +287,20 @@ class DataSelectionGui(QMainWindow):
                 break
         assert changedRow != -1
         
-        # Now that we've found the row (and therefore the filename index),
+        # Be sure to copy so the slot notices the change when we setValue()
+        datasetInfo = copy.copy(self.mainOperator.DatasetInfos[changedRow].value)
+
+        # Now that we've found the row (and therefore the dataset index),
         #  update this flag in the appropriate operator input slot
         if column == Column.Invert:
-            self.mainOperator.InvertFlags[changedRow].setValue( checkState == Qt.Checked )
+            datasetInfo.invertColors = (checkState == Qt.Checked)
+            logger.debug("Invert Colors: " + str(datasetInfo.invertColors))
         elif column == Column.Grayscale:
-            self.mainOperator.GrayConvertFlags[changedRow].setValue( checkState == Qt.Checked )
+            datasetInfo.convertToGrayscale = (checkState == Qt.Checked)
+            logger.debug("Convert to Grayscale: " + str(datasetInfo.convertToGrayscale))
         else:
             assert False, "Invalid column for checkbox"
+        self.mainOperator.DatasetInfos[changedRow].setValue( datasetInfo )
 
 
 
