@@ -14,6 +14,8 @@ import math
 from threading import Lock
 from lazyflow.roi import roiToSlice
 
+import logging
+logger = logging.getLogger(__name__)
 
 
 class OpXToMulti(Operator):
@@ -293,7 +295,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                 else:
                     self.newScales.append(self.scales[j])
                     
-                print "Replacing scale %f with new scale %f" %(self.scales[j], self.newScales[j])
+                logger.info("Replacing scale %f with new scale %f" %(self.scales[j], self.newScales[j]))
     
             i = 0
             for j in range(dimCol):
@@ -350,7 +352,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     val=self.matrix[i,j]
                     if val:
                         self.multi.inputs["Input%02d" %(i*dimRow+j)].connect(oparray[i][j].outputs["Output"])
-                        print "connected  Input%02d of self.multi" %(i*dimRow+j)
+                        logger.info("connected  Input%02d of self.multi" %(i*dimRow+j))
                         self._featureNames.append(featureNameArray[i][j])
             
             #additional connection with FakeOperator
@@ -462,9 +464,9 @@ class OpPixelFeaturesPresmoothed(Operator):
             __sourceArray = req.wait()
             req.result = None
             req.destination = None
-            if __sourceArray.dtype is not numpy.float32:
+            if __sourceArray.dtype != numpy.float32:
                 __sourceArrayF = __sourceArray.astype(numpy.float32)
-                __sourceArray.resize((1,))
+                __sourceArray.resize((1,), refcheck = False)
                 del __sourceArray
                 __sourceArray = __sourceArrayF
             __sourceArrayV = __sourceArray.view(vigra.VigraArray) 
@@ -553,7 +555,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 #print "result: ", result.shape, "inslot:", inSlot.shape
                                 
                                 destArea = result[tuple(reskey)]
-                                print oldkey, destArea.shape, sourceArraysForSigmas[j].shape
+                                logger.debug(oldkey, destArea.shape, sourceArraysForSigmas[j].shape)
                                 oslot.operator.getOutSlot(oslot,tuple(oldkey),destArea, sourceArray = sourceArraysForSigmas[j])
                                 written += 1
                             cnt += 1
@@ -654,7 +656,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         channelsPerChannel = self.resultingChannels()
         
         if self.supportsRoi is False and largestSigma > 5:
-            print "WARNING: operator", self.name, "does not support roi !!"
+            logger.warn("WARNING: operator", self.name, "does not support roi !!")
         
         i2 = 0          
         for i in range(int(numpy.floor(1.0 * oldstart[channelAxis]/channelsPerChannel)),int(numpy.ceil(1.0 * oldstop[channelAxis]/channelsPerChannel))):
@@ -1145,10 +1147,10 @@ class OpH5Reader(Operator):
             axistags=vigra.AxisTags( vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space), vigra.AxisInfo('z', vigra.AxisType.Space), vigra.AxisInfo('c', vigra.AxisType.Channels))   
         elif len(d.shape) == 5:
             axistags=vigra.AxisTags(vigra.AxisInfo('t',vigra.AxisType.Time), vigra.AxisInfo('x',vigra.AxisType.Space),vigra.AxisInfo('y',vigra.AxisType.Space), vigra.AxisInfo('z', vigra.AxisType.Space), vigra.AxisInfo('c', vigra.AxisType.Channels))   
-            print "OpH5Reader 5-Axistags", axistags
+            logger.debug("OpH5Reader 5-Axistags", axistags)
         else:
             axistags= vigra.VigraArray.defaultAxistags(len(d.shape))
-            print "OpH5Reader DEFAULT AXISTAGS: ", axistags
+            logger.debug("OpH5Reader DEFAULT AXISTAGS: ", axistags)
         self.outputs["Image"]._axistags=axistags
         self.f=f
         self.d=self.f[hdf5Path]    
@@ -1234,7 +1236,7 @@ class OpH5WriterBigDataset(Operator):
         for i,t in enumerate(tmp):
             r=requests[i]
             self.d[r]=t.wait()
-            print "request ", i, "out of ", len(tmp), "executed"
+            logger.debug("request ", i, "out of ", len(tmp), "executed")
         result[0] = True
         
         
@@ -1406,7 +1408,7 @@ class OpH5ReaderSmoothedDataset(Operator):
           
     def _setTheOutPutSlotsAndSigmas(self):
         firstfile = self.inputs["Filenames"].value[0]
-        print "GUAGA",firstfile
+        logger.debug("GUAGA",firstfile)
         
         hdf5Path = self.inputs["hdf5Path"].value
         
@@ -1480,9 +1482,8 @@ class OpGrayscaleInverter(Operator):
         oslot._axistags = copy.copy(inputSlot.axistags)
 
     def getOutSlot(self, slot, key, result):
-        
-        #this assumes that the last dimension is the channel. 
-        image = self.inputs["input"][:].allocate().wait()
+        image = self.inputs["input"][key].allocate().wait()
+        # Assumes max of 255...
         result[...] = 255-image[...]
 
 class OpToUint8(Operator):
@@ -1527,8 +1528,8 @@ class OpRgbToGrayscale(Operator):
     
     def execute(self, slot, roi, result):
         
-        
-        image = self.inputs["input"](roi).wait()
+        key = roi.toSlice()
+        image = self.inputs["input"][key].wait()
         channelKey = self.outputs["output"]._axistags.channelIndex
         numChannels = image.shape[channelKey]
 
@@ -1536,25 +1537,83 @@ class OpRgbToGrayscale(Operator):
             result[:] = image
         else:            
             # Construct the proper red, green and blue slicings based on the position of the channel axis
-            dimsBeforeChannel = channelKey
-            dimsAfterChannel = len(image.shape) - dimsBeforeChannel - 1
-            wholeSlice = slice(None, None, None)
-            graySlicingTuple  = dimsBeforeChannel*(wholeSlice,) + (0,)+ dimsAfterChannel*(wholeSlice,)
-            redSlicingTuple   = dimsBeforeChannel*(wholeSlice,) + (0,)+ dimsAfterChannel*(wholeSlice,)
-            greenSlicingTuple = dimsBeforeChannel*(wholeSlice,) + (1,)+ dimsAfterChannel*(wholeSlice,)
-            blueSlicingTuple  = dimsBeforeChannel*(wholeSlice,) + (2,)+ dimsAfterChannel*(wholeSlice,)
+            dims = len(image.shape)
+            allSlices = dims*[slice(None, None, None)]
+            
+            graySlice = list(allSlices)
+            graySlice[channelKey] = slice(0, 1, None)
+            redSlice = graySlice
+            
+            greenSlice = list(allSlices)
+            greenSlice[channelKey] = slice(1, 2, None)
+
+            blueSlice = list(allSlices)
+            blueSlice[channelKey] = slice(2, 3, None)
 
             if numChannels == 3:
-                result[graySlicingTuple] = (numpy.round( 0.299*image[redSlicingTuple]
-                                                       + 0.587*image[greenSlicingTuple] 
-                                                       + 0.114*image[blueSlicingTuple] )).astype(int)
+                result[graySlice] = (numpy.round( 0.299*image[redSlice]
+                                                + 0.587*image[greenSlice] 
+                                                + 0.114*image[blueSlice] )).astype(int)
             elif numChannels == 2:
                 # Not sure what correct behavior for two channels should be.
                 # For now, just average them.
-                result[graySlicingTuple] = (numpy.round( 0.5*image[redSlicingTuple]
-                                                       + 0.5*image[greenSlicingTuple])).astype(int)
+                result[graySlice] = (numpy.round( 0.5*image[redSlice]
+                                                + 0.5*image[greenSlice])).astype(int)
         return result
                 
            
         
-        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
