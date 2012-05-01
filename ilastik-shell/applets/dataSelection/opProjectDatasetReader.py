@@ -67,6 +67,7 @@ class OpProjectDatasetReader(Operator):
         internalPath = self.InternalPath.value
         result[:] = hdf5File[internalPath][key]
 
+# TODO: Put this in a unit test
 if __name__ == "__main__":
     from lazyflow.graph import Graph
     import h5py
