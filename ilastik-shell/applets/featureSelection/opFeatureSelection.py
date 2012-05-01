@@ -92,15 +92,15 @@ class OpFeatureSelection(Operator):
 #
 if __name__ == "__main__":
     import numpy
-    from applets.dataSelection.opMultiInputDataReader import OpMultiInputDataReader
+    from applets.dataSelection.opInputDataReader import OpInputDataReader
     graph = Graph()
 
     # Define operators
     featureSelector = OpFeatureSelection(graph=graph)
-    reader = OpMultiInputDataReader(graph=graph)    
+    reader = OpInputDataReader(graph=graph)
 
     # Set input data
-    reader.FileNames.setValues( ['5d.npy'] )
+    reader.FilePath.setValue( '5d.npy' )
 
 #    Convert to grayscale?    
 #    from lazyflow.operators import OpRgbToGrayscale
@@ -108,7 +108,8 @@ if __name__ == "__main__":
 #    converter.input.connect(reader.Outputs)
 
     # Connect input
-    featureSelector.InputImages.connect( reader.Outputs )
+    featureSelector.InputImages.resize(1)
+    featureSelector.InputImages[0].connect( reader.Output )
 
     # Configure scales        
     scales = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
@@ -126,7 +127,7 @@ if __name__ == "__main__":
     result = featureSelector.OutputImages[0][:].allocate().wait()
     
     numFeatures = numpy.sum(featureSelectionMatrix)
-    inputChannels = reader.Outputs[0].meta.shape[-1]
+    inputChannels = reader.Output.meta.shape[-1]
     outputChannels = result.shape[-1]
     assert outputChannels == inputChannels*numFeatures
     
