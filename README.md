@@ -72,7 +72,9 @@ class SumOperator(Operator):
     #  the toSlice() method of the roi object converts
     #  region of interest into a standard python slicing
 ```
-    
+
+Connecting operators and providing input
+----------------------------------------
 To chain multiple calculations the input and output slots of operators can be **connected**:
 
 ``` python
@@ -91,6 +93,8 @@ op1.inputb.setValue(numpy.ones((10,20)))
 ```
 
 
+Performing calculations
+-----------------------
 The **result** of a computation from an operator can be requested from the **output** slot by calling
 one of the following methods:
 
@@ -116,6 +120,61 @@ one of the following methods:
   # request result via the get method and an existing roi object
   request3 = op1.output.get(some_roi_object)
   ```
+
+It should be noted that a query to an outputslot does **not** return
+the final calculation result. Instead a handle for the running calculation is returned, a so called
+**Request** object.
+
+Request objects
+--------------
+All queries to output slots return **Request** objects. These requests are
+processed in parallel by a set of worker threads.
+``` python
+request1 = op1.output[:]
+request2 = op2.output[:]
+request3 = op3.output[:]
+request4 = op4.output[:]
+```
+
+these request objects provide several methods to obtain the final result of the computation
+or to get a notification of a finished computation.
+
+* Synchronous **waiting** for a calculation
+  ```python
+  request = op1.output[:]
+  result = request.wait()
+  ```
+  after the wait method returns, the result objects contains the actual array that was requested.
+* Asynchronous **notification** of finished calculations
+  ```python
+  request = op1.output[:]
+  def callback(request):
+    # request.wait() will return immediately 
+    # and just provide the result
+
+    result = request.wait()
+    # do something useful with the result..
+  
+  # register the callback function
+  # it is called once the calculation is finished
+  # or immediately if the calculation is already done.
+  request.notify(callback)
+* Specification of **destination** result area
+  ```python
+  # create a request
+  request = op1.output[:]
+  a = numpy.ndarray(op1.output.meta.shape, dtype = op1.output.meta.dtype)
+  # specify a destination array for the request
+  result = request.writeInto(a)
+
+  # when the request.wait() method returns, a will 
+  # hold the result of the calculation
+  request.wait()
+  ```
+  The writeInto also works with notify()
+
+When writing operators the execute method obtains its inputs from the **input slots** in the same manner.
+
 
   
 
