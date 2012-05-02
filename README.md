@@ -98,10 +98,11 @@ Performing calculations
 The **result** of a computation from an operator can be requested from the **output** slot by calling
 one of the following methods:
 
-1. __getitem__(slicing) : the usual [] array access operator is also provided and supports normal python slicing syntax:
+1. __getitem__(slicing) : the usual [] array access operator is also provided and supports normal python slicing syntax (no strides!):
 
   ``` python
   request1 = op1.output[:]
+  request2 = op1.output[0:10,0:20]
   ```
 
 2. __call__( start, stop ) : the call method of the outputslot expects two keyword arguments,
@@ -148,17 +149,18 @@ or to get a notification of a finished computation.
 * Asynchronous **notification** of finished calculations
   ```python
   request = op1.output[:]
+
   def callback(request):
+    result = request.wait()
     # request.wait() will return immediately 
     # and just provide the result
-
-    result = request.wait()
     # do something useful with the result..
   
   # register the callback function
   # it is called once the calculation is finished
   # or immediately if the calculation is already done.
   request.notify(callback)
+  ```
 * Specification of **destination** result area
   ```python
   # create a request
@@ -171,9 +173,60 @@ or to get a notification of a finished computation.
   # hold the result of the calculation
   request.wait()
   ```
-  The writeInto also works with notify()
+  Note: writeInto can also be combined with notify() instead of wait()
 
-When writing operators the execute method obtains its inputs from the **input slots** in the same manner.
+When writing operators the execute method obtains 
+its input for the calculation from the **input slots** in the same manner.
+
+Meta data
+---------
+The **input** and **output** slots of operators have associated meta data which
+is held in a .meta dictionary.
+
+The content of the dictionary depends on the operator, since the operator is responsible
+to provide meaningful meta information on its output slots.
+
+Examples of often available meta information are the shape, dtype and axistags in the
+case of ndarray slots.
+
+```python
+op1.output.meta.shape    # the shape of the result array
+op1.output.meta.dtype    # the dtype of the result array
+op1.output.meta.axistags # the axistags of the result array
+                         # for more information on axistags, consult the vigra manual
+```
+
+When writing an **operator** the programmer must implement the **setupOutputs** method of the
+Operator. This method is called once all neccessary inputs for the operator have been connected
+(or have been provided directly via **setValue**).
+
+A simple example for the SumOperator is given below:
+``` python
+class SumOperator(Operator):
+  inputA = InputSlot(stype=ArrayLike)
+  inputB = InputSlot(stype=ArrayLike)
+
+  output = OutputSlot(stype=ArrayLike)
+
+  def setupOutputs(self):
+    # query the shape of the operator inputs
+    # by reading the input slots meta dictionary
+    shapeA = self.inputA.meta.shape
+    shapeB = self.inputB.meta.shape
+
+    # check that the inputs are compatible
+    assert shapeA == shapeB
+
+    # setup the meta dictionary of the output slot
+    self.output.meta.shape = shapeA
+
+    # setup the dtype of the output slot
+    self.output.meta.dtype = self.inputA.meta.dtype
+
+
+  def execute(self, slot, roi, result):
+    pass
+```
 
 
   
