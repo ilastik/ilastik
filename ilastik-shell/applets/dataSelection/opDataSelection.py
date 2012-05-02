@@ -5,6 +5,8 @@ from opInputDataReader import OpInputDataReader
 from lazyflow.operators.obsolete.vigraOperators import OpGrayscaleInverter, OpRgbToGrayscale
 import copy
 
+import uuid
+
 class OpDataSelection(Operator):
     """
     The top-level operator for the data selection applet.
@@ -12,7 +14,7 @@ class OpDataSelection(Operator):
     name = "OpDataSelection"
     category = "Top-level"
     
-    class DatasetInfo():
+    class DatasetInfo(object):
         """
         Struct-like class for describing dataset info.
         """
@@ -22,10 +24,25 @@ class OpDataSelection(Operator):
 
         def __init__(self):
             self.location = OpDataSelection.DatasetInfo.Location.FileSystem # Whether the data will be found/stored on the filesystem or in the project file
-            self.filePath = ""              # The original path to the data
-            self.internalPath = ""          # The internal path to the data (if storing to project)
-            self.invertColors = False       # Flag to invert colors before outputting
-            self.convertToGrayscale = False # Flag to convert to grayscale before outputting
+            self.invertColors = False          # Flag to invert colors before outputting
+            self.convertToGrayscale = False    # Flag to convert to grayscale before outputting
+            self._filePath = ""                # The original path to the data (also used as a fallback if the data isn't in the project yet)
+            self._datasetId = ""               # The name of the data within the project file (if it is stored locally)            
+
+        @property
+        def filePath(self):
+            return self._filePath
+        
+        @filePath.setter
+        def filePath(self, newPath):
+            self._filePath = newPath
+            # Reset our id any time the filepath changes
+            self._datasetId = str(uuid.uuid1())
+        
+        @property
+        def datasetId(self):
+            return self._datasetId
+            
 
     # The project hdf5 File object (already opened)
     # Optional, but MUST be connected first if its connected
@@ -43,7 +60,7 @@ class OpDataSelection(Operator):
         # Create an internal operator for reading data from disk
         self.readers = []
         self.providerSlots = []
-        
+    
     def setupOutputs(self):
         numInputs = len(self.DatasetInfos)
         # Ensure the proper number of outputs
@@ -55,16 +72,19 @@ class OpDataSelection(Operator):
         for i in range(numInputs):
             datasetInfo = self.DatasetInfos[i].value
 
+            # TODO: This shouldn't be hard-coded here.
+            internalPath = 'DataSelection/local_data/' + datasetInfo.datasetId
+
             # Data only comes from the project file if the user said so AND it exists in the project
             datasetInProject = (datasetInfo.location == OpDataSelection.DatasetInfo.Location.ProjectInternal)
             datasetInProject &= self.ProjectFile.connected() and \
-                                datasetInfo.internalPath in self.ProjectFile.value
+                                internalPath in self.ProjectFile.value
             
             # If we should find the data in the project file, use a dataset reader
             if datasetInProject:
                 reader = OpProjectDatasetReader(graph=self.graph)
                 reader.ProjectFile.setValue(self.ProjectFile.value)
-                reader.InternalPath.setValue(datasetInfo.internalPath)
+                reader.InternalPath.setValue(internalPath)
                 providerSlot = reader.OutputImage
             else:
                 # Use a normal (filesystem) reader
@@ -138,12 +158,10 @@ if __name__ == "__main__":
     reader = OpDataSelection(graph=graph)
 
     # Create a 'project' file and give it some data
-    internalDir = 'datasets'
-    internalName = 'dataset1'
-    internalPath = internalDir + '/' + internalName
     projectFile = h5py.File(projectFileName)
-    projectFile.create_group(internalDir)
-    projectFile[internalDir].create_dataset(internalName, data=a) # Use the same data as the png data (above)
+    projectFile.create_group('DataSelection')
+    projectFile['DataSelection'].create_group('local_data')
+    projectFile['DataSelection/local_data'].create_dataset('dataset1', data=a) # Use the same data as the png data (above)
     projectFile.flush()
     reader.ProjectFile.setValue(projectFile)
 
@@ -209,7 +227,7 @@ if __name__ == "__main__":
     info = OpDataSelection.DatasetInfo()
     info.location = OpDataSelection.DatasetInfo.Location.ProjectInternal
     info.filePath = "This string should be ignored..."
-    info.internalPath = internalPath
+    info.datasetId = 'dataset1'
     info.invertColors = False
     info.convertToGrayscale = False
     datasetInfos.append(info)
