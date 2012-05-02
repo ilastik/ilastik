@@ -141,10 +141,12 @@ these request objects provide several methods to obtain the final result of the 
 or to get a notification of a finished computation.
 
 * Synchronous **waiting** for a calculation
+
   ```python
   request = op1.output[:]
   result = request.wait()
   ```
+
   after the wait method returns, the result objects contains the actual array that was requested.
 * Asynchronous **notification** of finished calculations
   ```python
