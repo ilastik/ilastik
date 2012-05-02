@@ -161,7 +161,9 @@ or to get a notification of a finished computation.
   # or immediately if the calculation is already done.
   request.notify(callback)
   ```
-* Specification of **destination** result area
+* Specification of **destination** result area. Sometimes it is useful
+  to tell an operator where to put the results of its computation, when handling
+  large numpy arrays this may save copying the array around in memory.
   ```python
   # create a request
   request = op1.output[:]
@@ -229,7 +231,14 @@ class SumOperator(Operator):
 ```
 
 
-  
+Propagating dirtyness
+--------------------
 
 
+Nesting Operators inside other operators
+---------------------------------------
+
+
+Wrapup: Writing an Operator
+--------------------------
 
