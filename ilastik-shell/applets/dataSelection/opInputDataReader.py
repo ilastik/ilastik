@@ -137,7 +137,7 @@ if __name__ == "__main__":
                         f['volume/data'][i,j,k,l,m] = i + j + k + l + m    
     f.close()
 
-    # Now read back our test data using an OpMultiInputDataReader operator
+    # Now read back our test data using an OpInputDataReader operator
     graph = lazyflow.graph.Graph()
     npyReader = OpInputDataReader(graph=graph)
     npyReader.FilePath.setValue(testNpyDataFileName)

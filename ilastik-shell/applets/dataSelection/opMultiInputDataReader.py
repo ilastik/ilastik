@@ -102,9 +102,9 @@ if __name__ == "__main__":
     # Start by writing some test data to disk in various formats
     # TODO: Use a temporary directory for this instead of the cwd.
     
-    testNpyDataFileName = 'OpInputDataReader.npy'
-    testImageFileName = 'OpInputDataReader.png'
-    testH5FileName = 'OpInputDataReader.h5'
+    testNpyDataFileName = 'test.npy'
+    testImageFileName = 'test.png'
+    testH5FileName = 'test.h5'
 
     # Clean up: Remove the test data files we created last time (just in case)
     try:    
