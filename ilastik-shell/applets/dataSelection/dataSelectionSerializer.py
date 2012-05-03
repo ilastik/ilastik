@@ -71,6 +71,10 @@ class DataSelectionSerializer(object):
                 vigraData = data.view(vigra.VigraArray)
                 vigraData.axistags = dataSlot.meta.axistags
                 vigra.impex.writeHDF5(vigraData, localDataGroup, info.datasetId)
+                # We also store the original axis ordering
+                keys = [tag.key for tag in vigraData.axistags]
+                axisorder = '-'.join(keys)
+                localDataGroup[info.datasetId].attrs['axisorder'] = axisorder
                 wroteInternalData = True
 
         # Construct a list of all the local dataset ids we want to keep
