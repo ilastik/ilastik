@@ -102,11 +102,6 @@ if __name__ == "__main__":
     # Set input data
     reader.FilePath.setValue( '5d.npy' )
 
-#    Convert to grayscale?    
-#    from lazyflow.operators import OpRgbToGrayscale
-#    converter = OpRgbToGrayscale(graph=graph)
-#    converter.input.connect(reader.Outputs)
-
     # Connect input
     featureSelector.InputImages.resize(1)
     featureSelector.InputImages[0].connect( reader.Output )
@@ -123,19 +118,22 @@ if __name__ == "__main__":
     featureSelectionMatrix[2,3] = True
     featureSelector.Matrix.setValue(featureSelectionMatrix)
 
-    # Compute results
-    result = featureSelector.OutputImages[0][:].allocate().wait()
+    # Compute results for the top slice only
+    topSlice = [0, slice(None), slice(None), 0, slice(None)]
+    result = featureSelector.OutputImages[0][topSlice].allocate().wait()
     
     numFeatures = numpy.sum(featureSelectionMatrix)
     inputChannels = reader.Output.meta.shape[-1]
     outputChannels = result.shape[-1]
     assert outputChannels == inputChannels*numFeatures
     
-    # Export each channel of the results as a separate image for display purposes.
+    # Export the first slice of each channel of the results as a separate image for display purposes.
     import vigra
     numFeatures = result.shape[-1]
-    for feature in range(0, numFeatures):
-        vigra.impex.writeImage(result[0, :, :, 0, feature], "test_feature" + str(feature) + ".bmp")
+    for featureIndex in range(0, numFeatures):
+        featureSlice = list(topSlice)
+        featureSlice[-1] = featureIndex
+        vigra.impex.writeImage(result[featureSlice], "test_feature" + str(featureIndex) + ".bmp")
 
 
 

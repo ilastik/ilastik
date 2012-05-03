@@ -166,8 +166,8 @@ class FeatureSelectionGui(QMainWindow):
     def handleFeaturesChanged(self):
         # Start by removing all layers
         # TODO: We can do better than this.  We should try to determine if some feature layers can be kept.
-        for il, layer in enumerate(self.layerstack):
-            self.layerstack.removeRows(il, 1)
+        numRows = len(self.layerstack)
+        self.layerstack.removeRows(0, numRows)
 
         # Update the editor data shape
         # TODO: This assumes only one input image for now.
@@ -249,8 +249,6 @@ class FeatureSelectionGui(QMainWindow):
         c.append(QColor(240, 230, 140)) #khaki
         c.append(QColor(69, 69, 69))    # dark grey
         return c
-
-
 
 
 
