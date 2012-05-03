@@ -3,7 +3,6 @@ from PyQt4.QtGui import *
 from PyQt4 import uic
 
 from opDataSelection import OpDataSelection
-from opMultiInputDataReader import OpMultiInputDataReader
 
 from functools import partial
 import os
@@ -47,6 +46,9 @@ class DataSelectionGui(QMainWindow):
         
         self.initAppletDrawerUic()
         self.initCentralUic()
+        
+        # Setup handlers in case the operator changes behind our back (e.g. a new project is loaded)
+        self.mainOperator.DatasetInfos.notifyMetaChanged(self.refreshAllRows)
         
     def initAppletDrawerUic(self):
         """
@@ -148,6 +150,11 @@ class DataSelectionGui(QMainWindow):
         # Update the contents of the new rows in the GUI.        
         self.updateTableRows(oldNumRows, numFiles)
 
+    def refreshAllRows(self, slot):
+        numFiles = len(self.mainOperator.DatasetInfos)
+        self.fileInfoTableWidget.setRowCount( numFiles )
+        self.updateTableRows(0, numFiles)
+
     def updateTableRows(self, startRow, stopRow):
         """
         Update the given rows using the top-level operator parameters
@@ -162,22 +169,22 @@ class DataSelectionGui(QMainWindow):
             # Show the filename in the table (defaults to edit widget)
             fileNameWidget = QTableWidgetItem(fileName)
             tableWidget.setItem( row, Column.Name, fileNameWidget )
-            tableWidget.itemChanged.connect( self.handleFileNameEditChanged )
+            tableWidget.itemChanged.connect( partial(self.handleFileNameEditChanged, fileNameWidget) )
             
             # Create and add the combobox for storage location options
             self.updateStorageOptionComboBox(row, filePath)
 
             # Create and add the checkbox for color inversion
             invertCheckbox = QCheckBox()
-            invertCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Invert, invertCheckbox) )
             invertCheckbox.setChecked( self.mainOperator.DatasetInfos[row].value.invertColors )
             tableWidget.setCellWidget( row, Column.Invert, invertCheckbox)
+            invertCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Invert, invertCheckbox) )
             
             # Create and add the checkbox for grayscale conversion
             convertToGrayCheckbox = QCheckBox()
-            convertToGrayCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Grayscale, convertToGrayCheckbox) )
-            invertCheckbox.setChecked( self.mainOperator.DatasetInfos[row].value.convertToGrayscale )
+            convertToGrayCheckbox.setChecked( self.mainOperator.DatasetInfos[row].value.convertToGrayscale )
             tableWidget.setCellWidget( row, Column.Grayscale, convertToGrayCheckbox)
+            convertToGrayCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Grayscale, convertToGrayCheckbox) )
 
         # The gui and the operator should be in sync
         assert tableWidget.rowCount() == len(self.mainOperator.DatasetInfos)
@@ -191,40 +198,45 @@ class DataSelectionGui(QMainWindow):
                     LocationOptions.AbsolutePath : filePath }
         for index, text in sorted(options.items()):
             combo.addItem(text)
+
+        if self.mainOperator.DatasetInfos[row].value.location == OpDataSelection.DatasetInfo.Location.ProjectInternal:
+            combo.setCurrentIndex( LocationOptions.Project )
+        elif self.mainOperator.DatasetInfos[row].value.location == OpDataSelection.DatasetInfo.Location.FileSystem:
+            combo.setCurrentIndex( LocationOptions.AbsolutePath )
+
         combo.currentIndexChanged.connect( partial(self.handleStorageOptionComboIndexChanged, combo) )
-        tableWidget = self.fileInfoTableWidget
-        tableWidget.setCellWidget( row, Column.Location, combo )
-        
+        self.fileInfoTableWidget.setCellWidget( row, Column.Location, combo )
     
-    def handleFileNameEditChanged(self, fileNameWidget ):
+    def handleFileNameEditChanged(self, fileNameWidget, changedWidget ):
         """
         The user manually edited a file name in the table.
         Update the operator and other GUI elements with the new file path.
         """
-        # Figure out which row this checkbox is in
-        tableWidget = self.fileInfoTableWidget
-        changedRow = -1
-        for row in range(0, tableWidget.rowCount()):
-            widget = tableWidget.item(row, Column.Name)
-            if widget == fileNameWidget:
-                changedRow = row
-                break
-        assert changedRow != -1
-
-        # Get the directory by inspecting the original operator path
-        oldPath = self.mainOperator.DatasetInfos[changedRow].value.filePath
-        directory = os.path.split(oldPath)[0]
-        newPath = directory + '/' + str(fileNameWidget.text())
-
-        # Be sure to copy so the slot notices the change when we setValue()
-        datasetInfo = copy.copy(self.mainOperator.DatasetInfos[changedRow].value)
-        datasetInfo.filePath = newPath
-
-        # TODO: First check to make sure this file exists!
-        self.mainOperator.DatasetInfos[changedRow].setValue( datasetInfo )
-
-        # Update the storage option combo to show the new path        
-        self.updateStorageOptionComboBox(changedRow, newPath)
+        if fileNameWidget == changedWidget:
+            # Figure out which row this widget is in
+            tableWidget = self.fileInfoTableWidget
+            changedRow = -1
+            for row in range(0, tableWidget.rowCount()):
+                widget = tableWidget.cellWidget(row, Column.Location)
+                if widget == fileNameWidget:
+                    changedRow = row
+                    break
+            assert changedRow != -1
+            
+            # Get the directory by inspecting the original operator path
+            oldPath = self.mainOperator.DatasetInfos[changedRow].value.filePath
+            directory = os.path.split(oldPath)[0]
+            newPath = directory + '/' + str(fileNameWidget.text())
+    
+            # Be sure to copy so the slot notices the change when we setValue()
+            datasetInfo = copy.copy(self.mainOperator.DatasetInfos[changedRow].value)
+            datasetInfo.filePath = newPath
+    
+            # TODO: First check to make sure this file exists!
+            self.mainOperator.DatasetInfos[changedRow].setValue( datasetInfo )
+    
+            # Update the storage option combo to show the new path        
+            self.updateStorageOptionComboBox(changedRow, newPath)
         
     def handleRemoveButtonClicked(self):
         """
@@ -248,10 +260,27 @@ class DataSelectionGui(QMainWindow):
         # The gui and the operator should be in sync
         assert self.fileInfoTableWidget.rowCount() == len(self.mainOperator.DatasetInfos)
 
-    def handleStorageOptionComboIndexChanged(self, combo, newIndex):
-        logger.debug("Combo selection changed: " + combo.itemText(1) + str(newIndex))
-        # TODO: Store the new storage option selection.
-        #       (Affects serialization.)
+    def handleStorageOptionComboIndexChanged(self, combo, newLocationSetting):
+        logger.debug("Combo selection changed: " + combo.itemText(1) + str(newLocationSetting))
+
+        # Figure out which row this combo is in
+        tableWidget = self.fileInfoTableWidget
+        changedRow = -1
+        for row in range(0, tableWidget.rowCount()):
+            widget = tableWidget.cellWidget(row, Column.Location)
+            if widget == combo:
+                changedRow = row
+                break
+        assert changedRow != -1
+        
+        datasetInfo = copy.copy(self.mainOperator.DatasetInfos[changedRow].value)
+        
+        if newLocationSetting == LocationOptions.AbsolutePath:
+            datasetInfo.location = OpDataSelection.DatasetInfo.Location.FileSystem
+        elif newLocationSetting == LocationOptions.Project:
+            datasetInfo.location = OpDataSelection.DatasetInfo.Location.ProjectInternal
+        
+        self.mainOperator.DatasetInfos[changedRow].setValue(datasetInfo)
         
     def handleTableSelectionChange(self):
         """
