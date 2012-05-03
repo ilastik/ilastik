@@ -16,7 +16,7 @@ class ProjectMetadataGui( QWidget ):
         
         self.initMainUi()
         self.initAppletDrawerUi()
-            
+        
     def initMainUi(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]

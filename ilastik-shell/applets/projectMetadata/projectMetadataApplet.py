@@ -22,7 +22,8 @@ class ProjectMetadataApplet( Applet ):
         self._drawers = [ ( "Project Metadata", self._centralWidget.getAppletDrawerUi() ) ]
 
         # No serializable items for now ...
-        self._serializableItems = [ Ilastik05ProjectMetadataDeserializer(self._projectMetadata) ]
+        self._serializableItems = [ ProjectMetadataSerializer(self._projectMetadata),
+                                    Ilastik05ProjectMetadataDeserializer(self._projectMetadata) ]
 
     @property
     def centralWidget( self ):
