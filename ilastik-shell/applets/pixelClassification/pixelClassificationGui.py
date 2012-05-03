@@ -29,7 +29,6 @@ from ilastikshell.applet import Applet
 
 import vigra
 
-from utility.dataImporter import DataImporter
 from utility.simpleSignal import SimpleSignal
 
 class Tool():
@@ -52,13 +51,13 @@ class PixelClassificationGui(QMainWindow):
 
         # Subscribe to various pipeline events so we can respond appropriately in the GUI
         # TODO: Assumes only one image.
-        def handleInputListChanged(slot):
+        def handleInputListChanged(slot, oldsize, newsize):
             """This closure is called when a new input image is connected to the multi-input slot."""
             if len(self.pipeline.InputImages) > 0:
                 # Subscribe to changes on the graph input.
-                self.pipeline.InputImages[0].notifyConnect(self.handleGraphInputChanged)
+                self.pipeline.InputImages[0].notifyMetaChanged(self.handleGraphInputChanged)
                 self.handleGraphInputChanged(self.pipeline.InputImages[0])
-        self.pipeline.InputImages.notifyMetaChanged(handleInputListChanged)
+        self.pipeline.InputImages.notifyResized(handleInputListChanged)
 
         self.pipeline.labelsChangedSignal.connect(self.handlePipelineLabelsChanged)
         #self.pipeline.predictionMetaChangeSignal.connect(self.setupPredictionLayers)
@@ -578,19 +577,20 @@ class PixelClassificationGui(QMainWindow):
 
         # Request the prediction for the entire image stack.
         # Call our callback when it's finished
-        self.pipeline.prediction_cache.outputs['Output'][0][:].notify( onPredictionComplete )
+        self.pipeline.CachedPredictionProbabilities[0][:].notify( onPredictionComplete )
     
     def addPredictionLayer(self, icl, ref_label):
         """
         Add a prediction layer to the editor.
         """
+        # TODO: Assumes only one image
         selector=OpSingleChannelSelector(self.g)
-        selector.inputs["Input"].connect(self.pipeline.prediction_cache.outputs['Output'])
+        selector.inputs["Input"].connect(self.pipeline.CachedPredictionProbabilities[0])
         selector.inputs["Index"].setValue(icl)
         
 ##      self.pipeline.prediction_cache.inputs["fixAtCurrent"].setValue(not self._labelControlUi.checkInteractive.isChecked())
         
-        predictsrc = LazyflowSource(selector.outputs["Output"][0])
+        predictsrc = LazyflowSource(selector.outputs["Output"])
         def srcName(newName):
             predictsrc.setObjectName("Prediction for %s" % ref_label.name)
         srcName("")

@@ -125,11 +125,11 @@ class OpPixelClassification( Operator ):
     def getSubOutSlot(self, slots, indexes, key, result):
         slot = slots[0]
         if slot.name == "PredictionProbabilities":
-            req = self.predict[indexes[0]][key].writeInto(result)
+            req = self.predict.PMaps[indexes[0]][key].writeInto(result)
             res = req.wait()
             return res
         elif slot.name == "CachedPredictionProbabilities":
-            req = self.prediction_cache[indexes[0]][key].writeInto(result)
+            req = self.prediction_cache.Output[indexes[0]][key].writeInto(result)
             res = req.wait()
             return res
         else:
