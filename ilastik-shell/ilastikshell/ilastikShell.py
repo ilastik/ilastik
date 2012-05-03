@@ -9,10 +9,10 @@ import h5py
 import traceback
 import os
 
+from utility import VersionManager
+
 import logging
 logger = logging.getLogger(__name__)
-
-ILASTIK_VERSION = 0.6
 
 class ShellActions(object):
     """
@@ -193,7 +193,7 @@ class IlastikShell( QMainWindow ):
 
         # Create the blank project file
         h5File = h5py.File(projectFilePath, "w")
-        h5File.create_dataset("ilastikVersion", data=ILASTIK_VERSION)
+        h5File.create_dataset("ilastikVersion", data=VersionManager.CurrentIlastikVersion)
         
         self.loadProject(h5File)
 
@@ -212,7 +212,6 @@ class IlastikShell( QMainWindow ):
             return
 
         projectFilePath = str(projectFilePath)
-        self.openExistingProjectFile(projectFilePath)
         logger.info("Opening Project: " + projectFilePath)
 
         # Open the file as an HDF5 file
