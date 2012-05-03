@@ -465,7 +465,7 @@ class Slot(object):
             roi = args[0]
 
           for c in self.partners:
-            c.setDirty(*args,**kwargs)
+            c.setDirty(roi)
           
           # call callbacks
           for f,kw in self._callbacks_dirty.iteritems():

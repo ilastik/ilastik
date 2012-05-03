@@ -233,14 +233,74 @@ class SumOperator(Operator):
 ```
 
 
-Propagating dirtyness
---------------------
+Propagating changes in the inputs
+----------------------------
+lazyflow operators should propagate changes in its inputs to their outputs.
+Since the exact mapping from inputs to outputs depends on the computation the operator
+implements, only the operator knows how the state of its outputs changes when an inputslot is modified.
 
+To support the efficient propagation of information about changes operators should implement
+the **propagateDirty** method.
+This method is called from the outside whenever one of the inputs (or only part of an input) of an operator is changed.
 
-Nesting Operators inside other operators
----------------------------------------
+Depending on the calculation which the operator computes the programmer should implement the correct mapping from changes 
+in the inputs to changes in the outputs - which is fairly easy for the simple sum operator:
+
+``` python
+class SumOperator(Operator):
+  inputA = InputSlot(stype=ArrayLike)
+  inputB = InputSlot(stype=ArrayLike)
+
+  output = OutputSlot(stype=ArrayLike)
+
+  def propagateDirty(self, slot, roi):
+    # the method receives as argument the slot
+    # which was changed, and the region of interest (roi)
+    # that was changed in the slot
+    
+    # in this case the mapping of the dirty
+    # region is fairly simple, it corresponds exactly
+    # to the region of interest that was changed in
+    # one of the input slots
+    self.output.setDirty(roi)
+
+  def setupOutputs(self):
+    pass
+
+  def execute(self, slot, roi, result):
+    pass
+```
 
 
 Wrapup: Writing an Operator
 --------------------------
+To implement a lazyflow operator on should
+* create a subclass of the **Operator** base class
+* define the **InputSlot**s and **OutputSlot**s of the computation
+* implement the **setupOutputs** methods to set up the meta information of the 
+  output slots depending on the meta information which is available on the input
+  slots.
+* implement the **execute** method, that is called when an outputslot is queried
+  for results.
+* implement the **propagateDirty** method, which is called when a region of interest
+  of an input slot is changed.
 
+
+
+``` python
+class SumOperator(Operator):
+  inputA = InputSlot(stype=ArrayLike)
+  inputB = InputSlot(stype=ArrayLike)
+
+  output = OutputSlot(stype=ArrayLike)
+
+  def setupOutputs(self):
+    pass
+
+  def execute(self, slot, roi, result):
+    pass
+  
+  def propagateDirty(self, slot, roi):
+    pass
+
+```
