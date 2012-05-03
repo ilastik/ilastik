@@ -52,7 +52,7 @@ from collections import deque
 from Queue import Queue, LifoQueue, Empty, PriorityQueue
 from threading import Thread, Event, current_thread, Lock
 import weakref
-from request import Request
+from request import Request, Singleton
 import rtype
 from roi import sliceToRoi, roiToSlice
 from lazyflow.stype import ArrayLike
@@ -1105,7 +1105,10 @@ class Operator(object):
         return obj
 
     def __init__( self, parent = None, graph = None, register = True ):
-        assert parent != None or graph != None
+        # if no parent is given, assign the global graph instance as parent
+        if parent is None and graph is None:
+          graph = GlobalGraph()
+
         self._configurationNotificationCallbacks = []
         # preserve compatability with old operators
         # that give the graph as first argument to 
@@ -1704,4 +1707,12 @@ class Graph(object):
 
   def _notifyFreeMemory(self, *args, **kwargs):
     pass
+
+# singleton graph class, that
+# serves as parent graph for all operators
+# wich are created without parent
+class GlobalGraph(Graph):
+  __metaclass__ = Singleton
+
+
 
