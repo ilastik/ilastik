@@ -227,7 +227,7 @@ if __name__ == "__main__":
     info = OpDataSelection.DatasetInfo()
     info.location = OpDataSelection.DatasetInfo.Location.ProjectInternal
     info.filePath = "This string should be ignored..."
-    info.datasetId = 'dataset1'
+    info._datasetId = 'dataset1' # (Cheating a bit here...)
     info.invertColors = False
     info.convertToGrayscale = False
     datasetInfos.append(info)
