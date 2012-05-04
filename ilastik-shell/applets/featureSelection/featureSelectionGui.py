@@ -37,6 +37,13 @@ class FeatureSelectionGui(QMainWindow):
 #                     "Gaussian Gradient Magnitude",
 #                     "Difference Of Gaussian" ]
 
+    FeatureIds = [ 'GaussianSmoothing',
+                   'LaplacianOfGaussian',
+                   'StructureTensorEigenvalues',
+                   'HessianOfGaussianEigenvalues',
+                   'GaussianGradientMagnitude',
+                   'DifferenceOfGaussians' ]
+
     FeatureNames = [ "G-smooth",
                      "L-of-G",
                      "ST EVs",
@@ -63,6 +70,7 @@ class FeatureSelectionGui(QMainWindow):
         self.initEditor()
 
         self.mainOperator.Scales.setValue( self.ScalesList )
+        self.mainOperator.FeatureIds.setValue(self.FeatureIds)
         
     def initAppletDrawerUic(self):
         """
@@ -74,8 +82,8 @@ class FeatureSelectionGui(QMainWindow):
         self.drawer.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
 
         # Subscribe to feature selection changes directly from the graph.
-        self.mainOperator.Matrix.notifyConnect( self.onFeaturesSelectionsChanged ) # In case of setValue
-        self.mainOperator.Matrix.notifyDirty( self.onFeaturesSelectionsChanged ) # In case of dirty data from the partner operator
+        self.mainOperator.SelectionMatrix.notifyConnect( self.onFeaturesSelectionsChanged ) # In case of setValue
+        self.mainOperator.SelectionMatrix.notifyDirty( self.onFeaturesSelectionsChanged ) # In case of dirty data from the partner operator
     
     def initCentralUic(self):
         """
@@ -111,8 +119,8 @@ class FeatureSelectionGui(QMainWindow):
     def onFeatureButtonClicked(self):
         # Refresh the feature matrix in case it has changed since the last time we were opened
         # (e.g. if the user loaded a project from disk)
-        if self.mainOperator.Matrix.configured():
-            self.featureDlg.selectedFeatureBoolMatrix = self.mainOperator.Matrix.value
+        if self.mainOperator.SelectionMatrix.configured():
+            self.featureDlg.selectedFeatureBoolMatrix = self.mainOperator.SelectionMatrix.value
         
         # Now open the feature selection dialog
         self.featureDlg.show()
@@ -120,14 +128,14 @@ class FeatureSelectionGui(QMainWindow):
     def onNewFeaturesFromFeatureDlg(self):
         # Give the new features to the pipeline 
         featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
-        self.mainOperator.Matrix.setValue( featureMatrix )
+        self.mainOperator.SelectionMatrix.setValue( featureMatrix )
     
     def onFeaturesSelectionsChanged(self, slot):
         """
         Handles changes to our top-level operator's matrix of feature selections.
         """
         # Update the drawer caption
-        self.drawer.caption.setText( "(Selected %d features)" % numpy.sum(self.mainOperator.Matrix.value) )
+        self.drawer.caption.setText( "(Selected %d features)" % numpy.sum(self.mainOperator.SelectionMatrix.value) )
 
     def initEditor(self):
         """

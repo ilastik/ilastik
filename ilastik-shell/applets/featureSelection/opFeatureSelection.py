@@ -16,8 +16,10 @@ class OpFeatureSelection(Operator):
 
     # The following input slots are applied uniformly to all input images
     Scales = InputSlot() # The list of possible scales to use when computing features
-    Matrix = InputSlot() # A matrix of bools indicating which features to output.
-                         # The matrix rows correspond to feature types (see OpPixelFeaturesPresmoothed)
+    FeatureIds = InputSlot() # The list of features to compute
+    SelectionMatrix = InputSlot() # A matrix of bools indicating which features to output.
+                         # The matrix rows correspond to feature types in the order specified by the FeatureIds input.
+                         #  (See OpPixelFeaturesPresmoothed for the available feature types.)
                          # The matrix columns correspond to the scales provided in the Scales input,
                          #  which requires that the number of matrix columns must match len(Scales.value)
     
@@ -42,10 +44,12 @@ class OpFeatureSelection(Operator):
 
     def setupOutputs(self):
         numInputs = len(self.InputImages)
+        featureIds = self.FeatureIds.value
+        
         # Ensure that we have the right number of internal operators
         # Add more if necessary
         while len(self.internalFeatureOps) < numInputs:
-            self.internalFeatureOps.append( OpPixelFeaturesPresmoothed(parent=self) )
+            self.internalFeatureOps.append( OpPixelFeaturesPresmoothed(parent=self, featureIds=featureIds) )
 
         # Remove some if necessary
         # TODO: This can be more efficient.  We should figure out which input index was 
@@ -63,7 +67,7 @@ class OpFeatureSelection(Operator):
         for i in range( 0, numInputs ):
             self.internalFeatureOps[i].Input.connect( self.InputImages[i] )
             self.internalFeatureOps[i].Scales.connect( self.Scales )
-            self.internalFeatureOps[i].Matrix.connect( self.Matrix )
+            self.internalFeatureOps[i].Matrix.connect( self.SelectionMatrix )
         
             # Copy the metadata from the internal operators
             self.OutputImages[i].meta.dtype = self.internalFeatureOps[i].Output.meta.dtype
@@ -94,7 +98,7 @@ if __name__ == "__main__":
     import numpy
     from applets.dataSelection.opInputDataReader import OpInputDataReader
     graph = Graph()
-
+    
     # Define operators
     featureSelector = OpFeatureSelection(graph=graph)
     reader = OpInputDataReader(graph=graph)
@@ -110,8 +114,17 @@ if __name__ == "__main__":
     scales = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
     featureSelector.Scales.setValue(scales)
 
+    # Configure feature types
+    featureIds = [ 'GaussianSmoothing',
+                   'LaplacianOfGaussian',
+                   'StructureTensorEigenvalues',
+                   'HessianOfGaussianEigenvalues',
+                   'GaussianGradientMagnitude',
+                   'DifferenceOfGaussians' ]
+    featureSelector.FeatureIds.setValue(featureIds)
+
     # Configure matrix
-    featureSelectionMatrix = numpy.array(numpy.zeros((6,7)), dtype=bool)
+    featureSelectionMatrix = numpy.array(numpy.zeros((len(featureIds),len(scales))), dtype=bool)
     featureSelectionMatrix[0,0] = True
     featureSelectionMatrix[1,1] = True
     featureSelectionMatrix[2,2] = True
