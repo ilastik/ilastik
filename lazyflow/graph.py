@@ -906,11 +906,10 @@ class MultiInputSlot(Slot):
         self.notifyResized(self._configureOperator)
 
     def setInSlot(self, slot, key, value):
-        # Forward to our slot's partner(s)
-        if type(self.operator) == OperatorWrapper:
-            for p in slot.partners:
-                p.operator.setInSlot(p, key, value)
-            
+        # Determine which subslot this is
+        index = self._subSlots.index(slot)
+        # Forward the call to our operator using setSubInSlot
+        self.operator.setSubInSlot(self, slot, index, key, value)
 
 class MultiOutputSlot(Slot):
     """
@@ -1663,7 +1662,6 @@ class OperatorWrapper(Operator):
         #this should never be called !!!        
         assert 1==2
 
-
     def getSubOutSlot(self, slots, indexes, key, result):
         # this should never be called
         assert 1 == 2
@@ -1673,14 +1671,13 @@ class OperatorWrapper(Operator):
             self.innerOperators[indexes[0]].getSubOutSlot(slots[1:], indexes[1:], key, result)
         
     def setInSlot(self, slot, key, value):
-        #TODO: code this
-        assert 1==2
+        assert False, "All inputs of any OperatorWrapper are always multi, so this function should never be called!"
 
     def setSubInSlot(self,multislot,slot,index, key,value):
-        #TODO: code this
-        assert 1==2
-
-
+        # Forward this call to the operator (whose slot is partnered with ours)
+        assert len(slot.partners) == 1
+        innerSlot = list(slot.partners)[0]
+        self.innerOperators[index].setInSlot(innerSlot, key, value)
                         
 class Graph(object):
   def __init__(self, numThreads=-1):
@@ -1706,5 +1703,4 @@ class Graph(object):
 
   def _notifyFreeMemory(self, *args, **kwargs):
     pass
-
 
