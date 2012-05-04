@@ -246,7 +246,15 @@ class OpPixelFeaturesPresmoothed(Operator):
     inputSlots = [InputSlot("Input"), InputSlot("Matrix"), InputSlot("Scales")]
     outputSlots = [OutputSlot("Output"), OutputSlot("ArrayOfOperators")]
     
-    def __init__(self, parent):         
+    # Specify a default set & order for the features we compute
+    DefaultFeatureIds = [ 'GaussianSmoothing',
+                          'LaplacianOfGaussian',
+                          'StructureTensorEigenvalues',
+                          'HessianOfGaussianEigenvalues',
+                          'GaussianGradientMagnitude',
+                          'DifferenceOfGaussians' ]
+    
+    def __init__(self, parent, featureIds=None):         
         Operator.__init__(self, parent)   
         self.source = OpArrayPiper(self)
         self.source.inputs["Input"].connect(self.inputs["Input"])        
@@ -256,6 +264,11 @@ class OpPixelFeaturesPresmoothed(Operator):
         self.multi = Op50ToMulti(self)
         
         self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
+        
+        if featureIds == None:
+            self._featureIds = self.DefaultFeatureIds
+        else:
+            self._featureIds = list(featureIds)
         
         self._featureNames = []
     
@@ -297,46 +310,56 @@ class OpPixelFeaturesPresmoothed(Operator):
                     
                 logger.info("Replacing scale %f with new scale %f" %(self.scales[j], self.newScales[j]))
     
-            i = 0
-            for j in range(dimCol):
-                oparray[i].append(OpGaussianSmoothing(self))
-                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
-                featureNameArray[i].append("G-smooth (s=" + str(self.newScales[j]) + ")")
-            i = 1
-            for j in range(dimCol):
-                oparray[i].append(OpLaplacianOfGaussian(self))
-                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                oparray[i][j].inputs["scale"].setValue(self.newScales[j])
-                featureNameArray[i].append("L-of-G (s=" + str(self.newScales[j]) + ")")
-            i = 2
-            for j in range(dimCol):
-                oparray[i].append(OpStructureTensorEigenvalues(self))
-                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
-                oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
-                featureNameArray[i].append("ST EVs (s=" + str(self.newScales[j]) + ")")
-            i = 3
-            for j in range(dimCol):   
-                oparray[i].append(OpHessianOfGaussianEigenvalues(self))
-                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                oparray[i][j].inputs["scale"].setValue(self.newScales[j])
-                featureNameArray[i].append("H-of-G EVs (s=" + str(self.newScales[j]) + ")")
-            
-            i= 4
-            for j in range(dimCol): 
-                oparray[i].append(OpGaussianGradientMagnitude(self))
-                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
-                featureNameArray[i].append("GG Mag (s=" + str(self.newScales[j]) + ")")
-            
-            i= 5
-            for j in range(dimCol): 
-                oparray[i].append(OpDifferenceOfGaussians(self))
-                oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
-                oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])            
-                oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
-                featureNameArray[i].append("Diff-of-G (s=" + str(self.newScales[j]) + ")")            
+            for i, featureId in enumerate(self._featureIds):
+                if featureId == 'GaussianSmoothing':
+                    for j in range(dimCol):
+                        oparray[i].append(OpGaussianSmoothing(self))
+                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                        oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
+                        featureNameArray[i].append("G-smooth (s=" + str(self.newScales[j]) + ")")
+                
+                elif featureId == 'LaplacianOfGaussian':
+                    for j in range(dimCol):
+                        oparray[i].append(OpLaplacianOfGaussian(self))
+                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                        oparray[i][j].inputs["scale"].setValue(self.newScales[j])
+                        featureNameArray[i].append("L-of-G (s=" + str(self.newScales[j]) + ")")
+                
+                elif featureId == 'StructureTensorEigenvalues':
+                    for j in range(dimCol):
+                        oparray[i].append(OpStructureTensorEigenvalues(self))
+                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                        # Note: If you need to change the inner or outer scale, 
+                        #  you must make a new feature (with a new feature ID) and 
+                        #  leave this feature here to preserve backwards compatibility
+                        oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
+                        oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
+                        featureNameArray[i].append("ST EVs (s=" + str(self.newScales[j]) + ")")
+                
+                elif featureId == 'HessianOfGaussianEigenvalues':
+                    for j in range(dimCol):   
+                        oparray[i].append(OpHessianOfGaussianEigenvalues(self))
+                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                        oparray[i][j].inputs["scale"].setValue(self.newScales[j])
+                        featureNameArray[i].append("H-of-G EVs (s=" + str(self.newScales[j]) + ")")                
+                
+                elif featureId == 'GaussianGradientMagnitude':
+                    for j in range(dimCol): 
+                        oparray[i].append(OpGaussianGradientMagnitude(self))
+                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                        oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
+                        featureNameArray[i].append("GG Mag (s=" + str(self.newScales[j]) + ")")                
+                
+                elif featureId == 'DifferenceOfGaussians':
+                    for j in range(dimCol): 
+                        oparray[i].append(OpDifferenceOfGaussians(self))
+                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                        # Note: If you need to change sigma0 or sigma1, you must make a new 
+                        #  feature (with a new feature ID) and leave this feature here 
+                        #  to preserve backwards compatibility
+                        oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])            
+                        oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
+                        featureNameArray[i].append("Diff-of-G (s=" + str(self.newScales[j]) + ")")            
             
             self.outputs["ArrayOfOperators"][0] = oparray
             
