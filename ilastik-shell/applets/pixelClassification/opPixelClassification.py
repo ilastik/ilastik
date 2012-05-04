@@ -180,6 +180,9 @@ class OpPixelClassification( Operator ):
 
 
 class OpShapeReader(Operator):
+    """
+    This operator outputs the shape of its input image, except the number of channels is set to 1.
+    """
     Input = InputSlot()
     OutputShape = OutputSlot(stype='shapetuple')
     
@@ -190,7 +193,10 @@ class OpShapeReader(Operator):
     
     def execute(self, slot, roi, result):
         # Our 'result' is simply the shape of our input, but with only one channel
-        result[0] = self.Input.meta.shape[:-1] + (1,)
+        channelIndex = self.Input.meta.axistags.index('c')
+        shapeList = list(self.Input.meta.shape)
+        shapeList[channelIndex] = 1
+        result[0] = tuple(shapeList)
 
 
 
