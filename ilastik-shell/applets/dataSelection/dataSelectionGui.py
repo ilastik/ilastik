@@ -187,7 +187,7 @@ class DataSelectionGui(QMainWindow):
             convertToGrayCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Grayscale, convertToGrayCheckbox) )
 
         # The gui and the operator should be in sync
-        assert tableWidget.rowCount() == len(self.mainOperator.DatasetInfos)
+        assert self.fileInfoTableWidget.rowCount() == len(self.mainOperator.DatasetInfos)
     
     def updateStorageOptionComboBox(self, row, filePath):
         """
