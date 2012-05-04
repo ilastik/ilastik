@@ -903,7 +903,6 @@ class MultiInputSlot(Slot):
         self.inputs = {}
         super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
         # configure operator in case of slot change
-        self.notifyMetaChanged(self._configureOperator)
         self.notifyResized(self._configureOperator)
 
     def setInSlot(self, slot, key, value):
