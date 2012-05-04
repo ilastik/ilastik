@@ -26,7 +26,7 @@ class FeatureSelectionSerializer(object):
         # Delete previous entries if they exist
         self.deleteIfPresent(topGroup, 'Scales')
         self.deleteIfPresent(topGroup, 'FeatureIds')
-        self.deleteIfPresent(topGroup, 'Matrix')
+        self.deleteIfPresent(topGroup, 'SelectionMatrix')
         
         # Store the new values (as numpy arrays)
         topGroup.create_dataset('Scales', data=self.mainOperator.Scales.value)
