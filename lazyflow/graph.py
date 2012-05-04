@@ -336,22 +336,22 @@ class Slot(object):
                 # call slot type connect function
                 self.stype.connect(partner)
                 
+                if self.level > 0 or self.stype.isConfigured():
+                  self._changed()
+                
                 # call connect callbacks
                 for f, kw in self._callbacks_connect.iteritems():
                   f(self,**kw)
 
-                if self.level > 0 or self.stype.isConfigured():
-                  self._changed()
-                
             elif partner.level < self.level:
                 self.partner = partner
                 self.meta = self.partner.meta.copy()
                 for i, slot in enumerate(self._subSlots):                
                     slot.connect(partner)
+                self._changed()
                 # call connect callbacks
                 for f, kw in self._callbacks_connect.iteritems():
                   f(self,**kw)
-                self._changed()
 
             elif partner.level > self.level:
                 if not isinstance(partner, (InputSlot, MultiInputSlot)):
@@ -580,9 +580,9 @@ class Slot(object):
         for i,s in enumerate(self._subSlots):
             s.setValue(values[i])
         # call connect callbacks
+        self._changed()    
         for f, kw in self._callbacks_connect.iteritems():
           f(self,**kw)
-        self._changed()    
 
     def connected(self):
         """
@@ -670,10 +670,14 @@ class Slot(object):
       if self._type == "output":
         for o in self._subSlots:
           o._changed()
+
       if self.meta._dirty:
         for c in self.partners:
           c._changed()
         self.meta._dirty = False
+
+      if self._type != "output":
+        self._configureOperator(self)
     
       # call changed callbacks
       for f, kw in self._callbacks_changed.iteritems():
@@ -842,7 +846,6 @@ class InputSlot(Slot):
         self._type = "input"
         super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
         # configure operator in case of slot change
-        self.notifyMetaChanged(self._configureOperator)
         self.notifyResized(self._configureOperator)
     
 
@@ -1704,4 +1707,5 @@ class Graph(object):
 
   def _notifyFreeMemory(self, *args, **kwargs):
     pass
+
 
