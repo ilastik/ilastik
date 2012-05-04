@@ -288,12 +288,11 @@ class OpPixelFeaturesPresmoothed(Operator):
                 raise RuntimeError("OpPixelFeatures: Please input a numpy.ndarray as 'Matrix'")
             
             dimCol = len(self.scales)
-            dimRow = self.matrix.shape[0]
+            dimRow = len(self._featureIds)
             
-            assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)
-            assert dimRow==6, "Right now the features are fixed"
-    
-                
+            assert dimRow== self.matrix.shape[0], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)    
+            assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)    
+            
             featureNameArray =[]
             oparray = []
             for j in range(dimRow):
