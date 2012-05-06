@@ -108,9 +108,6 @@ class PixelClassificationGui(QMainWindow):
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
         uic.loadUi(p+"/centralWidget.ui", self) 
-        #connect the window and graph creation to the opening of the file
-        #self.actionOpenFile.triggered.connect(self.openFile)
-        #self.actionOpenStack.triggered.connect(self.openImageStack)
         
         def toggleDebugPatches(show):
             self.editor.showDebugPatches = show

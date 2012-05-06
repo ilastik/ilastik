@@ -180,13 +180,6 @@
    <property name="nativeMenuBar">
     <bool>false</bool>
    </property>
-   <widget class="QMenu" name="menuFile">
-    <property name="title">
-     <string>&amp;File</string>
-    </property>
-    <addaction name="actionOpenFile"/>
-    <addaction name="actionOpenStack"/>
-   </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>&amp;View</string>
@@ -203,7 +196,6 @@
     <addaction name="actionReset_zoom"/>
     <addaction name="actionRubberBandZoom"/>
    </widget>
-   <addaction name="menuFile"/>
    <addaction name="menuView"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
