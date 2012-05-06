@@ -93,6 +93,61 @@ class FeatureSelectionGui(QMainWindow):
         localDir = os.path.split(__file__)[0]
         uic.loadUi(localDir+"/centralWidget.ui", self)
             
+        def toggleDebugPatches(show):
+            self.editor.showDebugPatches = show
+        def fitToScreen():
+            shape = self.editor.posModel.shape
+            for i, v in enumerate(self.editor.imageViews):
+                s = list(shape)
+                del s[i]
+                v.changeViewPort(v.scene().data2scene.mapRect(QRectF(0,0,*s)))  
+                
+        def fitImage():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageViews[self.editor._lastImageViewFocus].fitImage()
+                
+        def restoreImageToOriginalSize():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageViews[self.editor._lastImageViewFocus].doScaleTo()
+                    
+        def rubberBandZoom():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                if not self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom:
+                    self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = True
+                    self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup = self.editor.imageViews[self.editor._lastImageViewFocus].cursor()
+                    self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(Qt.CrossCursor)
+                else:
+                    self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = False
+                    self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup)
+                
+        def hideHud():
+            hide = not self.editor.imageViews[0]._hud.isVisible()
+            for i, v in enumerate(self.editor.imageViews):
+                v.setHudVisible(hide)
+                
+        def toggleSelectedHud():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageViews[self.editor._lastImageViewFocus].toggleHud()
+                
+        def centerAllImages():
+            for i, v in enumerate(self.editor.imageViews):
+                v.centerImage()
+                
+        def centerImage():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageViews[self.editor._lastImageViewFocus].centerImage()
+                self.actionOnly_for_current_view.setEnabled(True)
+        
+        self.actionCenterAllImages.triggered.connect(centerAllImages)
+        self.actionCenterImage.triggered.connect(centerImage)
+        self.actionToggleAllHuds.triggered.connect(hideHud)
+        self.actionToggleSelectedHud.triggered.connect(toggleSelectedHud)
+        self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
+        self.actionFitToScreen.triggered.connect(fitToScreen)
+        self.actionFitImage.triggered.connect(fitImage)
+        self.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
+        self.actionRubberBandZoom.triggered.connect(rubberBandZoom)
+                
     def initFeatureDlg(self):
         """
         Initialize the feature selection widget.

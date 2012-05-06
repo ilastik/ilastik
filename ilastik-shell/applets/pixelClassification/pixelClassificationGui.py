@@ -141,12 +141,9 @@ class PixelClassificationGui(QMainWindow):
                 
         
         def hideHud():
-            if self.editor.imageViews[0]._hud.isVisible():
-                hide = False
-            else:
-                hide = True
+            hide = not self.editor.imageViews[0]._hud.isVisible()
             for i, v in enumerate(self.editor.imageViews):
-                v.hideHud(hide)
+                v.setHudVisible(hide)
                 
         def toggleSelectedHud():
             if hasattr(self.editor, '_lastImageViewFocus'):
