@@ -129,20 +129,6 @@
                 </property>
                </spacer>
               </item>
-              <item>
-               <widget class="QToolButton" name="AddLayOutButton">
-                <property name="toolTip">
-                 <string>add new layer</string>
-                </property>
-                <property name="text">
-                 <string>Add Layout</string>
-                </property>
-                <property name="icon">
-                 <iconset>
-                  <normaloff>icons/list-add.png</normaloff>icons/list-add.png</iconset>
-                </property>
-               </widget>
-              </item>
              </layout>
             </widget>
            </item>
