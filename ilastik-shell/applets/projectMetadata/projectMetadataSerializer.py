@@ -8,7 +8,7 @@ class ProjectMetadataSerializer(object):
     def __init__(self, projectMetadata):
         self.projectMetadata = projectMetadata
     
-    def serializeToHdf5(self, hdf5File):
+    def serializeToHdf5(self, hdf5File, filePath):
         # Check the overall file version
         ilastikVersion = hdf5File["ilastikVersion"].value
 
@@ -33,7 +33,7 @@ class ProjectMetadataSerializer(object):
         self.setDataset(metadataGroup, 'Labeler', self.projectMetadata.labeler)
         self.setDataset(metadataGroup, 'Description', self.projectMetadata.description)
     
-    def deserializeFromHdf5(self, hdf5File):
+    def deserializeFromHdf5(self, hdf5File, filePath):
         # Check the overall file version
         ilastikVersion = hdf5File["ilastikVersion"].value
 
@@ -89,10 +89,10 @@ class Ilastik05ProjectMetadataDeserializer(object):
     def __init__(self, projectMetadata):
         self.projectMetadata = projectMetadata
     
-    def serializeToHdf5(self, hdf5File):
+    def serializeToHdf5(self, hdf5File, projectFilePath):
         pass
     
-    def deserializeFromHdf5(self, hdf5File):
+    def deserializeFromHdf5(self, hdf5File, projectFilePath):
 
         # Read in what values we can, without failing if any of them are missing
         try:

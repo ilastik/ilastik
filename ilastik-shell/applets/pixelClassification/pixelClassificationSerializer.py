@@ -11,7 +11,7 @@ class PixelClassificationSerializer(object):
     def __init__(self, topLevelOperator):
         self.mainOperator = topLevelOperator
     
-    def serializeToHdf5(self, hdf5File):
+    def serializeToHdf5(self, hdf5File, filePath):
         # The group we were given is the root (file).
         # Check the version
         ilastikVersion = hdf5File["ilastikVersion"].value
@@ -54,7 +54,7 @@ class PixelClassificationSerializer(object):
                 # Add the slice this block came from as an attribute of the dataset
                 labelGroup[blockName].attrs['blockSlice'] = self.slicingToString(slicing)
 
-    def deserializeFromHdf5(self, hdf5File):
+    def deserializeFromHdf5(self, hdf5File, filePath):
         # Check the overall version.
         # We only support v0.6 at the moment.
         ilastikVersion = hdf5File["ilastikVersion"].value
@@ -150,11 +150,11 @@ class Ilastik05ImportDeserializer(object):
     def __init__(self, pipeline):
         self.pipeline = pipeline
     
-    def serializeToHdf5(self, hdf5Group):
+    def serializeToHdf5(self, hdf5Group, projectFilePath):
         """Not implemented. (See above.)"""
         pass
     
-    def deserializeFromHdf5(self, hdf5File):
+    def deserializeFromHdf5(self, hdf5File, projectFilePath):
         """If (and only if) the given hdf5Group is the root-level group of an 
            ilastik 0.5 project, then the project is imported.  The pipeline is updated 
            with the saved parameters and datasets."""

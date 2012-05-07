@@ -19,6 +19,7 @@ class OpInputDataReader(Operator):
     #  e.g. /mydir/myfile.h5/internal/path/to/dataset
     # For stacks, provide a globstring, e.g. /mydir/input*.png
     # Other types are determined via file extension
+    WorkingDirectory = InputSlot(stype='filestring', optional=True)
     FilePath = InputSlot(stype='filestring')
     Output = OutputSlot()
 
@@ -36,7 +37,17 @@ class OpInputDataReader(Operator):
         filePath = self.FilePath.value
         assert type(filePath) == str
         
-                
+        # Does this look like a relative path?
+        useRelativePath = (filePath[0] != '/')
+        
+        if useRelativePath:
+            # If using a relative path, we need both inputs before proceeding
+            if not self.WorkingDirectory.connected():
+                return
+            else:
+                # Convert this relative path into an absolute path
+                filePath = self.WorkingDirectory.value + '/' + filePath
+        
         # Check for globstring
         if '*' in filePath:
             # Load as a stack
@@ -95,6 +106,7 @@ class OpInputDataReader(Operator):
 ## Simple Test
 ##
 if __name__ == "__main__":
+    import os
     import lazyflow.graph
     import numpy
 
@@ -145,6 +157,8 @@ if __name__ == "__main__":
     graph = lazyflow.graph.Graph()
     npyReader = OpInputDataReader(graph=graph)
     npyReader.FilePath.setValue(testNpyDataFileName)
+    cwd = os.path.split(__file__)[0]
+    npyReader.WorkingDirectory.setValue( cwd )
 
     # Read the entire NPY file and verify the contents
     npyData = npyReader.Output[:].wait()
@@ -156,6 +170,8 @@ if __name__ == "__main__":
     # Read the entire PNG file and verify the contents
     pngReader = OpInputDataReader(graph=graph)
     pngReader.FilePath.setValue(testImageFileName)
+    cwd = os.path.split(__file__)[0]
+    pngReader.WorkingDirectory.setValue( cwd )
     pngData = pngReader.Output[:].wait()
     for x in range(pngData.shape[0]):
         for y in range(pngData.shape[1]):
@@ -164,6 +180,8 @@ if __name__ == "__main__":
     # Read the entire HDF5 file and verify the contents
     h5Reader = OpInputDataReader(graph=graph)
     h5Reader.FilePath.setValue(testH5FileName + '/volume/data') # Append internal path
+    cwd = os.path.split(__file__)[0]
+    h5Reader.WorkingDirectory.setValue( cwd )
 
     # Grab a section of the h5 data
     h5Data = h5Reader.Output[0,0,:,:,:].wait()

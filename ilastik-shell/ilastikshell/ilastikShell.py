@@ -195,7 +195,7 @@ class IlastikShell( QMainWindow ):
         h5File = h5py.File(projectFilePath, "w")
         h5File.create_dataset("ilastikVersion", data=VersionManager.CurrentIlastikVersion)
         
-        self.loadProject(h5File)
+        self.loadProject(h5File, projectFilePath)
 
     def onOpenProjectActionTriggered(self):
         logger.debug("Open Project action triggered")
@@ -216,9 +216,9 @@ class IlastikShell( QMainWindow ):
 
         # Open the file as an HDF5 file
         hdf5File = h5py.File(projectFilePath)
-        self.loadProject(hdf5File)
+        self.loadProject(hdf5File, projectFilePath)
     
-    def loadProject(self, hdf5File):
+    def loadProject(self, hdf5File, projectFilePath):
         """
         Load the data from the given hdf5File (which should already be open).
         """
@@ -226,11 +226,12 @@ class IlastikShell( QMainWindow ):
         
         # Save this as the current project
         self.currentProjectFile = hdf5File
+        self.currentProjectPath = projectFilePath
         try:            
             # Applet serializable items are given the whole file (root group) for now
             for applet in self._applets:
                 for item in applet.dataSerializers:
-                    item.deserializeFromHdf5(self.currentProjectFile)
+                    item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
         except:
             logger.error("Project Open Action failed due to the following exception:")
             traceback.print_exc()
@@ -247,12 +248,13 @@ class IlastikShell( QMainWindow ):
         logger.debug("Save Project action triggered")
         
         assert self.currentProjectFile != None
+        assert self.currentProjectPath != None
 
         try:        
             # Applet serializable items are given the whole file (root group) for now
             for applet in self._applets:
                 for item in applet.dataSerializers:
-                    item.serializeToHdf5(self.currentProjectFile)
+                    item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
         except:
             logger.error("Project Save Action failed due to the following exception:")
             traceback.print_exc()            

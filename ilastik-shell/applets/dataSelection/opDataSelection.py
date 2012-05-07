@@ -47,6 +47,7 @@ class OpDataSelection(Operator):
     # The project hdf5 File object (already opened)
     # Optional, but MUST be connected first if its connected
     ProjectFile = InputSlot(stype='object', optional=True)
+    WorkingDirectory = InputSlot(stype='filestring', optional=True)
 
     # Array of DatasetInfo objects (see above)
     DatasetInfos = MultiInputSlot(stype='object')
@@ -90,6 +91,7 @@ class OpDataSelection(Operator):
                 # Use a normal (filesystem) reader
                 reader = OpInputDataReader(graph=self.graph)
                 reader.FilePath.setValue(datasetInfo.filePath)
+                reader.WorkingDirectory.connect( self.WorkingDirectory )
                 providerSlot = reader.Output            
 
             # If the user wants to invert the image,

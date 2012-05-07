@@ -8,7 +8,7 @@ class FeatureSelectionSerializer(object):
     def __init__(self, mainOperator):
         self.mainOperator = mainOperator
     
-    def serializeToHdf5(self, hdf5File):
+    def serializeToHdf5(self, hdf5File, filePath):
         # Check the overall version.
         # We only support v0.6 at the moment.
         ilastikVersion = hdf5File["ilastikVersion"].value
@@ -40,7 +40,7 @@ class FeatureSelectionSerializer(object):
         if self.mainOperator.SelectionMatrix.connected():
             topGroup.create_dataset('SelectionMatrix', data=self.mainOperator.SelectionMatrix.value)
 
-    def deserializeFromHdf5(self, hdf5File):
+    def deserializeFromHdf5(self, hdf5File, filePath):
         # Check the overall version.
         # We only support v0.6 at the moment.
         ilastikVersion = hdf5File["ilastikVersion"].value

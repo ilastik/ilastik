@@ -11,7 +11,7 @@ class ExampleSerializableItem(object):
               "Example Subgroup 2" : { "Population" : 12345 , "Elevation" : 16.0 }
               }
     
-    def serializeToHdf5(self, hdf5Group):
+    def serializeToHdf5(self, hdf5Group, projectFilePath):
         """ Write some test data to the given HDF5 group."""
 
         # Add our data to a group that we own
@@ -24,7 +24,7 @@ class ExampleSerializableItem(object):
             for dataName, dataValue in groupDataSets.items():
                 subgroup.create_dataset(dataName, data=dataValue)
     
-    def deserializeFromHdf5(self, hdf5Group):
+    def deserializeFromHdf5(self, hdf5Group, projectFilePath):
         """ Read the data from the given HDF5 group."""
         # Obtain a handle to our own group in the file
         itemGroup = hdf5Group[self.name]

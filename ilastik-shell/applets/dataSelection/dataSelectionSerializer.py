@@ -1,6 +1,7 @@
 from opDataSelection import OpDataSelection
 Location = OpDataSelection.DatasetInfo.Location
 
+import os
 import vigra
 import copy
 from utility import SimpleSignal # from the ilastik-shell utility module
@@ -23,7 +24,7 @@ class DataSelectionSerializer(object):
     def __init__(self, mainOperator):
         self.mainOperator = mainOperator
     
-    def serializeToHdf5(self, hdf5File):
+    def serializeToHdf5(self, hdf5File, projectFilePath):
         # Check the overall file version
         ilastikVersion = hdf5File["ilastikVersion"].value
 
@@ -104,7 +105,7 @@ class DataSelectionSerializer(object):
             infoCopy = copy.copy(self.mainOperator.DatasetInfos[0].value)
             self.mainOperator.DatasetInfos[0].setValue(infoCopy)
 
-    def deserializeFromHdf5(self, hdf5File):
+    def deserializeFromHdf5(self, hdf5File, projectFilePath):
         # Check the overall file version
         ilastikVersion = hdf5File["ilastikVersion"].value
 
@@ -112,16 +113,21 @@ class DataSelectionSerializer(object):
         if not VersionManager.isProjectFileVersionCompatible(ilastikVersion):
             return
 
+        # The 'working directory' for the purpose of constructing absolute 
+        #  paths from relative paths is the project file's directory.
+        projectDir = os.path.split(projectFilePath)[0]
+        self.mainOperator.WorkingDirectory.setValue( projectDir )
+
+        # Provide the project file to our operator
+        self.mainOperator.ProjectFile.setValue(hdf5File)
+
         # Access the top group and the info group
-        #  If it doesn't exist we simply return without adding any input to the operator.
+        #  If it doesn't exist we simply return without adding any input files to the operator.
         try:
             topGroup = hdf5File[DataSelectionSerializer.TopGroupName]
             infoDir = topGroup['infos']
         except KeyError:
             return
-
-        # Provide the project file to our operator
-        self.mainOperator.ProjectFile.setValue(hdf5File)
         
         self.mainOperator.DatasetInfos.resize( len(infoDir) )
         for index, (infoGroupName, infoGroup) in enumerate( sorted(infoDir.items()) ):
