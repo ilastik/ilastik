@@ -19,7 +19,7 @@ class PixelClassificationLazyflow( object ):
         self.features_cache.inputs["Input"].connect(self.features.outputs["Output"])
         self.features_cache.inputs["innerBlockShape"].setValue((1,32,32,32,16))
         self.features_cache.inputs["outerBlockShape"].setValue((1,128,128,128,64))
-        self.features_cache.inputs["fixAtCurrent"].setValue(False)  
+        self.features_cache.inputs["fixAtCurrent"].setValue(True)  
     
         shape = array_like_input.meta.shape
         self.labels.inputs["shape"].setValue(shape[:-1] + (1,))
@@ -54,7 +54,8 @@ class PixelClassificationLazyflow( object ):
         
 
         pCache = OpSlicedBlockedArrayCache( graph )
-        pCache.inputs["fixAtCurrent"].setValue(False)
+        pCache.name = "PCache"
+        pCache.inputs["fixAtCurrent"].setValue(True)
         pCache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
         pCache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
         pCache.inputs["Input"].connect(self.predict.outputs["PMaps"])

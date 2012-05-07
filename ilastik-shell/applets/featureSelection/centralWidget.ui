@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>961</width>
-    <height>776</height>
+    <width>1339</width>
+    <height>907</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -23,7 +23,7 @@
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="VolumeEditorWidget" name="volumeEditorWidget">
+      <widget class="VolumeEditorWidget" name="volumeEditorWidget" native="true">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>99</horstretch>
@@ -39,86 +39,6 @@
         </sizepolicy>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_2">
-        <item>
-         <widget class="QLabel" name="label">
-          <property name="text">
-           <string>&lt;b&gt;Problem specific labels:&lt;/b&gt;</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="LabelListView" name="labelListView">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="AddLabelButton">
-          <property name="styleSheet">
-           <string notr="true"/>
-          </property>
-          <property name="text">
-           <string>Add labels</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="SelectFeaturesButton">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>Select Features</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="checkInteractive">
-          <property name="enabled">
-           <bool>true</bool>
-          </property>
-          <property name="text">
-           <string>Interactive updating</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QComboBox" name="interactionComboBox">
-          <property name="maxVisibleItems">
-           <number>10</number>
-          </property>
-          <item>
-           <property name="text">
-            <string>Navigation Mode</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>Brushing Mode</string>
-           </property>
-          </item>
-         </widget>
-        </item>
-        <item>
-         <spacer name="verticalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>10</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
         <item>
          <widget class="QLabel" name="label_2">
           <property name="text">
@@ -209,25 +129,24 @@
                 </property>
                </spacer>
               </item>
-              <item>
-               <widget class="QToolButton" name="AddLayOutButton">
-                <property name="toolTip">
-                 <string>add new layer</string>
-                </property>
-                <property name="text">
-                 <string>Add Layout</string>
-                </property>
-                <property name="icon">
-                 <iconset>
-                  <normaloff>icons/list-add.png</normaloff>icons/list-add.png</iconset>
-                </property>
-               </widget>
-              </item>
              </layout>
             </widget>
            </item>
           </layout>
          </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>10</height>
+           </size>
+          </property>
+         </spacer>
         </item>
        </layout>
       </widget>
@@ -235,23 +154,18 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar">
+  <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>961</width>
-     <height>24</height>
+     <width>1339</width>
+     <height>25</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuFile">
-    <property name="title">
-     <string>&amp;File</string>
-    </property>
-    <addaction name="actionOpenFile"/>
-    <addaction name="actionOpenStack"/>
-    <addaction name="actionQuit"/>
-   </widget>
+   <property name="nativeMenuBar">
+    <bool>false</bool>
+   </property>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>&amp;View</string>
@@ -268,25 +182,9 @@
     <addaction name="actionReset_zoom"/>
     <addaction name="actionRubberBandZoom"/>
    </widget>
-   <addaction name="menuFile"/>
    <addaction name="menuView"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QToolBar" name="toolBar">
-   <property name="windowTitle">
-    <string>toolBar</string>
-   </property>
-   <attribute name="toolBarArea">
-    <enum>TopToolBarArea</enum>
-   </attribute>
-   <attribute name="toolBarBreak">
-    <bool>false</bool>
-   </attribute>
-   <addaction name="actionOpenFile"/>
-   <addaction name="actionQuit"/>
-   <addaction name="actionFitToScreen"/>
-   <addaction name="actionShowDebugPatches"/>
-  </widget>
   <action name="actionOpenFile">
    <property name="icon">
     <iconset>
@@ -471,11 +369,6 @@
    <class>VolumeEditorWidget</class>
    <extends>QWidget</extends>
    <header>volumina.volumeEditorWidget</header>
-  </customwidget>
-  <customwidget>
-   <class>LabelListView</class>
-   <extends>QTableView</extends>
-   <header>labelListView</header>
   </customwidget>
  </customwidgets>
  <resources/>
