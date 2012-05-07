@@ -166,6 +166,7 @@ class PixelClassificationGui(QMainWindow):
         self.actionRubberBandZoom.triggered.connect(rubberBandZoom)
                 
         self.layerstack = LayerStackModel()
+        self.predictionLayers = set()
 
     def initAppletBarUic(self):
         # We have four different applet bar controls
@@ -325,6 +326,10 @@ class PixelClassificationGui(QMainWindow):
         
         for o in self.fixableOperators:
             o.inputs["fixAtCurrent"].setValue(not checked)
+
+        # Prediction layers should be switched on/off when the interactive checkbox is toggled
+        for layer in self.predictionLayers:
+            layer.visible = checked
 
         self.editor.scheduleSlicesRedraw()
 
@@ -591,6 +596,7 @@ class PixelClassificationGui(QMainWindow):
         
         predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color, normalize = None )
         predictLayer.nameChanged.connect(srcName)
+        predictLayer.opacity = 0.5
         
         def setLayerColor(c):
             print "as the color of label '%s' has changed, setting layer's '%s' tint color to %r" % (ref_label.name, predictLayer.name, c)
@@ -607,12 +613,14 @@ class PixelClassificationGui(QMainWindow):
         predictLayer.ref_object = ref_label
 
         #make sure that labels (index = 0) stay on top!
-        self.layerstack.insert(1, predictLayer )
+        self.layerstack.insert(1, predictLayer )        
+        self.predictionLayers.add(predictLayer)
                
     def removePredictionLayer(self, ref_label):
         for il, layer in enumerate(self.layerstack):
             if layer.ref_object==ref_label:
                 print "found the prediction", layer.ref_object, ref_label
+                self.predictionLayers.remove(layer)
                 self.layerstack.removeRows(il, 1)
                 break
     
