@@ -629,6 +629,9 @@ class PixelClassificationGui(QMainWindow):
         The input data to our top-level operator has changed.
         """
         shape = self.pipeline.InputImages[0].shape
+        if shape == None:
+            return
+        
         srcs    = []
         minMax = []
         
@@ -643,9 +646,13 @@ class PixelClassificationGui(QMainWindow):
         nchannels = shape[-1]
         for ich in xrange(nchannels):
             if self._normalize_data:
-                data=slicer.outputs['Slices'][ich][:].allocate().wait()
-                #find the minimum and maximum value for normalization
-                mm = (numpy.min(data), numpy.max(data))
+                if slicer.outputs['Slices'][ich].meta.dtype == numpy.uint8:
+                    # Don't bother normalizing uint8 data
+                    mm = (0, 255)
+                else:
+                    data=slicer.outputs['Slices'][ich][:].allocate().wait()
+                    #find the minimum and maximum value for normalization
+                    mm = (numpy.min(data), numpy.max(data))
                 print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
                 minMax.append(mm)
             else:
