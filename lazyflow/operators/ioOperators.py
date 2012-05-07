@@ -124,12 +124,14 @@ class OpStackLoader(Operator):
             self.info = vigra.impex.ImageInfo(self.fileNameList[0])
             oslot = self.outputs["stack"]
             
-            #build 4D shape out of 2DShape and Filelist
-            oslot._shape = (self.info.getShape()[0],self.info.getShape()[1],len(self.fileNameList),self.info.getShape()[2])
+            #build 5D shape out of 2DShape and Filelist
+            oslot._shape = (1, self.info.getShape()[0],self.info.getShape()[1],len(self.fileNameList),self.info.getShape()[2])
             oslot._dtype = self.info.getDtype()
             zAxisInfo = vigra.AxisInfo(key='z',typeFlags = vigra.AxisType.Space)
+            tAxisInfo = vigra.AxisInfo(key='t',typeFlags = vigra.AxisType.Time)
             oslot._axistags = self.info.getAxisTags()
-            oslot._axistags.insert(2,zAxisInfo)
+            oslot._axistags.insert(0,tAxisInfo)
+            oslot._axistags.insert(3,zAxisInfo)
         
         else:
             oslot = self.outputs["stack"]
@@ -142,7 +144,7 @@ class OpStackLoader(Operator):
         key = roi.toSlice()
         for fileName in self.fileNameList[key[2]]:
             assert (self.info.getShape() == vigra.impex.ImageInfo(fileName).getShape()), 'not all files have the same shape'
-            result[:,:,i,:] = vigra.impex.readImage(fileName)[key[0],key[1],key[3]]
+            result[...,i,:] = vigra.impex.readImage(fileName)[key[0],key[1],key[3]]
             i = i+1
 
 
