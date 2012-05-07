@@ -183,6 +183,8 @@ class Slot(object):
         self._callbacks_disconnect = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots is disconnected
         self._callbacks_resize = dict() # callback dictionary (function : kw_arguments), the functions are called before the slots is resized
         self._callbacks_resized = dict() # callback dictionary (function : kw_arguments), the functions are called after the slots is resized          
+        self._callbacks_remove = dict() # callback dictionary (function : kw_arguments), the functions are called before a slot is removed
+        self._callbacks_inserted = dict() # callback dictionary (function : kw_arguments), the functions are called after the slots is inserted
         self.partners = set()
 
     #
@@ -246,6 +248,26 @@ class Slot(object):
       """
       self._callbacks_resized[function] = kwargs
     
+    def notifyRemove(self, function, **kwargs):
+      """
+      calls the corresponding function before a slot is removed
+      first argument of the function is the slot
+      second argument is the old size and the third
+      argument is the new size
+      the keyword arguments follow
+      """
+      self._callbacks_remove[function] = kwargs
+    
+    def notifyInserted(self, function, **kwargs):
+      """
+      calls the corresponding function after a slot has been added
+      first argument of the function is the slot
+      second argument is the old size and the third
+      argument is the new size
+      the keyword arguments follow
+      """
+      self._callbacks_inserted[function] = kwargs
+    
     def unregisterDirty(self, function):
       """
       unregister a dirty callback
@@ -297,6 +319,24 @@ class Slot(object):
       """
       try:
         self._callbacks_resized.pop(function)
+      except KeyError:
+        pass
+    
+    def unregisterRemove(self, function):
+      """
+      unregister a remove callback
+      """
+      try:
+        self._callbacks_remove.pop(function)
+      except KeyError:
+        pass
+    
+    def unregisterInserted(self, function):
+      """
+      unregister a inserted callback
+      """
+      try:
+        self._callbacks_inserted.pop(function)
       except KeyError:
         pass
     
@@ -381,8 +421,8 @@ class Slot(object):
         # call callbacks
         for f,kw in self._callbacks_disconnect.iteritems():
           f(self, **kw)
-        
-        self.operator.onDisconnect(self)
+        if self.operator is not None:
+          self.operator.onDisconnect(self)
     
 
     def resize(self, size, notify = True, event = None):
@@ -406,20 +446,53 @@ class Slot(object):
           self.partner.resize(size)
 
         while size > len(self):
-            self._appendNew(notify=False,connect=False)
+            self.insertSlot(len(self), size)
             
         while size < len(self):
-            self.removeSlot(self[-1], notify = False)
+            self.removeSlot(len(self)-1, size)
 
-        for i in range(0,size):
-          self._connectSubSlot(i, notify = False)
-        
         # call after resize callbacks
         for f,kw in self._callbacks_resized.iteritems():
           f(self, oldsize, size, **kw)
         
         for c in self.partners:
           c.resize(size, notify, event)
+
+    def insertSlot(self, position, finalsize):
+      """
+      Insert a new slot at the specififed position
+      finalsize indicates the final destination size
+      """
+      if len(self) >= finalsize:
+        return self[position]
+      slot =  self._insertNew(position) 
+      # call after insert callbacks
+      for f,kw in self._callbacks_inserted.iteritems():
+        f(self, position, **kw)
+      if self.partner is not None and self.partner.level == self.level:
+        self.partner.insertSlot(position, finalsize)
+      self._connectSubSlot(position)
+      for p in self.partners:
+        p.insertSlot(position, finalsize)
+      return slot
+      
+    def removeSlot(self, position, finalsize):
+      """
+      Remove the slot at position
+      finalsize indicates the final size of all subslots
+      """
+      if len(self) <= finalsize:
+        return None
+      # call before remove callbacks
+      for f,kw in self._callbacks_remove.iteritems():
+        f(self, position, **kw)
+      if self.partner is not None and self.partner.level == self.level:
+        self.partner.removeSlot(position, finalsize)
+      slot = self._subSlots.pop(position)
+      for p in self.partners:
+        p.removeSlot(position, finalsize)
+      slot.operator = None
+      slot.disconnect()
 
     
     def get( self, roi, destination = None ):
@@ -562,10 +635,10 @@ class Slot(object):
           self.meta._dirty = True
           for i,s in enumerate(self._subSlots):
               s.setValue(self._value)
-          self._changed()
           # call connect callbacks
           for f, kw in self._callbacks_connect.iteritems():
             f(self,**kw)
+          self._changed()
     
     def setValues(self, values):
         """
@@ -735,24 +808,28 @@ class Slot(object):
         Construct a new subSlot of correct type and level and append
         it to the list of subslots
         """
-        slot = self._getInstance(self, level = self.level - 1)
-        self._subSlots.append(slot)
-        slot.name = self.name
         index = len(self)-1
-        if connect and self.partner is not None:
-          self._connectSubSlot(index, notify = notify)
+        return self._insertNew(index)
+
+    def _insertNew(self, position):
+        """
+        Construct a new subSlot of correct type and level and insert
+        it to the list of subslots
+        """
+        slot = self._getInstance(self, level = self.level - 1)
+        self._subSlots.insert(position, slot)
+        slot.name = self.name
         if self._value is not None:
           slot.setValue(self._value)
         return slot
 
-
     def pop(self, index = -1, event = None):
         if index < 0:
           index = len(self) + index
-        self.removeSlot(index)
+        self._removeSlot(index)
     
     
-    def removeSlot(self, index, notify = True, event = None):
+    def _removeSlot(self, index, notify = True, event = None):
         """
         Remove a slot from the list of subslots
 
@@ -930,33 +1007,6 @@ class MultiOutputSlot(Slot):
             s.disconnect()
 
            
-
-    def resize(self, size, event = None):
-        oldsize = len(self)
-
-        if oldsize == size:
-          return
-
-        # call before resize callbacks
-        for f, kw in self._callbacks_resize.iteritems():
-          f(self, oldsize, newsize **kw)
-
-        self.meta._dirty = True
-        while len(self) < size:
-            if self.level == 1:
-                slot = OutputSlot(self.name,self, stype = type(self.stype))
-            else:
-                slot = MultiOutputSlot(self.name,self, stype = type(self.stype), level = self.level - 1)
-            index = len(self)
-            self._subSlots.append(slot)
-
-        
-        while len(self) > size:
-            self.pop()
-        
-        # call after resize callbacks
-        for f, kw in self._callbacks_resized.iteritems():
-          f(self, oldsize, size, **kw)
 
     def execute(self,slot,roi,result):
         index = self._subSlots.index(slot)
@@ -1414,84 +1464,106 @@ class OperatorWrapper(Operator):
         self._parent = operator._parent
         self._connecting = False
         
-        if operator is not None:
-            self.name = operator.name
-            self._originalGraph = operator.graph
-            self.graph = operator.graph
+        assert self.operator is not None
+        
+        self.name = operator.name
+        self._originalGraph = operator.graph
+        self.graph = operator.graph
 
-            self.comprehensionSlots = 1
-            self.innerOperators = []
-            self.comprehensionCount = 0
-            self.origInputs = self.operator.inputs.copy()
-            self.origOutputs = self.operator.outputs.copy()
-            if lazyflow.verboseWrapping:
-              print "wrapping operator [self=%r] '%s'" % (operator, operator.name)
-            
-            self._inputSlots = []
-            self._outputSlots = []
-            
-            # replicate callbacks
-            self._configurationNotificationCallbacks = self.operator._configurationNotificationCallbacks
-            
-            # replicate input slot definitions
-            for islot in self.operator.inputSlots:
-                level = islot.level + 1
-                self._inputSlots.append(islot._getInstance(self,level = level))
-    
-            # replicate output slot definitions
-            for oslot in self.outputSlots:
-                level = oslot.level + 1
-                self._outputSlots.append(oslot._getInstance(self, level = level))
-    
-                    
-            # replicate input slots for the instance
-            for islot in self.operator.inputs.values():
-                level = islot.level + 1
-                ii = islot._getInstance(self,level)
-                self.inputs[islot.name] = ii
-                setattr(self,islot.name,ii)
-                op = self.operator
-                while isinstance(op.operator, (Operator, MultiInputSlot)):
-                    op = op.operator
-                op.inputs[islot.name] = ii
-                setattr(op,islot.name,ii)
-            
-            # replicate output slots for the instance
-            for oslot in self.operator.outputs.values():
-                level = oslot.level + 1
-                oo = oslot._getInstance(self,level)
-                self.outputs[oslot.name] = oo
-                setattr(self,oslot.name,oo)
-                op = self.operator
-                while isinstance(op.operator, (Operator, MultiOutputSlot)):
-                    op = op.operator
-                op.outputs[oslot.name] = oo
-                setattr(op,oslot.name,oo)
+        self.comprehensionSlots = 1
+        self.innerOperators = []
+        self.comprehensionCount = 0
+        self.origInputs = self.operator.inputs.copy()
+        self.origOutputs = self.operator.outputs.copy()
+        if lazyflow.verboseWrapping:
+          print "wrapping operator [self=%r] '%s'" % (operator, operator.name)
+        
+        self._inputSlots = []
+        self._outputSlots = []
+        
+        # replicate callbacks
+        self._configurationNotificationCallbacks = self.operator._configurationNotificationCallbacks
+        
+        # replicate input slot definitions
+        for islot in self.operator.inputSlots:
+            level = islot.level + 1
+            self._inputSlots.append(islot._getInstance(self,level = level))
 
-            #connect input slots
-            for islot in self.origInputs.values():
-                ii = self.inputs[islot.name]
-                partner = islot.partner
-                value = islot._value
-                self.operator.inputs[islot.name] = ii
-                if partner is not None:
-                    ii.connect(partner)
-                if value is not None:
-                    ii.setValue(value)
-                islot.disconnect()
-                    
-            self._setupOutputs()
-    
-    
-            #connect output slots
-            for oslot in self.origOutputs.values():
-                oo = self.outputs[oslot.name]            
-                partners = copy.copy(oslot.partners)
-                oslot.disconnect()
-                for p in partners:         
-                    p.connect(oo)
-            
+        # replicate output slot definitions
+        for oslot in self.outputSlots:
+            level = oslot.level + 1
+            self._outputSlots.append(oslot._getInstance(self, level = level))
+
+                
+        # replicate input slots for the instance
+        for islot in self.operator.inputs.values():
+            level = islot.level + 1
+            ii = islot._getInstance(self,level)
+            self.inputs[islot.name] = ii
+            setattr(self,islot.name,ii)
+            op = self.operator
+            while isinstance(op.operator, (Operator, MultiInputSlot)):
+                op = op.operator
+            op.inputs[islot.name] = ii
+            setattr(op,islot.name,ii)
+        
+        # replicate output slots for the instance
+        for oslot in self.operator.outputs.values():
+            level = oslot.level + 1
+            oo = oslot._getInstance(self,level)
+            self.outputs[oslot.name] = oo
+            setattr(self,oslot.name,oo)
+            op = self.operator
+            while isinstance(op.operator, (Operator, MultiOutputSlot)):
+                op = op.operator
+            op.outputs[oslot.name] = oo
+            setattr(op,oslot.name,oo)
+
+        #connect input slots
+        for islot in self.origInputs.values():
+            ii = self.inputs[islot.name]
+            partner = islot.partner
+            value = islot._value
+            self.operator.inputs[islot.name] = ii
+            if partner is not None:
+                ii.connect(partner)
+            if value is not None:
+                ii.setValue(value)
+            islot.disconnect()
+        
         self._setDefaultInputValues()
+                
+        maxLen = self._ensureInputSize()
+      
+        #connect output slots
+        for oslot in self.origOutputs.values():
+            oo = self.outputs[oslot.name]            
+            partners = copy.copy(oslot.partners)
+            oslot.disconnect()
+            for p in partners:         
+                p.connect(oo)
+        
+        for o in self.outputs.values():
+          o._changed()
+        
+        # register callbacks for inserted and removed subslots
+        for s in self.inputs.values():
+          s.notifyInserted(self._callbackInserted)
+          s.notifyRemove(self._callbackRemove)
+          s.notifyConnect(self._callbackConnect)
+
+
+    def _callbackInserted(self, slot, index):
+      self._insertInnerOperator(index, len(slot))
+    
+    def _callbackRemove(self, slot, index):
+      self._removeInnerOperator(index, len(slot))
+
+    def _callbackConnect(self, slot):
+      slot.resize(len(self.innerOperators))
+      for i in range(len(slot)):
+        for index, innerOp in enumerate(self.innerOperators):
+          innerOp.inputs[slot.name].connect(slot[i])
 
     def _getOriginalOperator(self):
         op = self.operator
@@ -1535,9 +1607,9 @@ class OperatorWrapper(Operator):
         for k, oslot in self.outputs.items():
             for p in oslot.partners:
                 p.connect(op.outputs[k])
-    
+
     def onDisconnect(self, slot):
-       self._testRestoreOriginalOperator() 
+      self._testRestoreOriginalOperator() 
                     
     def notifyDirty(self, slot, key):
         pass
@@ -1562,102 +1634,57 @@ class OperatorWrapper(Operator):
                 print "_createInnerOperator OperatorWrapper"
             opcopy = OperatorWrapper(self.operator._createInnerOperator())
         return opcopy
+
+    def _insertInnerOperator(self, index, length):
+      if len(self.innerOperators) == length:
+        return self.innerOperators[index]
+      op = self._createInnerOperator()
+      self.innerOperators.insert(index, op)
+      for key,mslot in self.inputs.items():
+        mslot.insertSlot(index, length)
+        op.inputs[key].connect(mslot[index])
+      for key,mslot in self.outputs.items():
+        mslot.insertSlot(index, length)
+        mslot[index].connect(op.outputs[key])
+        mslot[index]._changed()
+      return op
     
-    def _removeInnerOperator(self, op):
+    def _removeInnerOperator(self, index, length):
+        if len(self.innerOperators) == length:
+          return
+        op = self.innerOperators[index]
         op.disconnect()
-        index = self.innerOperators.index(op)
         self.innerOperators.remove(op)
+        length = len(self.innerOperators)
 
         for name, oslot in self.outputs.items():
-            oslot.pop(index)
+          oslot.removeSlot(index, length)
 
         for name, islot in self.inputs.items():
-            islot.pop(index)
+          islot.removeSlot(index, length)
     
-    def _connectInnerInputs(self):
-        for key,mslot in self.inputs.items():
-            for index, innerOp in enumerate(self.innerOperators):
-                if innerOp is not None and index < len(mslot):
-                  innerOp.inputs[key].connect(mslot[index])
-
-    def _connectInnerOutputs(self):
-        for key,mslot in self.outputs.items():
-            for index, innerOp in enumerate(self.innerOperators):
-                if innerOp is not None and index < len(mslot):
-                  mslot[index].connect(innerOp.outputs[key])
-
     def _ensureInputSize(self, numMax = 0, event = None):
-        
-        if event is None:
-          self._eventCounter += 1
-          event = (id(self),self._eventCounter)
-
-        if self._processedEvents.has_key(event):
-          return
-
-        self._processedEvents[event] = True
         newInnerOps = []
         maxLen = numMax
         for name, islot in self.inputs.items():
             assert isinstance(islot, MultiInputSlot)
             maxLen = max(islot._requiredLength(), maxLen)
         
-
-
         while maxLen > len(self.innerOperators):
-            newop = self._createInnerOperator()
-            self.innerOperators.append(newop)
-            newInnerOps.append(newop)
+            self._insertInnerOperator(len(self.innerOperators), maxLen)
 
         while maxLen < len(self.innerOperators):
-            op = self.innerOperators[-1]
-            self._removeInnerOperator(op)
-
-        for name, islot in self.inputs.items():
-            islot.resize(maxLen, notify = False, event = event)
-
-        for name, oslot in self.outputs.items():
-            oslot.resize(maxLen,event = event)
+            self._removeInnerOperator(len(self.innerOperators) - 1, maxLen)
 
         return maxLen
 
     def _setupOutputs(self):
-      if self._connecting is True:
-        return
-      self._connecting = True
-      inputSlot = self.inputs.values()[0]
-      maxLen = self._ensureInputSize()
-      self._connectInnerInputs()
-      self._ensureOutputSize([],[], maxLen)
-      self._connectInnerOutputs()
-      
-        
-      for k,mslot in self.outputs.items():
-        assert len(mslot) == len(self.innerOperators) == maxLen, "%d, %d" % (len(mslot), len(self.innerOperators))        
-
-
-      for o in self.outputs.values():
-        o._changed()
-
-      self._connecting = False
+      for name, oslot in self.outputs.items():
+        oslot._changed()
       
       # Call anyone who wanted to be notified of configuration changes
       for fn, kwargs in self._configurationNotificationCallbacks:
           fn(**kwargs)
-    
-    def _ensureOutputSize(self,slots,indexes,size,event = None):
-        oldSize = len(self.innerOperators)
-
-        while len(self.innerOperators) < size:
-          op = self._createInnerOperator()
-          self.innerOperators.append(op)
-
-        while len(self.innerOperators) > size:
-          op = self.innerOperators.pop()
-  
-
-        for k,oslot in self.outputs.items():
-          oslot.resize(size,event = event)
 
                 
     def getOutSlot(self, slot, key, result):
