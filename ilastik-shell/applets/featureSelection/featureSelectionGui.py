@@ -305,6 +305,7 @@ class FeatureSelectionGui(QMainWindow):
         # By default, only the first feature is visible
         featureLayer.opacity = 1.0
         featureLayer.visible = (featureChannelIndex == 0)
+        featureLayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
         self.layerstack.insert(0, featureLayer )
 
     def createDefault16ColorColorTable(self):

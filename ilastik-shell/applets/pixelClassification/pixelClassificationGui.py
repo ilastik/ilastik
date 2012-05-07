@@ -342,7 +342,8 @@ class PixelClassificationGui(QMainWindow):
                 mexBox.exec_()
                 return
             # TODO: Assumes only one input image
-            if self.pipeline.FeatureImages[0].meta.shape==None:
+            if len(self.pipeline.FeatureImages) == 0 \
+            or self.pipeline.FeatureImages[0].meta.shape==None:
                 self._labelControlUi.checkInteractive.setCheckState(0)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
@@ -645,7 +646,8 @@ class PixelClassificationGui(QMainWindow):
         predictLayer.ref_object = ref_label
 
         #make sure that labels (index = 0) stay on top!
-        self.layerstack.insert(1, predictLayer )        
+        self.layerstack.insert(1, predictLayer )
+        predictLayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
         self.predictionLayers.add(predictLayer)
                
     def removePredictionLayer(self, ref_label):
@@ -725,12 +727,13 @@ class PixelClassificationGui(QMainWindow):
         # Delete any previous input data layers
         self.removeLayersFromEditorStack(layer1.name)
 
+        self.initLabelGui()
+        self.initEditor()
+
         # The input data layer should always be on the bottom of the stack (last)
         #  so we can always see the labels and predictions.
         self.layerstack.insert(len(self.layerstack), layer1)
-
-        self.initLabelGui()
-        self.initEditor()
+        layer1.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
         
     def removeLayersFromEditorStack(self, layerName):
         """
@@ -788,8 +791,9 @@ class PixelClassificationGui(QMainWindow):
         #doing this last ensures that all connections are setup already
         shape = self.pipeline.InputImages[0].shape
         self.editor.dataShape = shape
-        
-    
+
+        self.labellayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
+
     def _createDefault16ColorColorTable(self):
         c = []
         c.append(QColor(0, 0, 255))

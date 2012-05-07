@@ -46,7 +46,7 @@
    </column>
    <column>
     <property name="text">
-     <string>DatasetID</string>
+     <string>Internal Path</string>
     </property>
    </column>
    <column>
