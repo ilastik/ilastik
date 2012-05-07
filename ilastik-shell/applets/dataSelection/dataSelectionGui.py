@@ -264,7 +264,9 @@ class DataSelectionGui(QMainWindow):
         
         newTotalPath = newFileNamePath
         if internalPath != '':
-            newTotalPath += '/' + internalPath
+            if internalPath[0] != '/':
+                newTotalPath += '/'
+            newTotalPath += internalPath
 
         # Check the location setting
         locationCombo = self.fileInfoTableWidget.cellWidget(index, Column.Location)
