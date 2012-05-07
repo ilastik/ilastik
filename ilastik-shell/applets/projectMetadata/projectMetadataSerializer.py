@@ -22,6 +22,12 @@ class ProjectMetadataSerializer(object):
         except KeyError:
             metadataGroup = hdf5File.create_group(ProjectMetadataSerializer.TopGroupName)
         
+        # Set the version
+        if 'StorageVersion' not in metadataGroup.keys():
+            metadataGroup.create_dataset('StorageVersion', data=self.SerializerVersion)
+        else:
+            metadataGroup['StorageVersion'][()] = self.SerializerVersion
+
         # Write each of our values to the group
         self.setDataset(metadataGroup, 'ProjectName', self.projectMetadata.projectName)
         self.setDataset(metadataGroup, 'Labeler', self.projectMetadata.labeler)

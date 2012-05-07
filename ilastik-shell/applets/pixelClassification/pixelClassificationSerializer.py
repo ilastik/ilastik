@@ -6,6 +6,7 @@ class PixelClassificationSerializer(object):
     Encapsulate the serialization scheme for pixel classification workflow parameters and datasets.
     """
     TopGroupName = 'PixelClassification'
+    SerializerVersion = 0.1
     
     def __init__(self, topLevelOperator):
         self.mainOperator = topLevelOperator
@@ -23,6 +24,12 @@ class PixelClassificationSerializer(object):
 
         # Access our top group (create it if necessary)
         topGroup = self.getOrCreateGroup(hdf5File, self.TopGroupName)
+        
+        # Set the version
+        if 'StorageVersion' not in topGroup.keys():
+            topGroup.create_dataset('StorageVersion', data=self.SerializerVersion)
+        else:
+            topGroup['StorageVersion'][()] = self.SerializerVersion
         
         # Delete all labels from the file
         self.deleteIfPresent(topGroup, 'LabelSets')

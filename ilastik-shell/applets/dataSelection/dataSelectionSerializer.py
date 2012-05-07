@@ -38,6 +38,12 @@ class DataSelectionSerializer(object):
         # Access our top group (create it if necessary)
         topGroup = self.getOrCreateGroup(hdf5File, self.TopGroupName)
         
+        # Set the version
+        if 'StorageVersion' not in topGroup.keys():
+            topGroup.create_dataset('StorageVersion', data=self.SerializerVersion)
+        else:
+            topGroup['StorageVersion'][()] = self.SerializerVersion
+        
         # Access the info group
         infoDir = self.getOrCreateGroup(topGroup, 'infos')
         
