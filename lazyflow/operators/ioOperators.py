@@ -142,9 +142,9 @@ class OpStackLoader(Operator):
     def execute(self, slot, roi, result):
         i=0
         key = roi.toSlice()
-        for fileName in self.fileNameList[key[2]]:
+        for fileName in self.fileNameList[key[3]]:
             assert (self.info.getShape() == vigra.impex.ImageInfo(fileName).getShape()), 'not all files have the same shape'
-            result[...,i,:] = vigra.impex.readImage(fileName)[key[0],key[1],key[3]]
+            result[...,i,:] = vigra.impex.readImage(fileName)[key[1],key[2],key[4]]
             i = i+1
 
 
