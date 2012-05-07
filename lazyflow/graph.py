@@ -376,22 +376,22 @@ class Slot(object):
                 # call slot type connect function
                 self.stype.connect(partner)
                 
+                if self.level > 0 or self.stype.isConfigured():
+                  self._changed()
+                
                 # call connect callbacks
                 for f, kw in self._callbacks_connect.iteritems():
                   f(self,**kw)
 
-                if self.level > 0 or self.stype.isConfigured():
-                  self._changed()
-                
             elif partner.level < self.level:
                 self.partner = partner
                 self.meta = self.partner.meta.copy()
                 for i, slot in enumerate(self._subSlots):                
                     slot.connect(partner)
+                self._changed()
                 # call connect callbacks
                 for f, kw in self._callbacks_connect.iteritems():
                   f(self,**kw)
-                self._changed()
 
             elif partner.level > self.level:
                 if not isinstance(partner, (InputSlot, MultiInputSlot)):
@@ -653,9 +653,9 @@ class Slot(object):
         for i,s in enumerate(self._subSlots):
             s.setValue(values[i])
         # call connect callbacks
+        self._changed()    
         for f, kw in self._callbacks_connect.iteritems():
           f(self,**kw)
-        self._changed()    
 
     def connected(self):
         """
@@ -743,10 +743,14 @@ class Slot(object):
       if self._type == "output":
         for o in self._subSlots:
           o._changed()
+
       if self.meta._dirty:
         for c in self.partners:
           c._changed()
         self.meta._dirty = False
+
+      if self._type != "output":
+        self._configureOperator(self)
     
       # call changed callbacks
       for f, kw in self._callbacks_changed.iteritems():
@@ -919,7 +923,6 @@ class InputSlot(Slot):
         self._type = "input"
         super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
         # configure operator in case of slot change
-        self.notifyMetaChanged(self._configureOperator)
         self.notifyResized(self._configureOperator)
     
 
@@ -977,15 +980,13 @@ class MultiInputSlot(Slot):
         self.inputs = {}
         super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
         # configure operator in case of slot change
-        self.notifyMetaChanged(self._configureOperator)
         self.notifyResized(self._configureOperator)
 
     def setInSlot(self, slot, key, value):
-        # Forward to our slot's partner(s)
-        if type(self.operator) == OperatorWrapper:
-            for p in slot.partners:
-                p.operator.setInSlot(p, key, value)
-            
+        # Determine which subslot this is
+        index = self._subSlots.index(slot)
+        # Forward the call to our operator using setSubInSlot
+        self.operator.setSubInSlot(self, slot, index, key, value)
 
 class MultiOutputSlot(Slot):
     """
@@ -1691,7 +1692,6 @@ class OperatorWrapper(Operator):
         #this should never be called !!!        
         assert 1==2
 
-
     def getSubOutSlot(self, slots, indexes, key, result):
         # this should never be called
         assert 1 == 2
@@ -1701,14 +1701,13 @@ class OperatorWrapper(Operator):
             self.innerOperators[indexes[0]].getSubOutSlot(slots[1:], indexes[1:], key, result)
         
     def setInSlot(self, slot, key, value):
-        #TODO: code this
-        assert 1==2
+        assert False, "All inputs of any OperatorWrapper are always multi, so this function should never be called!"
 
     def setSubInSlot(self,multislot,slot,index, key,value):
-        #TODO: code this
-        assert 1==2
-
-
+        # Forward this call to the operator (whose slot is partnered with ours)
+        assert len(slot.partners) == 1
+        innerSlot = list(slot.partners)[0]
+        self.innerOperators[index].setInSlot(innerSlot, key, value)
                         
 class Graph(object):
   def __init__(self, numThreads=-1):
