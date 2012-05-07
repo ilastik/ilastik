@@ -84,6 +84,20 @@ class FeatureSelectionGui(QMainWindow):
         # Subscribe to feature selection changes directly from the graph.
         self.mainOperator.SelectionMatrix.notifyConnect( self.onFeaturesSelectionsChanged ) # In case of setValue
         self.mainOperator.SelectionMatrix.notifyDirty( self.onFeaturesSelectionsChanged ) # In case of dirty data from the partner operator
+        
+        def enableDrawerControls(enabled):
+            """
+            Enable or disable all of the controls in this applet's drawer widget.
+            """
+            # All the controls in our GUI
+            controlList = [ self.drawer.SelectFeaturesButton ]
+    
+            # Enable/disable all of them
+            for control in controlList:
+                control.setEnabled(enabled)
+
+        # Expose the enable function with the name the shell expects
+        self.drawer.enableControls = enableDrawerControls
     
     def initCentralUic(self):
         """
@@ -313,7 +327,20 @@ class FeatureSelectionGui(QMainWindow):
         c.append(QColor(69, 69, 69))    # dark grey
         return c
 
+    def enableControls(self, enabled):
+        """
+        Enable or disable all of the controls in this applet's central widget.
+        """
+        # All the controls in our GUI
+        controlList = [ self.menuBar,
+                        self.volumeEditorWidget,
+                        self.UpButton,
+                        self.DownButton,
+                        self.DeleteButton ]
 
+        # Enable/disable all of them
+        for control in controlList:
+            control.setEnabled(enabled)
 
 
 

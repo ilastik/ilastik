@@ -115,6 +115,13 @@ class IlastikShell( QMainWindow ):
         self.splitter.setSizes([300,1])
         
         self.currentProjectFile = None
+        
+    def show(self):
+        """
+        Show the window, and enable/disable controls depending on whether or not a project file present.
+        """
+        super(IlastikShell, self).show()
+        self.enableControls(self.currentProjectFile != None)
 
     def handleAppletBarIndexChange(self, appletBarIndex):
         if len(self.appletBarMapping) != 0:
@@ -157,6 +164,8 @@ class IlastikShell( QMainWindow ):
             if projectClosed:
                 self.currentProjectFile.close()
                 self.currentProjectFile = None
+                
+                self.enableControls(False)
         return projectClosed
     
     def onNewProjectActionTriggered(self):
@@ -243,6 +252,10 @@ class IlastikShell( QMainWindow ):
 
         # Now that a project is loaded, the user is allowed to save
         self._menuBar.actions.saveProjectAction.setEnabled(True)
+
+        # Enable all the applet controls        
+        self.enableControls(True)
+
     
     def onSaveProjectActionTriggered(self):
         logger.debug("Save Project action triggered")
@@ -297,6 +310,17 @@ class IlastikShell( QMainWindow ):
                 else:
                     unSavedDataExists = item.isDirty()
         return unSavedDataExists
+    
+    def enableControls(self, enabled):
+        """
+        Enable or disable all controls of all applets.
+        """
+        for applet in self._applets:
+            # Apply to the applet central widget
+            applet.centralWidget.enableControls(enabled)
+            # Apply to the applet bar drawers
+            for appletName, appletGui in applet.appletDrawers:
+                appletGui.enableControls(enabled)
 #
 # Simple standalone test for the IlastikShell
 #

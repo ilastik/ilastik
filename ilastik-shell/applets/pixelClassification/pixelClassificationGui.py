@@ -169,7 +169,7 @@ class PixelClassificationGui(QMainWindow):
         self.predictionLayers = set()
 
     def initAppletBarUic(self):
-        # We have four different applet bar controls
+        # We have two different applet bar controls
         self.initLabelUic()
         self.initPredictionControlsUic()
     
@@ -262,8 +262,26 @@ class PixelClassificationGui(QMainWindow):
         self.eraserSizeIndex = 0
         
         self._labelControlUi.checkInteractive.setEnabled(True)
-
         
+        def enableDrawerControls(enabled):
+            """
+            Enable or disable all of the controls in this applet's label drawer widget.
+            """
+            # All the controls in our GUI
+            controlList = [ _labelControlUi.AddLabelButton,
+                            _labelControlUi.labelListView,
+                            _labelControlUi.checkInteractive,
+                            _labelControlUi.brushSizeComboBox ]
+            for button in self.toolButtons.values():
+                controlList.append(button)
+    
+            # Enable/disable all of them
+            for control in controlList:
+                control.setEnabled(enabled)
+        
+        # Expose the enable function with the name the shell expects
+        _labelControlUi.enableControls = enableDrawerControls
+
     def handleToolButtonClicked(self, checked, toolId):
         """
         Called when the user clicks any of the "tool" buttons in the label applet bar GUI.
@@ -292,6 +310,20 @@ class PixelClassificationGui(QMainWindow):
         if p == "/": p = "."+p
         self._predictionControlUi = uic.loadUi(p+"/predictionDrawer.ui") # Don't pass self: applet ui is separate from the main ui
         self._predictionControlUi.trainAndPredictButton.clicked.connect(self.onTrainAndPredictButtonClicked)
+
+        def enableDrawerControls(enabled):
+            """
+            Enable or disable all of the controls in this applet's prediction drawer widget.
+            """
+            # All the controls in our GUI
+            controlList = [ self._predictionControlUi.trainAndPredictButton ]
+    
+            # Enable/disable all of them
+            for control in controlList:
+                control.setEnabled(enabled)
+        
+        # Expose the enable function with the name the shell expects
+        self._predictionControlUi.enableControls = enableDrawerControls
 
     def toggleInteractive(self, checked):
         print "toggling interactive mode to '%r'" % checked
@@ -777,18 +809,53 @@ class PixelClassificationGui(QMainWindow):
         c.append(QColor(240, 230, 140)) #khaki
         c.append(QColor(69, 69, 69))    # dark grey
         return c
-#
-# Test
-#
-if __name__ == "__main__":
-    #make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    app = QApplication(sys.argv)
-    pca = PixelClassificationApplet()
-    pca.centralWidget.show()
-    pca.controlWidget.show()
-    app.exec_()
+    def enableControls(self, enabled):
+        """
+        Enable or disable all of the controls in this applet's central widget.
+        """
+        # All the controls in our GUI
+        controlList = [ self.menuBar,
+                        self.volumeEditorWidget,
+                        self.UpButton,
+                        self.DownButton,
+                        self.DeleteButton ]
+
+        # Enable/disable all of them
+        for control in controlList:
+            control.setEnabled(enabled)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
