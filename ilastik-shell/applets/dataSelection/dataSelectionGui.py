@@ -161,18 +161,23 @@ class DataSelectionGui(QMainWindow):
         """
         # Update the data in the new rows
         for row in range(startRow, stopRow):
-            filePath = self.mainOperator.DatasetInfos[row].value.filePath
-            fileName = os.path.split(filePath)[1]
+            totalPath = self.mainOperator.DatasetInfos[row].value.filePath
+            lastDotIndex = totalPath.rfind('.')
+            extensionAndInternal = totalPath[lastDotIndex:]
+            extension = extensionAndInternal.split('/')[0]
+            externalPath = totalPath[:lastDotIndex] + extension
+
+            fileName = os.path.split(externalPath)[1]
 
             tableWidget = self.fileInfoTableWidget
 
             # Show the filename in the table (defaults to edit widget)
             fileNameWidget = QTableWidgetItem(fileName)
             tableWidget.setItem( row, Column.Name, fileNameWidget )
-            tableWidget.itemChanged.connect( partial(self.handleFileNameEditChanged, fileNameWidget) )
+            tableWidget.itemChanged.connect( partial(self.handleFileNameEditChanged) )
             
             # Create and add the combobox for storage location options
-            self.updateStorageOptionComboBox(row, filePath)
+            self.updateStorageOptionComboBox(row, externalPath)
 
             # Create and add the checkbox for color inversion
             invertCheckbox = QCheckBox()
@@ -207,36 +212,44 @@ class DataSelectionGui(QMainWindow):
         combo.currentIndexChanged.connect( partial(self.handleStorageOptionComboIndexChanged, combo) )
         self.fileInfoTableWidget.setCellWidget( row, Column.Location, combo )
     
-    def handleFileNameEditChanged(self, fileNameWidget, changedWidget ):
+    def handleFileNameEditChanged(self, changedWidget ):
         """
         The user manually edited a file name in the table.
         Update the operator and other GUI elements with the new file path.
         """
-        if fileNameWidget == changedWidget:
-            # Figure out which row this widget is in
-            tableWidget = self.fileInfoTableWidget
-            changedRow = -1
-            for row in range(0, tableWidget.rowCount()):
-                widget = tableWidget.cellWidget(row, Column.Location)
-                if widget == fileNameWidget:
-                    changedRow = row
-                    break
-            assert changedRow != -1
-            
+        # Figure out which row this widget is in
+        tableWidget = self.fileInfoTableWidget
+        row = changedWidget.row()
+        column = changedWidget.column()
+        
+        if column == Column.Name or column == Column.InternalID:        
             # Get the directory by inspecting the original operator path
-            oldPath = self.mainOperator.DatasetInfos[changedRow].value.filePath
-            directory = os.path.split(oldPath)[0]
-            newPath = directory + '/' + str(fileNameWidget.text())
+            oldTotalPath = self.mainOperator.DatasetInfos[row].value.filePath
+            # Split into directory, filename, extension, and internal path
+            lastDotIndex = oldTotalPath.rfind('.')
+            extensionAndInternal = oldTotalPath[lastDotIndex:]
+            extension = extensionAndInternal.split('/')[0]
+#            oldInternalPath = '/'.join(extensionAndInternal.split('/')[1:])
+            oldFilePath = oldTotalPath[:lastDotIndex] + extension
+            
+            directory = os.path.split(oldFilePath)[0]
+            fileNameText = str(tableWidget.item(row, Column.Name).text())
+            internalPath = str(tableWidget.item(row, Column.InternalID).text())
+            newFileNamePath = directory + '/' + fileNameText
+            newTotalPath = newFileNamePath
+            if internalPath != '':
+                newTotalPath += '/' + internalPath
     
-            # Be sure to copy so the slot notices the change when we setValue()
-            datasetInfo = copy.copy(self.mainOperator.DatasetInfos[changedRow].value)
-            datasetInfo.filePath = newPath
-    
-            # TODO: First check to make sure this file exists!
-            self.mainOperator.DatasetInfos[changedRow].setValue( datasetInfo )
-    
-            # Update the storage option combo to show the new path        
-            self.updateStorageOptionComboBox(changedRow, newPath)
+            if newTotalPath != oldTotalPath:
+                # Be sure to copy so the slot notices the change when we setValue()
+                datasetInfo = copy.copy(self.mainOperator.DatasetInfos[row].value)
+                datasetInfo.filePath = newTotalPath
+        
+                # TODO: First check to make sure this file exists!
+                self.mainOperator.DatasetInfos[row].setValue( datasetInfo )
+        
+                # Update the storage option combo to show the new path        
+                self.updateStorageOptionComboBox(row, newFileNamePath)
         
     def handleRemoveButtonClicked(self):
         """

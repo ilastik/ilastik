@@ -54,7 +54,11 @@ class OpInputDataReader(Operator):
             
             h5Reader = OpH5Reader(graph=self.graph)
             h5Reader.Filename.setValue(externalPath)
-            h5Reader.hdf5Path.setValue(internalPath)
+            
+            # Can't set the internal path yet if we don't have one
+            if internalPath != '':
+                h5Reader.hdf5Path.setValue(internalPath)
+            
             self.internalOperator = h5Reader
             self.internalOutput = h5Reader.Image
         else:
