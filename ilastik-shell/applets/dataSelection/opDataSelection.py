@@ -166,6 +166,7 @@ if __name__ == "__main__":
     projectFile['DataSelection/local_data'].create_dataset('dataset1', data=a) # Use the same data as the png data (above)
     projectFile.flush()
     reader.ProjectFile.setValue(projectFile)
+    reader.WorkingDirectory.setValue( os.path.split(__file__)[0] )
 
     # Create a list of dataset infos . . .
     datasetInfos = []

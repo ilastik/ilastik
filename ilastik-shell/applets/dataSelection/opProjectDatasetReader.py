@@ -26,12 +26,11 @@ class OpProjectDatasetReader(Operator):
         internalPath = self.InternalPath.value
 
         dataset = hdf5File[internalPath]
-        self.axisorder = None
         
         try:
             # Read the axistags property without actually importing the data
             axistagsJson = hdf5File[internalPath].attrs['axistags'] # Throws KeyError if 'axistags' can't be found
-            self.serializedAxistags = vigra.AxisTags.fromJSON(axistagsJson)
+            axistags = vigra.AxisTags.fromJSON(axistagsJson)
         except KeyError:
             # No axistags found.
             numDimensions = len(dataset.shape) 
@@ -55,20 +54,10 @@ class OpProjectDatasetReader(Operator):
                     vigra.AxisInfo('y',vigra.AxisType.Space),
                     vigra.AxisInfo('z',vigra.AxisType.Space),
                     vigra.AxisInfo('c',vigra.AxisType.Channels))
-            self.serializedAxistags = axistags
-
-        try:
-            # Recreate the original axis order
-            self.axisorder = hdf5File[internalPath].attrs['axisorder'].split('-')
-            shape = [dataset.shape[self.serializedAxistags.index(key)] for key in self.axisorder]
-            axistags = vigra.AxisTags(*[self.serializedAxistags[key] for key in self.axisorder])
-        except KeyError:
-            # Use the order as we read it from disk
-            shape = dataset.shape
 
         # Configure our slot meta-info
         self.OutputImage.meta.dtype = dataset.dtype
-        self.OutputImage.meta.shape = tuple(shape)
+        self.OutputImage.meta.shape = dataset.shape
         self.OutputImage.meta.axistags = axistags
 
     def execute(self, slot, roi, result):
@@ -76,23 +65,9 @@ class OpProjectDatasetReader(Operator):
         key = roi.toSlice()
         hdf5File = self.ProjectFile.value
         internalPath = self.InternalPath.value
-        if self.axisorder is not None:
-            # Reorder our key so we can use it to access the serialized data
-            axistags = self.OutputImage.meta.axistags
-            serializedAxisOrder = [axis.key for axis in self.serializedAxistags]
-            diskKey = tuple([key[axistags.index(axiskey)] for axiskey in serializedAxisOrder])
-            
-            # Access the data
-            data = hdf5File[internalPath][diskKey]
 
-            # View it as a vigra array so we can reorder it according to the axistags
-            vdata = data.view(vigra.VigraArray)
-            vdata.axistags = self.serializedAxistags
-            vdata = vdata.withAxes( *self.axisorder )
-            result[...] = vdata
-        else:
-            data = hdf5File[internalPath][key]
-            result[...] = data
+        # Access the data
+        result[...] = hdf5File[internalPath][key]
 
 # TODO: Put this in a unit test
 if __name__ == "__main__":
@@ -100,6 +75,10 @@ if __name__ == "__main__":
     import h5py
     import numpy
     import os
+    
+    import logging
+    logger = logging.getLogger(__name__)
+    #logging.basicConfig(level=logging.DEBUG)
     
     graph = Graph()
     op = OpProjectDatasetReader(graph)
@@ -128,14 +107,13 @@ if __name__ == "__main__":
 
     # Write it again, this time with weird axistags
     vdata = data.view(vigra.VigraArray)
+    vigra.impex.writeHDF5(vdata, f, 'volume/vdata')
     vdata.axistags = vigra.AxisTags(
         vigra.AxisInfo('x',vigra.AxisType.Space),
         vigra.AxisInfo('y',vigra.AxisType.Space),
         vigra.AxisInfo('z',vigra.AxisType.Space),
         vigra.AxisInfo('c',vigra.AxisType.Channels),
         vigra.AxisInfo('t',vigra.AxisType.Time))
-    vigra.impex.writeHDF5(vdata, f, 'volume/vdata')
-    f['volume/vdata'].attrs['axisorder'] = 'x-y-z-c-t'
 
     # Read the data with an operator
     op.ProjectFile.setValue(f)
@@ -148,7 +126,8 @@ if __name__ == "__main__":
     op.InternalPath.setValue('volume/vdata')
     
     # Note axis re-ordering
-    #assert op.OutputImage[0,2,1,0,1].wait() == 4
+    logger.debug("expected shape: " + str(datashape) )
+    logger.debug("got shape: " + str(op.OutputImage.meta.shape) )
     assert op.OutputImage.meta.shape == datashape
     assert op.OutputImage[0,1,2,1,0].wait() == 4
 

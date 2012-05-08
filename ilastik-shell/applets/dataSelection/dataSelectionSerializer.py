@@ -75,13 +75,12 @@ class DataSelectionSerializer(object):
                 # TODO: Optimize this for large datasets by streaming it chunk-by-chunk.
                 dataSlot = self.mainOperator.OutputImages[index]
                 data = dataSlot[...].wait()
-                vigraData = data.view(vigra.VigraArray)
-                vigraData.axistags = dataSlot.meta.axistags
-                vigra.impex.writeHDF5(vigraData, localDataGroup, info.datasetId)
-                # We also store the original axis ordering
-                keys = [tag.key for tag in vigraData.axistags]
-                axisorder = '-'.join(keys)
-                localDataGroup[info.datasetId].attrs['axisorder'] = axisorder
+
+                # Vigra thinks its okay to reorder the data if it has axistags,
+                #  but we don't want that. To avoid reordering, we write the data
+                #  ourselves and attach the axistags afterwards.
+                dataset = localDataGroup.create_dataset(info.datasetId, data=data)
+                dataset.attrs['axistags'] = dataSlot.meta.axistags.toJSON()
                 wroteInternalData = True
 
         # Construct a list of all the local dataset ids we want to keep
@@ -180,6 +179,7 @@ if __name__ == "__main__":
 
     # Define the files we'll be making    
     testProjectName = 'test_project.ilp'
+    testProjectName = os.path.split(__file__)[0] + '/' + testProjectName
     # Clean up: Remove the test data files we created last time (just in case)
     for f in [testProjectName]:
         try:
@@ -199,6 +199,7 @@ if __name__ == "__main__":
     graph = Graph()
     operatorToSave = OpDataSelection(graph=graph)
     operatorToSave.ProjectFile.setValue(testProject)
+    operatorToSave.WorkingDirectory.setValue( os.path.split(__file__)[0] )
     
     info = OpDataSelection.DatasetInfo()
     info.filePath = '5d.npy'
@@ -211,30 +212,35 @@ if __name__ == "__main__":
     
     # Now serialize!
     serializer = DataSelectionSerializer(operatorToSave)
-    serializer.serializeToHdf5(testProject)
+    serializer.serializeToHdf5(testProject, testProjectName)
     
     # Check for dataset existence
-    dataset = vigra.impex.readHDF5(testProject, DataSelectionSerializer.TopGroupName + '/local_data/' + info.datasetId, 'C')
+    datasetInternalPath = DataSelectionSerializer.TopGroupName + '/local_data/' + info.datasetId
+    dataset = testProject[datasetInternalPath][...]
+    
+    # Check axistags attribute
+    axistags = vigra.AxisTags.fromJSON(testProject[datasetInternalPath].attrs['axistags'])
     
     # Debug info...
-    logger.debug('dataset.shape =',dataset.shape)
-    logger.debug('should be', operatorToSave.OutputImages[0].meta.shape)
+    #logging.basicConfig(level=logging.DEBUG)
+    logger.debug('dataset.shape = ' + str(dataset.shape))
+    logger.debug('should be ' + str(operatorToSave.OutputImages[0].meta.shape))
     logger.debug('dataset axistags:')
-    logger.debug(dataset.axistags)
+    logger.debug(axistags)
     logger.debug('should be:')
     logger.debug(operatorToSave.OutputImages[0].meta.axistags)
 
     originalShape = operatorToSave.OutputImages[0].meta.shape
     originalAxisTags = operatorToSave.OutputImages[0].meta.axistags
-    originalAxisOrder = [tag.key for tag in originalAxisTags]
-
-    # The dataset axis ordering may have changed when it was written to disk,
-    #  so convert it to the original ordering before we inspect it.
-    dataset = dataset.withAxes(*originalAxisOrder)
+#    originalAxisOrder = [tag.key for tag in originalAxisTags]
+#
+#    # The dataset axis ordering may have changed when it was written to disk,
+#    #  so convert it to the original ordering before we inspect it.
+#    dataset = dataset.withAxes(*originalAxisOrder)
     
     # Now we can directly compare the shape and axis ordering
     assert dataset.shape == originalShape
-    assert dataset.axistags == originalAxisTags
+    assert axistags == originalAxisTags
     
     ##
     ## Deserialization
@@ -245,7 +251,7 @@ if __name__ == "__main__":
     operatorToLoad = OpDataSelection(graph=graph)
     
     deserializer = DataSelectionSerializer(operatorToLoad)
-    deserializer.deserializeFromHdf5(testProject)
+    deserializer.deserializeFromHdf5(testProject, testProjectName)
     
     assert len(operatorToLoad.DatasetInfos) == len(operatorToSave.DatasetInfos)
     assert len(operatorToLoad.OutputImages) == len(operatorToSave.OutputImages)
