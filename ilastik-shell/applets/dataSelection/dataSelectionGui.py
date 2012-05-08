@@ -222,13 +222,13 @@ class DataSelectionGui(QMainWindow):
         """
         
         # Determine the relative path to this file
-        relPath = os.path.relpath(filePath, self.mainOperator.WorkingDirectory.value)
+        absPath, relPath = getPathVariants(filePath, self.mainOperator.WorkingDirectory.value)
         # Add a prefix to make it clear that it's a relative path
         relPath = "<project dir>/" + relPath
         
         combo = QComboBox()
         options = { LocationOptions.Project : "<project>",
-                    LocationOptions.AbsolutePath : filePath,
+                    LocationOptions.AbsolutePath : absPath,
                     LocationOptions.RelativePath : relPath }
         for index, text in sorted(options.items()):
             combo.addItem(text)
@@ -254,7 +254,7 @@ class DataSelectionGui(QMainWindow):
         column = changedWidget.column()
         
         if column == Column.Name or column == Column.InternalID:
-            self.updateFilePath(row)
+            self.updateFilePath(row)        
     
     def updateFilePath(self, index):
         """
@@ -270,10 +270,10 @@ class DataSelectionGui(QMainWindow):
         extension = extensionAndInternal.split('/')[0]
         oldFilePath = oldTotalPath[:lastDotIndex] + extension
         
-        directory = os.path.split(oldFilePath)[0]
         fileNameText = str(self.fileInfoTableWidget.item(index, Column.Name).text())
         internalPath = str(self.fileInfoTableWidget.item(index, Column.InternalID).text())
         
+        directory = os.path.split(oldFilePath)[0]
         newFileNamePath = fileNameText
         if directory != '':
             newFileNamePath = directory + '/' + fileNameText
@@ -284,6 +284,9 @@ class DataSelectionGui(QMainWindow):
                 newTotalPath += '/'
             newTotalPath += internalPath
 
+        cwd = self.mainOperator.WorkingDirectory.value
+        absTotalPath, relTotalPath = getPathVariants( newTotalPath, cwd )
+
         # Check the location setting
         locationCombo = self.fileInfoTableWidget.cellWidget(index, Column.Location)
         newLocationSelection = locationCombo.currentIndex()
@@ -292,16 +295,10 @@ class DataSelectionGui(QMainWindow):
             newLocationSetting = OpDataSelection.DatasetInfo.Location.ProjectInternal
         elif newLocationSelection == LocationOptions.AbsolutePath:
             newLocationSetting = OpDataSelection.DatasetInfo.Location.FileSystem
-            if newTotalPath[0] != '/':
-                # Convert back to absolute path
-                cwd = self.mainOperator.WorkingDirectory.value
-                newTotalPath = os.path.normpath( os.path.join(cwd, newTotalPath) )
+            newTotalPath = absTotalPath
         elif newLocationSelection == LocationOptions.RelativePath:
             newLocationSetting = OpDataSelection.DatasetInfo.Location.FileSystem
-            if newTotalPath[0] == '/':
-                # Convert to relative path
-                cwd = self.mainOperator.WorkingDirectory.value
-                newTotalPath = os.path.relpath(newTotalPath, cwd)
+            newTotalPath = relTotalPath
         
         if newTotalPath != oldTotalPath or newLocationSetting != oldLocationSetting:
             # Be sure to copy so the slot notices the change when we setValue()
@@ -412,10 +409,39 @@ class DataSelectionGui(QMainWindow):
         for control in controlList:
             control.setEnabled(enabled)
 
+def getPathVariants(originalPath, workingDirectory):
+    """
+    Take the given filePath (which can be absolute or relative, and may include an internal path suffix),
+    and return a tuple of the absolute and relative paths to the file.
+    """
+    lastDotIndex = originalPath.rfind('.')
+    extensionAndInternal = originalPath[lastDotIndex:]
+    extension = extensionAndInternal.split('/')[0]
 
+    relPath = originalPath
+    
+    if originalPath[0] == '/':
+        absPath = originalPath
+        relPath = os.path.relpath(absPath, workingDirectory)
+    else:
+        relPath = originalPath
+        absPath = os.path.normpath( os.path.join(workingDirectory, relPath) )
+        
+    return (absPath, relPath)
 
+if __name__ == "__main__":
+    
+    abs, rel = getPathVariants('/aaa/bbb/ccc/ddd.txt', '/aaa/bbb/ccc/eee')
+    assert abs == '/aaa/bbb/ccc/ddd.txt'
+    assert rel == '../ddd.txt'
 
+    abs, rel = getPathVariants('../ddd.txt', '/aaa/bbb/ccc/eee')
+    assert abs == '/aaa/bbb/ccc/ddd.txt'
+    assert rel == '../ddd.txt'
 
+    abs, rel = getPathVariants('ddd.txt', '/aaa/bbb/ccc')
+    assert abs == '/aaa/bbb/ccc/ddd.txt'
+    assert rel == 'ddd.txt'
 
 
 
