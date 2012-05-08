@@ -73,7 +73,7 @@ class DataSelectionSerializer(object):
             and info.datasetId not in localDataGroup.keys():
                 # Obtain the data from the corresponding output and store it to the project.
                 # TODO: Optimize this for large datasets by streaming it chunk-by-chunk.
-                dataSlot = self.mainOperator.OutputImages[index]
+                dataSlot = self.mainOperator.RawImages[index]
                 data = dataSlot[...].wait()
 
                 # Vigra thinks its okay to reorder the data if it has axistags,
@@ -224,14 +224,14 @@ if __name__ == "__main__":
     # Debug info...
     #logging.basicConfig(level=logging.DEBUG)
     logger.debug('dataset.shape = ' + str(dataset.shape))
-    logger.debug('should be ' + str(operatorToSave.OutputImages[0].meta.shape))
+    logger.debug('should be ' + str(operatorToSave.RawImages[0].meta.shape))
     logger.debug('dataset axistags:')
     logger.debug(axistags)
     logger.debug('should be:')
-    logger.debug(operatorToSave.OutputImages[0].meta.axistags)
+    logger.debug(operatorToSave.RawImages[0].meta.axistags)
 
-    originalShape = operatorToSave.OutputImages[0].meta.shape
-    originalAxisTags = operatorToSave.OutputImages[0].meta.axistags
+    originalShape = operatorToSave.RawImages[0].meta.shape
+    originalAxisTags = operatorToSave.RawImages[0].meta.axistags
 #    originalAxisOrder = [tag.key for tag in originalAxisTags]
 #
 #    # The dataset axis ordering may have changed when it was written to disk,
@@ -254,10 +254,10 @@ if __name__ == "__main__":
     deserializer.deserializeFromHdf5(testProject, testProjectName)
     
     assert len(operatorToLoad.DatasetInfos) == len(operatorToSave.DatasetInfos)
-    assert len(operatorToLoad.OutputImages) == len(operatorToSave.OutputImages)
+    assert len(operatorToLoad.RawImages) == len(operatorToSave.RawImages)
     
-    assert operatorToLoad.OutputImages[0].meta.shape == operatorToSave.OutputImages[0].meta.shape
-    assert operatorToLoad.OutputImages[0].meta.axistags == operatorToSave.OutputImages[0].meta.axistags
+    assert operatorToLoad.RawImages[0].meta.shape == operatorToSave.RawImages[0].meta.shape
+    assert operatorToLoad.RawImages[0].meta.axistags == operatorToSave.RawImages[0].meta.axistags
 
 
 

@@ -53,7 +53,8 @@ class OpDataSelection(Operator):
     DatasetInfos = MultiInputSlot(stype='object')
 
     # Output data
-    OutputImages = MultiOutputSlot()
+    RawImages = MultiOutputSlot()
+    ProcessedImages = MultiOutputSlot()
     
     def __init__(self, graph):
         super(OpDataSelection, self).__init__(graph=graph)
@@ -65,10 +66,12 @@ class OpDataSelection(Operator):
     def setupOutputs(self):
         numInputs = len(self.DatasetInfos)
         # Ensure the proper number of outputs
-        self.OutputImages.resize(numInputs)
+        self.ProcessedImages.resize(numInputs)
+        self.RawImages.resize(numInputs)
 
         # Rebuild the list of provider slots from scratch
-        self.providerSlots = []
+        self.processedProviderSlots = []
+        self.rawProviderSlots = []
 
         for i in range(numInputs):
             datasetInfo = self.DatasetInfos[i].value
@@ -86,40 +89,54 @@ class OpDataSelection(Operator):
                 reader = OpProjectDatasetReader(graph=self.graph)
                 reader.ProjectFile.setValue(self.ProjectFile.value)
                 reader.InternalPath.setValue(internalPath)
-                providerSlot = reader.OutputImage
+                processedProviderSlot = reader.OutputImage
+                rawProviderSlot = reader.OutputImage
             else:
                 # Use a normal (filesystem) reader
                 reader = OpInputDataReader(graph=self.graph)
                 reader.FilePath.setValue(datasetInfo.filePath)
                 reader.WorkingDirectory.connect( self.WorkingDirectory )
-                providerSlot = reader.Output            
+                processedProviderSlot = reader.Output
+                rawProviderSlot = reader.Output
 
             # If the user wants to invert the image,
             #  insert an intermediate inversion operator on this subslot
             if datasetInfo.invertColors:
                 inverter = OpGrayscaleInverter(graph=self.graph)
-                inverter.input.connect(providerSlot)
-                providerSlot = inverter.output
+                inverter.input.connect(processedProviderSlot)
+                processedProviderSlot = inverter.output
             
             # If the user wants to convert to grayscale,
             #  insert an intermediate rgb-to-grayscale operator on this subslot
             if datasetInfo.convertToGrayscale:
                 converter = OpRgbToGrayscale(graph=self.graph)
-                converter.input.connect(providerSlot)
-                providerSlot = converter.output
+                converter.input.connect(processedProviderSlot)
+                processedProviderSlot = converter.output
             
             # Store the operator that is providing the output for this subslot
-            self.providerSlots.append(providerSlot)
+            self.processedProviderSlots.append(processedProviderSlot)
+            self.rawProviderSlots.append(rawProviderSlot)
 
-            # Copy the metadata from the provider we ended up with
-            self.OutputImages[i].meta.dtype = providerSlot.meta.dtype
-            self.OutputImages[i].meta.shape = providerSlot.meta.shape
-            self.OutputImages[i].meta.axistags = copy.copy(providerSlot.meta.axistags)
+            # Copy the metadata from the processed provider we ended up with
+            self.ProcessedImages[i].meta.dtype = processedProviderSlot.meta.dtype
+            self.ProcessedImages[i].meta.shape = processedProviderSlot.meta.shape
+            self.ProcessedImages[i].meta.axistags = copy.copy(processedProviderSlot.meta.axistags)
+
+            # Copy the metadata for the raw image
+            self.RawImages[i].meta.dtype = rawProviderSlot.meta.dtype
+            self.RawImages[i].meta.shape = rawProviderSlot.meta.shape
+            self.RawImages[i].meta.axistags = copy.copy(rawProviderSlot.meta.axistags)
 
     def getSubOutSlot(self, slots, indexes, key, result):
-        # Request the output from the appropriate internal operator output.
-        request = self.providerSlots[indexes[0]][key].writeInto(result)
-        return request.wait()
+        slot = slots[0]
+        if slot.name == "ProcessedImages":
+            # Request the output from the appropriate internal operator output.
+            request = self.processedProviderSlots[indexes[0]][key].writeInto(result)
+            return request.wait()
+        if slot.name == "RawImages":
+            # Request the output from the appropriate internal operator output.
+            request = self.rawProviderSlots[indexes[0]][key].writeInto(result)
+            return request.wait()
 
 # TODO: Put this in a unit test
 if __name__ == "__main__":
@@ -238,17 +255,17 @@ if __name__ == "__main__":
     reader.DatasetInfos.setValues(datasetInfos)
 
     # Read the test files using the data selection operator and verify the contents
-    npyData = reader.OutputImages[0][...].wait()
-    pngData = reader.OutputImages[1][...].wait()
+    npyData = reader.ProcessedImages[0][...].wait()
+    pngData = reader.ProcessedImages[1][...].wait()
     
-    invertedNpyData = reader.OutputImages[2][...].wait()
-    invertedPngData = reader.OutputImages[3][...].wait()
+    invertedNpyData = reader.ProcessedImages[2][...].wait()
+    invertedPngData = reader.ProcessedImages[3][...].wait()
     
-    grayscalePngData = reader.OutputImages[4][...].wait()
+    grayscalePngData = reader.ProcessedImages[4][...].wait()
 
-    invertedGrayscalePngData = reader.OutputImages[5][...].wait()
+    invertedGrayscalePngData = reader.ProcessedImages[5][...].wait()
 
-    projectInternalData = reader.OutputImages[6][...].wait()
+    projectInternalData = reader.ProcessedImages[6][...].wait()
 
     # Check raw images
     assert npyData.shape == (10,11,1)

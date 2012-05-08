@@ -35,8 +35,8 @@ opFeatures = featureSelectionApplet.topLevelOperator
 opClassify = pcApplet.topLevelOperator
 
 # Connect the operators together
-opFeatures.InputImages.connect( opData.OutputImages )
-opClassify.InputImages.connect( opData.OutputImages )
+opFeatures.InputImages.connect( opData.ProcessedImages )
+opClassify.InputImages.connect( opData.ProcessedImages )
 opClassify.FeatureImages.connect( opFeatures.OutputImages )
 opClassify.CachedFeatureImages.connect( opFeatures.CachedOutputImages )
 
