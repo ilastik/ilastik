@@ -54,6 +54,10 @@ class FeatureSelectionSerializer(object):
             scales = topGroup['Scales'].value
             featureIds = topGroup['FeatureIds'].value
         except KeyError:
+            # There's no data in the project, so make sure the operator has no inputs.
+            self.mainOperator.Scales.disconnect()
+            self.mainOperator.FeatureIds.disconnect()
+            self.mainOperator.SelectionMatrix.disconnect()
             return
         
         self.mainOperator.Scales.setValue(scales)

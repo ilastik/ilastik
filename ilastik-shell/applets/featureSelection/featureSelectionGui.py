@@ -232,6 +232,12 @@ class FeatureSelectionGui(QMainWindow):
         #self.pipeline.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)
 
         self.mainOperator.notifyConfigured( self.handleFeaturesChanged )
+        
+        def handleInputResize(slot, oldsize, newsize):
+            if newsize == 0:
+                numRows = len(self.layerstack)
+                self.layerstack.removeRows(0, numRows)
+        self.mainOperator.InputImages.notifyResize(handleInputResize)
 
     def setIconToViewMenu(self):
         """

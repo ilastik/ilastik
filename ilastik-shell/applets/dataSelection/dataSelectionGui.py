@@ -48,7 +48,9 @@ class DataSelectionGui(QMainWindow):
         self.initCentralUic()
         
         # Setup handlers in case the operator changes behind our back (e.g. a new project is loaded)
-        self.mainOperator.DatasetInfos.notifyMetaChanged(self.refreshAllRows)
+        def handleInputChange(slot, oldsize, newsize):
+            self.refreshAllRows()
+        self.mainOperator.DatasetInfos.notifyResized(handleInputChange)
         
     def initAppletDrawerUic(self):
         """

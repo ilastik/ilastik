@@ -113,6 +113,15 @@ class OpPixelClassification( Operator ):
 #        self.features.inputs['Matrix'].setValue(newMatrix)
 #        self.featuresChangedSignal.emit()
         
+        def inputResizeHandler( slot, oldsize, newsize ):
+            if ( newsize == 0 ):
+                self.LabelImages.resize(0)
+                self.NonzeroLabelBlocks.resize(0)
+                self.PredictionProbabilities.resize(0)
+                self.CachedPredictionProbabilities.resize(0)
+        self.InputImages.notifyResized( inputResizeHandler )
+
+        
     def setupOutputs(self):
         numImages = len(self.InputImages)
         self.PredictionProbabilities.resize(numImages)
@@ -169,8 +178,12 @@ class OpPixelClassification( Operator ):
 
     def getUniqueLabels(self):
         # TODO: Assumes only one image
-        
-        return numpy.unique(numpy.asarray(self.opLabelArray.outputs["nonzeroValues"][0][:].allocate().wait()[0]))
+        nonZeroValueOutputSlot = self.opLabelArray.outputs["nonzeroValues"]
+        if len(nonZeroValueOutputSlot) > 0:
+            return numpy.unique(numpy.asarray(self.opLabelArray.outputs["nonzeroValues"][0][:].allocate().wait()[0]))
+        else:
+            # Return an empty array
+            return numpy.ndarray((0,), dtype=int)
 
     def setInputData(self, inputProvider):
         """

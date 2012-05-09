@@ -121,11 +121,12 @@ class DataSelectionSerializer(object):
         self.mainOperator.ProjectFile.setValue(hdf5File)
 
         # Access the top group and the info group
-        #  If it doesn't exist we simply return without adding any input files to the operator.
         try:
             topGroup = hdf5File[DataSelectionSerializer.TopGroupName]
             infoDir = topGroup['infos']
         except KeyError:
+            # If our group (or subgroup) doesn't exist, then make sure the operator is empty
+            self.mainOperator.DatasetInfos.resize( 0 )
             return
         
         self.mainOperator.DatasetInfos.resize( len(infoDir) )

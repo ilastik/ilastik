@@ -56,8 +56,10 @@ class PixelClassificationGui(QMainWindow):
             if len(self.pipeline.InputImages) > 0:
                 # Subscribe to changes on the graph input.
                 self.pipeline.InputImages[0].notifyMetaChanged(self.handleGraphInputChanged)
-                self.handleGraphInputChanged(self.pipeline.InputImages[0])
-        self.pipeline.InputImages.notifyInserted(handleInputListChanged)
+            self.handleGraphInputChanged(None)
+                
+        self.pipeline.InputImages.notifyResized(handleInputListChanged)
+#        self.pipeline.InputImages.notifyResized(handleInputListChanged)
 
         self.pipeline.labelsChangedSignal.connect(self.handlePipelineLabelsChanged)
         #self.pipeline.predictionMetaChangeSignal.connect(self.setupPredictionLayers)
@@ -70,8 +72,14 @@ class PixelClassificationGui(QMainWindow):
                 self.setupPredictionLayers( self.pipeline.CachedPredictionProbabilities[0] )
         self.pipeline.CachedPredictionProbabilities.notifyMetaChanged(handleOutputListChanged)
         
+        def handleOutputListAboutToResize(slot, oldsize, newsize):
+            if newsize == 0:
+                self.removeAllPredictionLayers()
+        self.pipeline.CachedPredictionProbabilities.notifyResized(handleOutputListAboutToResize)
+        
         # Editor will be initialized when data is loaded
         self.editor = None
+        self.labellayer = None
         
         #Normalize the data if true
         self._normalize_data=True
@@ -572,6 +580,10 @@ class PixelClassificationGui(QMainWindow):
             self.removePredictionLayer(oldGuiLabel)
         self.predictionLayerGuiLabels = newGuiLabels
     
+    def removeAllPredictionLayers(self):
+        for label in self.predictionLayerGuiLabels:
+            self.removePredictionLayer(label)
+    
     def onTrainAndPredictButtonClicked(self):
         """
         The user clicked "Train and Predict".
@@ -662,78 +674,85 @@ class PixelClassificationGui(QMainWindow):
         """
         The input data to our top-level operator has changed.
         """
-        shape = self.pipeline.InputImages[0].shape
-        if shape == None:
-            return
         
-        srcs    = []
-        minMax = []
-        
-        print "* Data has shape=%r" % (shape,)
-        
-        #create a layer for each channel of the input:
-        slicer=OpMultiArraySlicer2(self.g)
-        slicer.inputs["Input"].connect(self.pipeline.InputImages[0])
-        
-        slicer.inputs["AxisFlag"].setValue('c')
-       
-        nchannels = shape[-1]
-        for ich in xrange(nchannels):
-            if self._normalize_data:
-                if slicer.outputs['Slices'][ich].meta.dtype == numpy.uint8:
-                    # Don't bother normalizing uint8 data
-                    mm = (0, 255)
-                else:
-                    data=slicer.outputs['Slices'][ich][:].allocate().wait()
-                    #find the minimum and maximum value for normalization
-                    mm = (numpy.min(data), numpy.max(data))
-                print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
-                minMax.append(mm)
-            else:
-                minMax.append(None)
-            layersrc = LazyflowSource(slicer.outputs['Slices'][ich], priority = 100)
-            layersrc.setObjectName("raw data channel=%d" % ich)
-            srcs.append(layersrc)
-            
-        #FIXME: we shouldn't merge channels automatically, but for now it's prettier
-        layer1 = None
-        if nchannels == 1:
-            layer1 = GrayscaleLayer(srcs[0], normalize=minMax[0])
-            layer1.set_range(0,minMax[0])
-            print "  - showing raw data as grayscale"
-        elif nchannels==2:
-            layer1 = RGBALayer(red  = srcs[0], normalizeR=minMax[0],
-                               green = srcs[1], normalizeG=minMax[1])
-            layer1.set_range(0, minMax[0])
-            layer1.set_range(1, minMax[1])
-            print "  - showing channel 1 as red, channel 2 as green"
-        elif nchannels==3:
-            layer1 = RGBALayer(red   = srcs[0], normalizeR=minMax[0],
-                               green = srcs[1], normalizeG=minMax[1],
-                               blue  = srcs[2], normalizeB=minMax[2])
-            layer1.set_range(0, minMax[0])
-            layer1.set_range(1, minMax[1])
-            layer1.set_range(2, minMax[2])
-            print "  - showing channel 1 as red, channel 2 as green, channel 3 as blue"
-        else:
-            print "only 1,2 or 3 channels supported so far"
-            return
-        print
-        
-        layer1.name = "Input data"
-        layer1.ref_object = None
-        
-        # Before we append the input data to the viewer,
-        # Delete any previous input data layers
-        self.removeLayersFromEditorStack(layer1.name)
-
         self.initLabelGui()
-        self.initEditor()
 
-        # The input data layer should always be on the bottom of the stack (last)
-        #  so we can always see the labels and predictions.
-        self.layerstack.insert(len(self.layerstack), layer1)
-        layer1.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
+        if len(self.pipeline.InputImages) > 0 \
+        and self.pipeline.InputImages[0].shape is not None:
+
+            shape = self.pipeline.InputImages[0].shape
+            srcs    = []
+            minMax = []
+            
+            print "* Data has shape=%r" % (shape,)
+            
+            #create a layer for each channel of the input:
+            slicer=OpMultiArraySlicer2(self.g)
+            slicer.inputs["Input"].connect(self.pipeline.InputImages[0])
+            
+            slicer.inputs["AxisFlag"].setValue('c')
+           
+            nchannels = shape[-1]
+            for ich in xrange(nchannels):
+                if self._normalize_data:
+                    if slicer.outputs['Slices'][ich].meta.dtype == numpy.uint8:
+                        # Don't bother normalizing uint8 data
+                        mm = (0, 255)
+                    else:
+                        data=slicer.outputs['Slices'][ich][:].allocate().wait()
+                        #find the minimum and maximum value for normalization
+                        mm = (numpy.min(data), numpy.max(data))
+                    print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
+                    minMax.append(mm)
+                else:
+                    minMax.append(None)
+                layersrc = LazyflowSource(slicer.outputs['Slices'][ich], priority = 100)
+                layersrc.setObjectName("raw data channel=%d" % ich)
+                srcs.append(layersrc)
+                
+            #FIXME: we shouldn't merge channels automatically, but for now it's prettier
+            layer1 = None
+            if nchannels == 1:
+                layer1 = GrayscaleLayer(srcs[0], normalize=minMax[0])
+                layer1.set_range(0,minMax[0])
+                print "  - showing raw data as grayscale"
+            elif nchannels==2:
+                layer1 = RGBALayer(red  = srcs[0], normalizeR=minMax[0],
+                                   green = srcs[1], normalizeG=minMax[1])
+                layer1.set_range(0, minMax[0])
+                layer1.set_range(1, minMax[1])
+                print "  - showing channel 1 as red, channel 2 as green"
+            elif nchannels==3:
+                layer1 = RGBALayer(red   = srcs[0], normalizeR=minMax[0],
+                                   green = srcs[1], normalizeG=minMax[1],
+                                   blue  = srcs[2], normalizeB=minMax[2])
+                layer1.set_range(0, minMax[0])
+                layer1.set_range(1, minMax[1])
+                layer1.set_range(2, minMax[2])
+                print "  - showing channel 1 as red, channel 2 as green, channel 3 as blue"
+            else:
+                print "only 1,2 or 3 channels supported so far"
+                return
+            print
+            
+            layer1.name = "Input data"
+            layer1.ref_object = None
+            
+            # Before we append the input data to the viewer,
+            # Delete any previous input data layers
+            self.removeLayersFromEditorStack(layer1.name)
+
+            def handleSourceResize(slot, oldsize, newsize):
+                if newsize == 0:
+                    self.removeLayersFromEditorStack(layer1.name)
+            self.pipeline.InputImages.notifyResize(handleSourceResize)
+    
+            self.initEditor()
+    
+            # The input data layer should always be on the bottom of the stack (last)
+            #  so we can always see the labels and predictions.
+            self.layerstack.insert(len(self.layerstack), layer1)
+            layer1.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
         
     def removeLayersFromEditorStack(self, layerName):
         """
@@ -745,21 +764,25 @@ class PixelClassificationGui(QMainWindow):
                 self.layerstack.removeRows(i, 1)
 
     def initLabelGui(self):
-        # Add the layer to draw the labels, but don't add any labels
-        # TODO: Assumes only one input image
-        self.labelsrc = LazyflowSinkSource(self.pipeline.opLabelArray, self.pipeline.opLabelArray.outputs["Output"][0], self.pipeline.opLabelArray.inputs["Input"][0])
-        self.labelsrc.setObjectName("labels")
-        
-        transparent = QColor(0,0,0,0)
-        self.labellayer = ColortableLayer(self.labelsrc, colorTable = [transparent.rgba()] )
-        self.labellayer.name = "Labels"
-        self.labellayer.ref_object = None
+        if self.labellayer is not None:
+            # Remove any existing label layer before adding a new one
+            self.removeLayersFromEditorStack(self.labellayer.name)
 
-        # Remove any existing label layer before adding this one.
-        self.removeLayersFromEditorStack(self.labellayer.name)
+        if len(self.pipeline.opLabelArray.outputs) > 0 and len(self.pipeline.InputImages) > 0:
+            # Add the layer to draw the labels, but don't add any labels
+            # TODO: Assumes only one input image
+            self.labelsrc = LazyflowSinkSource(self.pipeline.opLabelArray,
+                                               self.pipeline.opLabelArray.outputs["Output"][0],
+                                               self.pipeline.opLabelArray.inputs["Input"][0])
+            self.labelsrc.setObjectName("labels")
         
-        # Labels should be first (on top)
-        self.layerstack.insert(0, self.labellayer)
+            transparent = QColor(0,0,0,0)
+            self.labellayer = ColortableLayer(self.labelsrc, colorTable = [transparent.rgba()] )
+            self.labellayer.name = "Labels"
+            self.labellayer.ref_object = None
+        
+            # Labels should be first (on top)
+            self.layerstack.insert(0, self.labellayer)
     
     def initEditor(self):
         """

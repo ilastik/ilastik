@@ -62,6 +62,12 @@ class OpDataSelection(Operator):
         # Create an internal operator for reading data from disk
         self.readers = []
         self.providerSlots = []
+        
+        def inputResizeHandler( slot, oldsize, newsize ):
+            if ( newsize == 0 ):
+                self.ProcessedImages.resize(0)
+                self.RawImages.resize(0)
+        self.DatasetInfos.notifyResized(inputResizeHandler)
     
     def setupOutputs(self):
         numInputs = len(self.DatasetInfos)

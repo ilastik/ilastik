@@ -42,6 +42,12 @@ class OpFeatureSelection(Operator):
         self.internalCaches.outerBlockShape.setValue((1,128,128,128,64))
         self.internalCaches.fixAtCurrent.setValue(False)
 
+        def inputResizeHandler( slot, oldsize, newsize ):
+            if ( newsize == 0 ):
+                self.OutputImages.resize(0)
+                self.CachedOutputImages.resize(0)
+        self.InputImages.notifyResized(inputResizeHandler)
+
     def setupOutputs(self):
         numInputs = len(self.InputImages)
         featureIds = self.FeatureIds.value

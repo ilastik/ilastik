@@ -67,6 +67,9 @@ class PixelClassificationSerializer(object):
             topGroup = hdf5File[self.TopGroupName]
             labelSetGroup = topGroup['LabelSets']
         except KeyError:
+            # There's no label data in the project.  Make sure the operator doesn't have any label data.
+            self.mainOperator.LabelInputs.resize(0)
+            self.mainOperator.labelsChangedSignal.emit()
             return
 
         numImages = len(labelSetGroup)
@@ -98,6 +101,9 @@ class PixelClassificationSerializer(object):
             pass
 
     def slicingToString(self, slicing):
+        """
+        Convert the given slicing into a string of the form '[0:1,2:3,4:5]'
+        """
         strSlicing = '['
         for s in slicing:
             strSlicing += str(s.start)
@@ -111,6 +117,9 @@ class PixelClassificationSerializer(object):
         return strSlicing
         
     def stringToSlicing(self, strSlicing):
+        """
+        Parse a string of the form '[0:1,2:3,4:5]' into a slicing (i.e. list of slices)
+        """
         slicing = []
         # Drop brackets
         strSlicing = strSlicing[1:-1]
@@ -122,7 +131,6 @@ class PixelClassificationSerializer(object):
             slicing.append(slice(start, stop))
         
         return slicing
-            
 
     def isDirty(self):
         """
