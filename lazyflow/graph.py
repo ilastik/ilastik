@@ -457,9 +457,7 @@ class Slot(object):
           self._connectSubSlot(len(self) - 1)
             
         while size < len(self):
-          print "----", len(self)
           self.removeSlot(len(self)-1, size, propagate = False)
-          print "+++++", len(self)
         
         # propagate size change downward
         for c in self.partners:
