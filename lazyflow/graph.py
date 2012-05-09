@@ -186,6 +186,7 @@ class Slot(object):
         self._callbacks_remove = dict() # callback dictionary (function : kw_arguments), the functions are called before a slot is removed
         self._callbacks_inserted = dict() # callback dictionary (function : kw_arguments), the functions are called after the slots is inserted
         self.partners = set()
+        self._resizing = False
 
     #
     #
@@ -365,8 +366,12 @@ class Slot(object):
                 self.partner = partner
                 self.meta = self.partner.meta.copy()
                 
-                if len(self) != len(partner):
+                # the slot with more sub-slots determines
+                # the number of subslots
+                if len(self) < len(partner):
                     self.resize(len(partner))
+                elif len(self) > len(partner):
+                    partner.resize(len(self))
                     
                 partner.partners.add(self)
                 for i in range(len(self.partner)):
@@ -425,40 +430,55 @@ class Slot(object):
           self.operator.onDisconnect(self)
     
 
-    def resize(self, size, notify = True, event = None):
+    def resize(self, size):
         """
         Resizes a slot to the desired length
 
         Arguments:
           size    : the desired number of subslots
         """
-        if self.level == 0:
+        if self.level == 0 or self._resizing:
           return
+
         oldsize = len(self)
         if size == oldsize:
           return
+
+        self._resizing = True
+        print "Resizing slot %r of operator %r to size %r" % (self.name, self.operator.name, size)
         
         # call before resize callbacks
         for f,kw in self._callbacks_resize.iteritems():
           f(self, oldsize, size, **kw)
-
+        
+        # propagate size change downward
+        for c in self.partners:
+          c.resize(size)
+        
+        # propagate size change upward
         if self.partner and len(self.partner) != size:
           self.partner.resize(size)
 
         while size > len(self):
-            self.insertSlot(len(self), size)
+          self.insertSlot(len(self), size, propagate = True)
+          # connect newly added slots
+          self._connectSubSlot(len(self) - 1)
             
         while size < len(self):
-            self.removeSlot(len(self)-1, size)
-
+          print "----", len(self)
+          self.removeSlot(len(self)-1, size, propagate = False)
+          print "+++++", len(self)
+        
+        
         # call after resize callbacks
         for f,kw in self._callbacks_resized.iteritems():
           f(self, oldsize, size, **kw)
-        
-        for c in self.partners:
-          c.resize(size, notify, event)
 
-    def insertSlot(self, position, finalsize):
+        self._resizing = False
+
+        
+
+    def insertSlot(self, position, finalsize, propagate = True):
       """
       Insert a new slot at the specififed position
       finalsize indicates the final destination size
@@ -466,31 +486,37 @@ class Slot(object):
       if len(self) >= finalsize:
         return self[position]
       slot =  self._insertNew(position) 
+      print "Inserting slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize)
+      if propagate:
+        if self.partner is not None and self.partner.level == self.level:
+          self.partner.insertSlot(position, finalsize)
+        self._connectSubSlot(position)
+        for p in self.partners:
+          p.insertSlot(position, finalsize)
+      
       # call after insert callbacks
       for f,kw in self._callbacks_inserted.iteritems():
-        f(self, position, **kw)
-      if self.partner is not None and self.partner.level == self.level:
-        self.partner.insertSlot(position, finalsize)
-      self._connectSubSlot(position)
-      for p in self.partners:
-        p.insertSlot(position, finalsize)
+        f(self, position, finalsize,**kw)
       return slot
       
-    def removeSlot(self, position, finalsize):
+    def removeSlot(self, position, finalsize, propagate = True):
       """
       Remove the slot at position
       finalsize indicates the final size of all subslots
       """
       if len(self) <= finalsize:
         return None
+      assert position < len(self)
+      print "Removing slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize)
       # call before remove callbacks
       for f,kw in self._callbacks_remove.iteritems():
-        f(self, position, **kw)
-      if self.partner is not None and self.partner.level == self.level:
-        self.partner.removeSlot(position, finalsize)
+        f(self, position, finalsize, **kw)
+      if propagate:
+        if self.partner is not None and self.partner.level == self.level:
+          self.partner.removeSlot(position, finalsize)
+        for p in self.partners:
+          p.removeSlot(position, finalsize)
       slot = self._subSlots.pop(position)
-      for p in self.partners:
-        p.removeSlot(position, finalsize)
       slot.operator = None
       slot.disconnect()
 
@@ -737,8 +763,6 @@ class Slot(object):
     def _changed(self):
       if self.partner is not None:
         self.meta = self.partner.meta.copy()
-        if self.level > 0 and self.partner.level == self.level:
-          self.resize(len(self.partner))
 
       if self._type == "output":
         for o in self._subSlots:
@@ -1553,11 +1577,11 @@ class OperatorWrapper(Operator):
           s.notifyConnect(self._callbackConnect)
 
 
-    def _callbackInserted(self, slot, index):
-      self._insertInnerOperator(index, len(slot))
+    def _callbackInserted(self, slot, index, size):
+      self._insertInnerOperator(index, size)
     
-    def _callbackRemove(self, slot, index):
-      self._removeInnerOperator(index, len(slot))
+    def _callbackRemove(self, slot, index, size):
+      self._removeInnerOperator(index, size)
 
     def _callbackConnect(self, slot):
       slot.resize(len(self.innerOperators))
@@ -1640,6 +1664,7 @@ class OperatorWrapper(Operator):
         return self.innerOperators[index]
       op = self._createInnerOperator()
       self.innerOperators.insert(index, op)
+
       for key,mslot in self.inputs.items():
         mslot.insertSlot(index, length)
         op.inputs[key].connect(mslot[index])
@@ -1650,18 +1675,21 @@ class OperatorWrapper(Operator):
       return op
     
     def _removeInnerOperator(self, index, length):
-        if len(self.innerOperators) == length:
-          return
-        op = self.innerOperators[index]
-        op.disconnect()
-        self.innerOperators.remove(op)
-        length = len(self.innerOperators)
+      if len(self.innerOperators) == length:
+        return
+      assert index < len(self.innerOperators)
+      
+      op = self.innerOperators.pop(index)
+      
+      for name, oslot in self.outputs.items():
+        oslot.removeSlot(index, length)
 
-        for name, oslot in self.outputs.items():
-          oslot.removeSlot(index, length)
+      for name, islot in self.inputs.items():
+        islot.removeSlot(index, length)
 
-        for name, islot in self.inputs.items():
-          islot.removeSlot(index, length)
+      op.disconnect()
+      length = len(self.innerOperators)
+
     
     def _ensureInputSize(self, numMax = 0, event = None):
         newInnerOps = []

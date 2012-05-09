@@ -17,6 +17,10 @@ evolve api:
   setSubInSlot
   getSubOutSlot
 
+
+* operator which is wrapped has innerOps which are connected to slotsm which have no parent operator ??
+
+
  
 Regarding the cleanup of the operators using the old api the following table indicates old idioms and their new replacement:  
    
