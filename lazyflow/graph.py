@@ -384,8 +384,8 @@ class Slot(object):
                 # call connect callbacks
                 for f, kw in self._callbacks_connect.iteritems():
                   f(self,**kw)
-
-                if self.level > 0 or self.stype.isConfigured():
+                
+                if self.level > 0  or self.stype.isConfigured():
                   self._changed()
                 
             elif partner.level < self.level:
@@ -450,17 +450,9 @@ class Slot(object):
         # call before resize callbacks
         for f,kw in self._callbacks_resize.iteritems():
           f(self, oldsize, size, **kw)
-        
-        # propagate size change downward
-        for c in self.partners:
-          c.resize(size)
-        
-        # propagate size change upward
-        if self.partner and len(self.partner) != size:
-          self.partner.resize(size)
 
         while size > len(self):
-          self.insertSlot(len(self), size, propagate = True)
+          self.insertSlot(len(self), size, propagate = False)
           # connect newly added slots
           self._connectSubSlot(len(self) - 1)
             
@@ -469,6 +461,14 @@ class Slot(object):
           self.removeSlot(len(self)-1, size, propagate = False)
           print "+++++", len(self)
         
+        # propagate size change downward
+        for c in self.partners:
+          if c.level == self.level:
+            c.resize(size)
+        
+        # propagate size change upward
+        if self.partner and len(self.partner) < size and self.partner.level == self.level:
+          self.partner.resize(size)
         
         # call after resize callbacks
         for f,kw in self._callbacks_resized.iteritems():
@@ -492,7 +492,8 @@ class Slot(object):
           self.partner.insertSlot(position, finalsize)
         self._connectSubSlot(position)
         for p in self.partners:
-          p.insertSlot(position, finalsize)
+          if p.level == self.level:
+            p.insertSlot(position, finalsize)
       
       # call after insert callbacks
       for f,kw in self._callbacks_inserted.iteritems():
@@ -515,7 +516,8 @@ class Slot(object):
         if self.partner is not None and self.partner.level == self.level:
           self.partner.removeSlot(position, finalsize)
         for p in self.partners:
-          p.removeSlot(position, finalsize)
+          if p.level == self.level:
+            p.removeSlot(position, finalsize)
       slot = self._subSlots.pop(position)
       slot.operator = None
       slot.disconnect()
@@ -826,15 +828,6 @@ class Slot(object):
           slot.setValue(self._value, notify = notify)    
 
 
-                    
-    def _appendNew(self, notify = True, event = None, connect = True):
-        """
-        Construct a new subSlot of correct type and level and append
-        it to the list of subslots
-        """
-        index = len(self)-1
-        return self._insertNew(index)
-
     def _insertNew(self, position):
         """
         Construct a new subSlot of correct type and level and insert
@@ -850,26 +843,8 @@ class Slot(object):
     def pop(self, index = -1, event = None):
         if index < 0:
           index = len(self) + index
-        self._removeSlot(index)
+        self._subSlots.pop(index)
     
-    
-    def _removeSlot(self, index, notify = True, event = None):
-        """
-        Remove a slot from the list of subslots
-
-        Arguments:
-          slot    : either an index or the subslot instance
-        """
-        if type(index) is int:
-            slot = self[index]
-        else:
-            slot = index
-            index = self._subSlots.index(slot)
-        self._subSlots.remove(slot)
-        for c in self.partners:
-          c._changed()
-
-
     def propagateDirty(self, slot, roi):
         index = self._subSlots.index(slot)
         self.operator.notifySubSlotDirty((self,slot),(index,),roi)
