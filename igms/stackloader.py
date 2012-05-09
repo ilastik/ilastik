@@ -37,6 +37,7 @@ from lazyflow.operators.ioOperators import OpStackLoader
 
 from PyQt4 import QtCore, QtGui
 from shutil import rmtree
+from volumina.adaptors import Op5ifyer
 
 
 #*******************************************************************************
@@ -55,13 +56,17 @@ class OpStackChainBuilder(Operator):
         self.Loader = OpStackLoader(self.graph)
         self.Inverter = OpGrayscaleInverter(self.graph)
         self.OutPiper = OpArrayPiper(self.graph)
-        self.GrayConverter = OpRgbToGraysacle(self.graph)
-    
+        self.GrayConverter = OpRgbToGrayscale(self.graph)
+        self.op5ifyer = Op5ifyer(self.graph)
+        
+        
     def setupOutputs(self):
-        assert self.inputs["globstring"].shape is not None
+        
         self.Loader.inputs["globstring"].connect(self.inputs["globstring"])
+        self.op5ifyer.inputs["Input"].connect(self.Loader.outputs["stack"])
+        
         if self.inputs["invert"].value and not self.inputs["convert"].value:
-            self.Inverter.inputs["input"].connect(self.Loader.outputs["stack"])
+            self.Inverter.inputs["input"].connect(self.op5ifyer.outputs["Output"])
             self.OutPiper.inputs["Input"].connect(self.Inverter.outputs["output"])
             
             self.outputs["output"]._dtype = self.Inverter.outputs["output"]._dtype
@@ -69,7 +74,7 @@ class OpStackChainBuilder(Operator):
             self.outputs["output"]._shape = self.Inverter.outputs["output"]._shape
         
         elif self.inputs["convert"].value and not self.inputs["invert"].value:
-            self.GrayConverter.inputs["input"].connect(self.Loader.outputs["stack"])
+            self.GrayConverter.inputs["input"].connect(self.op5ifyer.outputs["Output"])
             self.OutPiper.inputs["Input"].connect(self.GrayConverter.outputs["output"])
             
             self.outputs["output"]._dtype = self.GrayConverter.outputs["output"]._dtype
@@ -77,7 +82,7 @@ class OpStackChainBuilder(Operator):
             self.outputs["output"]._shape = self.GrayConverter.outputs["output"]._shape
             
         elif self.inputs["convert"].value and self.inputs["invert"].value:
-            self.Inverter.inputs["input"].connect(self.Loader.outputs["stack"])
+            self.Inverter.inputs["input"].connect(self.op5ifyer.outputs["Output"])
             self.GrayConverter.inputs["input"].connect(self.Inverter.outputs["output"])
             self.OutPiper.inputs["Input"].connect(self.GrayConverter.outputs["output"])
             
@@ -86,18 +91,56 @@ class OpStackChainBuilder(Operator):
             self.outputs["output"]._shape = self.GrayConverter.outputs["output"]._shape
 
         elif not self.inputs["convert"].value and not self.inputs["invert"].value:
-            self.OutPiper.inputs["Input"].connect(self.Loader.outputs["stack"])
-            self.outputs["output"]._dtype = self.Loader.outputs["stack"]._dtype
-            self.outputs["output"]._axistags = self.Loader.outputs["stack"]._axistags
-            self.outputs["output"]._shape = self.Loader.outputs["stack"]._shape
-            
-    def execute(self, slot, roi, result):
-        key = roi.toSlice()
-        if slot.name == "output":
-            req = self.OutPiper.outputs["Output"][key].allocate()
-        return req.wait()
+            self.OutPiper.inputs["Input"].connect(self.op5ifyer.outputs["Output"])
+            self.outputs["output"]._dtype = self.op5ifyer.outputs["Output"]._dtype
+            self.outputs["output"]._axistags = self.op5ifyer.outputs["Output"]._axistags
+            self.outputs["output"]._shape = self.op5ifyer.outputs["Output"]._shape
         
+    def execute(self, slot, roi, result):
 
+        result = self.OutPiper.outputs["Output"](roi).wait()
+        print 'OPresult',result[:,:,:,:,0]
+        return result
+    
+class OpChainLoader(Operator):
+    name = "OpStackChainBuilder"
+    inputSlots = [InputSlot("globstring"),InputSlot("convert"),InputSlot("invert")]
+    outputSlots = [OutputSlot("output")]
+    
+    def __init__(self, graph, register = True):
+        Operator.__init__(self, graph, register)
+        
+        self.loader = OpStackLoader(graph)
+        self.inverter = OpGrayscaleInverter(graph)
+        self.converter = OpRgbToGrayscale(graph)
+        self.outpiper = OpArrayPiper(graph)
+        self.op5ifyer = Op5ifyer(graph)
+        
+    def setupOutputs(self):
+        
+        self.loader.inputs["globstring"].connect(self.inputs["globstring"])
+        self.op5ifyer.inputs["input"].connect(self.loader.outputs["stack"])
+        
+        if not self.inputs["invert"].value and not self.inputs["convert"].value:
+            
+            self.outpiper.inputs["Input"].connect(self.op5ifyer.outputs["output"])
+            
+        elif self.inputs["invert"].value and not self.inputs["convert"].value:
+            
+            print 'YAY'
+            self.inverter.inputs["input"].connect(self.op5ifyer.outputs["output"])
+            self.outpiper.inputs["Input"].connect(self.inverter.outputs["output"])
+            
+        self.outputs["output"]._dtype = self.outpiper.outputs["Output"]._dtype
+        self.outputs["output"]._axistags = self.outpiper.outputs["Output"]._axistags
+        self.outputs["output"]._shape = self.outpiper.outputs["Output"]._shape
+        
+    def execute(self,slot,roi,result):
+        
+        result = self.outpiper.outputs["Output"](roi).wait()
+        return result
+        
+        
 #*******************************************************************************
 # S t a c k L o a d e r                                                        *
 #*******************************************************************************
@@ -108,7 +151,7 @@ class StackLoader(QtGui.QDialog):
         
         #SETUP OpStackChainBuilder
         self.graph = graph
-        self.ChainBuilder = OpStackChainBuilder(self.graph) 
+        self.ChainBuilder = OpChainLoader(self.graph) 
         #set default for inputslots, because only the notifyConnectAll method is
         #overridden, so all inputslots have to be set to setup the OperatorGroup
         #correctly
@@ -187,8 +230,7 @@ class StackLoader(QtGui.QDialog):
         self.path.setText(str(QtCore.QDir.convertSeparators(tempname)))
         
     def slotLoad(self):    
-        result = self.ChainBuilder.outputs["output"][:].allocate().wait()
-        print result.shape
+        result = self.ChainBuilder.outputs["output"]().wait()
             
     def exec_(self):
         if QtGui.QDialog.exec_(self) == QtGui.QDialog.Accepted:
@@ -205,7 +247,7 @@ class TestOperatorChain():
         self.config = configuration
         self.result = None
         self.block = None
-        
+        self.g = Graph()
 
         self.createImages()
         
@@ -217,14 +259,16 @@ class TestOperatorChain():
             os.mkdir(self.testdir)
         self.block = numpy.random.rand(self.dim[0],self.dim[1],self.dim[2],self.dim[3])*255
         self.block = self.block.astype('uint8')
+        op5ifyer = Op5ifyer(self.g)
+        op5ifyer.inputs["Input"].setValue(self.block)
         for i in range(self.dim[2]):
             vigra.impex.writeImage(self.block[:,:,i,:],self.testdir+"%04d.png" % (i))
+        self.block = op5ifyer.outputs["Output"]().wait()
     
         
     def stackAndTestFull(self,filetype = "png"):
 
-        g = Graph()
-        OpChain = OpStackChainBuilder(g)
+        OpChain = OpStackChainBuilder(self.g)
         OpChain.inputs["globstring"].setValue(self.testdir + '*.png')
         result = OpChain.outputs["output"][:].allocate().wait()
         assert(result == self.block).all()
@@ -261,6 +305,7 @@ class TestOperatorChain():
         #-----------------------------------------------------------------------
         
         result = OpChain.outputs["output"]().wait()
+        print 'outresult', result[:,:,:,:,0]
         
         
         #TEST THE RESULT
@@ -269,6 +314,7 @@ class TestOperatorChain():
         #config(False,False) - No Inv, No Conv
         
         if self.config[0] == False and self.config[1] == False :
+            print 'block', self.block[0,:,:,:,0]
             assert(result == self.block).all()
         
         #config(True,False) - Inv, No Conv
@@ -304,13 +350,13 @@ if __name__ == "__main__":
     
     # configuration=(intert?[True/False],converttoGrayscale?[True/False])
     if '-test' in sys.argv:
-        testclass = TestOperatorChain(configuration=(False,False))
+        testclass = TestOperatorChain(configuration=(False,False),imagedimension=(2,2,2,3))
         testclass.stackAndTestConfig()
-        testclass = TestOperatorChain(configuration=(True,True))
+        testclass = TestOperatorChain(configuration=(True,True),imagedimension=(2,2,2,3))
         testclass.stackAndTestConfig()
-        testclass = TestOperatorChain(configuration=(False,True))
+        testclass = TestOperatorChain(configuration=(False,True),imagedimension=(2,2,2,3))
         testclass.stackAndTestConfig()
-        testclass = TestOperatorChain(configuration=(True,False))
+        testclass = TestOperatorChain(configuration=(True,False),imagedimension=(2,2,2,3))
         testclass.stackAndTestConfig()
 
     if '-gui' in sys.argv:
