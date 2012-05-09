@@ -51,7 +51,7 @@ class PixelClassificationGui(QMainWindow):
 
         # Subscribe to various pipeline events so we can respond appropriately in the GUI
         # TODO: Assumes only one image.
-        def handleInputListChanged(slot, a):
+        def handleInputListChanged(slot, position, finalsize):
             """This closure is called when a new input image is connected to the multi-input slot."""
             if len(self.pipeline.InputImages) > 0:
                 # Subscribe to changes on the graph input.

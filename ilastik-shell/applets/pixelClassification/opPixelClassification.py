@@ -83,7 +83,7 @@ class OpPixelClassification( Operator ):
         # prediction
         ##
         self.predict.inputs['Classifier'].connect(self.classifier_cache.outputs['Output']) 
-        self.predict.inputs['Image'].connect(self.FeatureImages)
+        self.predict.inputs['Image'].connect(self.FeatureImages) #<-- Note: Now predict is wrapped
         self.predict.inputs['LabelsCount'].connect(self.NumClasses)
         
         # 
