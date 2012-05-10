@@ -38,3 +38,7 @@ class TestOpNpyFileReader(object):
         for i in range(10):
             for j in range(11):
                 assert a[i,j,0] == self.testData[i,j]
+
+if __name__ == "__main__":
+    import nose
+    nose.main(defaultTest=__file__)

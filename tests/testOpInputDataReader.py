@@ -6,20 +6,19 @@ import lazyflow.graph
 
 class TestOpInputDataReader(object):
 
-    def setUp(self):
-        self.graph = lazyflow.graph.Graph()
-        self.testNpyDataFileName = 'test.npy'
-        self.testImageFileName = 'test.png'
-        self.testH5FileName = 'test.h5'
+    @classmethod
+    def setupClass(cls):
+        cls.graph = lazyflow.graph.Graph()
+        cls.testNpyDataFileName = 'test.npy'
+        cls.testImageFileName = 'test.png'
+        cls.testH5FileName = 'test.h5'
 
-    def tearDown(self):
+    @classmethod
+    def teardownClass(cls):
         # Clean up: Delete the test data files.
-        testFiles = [self.testNpyDataFileName, self.testImageFileName, self.testH5FileName]
-        for f in testFiles:
-            try:
-                os.remove(f)
-            except:
-                pass
+        os.remove(cls.testNpyDataFileName)
+        os.remove(cls.testImageFileName)
+        os.remove(cls.testH5FileName)
     
     def test_npy(self):
         # Create Numpy test data
@@ -30,7 +29,6 @@ class TestOpInputDataReader(object):
         numpy.save(self.testNpyDataFileName, a)
 
         # Now read back our test data using an OpInputDataReader operator
-        graph = lazyflow.graph.Graph()
         npyReader = OpInputDataReader(graph=self.graph)
         npyReader.FilePath.setValue(self.testNpyDataFileName)
         cwd = os.path.split(__file__)[0]
