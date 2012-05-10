@@ -68,9 +68,6 @@ class FeatureSelectionGui(QMainWindow):
         self.editor = None
         self.layerstack = LayerStackModel()
         self.initEditor()
-
-        self.mainOperator.Scales.setValue( self.ScalesList )
-        self.mainOperator.FeatureIds.setValue(self.FeatureIds)
         
     def initAppletDrawerUic(self):
         """
@@ -195,6 +192,10 @@ class FeatureSelectionGui(QMainWindow):
         self.featureDlg.show()
     
     def onNewFeaturesFromFeatureDlg(self):
+        # Re-initialize the scales and features
+        self.mainOperator.Scales.setValue( self.ScalesList )
+        self.mainOperator.FeatureIds.setValue(self.FeatureIds)
+
         # Give the new features to the pipeline 
         featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
         self.mainOperator.SelectionMatrix.setValue( featureMatrix )
