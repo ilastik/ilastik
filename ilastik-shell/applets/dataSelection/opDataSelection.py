@@ -1,6 +1,6 @@
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 
-from opProjectDatasetReader import OpProjectDatasetReader
+from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opInputDataReader import OpInputDataReader
 from lazyflow.operators.obsolete.vigraOperators import OpGrayscaleInverter, OpRgbToGrayscale
 import copy
@@ -92,7 +92,7 @@ class OpDataSelection(Operator):
             
             # If we should find the data in the project file, use a dataset reader
             if datasetInProject:
-                reader = OpProjectDatasetReader(graph=self.graph)
+                reader = OpStreamingHdf5Reader(graph=self.graph)
                 reader.ProjectFile.setValue(self.ProjectFile.value)
                 reader.InternalPath.setValue(internalPath)
                 processedProviderSlot = reader.OutputImage

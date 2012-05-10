@@ -1,11 +1,11 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 import vigra
 
-class OpProjectDatasetReader(Operator):
+class OpStreamingHdf5Reader(Operator):
     """
     The top-level operator for the data selection applet.
     """
-    name = "OpProjectDatasetReader"
+    name = "OpStreamingHdf5Reader"
     category = "Reader"
     
     # The project hdf5 File object (already opened)
@@ -18,7 +18,7 @@ class OpProjectDatasetReader(Operator):
     OutputImage = OutputSlot()
     
     def __init__(self, graph):
-        super(OpProjectDatasetReader, self).__init__(graph=graph)
+        super(OpStreamingHdf5Reader, self).__init__(graph=graph)
 
     def setupOutputs(self):
         # Read the dataset meta-info from the HDF5 dataset
@@ -34,8 +34,8 @@ class OpProjectDatasetReader(Operator):
         except KeyError:
             # No axistags found.
             numDimensions = len(dataset.shape) 
-            assert numDimensions != 1, "OpProjectDatasetReader: Support for 1-D data not yet supported"
-            assert numDimensions != 2, "OpProjectDatasetReader: BUG: 2-D was supposed to be reshaped above."
+            assert numDimensions != 1, "OpStreamingHdf5Reader: Support for 1-D data not yet supported"
+            assert numDimensions != 2, "OpStreamingHdf5Reader: BUG: 2-D was supposed to be reshaped above."
             if numDimensions == 3:
                 axistags = vigra.AxisTags(
                     vigra.AxisInfo('x',vigra.AxisType.Space),
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     #logging.basicConfig(level=logging.DEBUG)
     
     graph = Graph()
-    op = OpProjectDatasetReader(graph)
+    op = OpStreamingHdf5Reader(graph)
     
     # Create a test dataset
     datashape = (1,2,3,4,5)
