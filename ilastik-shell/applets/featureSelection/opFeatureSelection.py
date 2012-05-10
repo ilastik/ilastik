@@ -38,8 +38,11 @@ class OpFeatureSelection(Operator):
         # Cache operator
         self.internalCaches = OpBlockedArrayCache(parent=self)
         self.internalCaches.Input.connect(self.OutputImages) # Note: Cache is now "wrapped" with level=1
-        self.internalCaches.innerBlockShape.setValue((1,32,32,32,16))
-        self.internalCaches.outerBlockShape.setValue((1,128,128,128,64))
+
+        # We choose block shapes that have only 1 channel because the channels may be 
+        #  coming from different features (e.g different filters) and probably shouldn't be cached together.
+        self.internalCaches.innerBlockShape.setValue((1,32,32,32,1))
+        self.internalCaches.outerBlockShape.setValue((1,128,128,128,1))
         self.internalCaches.fixAtCurrent.setValue(False)
 
         def inputResizeHandler( slot, oldsize, newsize ):
