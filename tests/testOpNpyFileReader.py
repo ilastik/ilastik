@@ -9,13 +9,6 @@ class TestOpNpyFileReader(object):
         self.graph = lazyflow.graph.Graph()
         self.testDataFileName = 'NptTestData.npy'
             
-        # Clean up: Delete any lingering test files from the previous (failed) run.
-        for f in [self.testDataFileName]:
-            try:
-                os.remove(f)
-            except:
-                pass
-
         # Start by writing some test data to disk.
         self.testData = numpy.zeros((10, 11))
         for x in range(0,10):
