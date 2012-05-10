@@ -102,7 +102,7 @@ class OpFeatureSelection(Operator):
 #
 if __name__ == "__main__":
     import numpy
-    from applets.dataSelection.opInputDataReader import OpInputDataReader
+    from lazyflow.operators.ioOperators import OpInputDataReader
     graph = Graph()
     
     # Define operators

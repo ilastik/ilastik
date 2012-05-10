@@ -1,7 +1,6 @@
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 
-from opStreamingHdf5Reader import OpStreamingHdf5Reader
-from opInputDataReader import OpInputDataReader
+from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
 from lazyflow.operators.obsolete.vigraOperators import OpGrayscaleInverter, OpRgbToGrayscale
 import copy
 
