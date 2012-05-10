@@ -69,39 +69,6 @@ class OpNpyFileReader(Operator):
         key = roi.toSlice()
         result[:] = self.rawVigraArray[key]
 
-##
-## Simple Test
-##
-if __name__ == "__main__":
-    
-    # Start by writing some test data to disk.
-    # TODO: Use a temporary directory for this instead of the cwd.
-    a = numpy.zeros((10, 11))
-    for x in range(0,10):
-        for y in range(0,11):
-            a[x,y] = x+y
-    testDataFileName = 'OpNpyFileReaderTest.npy'
-    numpy.save(testDataFileName, a)
-    
-    # Now read back our test data using an OpNpyFileReader operator
-    import lazyflow.graph
-    graph = lazyflow.graph.Graph()
-    npyReader = OpNpyFileReader(graph)
-    npyReader.FileName.setValue(testDataFileName)
-
-    # Read the entire file and verify the contents
-    a = npyReader.Output[:].wait()
-    assert a.shape == (10,11,1)
-    for x in range(0,10):
-        for y in range(0,11):
-            assert a[x,y] == x+y
- 
-    # Clean up: Delete the test file.
-    import os
-    os.remove(testDataFileName)
-
-
-
 
 
 
