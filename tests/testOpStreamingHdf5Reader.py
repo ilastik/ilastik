@@ -5,10 +5,6 @@ import numpy
 import os
 import vigra
 
-import logging
-logger = logging.getLogger(__name__)
-#logging.basicConfig(level=logging.DEBUG)
-
 class TestOpStreamingHdf5Reader(object):
     
     def setUp(self):
