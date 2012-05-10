@@ -341,7 +341,8 @@ class DataSelectionGui(QMainWindow):
             # Remove from the GUI
             self.fileInfoTableWidget.removeRow(row)
             # Remove from the operator input
-            self.mainOperator.DatasetInfos.removeSlot(row)
+            finalSize = len(self.mainOperator.DatasetInfos) - 1
+            self.mainOperator.DatasetInfos.removeSlot(row, finalSize)
             
         # The gui and the operator should be in sync
         assert self.fileInfoTableWidget.rowCount() == len(self.mainOperator.DatasetInfos)
