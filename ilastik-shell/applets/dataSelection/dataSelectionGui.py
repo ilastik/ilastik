@@ -46,11 +46,23 @@ class DataSelectionGui(QMainWindow):
         
         self.initAppletDrawerUic()
         self.initCentralUic()
+
+        # Closure for handling a change to an individual dataset        
+        def handleItemChange( row, slot ):
+            self.updateTableForSlot(slot)
         
-        # Setup handlers in case the operator changes behind our back (e.g. a new project is loaded)
-        def handleInputChange(slot, oldsize, newsize):
-            self.refreshAllRows()
-        self.mainOperator.DatasetInfos.notifyResized(handleInputChange)
+        # Closure for handling input list resizes
+        def handleInputListChange(slot, oldsize, newsize):
+            # Our file list widget should match the length of the operator input list
+            self.fileInfoTableWidget.setRowCount( newsize )
+
+            for i, slot in enumerate(self.mainOperator.DatasetInfos):
+                # Update now
+                self.updateTableForSlot( slot )
+                # Update if data changes
+                slot.notifyMetaChanged( self.updateTableForSlot )
+
+        self.mainOperator.DatasetInfos.notifyResized(handleInputListChange)
         
     def initAppletDrawerUic(self):
         """
@@ -151,6 +163,7 @@ class DataSelectionGui(QMainWindow):
         self.mainOperator.DatasetInfos.resize( oldNumFiles+len(fileNames) )
 
         # Assign values to the new inputs we just allocated.
+        # The GUI will be updated by callbacks that are listening to slot changes
         for i in range(0, len(fileNames)):
             datasetInfo = OpDataSelection.DatasetInfo()
             datasetInfo.filePath = fileNames[i]
@@ -158,65 +171,60 @@ class DataSelectionGui(QMainWindow):
             datasetInfo.convertToGrayscale = False
             self.mainOperator.DatasetInfos[i+oldNumFiles].setValue( datasetInfo )
 
-        # Which rows do we need to add to the GUI?
-        oldNumRows = self.fileInfoTableWidget.rowCount()
-        numFiles = len(self.mainOperator.DatasetInfos)
-
-        # Make room in the table widget for the new rows
-        self.fileInfoTableWidget.setRowCount( numFiles )
-
-        # Update the contents of the new rows in the GUI.        
-        self.updateTableRows(oldNumRows, numFiles)
-
-    def refreshAllRows(self, slot):
-        numFiles = len(self.mainOperator.DatasetInfos)
-        self.fileInfoTableWidget.setRowCount( numFiles )
-        self.updateTableRows(0, numFiles)
-
-    def updateTableRows(self, startRow, stopRow):
+    def updateTableForSlot(self, slot):
         """
         Update the given rows using the top-level operator parameters
         """
-        # Update the data in the new rows
-        for row in range(startRow, stopRow):
-            totalPath = self.mainOperator.DatasetInfos[row].value.filePath
-            lastDotIndex = totalPath.rfind('.')
-            extensionAndInternal = totalPath[lastDotIndex:]
-            extension = extensionAndInternal.split('/')[0]
-            externalPath = totalPath[:lastDotIndex] + extension
+        
+        # Don't update anything if the slot doesn't have data yet
+        if not slot.connected():
+            return
+        
+        # Which index is this slot?
+        row = -1
+        for i in range( len(self.mainOperator.DatasetInfos) ):
+            if slot == self.mainOperator.DatasetInfos[i]:
+                row = i
+                break
 
-            internalPath = ''
-            internalStart = extensionAndInternal.find('/')
-            if internalStart != -1:
-                internalPath = extensionAndInternal[internalStart:]
+        assert row != -1, "Unknown input slot!"
+        
+        totalPath = self.mainOperator.DatasetInfos[row].value.filePath
+        lastDotIndex = totalPath.rfind('.')
+        extensionAndInternal = totalPath[lastDotIndex:]
+        extension = extensionAndInternal.split('/')[0]
+        externalPath = totalPath[:lastDotIndex] + extension
 
-            fileName = os.path.split(externalPath)[1]
+        internalPath = ''
+        internalStart = extensionAndInternal.find('/')
+        if internalStart != -1:
+            internalPath = extensionAndInternal[internalStart:]
 
-            tableWidget = self.fileInfoTableWidget
+        fileName = os.path.split(externalPath)[1]
 
-            # Show the filename in the table (defaults to edit widget)
-            tableWidget.setItem( row, Column.Name, QTableWidgetItem(fileName) )
-            tableWidget.setItem( row, Column.InternalID, QTableWidgetItem(internalPath) )
-            
-            tableWidget.itemChanged.connect( self.handleRowDataChange )
-            
-            # Create and add the combobox for storage location options
-            self.updateStorageOptionComboBox(row, externalPath)
+        tableWidget = self.fileInfoTableWidget
 
-            # Create and add the checkbox for color inversion
-            invertCheckbox = QCheckBox()
-            invertCheckbox.setChecked( self.mainOperator.DatasetInfos[row].value.invertColors )
-            tableWidget.setCellWidget( row, Column.Invert, invertCheckbox)
-            invertCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Invert, invertCheckbox) )
-            
-            # Create and add the checkbox for grayscale conversion
-            convertToGrayCheckbox = QCheckBox()
-            convertToGrayCheckbox.setChecked( self.mainOperator.DatasetInfos[row].value.convertToGrayscale )
-            tableWidget.setCellWidget( row, Column.Grayscale, convertToGrayCheckbox)
-            convertToGrayCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Grayscale, convertToGrayCheckbox) )
+        # Show the filename in the table (defaults to edit widget)
+        tableWidget.setItem( row, Column.Name, QTableWidgetItem(fileName) )
+        tableWidget.setItem( row, Column.InternalID, QTableWidgetItem(internalPath) )
 
-        # The gui and the operator should be in sync
-        assert self.fileInfoTableWidget.rowCount() == len(self.mainOperator.DatasetInfos)
+        # Subscribe to changes        
+        tableWidget.itemChanged.connect( self.handleRowDataChange )
+        
+        # Create and add the combobox for storage location options
+        self.updateStorageOptionComboBox(row, externalPath)
+
+        # Create and add the checkbox for color inversion
+        invertCheckbox = QCheckBox()
+        invertCheckbox.setChecked( self.mainOperator.DatasetInfos[row].value.invertColors )
+        tableWidget.setCellWidget( row, Column.Invert, invertCheckbox)
+        invertCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Invert, invertCheckbox) )
+        
+        # Create and add the checkbox for grayscale conversion
+        convertToGrayCheckbox = QCheckBox()
+        convertToGrayCheckbox.setChecked( self.mainOperator.DatasetInfos[row].value.convertToGrayscale )
+        tableWidget.setCellWidget( row, Column.Grayscale, convertToGrayCheckbox)
+        convertToGrayCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Grayscale, convertToGrayCheckbox) )
     
     def updateStorageOptionComboBox(self, row, filePath):
         """
@@ -256,7 +264,9 @@ class DataSelectionGui(QMainWindow):
         column = changedWidget.column()
         
         if column == Column.Name or column == Column.InternalID:
-            self.updateFilePath(row)        
+            if  self.fileInfoTableWidget.item(row, Column.Name) != None \
+            and self.fileInfoTableWidget.item(row, Column.InternalID) != None:
+                self.updateFilePath(row)
     
     def updateFilePath(self, index):
         """
