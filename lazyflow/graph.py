@@ -58,7 +58,6 @@ from roi import sliceToRoi, roiToSlice
 from lazyflow.stype import ArrayLike
 from lazyflow import stype
 
-
 class MetaDict(dict):
   """
   Helper class that manages the dirty state of the meta data of a slot.
@@ -201,7 +200,7 @@ class Slot(object):
       first argument of the function is the slot, second argument the roi
       the keyword arguments follow
       """
-      print "function", function, "registered for dirty with args", args, kwargs
+      print "function", function, " registered for dirty with args", args, kwargs
       self._callbacks_dirty[function] = (args, kwargs)
 
     
@@ -507,19 +506,18 @@ class Slot(object):
         return None
       assert position < len(self)
       print "Removing slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize)
+      slot = self._subSlots.pop(position)
       # call before remove callbacks
       for f,kw in self._callbacks_remove.iteritems():
         f(self, position, finalsize, **kw)
+      slot.operator = None
+      slot.disconnect()
       if propagate:
         if self.partner is not None and self.partner.level == self.level:
           self.partner.removeSlot(position, finalsize)
         for p in self.partners:
           if p.level == self.level:
             p.removeSlot(position, finalsize)
-      slot = self._subSlots.pop(position)
-      slot.operator = None
-      slot.disconnect()
-
     
     def get( self, roi, destination = None ):
       """

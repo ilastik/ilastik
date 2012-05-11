@@ -813,7 +813,7 @@ if has_blist:
             key = roi.toSlice()
             self.lock.acquire()
             assert(self.inputs["eraser"].connected() == True and self.inputs["shape"].connected() == True and self.inputs["blockShape"].connected()==True), \
-            "OpDenseSparseArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % \
+            "OpBlockedSparseLabelArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % \
             (self.inputs["eraser"].connected(), self.inputs["shape"].connected())
             if slot.name == "Output":
                 #result[:] = self._denseArray[key]
