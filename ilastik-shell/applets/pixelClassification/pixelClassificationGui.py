@@ -14,9 +14,9 @@ from lazyflow.graph import Graph
 from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
                                OpArrayPiper, OpPredictRandomForest, \
                                OpSingleChannelSelector, OpSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures, \
+                               OpMultiArrayStacker, OpTrainRandomForest,  \
                                OpMultiArraySlicer2,OpH5Reader, OpBlockedSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForestBlocked, OpPixelFeatures, \
+                               OpMultiArrayStacker, OpTrainRandomForestBlocked,  \
                                OpH5ReaderBigDataset, OpSlicedBlockedArrayCache, OpPixelFeaturesPresmoothed
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
