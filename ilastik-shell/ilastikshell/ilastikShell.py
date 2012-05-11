@@ -112,7 +112,7 @@ class IlastikShell( QMainWindow ):
         self.appletBar.currentChanged.connect(self.handleAppletBarIndexChange)
         
         # By default, make the splitter control expose a reasonable width of the applet bar
-        self.splitter.setSizes([300,1])
+        self.mainSplitter.setSizes([300,1])
         
         self.currentProjectFile = None
         
@@ -127,13 +127,20 @@ class IlastikShell( QMainWindow ):
         if len(self.appletBarMapping) != 0:
             applet_index = self.appletBarMapping[appletBarIndex]
             self.appletStack.setCurrentIndex(applet_index)
-            self._menuBar.setCurrentIndex(applet_index)        
+            self._menuBar.setCurrentIndex(applet_index)
+            self.viewerControlStack.setCurrentIndex(applet_index)
 
     def addApplet( self, applet ):
         self._applets.append(applet)
         applet_index = len(self._applets) - 1
         self.appletStack.addWidget( applet.centralWidget )
         self._menuBar.addAppletMenuWidget( applet.menuWidget )
+        
+        # Viewer controls are optional.
+        if applet.viewerControlWidget is None:
+            self.viewerControlStack.addWidget( QWidget(parent=self) )
+        else:
+            self.viewerControlStack.addWidget( applet.viewerControlWidget )
 
         # Add all of the applet bar's items to the toolbox widget
         for controlName, controlGuiItem in applet.appletDrawers:

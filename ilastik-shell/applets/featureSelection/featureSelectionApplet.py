@@ -60,3 +60,7 @@ class FeatureSelectionApplet( Applet ):
     @property
     def appletPreferencesManager(self):
          return self._preferencesManager
+
+    @property
+    def viewerControlWidget(self):
+        return self._centralWidget.viewerControlWidget

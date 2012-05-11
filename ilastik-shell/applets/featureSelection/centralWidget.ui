@@ -31,125 +31,6 @@
         </sizepolicy>
        </property>
       </widget>
-      <widget class="QWidget" name="widget" native="true">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_2">
-        <item>
-         <widget class="QLabel" name="label_2">
-          <property name="text">
-           <string>&lt;b&gt;Layers:&lt;/b&gt;</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QWidget" name="widget_2" native="true">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <layout class="QHBoxLayout" name="horizontalLayout">
-           <property name="margin">
-            <number>0</number>
-           </property>
-           <item>
-            <widget class="LayerWidget" name="layerWidget">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QWidget" name="widget_3" native="true">
-             <layout class="QVBoxLayout" name="verticalLayout">
-              <property name="margin">
-               <number>0</number>
-              </property>
-              <item>
-               <widget class="QToolButton" name="UpButton">
-                <property name="toolTip">
-                 <string>move layer up</string>
-                </property>
-                <property name="text">
-                 <string>Up</string>
-                </property>
-                <property name="icon">
-                 <iconset>
-                  <normaloff>icons/go-up.png</normaloff>icons/go-up.png</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QToolButton" name="DownButton">
-                <property name="toolTip">
-                 <string>move layer down</string>
-                </property>
-                <property name="text">
-                 <string>Down</string>
-                </property>
-                <property name="icon">
-                 <iconset>
-                  <normaloff>icons/go-down.png</normaloff>icons/go-down.png</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QToolButton" name="DeleteButton">
-                <property name="toolTip">
-                 <string>delete layer</string>
-                </property>
-                <property name="text">
-                 <string>Delete</string>
-                </property>
-                <property name="icon">
-                 <iconset>
-                  <normaloff>icons/list-remove.png</normaloff>icons/list-remove.png</iconset>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="verticalSpacer">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <spacer name="verticalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>10</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
-      </widget>
      </widget>
     </item>
    </layout>
@@ -360,11 +241,6 @@
   </action>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>LayerWidget</class>
-   <extends>QListView</extends>
-   <header>volumina.widgets.layerwidget</header>
-  </customwidget>
   <customwidget>
    <class>VolumeEditorWidget</class>
    <extends>QWidget</extends>

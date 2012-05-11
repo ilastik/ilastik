@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QLabel, QApplication
+from PyQt4.QtGui import QWidget, QApplication
 
 from utility.simpleSignal import SimpleSignal
 
@@ -31,6 +31,13 @@ class Applet( object ):
     def centralWidget( self ):
         """
         Return the applet's central widget to be displayed on the right side of the window (if any).
+        """
+        return None
+    
+    @property
+    def viewerControlWidget( self ):
+        """
+        Return the applet's viewer control widget (if any).
         """
         return None
 

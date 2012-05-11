@@ -49,3 +49,6 @@ class PixelClassificationApplet( Applet ):
     def dataSerializers(self):
         return self._serializableItems
     
+    @property
+    def viewerControlWidget(self):
+        return self._centralWidget.viewerControlWidget

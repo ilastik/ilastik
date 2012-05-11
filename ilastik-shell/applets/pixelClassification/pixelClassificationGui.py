@@ -100,6 +100,7 @@ class PixelClassificationGui(QMainWindow):
         self.featScalesList=[0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
         
         self.initCentralUic()
+        self.initViewerControlUi()
         self.initAppletBarUic()
 
 #        self.initLabelGui()
@@ -109,13 +110,18 @@ class PixelClassificationGui(QMainWindow):
 
     def setIconToViewMenu(self):
         self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
-        
+    
+    def initViewerControlUi(self):
+        p = os.path.split(__file__)[0]+'/'
+        if p == "/": p = "."+p
+        self.viewerControlWidget = uic.loadUi(p+"/viewerControls.ui")
+
     def initCentralUic(self):
         # We don't know where the user is running this script from,
         #  so locate the .ui file relative to this .py file's path
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
-        uic.loadUi(p+"/centralWidget.ui", self) 
+        uic.loadUi(p+"/centralWidget.ui", self)
         
         def toggleDebugPatches(show):
             self.editor.showDebugPatches = show
@@ -797,13 +803,13 @@ class PixelClassificationGui(QMainWindow):
             self.editor.setInteractionMode( 'navigation' )
             self.volumeEditorWidget.init(self.editor)
             model = self.editor.layerStack
-            self.layerWidget.init(model)
-            self.UpButton.clicked.connect(model.moveSelectedUp)
-            model.canMoveSelectedUp.connect(self.UpButton.setEnabled)
-            self.DownButton.clicked.connect(model.moveSelectedDown)
-            model.canMoveSelectedDown.connect(self.DownButton.setEnabled)
-            self.DeleteButton.clicked.connect(model.deleteSelected)
-            model.canDeleteSelected.connect(self.DeleteButton.setEnabled)     
+            self.viewerControlWidget.layerWidget.init(model)
+            self.viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
+            model.canMoveSelectedUp.connect(self.viewerControlWidget.UpButton.setEnabled)
+            self.viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
+            model.canMoveSelectedDown.connect(self.viewerControlWidget.DownButton.setEnabled)
+            self.viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
+            model.canDeleteSelected.connect(self.viewerControlWidget.DeleteButton.setEnabled)     
             
             self.pipeline.opLabelArray.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)
                         
@@ -844,9 +850,9 @@ class PixelClassificationGui(QMainWindow):
         # All the controls in our GUI
         controlList = [ self.menuBar,
                         self.volumeEditorWidget,
-                        self.UpButton,
-                        self.DownButton,
-                        self.DeleteButton ]
+                        self.viewerControlWidget.UpButton,
+                        self.viewerControlWidget.DownButton,
+                        self.viewerControlWidget.DeleteButton ]
 
         # Enable/disable all of them
         for control in controlList:

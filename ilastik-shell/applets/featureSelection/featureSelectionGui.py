@@ -63,6 +63,7 @@ class FeatureSelectionGui(QMainWindow):
         self.drawer = None
         self.initAppletDrawerUic()
         self.initCentralUic()
+        self.initViewerControlUi()
         self.initFeatureDlg()
         
         self.editor = None
@@ -96,6 +97,11 @@ class FeatureSelectionGui(QMainWindow):
         # Expose the enable function with the name the shell expects
         self.drawer.enableControls = enableDrawerControls
     
+    def initViewerControlUi(self):
+        p = os.path.split(__file__)[0]+'/'
+        if p == "/": p = "."+p
+        self.viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
+
     def initCentralUic(self):
         """
         Load the GUI from the ui file into this class and connect it with event handlers.
@@ -219,15 +225,15 @@ class FeatureSelectionGui(QMainWindow):
         
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
-        model.canMoveSelectedUp.connect(self.UpButton.setEnabled)
-        model.canMoveSelectedDown.connect(self.DownButton.setEnabled)
-        model.canDeleteSelected.connect(self.DeleteButton.setEnabled)     
+        model.canMoveSelectedUp.connect(self.viewerControlWidget.UpButton.setEnabled)
+        model.canMoveSelectedDown.connect(self.viewerControlWidget.DownButton.setEnabled)
+        model.canDeleteSelected.connect(self.viewerControlWidget.DeleteButton.setEnabled)     
 
         # Connect our layer movement buttons to the appropriate layerstack actions
-        self.layerWidget.init(model)
-        self.UpButton.clicked.connect(model.moveSelectedUp)
-        self.DownButton.clicked.connect(model.moveSelectedDown)
-        self.DeleteButton.clicked.connect(model.deleteSelected)
+        self.viewerControlWidget.layerWidget.init(model)
+        self.viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
+        self.viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
+        self.viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
         
         # No brushing model necessary (we're using the editor as a viewer only)
         #self.pipeline.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)
@@ -342,9 +348,9 @@ class FeatureSelectionGui(QMainWindow):
         # All the controls in our GUI
         controlList = [ self.menuBar,
                         self.volumeEditorWidget,
-                        self.UpButton,
-                        self.DownButton,
-                        self.DeleteButton ]
+                        self.viewerControlWidget.UpButton,
+                        self.viewerControlWidget.DownButton,
+                        self.viewerControlWidget.DeleteButton ]
 
         # Enable/disable all of them
         for control in controlList:
