@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>189</width>
-    <height>296</height>
+    <height>103</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
      <x>4</x>
      <y>9</y>
      <width>181</width>
-     <height>281</height>
+     <height>91</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -66,19 +66,6 @@
         <normaloff>../../../gui/icons/32x32/actions/media-seek-backward.png</normaloff>../../../gui/icons/32x32/actions/media-seek-backward.png</iconset>
       </property>
      </widget>
-    </item>
-    <item>
-     <spacer name="verticalSpacer">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>40</height>
-       </size>
-      </property>
-     </spacer>
     </item>
    </layout>
   </widget>

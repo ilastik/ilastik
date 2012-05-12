@@ -30,22 +30,12 @@
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
-       <widget class="QToolBox" name="appletBar">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
-          <horstretch>1</horstretch>
-          <verstretch>100</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>300</width>
-          <height>100</height>
-         </size>
-        </property>
-        <property name="currentIndex">
-         <number>-1</number>
-        </property>
+       <widget class="QTreeWidget" name="appletBar">
+        <column>
+         <property name="text">
+          <string notr="true">Task</string>
+         </property>
+        </column>
        </widget>
        <widget class="QStackedWidget" name="viewerControlStack">
         <property name="sizePolicy">

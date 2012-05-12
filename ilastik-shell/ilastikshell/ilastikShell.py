@@ -2,7 +2,8 @@ from PyQt4 import uic
 from PyQt4 import Qt
 from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QMenuBar, QFrame, QLabel, QStackedLayout, \
-                        QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox
+                        QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
+                        QStandardItemModel, QTreeWidgetItem, QTreeWidget
 from PyQt4 import QtCore
 
 import h5py
@@ -109,11 +110,12 @@ class IlastikShell( QMainWindow ):
         for applet in workflow:
             self.addApplet(applet)
 
-        self.appletBar.currentChanged.connect(self.handleAppletBarIndexChange)
+        self.appletBar.expanded.connect(self.handleAppletBarIndexChange)
         
         # By default, make the splitter control expose a reasonable width of the applet bar
         self.mainSplitter.setSizes([300,1])
         
+        self.currentAppletIndex = 0
         self.currentProjectFile = None
         
     def show(self):
@@ -123,12 +125,35 @@ class IlastikShell( QMainWindow ):
         super(IlastikShell, self).show()
         self.enableControls(self.currentProjectFile != None)
 
-    def handleAppletBarIndexChange(self, appletBarIndex):
-        if len(self.appletBarMapping) != 0:
-            applet_index = self.appletBarMapping[appletBarIndex]
-            self.appletStack.setCurrentIndex(applet_index)
-            self._menuBar.setCurrentIndex(applet_index)
-            self.viewerControlStack.setCurrentIndex(applet_index)
+    def handleAppletBarIndexChange(self, modelIndex):
+        """
+        The user wants to view a different applet bar item.
+        """
+        appletBarIndex = modelIndex.row()
+
+        if self.currentAppletIndex != appletBarIndex:
+            self.currentAppletIndex = appletBarIndex
+            # Collapse everything in the applet bar
+            self.appletBar.collapseAll()
+            # except for the selected item.
+            self.appletBar.expand(modelIndex)
+            
+            if len(self.appletBarMapping) != 0:
+                applet_index = self.appletBarMapping[appletBarIndex]
+                self.appletStack.setCurrentIndex(applet_index)
+                self._menuBar.setCurrentIndex(applet_index)
+                self.viewerControlStack.setCurrentIndex(applet_index)
+                
+                rootItem = self.appletBar.invisibleRootItem()
+                appletDrawerItem = rootItem.child(appletBarIndex).child(0)
+                appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
+
+                totalHeight = sum(self.sideSplitter.sizes())
+                appletBarHeight = self.appletBar.sizeHint().height() + appletDrawerWidget.frameSize().height()
+                print "self.appletBar.minimumSizeHint()",self.appletBar.minimumSizeHint()
+                print "self.appletBar.sizeHint()", self.appletBar.sizeHint()
+                print "self.appletBar.size()", self.appletBar.size()                
+                self.sideSplitter.setSizes([appletBarHeight, totalHeight-appletBarHeight])
 
     def addApplet( self, applet ):
         self._applets.append(applet)
@@ -142,13 +167,22 @@ class IlastikShell( QMainWindow ):
         else:
             self.viewerControlStack.addWidget( applet.viewerControlWidget )
 
+        # Add rows to the applet bar model
+        rootItem = self.appletBar.invisibleRootItem()
+
         # Add all of the applet bar's items to the toolbox widget
         for controlName, controlGuiItem in applet.appletDrawers:
-            self.appletBar.addItem(controlGuiItem, controlName)            
-            
-            # Since each applet can contribute more than one applet bar item, 
+#            self.appletBar.setItemWidget(controlGuiItem, controlName)
+            appletNameItem = QTreeWidgetItem( QtCore.QStringList( controlName ) )
+            drawerItem = QTreeWidgetItem()
+            drawerItem.setSizeHint( 0, controlGuiItem.frameSize() )
+            appletNameItem.addChild( drawerItem )
+            rootItem.addChild( appletNameItem )
+            self.appletBar.setItemWidget( drawerItem, 0, controlGuiItem )
+
+            # Since each applet can contribute more than one applet bar item,
             #  we need to keep track of which applet this item is associated with
-            self.appletBarMapping[self.appletBar.count()-1] = applet_index
+            self.appletBarMapping[rootItem.childCount()-1] = applet_index
 
         return applet_index
 
