@@ -3,7 +3,8 @@ from PyQt4 import Qt
 from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QMenuBar, QFrame, QLabel, QStackedLayout, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-                        QStandardItemModel, QTreeWidgetItem, QTreeWidget
+                        QStandardItemModel, QTreeWidgetItem, QTreeWidget, QFont, \
+                        QBrush, QColor
 from PyQt4 import QtCore
 
 import h5py
@@ -111,6 +112,7 @@ class IlastikShell( QMainWindow ):
             self.addApplet(applet)
 
         self.appletBar.expanded.connect(self.handleAppletBarIndexChange)
+        self.appletBar.clicked.connect(self.handleAppletBarClick)
         
         # By default, make the splitter control expose a reasonable width of the applet bar
         self.mainSplitter.setSizes([300,1])
@@ -155,6 +157,11 @@ class IlastikShell( QMainWindow ):
                 print "self.appletBar.size()", self.appletBar.size()                
                 self.sideSplitter.setSizes([appletBarHeight, totalHeight-appletBarHeight])
 
+    def handleAppletBarClick(self, modelIndex):
+        # If the user clicks on a top-level item, automatically expand it.
+        if modelIndex.parent() == self.appletBar.rootIndex():
+            self.appletBar.expand(modelIndex)
+
     def addApplet( self, applet ):
         self._applets.append(applet)
         applet_index = len(self._applets) - 1
@@ -174,6 +181,9 @@ class IlastikShell( QMainWindow ):
         for controlName, controlGuiItem in applet.appletDrawers:
 #            self.appletBar.setItemWidget(controlGuiItem, controlName)
             appletNameItem = QTreeWidgetItem( QtCore.QStringList( controlName ) )
+            appletNameItem.setFont( 0, QFont("Ubuntu", 16) )
+            appletNameItem.setBackground( 0, QBrush( QColor( 0, 0, 128 ) ) ) # Dark blue
+            appletNameItem.setForeground( 0, QBrush( QColor( 255, 255, 255) ) ) # White
             drawerItem = QTreeWidgetItem()
             drawerItem.setSizeHint( 0, controlGuiItem.frameSize() )
             appletNameItem.addChild( drawerItem )

@@ -31,6 +31,18 @@
         <enum>Qt::Vertical</enum>
        </property>
        <widget class="QTreeWidget" name="appletBar">
+        <property name="midLineWidth">
+         <number>2</number>
+        </property>
+        <property name="indentation">
+         <number>15</number>
+        </property>
+        <property name="rootIsDecorated">
+         <bool>true</bool>
+        </property>
+        <property name="headerHidden">
+         <bool>true</bool>
+        </property>
         <column>
          <property name="text">
           <string notr="true">Task</string>
