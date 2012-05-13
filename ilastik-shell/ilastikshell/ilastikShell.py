@@ -135,27 +135,35 @@ class IlastikShell( QMainWindow ):
 
         if self.currentAppletIndex != appletBarIndex:
             self.currentAppletIndex = appletBarIndex
-            # Collapse everything in the applet bar
+            # Collapse all drawers in the applet bar...
             self.appletBar.collapseAll()
-            # except for the selected item.
+            # ...except for the newly selected item.
             self.appletBar.expand(modelIndex)
             
             if len(self.appletBarMapping) != 0:
+                # Determine which applet this drawer belongs to
                 applet_index = self.appletBarMapping[appletBarIndex]
+
+                # Select the appropriate central widget, menu widget, and viewer control widget for this applet
                 self.appletStack.setCurrentIndex(applet_index)
                 self._menuBar.setCurrentIndex(applet_index)
                 self.viewerControlStack.setCurrentIndex(applet_index)
                 
+                # Get total height of the titles
+                firstItem = self.appletBar.invisibleRootItem().child(0)
+                titleHeight = self.appletBar.visualItemRect(firstItem).size().height()
+                numDrawers = len(self.appletBarMapping)
+                totalTitleHeight = numDrawers * titleHeight + 10 # Add a small margin so the scroll bar doesn't appear
+
+                # Get the height of the selected drawer                
                 rootItem = self.appletBar.invisibleRootItem()
                 appletDrawerItem = rootItem.child(appletBarIndex).child(0)
                 appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
 
-                totalHeight = sum(self.sideSplitter.sizes())
-                appletBarHeight = self.appletBar.sizeHint().height() + appletDrawerWidget.frameSize().height()
-                print "self.appletBar.minimumSizeHint()",self.appletBar.minimumSizeHint()
-                print "self.appletBar.sizeHint()", self.appletBar.sizeHint()
-                print "self.appletBar.size()", self.appletBar.size()                
-                self.sideSplitter.setSizes([appletBarHeight, totalHeight-appletBarHeight])
+                # Auto-size the splitter height based on the size of the applet bar.
+                totalSplitterHeight = sum(self.sideSplitter.sizes())
+                appletBarHeight = totalTitleHeight + appletDrawerWidget.frameSize().height()
+                self.sideSplitter.setSizes([appletBarHeight, totalSplitterHeight-appletBarHeight])
 
     def handleAppletBarClick(self, modelIndex):
         # If the user clicks on a top-level item, automatically expand it.
@@ -179,7 +187,6 @@ class IlastikShell( QMainWindow ):
 
         # Add all of the applet bar's items to the toolbox widget
         for controlName, controlGuiItem in applet.appletDrawers:
-#            self.appletBar.setItemWidget(controlGuiItem, controlName)
             appletNameItem = QTreeWidgetItem( QtCore.QStringList( controlName ) )
             appletNameItem.setFont( 0, QFont("Ubuntu", 16) )
             appletNameItem.setBackground( 0, QBrush( QColor( 0, 0, 128 ) ) ) # Dark blue
