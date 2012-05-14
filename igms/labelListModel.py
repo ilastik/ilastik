@@ -167,6 +167,11 @@ class LabelListModel(QAbstractTableModel):
         #in interactive mode
         self._allowRemove = check
         self.dataChanged.emit(self.createIndex(0, 2), self.createIndex(self.rowCount(), 2))
+
+    def select(self, row):
+        self._selectionModel.clear()
+        self._selectionModel.select(self.index(row, 0), QItemSelectionModel.Select)
+        self._selectionModel.select(self.index(row, 1), QItemSelectionModel.Select)
         
     
     
