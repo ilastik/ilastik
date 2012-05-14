@@ -76,6 +76,10 @@ class TestOpDataSelection_Basic():
         npyData = reader.ProcessedImages[0][...].wait()
         pngData = reader.ProcessedImages[1][...].wait()
 
+        # Check the file name output
+        assert reader.ImageNames[0].value == self.testNpyFileName
+        assert reader.ImageNames[1].value == self.testPngFileName
+
         # Check raw images
         assert npyData.shape == (10,11,1)
         for x in range(npyData.shape[0]):
@@ -221,7 +225,7 @@ class TestOpDataSelection_Basic():
 
 if __name__ == "__main__":
     import nose
-    nose.main(defaultTest=__file__)
+    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
 
 
 
