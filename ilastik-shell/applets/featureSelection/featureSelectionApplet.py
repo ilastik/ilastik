@@ -64,3 +64,10 @@ class FeatureSelectionApplet( Applet ):
     @property
     def viewerControlWidget(self):
         return self._centralWidget.viewerControlWidget
+    
+    def setImageIndex(self, imageIndex):
+        """
+        Change the currently displayed image to the one specified by the given index.
+        """
+        self._centralWidget.setImageIndex(imageIndex)
+

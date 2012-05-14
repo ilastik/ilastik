@@ -70,6 +70,8 @@ class FeatureSelectionGui(QMainWindow):
         self.layerstack = LayerStackModel()
         self.initEditor()
         
+        self.imageIndex = 0
+        
     def initAppletDrawerUic(self):
         """
         Load the ui file for the applet drawer, which we own.
@@ -188,6 +190,10 @@ class FeatureSelectionGui(QMainWindow):
         self.featureDlg.selectedFeatureBoolMatrix = defaultFeatures
         self.featureDlg.accepted.connect(self.onNewFeaturesFromFeatureDlg)
 
+    def setImageIndex(self, imageIndex):
+        self.imageIndex = imageIndex
+        self.handleFeaturesChanged()
+
     def onFeatureButtonClicked(self):
         # Refresh the feature matrix in case it has changed since the last time we were opened
         # (e.g. if the user loaded a project from disk)
@@ -261,7 +267,7 @@ class FeatureSelectionGui(QMainWindow):
 
         # Update the editor data shape
         # TODO: This assumes only one input image for now.
-        shape = self.mainOperator.InputImages[0].shape
+        shape = self.mainOperator.InputImages[self.imageIndex].shape
         self.editor.dataShape = shape
         
         # First add a black layer on the bottom of the image
@@ -275,7 +281,7 @@ class FeatureSelectionGui(QMainWindow):
         # Now add a layer for each feature
         # TODO: This assumes only one input image for now.
         # TODO: This assumes the channel is the last axis 
-        numFeatureChannels = self.mainOperator.CachedOutputImages[0].shape[-1]
+        numFeatureChannels = self.mainOperator.CachedOutputImages[self.imageIndex].shape[-1]
         for featureChannelIndex in reversed(range(0, numFeatureChannels)):
             if featureChannelIndex < len(self.DefaultColorTable):
                 # Choose the next color from our default color table
@@ -294,7 +300,7 @@ class FeatureSelectionGui(QMainWindow):
         # Create an operator to select the channel (feature) we're interested in
         # TODO: This assumes only one input image for now.
         selector=OpSingleChannelSelector(self.mainOperator.graph)
-        selector.Input.connect(self.mainOperator.CachedOutputImages[0])
+        selector.Input.connect(self.mainOperator.CachedOutputImages[self.imageIndex])
         selector.Index.setValue(featureChannelIndex)
         
         # Determine the name for this feature
