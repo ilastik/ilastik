@@ -10,8 +10,10 @@ from PyQt4 import QtCore
 import h5py
 import traceback
 import os
+from functools import partial
 
 from utility import VersionManager
+from lazyflow.graph import MultiOutputSlot
 
 import logging
 logger = logging.getLogger(__name__)
@@ -93,7 +95,7 @@ class _ShellMenuBar( QWidget ):
     def getCurrentIndex(self):
         return self._layout.currentWidget()
 
-class IlastikShell( QMainWindow ):
+class IlastikShell( QMainWindow ):    
     """
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
@@ -120,12 +122,58 @@ class IlastikShell( QMainWindow ):
         self.currentAppletIndex = 0
         self.currentProjectFile = None
         
+        self.currentImageIndex = None
+        self.imageSelectionCombo.currentIndexChanged.connect( self.changeCurrentInputImageIndex )
+        
     def show(self):
         """
         Show the window, and enable/disable controls depending on whether or not a project file present.
         """
         super(IlastikShell, self).show()
         self.enableControls(self.currentProjectFile != None)
+        self.autoSizeSideSplitter()
+
+    def setImageNameListSlot(self, multiSlot):
+        assert type(multiSlot) == MultiOutputSlot
+        #multiSlot.operator.notifyConfigured( self.handleImageListModified )
+        multiSlot.notifyInserted( self.handleImageListModified )
+        multiSlot.notifyRemove( self.handleImageListModified )
+        multiSlot.notifyResized( self.handleImageListModified )
+        self.imageNamesSlot = multiSlot
+        
+    def handleImageListModified(self,  multiSlot, ignored, newListSize):
+        # assert multiSlot == self.imageNamesSlot
+        # Regenerate the image selection combo.
+        self.imageSelectionCombo.clear()
+        
+        # Set the combo text for every slot we know so far
+        for i, subSlot in enumerate(self.imageNamesSlot):
+            try:
+                self.imageSelectionCombo.addItem(subSlot.value)
+            except:
+                self.imageSelectionCombo.addItem('uninitialized')
+
+            # Update the combo text for any subslots that get updated in the future           
+            def handleNewImageName(index, slot):
+                text = slot.value
+                if text is not None:
+                    self.imageSelectionCombo.setItemText( index, slot.value )            
+            subSlot.notifyConnect( partial(handleNewImageName, i) )
+        
+        # Change the image index if it's too high for the new list
+        self.changeCurrentInputImageIndex( min( len(self.imageNamesSlot), self.currentImageIndex ) )
+
+    def changeCurrentInputImageIndex(self, newImageIndex):
+        if newImageIndex != self.currentImageIndex:
+            try:
+                # Accessing the image name value will throw if it isn't properly initialized
+                self.imageNamesSlot[newImageIndex].value
+
+                # Alert each central widget and viewer control widget that the image selection changed
+                for i in range( len(self._applets) ):
+                    self._applets[i].setImageIndex(newImageIndex)
+            except:
+                pass
 
     def handleAppletBarIndexChange(self, modelIndex):
         """
@@ -149,21 +197,25 @@ class IlastikShell( QMainWindow ):
                 self._menuBar.setCurrentIndex(applet_index)
                 self.viewerControlStack.setCurrentIndex(applet_index)
                 
-                # Get total height of the titles
-                firstItem = self.appletBar.invisibleRootItem().child(0)
-                titleHeight = self.appletBar.visualItemRect(firstItem).size().height()
-                numDrawers = len(self.appletBarMapping)
-                totalTitleHeight = numDrawers * titleHeight + 10 # Add a small margin so the scroll bar doesn't appear
-
-                # Get the height of the selected drawer                
-                rootItem = self.appletBar.invisibleRootItem()
-                appletDrawerItem = rootItem.child(appletBarIndex).child(0)
-                appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
-
-                # Auto-size the splitter height based on the size of the applet bar.
-                totalSplitterHeight = sum(self.sideSplitter.sizes())
-                appletBarHeight = totalTitleHeight + appletDrawerWidget.frameSize().height()
-                self.sideSplitter.setSizes([appletBarHeight, totalSplitterHeight-appletBarHeight])
+                self.autoSizeSideSplitter()
+                
+    def autoSizeSideSplitter(self):
+        # Get total height of the titles in the applet bar (not the widgets)
+        firstItem = self.appletBar.invisibleRootItem().child(0)
+        titleHeight = self.appletBar.visualItemRect(firstItem).size().height()
+        numDrawers = len(self.appletBarMapping)
+        totalTitleHeight = numDrawers * titleHeight
+    
+        # Get the height of the current applet drawer               
+        rootItem = self.appletBar.invisibleRootItem()
+        appletDrawerItem = rootItem.child(self.currentAppletIndex).child(0)
+        appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
+        appletDrawerHeight = appletDrawerWidget.frameSize().height()
+    
+        # Auto-size the splitter height based on the height of the applet bar.
+        totalSplitterHeight = sum(self.sideSplitter.sizes())
+        appletBarHeight = totalTitleHeight + appletDrawerHeight + 10 # Add a small margin so the scroll bar doesn't appear
+        self.sideSplitter.setSizes([appletBarHeight, totalSplitterHeight-appletBarHeight])
 
     def handleAppletBarClick(self, modelIndex):
         # If the user clicks on a top-level item, automatically expand it.
@@ -264,21 +316,25 @@ class IlastikShell( QMainWindow ):
         
         self.loadProject(h5File, projectFilePath)
 
-    def onOpenProjectActionTriggered(self):
+    def onOpenProjectActionTriggered(self, debugProjectPath=None):
         logger.debug("Open Project action triggered")
 
         # Make sure the user is finished with the currently open project
         if not self.ensureNoCurrentProject():
             return
 
-        projectFilePath = QFileDialog.getOpenFileName(
-           self, "Open Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*.ilp)")
+        if debugProjectPath is None:
+            projectFilePath = QFileDialog.getOpenFileName(
+               self, "Open Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*.ilp)")
 
-        # If the user canceled, stop now        
-        if projectFilePath.isNull():
-            return
+            # If the user canceled, stop now        
+            if projectFilePath.isNull():
+                return
 
-        projectFilePath = str(projectFilePath)
+            projectFilePath = str(projectFilePath)
+        else:
+            projectFilePath=debugProjectPath
+
         logger.info("Opening Project: " + projectFilePath)
 
         # Open the file as an HDF5 file

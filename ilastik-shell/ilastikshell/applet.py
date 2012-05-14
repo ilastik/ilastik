@@ -69,6 +69,12 @@ class Applet( object ):
         of project saved data may save/load that information via a preferences manager.
         """
         return None
+    
+    def setImageIndex(self, imageIndex):
+        """
+        Change the currently displayed image to the one specified by the given index.
+        """
+        pass
 
 def run_applet( applet_type, *args, **kwargs):
     '''Run applet standalone.'''
