@@ -330,6 +330,8 @@ class FeatureTableWidget(QTableWidget):
             for column in range(self.columnCount()):
                 if featureMatrix[r][column]:
                     self.item(row, column).setFeatureState(Qt.Checked)
+                else:
+                    self.item(row, column).setFeatureState(Qt.Unchecked)
             r+=1
         self._updateParentCell()
     
