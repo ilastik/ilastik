@@ -254,19 +254,24 @@ class DataSelectionGui(QMainWindow):
         combo.currentIndexChanged.connect( partial(self.handleStorageOptionComboIndexChanged, combo) )
         self.fileInfoTableWidget.setCellWidget( row, Column.Location, combo )
     
-    def handleRowDataChange(self, changedWidget ):
+    def handleRowDataChange(self, changedItem ):
         """
         The user manually edited a file name in the table.
         Update the operator and other GUI elements with the new file path.
         """
         # Figure out which row this widget is in
-        row = changedWidget.row()
-        column = changedWidget.column()
+        row = changedItem.row()
+        column = changedItem.column()
         
-        if column == Column.Name or column == Column.InternalID:
-            if  self.fileInfoTableWidget.item(row, Column.Name) != None \
-            and self.fileInfoTableWidget.item(row, Column.InternalID) != None:
-                self.updateFilePath(row)
+        # Can't update until the row is fully initialized
+        needUpdate = True
+        needUpdate &= column == Column.Name or column == Column.InternalID
+        needUpdate &= self.fileInfoTableWidget.item(row, Column.Name) != None 
+        needUpdate &= self.fileInfoTableWidget.item(row, Column.InternalID) != None
+        needUpdate &= self.fileInfoTableWidget.cellWidget(row, column) is not None
+        
+        if needUpdate:
+            self.updateFilePath(row)
     
     def updateFilePath(self, index):
         """
