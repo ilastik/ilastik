@@ -306,6 +306,9 @@ class Request(object):
   various types of callbacks can be provided that notify
   of cancellation, finished computation etc.
   """
+  
+  EnableRequesterStackDebugging = False
+  
   def __init__(self, function, **kwargs):
     self.running = False
     self.finished = False
@@ -342,6 +345,8 @@ class Request(object):
       #print "bursting..."
       last_request.submit()
     cur_tr.last_request = self
+    
+    self._requesterStack = None
 
 
   def __call__(self):
@@ -367,6 +372,10 @@ class Request(object):
     """
     cur_gr = greenlet.getcurrent()
     cur_tr =  threading.current_thread()
+    
+    if self.EnableRequesterStackDebugging:
+        import traceback
+        self._requesterStack = traceback.extract_stack()
 
     # if we are waiting for something else
     # burst the last reqeust
@@ -409,6 +418,10 @@ class Request(object):
     """
     asynchronous execution in background
     """
+    if self.EnableRequesterStackDebugging:
+        import traceback
+        self._requesterStack = traceback.extract_stack()
+
     if self.finished or self.canceled:
       return
     self.lock.acquire()
