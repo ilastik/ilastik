@@ -4,6 +4,7 @@ from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataRea
 from lazyflow.operators.obsolete.vigraOperators import OpGrayscaleInverter, OpRgbToGrayscale
 import copy
 
+import numpy
 import uuid
 
 class OpDataSelection(Operator):
@@ -52,6 +53,7 @@ class OpDataSelection(Operator):
     DatasetInfos = MultiInputSlot(stype='object')
 
     # Output data
+    ImageNames = MultiOutputSlot(stype='string')
     RawImages = MultiOutputSlot()
     ProcessedImages = MultiOutputSlot()
     
@@ -70,6 +72,7 @@ class OpDataSelection(Operator):
     
     def setupOutputs(self):
         numInputs = len(self.DatasetInfos)
+
         # Ensure the proper number of outputs
         self.ProcessedImages.resize(numInputs)
         self.RawImages.resize(numInputs)
@@ -122,24 +125,30 @@ class OpDataSelection(Operator):
             self.processedProviderSlots.append(processedProviderSlot)
             self.rawProviderSlots.append(rawProviderSlot)
 
+            # Copy the metadata for the raw image
+            self.RawImages[i].meta.dtype = rawProviderSlot.meta.dtype
+            self.RawImages[i].meta.shape = rawProviderSlot.meta.shape
+            self.RawImages[i].meta.axistags = copy.copy(rawProviderSlot.meta.axistags)
+
             # Copy the metadata from the processed provider we ended up with
             self.ProcessedImages[i].meta.dtype = processedProviderSlot.meta.dtype
             self.ProcessedImages[i].meta.shape = processedProviderSlot.meta.shape
             self.ProcessedImages[i].meta.axistags = copy.copy(processedProviderSlot.meta.axistags)
 
-            # Copy the metadata for the raw image
-            self.RawImages[i].meta.dtype = rawProviderSlot.meta.dtype
-            self.RawImages[i].meta.shape = rawProviderSlot.meta.shape
-            self.RawImages[i].meta.axistags = copy.copy(rawProviderSlot.meta.axistags)
+        # Finally, list the new image names, too
+        self.ImageNames.resize(numInputs)
+        for i in range(numInputs):
+            datasetInfo = self.DatasetInfos[i].value
+            self.ImageNames[i].setValue(datasetInfo.filePath)
 
     def getSubOutSlot(self, slots, indexes, key, result):
         slot = slots[0]
         if slot.name == "ProcessedImages":
             # Request the output from the appropriate internal operator output.
             request = self.processedProviderSlots[indexes[0]][key].writeInto(result)
-            return request.wait()
+            result[...] = request.wait()
         if slot.name == "RawImages":
             # Request the output from the appropriate internal operator output.
             request = self.rawProviderSlots[indexes[0]][key].writeInto(result)
-            return request.wait()
+            result[...] = request.wait()
 
