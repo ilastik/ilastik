@@ -1,8 +1,10 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpImageReader, OpH5Reader
+from lazyflow.operators import OpImageReader
+from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import OpStackLoader
 
+import h5py
 import vigra
 import os
 
@@ -63,15 +65,18 @@ class OpInputDataReader(Operator):
             externalPath = filePath.split(ext)[0] + ext
             internalPath = filePath.split(ext)[1]
             
-            h5Reader = OpH5Reader(graph=self.graph)
-            h5Reader.Filename.setValue(externalPath)
+            # Open the h5 file in read-only mode
+            h5File = h5py.File(externalPath, 'r')
+            
+            h5Reader = OpStreamingHdf5Reader(graph=self.graph)
+            h5Reader.ProjectFile.setValue(h5File)
             
             # Can't set the internal path yet if we don't have one
             if internalPath != '':
-                h5Reader.hdf5Path.setValue(internalPath)
+                h5Reader.InternalPath.setValue(internalPath)
             
             self.internalOperator = h5Reader
-            self.internalOutput = h5Reader.Image
+            self.internalOutput = h5Reader.OutputImage
         else:
             fileExtension = os.path.splitext(filePath)[1].lower()
             fileExtension = fileExtension.lstrip('.') # Remove leading dot
