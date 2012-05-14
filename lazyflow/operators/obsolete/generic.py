@@ -289,6 +289,7 @@ class OpMultiArrayStacker(Operator):
             r.wait()
 
 
+
 class OpSingleChannelSelector(Operator):
     name = "SingleChannelSelector"
     description = "Select One channel from a Multichannel Image"
@@ -300,31 +301,27 @@ class OpSingleChannelSelector(Operator):
         self.outputs["Output"]._dtype =self.inputs["Input"].dtype 
         self.outputs["Output"]._shape = self.inputs["Input"].shape[:-1]+(1,)
         self.outputs["Output"]._axistags = self.inputs["Input"].axistags
-        
-        
-        
+
     def getOutSlot(self, slot, key, result):
         
         index=self.inputs["Index"].value
         #FIXME: check the axistags for a multichannel image
-        assert self.inputs["Input"].shape[-1] > index, ("Requested channel, %d, is out of Range" % index)   
-        newKey = key[:-1]
-        newKey += (slice(0,self.inputs["Input"].shape[-1],None),)        
+        assert self.inputs["Input"].shape[-1] > index, ("Requested channel, %d, is out of Range" % index)
+
+        # Only ask for the channel we need
+        newKey = key[:-1] + (slice(index,index+1),)
         
-        
-        im=self.inputs["Input"][newKey].allocate().wait()
-        
-        
-        result[...,0]=im[...,index]
-        
+        im=self.inputs["Input"][newKey].wait()
+        result[...,0]=im[...,0] # Copy into the (only) channel of our result
 
     def notifyDirty(self, slot, key):
         key = key[:-1] + (slice(0,1,None),)
         self.outputs["Output"].setDirty(key)   
 
 
-        
-        
+
+
+
 class OpSubRegion(Operator):
     name = "OpSubRegion"
     description = "Select a region of interest from an numpy array"
