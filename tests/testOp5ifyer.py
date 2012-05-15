@@ -1,3 +1,4 @@
+import sys
 import unittest
 import random
 import vigra
@@ -5,6 +6,12 @@ import numpy
 from lazyflow.graph import Graph
 from volumina.adaptors import Op5ifyer
 from lazyflow.roi import TinyVector
+from lazyflow.roi import roiToSlice
+
+# Use logging instead of print statements ...
+import logging
+logger = logging.getLogger(__file__)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 
 class TestOp5ifyer(unittest.TestCase):
     
@@ -35,8 +42,29 @@ class TestOp5ifyer(unittest.TestCase):
         for i in range(self.tests):
             self.prepareVolnOp()
             result = self.operator.outputs["output"]().wait()
-            if len(result.shape) == 5 and numpy.all(result == self.array):
-                assert 1==1
+            logger.debug('------------------------------------------------------')
+            logger.debug( "self.array.shape = " + str(self.array.shape) )
+            logger.debug( "type(input) == " + str(type(self.operator.input.value)) )
+            logger.debug( "input.shape == " + str(self.operator.input.meta.shape) )
+            logger.debug( "Input Tags:")
+            logger.debug( str( self.operator.inputs['input'].axistags ) )
+            logger.debug( "Output Tags:" )
+            logger.debug( str(self.operator.output.axistags) )
+            logger.debug( "type(result) == " + str(type(result)) )
+            logger.debug( "result.shape == " + str(result.shape) )
+            logger.debug( '------------------------------------------------------' )
+
+            # Check the shape
+            assert len(result.shape) == 5
+
+            # Ensure the result came out in volumina order
+            assert self.operator.outputs["output"].meta.axistags == vigra.defaultAxistags('txyzc')
+
+            # Check the data
+            vresult = result.view(vigra.VigraArray)
+            vresult.axistags = self.operator.output.meta.axistags
+            reorderedInput = self.inArray.withAxes(*[tag.key for tag in vresult.axistags])
+            assert numpy.all(vresult == reorderedInput)
             
     def test_Roi(self):
         for i in range(self.tests):
@@ -48,5 +76,31 @@ class TestOp5ifyer(unittest.TestCase):
             roi[0]=TinyVector(roi[0])
             roi[1]=TinyVector(roi[1])
             result = self.operator.outputs["output"](roi[0],roi[1]).wait()
-            if len(result.shape) == 5 and numpy.all(result == self.array):
-                assert 1==1
+            logger.debug('------------------------------------------------------')
+            logger.debug( "self.array.shape = " + str(self.array.shape) )
+            logger.debug( "type(input) == " + str(type(self.operator.input.value)) )
+            logger.debug( "input.shape == " + str(self.operator.input.meta.shape) )
+            logger.debug( "Input Tags:")
+            logger.debug( str( self.operator.inputs['input'].axistags ) )
+            logger.debug( "Output Tags:" )
+            logger.debug( str(self.operator.output.axistags) )
+            logger.debug( "roi= " + str(roi) )
+            logger.debug( "type(result) == " + str(type(result)) )
+            logger.debug( "result.shape == " + str(result.shape) )
+            logger.debug( '------------------------------------------------------' )
+            
+            # Check the shape
+            assert len(result.shape) == 5
+
+            # Ensure the result came out in volumina order
+            assert self.operator.outputs["output"].meta.axistags == vigra.defaultAxistags('txyzc')
+
+            # Check the data
+            vresult = result.view(vigra.VigraArray)
+            vresult.axistags = self.operator.outputs["output"].meta.axistags
+            reorderedInput = self.inArray.withAxes(*[tag.key for tag in self.operator.outputs["output"].meta.axistags])
+            assert numpy.all(vresult == reorderedInput[roiToSlice(roi[0], roi[1])])
+
+if __name__ == "__main__":
+    logger.setLevel(logging.DEBUG)
+    unittest.main()
