@@ -316,25 +316,25 @@ class IlastikShell( QMainWindow ):
         
         self.loadProject(h5File, projectFilePath)
 
-    def onOpenProjectActionTriggered(self, debugProjectPath=None):
+    def onOpenProjectActionTriggered(self):
         logger.debug("Open Project action triggered")
 
         # Make sure the user is finished with the currently open project
         if not self.ensureNoCurrentProject():
             return
 
-        if debugProjectPath is None:
-            projectFilePath = QFileDialog.getOpenFileName(
-               self, "Open Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*.ilp)")
+        projectFilePath = QFileDialog.getOpenFileName(
+           self, "Open Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*.ilp)")
 
-            # If the user canceled, stop now        
-            if projectFilePath.isNull():
-                return
+        # If the user canceled, stop now        
+        if projectFilePath.isNull():
+            return
 
-            projectFilePath = str(projectFilePath)
-        else:
-            projectFilePath=debugProjectPath
-
+        projectFilePath = str(projectFilePath)
+        
+        self.openProjectFile(projectFilePath)
+    
+    def openProjectFile(self, projectFilePath):
         logger.info("Opening Project: " + projectFilePath)
 
         # Open the file as an HDF5 file
