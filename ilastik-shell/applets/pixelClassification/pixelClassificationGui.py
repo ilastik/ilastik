@@ -49,16 +49,9 @@ class PixelClassificationGui(QMainWindow):
         
         self.pipeline = pipeline
 
-        # Subscribe to various pipeline events so we can respond appropriately in the GUI
-        # TODO: Assumes only one image.
-        def handleInputListChanged(slot, position, finalsize):
-            """This closure is called when a new input image is connected to the multi-input slot."""
-            if len(self.pipeline.InputImages) > 0:
-                # Subscribe to changes on the graph input.
-                self.pipeline.InputImages[0].notifyMetaChanged(self.handleGraphInputChanged)
-            self.handleGraphInputChanged(None)
-                
-        self.pipeline.InputImages.notifyResized(handleInputListChanged)
+        self.imageIndex = 0
+
+        self.pipeline.InputImages.notifyResized(self.handleInputListChanged)
 #        self.pipeline.InputImages.notifyResized(handleInputListChanged)
 
         self.pipeline.labelsChangedSignal.connect(self.handlePipelineLabelsChanged)
@@ -68,8 +61,8 @@ class PixelClassificationGui(QMainWindow):
             """This closure is called when an image is added or removed from the output."""
             if len(self.pipeline.CachedPredictionProbabilities) > 0:
                 # Subscribe to changes on the graph input.
-                self.pipeline.CachedPredictionProbabilities[0].notifyMetaChanged(self.setupPredictionLayers)
-                self.setupPredictionLayers( self.pipeline.CachedPredictionProbabilities[0] )
+                self.pipeline.CachedPredictionProbabilities[self.imageIndex].notifyMetaChanged(self.setupPredictionLayers)
+                #self.setupPredictionLayers( self.pipeline.CachedPredictionProbabilities[self.imageIndex] )
         self.pipeline.CachedPredictionProbabilities.notifyMetaChanged(handleOutputListChanged)
         
         def handleOutputListAboutToResize(slot, oldsize, newsize):
@@ -107,6 +100,18 @@ class PixelClassificationGui(QMainWindow):
 #        
         # Track 
         self.predictionLayerGuiLabels = set()
+
+    # Subscribe to various pipeline events so we can respond appropriately in the GUI
+    def handleInputListChanged(self, slot=None, position=None, finalsize=None):
+        """This closure is called when a new input image is connected to the multi-input slot."""
+        if len(self.pipeline.InputImages) > 0:
+            # Subscribe to changes on the graph input.
+            self.pipeline.InputImages[self.imageIndex].notifyMetaChanged(self.handleGraphInputChanged)
+        self.handleGraphInputChanged()
+
+    def setImageIndex(self, imageIndex):
+        self.imageIndex = imageIndex
+        self.handleInputListChanged()
 
     def setIconToViewMenu(self):
         self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
@@ -355,9 +360,8 @@ class PixelClassificationGui(QMainWindow):
                 mexBox.setInformativeText("Painted Labels %d \nNumber Active Labels Layers %d"%(nPaintedLabels,self._labelControlUi.labelListModel.rowCount()))
                 mexBox.exec_()
                 return
-            # TODO: Assumes only one input image
             if len(self.pipeline.FeatureImages) == 0 \
-            or self.pipeline.FeatureImages[0].meta.shape==None:
+            or self.pipeline.FeatureImages[self.imageIndex].meta.shape==None:
                 self._labelControlUi.checkInteractive.setCheckState(0)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
@@ -627,15 +631,14 @@ class PixelClassificationGui(QMainWindow):
 
         # Request the prediction for the entire image stack.
         # Call our callback when it's finished
-        self.pipeline.CachedPredictionProbabilities[0][:].notify( onPredictionComplete )
+        self.pipeline.CachedPredictionProbabilities[self.imageIndex][:].notify( onPredictionComplete )
     
     def addPredictionLayer(self, icl, ref_label):
         """
         Add a prediction layer to the editor.
         """
-        # TODO: Assumes only one image
         selector=OpSingleChannelSelector(self.g)
-        selector.inputs["Input"].connect(self.pipeline.CachedPredictionProbabilities[0])
+        selector.inputs["Input"].connect(self.pipeline.CachedPredictionProbabilities[self.imageIndex])
         selector.inputs["Index"].setValue(icl)
         
 ##      self.pipeline.prediction_cache.inputs["fixAtCurrent"].setValue(not self._labelControlUi.checkInteractive.isChecked())
@@ -676,7 +679,7 @@ class PixelClassificationGui(QMainWindow):
                 self.layerstack.removeRows(il, 1)
                 break
     
-    def handleGraphInputChanged(self, slot):
+    def handleGraphInputChanged(self, slot=None):
         """
         The input data to our top-level operator has changed.
         """
@@ -684,9 +687,9 @@ class PixelClassificationGui(QMainWindow):
         self.initLabelGui()
 
         if len(self.pipeline.InputImages) > 0 \
-        and self.pipeline.InputImages[0].shape is not None:
+        and self.pipeline.InputImages[self.imageIndex].shape is not None:
 
-            shape = self.pipeline.InputImages[0].shape
+            shape = self.pipeline.InputImages[self.imageIndex].shape
             srcs    = []
             minMax = []
             
@@ -694,7 +697,9 @@ class PixelClassificationGui(QMainWindow):
             
             #create a layer for each channel of the input:
             slicer=OpMultiArraySlicer2(self.g)
-            slicer.inputs["Input"].connect(self.pipeline.InputImages[0])
+            opFiver = Op5ifyer(graph=self.g)
+            opFiver.input.connect(self.pipeline.InputImages[self.imageIndex])
+            slicer.inputs["Input"].connect(opFiver.output)
             
             slicer.inputs["AxisFlag"].setValue('c')
            
@@ -776,10 +781,9 @@ class PixelClassificationGui(QMainWindow):
 
         if len(self.pipeline.opLabelArray.outputs) > 0 and len(self.pipeline.InputImages) > 0:
             # Add the layer to draw the labels, but don't add any labels
-            # TODO: Assumes only one input image
             self.labelsrc = LazyflowSinkSource(self.pipeline.opLabelArray,
-                                               self.pipeline.opLabelArray.outputs["Output"][0],
-                                               self.pipeline.opLabelArray.inputs["Input"][0])
+                                               self.pipeline.opLabelArray.outputs["Output"][self.imageIndex],
+                                               self.pipeline.opLabelArray.inputs["Input"][self.imageIndex])
             self.labelsrc.setObjectName("labels")
         
             transparent = QColor(0,0,0,0)
@@ -796,7 +800,7 @@ class PixelClassificationGui(QMainWindow):
         """
         # Only construct the editor once
         if self.editor is None:
-            self.editor = VolumeEditor(self.layerstack, labelsink=self.labelsrc)
+            self.editor = VolumeEditor(self.layerstack)
     
             self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
             #drawing will be enabled when the first label is added  
@@ -816,9 +820,12 @@ class PixelClassificationGui(QMainWindow):
             # Give the editor a default "last focus" axis to avoid crashes later on
             #self.editor.lastImageViewFocus(2)
         
+        # Tell the editor where to draw label data        
+        self.editor.setLabelSink(self.labelsrc)
+
         #finally, setup the editor to have the correct shape
         #doing this last ensures that all connections are setup already
-        shape = self.pipeline.InputImages[0].shape
+        shape = self.pipeline.InputImages[self.imageIndex].shape
         self.editor.dataShape = shape
 
         self.labellayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
