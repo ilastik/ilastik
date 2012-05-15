@@ -18,8 +18,8 @@ class OpA(graph.Operator):
   Output3 = graph.OutputSlot()
 
 
-  def __init__(self, parent):
-    graph.Operator.__init__(self,parent)
+  def __init__(self, *args, **kwargs):
+    graph.Operator.__init__(self, *args, **kwargs)
     self._configured = False
 
   def setupOutputs(self):
@@ -220,3 +220,42 @@ class TestOperator_meta(object):
     assert op2.Output1.meta.shape == (10,)
     op1.Input1.setValue(numpy.ndarray((20,)))
     assert op2.Output1.meta.shape == (20,)
+
+class OpWithMultiInputs(graph.Operator):
+    Input = graph.MultiInputSlot()
+    Output = graph.MultiOutputSlot()
+        
+    def setupOutputs(self):
+        self.Output.resize(len(self.Input))
+    
+    def getSubOutSlot(self, slots, indexes, key, result):
+        slot = slots[0]
+        if slot.name == "Output":
+            result[...] = self.Input[indexes[0]][key]
+        
+class TestMultiSlotResize(object):
+    def setUp(self):
+        self.g = graph.Graph()
+        self.op1 = OpWithMultiInputs(graph=self.g)
+        self.op2 = OpWithMultiInputs(graph=self.g)
+
+        self.wrappedOp = OpA(graph=self.g)
+        # Connect multi-inputs to the single inputs to induce wrapping
+        self.wrappedOp.Input1.connect(self.op1.Input)
+        self.wrappedOp.Input2.connect(self.op2.Input)
+        
+    def tearDown(self):
+        self.g.stopGraph()
+    
+    def testResizeToSmaller(self):
+        self.op1.Input.resize(5)
+        self.op1.Input.resize(0)
+    
+if __name__ == "__main__":
+    import nose
+    nose.run( defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1} )
+
+
+
+
+

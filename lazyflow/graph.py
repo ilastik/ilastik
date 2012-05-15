@@ -509,12 +509,12 @@ class Slot(object):
 #          f(self, oldsize, size, **kw)
 
         while size > len(self):
-          self.insertSlot(len(self), size, propagate = False)
+          self.insertSlot(len(self), len(self)+1, propagate = False)
           # connect newly added slots
           self._connectSubSlot(len(self) - 1)
             
         while size < len(self):
-          self.removeSlot(len(self)-1, size, propagate = False)
+          self.removeSlot(len(self)-1, len(self)-1, propagate = False)
         
         # propagate size change downward
         for c in self.partners:
