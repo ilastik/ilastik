@@ -30,7 +30,6 @@ class FeatureSelectionGui(QMainWindow):
     ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
     DefaultColorTable = None
 
-    # Note: The order of these feature names must match the OpPixelFeaturesPresmoothed operator
     FeatureIds = [ 'GaussianSmoothing',
                    'LaplacianOfGaussian',
                    'StructureTensorEigenvalues',
@@ -38,6 +37,7 @@ class FeatureSelectionGui(QMainWindow):
                    'GaussianGradientMagnitude',
                    'DifferenceOfGaussians' ]
 
+    # Note: The order of these feature names must match the order of the feature Ids above
     FeatureNames = [ "G-smooth",
                      "L-of-G",
                      "ST EVs",
@@ -243,7 +243,7 @@ class FeatureSelectionGui(QMainWindow):
             if newsize == 0:
                 numRows = len(self.layerstack)
                 self.layerstack.removeRows(0, numRows)
-        self.mainOperator.InputImages.notifyResize(handleInputResize)
+        self.mainOperator.InputImage.notifyResize(handleInputResize)
 
     def setIconToViewMenu(self):
         """
@@ -259,7 +259,7 @@ class FeatureSelectionGui(QMainWindow):
         self.layerstack.removeRows(0, numRows)
 
         # Update the editor data shape
-        shape = self.mainOperator.InputImages[self.imageIndex].shape
+        shape = self.mainOperator.InputImage[self.imageIndex].shape
         self.editor.dataShape = shape
         
         # First add a black layer on the bottom of the image
@@ -272,7 +272,7 @@ class FeatureSelectionGui(QMainWindow):
 
         # Now add a layer for each feature
         # TODO: This assumes the channel is the last axis 
-        numFeatureChannels = self.mainOperator.CachedOutputImages[self.imageIndex].shape[-1]
+        numFeatureChannels = self.mainOperator.CachedOutputImage[self.imageIndex].shape[-1]
         for featureChannelIndex in reversed(range(0, numFeatureChannels)):
             if featureChannelIndex < len(self.DefaultColorTable):
                 # Choose the next color from our default color table
@@ -290,18 +290,18 @@ class FeatureSelectionGui(QMainWindow):
         """
         # Create an operator to select the channel (feature) we're interested in
         selector=OpSingleChannelSelector(self.mainOperator.graph)
-        selector.Input.connect(self.mainOperator.CachedOutputImages[self.imageIndex])
+        selector.Input.connect(self.mainOperator.CachedOutputImage[self.imageIndex])
         selector.Index.setValue(featureChannelIndex)
         
         # Determine the name for this feature
-        channelAxis = self.mainOperator.InputImages[self.imageIndex].meta.axistags.channelIndex
-        numOriginalChannels = self.mainOperator.InputImages[self.imageIndex].meta.shape[channelAxis]
+        channelAxis = self.mainOperator.InputImage[self.imageIndex].meta.axistags.channelIndex
+        numOriginalChannels = self.mainOperator.InputImage[self.imageIndex].meta.shape[channelAxis]
         originalChannel = featureChannelIndex % numOriginalChannels
         featureNameIndex = featureChannelIndex / numOriginalChannels
         channelNames = ['R', 'G', 'B']
         # FIXME: It shouldn't be necessary to dig down into the operator to access these names.
         #        Perhaps the operator should provide them as an output?
-        featureName = self.mainOperator.internalFeatureOps[self.imageIndex].featureNames[ featureNameIndex ]
+        featureName = self.mainOperator.FeatureNames[self.imageIndex].value[ featureNameIndex ]
         if numOriginalChannels > 1:
             featureName += " (" + channelNames[originalChannel] + ")"
         

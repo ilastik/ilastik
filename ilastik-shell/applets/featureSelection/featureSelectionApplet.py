@@ -5,6 +5,7 @@ from opFeatureSelection import OpFeatureSelection
 from featureSelectionSerializer import FeatureSelectionSerializer, Ilastik05FeatureSelectionDeserializer
 from featureSelectionGui import FeatureSelectionGui
 
+from lazyflow.graph import OperatorWrapper
 
 class FeatureSelectionApplet( Applet ):
     """
@@ -17,7 +18,7 @@ class FeatureSelectionApplet( Applet ):
         # Create a data selection top-level operator on the main graph
         # This operator object represents the "model" or master state of the applet which 
         #  the other components of the applet will manipulate and/or listen to for changes.
-        self._topLevelOperator = OpFeatureSelection(graph)
+        self._topLevelOperator = OperatorWrapper( OpFeatureSelection(graph) )
 
         # Serialization settings are managed by a 
         self._serializableItems = [ FeatureSelectionSerializer(self._topLevelOperator),

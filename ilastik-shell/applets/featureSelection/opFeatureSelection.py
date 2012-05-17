@@ -1,4 +1,4 @@
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 
 from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache
 import copy
@@ -12,7 +12,7 @@ class OpFeatureSelection(Operator):
     category = "Top-level"
 
     # Multiple input images
-    InputImages = MultiInputSlot()
+    InputImage = InputSlot()
 
     # The following input slots are applied uniformly to all input images
     Scales = InputSlot() # The list of possible scales to use when computing features
@@ -23,88 +23,41 @@ class OpFeatureSelection(Operator):
                          # The matrix columns correspond to the scales provided in the Scales input,
                          #  which requires that the number of matrix columns must match len(Scales.value)
     
-    # Features are presented in the channels of the output images
+    # Features are presented in the channels of the output image
     # Output can be optionally accessed via an internal cache.
     # (Training a classifier benefits from caching, but predicting with an existing classifier does not.)
-    OutputImages = MultiOutputSlot()
-    CachedOutputImages = MultiOutputSlot()
+    OutputImage = OutputSlot()
+    CachedOutputImage = OutputSlot()
+
+    FeatureNames = OutputSlot() # The name of each feature used is also provided as a list of strings
     
-    def __init__(self, graph):
-        super(OpFeatureSelection, self).__init__(graph=graph)
+    def __init__(self, *args, **kwargs):
+        super(OpFeatureSelection, self).__init__(*args, **kwargs)
 
-        # List of internal pixel features operators
-        self.internalFeatureOps = []
+        # Two internal operators: features and cache
+        self.opPixelFeatures = OpPixelFeaturesPresmoothed(parent=self)
+        self.opPixelFeatureCache = OpBlockedArrayCache(parent=self)
 
-        # Cache operator
-        self.internalCaches = OpBlockedArrayCache(parent=self)
-        self.internalCaches.Input.connect(self.OutputImages) # Note: Cache is now "wrapped" with level=1
+        # Connect the two operators
+        self.opPixelFeatureCache.Input.connect(self.opPixelFeatures.Output)
 
+        # Configure the cache        
         # We choose block shapes that have only 1 channel because the channels may be 
         #  coming from different features (e.g different filters) and probably shouldn't be cached together.
-        self.internalCaches.innerBlockShape.setValue((1,32,32,32,1))
-        self.internalCaches.outerBlockShape.setValue((1,128,128,128,1))
-        self.internalCaches.fixAtCurrent.setValue(False)
+        self.opPixelFeatureCache.innerBlockShape.setValue((1,32,32,32,1))
+        self.opPixelFeatureCache.outerBlockShape.setValue((1,128,128,128,1))
+        self.opPixelFeatureCache.fixAtCurrent.setValue(False)
 
-        def inputResizeHandler( slot, oldsize, newsize ):
-            if ( newsize == 0 ):
-                self.OutputImages.resize(0)
-                self.CachedOutputImages.resize(0)
-        self.InputImages.notifyResized(inputResizeHandler)
-
-    def setupOutputs(self):
-        numInputs = len(self.InputImages)
-        featureIds = self.FeatureIds.value
+        # Connect our internal operators to our external inputs 
+        self.opPixelFeatures.Scales.connect( self.Scales )
+        self.opPixelFeatures.FeatureIds.connect( self.FeatureIds )
+        self.opPixelFeatures.Matrix.connect( self.SelectionMatrix )
+        self.opPixelFeatures.Input.connect( self.InputImage )
         
-        # Ensure that we have the right number of internal operators
-        # Add more if necessary
-        while len(self.internalFeatureOps) < numInputs:
-            self.internalFeatureOps.append( OpPixelFeaturesPresmoothed(parent=self, featureIds=featureIds) )
-
-        # Remove some if necessary
-        # TODO: This can be more efficient.  We should figure out which input index was 
-        #       removed so the remaining internal operators can keep their existing 
-        #       connections instead of being rewired.
-        if len(self.internalFeatureOps) < numInputs:
-            self.internalFeatureOps.resize( numInputs )
-
-        # Ensure the proper number of outputs
-        self.OutputImages.resize( numInputs )
-        self.CachedOutputImages.resize( numInputs )
-
-        # Clone all image inputs to the corresponding internal operator.
-        # Also, clone the matrix and scale inputs to each of our internal operators
-        for i in range( 0, numInputs ):
-            self.internalFeatureOps[i].Input.connect( self.InputImages[i] )
-            self.internalFeatureOps[i].Scales.connect( self.Scales )
-            self.internalFeatureOps[i].Matrix.connect( self.SelectionMatrix )
-        
-            # Copy the metadata from the internal operators
-            self.OutputImages[i].meta.dtype = self.internalFeatureOps[i].Output.meta.dtype
-            self.OutputImages[i].meta.shape = self.internalFeatureOps[i].Output.meta.shape
-            self.OutputImages[i].meta.axistags = copy.copy(self.internalFeatureOps[i].Output.meta.axistags)
-
-            self.CachedOutputImages[i].meta.dtype = self.internalFeatureOps[i].Output.meta.dtype
-            self.CachedOutputImages[i].meta.shape = self.internalFeatureOps[i].Output.meta.shape
-            self.CachedOutputImages[i].meta.axistags = copy.copy(self.internalFeatureOps[i].Output.meta.axistags)
-
-    def getSubOutSlot(self, slots, indexes, key, result):
-        slot = slots[0]
-        if slot.name == 'OutputImages':
-            # Uncached result
-            req = self.internalFeatureOps[indexes[0]].Output[key].writeInto(result)
-            res = req.wait()
-            return res
-        elif slot.name == 'CachedOutputImages':
-            # Cached result
-            req = self.internalCaches.Output[indexes[0]][key].writeInto(result)
-            res = req.wait()
-            return res
-
-    
-    
-    
-    
-
+        # Connect our external outputs to our internal operators
+        self.FeatureNames.connect( self.opPixelFeatures.FeatureNames )
+        self.OutputImage.connect( self.opPixelFeatures.Output )
+        self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )        
 
 
 
