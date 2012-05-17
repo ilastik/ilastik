@@ -69,7 +69,6 @@ class PixelClassificationSerializer(object):
         except KeyError:
             # There's no label data in the project.  Make sure the operator doesn't have any label data.
             self.mainOperator.LabelInputs.resize(0)
-            self.mainOperator.labelsChangedSignal.emit()
             return
 
         numImages = len(labelSetGroup)
@@ -86,7 +85,6 @@ class PixelClassificationSerializer(object):
         
         # For now, the OpPixelClassification operator has a special signal for notifying the GUI that the label data has changed.
         # In the future, this should be done with some sort of callback on the graph
-        self.mainOperator.labelsChangedSignal.emit()
 
     def getOrCreateGroup(self, parentGroup, groupName):
         try:
@@ -146,8 +144,7 @@ class PixelClassificationSerializer(object):
         (2) the project opening process needs to be aborted for some reason
             (e.g. not all items could be deserialized properly due to a corrupted ilp)
         This way we can avoid invalid state due to a partially loaded project. """ 
-        pass
-
+        self.mainOperator.LabelInputs.resize(0)
 
 class Ilastik05ImportDeserializer(object):
     """
