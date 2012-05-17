@@ -18,7 +18,6 @@ class OpPixelClassification( Operator ):
     
     InputImages = MultiInputSlot() # Original input data.  Used for display only.
 
-    NumClasses = InputSlot() # The number of possible labels in the image
     LabelInputs = MultiInputSlot(optional = True) # Input for providing label data from an external source
 
     FeatureImages = MultiInputSlot() # Computed feature images (each channel is a different feature)
@@ -27,6 +26,7 @@ class OpPixelClassification( Operator ):
     PredictionProbabilities = MultiOutputSlot() # Classification predictions
     CachedPredictionProbabilities = MultiOutputSlot() # Classification predictions (via a cache)
     
+    MaxLabelValue = OutputSlot()
     LabelImages = MultiOutputSlot() # Labels from the user
     NonzeroLabelBlocks = MultiOutputSlot() # A list if slices that contain non-zero label values
 
@@ -38,7 +38,6 @@ class OpPixelClassification( Operator ):
         
 #        ## Signals (non-qt) ##
         self.inputDataChangedSignal = SimpleSignal()     # Input data loaded/changed
-#        self.featuresChangedSignal = SimpleSignal()      # New/changed feature selections
         self.labelsChangedSignal = SimpleSignal()        # New/changed label data
         self.pipelineConfiguredSignal = SimpleSignal()   # Pipeline is fully configured (all inputs are connected and have data)
         self.predictionMetaChangeSignal = SimpleSignal() # The prediction cache has changed its shape (or dtype).
@@ -46,13 +45,14 @@ class OpPixelClassification( Operator ):
         # Create internal operators
         self.opInputShapeReader = OpShapeReader(self.graph)
         self.opLabelArray = OpBlockedSparseLabelArray( self.graph )
+        self.opMaxLabel = OpMaxValue(graph=self.graph)
         self.opTrain = OpTrainRandomForestBlocked( self.graph )
         self.predict=OpPredictRandomForest( self.graph )
         self.prediction_cache = OpSlicedBlockedArrayCache( self.graph )
 
         self.opInputShapeReader.Input.connect( self.InputImages ) #<-- Note: Now opInputShapeReader is wrapped
         self.opLabelArray.inputs["shape"].connect( self.opInputShapeReader.OutputShape ) #<-- Note: now opLabelArray is wrapped
-        self.opLabelArray.inputs["Input"].connect( self.LabelImages )
+        self.opLabelArray.inputs["Input"].connect( self.LabelInputs )
         self.opLabelArray.inputs["blockShape"].setValue((1, 32, 32, 32, 1))
         self.opLabelArray.inputs["eraser"].setValue(100)
         
@@ -60,16 +60,16 @@ class OpPixelClassification( Operator ):
         # Now changing this input to a positive value will cause label deletions.
         # (The deleteLabel input is monitored for changes.)
         self.opLabelArray.inputs["deleteLabel"].setValue(-1)
+        
+        # Find the highest label in all the label images
+        self.opMaxLabel.Inputs.connect( self.opLabelArray.outputs['maxLabel'] ) # opMaxLabel is now wrapped
+
+        # Also expose the max label as an output of this top-level operator
+        self.MaxLabelValue.connect( self.opMaxLabel.Output )
 
         ##
         # training
         ##
-        # TODO: Replace these OpXToMulti operators with a MultiArrayPiper
-#        opMultiL = Op5ToMulti( graph=self.graph )
-#        opMultiL.inputs["Input0"].connect()
-#
-#        opMultiLblocks = Op5ToMulti( graph=self.graph )
-#        opMultiLblocks.inputs["Input0"].connect()
         
         self.opTrain.inputs['Labels'].connect(self.opLabelArray.outputs["Output"])
         self.opTrain.inputs['Images'].connect(self.CachedFeatureImages)
@@ -84,7 +84,7 @@ class OpPixelClassification( Operator ):
         ##
         self.predict.inputs['Classifier'].connect(self.classifier_cache.outputs['Output']) 
         self.predict.inputs['Image'].connect(self.FeatureImages) #<-- Note: Now predict is wrapped
-        self.predict.inputs['LabelsCount'].connect(self.NumClasses)
+        self.predict.inputs['LabelsCount'].connect(self.opMaxLabel.Output)
         
         # 
         self.prediction_cache.name = "PredictionCache"
@@ -93,25 +93,11 @@ class OpPixelClassification( Operator ):
         self.prediction_cache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
         self.prediction_cache.inputs["Input"].connect(self.predict.outputs["PMaps"])
 
-        # Default value for inputs
-        self.NumClasses.setValue(0)
-
-        # The prediction cache is the final stage our pipeline.
-        # When it is configured, signal that the whole pipeline is configured
-        #self.prediction_cache.notifyConfigured( self.pipelineConfiguredSignal.emit )
-        
-#        def emitPredictionMetaChangeSignal(slot):
-#            """Closure to emit the prediction meta changed signal with the correct parameter."""
-#            self.predictionMetaChangeSignal.emit( self.prediction_cache.configured() )
-#        self.prediction_cache.outputs["Output"][0].notifyMetaChanged(emitPredictionMetaChangeSignal)
-#    @property
-#    def featureBoolMatrix(self):
-#        return self.features.inputs['Matrix'].value
-#    
-#    @featureBoolMatrix.setter
-#    def featureBoolMatrix(self, newMatrix):
-#        self.features.inputs['Matrix'].setValue(newMatrix)
-#        self.featuresChangedSignal.emit()
+        # Connect our internal outputs to our external outputs
+        self.LabelImages.connect(self.opLabelArray.Output)
+        self.NonzeroLabelBlocks.connect(self.opLabelArray.nonzeroBlocks)
+        self.PredictionProbabilities.connect(self.predict.PMaps)
+        self.CachedPredictionProbabilities.connect(self.prediction_cache.Output)
         
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
@@ -124,6 +110,12 @@ class OpPixelClassification( Operator ):
         
     def setupOutputs(self):
         numImages = len(self.InputImages)
+        
+        # Can't setup if all inputs haven't been set yet.
+        if numImages != len(self.FeatureImages) or \
+           numImages != len(self.CachedFeatureImages):
+            return
+        
         self.PredictionProbabilities.resize(numImages)
         self.CachedPredictionProbabilities.resize(numImages)
         self.LabelImages.resize(numImages)
@@ -152,23 +144,6 @@ class OpPixelClassification( Operator ):
             self.NonzeroLabelBlocks[i].meta.shape = self.opLabelArray.nonzeroBlocks[i].meta.shape
             self.NonzeroLabelBlocks[i].meta.dtype = self.opLabelArray.nonzeroBlocks[i].meta.dtype
             self.NonzeroLabelBlocks[i].meta.axistags = copy.copy(self.opLabelArray.nonzeroBlocks[i].meta.axistags)
-
-    def getSubOutSlot(self, slots, indexes, key, result):
-        slot = slots[0]
-        if slot.name == "PredictionProbabilities":
-            req = self.predict.PMaps[indexes[0]][key].writeInto(result)
-            return req.wait()
-        elif slot.name == "CachedPredictionProbabilities":
-            req = self.prediction_cache.Output[indexes[0]][key].writeInto(result)
-            return req.wait()
-        elif slot.name == "LabelImages":
-            req = self.opLabelArray.Output[indexes[0]][key].writeInto(result)
-            return req.wait()
-        elif slot.name == "NonzeroLabelBlocks":
-            req = self.opLabelArray.nonzeroBlocks[indexes[0]][key].writeInto(result)
-            return req.wait()
-        else:
-            assert False, "Invalid output slot."
     
     def setSubInSlot(self, multislot,slot,index, key,value):
         if slot.name == 'LabelInputs':
@@ -209,21 +184,6 @@ class OpPixelClassification( Operator ):
         self.labels.inputs["Input"][:] = labelData
         
         self.labelsChangedSignal.emit()
-    
-#    @property
-#    def maxLabel(self):
-#        """
-#        Return the maximum number of labels the classifier can currently use.
-#        """
-#        return self.predict.inputs['LabelsCount'].value
-#
-#    def setMaxLabel(self, highestLabel):
-#        """
-#        Change the maximum number of label classes the prediction operator can handle.
-#        """
-#        # Count == highest label because 0 isn't a valid label
-#        self.predict.inputs['LabelsCount'].setValue(highestLabel)
-
 
 class OpShapeReader(Operator):
     """
@@ -244,10 +204,37 @@ class OpShapeReader(Operator):
         shapeList[channelIndex] = 1
         result[0] = tuple(shapeList)
 
+class OpMaxValue(Operator):
+    """
+    Accepts a list of non-array values as an input and outputs the max of the list.
+    """
+    Inputs = MultiInputSlot() # A list of non-array values
+    Output = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super(OpMaxValue, self).__init__(*args, **kwargs)
+        
+        self.Inputs.notifyInserted( self.setOutputDirty )
+        self.Inputs.notifyRemove( self.setOutputDirty )
+        
+    def setOutputDirty(self, *args, **kwargs):
+        self.Output.setDirty(slice(None))
+    
+    def setupOutputs(self):
+        self.Output.meta.shape = (1,)
+        self.Output.meta.dtype = object
 
-
-
-
+    def execute(self, slot, roi, result):
+        # Return the max value of all our inputs
+        maxValue = None
+        for i, inputSubSlot in enumerate(self.Inputs):
+            # Only use inputs that are actually configured
+            if inputSubSlot.configured():
+                if maxValue is None:
+                    maxValue = inputSubSlot.value
+                else:
+                    maxValue = max(maxValue, inputSubSlot.value)
+        result[0] = maxValue
 
 
 
