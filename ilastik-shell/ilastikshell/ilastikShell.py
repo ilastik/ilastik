@@ -15,8 +15,10 @@ from functools import partial
 from utility import VersionManager
 from lazyflow.graph import MultiOutputSlot
 
+import sys
 import logging
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 
 class ShellActions(object):
     """
