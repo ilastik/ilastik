@@ -164,7 +164,7 @@ class DataSelectionSerializer(object):
             (2) the project opening process needs to be aborted for some reason
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
             This way we can avoid invalid state due to a partially loaded project. """ 
-        pass
+        self.mainOperator.DatasetInfos.resize( 0 )
 
     def getOrCreateGroup(self, parentGroup, groupName):
         try:
