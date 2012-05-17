@@ -14,9 +14,9 @@ from lazyflow.graph import Graph
 from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
                                OpArrayPiper, OpPredictRandomForest, \
                                OpSingleChannelSelector, OpSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForest, OpPixelFeatures, \
+                               OpMultiArrayStacker, OpTrainRandomForest, \
                                OpMultiArraySlicer2,OpH5Reader, OpBlockedSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForestBlocked, OpPixelFeatures, \
+                               OpMultiArrayStacker, OpTrainRandomForestBlocked, \
                                OpH5ReaderBigDataset, OpSlicedBlockedArrayCache, OpPixelFeaturesPresmoothed
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
@@ -54,8 +54,12 @@ class PixelClassificationGui(QMainWindow):
         self.pipeline.InputImages.notifyResized(self.handleInputListChanged)
 #        self.pipeline.InputImages.notifyResized(handleInputListChanged)
 
-        self.pipeline.labelsChangedSignal.connect(self.handlePipelineLabelsChanged)
+        self.pipeline.opMaxLabel.Output.notifyDirty( self.handlePipelineLabelsChanged )
+        
+        #self.pipeline.labelsChangedSignal.connect(self.handlePipelineLabelsChanged)
         #self.pipeline.predictionMetaChangeSignal.connect(self.setupPredictionLayers)
+
+        self.pipeline.opLabelArray.Output.notifyResized(self.handleLabelListChanged)
 
         def handleOutputListChanged(slot):
             """This closure is called when an image is added or removed from the output."""
@@ -96,6 +100,8 @@ class PixelClassificationGui(QMainWindow):
         self.initViewerControlUi()
         self.initAppletBarUic()
 
+        self._programmaticallyRemovingLabels = False
+
 #        self.initLabelGui()
 #        
         # Track 
@@ -108,6 +114,11 @@ class PixelClassificationGui(QMainWindow):
             # Subscribe to changes on the graph input.
             self.pipeline.InputImages[self.imageIndex].notifyMetaChanged(self.handleGraphInputChanged)
         self.handleGraphInputChanged()
+
+    def handleLabelListChanged(self, slot=None, position=None, finalsize=None):
+        if len(self.pipeline.opLabelArray.Output) > 0:
+            # Subscribe to changes on the graph input.
+            self.pipeline.opLabelArray.Output[self.imageIndex].notifyMetaChanged(self.handleLabelGraphInputChanged)
 
     def setImageIndex(self, imageIndex):
         self.imageIndex = imageIndex
@@ -349,8 +360,9 @@ class PixelClassificationGui(QMainWindow):
         
         #Check if the number of labels in the layer stack is equals to the number of Painted labels
         if checked==True:
-            labels = self.pipeline.getUniqueLabels()
-            nPaintedLabels=labels.shape[0]
+            nPaintedLabels = self.pipeline.opMaxLabel.Output.value
+            if nPaintedLabels is None:
+                nPaintedLabels = 0
             nLabelsLayers = self._labelControlUi.labelListModel.rowCount()
             
             if nPaintedLabels!=nLabelsLayers:
@@ -468,24 +480,26 @@ class PixelClassificationGui(QMainWindow):
         self.editor.brushingModel.setBrushColor(color)
         self.editor.scheduleSlicesRedraw()
     
-    def handlePipelineLabelsChanged(self):
+    def handlePipelineLabelsChanged(self, *args, **kwargs):
         """
         This function is called when the number of labels has changed without our knowledge.
         We need to add/remove labels until we have the right number
         """
         # Get the number of labels in the label data
-        uniqueLabels = self.pipeline.getUniqueLabels()
+        numLabels = self.pipeline.opMaxLabel.Output.value
+        if numLabels == None:
+            numLabels = 0
 
         # Add rows until we have the right number
-        while self._labelControlUi.labelListModel.rowCount() < uniqueLabels.shape[0]:
+        while self._labelControlUi.labelListModel.rowCount() < numLabels:
             self.addNewLabel()
         
         # Remove rows until we have the right number
-        while self._labelControlUi.labelListModel.rowCount() > uniqueLabels.shape[0]:
+        while self._labelControlUi.labelListModel.rowCount() > numLabels:
             self.removeLastLabel()
 
         # Select a label by default so the brushing controller doesn't get confused.
-        if len(uniqueLabels) > 0:
+        if numLabels > 0:
             selectedRow = self._labelControlUi.labelListModel.selectedRow()
             if selectedRow == -1:
                 selectedRow = 0 
@@ -519,11 +533,11 @@ class PixelClassificationGui(QMainWindow):
         #drawing will be enabled when the first label is added
         self.changeInteractionMode( Tool.Navigation )
 
-        if self.pipeline is not None:
-            print "Label added, changing predictions"
-            #re-train the forest now that we have more labels
-            if self.pipeline.NumClasses.value < nlabels:
-                self.pipeline.NumClasses.setValue( nlabels )
+#        if self.pipeline is not None:
+#            print "Label added, changing predictions"
+#            #re-train the forest now that we have more labels
+#            if self.pipeline.NumClasses.value < nlabels:
+#                self.pipeline.NumClasses.setValue( nlabels )
         
         return nlabels
     
@@ -531,30 +545,35 @@ class PixelClassificationGui(QMainWindow):
         """
         Programmatically (i.e. not from the GUI) reduce the size of the label list by one.
         """
-        numRows = self._labelControlUi.labelListModel.rowCount()        
+        self._programmaticallyRemovingLabels = True
+        numRows = self._labelControlUi.labelListModel.rowCount()
         # This will trigger the signal that calls onLabelAboutToBeRemoved()
         self._labelControlUi.labelListModel.removeRow(numRows-1)
         numRows = numRows-1
     
-        if self.pipeline is not None:
-            print "Label removed, changing predictions"
-            #re-train the forest now that we have fewer labels
-            if self.pipeline.NumClasses.value > numRows:
-                self.pipeline.NumClasses.setValue( numRows )
+        self._programmaticallyRemovingLabels = False
+    
+#        if self.pipeline is not None:
+#            print "Label removed, changing predictions"
+#            #re-train the forest now that we have fewer labels
+#            if self.pipeline.NumClasses.value > numRows:
+#                self.pipeline.NumClasses.setValue( numRows )
 
     def onLabelAboutToBeRemoved(self, parent, start, end):
         #the user deleted a label, reshape prediction and remove the layer
         #the interface only allows to remove one label at a time?
         
+        # Don't respond unless this actually came from the GUI
+        if self._programmaticallyRemovingLabels:
+            return
+        
         nout = start-end+1
         ncurrent = self._labelControlUi.labelListModel.rowCount()
         print "removing", nout, "out of ", ncurrent
         
-        if self.pipeline is not None:
-            self.pipeline.NumClasses.setValue( ncurrent-nout )
         for il in range(start, end+1):
-            labelvalue = self._labelControlUi.labelListModel._labels[il]
-            self.removePredictionLayer(labelvalue)
+            #labelvalue = self._labelControlUi.labelListModel._labels[il]
+            #self.removePredictionLayer(labelvalue)
 
             # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
             #  to search through the entire list of labels and delete the entries for the matching label.
@@ -565,7 +584,7 @@ class PixelClassificationGui(QMainWindow):
             #  (Only *changes* to the input are acted upon.)
             self.pipeline.opLabelArray.inputs["deleteLabel"].setValue(-1)
 
-            self.editor.scheduleSlicesRedraw()
+            #self.editor.scheduleSlicesRedraw()
             
     def setupPredictionLayers(self, predictionOutputSlot):
         """
@@ -683,9 +702,6 @@ class PixelClassificationGui(QMainWindow):
         """
         The input data to our top-level operator has changed.
         """
-        
-        self.initLabelGui()
-
         if len(self.pipeline.InputImages) > 0 \
         and self.pipeline.InputImages[self.imageIndex].shape is not None:
 
@@ -764,6 +780,13 @@ class PixelClassificationGui(QMainWindow):
             #  so we can always see the labels and predictions.
             self.layerstack.insert(len(self.layerstack), layer1)
             layer1.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
+
+            self.initLabelGui()
+
+
+    def handleLabelGraphInputChanged(self, slot=None):
+#        if self.editor is not None:
+        self.initLabelGui()
         
     def removeLayersFromEditorStack(self, layerName):
         """
@@ -775,10 +798,6 @@ class PixelClassificationGui(QMainWindow):
                 self.layerstack.removeRows(i, 1)
 
     def initLabelGui(self):
-        if self.labellayer is not None:
-            # Remove any existing label layer before adding a new one
-            self.removeLayersFromEditorStack(self.labellayer.name)
-
         if len(self.pipeline.opLabelArray.outputs) > 0 and len(self.pipeline.InputImages) > 0:
             # Add the layer to draw the labels, but don't add any labels
             self.labelsrc = LazyflowSinkSource(self.pipeline.opLabelArray,
@@ -790,13 +809,17 @@ class PixelClassificationGui(QMainWindow):
             self.labellayer = ColortableLayer(self.labelsrc, colorTable = [transparent.rgba()] )
             self.labellayer.name = "Labels"
             self.labellayer.ref_object = None
+            self.labellayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
         
+            # Tell the editor where to draw label data
+            self.editor.setLabelSink(self.labelsrc)
+
             # Labels should be first (on top)
             self.layerstack.insert(0, self.labellayer)
     
     def initEditor(self):
         """
-        Initialize the Volume Editor GUI.
+        Initialize (or reinitialize) the Volume Editor GUI.
         """
         # Only construct the editor once
         if self.editor is None:
@@ -819,16 +842,17 @@ class PixelClassificationGui(QMainWindow):
                         
             # Give the editor a default "last focus" axis to avoid crashes later on
             #self.editor.lastImageViewFocus(2)
-        
-        # Tell the editor where to draw label data        
-        self.editor.setLabelSink(self.labelsrc)
 
-        #finally, setup the editor to have the correct shape
-        #doing this last ensures that all connections are setup already
+                
+        # Clear the label layers
+        self.editor.setLabelSink(None)
+        if self.labellayer is not None:
+            # Remove any existing label layer before adding a new one
+            self.removeLayersFromEditorStack(self.labellayer.name)
+
+        # Give the editor the appropriate shape
         shape = self.pipeline.InputImages[self.imageIndex].shape
         self.editor.dataShape = shape
-
-        self.labellayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
 
     def _createDefault16ColorColorTable(self):
         c = []
