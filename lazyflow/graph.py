@@ -1525,7 +1525,7 @@ class Operator(object):
 class OperatorWrapper(Operator):
     name = ""
     
-    def __init__(self, operator, register = False):
+    def __init__(self, operator):
         self.inputs = InputDict(self)
         self.outputs = OutputDict(self)
         self.operator = operator
