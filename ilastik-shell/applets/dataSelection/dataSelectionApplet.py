@@ -2,7 +2,7 @@ from ilastikshell.applet import Applet
 
 from opDataSelection import OpDataSelection
 
-from dataSelectionSerializer import DataSelectionSerializer
+from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 from dataSelectionPreferencesManager import DataSelectionPreferencesManager
 from dataSelectionGui import DataSelectionGui
 
@@ -20,7 +20,8 @@ class DataSelectionApplet( Applet ):
         self._topLevelOperator = OpDataSelection(graph)
 
         # Serialization settings are managed by a 
-        self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator) ]
+        self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator),
+                                    Ilastik05DataSelectionDeserializer(self._topLevelOperator) ]
 
         # Instantiate the main GUI, which creates the applet drawers (for now)
         self._centralWidget = DataSelectionGui( self._topLevelOperator )

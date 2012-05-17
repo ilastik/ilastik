@@ -172,6 +172,79 @@ class DataSelectionSerializer(object):
         except KeyError:
             return parentGroup.create_group(groupName)
 
+
+
+class Ilastik05DataSelectionDeserializer(object):
+    """
+    Deserializes the user's input data selections from an ilastik v0.5 project file.
+    """
+
+    def __init__(self, mainOperator):
+        self.mainOperator = mainOperator
+    
+    def serializeToHdf5(self, hdf5File, projectFilePath):
+        # This class is for DEserialization only.
+        pass
+
+    def deserializeFromHdf5(self, hdf5File, projectFilePath):
+        # Check the overall file version
+        ilastikVersion = hdf5File["ilastikVersion"].value
+
+        # This is the v0.5 import deserializer.  Don't work with 0.6 projects (or anything else).
+        if ilastikVersion != 0.5:
+            return
+
+        # The 'working directory' for the purpose of constructing absolute 
+        #  paths from relative paths is the project file's directory.
+        projectDir = os.path.split(projectFilePath)[0]
+        self.mainOperator.WorkingDirectory.setValue( projectDir )
+
+        # Provide the project file to our operator
+        self.mainOperator.ProjectFile.setValue(hdf5File)
+
+        # Access the top group and the info group
+        try:
+            #dataset = hdf5File["DataSets"]["dataItem00"]["data"]
+            dataDir = hdf5File["DataSets"]
+        except KeyError:
+            # If our group (or subgroup) doesn't exist, then make sure the operator is empty
+            self.mainOperator.DatasetInfos.resize( 0 )
+            return
+        
+        self.mainOperator.DatasetInfos.resize( len(dataDir) )
+        for index, (datasetDirName, datasetDir) in enumerate( sorted(dataDir.items()) ):
+            datasetInfo = OpDataSelection.DatasetInfo()
+
+            # Since we are importing from a 0.5 file, all datasets will be external 
+            #  to the project (pulled in from the old file as hdf5 datasets)
+            datasetInfo.location = Location.FileSystem
+            
+            datasetInfo.invertColors = False
+            datasetInfo.convertToGrayscale = False
+
+            # Write to the 'private' members to avoid resetting the dataset id
+            totalDatasetPath = projectFilePath + '/DataSets/' + datasetDirName + '/data'
+            datasetInfo._filePath = str(totalDatasetPath)
+            datasetInfo._datasetId = datasetDirName # Use the old dataset name as the new dataset id
+            
+            # Give the new info to the operator
+            self.mainOperator.DatasetInfos[index].setValue(datasetInfo)
+
+    def isDirty(self):
+        """ Return true if the current state of this item 
+            (in memory) does not match the state of the HDF5 group on disk.
+            SerializableItems are responsible for tracking their own dirty/notdirty state."""
+        return False
+
+    def unload(self):
+        """ Called if either
+            (1) the user closed the project or
+            (2) the project opening process needs to be aborted for some reason
+                (e.g. not all items could be deserialized properly due to a corrupted ilp)
+            This way we can avoid invalid state due to a partially loaded project. """ 
+        self.mainOperator.DatasetInfos.resize( 0 )
+
+
 if __name__ == "__main__":
     import os
     import h5py

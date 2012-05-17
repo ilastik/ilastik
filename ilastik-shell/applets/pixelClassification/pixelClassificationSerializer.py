@@ -82,9 +82,6 @@ class PixelClassificationSerializer(object):
                 slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
                 # Slice in this data to the label input
                 self.mainOperator.LabelInputs[index][slicing] = blockData[...]
-        
-        # For now, the OpPixelClassification operator has a special signal for notifying the GUI that the label data has changed.
-        # In the future, this should be done with some sort of callback on the graph
 
     def getOrCreateGroup(self, parentGroup, groupName):
         try:
@@ -152,8 +149,8 @@ class Ilastik05ImportDeserializer(object):
     For now, this class is import-only.  Only the deserialize function is implemented.
     If the project is not an ilastik0.5 project, this serializer does nothing.
     """
-    def __init__(self, pipeline):
-        self.pipeline = pipeline
+    def __init__(self, topLevelOperator):
+        self.mainOperator = topLevelOperator
     
     def serializeToHdf5(self, hdf5Group, projectFilePath):
         """Not implemented. (See above.)"""
@@ -169,55 +166,18 @@ class Ilastik05ImportDeserializer(object):
 
         # The pixel classification workflow supports importing projects in the old 0.5 format
         if ilastikVersion == 0.5:
-            print "Deserializing ilastik 0.5 project..."
-            self.importProjectAttributes(hdf5File) # (e.g. description, labeler, etc.)
-            self.importDataSets(hdf5File)
-            self.importLabelSets(hdf5File)
-            self.importFeatureSelections(hdf5File)
-            self.importClassifier(hdf5File)
-    
-    def importProjectAttributes(self, hdf5File):
-        description = hdf5File["Project"]["Description"].value
-        labeler = hdf5File["Project"]["Labeler"].value
-        name = hdf5File["Project"]["Name"].value
-        # TODO: Actually store these values and show them in the GUI somewhere . . .
-        
-    def importFeatureSelections(self, hdf5File):
-        """
-        Import the feature selections from the v0.5 project file
-        """
-        # Create a feature selection matrix of the correct shape (all false by default)
-        # TODO: The shape shouldn't be hard-coded.
-        pipeLineSelectedFeatureMatrix = numpy.array(numpy.zeros((6,7)), dtype=bool)
+            numImages = len(hdf5File['DataSets'])
+            self.mainOperator.LabelInputs.resize(numImages)
 
-        try:
-            # In ilastik 0.5, features were grouped into user-friendly selections.  We have to split these 
-            #  selections apart again into the actual features that must be computed.
-            userFriendlyFeatureMatrix = hdf5File['Project']['FeatureSelection']['UserSelection'].value
-        except KeyError:
-            # If the project file doesn't specify feature selections,
-            #  we'll just use the default (blank) selections as initialized above
-            pass
-        else:            
-            assert( userFriendlyFeatureMatrix.shape == (4, 7) )
-            # Here's how features map to the old "feature groups"
-            # (Note: Nothing maps to the orientation group.)
-            # TODO: It is terrible that these indexes are hard-coded.
-            featureToGroup = { 0 : 0,  # Gaussian Smoothing -> Color
-                               1 : 1,  # Laplacian of Gaussian -> Edge
-                               2 : 3,  # Structure Tensor Eigenvalues -> Texture
-                               3 : 3,  # Eigenvalues of Hessian of Gaussian -> Texture
-                               4 : 1,  # Gradient Magnitude of Gaussian -> Edge
-                               5 : 1 } # Difference of Gaussians -> Edge
+            for index, (datasetName, datasetGroup) in enumerate( sorted( hdf5File['DataSets'].items() ) ):
+                try:
+                    dataset = datasetGroup['labels/data']
+                except KeyError:
+                    # We'll get a KeyError if this project doesn't have labels for this dataset.
+                    # That's allowed, so we simply continue.
+                    continue
+                self.mainOperator.LabelInputs[index][...] = dataset.value[...]
 
-            # For each feature, determine which group's settings to take
-            for featureIndex, featureGroupIndex in featureToGroup.items():
-                # Copy the whole row of selections from the feature group
-                pipeLineSelectedFeatureMatrix[featureIndex] = userFriendlyFeatureMatrix[featureGroupIndex]
-        
-        # Finally, update the pipeline with the feature selections
-        self.pipeline.features.inputs['Matrix'].setValue( pipeLineSelectedFeatureMatrix )
-        
     def importClassifier(self, hdf5File):
         """
         Import the random forest classifier (if any) from the v0.5 project file.
@@ -228,43 +188,12 @@ class Ilastik05ImportDeserializer(object):
         # (Technically, v0.5 would retrieve the user's "number of trees" setting, 
         #  but this applet doesn't expose that setting to the user anyway.)
         pass
-        
-    def importDataSets(self, hdf5File):
-        """
-        Locate the raw input data from the v0.5 project file and give it to our pipeline.
-        """
-        # Locate the dataset within the hdf5File
-        try:
-            dataset = hdf5File["DataSets"]["dataItem00"]["data"]
-        except KeyError:
-            pass
-        else:
-            importer = DataImporter(self.pipeline.graph)
-            inputProvider = importer.createArrayPiperFromHdf5Dataset(dataset)
-        
-            # Connect the new input operator to our pipeline
-            #  (Pipeline signals the GUI.)
-            self.pipeline.setInputData(inputProvider)
-    
-    def importLabelSets(self, hdf5File):
-        try:
-            data = hdf5File['DataSets/dataItem00/labels/data'].value
-            print "data[0,0,0,0,0] = ", data[0,0,0,0,0]
-        except KeyError:
-            return # We'll get a KeyError if this project doesn't contain stored data.  That's allowed.
-                
-        self.pipeline.setAllLabelData(data)
-
-        print "Pipeline labels: ", self.pipeline.getUniqueLabels()
     
     def isDirty(self):
         """Always returns False because we don't support saving to ilastik0.5 projects"""
         return False
 
     def unload(self):
-        """ Called if either
-            (1) the user closed the project or
-            (2) the project opening process needs to be aborted for some reason
-                (e.g. not all items could be deserialized properly due to a corrupted ilp)
-            This way we can avoid invalid state due to a partially loaded project. """ 
-        pass
+        # This is a special-case import deserializer.  Let the real deserializer handle unloading.
+        pass 
+

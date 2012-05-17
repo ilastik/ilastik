@@ -1,3 +1,5 @@
+import numpy
+
 class FeatureSelectionSerializer(object):
     """
     Serializes the user's pixel feature selections to an ilastik v0.6 project file.
@@ -96,6 +98,78 @@ class FeatureSelectionSerializer(object):
             del parentGroup[name]
         except KeyError:
             pass
+
+class Ilastik05FeatureSelectionDeserializer(object):
+    """
+    Deserializes the user's pixel feature selections from an ilastik v0.5 project file.
+    """
+    def __init__(self, mainOperator):
+        self.mainOperator = mainOperator
+    
+    def serializeToHdf5(self, hdf5File, filePath):
+        # This class is only for DEserialization
+        pass
+
+    def deserializeFromHdf5(self, hdf5File, filePath):
+        # Check the overall file version
+        ilastikVersion = hdf5File["ilastikVersion"].value
+
+        # This is the v0.5 import deserializer.  Don't work with 0.6 projects (or anything else).
+        if ilastikVersion != 0.5:
+            return
+
+        # Use the hard-coded ilastik v0.5 scales and feature ids
+        ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
+        FeatureIds = [ 'GaussianSmoothing',
+                       'LaplacianOfGaussian',
+                       'StructureTensorEigenvalues',
+                       'HessianOfGaussianEigenvalues',
+                       'GaussianGradientMagnitude',
+                       'DifferenceOfGaussians' ]
+
+        self.mainOperator.Scales.setValue(ScalesList)
+        self.mainOperator.FeatureIds.setValue(FeatureIds)
+
+        # Create a feature selection matrix of the correct shape (all false by default)
+        pipeLineSelectedFeatureMatrix = numpy.array(numpy.zeros((6,7)), dtype=bool)
+
+        try:
+            # In ilastik 0.5, features were grouped into user-friendly selections.  We have to split these 
+            #  selections apart again into the actual features that must be computed.
+            userFriendlyFeatureMatrix = hdf5File['Project']['FeatureSelection']['UserSelection'].value
+        except KeyError:
+            # If the project file doesn't specify feature selections,
+            #  we'll just use the default (blank) selections as initialized above
+            pass
+        else:
+            assert( userFriendlyFeatureMatrix.shape == (4, 7) )
+            # Here's how features map to the old "feature groups"
+            # (Note: Nothing maps to the orientation group.)
+            featureToGroup = { 0 : 0,  # Gaussian Smoothing -> Color
+                               1 : 1,  # Laplacian of Gaussian -> Edge
+                               2 : 3,  # Structure Tensor Eigenvalues -> Texture
+                               3 : 3,  # Eigenvalues of Hessian of Gaussian -> Texture
+                               4 : 1,  # Gradient Magnitude of Gaussian -> Edge
+                               5 : 1 } # Difference of Gaussians -> Edge
+
+            # For each feature, determine which group's settings to take
+            for featureIndex, featureGroupIndex in featureToGroup.items():
+                # Copy the whole row of selections from the feature group
+                pipeLineSelectedFeatureMatrix[featureIndex] = userFriendlyFeatureMatrix[featureGroupIndex]
+        
+        # Finally, update the pipeline with the feature selections
+        self.mainOperator.SelectionMatrix.setValue( pipeLineSelectedFeatureMatrix )
+
+    def isDirty(self):
+        """ Return true if the current state of this item 
+            (in memory) does not match the state of the HDF5 group on disk.
+            SerializableItems are responsible for tracking their own dirty/notdirty state."""
+        pass
+
+    def unload(self):
+        self.mainOperator.Scales.disconnect()
+        self.mainOperator.FeatureIds.disconnect()
+        self.mainOperator.SelectionMatrix.disconnect()
 
 if __name__ == "__main__":
     import os

@@ -84,40 +84,39 @@ class ProjectMetadataSerializer(object):
             result = ''
         return result
 
-class Ilastik05ProjectMetadataDeserializer(object):
-    """
-    Imports the project metadata (e.g. project name) from an v0.5 .ilp file.
-    """
+class Ilastik05ProjectMetadataDeserializer(object):    
     def __init__(self, projectMetadata):
         self.projectMetadata = projectMetadata
     
-    def serializeToHdf5(self, hdf5File, projectFilePath):
+    def serializeToHdf5(self, hdf5File, filePath):
+        # This is for deserialization only.
         pass
-    
-    def deserializeFromHdf5(self, hdf5File, projectFilePath):
+        
+    def deserializeFromHdf5(self, hdf5File, filePath):
+        # Check the overall file version
+        ilastikVersion = hdf5File["ilastikVersion"].value
 
-        # Read in what values we can, without failing if any of them are missing
+        # This is the v0.5 import deserializer.  Don't work with 0.6 projects (or anything else).
+        if ilastikVersion != 0.5:
+            return
+        
         try:
-            self.projectMetadata.labeler = hdf5File["Project/Labeler"].value
+            metadataGroup = hdf5File['Project']
         except KeyError:
-            pass
+            self.projectMetadata.projectName = ''
+            self.projectMetadata.labeler = ''
+            self.projectMetadata.description = ''
+            return
 
-        try:
-            self.projectMetadata.projectName = hdf5File["Project/Name"].value
-        except KeyError:
-            pass
-            
-        try:
-            self.projectMetadata.description = hdf5File["Project/Description"].value
-        except KeyError:
-            pass
+        self.projectMetadata.projectName = self.getDataset(metadataGroup, 'Name')
+        self.projectMetadata.labeler = self.getDataset(metadataGroup, 'Labeler')
+        self.projectMetadata.description = self.getDataset(metadataGroup, 'Description')
 
     def isDirty(self):
-        """
-        For now, this class is import-only.
-        We always report our data as "clean" because we have nothing to write.
-        """
-        return False
+        """ Return true if the current state of this item 
+            (in memory) does not match the state of the HDF5 group on disk.
+            SerializableItems are responsible for tracking their own dirty/notdirty state."""
+        pass
 
     def unload(self):
         """ Called if either
@@ -125,7 +124,16 @@ class Ilastik05ProjectMetadataDeserializer(object):
             (2) the project opening process needs to be aborted for some reason
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
             This way we can avoid invalid state due to a partially loaded project. """ 
-        pass
+        self.projectMetadata.projectName = ''
+        self.projectMetadata.labeler = ''
+        self.projectMetadata.description = ''
+    
+    def getDataset(self, group, dataName):
+        try:
+            result = group[dataName].value
+        except KeyError:
+            result = ''
+        return result
 
 # Simple test
 if __name__ == "__main__":

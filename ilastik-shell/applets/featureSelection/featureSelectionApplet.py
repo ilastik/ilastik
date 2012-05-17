@@ -2,7 +2,7 @@ from ilastikshell.applet import Applet
 
 from opFeatureSelection import OpFeatureSelection
 
-from featureSelectionSerializer import FeatureSelectionSerializer
+from featureSelectionSerializer import FeatureSelectionSerializer, Ilastik05FeatureSelectionDeserializer
 from featureSelectionGui import FeatureSelectionGui
 
 
@@ -20,7 +20,8 @@ class FeatureSelectionApplet( Applet ):
         self._topLevelOperator = OpFeatureSelection(graph)
 
         # Serialization settings are managed by a 
-        self._serializableItems = [ FeatureSelectionSerializer(self._topLevelOperator) ]
+        self._serializableItems = [ FeatureSelectionSerializer(self._topLevelOperator),
+                                    Ilastik05FeatureSelectionDeserializer(self._topLevelOperator) ]
 
         # Instantiate the main GUI, which creates the applet drawers (for now)
         self._centralWidget = FeatureSelectionGui( self._topLevelOperator )
