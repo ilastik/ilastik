@@ -29,14 +29,8 @@ class FeatureSelectionGui(QMainWindow):
     # Constants    
     ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
     DefaultColorTable = None
-    # Note: The order of these feature names must match the OpPixelFeaturesPresmoothed operator
-#    FeatureNames = [ "Gaussian smoothing",
-#                     "Laplacian of Gaussian",
-#                     "Structure Tensor Eigenvalues",
-#                     "Hessian of Gaussian EV",
-#                     "Gaussian Gradient Magnitude",
-#                     "Difference Of Gaussian" ]
 
+    # Note: The order of these feature names must match the OpPixelFeaturesPresmoothed operator
     FeatureIds = [ 'GaussianSmoothing',
                    'LaplacianOfGaussian',
                    'StructureTensorEigenvalues',
@@ -82,7 +76,7 @@ class FeatureSelectionGui(QMainWindow):
         self.drawer.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
 
         # Subscribe to feature selection changes directly from the graph.
-        self.mainOperator.SelectionMatrix.notifyConnect( self.onFeaturesSelectionsChanged ) # In case of setValue
+        self.mainOperator.SelectionMatrix.notifyConnect( self.onFeaturesSelectionsChanged )
         
         def enableDrawerControls(enabled):
             """
@@ -265,7 +259,6 @@ class FeatureSelectionGui(QMainWindow):
         self.layerstack.removeRows(0, numRows)
 
         # Update the editor data shape
-        # TODO: This assumes only one input image for now.
         shape = self.mainOperator.InputImages[self.imageIndex].shape
         self.editor.dataShape = shape
         
@@ -278,7 +271,6 @@ class FeatureSelectionGui(QMainWindow):
         self.layerstack.insert(0, blackLayer)
 
         # Now add a layer for each feature
-        # TODO: This assumes only one input image for now.
         # TODO: This assumes the channel is the last axis 
         numFeatureChannels = self.mainOperator.CachedOutputImages[self.imageIndex].shape[-1]
         for featureChannelIndex in reversed(range(0, numFeatureChannels)):
@@ -297,21 +289,19 @@ class FeatureSelectionGui(QMainWindow):
         Display a feature in the layer editor.
         """
         # Create an operator to select the channel (feature) we're interested in
-        # TODO: This assumes only one input image for now.
         selector=OpSingleChannelSelector(self.mainOperator.graph)
         selector.Input.connect(self.mainOperator.CachedOutputImages[self.imageIndex])
         selector.Index.setValue(featureChannelIndex)
         
         # Determine the name for this feature
-        # TODO: This assumes only one input image for now.
-        channelAxis = self.mainOperator.InputImages[0].meta.axistags.channelIndex
-        numOriginalChannels = self.mainOperator.InputImages[0].meta.shape[channelAxis]
+        channelAxis = self.mainOperator.InputImages[self.imageIndex].meta.axistags.channelIndex
+        numOriginalChannels = self.mainOperator.InputImages[self.imageIndex].meta.shape[channelAxis]
         originalChannel = featureChannelIndex % numOriginalChannels
         featureNameIndex = featureChannelIndex / numOriginalChannels
         channelNames = ['R', 'G', 'B']
         # FIXME: It shouldn't be necessary to dig down into the operator to access these names.
         #        Perhaps the operator should provide them as an output?
-        featureName = self.mainOperator.internalFeatureOps[0].featureNames[ featureNameIndex ]
+        featureName = self.mainOperator.internalFeatureOps[self.imageIndex].featureNames[ featureNameIndex ]
         if numOriginalChannels > 1:
             featureName += " (" + channelNames[originalChannel] + ")"
         
