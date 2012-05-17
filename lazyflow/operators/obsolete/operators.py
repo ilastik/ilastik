@@ -569,15 +569,23 @@ if has_blist:
     class OpSparseLabelArray(Operator):
         name = "Sparse Label Array"
         description = "simple cache for sparse label arrays"
-           
-        inputSlots = [InputSlot("Input", optional = True), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel", optional = True)]
-        outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates")]    
+
+        inputSlots = [InputSlot("Input", optional = True),
+                      InputSlot("shape"),
+                      InputSlot("eraser"),
+                      InputSlot("deleteLabel", optional = True)]
+
+        outputSlots = [OutputSlot("Output"),
+                       OutputSlot("nonzeroValues"),
+                       OutputSlot("nonzeroCoordinates"),
+                       OutputSlot("maxLabel")]
         
         def __init__(self, parent):
             self.lock = threading.Lock()
             self._denseArray = None
             self._sparseNZ = None
             self._oldShape = (0,)
+            self._maxLabel = 0
             Operator.__init__(self,parent)
             
         def notifyConnectAll(self):
@@ -604,6 +612,11 @@ if has_blist:
                 
           if self.inputs["deleteLabel"].connected() and self.inputs["deleteLabel"].value != -1:
                 labelNr = self.inputs["deleteLabel"].value
+
+                if labelNr <= self._maxLabel:
+                    self._maxLabel -= 1
+                self.outputs["maxLabel"][0] = self._maxLabel
+                
                 neutralElement = 0
                 self.inputs["deleteLabel"].setValue(-1) #reset state of inputslot
                 self.lock.acquire()
@@ -631,6 +644,8 @@ if has_blist:
                 result[0] = numpy.array(self._sparseNZ.values())
             elif slot.name == "nonzeroCoordinates":
                 result[0] = numpy.array(self._sparseNZ.keys())
+            elif slot.name == "maxLabel":
+                result[0] = self._maxLabel
             self.lock.release()
             return result
     
@@ -676,7 +691,9 @@ if has_blist:
             valuesNZ = self._denseArray.ravel()[updateNZRavel]
             
             self._denseArray.ravel()[updateNZRavel] =  valuesNZ       
-    
+
+            # Update our maxlabel
+            self._maxLabel = valuesNZ.max()
             
             td = blist.sorteddict(zip(updateNZRavel.tolist(),valuesNZ.tolist()))
        
@@ -690,17 +707,28 @@ if has_blist:
                 self._denseArray.ravel()[updateNZRavel] = neutralElement
                 for index in updateNZRavel:
                     self._sparseNZ.pop(index)
-            
+                        
             self.lock.release()
-            
+
+            # Set our max label dirty if necessary
+            self.outputs["maxLabel"].setValue(self._maxLabel)
             self.outputs["Output"].setDirty(key)
     
     class OpBlockedSparseLabelArray(Operator):
         name = "Blocked Sparse Label Array"
         description = "simple cache for sparse label arrays"
            
-        inputSlots = [InputSlot("Input", optional = True), InputSlot("shape"), InputSlot("eraser"), InputSlot("deleteLabel", optional = True), InputSlot("blockShape")]
-        outputSlots = [OutputSlot("Output"), OutputSlot("nonzeroValues"), OutputSlot("nonzeroCoordinates"), OutputSlot("nonzeroBlocks")]
+        inputSlots = [InputSlot("Input", optional = True),
+                      InputSlot("shape"),
+                      InputSlot("eraser"),
+                      InputSlot("deleteLabel", optional = True),
+                      InputSlot("blockShape")]
+
+        outputSlots = [OutputSlot("Output"),
+                       OutputSlot("nonzeroValues"),
+                       OutputSlot("nonzeroCoordinates"),
+                       OutputSlot("nonzeroBlocks"),
+                       OutputSlot("maxLabel")]
         
         def __init__(self,parent):
             Operator.__init__(self,parent)
@@ -710,7 +738,7 @@ if has_blist:
             self._labelers = {}
             self._cacheShape = None
             self._cacheEraser = None
-          
+            self._maxLabel = 0
             
             
         def setupOutputs(self):
@@ -742,6 +770,10 @@ if has_blist:
                   self.outputs["nonzeroBlocks"].meta.dtype = object
                   self.outputs["nonzeroBlocks"].meta.shape = (1,)
                   self.outputs["nonzeroBlocks"].meta.axistags = vigra.defaultAxistags(1)
+      
+                  self.outputs["maxLabel"].meta.dtype = object
+                  self.outputs["maxLabel"].meta.shape = (1,)
+                  self.outputs["maxLabel"].meta.axistags = vigra.defaultAxistags(1)
       
                   #Filled on request
                   self._sparseNZ =  blist.sorteddict()
@@ -788,10 +820,15 @@ if has_blist:
                   for l in self._labelers.values():
                       l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
                   
+                
                   #print "not there yet"
                   return
                   labelNr = slot.value
                   if labelNr is not -1:
+                      if labelNr <= self._maxLabel:
+                          self._maxLabel -= 1
+                      self.outputs["maxLabel"].setValue(self._maxLabel)
+
                       neutralElement = 0
                       slot.setValue(-1) #reset state of inputslot
                       self.lock.acquire()
@@ -861,8 +898,9 @@ if has_blist:
                     slicelist.append(bigkey)
                 
                 result[0] = slicelist
-                
-                
+            elif slot.name == "maxLabel":
+                result[0] = self._maxLabel
+
             self.lock.release()
             return result
             
@@ -890,9 +928,14 @@ if has_blist:
                       self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
                       self._labelers[b_ind].inputs["eraser"].connect(self.inputs["eraser"])
                       self._labelers[b_ind].inputs["deleteLabel"].connect(self.inputs["deleteLabel"])
-                      
+                                            
                   self._labelers[b_ind].inputs["Input"][smallkey] = smallvalues.squeeze()
+                  
+                  # If necessary, update our max label using the labeler's max value
+                  self._maxLabel = max( self._maxLabel, self._labelers[b_ind].outputs['maxLabel'].value )
             
+            # Set our max label output dirty
+            self.outputs["maxLabel"].setValue( self._maxLabel )
             self.outputs["Output"].setDirty(key)
         
         def notifyDirty(self, slot, key):
@@ -935,10 +978,9 @@ class OpBlockedArrayCache(Operator):
               self._blockShape = self.inputs["outerBlockShape"].value
               self.shape = self.Input.meta.shape
               self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
-              assert numpy.array(self._blockShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid blockShape = %r" % self._blockShape
-              
+              assert numpy.array(self._blockShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid blockShape = {blockShape}".format(blockShape=self._blockShape)
               self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))        
-              assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = %r" % self._dirtyShape
+              assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = {dirtyShape}".format(dirtyShape=self._dirtyShape)
                   
               self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)        
                   
