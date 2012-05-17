@@ -81,13 +81,9 @@ class FeatureSelectionSerializer(object):
         pass
 
     def unload(self):
-        """ Called if either
-            (1) the user closed the project or
-            (2) the project opening process needs to be aborted for some reason
-                (e.g. not all items could be deserialized properly due to a corrupted ilp)
-            This way we can avoid invalid state due to a partially loaded project. """ 
-        # Unloading shouldn't be necessary for the feature selection applet
-        pass
+        self.mainOperator.Scales.disconnect()
+        self.mainOperator.FeatureIds.disconnect()
+        self.mainOperator.SelectionMatrix.disconnect()
 
     def getOrCreateGroup(self, parentGroup, groupName):
         try:
