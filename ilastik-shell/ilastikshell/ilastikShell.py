@@ -150,8 +150,13 @@ class IlastikShell( QMainWindow ):
         for i, subSlot in enumerate(self.imageNamesSlot):
             try:
                 self.imageSelectionCombo.addItem(subSlot.value)
-            except:
+            except AssertionError:
+                # Currently graph.py asserts if the item has no value.
+                # In the future this may be changed to some other exception.
                 self.imageSelectionCombo.addItem('uninitialized')
+            except:
+                # If we got here, modify the except statement above to catch the appropriate exception type.
+                assert False
 
             # Update the combo text for any subslots that get updated in the future           
             def handleNewImageName(index, slot):
@@ -271,10 +276,10 @@ class IlastikShell( QMainWindow ):
                 response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
                 projectClosed = (response == QMessageBox.Yes)
 
-            if projectClosed:
+            if projectClosed:                
+                self.unloadAllApplets()
                 self.currentProjectFile.close()
                 self.currentProjectFile = None
-                
                 self.enableControls(False)
         return projectClosed
     
@@ -355,21 +360,27 @@ class IlastikShell( QMainWindow ):
             for applet in self._applets:
                 for item in applet.dataSerializers:
                     item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
+
+            # Now that a project is loaded, the user is allowed to save
+            self._menuBar.actions.saveProjectAction.setEnabled(True)
+    
+            # Enable all the applet controls        
+            self.enableControls(True)
+
         except:
             logger.error("Project Open Action failed due to the following exception:")
             traceback.print_exc()
             
             logger.error("Aborting Project Open Action")
-            for applet in self._applets:
-                for item in applet.dataSerializers:
-                    item.unload()
+            self.unloadAllApplets()
 
-        # Now that a project is loaded, the user is allowed to save
-        self._menuBar.actions.saveProjectAction.setEnabled(True)
-
-        # Enable all the applet controls        
-        self.enableControls(True)
-
+    def unloadAllApplets(self):
+        """
+        Unload all applets into a blank state.
+        """
+        for applet in self._applets:
+            for item in applet.dataSerializers:
+                item.unload()
     
     def onSaveProjectActionTriggered(self):
         logger.debug("Save Project action triggered")
