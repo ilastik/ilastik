@@ -50,45 +50,54 @@ class OpInputDataReader(Operator):
                 # Convert this relative path into an absolute path
                 filePath = self.WorkingDirectory.value + '/' + filePath
         
+        self.internalOperator = None
+
         # Check for globstring
-        if '*' in filePath:
+        if self.internalOperator is None and '*' in filePath:
             # Load as a stack
             stackReader = OpStackLoader(graph=self.graph)
             stackReader.globstring.setValue(filePath)
             self.internalOperator = stackReader
             self.internalOutput = stackReader.stack
-        # Check for hdf5
-        elif '.h5' in filePath or '.hdf5' in filePath:
-            ext = '.hdf5'
-            if '.h5' in filePath:
-                ext = '.h5'
-            externalPath = filePath.split(ext)[0] + ext
-            internalPath = filePath.split(ext)[1]
-            
-            # Open the h5 file in read-only mode
-            h5File = h5py.File(externalPath, 'r')
-            
-            h5Reader = OpStreamingHdf5Reader(graph=self.graph)
-            h5Reader.ProjectFile.setValue(h5File)
-            
-            # Can't set the internal path yet if we don't have one
-            if internalPath != '':
-                h5Reader.InternalPath.setValue(internalPath)
-            
-            self.internalOperator = h5Reader
-            self.internalOutput = h5Reader.OutputImage
-        else:
+
+        # If we still haven't found a matching file type
+        if self.internalOperator is None:
+            # Check for an hdf5 extension
+            h5Exts = ['.h5', '.hdf5', '.ilp']
+            ext = None
+            for x in h5Exts:
+                if x in filePath:
+                    ext = x
+            if ext is not None:
+                externalPath = filePath.split(ext)[0] + ext
+                internalPath = filePath.split(ext)[1]
+                
+                # Open the h5 file in read-only mode
+                h5File = h5py.File(externalPath, 'r')
+                
+                h5Reader = OpStreamingHdf5Reader(graph=self.graph)
+                h5Reader.ProjectFile.setValue(h5File)
+                
+                # Can't set the internal path yet if we don't have one
+                if internalPath != '':
+                    h5Reader.InternalPath.setValue(internalPath)
+                
+                self.internalOperator = h5Reader
+                self.internalOutput = h5Reader.OutputImage
+
+        # If we still haven't found a matching file type
+        if self.internalOperator is None:
             fileExtension = os.path.splitext(filePath)[1].lower()
             fileExtension = fileExtension.lstrip('.') # Remove leading dot
 
-            # Check for numpy
+            # Check for numpy extension
             if fileExtension == 'npy':
                 # Create an internal operator
                 npyReader = OpNpyFileReader(graph=self.graph)
                 npyReader.FileName.setValue(filePath)
                 self.internalOperator = npyReader
                 self.internalOutput = npyReader.Output
-            # Check for vigra.impex support for this image type
+            # Check if this file type is supported by vigra.impex
             elif fileExtension in vigra.impex.listExtensions().split():
                 vigraReader = OpImageReader(graph=self.graph)
                 vigraReader.Filename.setValue(filePath)
