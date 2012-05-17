@@ -189,7 +189,7 @@ class Slot(object):
           self._type = None
         if type(stype) == str:
           stype = ArrayLike
-        self.partners = set()
+        self.partners = []
         self.name = name              # a user readable name for the slot
         self._optional = optional     # defines wether the slot needs a connection or value for a functional operator
         self.operator = operator      # the parent operator of the slot
@@ -221,7 +221,6 @@ class Slot(object):
         self._sig_remove = OrderedSignal()
         self._sig_inserted = OrderedSignal()
         
-        self.partners = set()
         self._resizing = False
 
     #
@@ -426,7 +425,7 @@ class Slot(object):
                 elif len(self) > len(partner):
                     partner.resize(len(self))
                     
-                partner.partners.add(self)
+                partner.partners.append(self)
                 for i in range(len(self.partner)):
                     p = self.partner[i]
                     self[i].connect(p)
@@ -455,7 +454,10 @@ class Slot(object):
 
             elif partner.level > self.level:
                 if not isinstance(partner, (InputSlot, MultiInputSlot)):
-                  partner.partners.discard(self)
+                  try:
+                      partner.partners.remove(self)
+                  except ValueError:
+                      pass
                 if lazyflow.verboseWrapping:
                   print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
                 if isinstance(self.operator,(OperatorWrapper, Operator)):
@@ -473,7 +475,10 @@ class Slot(object):
         self._subSlots = []
 
         if self.partner is not None:
-            self.partner.partners.discard(self)
+            try:
+                self.partner.partners.remove(self)
+            except ValueError:
+                pass
         self.partner = None
         self._value = None
         self.meta = MetaDict()
@@ -642,8 +647,8 @@ class Slot(object):
         if self.level > 0:
             return self._subSlots[key]
         else:
-          assert self.meta.shape is not None, "OutputSlot.__getitem__: self.shape is None !!! (operator %r [self=%r] slot: %s, key=%r" % (self.operator.name, self.operator, self.name, key)
-          return self(pslice=key)
+            assert self.meta.shape is not None, "OutputSlot.__getitem__: self.shape is None !!! (operator %r [self=%r] slot: %s, key=%r" % (self.operator.name, self.operator, self.name, key)
+            return self(pslice=key)
 
 
     def __setitem__(self, key, value):
@@ -722,6 +727,7 @@ class Slot(object):
           self.meta._dirty = True
           for i,s in enumerate(self._subSlots):
               s.setValue(self._value)
+
           # call connect callbacks
           self._sig_connect(self)
 #          for f, kw in self._callbacks_connect.iteritems():
