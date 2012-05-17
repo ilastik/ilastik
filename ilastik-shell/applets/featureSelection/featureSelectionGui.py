@@ -83,7 +83,6 @@ class FeatureSelectionGui(QMainWindow):
 
         # Subscribe to feature selection changes directly from the graph.
         self.mainOperator.SelectionMatrix.notifyConnect( self.onFeaturesSelectionsChanged ) # In case of setValue
-        self.mainOperator.SelectionMatrix.notifyDirty( self.onFeaturesSelectionsChanged ) # In case of dirty data from the partner operator
         
         def enableDrawerControls(enabled):
             """
