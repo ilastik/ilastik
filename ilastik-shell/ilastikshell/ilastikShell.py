@@ -113,7 +113,7 @@ class IlastikShell( QMainWindow ):
         for applet in workflow:
             self.addApplet(applet)
 
-        self.appletBar.expanded.connect(self.handleAppletBarIndexChange)
+        self.appletBar.expanded.connect(self.handleAppleBarItemExpanded)
         self.appletBar.clicked.connect(self.handleAppletBarClick)
         
         # By default, make the splitter control expose a reasonable width of the applet bar
@@ -180,22 +180,27 @@ class IlastikShell( QMainWindow ):
             except:
                 pass
 
-    def handleAppletBarIndexChange(self, modelIndex):
+    def handleAppleBarItemExpanded(self, modelIndex):
         """
         The user wants to view a different applet bar item.
         """
-        appletBarIndex = modelIndex.row()
-
-        if self.currentAppletIndex != appletBarIndex:
-            self.currentAppletIndex = appletBarIndex
+        drawerIndex = modelIndex.row()
+        self.setSelectedAppletDrawer(drawerIndex)
+    
+    def setSelectedAppletDrawer(self, drawerIndex):
+        """
+        Show the correct applet central widget, viewer control widget, and applet drawer widget for this drawer index.
+        """
+        if self.currentAppletIndex != drawerIndex:
+            self.currentAppletIndex = drawerIndex
             # Collapse all drawers in the applet bar...
             self.appletBar.collapseAll()
             # ...except for the newly selected item.
-            self.appletBar.expand(modelIndex)
+            self.appletBar.expand( self.getModelIndexFromDrawerIndex(drawerIndex) )
             
             if len(self.appletBarMapping) != 0:
                 # Determine which applet this drawer belongs to
-                applet_index = self.appletBarMapping[appletBarIndex]
+                applet_index = self.appletBarMapping[drawerIndex]
 
                 # Select the appropriate central widget, menu widget, and viewer control widget for this applet
                 self.appletStack.setCurrentIndex(applet_index)
@@ -203,6 +208,10 @@ class IlastikShell( QMainWindow ):
                 self.viewerControlStack.setCurrentIndex(applet_index)
                 
                 self.autoSizeSideSplitter()
+
+    def getModelIndexFromDrawerIndex(self, drawerIndex):
+        drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
+        return self.appletBar.indexFromItem(drawerTitleItem)
                 
     def autoSizeSideSplitter(self):
         # Get total height of the titles in the applet bar (not the widgets)

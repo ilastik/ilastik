@@ -58,10 +58,20 @@ shell.show()
 # Hide the splash screen
 splashScreen.finish(shell)
 
-debugging = False
-if debugging:
+def test():
     from functools import partial
-    QTimer.singleShot(500, partial(shell.openProjectFile, '/home/bergs/test_project.ilp') )
+    
+    # Open a test project
+    shell.openProjectFile('/home/bergs/test_project.ilp')
+    
+    # Select the labeling drawer
+    shell.setSelectedAppletDrawer( 3 )
+    
+    # Enable interactive mode
+    QTimer.singleShot( 1000, partial(pcApplet.centralWidget._labelControlUi.checkInteractive.setChecked, True) )
+
+
+QTimer.singleShot(1, test )
 
 app.exec_()
 
