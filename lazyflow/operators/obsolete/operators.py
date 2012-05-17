@@ -691,9 +691,6 @@ if has_blist:
             valuesNZ = self._denseArray.ravel()[updateNZRavel]
             
             self._denseArray.ravel()[updateNZRavel] =  valuesNZ       
-
-            # Update our maxlabel
-            self._maxLabel = valuesNZ.max()
             
             td = blist.sorteddict(zip(updateNZRavel.tolist(),valuesNZ.tolist()))
        
@@ -707,6 +704,9 @@ if has_blist:
                 self._denseArray.ravel()[updateNZRavel] = neutralElement
                 for index in updateNZRavel:
                     self._sparseNZ.pop(index)
+
+            # Update our maxlabel
+            self._maxLabel = numpy.where(valuesNZ != eraseLabel, valuesNZ, 0).max()
                         
             self.lock.release()
 
