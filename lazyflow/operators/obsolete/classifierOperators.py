@@ -233,10 +233,18 @@ class OpPredictRandomForest(Operator):
     def notifyDirty(self, slot, key):
         if slot == self.inputs["Classifier"]:
             print "OpPredict: Classifier changed, setting dirty"
-            self.outputs["PMaps"].setDirty(slice(None,None,None))     
+            self.outputs["PMaps"].setDirty(slice(None,None,None))
         elif slot == self.inputs["Image"]:
             nlabels=self.inputs["LabelsCount"].value
             self.outputs["PMaps"].setDirty(key[:-1] + (slice(0,nlabels,None),))
+        elif slot == self.inputs["LabelsCount"]:
+            # When the labels count changes, we must resize the output
+            if self.configured():
+                # FIXME: It's ugly that we call the 'private' _setupOutputs() function here,
+                #  but the output shape needs to change when this input becomes dirty, 
+                #  and the output change needs to be propagated to the rest of the graph.
+                self._setupOutputs()
+            self.outputs["PMaps"].setDirty(slice(None,None,None))
             
             
 class OpSegmentation(Operator):
