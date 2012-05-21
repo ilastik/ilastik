@@ -13,6 +13,7 @@ import os
 from functools import partial
 
 from utility import VersionManager
+from utility import bind
 from lazyflow.graph import MultiOutputSlot
 
 import sys
@@ -138,14 +139,15 @@ class IlastikShell( QMainWindow ):
 
     def setImageNameListSlot(self, multiSlot):
         assert type(multiSlot) == MultiOutputSlot
-        #multiSlot.operator.notifyConfigured( self.handleImageListModified )
-        multiSlot.notifyInserted( self.handleImageListModified )
-        multiSlot.notifyRemove( self.handleImageListModified )
-        multiSlot.notifyResized( self.handleImageListModified )
         self.imageNamesSlot = multiSlot
+        def subscribeToImageNameUpdates():
+            for i, subSlot in enumerate(self.imageNamesSlot):
+                subSlot.notifyDirty( bind(self.handleImageListModified) )
+        multiSlot.notifyInserted( bind(subscribeToImageNameUpdates) )
+        multiSlot.notifyRemove( bind(subscribeToImageNameUpdates) )
+        multiSlot.notifyResized( bind(subscribeToImageNameUpdates) )
         
-    def handleImageListModified(self,  multiSlot, ignored, newListSize):
-        # assert multiSlot == self.imageNamesSlot
+    def handleImageListModified(self):
         # Regenerate the image selection combo.
         self.currentImageIndex = None
         self.populatingImageSelectionCombo = True
@@ -182,7 +184,9 @@ class IlastikShell( QMainWindow ):
             self.currentImageIndex = None
 
     def changeCurrentInputImageIndex(self, newImageIndex):
-        if newImageIndex != self.currentImageIndex and self.populatingImageSelectionCombo == False:
+        if newImageIndex != self.currentImageIndex \
+        and newImageIndex != -1 \
+        and self.populatingImageSelectionCombo == False:
             try:
                 # Accessing the image name value will throw if it isn't properly initialized
                 self.imageNamesSlot[newImageIndex].value
