@@ -1,7 +1,6 @@
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
-from lazyflow.operators.obsolete.vigraOperators import OpGrayscaleInverter, OpRgbToGrayscale
 import copy
 
 import numpy
@@ -24,8 +23,6 @@ class OpDataSelection(Operator):
 
         def __init__(self):
             self.location = OpDataSelection.DatasetInfo.Location.FileSystem # Whether the data will be found/stored on the filesystem or in the project file
-            self.invertColors = False          # Flag to invert colors before outputting
-            self.convertToGrayscale = False    # Flag to convert to grayscale before outputting
             self._filePath = ""                # The original path to the data (also used as a fallback if the data isn't in the project yet)
             self._datasetId = ""               # The name of the data within the project file (if it is stored locally)            
 
@@ -54,8 +51,7 @@ class OpDataSelection(Operator):
 
     # Output data
     ImageName = OutputSlot(stype='string')
-    RawImage = OutputSlot()
-    ProcessedImage = OutputSlot()
+    Image = OutputSlot()
     
     def setupOutputs(self):
         datasetInfo = self.Dataset.value
@@ -73,34 +69,16 @@ class OpDataSelection(Operator):
             reader = OpStreamingHdf5Reader(graph=self.graph)
             reader.ProjectFile.setValue(self.ProjectFile.value)
             reader.InternalPath.setValue(internalPath)
-            processedProviderSlot = reader.OutputImage
-            rawProviderSlot = reader.OutputImage
+            providerSlot = reader.OutputImage
         else:
             # Use a normal (filesystem) reader
             reader = OpInputDataReader(graph=self.graph)
             reader.FilePath.setValue(datasetInfo.filePath)
             reader.WorkingDirectory.connect( self.WorkingDirectory )
-            processedProviderSlot = reader.Output
-            rawProviderSlot = reader.Output
-
-        # If the user wants to invert the image,
-        #  insert an intermediate inversion operator on this subslot
-        if datasetInfo.invertColors:
-            inverter = OpGrayscaleInverter(graph=self.graph)
-            inverter.input.connect(processedProviderSlot)
-            processedProviderSlot = inverter.output
-        
-        # If the user wants to convert to grayscale,
-        #  insert an intermediate rgb-to-grayscale operator on this subslot
-        if datasetInfo.convertToGrayscale:
-            converter = OpRgbToGrayscale(graph=self.graph)
-            converter.input.connect(processedProviderSlot)
-            processedProviderSlot = converter.output
-        
+            providerSlot = reader.Output        
         
         # Connect our external outputs to the internal operators we chose
-        self.ProcessedImage.connect(processedProviderSlot)
-        self.RawImage.connect(rawProviderSlot)
+        self.Image.connect(providerSlot)
 
         # Set the new image name
         self.ImageName.setValue(datasetInfo.filePath)

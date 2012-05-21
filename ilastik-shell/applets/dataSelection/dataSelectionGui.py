@@ -22,8 +22,6 @@ class Column():
     Name = 0
     Location = 1
     InternalID = 2
-    Invert = 3
-    Grayscale = 4
 
 class LocationOptions():
     """ Enum for location menu options """
@@ -167,8 +165,6 @@ class DataSelectionGui(QMainWindow):
         for i in range(0, len(fileNames)):
             datasetInfo = OpDataSelection.DatasetInfo()
             datasetInfo.filePath = fileNames[i]
-            datasetInfo.invertColors = False
-            datasetInfo.convertToGrayscale = False
             self.mainOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
 
     def updateTableForSlot(self, slot):
@@ -213,18 +209,6 @@ class DataSelectionGui(QMainWindow):
         
         # Create and add the combobox for storage location options
         self.updateStorageOptionComboBox(row, externalPath)
-
-        # Create and add the checkbox for color inversion
-        invertCheckbox = QCheckBox()
-        invertCheckbox.setChecked( self.mainOperator.Dataset[row].value.invertColors )
-        tableWidget.setCellWidget( row, Column.Invert, invertCheckbox)
-        invertCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Invert, invertCheckbox) )
-        
-        # Create and add the checkbox for grayscale conversion
-        convertToGrayCheckbox = QCheckBox()
-        convertToGrayCheckbox.setChecked( self.mainOperator.Dataset[row].value.convertToGrayscale )
-        tableWidget.setCellWidget( row, Column.Grayscale, convertToGrayCheckbox)
-        convertToGrayCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Grayscale, convertToGrayCheckbox) )
     
     def updateStorageOptionComboBox(self, row, filePath):
         """
@@ -386,36 +370,6 @@ class DataSelectionGui(QMainWindow):
         # Reconnect now that we're finished
         self.fileInfoTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
     
-    def handleFlagCheckboxChange(self, column, checkboxWidget, checkState):
-        """
-        The user clicked on a checkbox in the table.
-        Set the appropriate flag in the operator based on which checkbox it was.
-        """
-        # Figure out which row this checkbox is in
-        tableWidget = self.fileInfoTableWidget
-        changedRow = -1
-        for row in range(0, tableWidget.rowCount()):
-            widget = tableWidget.cellWidget(row, column)
-            if widget == checkboxWidget:
-                changedRow = row
-                break
-        assert changedRow != -1
-        
-        # Be sure to copy so the slot notices the change when we setValue()
-        datasetInfo = copy.copy(self.mainOperator.Dataset[changedRow].value)
-
-        # Now that we've found the row (and therefore the dataset index),
-        #  update this flag in the appropriate operator input slot
-        if column == Column.Invert:
-            datasetInfo.invertColors = (checkState == Qt.Checked)
-            logger.debug("Invert Colors: " + str(datasetInfo.invertColors))
-        elif column == Column.Grayscale:
-            datasetInfo.convertToGrayscale = (checkState == Qt.Checked)
-            logger.debug("Convert to Grayscale: " + str(datasetInfo.convertToGrayscale))
-        else:
-            assert False, "Invalid column for checkbox"
-        self.mainOperator.Dataset[changedRow].setValue( datasetInfo )
-
     def enableControls(self, enabled):
         """
         Enable or disable all of the controls in this applet's central widget.

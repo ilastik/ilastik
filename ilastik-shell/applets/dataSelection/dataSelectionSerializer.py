@@ -60,8 +60,6 @@ class DataSelectionSerializer(object):
             infoGroup.create_dataset('location', data=locationString)
             infoGroup.create_dataset('filePath', data=datasetInfo.filePath)
             infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
-            infoGroup.create_dataset('invertColors', data=datasetInfo.invertColors)
-            infoGroup.create_dataset('convertToGrayscale', data=datasetInfo.convertToGrayscale)
         
         # Write any missing local datasets to the local_data group
         localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
@@ -73,7 +71,7 @@ class DataSelectionSerializer(object):
             and info.datasetId not in localDataGroup.keys():
                 # Obtain the data from the corresponding output and store it to the project.
                 # TODO: Optimize this for large datasets by streaming it chunk-by-chunk.
-                dataSlot = self.mainOperator.RawImages[index]
+                dataSlot = self.mainOperator.Image[index]
                 data = dataSlot[...].wait()
 
                 # Vigra thinks its okay to reorder the data if it has axistags,
@@ -137,9 +135,6 @@ class DataSelectionSerializer(object):
             LocationLookup = { v:k for k,v in self.LocationStrings.items() }
             datasetInfo.location = LocationLookup[ str(infoGroup['location'].value) ]
             
-            datasetInfo.invertColors = bool(infoGroup['invertColors'].value)
-            datasetInfo.convertToGrayscale = bool(infoGroup['convertToGrayscale'].value)
-
             # Write to the 'private' members to avoid resetting the dataset id
             datasetInfo._filePath = str(infoGroup['filePath'].value)
             datasetInfo._datasetId = str(infoGroup['datasetId'].value)
@@ -219,9 +214,6 @@ class Ilastik05DataSelectionDeserializer(object):
             #  to the project (pulled in from the old file as hdf5 datasets)
             datasetInfo.location = Location.FileSystem
             
-            datasetInfo.invertColors = False
-            datasetInfo.convertToGrayscale = False
-
             # Write to the 'private' members to avoid resetting the dataset id
             totalDatasetPath = projectFilePath + '/DataSets/' + datasetDirName + '/data'
             datasetInfo._filePath = str(totalDatasetPath)
@@ -248,7 +240,7 @@ class Ilastik05DataSelectionDeserializer(object):
 if __name__ == "__main__":
     import os
     import h5py
-    from lazyflow.graph import Graph
+    from lazyflow.graph import Graph, OperatorWrapper
     from opDataSelection import OpDataSelection
 
     # Define the files we'll be making    
@@ -271,14 +263,12 @@ if __name__ == "__main__":
 
     # Create an operator to work with and give it some input
     graph = Graph()
-    operatorToSave = OpDataSelection(graph=graph)
+    operatorToSave = OperatorWrapper( OpDataSelection(graph=graph) )
     operatorToSave.ProjectFile.setValue(testProject)
     operatorToSave.WorkingDirectory.setValue( os.path.split(__file__)[0] )
     
     info = OpDataSelection.DatasetInfo()
-    info.filePath = '5d.npy'
-    info.invertColors = False
-    info.convertToGrayscale = True
+    info.filePath = '/home/bergs/5d.npy'
     info.location = Location.ProjectInternal
     
     operatorToSave.Dataset.resize(1)
@@ -298,14 +288,14 @@ if __name__ == "__main__":
     # Debug info...
     #logging.basicConfig(level=logging.DEBUG)
     logger.debug('dataset.shape = ' + str(dataset.shape))
-    logger.debug('should be ' + str(operatorToSave.RawImages[0].meta.shape))
+    logger.debug('should be ' + str(operatorToSave.Image[0].meta.shape))
     logger.debug('dataset axistags:')
     logger.debug(axistags)
     logger.debug('should be:')
-    logger.debug(operatorToSave.RawImages[0].meta.axistags)
+    logger.debug(operatorToSave.Image[0].meta.axistags)
 
-    originalShape = operatorToSave.RawImages[0].meta.shape
-    originalAxisTags = operatorToSave.RawImages[0].meta.axistags
+    originalShape = operatorToSave.Image[0].meta.shape
+    originalAxisTags = operatorToSave.Image[0].meta.axistags
 #    originalAxisOrder = [tag.key for tag in originalAxisTags]
 #
 #    # The dataset axis ordering may have changed when it was written to disk,
@@ -322,16 +312,16 @@ if __name__ == "__main__":
 
     # Create an empty operator
     graph = Graph()
-    operatorToLoad = OpDataSelection(graph=graph)
+    operatorToLoad = OperatorWrapper( OpDataSelection(graph=graph) )
     
     deserializer = DataSelectionSerializer(operatorToLoad)
     deserializer.deserializeFromHdf5(testProject, testProjectName)
     
     assert len(operatorToLoad.Dataset) == len(operatorToSave.Dataset)
-    assert len(operatorToLoad.RawImages) == len(operatorToSave.RawImages)
+    assert len(operatorToLoad.Image) == len(operatorToSave.Image)
     
-    assert operatorToLoad.RawImages[0].meta.shape == operatorToSave.RawImages[0].meta.shape
-    assert operatorToLoad.RawImages[0].meta.axistags == operatorToSave.RawImages[0].meta.axistags
+    assert operatorToLoad.Image[0].meta.shape == operatorToSave.Image[0].meta.shape
+    assert operatorToLoad.Image[0].meta.axistags == operatorToSave.Image[0].meta.axistags
 
 
 
