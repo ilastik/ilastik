@@ -35,10 +35,10 @@ opFeatures = featureSelectionApplet.topLevelOperator
 opClassify = pcApplet.topLevelOperator
 
 # Connect the operators together
-opFeatures.InputImages.connect( opData.ProcessedImages )
-opClassify.InputImages.connect( opData.ProcessedImages )
-opClassify.FeatureImages.connect( opFeatures.OutputImages )
-opClassify.CachedFeatureImages.connect( opFeatures.CachedOutputImages )
+opFeatures.InputImage.connect( opData.ProcessedImage )
+opClassify.InputImages.connect( opData.ProcessedImage )
+opClassify.FeatureImages.connect( opFeatures.OutputImage )
+opClassify.CachedFeatureImages.connect( opFeatures.CachedOutputImage )
 
 # Create the shell
 shell = IlastikShell()
@@ -50,7 +50,7 @@ shell.addApplet(featureSelectionApplet)
 shell.addApplet(pcApplet)
 
 # Tell the shell where to get the image names
-shell.setImageNameListSlot( opData.ImageNames )
+shell.setImageNameListSlot( opData.ImageName )
 
 # Start the shell GUI.
 shell.show()
@@ -67,11 +67,12 @@ def test():
     # Select the labeling drawer
     shell.setSelectedAppletDrawer( 3 )
     
-    # Enable interactive mode
-    QTimer.singleShot( 1000, partial(pcApplet.centralWidget._labelControlUi.checkInteractive.setChecked, True) )
+    # Check the 'interactive mode' checkbox.
+    QTimer.singleShot( 2000, partial(pcApplet.centralWidget._labelControlUi.checkInteractive.setChecked, True) )
 
 
-QTimer.singleShot(1, test )
+# Run a test
+#QTimer.singleShot(1, test )
 
 app.exec_()
 
