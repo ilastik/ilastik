@@ -1,4 +1,4 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
 
 from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, OpArrayPiper, Op5ToMulti, OpBlockedSparseLabelArray, OpArrayCache, \
                                OpTrainRandomForestBlocked, OpPredictRandomForest, OpSlicedBlockedArrayCache
@@ -43,15 +43,18 @@ class OpPixelClassification( Operator ):
         self.predictionMetaChangeSignal = SimpleSignal() # The prediction cache has changed its shape (or dtype).
                                                          #  The prediction cache's output configuration status is passed as the parameter.
         # Create internal operators
-        self.opInputShapeReader = OpShapeReader(self.graph)
-        self.opLabelArray = OpBlockedSparseLabelArray( self.graph )
+        # Explicitly wrapped:
+        self.opInputShapeReader = OperatorWrapper( OpShapeReader(self.graph) )
+        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray( self.graph ) )
+        self.predict = OperatorWrapper( OpPredictRandomForest( self.graph ) )
+        self.prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache( self.graph ) )
+
+        # NOT wrapped
         self.opMaxLabel = OpMaxValue(graph=self.graph)
         self.opTrain = OpTrainRandomForestBlocked( self.graph )
-        self.predict=OpPredictRandomForest( self.graph )
-        self.prediction_cache = OpSlicedBlockedArrayCache( self.graph )
 
-        self.opInputShapeReader.Input.connect( self.InputImages ) #<-- Note: Now opInputShapeReader is wrapped
-        self.opLabelArray.inputs["shape"].connect( self.opInputShapeReader.OutputShape ) #<-- Note: now opLabelArray is wrapped
+        self.opInputShapeReader.Input.connect( self.InputImages )
+        self.opLabelArray.inputs["shape"].connect( self.opInputShapeReader.OutputShape )
         self.opLabelArray.inputs["Input"].connect( self.LabelInputs )
         self.opLabelArray.inputs["blockShape"].setValue((1, 32, 32, 32, 1))
         self.opLabelArray.inputs["eraser"].setValue(100)
@@ -62,10 +65,7 @@ class OpPixelClassification( Operator ):
         self.opLabelArray.inputs["deleteLabel"].setValue(-1)
         
         # Find the highest label in all the label images
-        self.opMaxLabel.Inputs.connect( self.opLabelArray.outputs['maxLabel'] ) # opMaxLabel is now wrapped
-
-        # Also expose the max label as an output of this top-level operator
-        self.MaxLabelValue.connect( self.opMaxLabel.Output )
+        self.opMaxLabel.Inputs.connect( self.opLabelArray.outputs['maxLabel'] )
 
         ##
         # training
@@ -83,8 +83,8 @@ class OpPixelClassification( Operator ):
         # prediction
         ##
         self.predict.inputs['Classifier'].connect(self.classifier_cache.outputs['Output']) 
-        self.predict.inputs['Image'].connect(self.FeatureImages) #<-- Note: Now predict is wrapped
-        self.predict.inputs['LabelsCount'].connect(self.opMaxLabel.Output)
+        self.predict.inputs['Image'].connect(self.FeatureImages)
+        self.predict.inputs['LabelsCount'].connect(self.MaxLabelValue)
         
         # 
         self.prediction_cache.name = "PredictionCache"
@@ -95,6 +95,7 @@ class OpPixelClassification( Operator ):
 
         # Connect our internal outputs to our external outputs
         self.LabelImages.connect(self.opLabelArray.Output)
+        self.MaxLabelValue.connect( self.opMaxLabel.Output )
         self.NonzeroLabelBlocks.connect(self.opLabelArray.nonzeroBlocks)
         self.PredictionProbabilities.connect(self.predict.PMaps)
         self.CachedPredictionProbabilities.connect(self.prediction_cache.Output)
@@ -107,6 +108,9 @@ class OpPixelClassification( Operator ):
                 self.CachedPredictionProbabilities.resize(0)
         self.InputImages.notifyResized( inputResizeHandler )
 
+        # Check to make sure the non-wrapped operators stayed that way.
+        assert self.opMaxLabel.Inputs.operator == self.opMaxLabel
+        assert self.opTrain.Images.operator == self.opTrain
         
     def setupOutputs(self):
         numImages = len(self.InputImages)
@@ -116,36 +120,21 @@ class OpPixelClassification( Operator ):
            numImages != len(self.CachedFeatureImages):
             return
         
-        self.PredictionProbabilities.resize(numImages)
-        self.CachedPredictionProbabilities.resize(numImages)
         self.LabelImages.resize(numImages)
         self.LabelInputs.resize(numImages)
-        self.NonzeroLabelBlocks.resize(numImages)
+
         for i in range( 0, numImages ):
-            # Special case: We have to set up the shape of our label input according to our image input shape
+            # Special case: We have to set up the shape of our label *input* according to our image input shape
             channelIndex = self.InputImages[i].meta.axistags.index('c')
             shapeList = list(self.InputImages[i].meta.shape)
             shapeList[channelIndex] = 1
             self.LabelInputs[i].meta.shape = tuple(shapeList)
             self.LabelInputs[i].meta.axistags = self.InputImages[i].meta.axistags
             
-            self.PredictionProbabilities[i].meta.shape = self.predict.PMaps[i].meta.shape
-            self.PredictionProbabilities[i].meta.dtype = self.predict.PMaps[i].meta.dtype
-            self.PredictionProbabilities[i].meta.axistags = copy.copy(self.predict.PMaps[i].meta.axistags)
-            
-            self.CachedPredictionProbabilities[i].meta.shape = self.prediction_cache.Output[i].meta.shape
-            self.CachedPredictionProbabilities[i].meta.dtype = self.prediction_cache.Output[i].meta.dtype
-            self.CachedPredictionProbabilities[i].meta.axistags = copy.copy(self.prediction_cache.Output[i].meta.axistags)
-            
-            self.LabelImages[i].meta.shape = self.opLabelArray.Output[i].meta.shape
-            self.LabelImages[i].meta.dtype = self.opLabelArray.Output[i].meta.dtype
-            self.LabelImages[i].meta.axistags = copy.copy(self.opLabelArray.Output[i].meta.axistags)
-
-            self.NonzeroLabelBlocks[i].meta.shape = self.opLabelArray.nonzeroBlocks[i].meta.shape
-            self.NonzeroLabelBlocks[i].meta.dtype = self.opLabelArray.nonzeroBlocks[i].meta.dtype
-            self.NonzeroLabelBlocks[i].meta.axistags = copy.copy(self.opLabelArray.nonzeroBlocks[i].meta.axistags)
-    
     def setSubInSlot(self, multislot,slot,index, key,value):
+        # We can't connect our external label input to the internal sparse label array 
+        #  because the array wants to control the shape of the input (based on his 'shape' input)
+        # Therefore, we 'manually' push data into the slot here.
         if slot.name == 'LabelInputs':
             self.opLabelArray.Input[index][key] = value
         else:
@@ -214,12 +203,6 @@ class OpMaxValue(Operator):
     def __init__(self, *args, **kwargs):
         super(OpMaxValue, self).__init__(*args, **kwargs)
         
-        self.Inputs.notifyInserted( self.setOutputDirty )
-        self.Inputs.notifyRemove( self.setOutputDirty )
-        
-    def setOutputDirty(self, *args, **kwargs):
-        self.Output.setDirty(slice(None))
-    
     def setupOutputs(self):
         self.Output.meta.shape = (1,)
         self.Output.meta.dtype = object
@@ -235,7 +218,6 @@ class OpMaxValue(Operator):
                 else:
                     maxValue = max(maxValue, inputSubSlot.value)
         result[0] = maxValue
-
 
 
 
