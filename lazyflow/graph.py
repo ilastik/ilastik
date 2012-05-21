@@ -552,6 +552,7 @@ class Slot(object):
         if self.partner is not None and self.partner.level == self.level:
           self.partner.insertSlot(position, finalsize)
         self._connectSubSlot(position)
+
         for p in self.partners:
           if p.level == self.level:
             p.insertSlot(position, finalsize)
@@ -736,6 +737,7 @@ class Slot(object):
 #          for f, kw in self._callbacks_connect.iteritems():
 #            f(self,**kw)
           self._changed()
+
     
     def setValues(self, values):
         """
@@ -909,6 +911,7 @@ class Slot(object):
         Construct a new subSlot of correct type and level and insert
         it to the list of subslots
         """
+        assert position >= 0 and position <= len(self._subSlots)
         slot = self._getInstance(self, level = self.level - 1)
         self._subSlots.insert(position, slot)
         slot.name = self.name
