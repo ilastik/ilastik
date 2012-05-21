@@ -140,40 +140,6 @@ class OpPixelClassification( Operator ):
         else:
             assert False
 
-    def getUniqueLabels(self):
-        # TODO: Assumes only one image
-        nonZeroValueOutputSlot = self.opLabelArray.outputs["nonzeroValues"]
-        if len(nonZeroValueOutputSlot) > 0:
-            return numpy.unique(numpy.asarray(self.opLabelArray.outputs["nonzeroValues"][0][:].allocate().wait()[0]))
-        else:
-            # Return an empty array
-            return numpy.ndarray((0,), dtype=int)
-
-    def setInputData(self, inputProvider):
-        """
-        Set the pipeline input data, which is given as an operator in inputProvider.
-        """
-
-        # Connect the input data to the pipeline
-        self.images.inputs["Input0"].connect(inputProvider.outputs["Output"])
-
-        # Notify the GUI, etc. that our input data changed
-        self.inputDataChangedSignal.emit(inputProvider)
-        
-    def setAllLabelData(self, labelData):
-        """
-        Replace ALL of the input label data with the given array.
-        Label shape is adjusted if necessary.
-        """
-        # The label data should have the correct shape (last dimension should be 1)
-        assert labelData.shape[-1] == 1
-        self.labels.inputs["shape"].setValue(labelData.shape)
-
-        # Load the entire set of labels into the graph
-        self.labels.inputs["Input"][:] = labelData
-        
-        self.labelsChangedSignal.emit()
-
 class OpShapeReader(Operator):
     """
     This operator outputs the shape of its input image, except the number of channels is set to 1.
