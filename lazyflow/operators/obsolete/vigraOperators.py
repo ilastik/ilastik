@@ -112,8 +112,14 @@ class OpPixelFeaturesPresmoothed(Operator):
     name="OpPixelFeatures"
     category = "Vigra filter"
     
-    inputSlots = [InputSlot("Input"), InputSlot("Matrix"), InputSlot("Scales")]
-    outputSlots = [OutputSlot("Output"), OutputSlot("ArrayOfOperators")]
+    inputSlots = [InputSlot("Input"),
+                  InputSlot("Matrix"),
+                  InputSlot("Scales"),
+                  InputSlot("FeatureIds")] # The selection of features to compute
+    
+    outputSlots = [OutputSlot("Output"),
+                   OutputSlot("ArrayOfOperators"),
+                   OutputSlot("FeatureNames")]
     
     # Specify a default set & order for the features we compute
     DefaultFeatureIds = [ 'GaussianSmoothing',
@@ -123,8 +129,8 @@ class OpPixelFeaturesPresmoothed(Operator):
                           'GaussianGradientMagnitude',
                           'DifferenceOfGaussians' ]
     
-    def __init__(self, parent, featureIds=None):         
-        Operator.__init__(self, parent)   
+    def __init__(self, *args, **kwargs):
+        Operator.__init__(self, *args, **kwargs)   
         self.source = OpArrayPiper(self)
         self.source.inputs["Input"].connect(self.inputs["Input"])        
                 
@@ -133,19 +139,10 @@ class OpPixelFeaturesPresmoothed(Operator):
         self.multi = Op50ToMulti(self)
         
         self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
+
+        # Give our feature IDs input a default value (connected out of the box, but can be changed)
+        self.inputs["FeatureIds"].setValue( self.DefaultFeatureIds )
         
-        if featureIds == None:
-            self._featureIds = self.DefaultFeatureIds
-        else:
-            self._featureIds = list(featureIds)
-        
-        self._featureNames = []
-    
-    # TODO: Make this an output slot instead of a class property
-    @property
-    def featureNames(self):
-        return self._featureNames
-    
     def setupOutputs(self):
         if self.inputs["Scales"].connected() and self.inputs["Matrix"].connected():
 
@@ -157,7 +154,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                 raise RuntimeError("OpPixelFeatures: Please input a numpy.ndarray as 'Matrix'")
             
             dimCol = len(self.scales)
-            dimRow = len(self._featureIds)
+            dimRow = len(self.inputs["FeatureIds"].value)
             
             assert dimRow== self.matrix.shape[0], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)    
             assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)    
@@ -178,7 +175,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     
                 logger.info("Replacing scale %f with new scale %f" %(self.scales[j], self.newScales[j]))
     
-            for i, featureId in enumerate(self._featureIds):
+            for i, featureId in enumerate(self.inputs["FeatureIds"].value):
                 if featureId == 'GaussianSmoothing':
                     for j in range(dimCol):
                         oparray[i].append(OpGaussianSmoothing(self))
@@ -236,7 +233,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                 for j in range(dimCol):
                     self.multi.inputs["Input%02d" %(i*dimRow+j)].disconnect() 
             
-            self._featureNames = []
+            featureNames = []
             #connect individual operators
             for i in range(dimRow):
                 for j in range(dimCol):
@@ -244,7 +241,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     if val:
                         self.multi.inputs["Input%02d" %(i*dimRow+j)].connect(oparray[i][j].outputs["Output"])
                         logger.info("connected  Input%02d of self.multi" %(i*dimRow+j))
-                        self._featureNames.append(featureNameArray[i][j])
+                        featureNames.append(featureNameArray[i][j])
             
             #additional connection with FakeOperator
             if (self.matrix==0).all():
@@ -277,6 +274,9 @@ class OpPixelFeaturesPresmoothed(Operator):
             self.outputs["Output"]._dtype = numpy.float32            
             self.outputs["Output"]._axistags = self.stacker.outputs["Output"]._axistags            
             self.outputs["Output"]._shape = self.stacker.outputs["Output"]._shape
+
+            # Set the feature names output
+            self.outputs["FeatureNames"].setValue(featureNames)
             
     def execute(self, slot, rroi, result):
         if slot == self.outputs["Output"]:
