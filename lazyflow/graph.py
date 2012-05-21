@@ -404,10 +404,6 @@ class Slot(object):
             self.disconnect()
             return
         
-        if not isinstance(partner,Slot):
-            self.setValue(partner)
-            return
-          
         if self.partner == partner and partner.level == self.level:
             return
         if self.level == 0:
