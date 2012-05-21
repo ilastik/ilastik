@@ -836,13 +836,14 @@ class Slot(object):
 
 
     def _changed(self):
-      if self.partner is not None:
+      if self.partner is not None and self.meta != self.partner.meta:
         self.meta = self.partner.meta.copy()
 
       if self._type == "output":
         for o in self._subSlots:
           o._changed()
 
+      wasdirty = self.meta._dirty
       if self.meta._dirty:
         for c in self.partners:
           c._changed()
@@ -851,8 +852,9 @@ class Slot(object):
       if self._type != "output":
         self._configureOperator(self)
     
-      # call changed callbacks
-      self._sig_changed(self)
+      if wasdirty:
+          # call changed callbacks
+          self._sig_changed(self)
 #      for f, kw in self._callbacks_changed.iteritems():
 #        f(self, **kw)
     
