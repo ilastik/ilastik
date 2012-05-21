@@ -315,8 +315,11 @@ class OpSingleChannelSelector(Operator):
         result[...,0]=im[...,0] # Copy into the (only) channel of our result
 
     def notifyDirty(self, slot, key):
-        key = key[:-1] + (slice(0,1,None),)
-        self.outputs["Output"].setDirty(key)   
+        if slot == self.Input:
+            key = key[:-1] + (slice(0,1,None),)
+            self.outputs["Output"].setDirty(key)
+        else:
+            self.Output.setDirty(slice(None))
 
 
 
