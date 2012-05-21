@@ -729,15 +729,14 @@ class Slot(object):
           for i,s in enumerate(self._subSlots):
               s.setValue(self._value)
 
-          # Propagate dirtyness
-          self.setDirty(slice(None))
-
           # call connect callbacks
           self._sig_connect(self)
 #          for f, kw in self._callbacks_connect.iteritems():
 #            f(self,**kw)
           self._changed()
 
+          # Propagate dirtyness
+          self.setDirty(slice(None))
     
     def setValues(self, values):
         """
