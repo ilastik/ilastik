@@ -53,7 +53,7 @@ class DataSelectionSerializer(object):
             del infoDir[infoName]
                 
         # Rebuild the list of infos
-        for index, slot in enumerate(self.mainOperator.DatasetInfos):
+        for index, slot in enumerate(self.mainOperator.Dataset):
             infoGroup = infoDir.create_group('info{:03d}'.format(index))
             datasetInfo = slot.value
             locationString = self.LocationStrings[datasetInfo.location]
@@ -66,7 +66,7 @@ class DataSelectionSerializer(object):
         # Write any missing local datasets to the local_data group
         localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
         wroteInternalData = False
-        for index, slot in enumerate(self.mainOperator.DatasetInfos):
+        for index, slot in enumerate(self.mainOperator.Dataset):
             info = slot.value
             # If this dataset should be stored in the project, but it isn't there yet
             if  info.location == Location.ProjectInternal \
@@ -86,7 +86,7 @@ class DataSelectionSerializer(object):
         # Construct a list of all the local dataset ids we want to keep
         localDatasetIds = [ slot.value.datasetId
                              for index, slot 
-                             in enumerate(self.mainOperator.DatasetInfos)
+                             in enumerate(self.mainOperator.Dataset)
                              if slot.value.location == Location.ProjectInternal ]
 
         # Delete any datasets in the project that aren't needed any more
@@ -101,8 +101,8 @@ class DataSelectionSerializer(object):
             # Force the operator to setupOutputs() again so it gets data from the project, not external files
             # TODO: This will cause a slew of 'dirty' operators for any inputs we saved.
             #       Is that a problem?
-            infoCopy = copy.copy(self.mainOperator.DatasetInfos[0].value)
-            self.mainOperator.DatasetInfos[0].setValue(infoCopy)
+            infoCopy = copy.copy(self.mainOperator.Dataset[0].value)
+            self.mainOperator.Dataset[0].setValue(infoCopy)
 
     def deserializeFromHdf5(self, hdf5File, projectFilePath):
         # Check the overall file version
@@ -126,10 +126,10 @@ class DataSelectionSerializer(object):
             infoDir = topGroup['infos']
         except KeyError:
             # If our group (or subgroup) doesn't exist, then make sure the operator is empty
-            self.mainOperator.DatasetInfos.resize( 0 )
+            self.mainOperator.Dataset.resize( 0 )
             return
         
-        self.mainOperator.DatasetInfos.resize( len(infoDir) )
+        self.mainOperator.Dataset.resize( len(infoDir) )
         for index, (infoGroupName, infoGroup) in enumerate( sorted(infoDir.items()) ):
             datasetInfo = OpDataSelection.DatasetInfo()
 
@@ -150,7 +150,7 @@ class DataSelectionSerializer(object):
                 assert datasetInfo.datasetId in topGroup['local_data'].keys()
             
             # Give the new info to the operator
-            self.mainOperator.DatasetInfos[index].setValue(datasetInfo)
+            self.mainOperator.Dataset[index].setValue(datasetInfo)
 
     def isDirty(self):
         """ Return true if the current state of this item 
@@ -164,7 +164,7 @@ class DataSelectionSerializer(object):
             (2) the project opening process needs to be aborted for some reason
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
             This way we can avoid invalid state due to a partially loaded project. """ 
-        self.mainOperator.DatasetInfos.resize( 0 )
+        self.mainOperator.Dataset.resize( 0 )
 
     def getOrCreateGroup(self, parentGroup, groupName):
         try:
@@ -208,10 +208,10 @@ class Ilastik05DataSelectionDeserializer(object):
             dataDir = hdf5File["DataSets"]
         except KeyError:
             # If our group (or subgroup) doesn't exist, then make sure the operator is empty
-            self.mainOperator.DatasetInfos.resize( 0 )
+            self.mainOperator.Dataset.resize( 0 )
             return
         
-        self.mainOperator.DatasetInfos.resize( len(dataDir) )
+        self.mainOperator.Dataset.resize( len(dataDir) )
         for index, (datasetDirName, datasetDir) in enumerate( sorted(dataDir.items()) ):
             datasetInfo = OpDataSelection.DatasetInfo()
 
@@ -228,7 +228,7 @@ class Ilastik05DataSelectionDeserializer(object):
             datasetInfo._datasetId = datasetDirName # Use the old dataset name as the new dataset id
             
             # Give the new info to the operator
-            self.mainOperator.DatasetInfos[index].setValue(datasetInfo)
+            self.mainOperator.Dataset[index].setValue(datasetInfo)
 
     def isDirty(self):
         """ Return true if the current state of this item 
@@ -242,7 +242,7 @@ class Ilastik05DataSelectionDeserializer(object):
             (2) the project opening process needs to be aborted for some reason
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
             This way we can avoid invalid state due to a partially loaded project. """ 
-        self.mainOperator.DatasetInfos.resize( 0 )
+        self.mainOperator.Dataset.resize( 0 )
 
 
 if __name__ == "__main__":
@@ -281,8 +281,8 @@ if __name__ == "__main__":
     info.convertToGrayscale = True
     info.location = Location.ProjectInternal
     
-    operatorToSave.DatasetInfos.resize(1)
-    operatorToSave.DatasetInfos[0].setValue(info)
+    operatorToSave.Dataset.resize(1)
+    operatorToSave.Dataset[0].setValue(info)
     
     # Now serialize!
     serializer = DataSelectionSerializer(operatorToSave)
@@ -327,7 +327,7 @@ if __name__ == "__main__":
     deserializer = DataSelectionSerializer(operatorToLoad)
     deserializer.deserializeFromHdf5(testProject, testProjectName)
     
-    assert len(operatorToLoad.DatasetInfos) == len(operatorToSave.DatasetInfos)
+    assert len(operatorToLoad.Dataset) == len(operatorToSave.Dataset)
     assert len(operatorToLoad.RawImages) == len(operatorToSave.RawImages)
     
     assert operatorToLoad.RawImages[0].meta.shape == operatorToSave.RawImages[0].meta.shape

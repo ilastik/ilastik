@@ -56,13 +56,13 @@ class DataSelectionGui(QMainWindow):
             # Our file list widget should match the length of the operator input list
             self.fileInfoTableWidget.setRowCount( newsize )
 
-            for i, slot in enumerate(self.mainOperator.DatasetInfos):
+            for i, slot in enumerate(self.mainOperator.Dataset):
                 # Update now
                 self.updateTableForSlot( slot )
                 # Update if data changes
                 slot.notifyMetaChanged( self.updateTableForSlot )
 
-        self.mainOperator.DatasetInfos.notifyResized(handleInputListChange)
+        self.mainOperator.Dataset.notifyResized(handleInputListChange)
         
     def initAppletDrawerUic(self):
         """
@@ -159,8 +159,8 @@ class DataSelectionGui(QMainWindow):
         Add the given filenames to both the GUI table and the top-level operator inputs.
         """
         # Allocate additional subslots in the operator inputs.
-        oldNumFiles = len(self.mainOperator.DatasetInfos)
-        self.mainOperator.DatasetInfos.resize( oldNumFiles+len(fileNames) )
+        oldNumFiles = len(self.mainOperator.Dataset)
+        self.mainOperator.Dataset.resize( oldNumFiles+len(fileNames) )
 
         # Assign values to the new inputs we just allocated.
         # The GUI will be updated by callbacks that are listening to slot changes
@@ -169,7 +169,7 @@ class DataSelectionGui(QMainWindow):
             datasetInfo.filePath = fileNames[i]
             datasetInfo.invertColors = False
             datasetInfo.convertToGrayscale = False
-            self.mainOperator.DatasetInfos[i+oldNumFiles].setValue( datasetInfo )
+            self.mainOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
 
     def updateTableForSlot(self, slot):
         """
@@ -182,14 +182,14 @@ class DataSelectionGui(QMainWindow):
         
         # Which index is this slot?
         row = -1
-        for i in range( len(self.mainOperator.DatasetInfos) ):
-            if slot == self.mainOperator.DatasetInfos[i]:
+        for i in range( len(self.mainOperator.Dataset) ):
+            if slot == self.mainOperator.Dataset[i]:
                 row = i
                 break
 
         assert row != -1, "Unknown input slot!"
         
-        totalPath = self.mainOperator.DatasetInfos[row].value.filePath
+        totalPath = self.mainOperator.Dataset[row].value.filePath
         lastDotIndex = totalPath.rfind('.')
         extensionAndInternal = totalPath[lastDotIndex:]
         extension = extensionAndInternal.split('/')[0]
@@ -216,13 +216,13 @@ class DataSelectionGui(QMainWindow):
 
         # Create and add the checkbox for color inversion
         invertCheckbox = QCheckBox()
-        invertCheckbox.setChecked( self.mainOperator.DatasetInfos[row].value.invertColors )
+        invertCheckbox.setChecked( self.mainOperator.Dataset[row].value.invertColors )
         tableWidget.setCellWidget( row, Column.Invert, invertCheckbox)
         invertCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Invert, invertCheckbox) )
         
         # Create and add the checkbox for grayscale conversion
         convertToGrayCheckbox = QCheckBox()
-        convertToGrayCheckbox.setChecked( self.mainOperator.DatasetInfos[row].value.convertToGrayscale )
+        convertToGrayCheckbox.setChecked( self.mainOperator.Dataset[row].value.convertToGrayscale )
         tableWidget.setCellWidget( row, Column.Grayscale, convertToGrayCheckbox)
         convertToGrayCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Grayscale, convertToGrayCheckbox) )
     
@@ -243,10 +243,10 @@ class DataSelectionGui(QMainWindow):
         for index, text in sorted(options.items()):
             combo.addItem(text)
 
-        if self.mainOperator.DatasetInfos[row].value.location == OpDataSelection.DatasetInfo.Location.ProjectInternal:
+        if self.mainOperator.Dataset[row].value.location == OpDataSelection.DatasetInfo.Location.ProjectInternal:
             combo.setCurrentIndex( LocationOptions.Project )
-        elif self.mainOperator.DatasetInfos[row].value.location == OpDataSelection.DatasetInfo.Location.FileSystem:
-            if self.mainOperator.DatasetInfos[row].value.filePath[0] == '/':
+        elif self.mainOperator.Dataset[row].value.location == OpDataSelection.DatasetInfo.Location.FileSystem:
+            if self.mainOperator.Dataset[row].value.filePath[0] == '/':
                 combo.setCurrentIndex( LocationOptions.AbsolutePath )
             else:
                 combo.setCurrentIndex( LocationOptions.RelativePath )
@@ -277,10 +277,10 @@ class DataSelectionGui(QMainWindow):
         """
         Update the operator's filePath input to match the gui
         """
-        oldLocationSetting = self.mainOperator.DatasetInfos[index].value.location
+        oldLocationSetting = self.mainOperator.Dataset[index].value.location
         
         # Get the directory by inspecting the original operator path
-        oldTotalPath = self.mainOperator.DatasetInfos[index].value.filePath
+        oldTotalPath = self.mainOperator.Dataset[index].value.filePath
         # Split into directory, filename, extension, and internal path
         lastDotIndex = oldTotalPath.rfind('.')
         extensionAndInternal = oldTotalPath[lastDotIndex:]
@@ -319,12 +319,12 @@ class DataSelectionGui(QMainWindow):
         
         if newTotalPath != oldTotalPath or newLocationSetting != oldLocationSetting:
             # Be sure to copy so the slot notices the change when we setValue()
-            datasetInfo = copy.copy(self.mainOperator.DatasetInfos[index].value)
+            datasetInfo = copy.copy(self.mainOperator.Dataset[index].value)
             datasetInfo.filePath = newTotalPath
             datasetInfo.location = newLocationSetting
     
             # TODO: First check to make sure this file exists!
-            self.mainOperator.DatasetInfos[index].setValue( datasetInfo )
+            self.mainOperator.Dataset[index].setValue( datasetInfo )
     
             # Update the storage option combo to show the new path        
             self.updateStorageOptionComboBox(index, newFileNamePath)
@@ -346,11 +346,11 @@ class DataSelectionGui(QMainWindow):
             # Remove from the GUI
             self.fileInfoTableWidget.removeRow(row)
             # Remove from the operator input
-            finalSize = len(self.mainOperator.DatasetInfos) - 1
-            self.mainOperator.DatasetInfos.removeSlot(row, finalSize)
+            finalSize = len(self.mainOperator.Dataset) - 1
+            self.mainOperator.Dataset.removeSlot(row, finalSize)
             
         # The gui and the operator should be in sync
-        assert self.fileInfoTableWidget.rowCount() == len(self.mainOperator.DatasetInfos)
+        assert self.fileInfoTableWidget.rowCount() == len(self.mainOperator.Dataset)
 
     def handleStorageOptionComboIndexChanged(self, combo, newLocationSetting):
         logger.debug("Combo selection changed: " + combo.itemText(1) + str(newLocationSetting))
@@ -402,7 +402,7 @@ class DataSelectionGui(QMainWindow):
         assert changedRow != -1
         
         # Be sure to copy so the slot notices the change when we setValue()
-        datasetInfo = copy.copy(self.mainOperator.DatasetInfos[changedRow].value)
+        datasetInfo = copy.copy(self.mainOperator.Dataset[changedRow].value)
 
         # Now that we've found the row (and therefore the dataset index),
         #  update this flag in the appropriate operator input slot
@@ -414,7 +414,7 @@ class DataSelectionGui(QMainWindow):
             logger.debug("Convert to Grayscale: " + str(datasetInfo.convertToGrayscale))
         else:
             assert False, "Invalid column for checkbox"
-        self.mainOperator.DatasetInfos[changedRow].setValue( datasetInfo )
+        self.mainOperator.Dataset[changedRow].setValue( datasetInfo )
 
     def enableControls(self, enabled):
         """

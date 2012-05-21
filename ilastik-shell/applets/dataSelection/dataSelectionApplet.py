@@ -6,6 +6,8 @@ from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelect
 from dataSelectionPreferencesManager import DataSelectionPreferencesManager
 from dataSelectionGui import DataSelectionGui
 
+from lazyflow.graph import OperatorWrapper
+
 class DataSelectionApplet( Applet ):
     """
     This applet allows the user to select sets of input data, 
@@ -17,7 +19,7 @@ class DataSelectionApplet( Applet ):
         # Create a data selection top-level operator on the main graph
         # This operator object represents the "model" or master state of the applet which 
         #  the other components of the applet will manipulate and/or listen to for changes.
-        self._topLevelOperator = OpDataSelection(graph)
+        self._topLevelOperator = OperatorWrapper( OpDataSelection(graph=graph) )
 
         # Serialization settings are managed by a 
         self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator),
