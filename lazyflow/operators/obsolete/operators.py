@@ -612,10 +612,6 @@ if has_blist:
                 
           if self.inputs["deleteLabel"].connected() and self.inputs["deleteLabel"].value != -1:
                 labelNr = self.inputs["deleteLabel"].value
-
-                if labelNr <= self._maxLabel:
-                    self._maxLabel -= 1
-                self.outputs["maxLabel"][0] = self._maxLabel
                 
                 neutralElement = 0
                 self.inputs["deleteLabel"].setValue(-1) #reset state of inputslot
@@ -633,7 +629,9 @@ if has_blist:
                 self.outputs["nonzeroValues"][0] = numpy.array(self._sparseNZ.values())
                 self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
                 self.outputs["Output"][:] = self._denseArray #set output dirty
-                    
+                if labelNr <= self._maxLabel:
+                    self._maxLabel -= 1
+                self.outputs["maxLabel"][0] = self._maxLabel                    
                 
         def getOutSlot(self, slot, key, result):
             self.lock.acquire()
@@ -825,10 +823,6 @@ if has_blist:
                   return
                   labelNr = slot.value
                   if labelNr is not -1:
-                      if labelNr <= self._maxLabel:
-                          self._maxLabel -= 1
-                      self.outputs["maxLabel"].setValue(self._maxLabel)
-
                       neutralElement = 0
                       slot.setValue(-1) #reset state of inputslot
                       self.lock.acquire()
@@ -845,6 +839,9 @@ if has_blist:
                       self.outputs["nonzeroValues"][0] = numpy.array(self._sparseNZ.values())
                       self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
                       self.outputs["Output"][:] = self._denseArray #set output dirty
+                      if labelNr <= self._maxLabel:
+                          self._maxLabel -= 1
+                      self.outputs["maxLabel"].setValue(self._maxLabel)
                     
         def execute(self, slot, roi, result):
             key = roi.toSlice()
