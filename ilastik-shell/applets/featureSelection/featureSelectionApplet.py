@@ -7,6 +7,8 @@ from featureSelectionGui import FeatureSelectionGui
 
 from lazyflow.graph import OperatorWrapper
 
+from utility import OperatorWrapperAdapter
+
 class FeatureSelectionApplet( Applet ):
     """
     This applet allows the user to select sets of input data, 
@@ -25,7 +27,7 @@ class FeatureSelectionApplet( Applet ):
                                     Ilastik05FeatureSelectionDeserializer(self._topLevelOperator) ]
 
         # Instantiate the main GUI, which creates the applet drawers (for now)
-        self._centralWidget = FeatureSelectionGui( self._topLevelOperator )
+        self._centralWidget = FeatureSelectionGui()
 
         # To save some typing, the menu bar is defined in the .ui file 
         #  along with the rest of the central widget.
@@ -71,5 +73,5 @@ class FeatureSelectionApplet( Applet ):
         """
         Change the currently displayed image to the one specified by the given index.
         """
-        self._centralWidget.setImageIndex(imageIndex)
+        self._centralWidget.setMainOperator( OperatorWrapperAdapter( self._topLevelOperator, imageIndex ) )
 

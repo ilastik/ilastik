@@ -19,6 +19,7 @@ from functools import partial
 import os
 import utility # This is the ilastik shell utility module
 import numpy
+from utility import bind
 
 class FeatureSelectionGui(QMainWindow):
     """
@@ -45,13 +46,12 @@ class FeatureSelectionGui(QMainWindow):
                      "G. Grad Mag",
                      "Diff of G." ]
 
-    def __init__(self, topLevelOperator):
+    def __init__(self):
         super(FeatureSelectionGui, self).__init__()
 
         # Constants
         FeatureSelectionGui.DefaultColorTable = self.createDefault16ColorColorTable()
 
-        self.mainOperator = topLevelOperator
         self.menuBar = QMenuBar()
         
         self.drawer = None
@@ -64,8 +64,23 @@ class FeatureSelectionGui(QMainWindow):
         self.layerstack = LayerStackModel()
         self.initEditor()
         
-        self.imageIndex = 0
+        self.mainOperator = None
         
+    def setMainOperator(self, operator):
+        self.mainOperator = operator
+        self.mainOperator.SelectionMatrix.notifyConnect( bind(self.onFeaturesSelectionsChanged) )
+        self.mainOperator.notifyConfigured( self.handleFeaturesChanged )
+
+        if self.mainOperator is None:
+            numRows = len(self.layerstack)
+            self.layerstack.removeRows(0, numRows)
+        else:
+            if self.mainOperator.configured():
+                self.handleFeaturesChanged()
+            
+            if self.mainOperator.SelectionMatrix.configured():
+                self.onFeaturesSelectionsChanged()
+    
     def initAppletDrawerUic(self):
         """
         Load the ui file for the applet drawer, which we own.
@@ -75,9 +90,6 @@ class FeatureSelectionGui(QMainWindow):
         self.drawer = uic.loadUi(localDir+"/featureSelectionDrawer.ui")
         self.drawer.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
 
-        # Subscribe to feature selection changes directly from the graph.
-        self.mainOperator.SelectionMatrix.notifyConnect( self.onFeaturesSelectionsChanged )
-        
         def enableDrawerControls(enabled):
             """
             Enable or disable all of the controls in this applet's drawer widget.
@@ -183,11 +195,6 @@ class FeatureSelectionGui(QMainWindow):
         self.featureDlg.selectedFeatureBoolMatrix = defaultFeatures
         self.featureDlg.accepted.connect(self.onNewFeaturesFromFeatureDlg)
 
-    def setImageIndex(self, imageIndex):
-        self.imageIndex = imageIndex
-        if self.mainOperator.configured():
-            self.handleFeaturesChanged()
-
     def onFeatureButtonClicked(self):
         # Refresh the feature matrix in case it has changed since the last time we were opened
         # (e.g. if the user loaded a project from disk)
@@ -206,7 +213,7 @@ class FeatureSelectionGui(QMainWindow):
         featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
         self.mainOperator.SelectionMatrix.setValue( featureMatrix )
     
-    def onFeaturesSelectionsChanged(self, slot):
+    def onFeaturesSelectionsChanged(self):
         """
         Handles changes to our top-level operator's matrix of feature selections.
         """
@@ -237,15 +244,7 @@ class FeatureSelectionGui(QMainWindow):
         
         # No brushing model necessary (we're using the editor as a viewer only)
         #self.pipeline.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)
-
-        self.mainOperator.notifyConfigured( self.handleFeaturesChanged )
         
-        def handleInputResize(slot, oldsize, newsize):
-            if newsize == 0:
-                numRows = len(self.layerstack)
-                self.layerstack.removeRows(0, numRows)
-        self.mainOperator.InputImage.notifyResize(handleInputResize)
-
     def setIconToViewMenu(self):
         """
         In the "Only for Current View" menu item of the View menu, 
@@ -260,7 +259,7 @@ class FeatureSelectionGui(QMainWindow):
         self.layerstack.removeRows(0, numRows)
 
         # Update the editor data shape
-        shape = self.mainOperator.InputImage[self.imageIndex].shape
+        shape = self.mainOperator.InputImage.shape
         self.editor.dataShape = shape
         
         # First add a black layer on the bottom of the image
@@ -273,7 +272,7 @@ class FeatureSelectionGui(QMainWindow):
 
         # Now add a layer for each feature
         # TODO: This assumes the channel is the last axis 
-        numFeatureChannels = self.mainOperator.CachedOutputImage[self.imageIndex].meta.shape[-1]
+        numFeatureChannels = self.mainOperator.CachedOutputImage.meta.shape[-1]
         for featureChannelIndex in reversed(range(0, numFeatureChannels)):
             if featureChannelIndex < len(self.DefaultColorTable):
                 # Choose the next color from our default color table
@@ -291,18 +290,18 @@ class FeatureSelectionGui(QMainWindow):
         """
         # Create an operator to select the channel (feature) we're interested in
         selector=OpSingleChannelSelector(self.mainOperator.graph)
-        selector.Input.connect(self.mainOperator.CachedOutputImage[self.imageIndex])
+        selector.Input.connect(self.mainOperator.CachedOutputImage)
         selector.Index.setValue(featureChannelIndex)
         
         # Determine the name for this feature
-        channelAxis = self.mainOperator.InputImage[self.imageIndex].meta.axistags.channelIndex
-        numOriginalChannels = self.mainOperator.InputImage[self.imageIndex].meta.shape[channelAxis]
+        channelAxis = self.mainOperator.InputImage.meta.axistags.channelIndex
+        numOriginalChannels = self.mainOperator.InputImage.meta.shape[channelAxis]
         originalChannel = featureChannelIndex % numOriginalChannels
         featureNameIndex = featureChannelIndex / numOriginalChannels
         channelNames = ['R', 'G', 'B']
         # FIXME: It shouldn't be necessary to dig down into the operator to access these names.
         #        Perhaps the operator should provide them as an output?
-        featureName = self.mainOperator.FeatureNames[self.imageIndex].value[ featureNameIndex ]
+        featureName = self.mainOperator.FeatureNames.value[ featureNameIndex ]
         if numOriginalChannels > 1:
             featureName += " (" + channelNames[originalChannel] + ")"
         
