@@ -51,7 +51,14 @@ class OpArrayPiper(Operator):
         return result
 
     def notifyDirty(self,slot,key):
-        self.outputs["Output"].setDirty(key)
+        # Check for proper name because subclasses may define extra inputs.
+        # (but decline to override notifyDirty)
+        if slot.name == 'Input':
+            self.outputs["Output"].setDirty(key)
+        else:
+            # If some input we don't know about is dirty (i.e. we are subclassed by an operator with extra inputs),
+            # then mark the entire output dirty.  This is the correct behavior for e.g. 'sigma' inputs.
+            self.outputs["Output"].setDirty(slice(None))
 
     def setInSlot(self, slot, key, value):
         self.outputs["Output"][key] = value
