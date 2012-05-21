@@ -125,6 +125,7 @@ class IlastikShell( QMainWindow ):
         self.currentProjectFile = None
         
         self.currentImageIndex = None
+        self.populatingImageSelectionCombo = False
         self.imageSelectionCombo.currentIndexChanged.connect( self.changeCurrentInputImageIndex )
         
     def show(self):
@@ -146,6 +147,8 @@ class IlastikShell( QMainWindow ):
     def handleImageListModified(self,  multiSlot, ignored, newListSize):
         # assert multiSlot == self.imageNamesSlot
         # Regenerate the image selection combo.
+        self.currentImageIndex = None
+        self.populatingImageSelectionCombo = True
         self.imageSelectionCombo.clear()
         
         # Set the combo text for every slot we know so far
@@ -161,26 +164,40 @@ class IlastikShell( QMainWindow ):
                 assert False
 
             # Update the combo text for any subslots that get updated in the future           
-            def handleNewImageName(index, slot):
+            def handleNewImageName(index, slot, *args):
                 text = slot.value
                 if text is not None:
-                    self.imageSelectionCombo.setItemText( index, slot.value )            
-            subSlot.notifyConnect( partial(handleNewImageName, i) )
+                    self.imageSelectionCombo.setItemText( index, slot.value )
+            subSlot.notifyDirty( partial(handleNewImageName, i) )
         
+        self.populatingImageSelectionCombo = False
         # Change the image index if it's too high for the new list
-        self.changeCurrentInputImageIndex( min( len(self.imageNamesSlot), self.currentImageIndex ) )
+        if self.currentImageIndex is None:
+            newImageIndex = len(self.imageNamesSlot)-1
+        else:
+            newImageIndex = min( len(self.imageNamesSlot)-1, self.currentImageIndex )
+        if newImageIndex >= 0:
+            self.changeCurrentInputImageIndex( newImageIndex )
+        else:
+            self.currentImageIndex = None
 
     def changeCurrentInputImageIndex(self, newImageIndex):
-        if newImageIndex != self.currentImageIndex:
+        if newImageIndex != self.currentImageIndex and self.populatingImageSelectionCombo == False:
             try:
                 # Accessing the image name value will throw if it isn't properly initialized
                 self.imageNamesSlot[newImageIndex].value
-
+            except:
+                # Revert to the original image index.
+                if self.currentImageIndex is not None:
+                    self.imageSelectionCombo.setCurrentIndex(self.currentImageIndex)
+                return
+            else:
                 # Alert each central widget and viewer control widget that the image selection changed
                 for i in range( len(self._applets) ):
                     self._applets[i].setImageIndex(newImageIndex)
-            except:
-                pass
+                
+                self.currentImageIndex = newImageIndex
+
 
     def handleAppleBarItemExpanded(self, modelIndex):
         """
