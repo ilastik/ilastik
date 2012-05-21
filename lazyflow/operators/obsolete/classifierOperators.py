@@ -73,7 +73,7 @@ class OpTrainRandomForest(Operator):
             self.outputs["Classifier"].setDirty((slice(0,1,None),))    
 
     def notifyDirty(self, slot, key):
-        if self.inputs["fixClassifier"].value == False:
+        if slot is not self.inputs["fixClassifier"] and self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(0,1,None),))            
 
 
@@ -164,7 +164,7 @@ class OpTrainRandomForestBlocked(Operator):
             self.outputs["Classifier"].setDirty((slice(0,1,None),))    
 
     def notifyDirty(self, slot, key):
-        if self.inputs["fixClassifier"].value == False:
+        if slot is not self.fixClassifier and self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(0,1,None),))            
 
 
