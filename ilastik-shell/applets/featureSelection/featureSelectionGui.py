@@ -185,7 +185,8 @@ class FeatureSelectionGui(QMainWindow):
 
     def setImageIndex(self, imageIndex):
         self.imageIndex = imageIndex
-        self.handleFeaturesChanged()
+        if self.mainOperator.configured():
+            self.handleFeaturesChanged()
 
     def onFeatureButtonClicked(self):
         # Refresh the feature matrix in case it has changed since the last time we were opened
@@ -272,7 +273,7 @@ class FeatureSelectionGui(QMainWindow):
 
         # Now add a layer for each feature
         # TODO: This assumes the channel is the last axis 
-        numFeatureChannels = self.mainOperator.CachedOutputImage[self.imageIndex].shape[-1]
+        numFeatureChannels = self.mainOperator.CachedOutputImage[self.imageIndex].meta.shape[-1]
         for featureChannelIndex in reversed(range(0, numFeatureChannels)):
             if featureChannelIndex < len(self.DefaultColorTable):
                 # Choose the next color from our default color table
