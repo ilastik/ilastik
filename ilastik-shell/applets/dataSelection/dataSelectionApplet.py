@@ -13,8 +13,8 @@ class DataSelectionApplet( Applet ):
     This applet allows the user to select sets of input data, 
     which are provided as outputs in the corresponding top-level applet operator.
     """
-    def __init__( self, graph ):
-        super(DataSelectionApplet, self).__init__("Data Selection")
+    def __init__( self, graph, title, supportIlastik05Import=False):
+        super(DataSelectionApplet, self).__init__(title)
         
         # Create a data selection top-level operator on the main graph
         # This operator object represents the "model" or master state of the applet which 
@@ -22,8 +22,9 @@ class DataSelectionApplet( Applet ):
         self._topLevelOperator = OperatorWrapper( OpDataSelection(graph=graph) )
 
         # Serialization settings are managed by a 
-        self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator),
-                                    Ilastik05DataSelectionDeserializer(self._topLevelOperator) ]
+        self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator, title) ]
+        if supportIlastik05Import:
+            self._serializableItems.append(Ilastik05DataSelectionDeserializer(self._topLevelOperator))
 
         # Instantiate the main GUI, which creates the applet drawers (for now)
         self._centralWidget = DataSelectionGui( self._topLevelOperator )
@@ -35,7 +36,7 @@ class DataSelectionApplet( Applet ):
         self._menuWidget = self._centralWidget.menuBar
         
         # The central widget owns the applet drawer gui
-        self._drawers = [ ("Dataset Selection", self._centralWidget.drawer) ]
+        self._drawers = [ (title, self._centralWidget.drawer) ]
         
         # Preferences manager
         self._preferencesManager = DataSelectionPreferencesManager()

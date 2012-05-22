@@ -21,8 +21,10 @@ class DataSelectionSerializer(object):
     LocationStrings = { Location.FileSystem      : 'FileSystem',
                         Location.ProjectInternal : 'ProjectInternal' }
 
-    def __init__(self, mainOperator):
+    def __init__(self, mainOperator, topGroupName=None):
         self.mainOperator = mainOperator
+        if topGroupName is not None:
+             self.TopGroupName = topGroupName
     
     def serializeToHdf5(self, hdf5File, projectFilePath):
         # Check the overall file version
@@ -279,7 +281,7 @@ if __name__ == "__main__":
     serializer.serializeToHdf5(testProject, testProjectName)
     
     # Check for dataset existence
-    datasetInternalPath = DataSelectionSerializer.TopGroupName + '/local_data/' + info.datasetId
+    datasetInternalPath = serializer.TopGroupName + '/local_data/' + info.datasetId
     dataset = testProject[datasetInternalPath][...]
     
     # Check axistags attribute
