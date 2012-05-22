@@ -57,4 +57,7 @@ class PixelClassificationApplet( Applet ):
         """
         Change the currently displayed image to the one specified by the given index.
         """
-        self._centralWidget.setImageIndex(imageIndex)
+        if imageIndex is None or imageIndex > len(self.pipeline.InputImages):
+            self._centralWidget.setImageIndex(-1)
+        else:
+            self._centralWidget.setImageIndex(imageIndex)

@@ -119,9 +119,12 @@ class PixelClassificationGui(QMainWindow):
             self.pipeline.LabelImages[self.imageIndex].notifyConnect( bind(self.initLabelLayer) )
 
     def setImageIndex(self, imageIndex):
-        self.imageIndex = imageIndex
-        self.subscribeToInputImageChanges()
-        self.handleGraphInputChanged()
+        if self.imageIndex == -1:
+            self.layerstack.clear()
+        else:
+            self.imageIndex = imageIndex
+            self.subscribeToInputImageChanges()
+            self.handleGraphInputChanged()
 
     def setIconToViewMenu(self):
         self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
