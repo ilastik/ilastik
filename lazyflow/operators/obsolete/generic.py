@@ -467,3 +467,120 @@ class OpPixelOperator(Operator):
         return self.outputs["Output"]._dtype
         
         
+class OpMultiInputConcatenater(Operator):
+    name = "OpMultiInputConcatenater"
+    description = "Combine two MultiInput slots into a single MultiOutput slot"
+    
+    Input1 = MultiInputSlot()
+    Input2 = MultiInputSlot()
+    Output = MultiOutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super(OpMultiInputConcatenater, self).__init__(*args, **kwargs)
+
+        # Subscribe to changes on our inputs.
+        self.Input1.notifyInserted( self.handleInputInserted )
+        self.Input2.notifyInserted( self.handleInputInserted )
+        self.Input1.notifyRemove( self.handleInputRemoved )
+        self.Input2.notifyRemove( self.handleInputRemoved )
+    
+    def handleInputInserted(self, slot, inputPosition, totalsize):
+        """
+        A slot was inserted in one of our inputs.
+        Insert a slot in the appropriate location of our output, and connect it to the appropriate input subslot.
+        """
+        totalOutputLength = len(self.Input1) + len(self.Input2)
+        outputPosition = inputPosition
+        if slot == self.Input2:
+            outputPosition += len(self.Input1)
+
+        self.Output.insertSlot(outputPosition, totalOutputLength)
+        self.Output[outputPosition].connect( slot[inputPosition] )
+        
+    def handleInputRemoved(self, slot, position, totalsize):
+        """
+        A slot was removed from one of our inputs.
+        Remove the appropriate slot from our output.
+        """
+        if slot == self.Input1:
+            totalOutputLength = len(self.Input2) + totalsize
+        elif slot == self.Input2:
+            totalOutputLength = len(self.Input1) + totalsize
+            position += len(self.Input1)
+        self.Output.removeSlot(position, totalOutputLength)
+    
+    def setupOutputs(self):
+        pass
+    
+    def getSubOutSlot(self, slots, indexes, key, result):
+        # Should never be called.  All output slots are directly connected to an input slot.
+        assert False
+        
+if __name__ == "__main__":
+    import numpy
+    g = Graph()
+    op = OpMultiInputConcatenater(g)
+    
+    array1 = numpy.zeros((1,1), dtype=float)
+    array2 = numpy.ones((2,2), dtype=float)
+    array3 = numpy.zeros((3,3), dtype=float)
+    
+    array4 = numpy.zeros((4,4), dtype=float)
+    array5 = numpy.zeros((5,5), dtype=float)
+    array6 = numpy.zeros((6,6), dtype=float)
+
+    array2[0,0] = 0.123
+    array6[0,0] = 0.456
+
+    op.Input1.resize(3)
+    op.Input1[0].setValue( array1 )
+    op.Input1[1].setValue( array2 )
+    op.Input1[2].setValue( array3 )
+
+    op.Input2.resize(3)
+    op.Input2[0].setValue( array4 )
+    op.Input2[1].setValue( array5 )
+    op.Input2[2].setValue( array6 )
+    
+    print op.Input1[0].meta
+    print op.Input1[1].meta
+    print op.Input1[2].meta
+    print op.Output[0].meta
+    print op.Output[1].meta
+    print op.Output[2].meta
+    
+    assert len(op.Output) == 6
+    assert op.Output[0].meta.shape == array1.shape
+    assert op.Output[5].meta.shape == array6.shape
+
+    assert numpy.all(op.Output[1][...].wait() == array2[...])
+    assert numpy.all(op.Output[5][...].wait() == array6[...])
+
+    op.Input1.removeSlot(1, 2)
+    
+    print len(op.Output)
+    assert len(op.Output) == 5 
+    assert op.Output[0].meta.shape == array1.shape
+    assert op.Output[4].meta.shape == array6.shape
+
+    assert numpy.all(op.Output[1][...].wait() == array3[...])
+    assert numpy.all(op.Output[4][...].wait() == array6[...])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
