@@ -1064,59 +1064,79 @@ class OpH5WriterBigDataset(Operator):
     def notifyConnectAll(self):    
         self.outputs["WriteImage"]._shape = (1,)
         self.outputs["WriteImage"]._dtype = object
-        
-        
-        
-        filename = self.inputs["Filename"].value
-        import os
-        if os.path.exists(filename): os.remove(filename)
-        
+
+        filename = self.inputs["Filename"].value        
         hdf5Path = self.inputs["hdf5Path"].value
-        self.f = h5py.File(filename, 'w')
+        self.f = h5py.File(filename)
         
         g=self.f
         pathElements = hdf5Path.split("/")
         for s in pathElements[:-1]:
-            g = g.create_group(s)
+            # Check for existence, create if necessary
+            if s in g.keys():
+                g = g[s]
+            else:
+                g = g.create_group(s)
         
-        shape=self.inputs['Image'].shape
-        
-        self.d=g.create_dataset(pathElements[-1],shape=shape,dtype=numpy.float32, chunks=(1,128,128,1,1),\
-                                compression='gzip', compression_opts=4)
+        dataShape=self.Image.meta.shape
+        dtype = self.Image.meta.dtype
 
+        # Set up our chunk shape
+        # (Guess that x-y slices are more common)
+        chunkDims = {}
+        chunkDims['t'] = 1
+        chunkDims['z'] = 1
+        chunkDims['x'] = 128
+        chunkDims['y'] = 128
+        chunkDims['c'] = 1
+        
+        chunkShape = ()
+        for i in range( len(dataShape) ):
+            axisKey = self.Image.meta.axistags[i].key
+            # Chunk shape can't be larger than the data shape
+            chunkShape += ( min( chunkDims[axisKey], dataShape[i] ), )
+        
+        self.chunkShape = chunkShape
+        datasetName = pathElements[-1]
+        if datasetName in g.keys():
+            del g[datasetName]
+        self.d=g.create_dataset(pathElements[-1],
+                                shape=dataShape,
+                                dtype=dtype,
+                                chunks=self.chunkShape,
+                                compression='gzip',
+                                compression_opts=4)
     
     def getOutSlot(self, slot, key, result):
-        
         requests=self.computeRequests()
-        
-        
         imSlot = self.inputs["Image"]
         
         tmp=[]
                     
         for r in requests:
-            
             tmp.append(self.inputs["Image"][r].allocate())
-         
+        
         for i,t in enumerate(tmp):
             r=requests[i]
             self.d[r]=t.wait()
             logger.debug("request ", i, "out of ", len(tmp), "executed")
-        result[0] = True
+
+        # Save the axistags as a dataset attribute
+        self.d.attrs['axistags'] = self.Image.meta.axistags.toJSON()
         
+        # We're finished.
+        result[0] = True        
         
     def computeRequests(self):
-        
         #TODO: reimplement the request better
         shape=numpy.asarray(self.inputs['Image'].shape)
-        
 
-        shift=numpy.asarray((10,200,200,64,10))
+        chunkShape = numpy.asarray(self.chunkShape)
+
+        # Choose a request shape that is a multiple of the chunk shape        
+        shift = chunkShape * numpy.array([10,2,2,2,10])
         shift=numpy.minimum(shift,shape)
         start=numpy.asarray([0]*len(shape))
-        
-        
-        
         
         stop=shift
         reqList=[]
@@ -1131,12 +1151,6 @@ class OpH5WriterBigDataset(Operator):
                             start=numpy.asarray(indices)
                             stop=numpy.minimum(start+shift,shape)
                             reqList.append(roiToSlice(start,stop))
-        
-     
-        
-        
-   
-        
         return reqList
     
     def close(self):
