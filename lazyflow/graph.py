@@ -1633,9 +1633,8 @@ class OperatorWrapper(Operator):
 
     def _callbackConnect(self, slot):
       slot.resize(len(self.innerOperators))
-      for i in range(len(slot)):
-        for index, innerOp in enumerate(self.innerOperators):
-          innerOp.inputs[slot.name].connect(slot[i])
+      for index, innerOp in enumerate(self.innerOperators):
+        innerOp.inputs[slot.name].connect(slot[index])
 
     def _getOriginalOperator(self):
         op = self.operator
