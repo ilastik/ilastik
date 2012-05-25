@@ -23,6 +23,7 @@ class Column():
     Name = 0
     Location = 1
     InternalID = 2
+    LabelsAllowed = 3
 
 class LocationOptions():
     """ Enum for location menu options """
@@ -77,6 +78,8 @@ class DataSelectionGui(QMainWindow):
             
             # Simply remove the row we don't need any more
             self.fileInfoTableWidget.removeRow( index )
+
+        self.mainOperator.Dataset.notifyRemove( bind( handleDatasetRemoved ) )
         
     def initAppletDrawerUic(self):
         """
@@ -225,6 +228,25 @@ class DataSelectionGui(QMainWindow):
         
         # Create and add the combobox for storage location options
         self.updateStorageOptionComboBox(row, externalPath)
+        
+        # Create and add the checkbox for the 'allow labels' option
+        allowLabelsCheckbox = QCheckBox()
+        allowLabelsCheckbox.setChecked( self.mainOperator.Dataset[row].value.allowLabels )
+        tableWidget.setCellWidget( row, Column.LabelsAllowed, allowLabelsCheckbox )
+        allowLabelsCheckbox.stateChanged.connect( partial(self.handleAllowLabelsCheckbox, self.mainOperator.Dataset[row]) )
+    
+    def handleAllowLabelsCheckbox(self, slot, checked):
+        """
+        The user (un)checked the "allow labels" checkbox in one of the table rows.
+        Update the corresponding dataset info in the operator (which is given in the parameter 'slot')
+        """
+        # COPY the dataset so we trigger the slot to be dirty
+        newDatasetInfo = copy.copy(slot.value)
+        newDatasetInfo.allowLabels = ( checked == Qt.Checked )
+        
+        # Only update if necessary
+        if newDatasetInfo != slot.value:
+            slot.setValue( newDatasetInfo )
     
     def updateStorageOptionComboBox(self, row, filePath):
         """

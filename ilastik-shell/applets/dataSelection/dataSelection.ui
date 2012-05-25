@@ -49,6 +49,11 @@
      <string>Internal Path</string>
     </property>
    </column>
+   <column>
+    <property name="text">
+     <string>Labels Allowed</string>
+    </property>
+   </column>
   </widget>
  </widget>
  <resources/>

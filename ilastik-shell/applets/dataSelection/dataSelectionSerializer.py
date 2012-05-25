@@ -61,6 +61,7 @@ class DataSelectionSerializer(object):
             infoGroup.create_dataset('location', data=locationString)
             infoGroup.create_dataset('filePath', data=datasetInfo.filePath)
             infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
+            infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
         
         # Write any missing local datasets to the local_data group
         localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
@@ -135,12 +136,18 @@ class DataSelectionSerializer(object):
             # Write to the 'private' members to avoid resetting the dataset id
             datasetInfo._filePath = str(infoGroup['filePath'].value)
             datasetInfo._datasetId = str(infoGroup['datasetId'].value)
+
+            # Deserialize the "allow labels" flag
+            try:
+                datasetInfo.allowLabels = infoGroup['allowLabels'].value
+            except KeyError:
+                pass
             
             # If the data is supposed to be in the project,
             #  check for it now.
             if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
                 assert datasetInfo.datasetId in topGroup['local_data'].keys()
-            
+
             # Give the new info to the operator
             self.mainOperator.Dataset[index].setValue(datasetInfo)
 
