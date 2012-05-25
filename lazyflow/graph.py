@@ -1538,7 +1538,7 @@ class OperatorWrapper(Operator):
         
         assert self.operator is not None
         
-        self.name = operator.name
+        self.name = "Wrapped " + operator.name
         self._originalGraph = operator.graph
         self.graph = operator.graph
 
@@ -1618,12 +1618,16 @@ class OperatorWrapper(Operator):
         for o in self.outputs.values():
           o._changed()
         
-        # register callbacks for inserted and removed subslots
+        # register callbacks for inserted and removed input subslots
         for s in self.inputs.values():
           s.notifyInserted(self._callbackInserted)
           s.notifyRemove(self._callbackRemove)
           s.notifyConnect(self._callbackConnect)
 
+        # register callbacks for inserted and removed output subslots
+        for s in self.outputs.values():
+          s.notifyInserted(self._callbackInserted)
+          s.notifyRemove(self._callbackRemove)
 
     def _callbackInserted(self, slot, index, size):
       self._insertInnerOperator(index, size)
