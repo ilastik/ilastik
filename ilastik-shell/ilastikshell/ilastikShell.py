@@ -140,48 +140,23 @@ class IlastikShell( QMainWindow ):
     def setImageNameListSlot(self, multiSlot):
         assert type(multiSlot) == MultiOutputSlot
         self.imageNamesSlot = multiSlot
-        def subscribeToImageNameUpdates():
-            for i, subSlot in enumerate(self.imageNamesSlot):
-                subSlot.notifyDirty( bind(self.handleImageListModified) )
-        multiSlot.notifyInserted( bind(subscribeToImageNameUpdates) )
-        multiSlot.notifyRemove( bind(subscribeToImageNameUpdates) )
-        multiSlot.notifyResized( bind(subscribeToImageNameUpdates) )
         
-    def handleImageListModified(self):
-        # Regenerate the image selection combo.
-        self.currentImageIndex = None
-        self.populatingImageSelectionCombo = True
-        self.imageSelectionCombo.clear()
-        
-        # Set the combo text for every slot we know so far
-        for i, subSlot in enumerate(self.imageNamesSlot):
-            try:
-                self.imageSelectionCombo.addItem(subSlot.value)
-            except AssertionError:
-                # Currently graph.py asserts if the item has no value.
-                # In the future this may be changed to some other exception.
-                self.imageSelectionCombo.addItem('uninitialized')
-            except:
-                # If we got here, modify the except statement above to catch the appropriate exception type.
-                assert False
+        def insertImageName( index, slot ):
+            self.imageSelectionCombo.setItemText( index, slot.value )
 
-            # Update the combo text for any subslots that get updated in the future           
-            def handleNewImageName(index, slot, *args):
-                text = slot.value
-                if text is not None:
-                    self.imageSelectionCombo.setItemText( index, slot.value )
-            subSlot.notifyDirty( partial(handleNewImageName, i) )
-        
-        self.populatingImageSelectionCombo = False
-        # Change the image index if it's too high for the new list
-        if self.currentImageIndex is None:
-            newImageIndex = len(self.imageNamesSlot)-1
-        else:
-            newImageIndex = min( len(self.imageNamesSlot)-1, self.currentImageIndex )
-        if newImageIndex >= 0:
-            self.changeCurrentInputImageIndex( newImageIndex )
-        else:
-            self.currentImageIndex = None
+        def handleImageNameSlotInsertion(multislot, index):
+            assert multislot == self.imageNamesSlot
+            self.populatingImageSelectionCombo = True
+            self.imageSelectionCombo.insertItem(index, "uninitialized")
+            self.populatingImageSelectionCombo = False
+            multislot[index].notifyDirty( bind( insertImageName, index) )
+
+        multiSlot.notifyInserted( bind(handleImageNameSlotInsertion) )
+
+        def handleImageNameSlotRemoval(multislot, index):
+            # Simply remove the combo entry, which causes the currentIndexChanged signal to fire if necessary.
+            self.imageSelectionCombo.removeItem(index)
+        multiSlot.notifyRemove( bind(handleImageNameSlotRemoval) )
 
     def changeCurrentInputImageIndex(self, newImageIndex):
         if newImageIndex != self.currentImageIndex \
@@ -200,7 +175,7 @@ class IlastikShell( QMainWindow ):
                 for i in range( len(self._applets) ):
                     self._applets[i].setImageIndex(newImageIndex)
                 
-                self.currentImageIndex = newImageIndex
+        self.currentImageIndex = newImageIndex
 
 
     def handleAppleBarItemExpanded(self, modelIndex):
