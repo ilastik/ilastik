@@ -1,5 +1,4 @@
-from opDataSelection import OpDataSelection
-Location = OpDataSelection.DatasetInfo.Location
+from opDataSelection import OpDataSelection, DatasetInfo
 
 import os
 import vigra
@@ -18,8 +17,8 @@ class DataSelectionSerializer(object):
     TopGroupName = 'DataSelection'
 
     # Constants    
-    LocationStrings = { Location.FileSystem      : 'FileSystem',
-                        Location.ProjectInternal : 'ProjectInternal' }
+    LocationStrings = { DatasetInfo.Location.FileSystem      : 'FileSystem',
+                        DatasetInfo.Location.ProjectInternal : 'ProjectInternal' }
 
     def __init__(self, mainOperator, topGroupName=None):
         self.mainOperator = mainOperator
@@ -69,7 +68,7 @@ class DataSelectionSerializer(object):
         for index, slot in enumerate(self.mainOperator.Dataset):
             info = slot.value
             # If this dataset should be stored in the project, but it isn't there yet
-            if  info.location == Location.ProjectInternal \
+            if  info.location == DatasetInfo.Location.ProjectInternal \
             and info.datasetId not in localDataGroup.keys():
                 # Obtain the data from the corresponding output and store it to the project.
                 # TODO: Optimize this for large datasets by streaming it chunk-by-chunk.
@@ -87,7 +86,7 @@ class DataSelectionSerializer(object):
         localDatasetIds = [ slot.value.datasetId
                              for index, slot 
                              in enumerate(self.mainOperator.Dataset)
-                             if slot.value.location == Location.ProjectInternal ]
+                             if slot.value.location == DatasetInfo.Location.ProjectInternal ]
 
         # Delete any datasets in the project that aren't needed any more
         for datasetName in localDataGroup.keys():
@@ -131,7 +130,7 @@ class DataSelectionSerializer(object):
         
         self.mainOperator.Dataset.resize( len(infoDir) )
         for index, (infoGroupName, infoGroup) in enumerate( sorted(infoDir.items()) ):
-            datasetInfo = OpDataSelection.DatasetInfo()
+            datasetInfo = DatasetInfo()
 
             # Make a reverse-lookup of the location storage strings            
             LocationLookup = { v:k for k,v in self.LocationStrings.items() }
@@ -143,7 +142,7 @@ class DataSelectionSerializer(object):
             
             # If the data is supposed to be in the project,
             #  check for it now.
-            if datasetInfo.location == Location.ProjectInternal:
+            if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
                 assert datasetInfo.datasetId in topGroup['local_data'].keys()
             
             # Give the new info to the operator
@@ -210,11 +209,11 @@ class Ilastik05DataSelectionDeserializer(object):
         
         self.mainOperator.Dataset.resize( len(dataDir) )
         for index, (datasetDirName, datasetDir) in enumerate( sorted(dataDir.items()) ):
-            datasetInfo = OpDataSelection.DatasetInfo()
+            datasetInfo = DatasetInfo()
 
             # Since we are importing from a 0.5 file, all datasets will be external 
             #  to the project (pulled in from the old file as hdf5 datasets)
-            datasetInfo.location = Location.FileSystem
+            datasetInfo.location = DatasetInfo.Location.FileSystem
             
             # Write to the 'private' members to avoid resetting the dataset id
             totalDatasetPath = projectFilePath + '/DataSets/' + datasetDirName + '/data'
@@ -269,9 +268,9 @@ if __name__ == "__main__":
     operatorToSave.ProjectFile.setValue(testProject)
     operatorToSave.WorkingDirectory.setValue( os.path.split(__file__)[0] )
     
-    info = OpDataSelection.DatasetInfo()
+    info = DatasetInfo()
     info.filePath = '/home/bergs/5d.npy'
-    info.location = Location.ProjectInternal
+    info.location = DatasetInfo.Location.ProjectInternal
     
     operatorToSave.Dataset.resize(1)
     operatorToSave.Dataset[0].setValue(info)

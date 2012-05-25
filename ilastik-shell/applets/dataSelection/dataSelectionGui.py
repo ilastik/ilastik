@@ -2,7 +2,7 @@ from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
-from opDataSelection import OpDataSelection
+from opDataSelection import OpDataSelection, DatasetInfo
 
 from functools import partial
 import os
@@ -163,7 +163,7 @@ class DataSelectionGui(QMainWindow):
         # Assign values to the new inputs we just allocated.
         # The GUI will be updated by callbacks that are listening to slot changes
         for i in range(0, len(fileNames)):
-            datasetInfo = OpDataSelection.DatasetInfo()
+            datasetInfo = DatasetInfo()
             datasetInfo.filePath = fileNames[i]
             self.mainOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
 
@@ -227,9 +227,9 @@ class DataSelectionGui(QMainWindow):
         for index, text in sorted(options.items()):
             combo.addItem(text)
 
-        if self.mainOperator.Dataset[row].value.location == OpDataSelection.DatasetInfo.Location.ProjectInternal:
+        if self.mainOperator.Dataset[row].value.location == DatasetInfo.Location.ProjectInternal:
             combo.setCurrentIndex( LocationOptions.Project )
-        elif self.mainOperator.Dataset[row].value.location == OpDataSelection.DatasetInfo.Location.FileSystem:
+        elif self.mainOperator.Dataset[row].value.location == DatasetInfo.Location.FileSystem:
             if self.mainOperator.Dataset[row].value.filePath[0] == '/':
                 combo.setCurrentIndex( LocationOptions.AbsolutePath )
             else:
@@ -293,12 +293,12 @@ class DataSelectionGui(QMainWindow):
         newLocationSelection = locationCombo.currentIndex()
 
         if newLocationSelection == LocationOptions.Project:
-            newLocationSetting = OpDataSelection.DatasetInfo.Location.ProjectInternal
+            newLocationSetting = DatasetInfo.Location.ProjectInternal
         elif newLocationSelection == LocationOptions.AbsolutePath:
-            newLocationSetting = OpDataSelection.DatasetInfo.Location.FileSystem
+            newLocationSetting = DatasetInfo.Location.FileSystem
             newTotalPath = absTotalPath
         elif newLocationSelection == LocationOptions.RelativePath:
-            newLocationSetting = OpDataSelection.DatasetInfo.Location.FileSystem
+            newLocationSetting = DatasetInfo.Location.FileSystem
             newTotalPath = relTotalPath
         
         if newTotalPath != oldTotalPath or newLocationSetting != oldLocationSetting:
