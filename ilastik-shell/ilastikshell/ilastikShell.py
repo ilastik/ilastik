@@ -258,6 +258,8 @@ class IlastikShell( QMainWindow ):
         # If the user clicks on a top-level item, automatically expand it.
         if modelIndex.parent() == self.appletBar.rootIndex():
             self.appletBar.expand(modelIndex)
+        else:
+            self.appletBar.setCurrentIndex( modelIndex.parent() )
 
     def addApplet( self, applet ):
         self._applets.append(applet)
