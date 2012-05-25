@@ -59,9 +59,9 @@ class PreprocessSettings(HasTraits):
 
     default = View(Item('sigma'), Item('edgeIndicator'),  buttons = [reset, preprocess])
     
-    def __init__(self, operator):
+    def __init__(self, gui, operator):
       self.operator = operator
-
+      self.gui = gui
       self.preprocess.on_perform = self.on_preprocess
       self.reset.on_perform = self.on_reset
     
@@ -80,6 +80,62 @@ class PreprocessSettings(HasTraits):
       self.operator.segmentor[0].value 
 
     
+class AlgorithmSettings(HasTraits):
+    sigma = Float(1.6)
+    algorithm = Enum("Prio MST", "Perturb Prio MST")
+    background_priority = Float(0.95)
+    perturbation = Float(0.1)
+    trials       = Int(5)
+    uncertainty_perturb  = Enum("Affected Subtree Size", "Exchange Count")
+    uncertainty_normal  = Enum("Local Margin",  "Exchange Count")
+
+    perturb_mst = Group(Item("background_priority"), Item("perturbation"), Item("trials"), Item("uncertainty_perturb"), visible_when="algorithm=='Perturb Prio MST'")
+    prio_mst    = Group(Item("background_priority"), Item("uncertainty_normal"), visible_when="algorithm=='Prio MST'")
+
+    reset        = Action(name = "Reset")
+    segment      = Action(name = "Update&Segment")
+
+    default = View(Item("algorithm"), Group(perturb_mst), Group(prio_mst), buttons=[segment])
+    
+    def __init__(self, gui, operator):
+      self.operator = operator
+      self.gui = gui
+
+      self.segment.on_perform = self.on_segment
+    
+
+    def on_segment(self):
+      print "__________ SEGMENT ____________"
+      self.update_segmentor()
+      self.update_parameters()
+      self.gui.setupSegmentationLayer()
+      self.gui.editor.scheduleSlicesRedraw()
+
+    def update_segmentor(self):
+      pass
+
+    def update_parameters(self):
+      params = dict()
+      if self.algorithm == "Prio MST":
+        if self.uncertainty_normal == "Local Margin":
+          params["uncertainty"] = "localMargin"
+        elif self.uncertainty_normal == "Exchange Count":
+          params["uncertainty"] = "exchangeCount"
+      elif self.algorithm == "Perturb Prio MST":
+        if self.uncertainty_perturb == "Affected Subtree Size":
+          params["uncertainty"] = "cumSubtreeSize"
+        elif self.uncertainty_perturb == "Exchange Count":
+          params["uncertainty"] = "cumExchangeCount"
+      if self.background_priority < 1.0:
+        params["prios"] = [1.0]*len(self.operator.seedNumbers[0].value)
+        params["prios"][1] = self.background_priority
+      else:
+        params["prios"] = [1.0 / self.background_priority]*len(self.operator.seedNumbers[0].value)
+        params["prios"][1] = 1.0
+      
+      self.operator.parameters.setValue(params)
+      # run calculation
+      self.operator.segmentation[0][:]
 
 
 class SegmentorSettings(HasTraits):
@@ -113,7 +169,8 @@ class SeededWatershedGui(QMainWindow):
 
         self.pipeline = pipeline
         
-        self.preprocessSettings = PreprocessSettings(self.pipeline)
+        self.preprocessSettings = PreprocessSettings(self, self.pipeline)
+        self.algorithmSettings = AlgorithmSettings(self, self.pipeline)
 
         self.imageIndex = 0
 
@@ -404,6 +461,17 @@ class SeededWatershedGui(QMainWindow):
 
         control.enableControls = fct
         return control
+    
+    @property
+    def setupAlgorithmSettingsUi(self):
+        control = self.algorithmSettings.edit_traits('default', kind='subpanel').control 
+
+        def fct(flag):
+          #TODO: do we need to do something here ?
+          return
+
+        control.enableControls = fct
+        return control
 
     def initPredictionControlsUic(self):
         # We don't know where the user is running this script from,
@@ -565,6 +633,7 @@ class SeededWatershedGui(QMainWindow):
         The user clicked the "Add Label" button.  Update the GUI and pipeline.
         """
         self.addNewLabel()
+        self.algorithmSettings.update_parameters()
     
     def addNewLabel(self):
         """
@@ -629,6 +698,8 @@ class SeededWatershedGui(QMainWindow):
             #  Otherwise, you can never delete the same label twice in a row.
             #  (Only *changes* to the input are acted upon.)
             self.pipeline.opLabelArray.inputs["deleteLabel"].setValue(-1)
+        
+        self.algorithmSettings.update_parameters()
             
     def setupSegmentationLayer(self):
         """

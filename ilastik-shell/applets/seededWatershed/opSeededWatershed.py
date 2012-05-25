@@ -13,40 +13,6 @@ from json import decoder, scanner
 from json.scanner import make_scanner
 from _json import scanstring as c_scanstring
 
-_CONSTANTS = json.decoder._CONSTANTS
-
-py_make_scanner = scanner.py_make_scanner
-
-# Convert from unicode to str
-def str_scanstring(*args, **kwargs):
-    result = c_scanstring(*args, **kwargs)
-    return str(result[0]), result[1]
-
-# Little dirty trick here
-json.decoder.scanstring = str_scanstring
-
-class StrJSONDecoder(decoder.JSONDecoder):
-    def __init__(self, encoding=None, object_hook=None, parse_float=None,
-            parse_int=None, parse_constant=None, strict=True,
-            object_pairs_hook=None):
-        self.encoding = encoding
-        self.object_hook = object_hook
-        self.object_pairs_hook = object_pairs_hook
-        self.parse_float = parse_float or float
-        self.parse_int = parse_int or int
-        self.parse_constant = parse_constant or _CONSTANTS.__getitem__
-        self.strict = strict
-        self.parse_object = decoder.JSONObject
-        self.parse_array = decoder.JSONArray
-        self.parse_string = str_scanstring
-        self.scan_once = py_make_scanner(self)
-
-# And another little dirty trick there    
-_default_decoder = StrJSONDecoder(encoding=None, object_hook=None,
-                               object_pairs_hook=None)
-
-json._default_decoder = _default_decoder
-
 
 class OpSegmentor(Operator):
 
@@ -57,7 +23,7 @@ class OpSegmentor(Operator):
   update = InputSlot(value = False)
   eraser = InputSlot(value=100)
   algorithm = InputSlot(value="PrioMST")
-  parameters = InputSlot(value="{}")
+  parameters = InputSlot(value=dict())
   
   sigma = InputSlot(value=1.6)
   border_indicator = InputSlot(value="hessian_ev_0")
@@ -90,6 +56,7 @@ class OpSegmentor(Operator):
     self._dirtySeg = True
     self.initial_segmentor.notifyConnect(self.onInitialSegmentor)
     self.initial_segmentor.notifyMetaChanged(self.onInitialSegmentor)
+    self.parameters.notifyMetaChanged(self.onNewParameters)
 
   def onInitialSegmentor(self, slot):
     if slot.meta.shape is not None:
@@ -99,6 +66,10 @@ class OpSegmentor(Operator):
         self.seg = seg
         self._dirtySeg = False
       self.initial_seg = seg
+
+  def onNewParameters(self, slot):
+    print "================= setting segmentation to dirty = True"
+    self._dirty = True
         
   def updateSeeds(self, oldseg, newseg):
     newseg.seeds.lut[:] = oldseg.seeds.lut[:]
@@ -211,26 +182,21 @@ class OpSegmentor(Operator):
       segmentor = self.segmentor.value
 
       algorithm = self.algorithm.value
-      try:
-        parameters = self._parameters = json.loads(self.parameters.value)
-      except:
-        print "algorithmsOptions not a valid json string: ", self.parameters.value
-        parameters = self._parameters = {}
-        # self._fname = fileName
-        self._dirty = True
-        self.seg = segmentor
+      
+      self._parameters = self.parameters.value
       
       labelNumbers = numpy.unique(self.seg.seeds.lut)
 
-      if self._dirty and self.update.value == True:
+      if self._dirty:
         labelCount = len(labelNumbers)
-        prios = [1.0] * labelCount
-        if self._parameters.has_key("prioBG"):
-          prios[1] = self._parameters["prioBG"]
-        print "using labelCount", labelCount
+        if not self._parameters.has_key("prios"):
+          prios = [1.0] * labelCount
+          self._parameters["prios"] = prios
+        while labelCount > len(self._parameters["prios"]):
+            self._parameters["prios"].append(1.0)
         unaries =  numpy.zeros((self.seg.numNodes,labelCount)).astype(numpy.float32)
         print "parameters", self._parameters
-        self.seg.run(unaries, prios = prios, **self._parameters)
+        self.seg.run(unaries, **self._parameters)
         self._dirty = False
       self.lock.release()
 
