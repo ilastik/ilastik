@@ -94,9 +94,6 @@ class DataSelectionSerializer(object):
                 del localDataGroup[datasetName]
 
         if wroteInternalData:
-            # The operator should use the same project file that we're using
-            self.mainOperator.ProjectFile.setValue(hdf5File)
-            
             # Force the operator to setupOutputs() again so it gets data from the project, not external files
             # TODO: This will cause a slew of 'dirty' operators for any inputs we saved.
             #       Is that a problem?
@@ -115,13 +112,12 @@ class DataSelectionSerializer(object):
         #  paths from relative paths is the project file's directory.
         projectDir = os.path.split(projectFilePath)[0]
         self.mainOperator.WorkingDirectory.setValue( projectDir )
-
-        # Provide the project file to our operator
-        self.mainOperator.ProjectFile.setValue(hdf5File)
+        self.mainOperator.ProjectDataGroup.setValue( self.TopGroupName + '/local_data' )
+        self.mainOperator.ProjectFile.setValue( hdf5File )
 
         # Access the top group and the info group
         try:
-            topGroup = hdf5File[DataSelectionSerializer.TopGroupName]
+            topGroup = hdf5File[self.TopGroupName]
             infoDir = topGroup['infos']
         except KeyError:
             # If our group (or subgroup) doesn't exist, then make sure the operator is empty
@@ -195,7 +191,8 @@ class Ilastik05DataSelectionDeserializer(object):
         projectDir = os.path.split(projectFilePath)[0]
         self.mainOperator.WorkingDirectory.setValue( projectDir )
 
-        # Provide the project file to our operator
+        # These project file inputs are required, but are not used because the data is treated as "external"
+        self.mainOperator.ProjectDataGroup.setValue( 'DataSets' )
         self.mainOperator.ProjectFile.setValue(hdf5File)
 
         # Access the top group and the info group
@@ -267,6 +264,7 @@ if __name__ == "__main__":
     operatorToSave = OperatorWrapper( OpDataSelection(graph=graph) )
     operatorToSave.ProjectFile.setValue(testProject)
     operatorToSave.WorkingDirectory.setValue( os.path.split(__file__)[0] )
+    operatorToSave.ProjectDataGroup.setValue( DataSelectionSerializer.TopGroupName + '/local_data' )
     
     info = DatasetInfo()
     info.filePath = '/home/bergs/5d.npy'

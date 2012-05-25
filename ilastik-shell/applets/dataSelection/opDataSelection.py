@@ -42,10 +42,10 @@ class OpDataSelection(Operator):
     name = "OpDataSelection"
     category = "Top-level"
     
-    # The project hdf5 File object (already opened)
-    # Optional, but MUST be connected first if its connected
-    ProjectFile = InputSlot(stype='object', optional=True)
-    WorkingDirectory = InputSlot(stype='filestring', optional=True)
+    ProjectFile = InputSlot(stype='object') # The project hdf5 File object (already opened)
+    ProjectDataGroup = InputSlot(stype='string') # The internal path to the hdf5 group where project-local
+                                                 #  datasets are stored within the project file
+    WorkingDirectory = InputSlot(stype='filestring') # The filesystem directory where the project file is located
 
     # A dataset info object
     Dataset = InputSlot(stype='object')
@@ -57,9 +57,7 @@ class OpDataSelection(Operator):
     
     def setupOutputs(self):
         datasetInfo = self.Dataset.value
-
-        # TODO: This shouldn't be hard-coded here.
-        internalPath = 'DataSelection/local_data/' + datasetInfo.datasetId
+        internalPath = self.ProjectDataGroup.value + '/' + datasetInfo.datasetId
 
         # Data only comes from the project file if the user said so AND it exists in the project
         datasetInProject = (datasetInfo.location == DatasetInfo.Location.ProjectInternal)

@@ -9,6 +9,7 @@ import os
 import sys
 import copy
 import utility # This is the ilastik shell utility module
+from utility import bind
 
 import logging
 logger = logging.getLogger(__name__)
@@ -58,9 +59,24 @@ class DataSelectionGui(QMainWindow):
                 # Update now
                 self.updateTableForSlot( slot )
                 # Update if data changes
-                slot.notifyMetaChanged( self.updateTableForSlot )
+                slot.notifyDirty( self.updateTableForSlot )
 
-        self.mainOperator.Dataset.notifyResized(handleInputListChange)
+        def handleNewDataset( multislot, index ):
+            assert multislot == self.mainOperator.Dataset
+            # Make room in the table
+            self.fileInfoTableWidget.insertRow( index )
+            
+            # Update the table row data when this slot has new data
+            # We can't bind in the row here because the row may change in the meantime.
+            self.mainOperator.Dataset[index].notifyDirty( bind( self.updateTableForSlot ) )
+
+        self.mainOperator.Dataset.notifyInserted( bind( handleNewDataset ) )
+        
+        def handleDatasetRemoved( multislot, index ):
+            assert multislot == self.mainOperator.Dataset
+            
+            # Simply remove the row we don't need any more
+            self.fileInfoTableWidget.removeRow( index )
         
     def initAppletDrawerUic(self):
         """
