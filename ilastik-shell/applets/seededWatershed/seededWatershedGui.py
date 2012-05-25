@@ -53,14 +53,14 @@ if not hasTraits:
 
 class PreprocessSettings(HasTraits):
     sigma = Float(1.6)
-    edgeIndicator = Enum("Step", "Bright Lines", "Dark Lines")
+    edgeIndicator = Enum("Bright Lines", "Dark Lines")
     preprocess = Action(name = 'Preprocess Data')
     reset      = Action(name = 'Reset')
 
     default = View(Item('sigma'), Item('edgeIndicator'),  buttons = [reset, preprocess])
     
-    def __init__(self, opPreprocess):
-      self.opPreprocess = opPreprocess
+    def __init__(self, operator):
+      self.operator = operator
 
       self.preprocess.on_perform = self.on_preprocess
       self.reset.on_perform = self.on_reset
@@ -70,6 +70,14 @@ class PreprocessSettings(HasTraits):
 
     def on_preprocess(self):
       print "__________ PREPROCESS ____________"
+      self.operator.sigma.setValue(self.sigma)
+      if self.edgeIndicator == "Bright Lines":
+        self.operator.border_indicator.setValue("hessian_ev_0")
+      elif self.edgeIndicator == "Dark Lines":
+        self.operator.border_indicator.setValue("hessian_ev_0_inv")
+      # initiate calculation
+      print "kasdlaksdlsdajkl", self.operator.segmentor[0].meta.shape
+      self.operator.segmentor[0].value 
 
     
 
