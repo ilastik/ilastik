@@ -73,7 +73,7 @@ class FeatureSelectionApplet( Applet ):
         """
         Change the currently displayed image to the one specified by the given index.
         """
-        if imageIndex is None or imageIndex > len(self._topLevelOperator.InputImage):
+        if imageIndex is -1 or imageIndex > len(self._topLevelOperator.InputImage):
             newMainOperator = None
         else:
             newMainOperator = OperatorWrapperAdapter( self._topLevelOperator, imageIndex )

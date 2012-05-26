@@ -68,18 +68,14 @@ class FeatureSelectionGui(QMainWindow):
         
     def setMainOperator(self, operator):
         self.mainOperator = operator
-        self.mainOperator.SelectionMatrix.notifyConnect( bind(self.onFeaturesSelectionsChanged) )
-        self.mainOperator.notifyConfigured( self.handleFeaturesChanged )
+        self.onFeaturesSelectionsChanged()
 
         if self.mainOperator is None:
-            numRows = len(self.layerstack)
-            self.layerstack.removeRows(0, numRows)
-        else:
-            if self.mainOperator.configured():
-                self.handleFeaturesChanged()
-            
-            if self.mainOperator.SelectionMatrix.configured():
-                self.onFeaturesSelectionsChanged()
+            self.layerstack.clear()
+        elif self.mainOperator.configured():
+            self.mainOperator.SelectionMatrix.notifyConnect( bind(self.onFeaturesSelectionsChanged) )
+            self.mainOperator.notifyConfigured( self.handleFeaturesChanged )
+            self.handleFeaturesChanged()
     
     def initAppletDrawerUic(self):
         """
@@ -218,7 +214,11 @@ class FeatureSelectionGui(QMainWindow):
         Handles changes to our top-level operator's matrix of feature selections.
         """
         # Update the drawer caption
-        self.drawer.caption.setText( "(Selected %d features)" % numpy.sum(self.mainOperator.SelectionMatrix.value) )
+        if self.mainOperator is None or not self.mainOperator.SelectionMatrix.configured():
+            self.drawer.caption.setText( "(No features selected)" )
+            self.layerstack.clear()
+        else:
+            self.drawer.caption.setText( "(Selected %d features)" % numpy.sum(self.mainOperator.SelectionMatrix.value) )
 
     def initEditor(self):
         """
