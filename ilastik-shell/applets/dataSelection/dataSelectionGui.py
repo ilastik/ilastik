@@ -1,4 +1,4 @@
-from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject
+from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject, QVariant
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
@@ -23,26 +23,30 @@ class Column():
     Name = 0
     Location = 1
     InternalID = 2
-    LabelsAllowed = 3
+    LabelsAllowed = 3 # Note: For now, this column must come last because it gets removed in batch mode.
 
 class LocationOptions():
     """ Enum for location menu options """
     Project = 0
     AbsolutePath = 1
     RelativePath = 2
-    # ChooseNew    # TODO
+
+class GuiMode():
+    Normal = 0
+    Batch = 1
 
 class DataSelectionGui(QMainWindow):
     """
     Manages all GUI elements in the data selection applet.
     This class itself is the central widget and also owns/manages the applet drawer widgets.
     """
-    def __init__(self, dataSelectionOperator):
+    def __init__(self, dataSelectionOperator, guiMode=GuiMode.Normal):
         super(DataSelectionGui, self).__init__()
 
         self.drawer = None
         self.mainOperator = dataSelectionOperator
         self.menuBar = QMenuBar()
+        self.guiMode = guiMode
         
         self.initAppletDrawerUic()
         self.initCentralUic()
@@ -128,7 +132,11 @@ class DataSelectionGui(QMainWindow):
         self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.Name, 200)
         self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.Location, 250)
         self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.InternalID, 100)
-        # (Leave the checkbox column widths alone.  They will be auto-sized.)
+
+        if self.guiMode == GuiMode.Batch:
+            # It doesn't make sense to provide a labeling option in batch mode
+            self.fileInfoTableWidget.removeColumn( Column.LabelsAllowed )
+        
         self.fileInfoTableWidget.verticalHeader().hide()
 
         # Set up handlers
@@ -184,6 +192,10 @@ class DataSelectionGui(QMainWindow):
         for i in range(0, len(fileNames)):
             datasetInfo = DatasetInfo()
             datasetInfo.filePath = fileNames[i]
+            
+            # Allow labels by default if this gui isn't being used for batch data.
+            datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
+            
             self.mainOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
 
     def updateTableForSlot(self, slot):
@@ -229,11 +241,12 @@ class DataSelectionGui(QMainWindow):
         # Create and add the combobox for storage location options
         self.updateStorageOptionComboBox(row, externalPath)
         
-        # Create and add the checkbox for the 'allow labels' option
-        allowLabelsCheckbox = QCheckBox()
-        allowLabelsCheckbox.setChecked( self.mainOperator.Dataset[row].value.allowLabels )
-        tableWidget.setCellWidget( row, Column.LabelsAllowed, allowLabelsCheckbox )
-        allowLabelsCheckbox.stateChanged.connect( partial(self.handleAllowLabelsCheckbox, self.mainOperator.Dataset[row]) )
+        if self.guiMode == GuiMode.Batch:
+            # Create and add the checkbox for the 'allow labels' option
+            allowLabelsCheckbox = QCheckBox()
+            allowLabelsCheckbox.setChecked( self.mainOperator.Dataset[row].value.allowLabels )
+            tableWidget.setCellWidget( row, Column.LabelsAllowed, allowLabelsCheckbox )
+            allowLabelsCheckbox.stateChanged.connect( partial(self.handleAllowLabelsCheckbox, self.mainOperator.Dataset[row]) )
     
     def handleAllowLabelsCheckbox(self, slot, checked):
         """
@@ -259,19 +272,32 @@ class DataSelectionGui(QMainWindow):
         relPath = "<project dir>/" + relPath
         
         combo = QComboBox()
-        options = { LocationOptions.Project : "<project>",
-                    LocationOptions.AbsolutePath : absPath,
-                    LocationOptions.RelativePath : relPath }
-        for index, text in sorted(options.items()):
-            combo.addItem(text)
+        options = {} # combo data -> combo text
+        options[ LocationOptions.AbsolutePath ] = absPath
+        options[ LocationOptions.RelativePath ] = relPath
+        
+        # Saving data to the project file is not an option in batch mode
+        if self.guiMode == GuiMode.Normal:
+            options[ LocationOptions.Project ] = "<project>"
+                
+        for option, text in sorted(options.items()):
+            # Add to the combo, storing the option as the item data
+            combo.addItem(text, option)
 
-        if self.mainOperator.Dataset[row].value.location == DatasetInfo.Location.ProjectInternal:
-            combo.setCurrentIndex( LocationOptions.Project )
-        elif self.mainOperator.Dataset[row].value.location == DatasetInfo.Location.FileSystem:
+        # Select the combo index that matches the current setting
+        location = self.mainOperator.Dataset[row].value.location
+
+        if location == DatasetInfo.Location.ProjectInternal:
+            comboData = LocationOptions.Project
+        elif location == DatasetInfo.Location.FileSystem:
+            # Determine if the path is relative or absolute
             if self.mainOperator.Dataset[row].value.filePath[0] == '/':
-                combo.setCurrentIndex( LocationOptions.AbsolutePath )
+                comboData = LocationOptions.AbsolutePath
             else:
-                combo.setCurrentIndex( LocationOptions.RelativePath )
+                comboData = LocationOptions.RelativePath
+
+        comboIndex = combo.findData( QVariant(comboData) )
+        combo.setCurrentIndex( comboIndex )
 
         combo.currentIndexChanged.connect( partial(self.handleStorageOptionComboIndexChanged, combo) )
         self.fileInfoTableWidget.setCellWidget( row, Column.Location, combo )
@@ -328,7 +354,8 @@ class DataSelectionGui(QMainWindow):
 
         # Check the location setting
         locationCombo = self.fileInfoTableWidget.cellWidget(index, Column.Location)
-        newLocationSelection = locationCombo.currentIndex()
+        comboIndex = locationCombo.currentIndex()
+        newLocationSelection = locationCombo.itemData(comboIndex).toInt()[0] # In PyQt, toInt() returns a tuple
 
         if newLocationSelection == LocationOptions.Project:
             newLocationSetting = DatasetInfo.Location.ProjectInternal

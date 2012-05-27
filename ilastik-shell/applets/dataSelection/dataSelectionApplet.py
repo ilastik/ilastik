@@ -4,7 +4,7 @@ from opDataSelection import OpDataSelection
 
 from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 from dataSelectionPreferencesManager import DataSelectionPreferencesManager
-from dataSelectionGui import DataSelectionGui
+from dataSelectionGui import DataSelectionGui, GuiMode
 
 from lazyflow.graph import OperatorWrapper
 
@@ -13,7 +13,7 @@ class DataSelectionApplet( Applet ):
     This applet allows the user to select sets of input data, 
     which are provided as outputs in the corresponding top-level applet operator.
     """
-    def __init__( self, graph, title, supportIlastik05Import=False):
+    def __init__( self, graph, title, supportIlastik05Import=False, batchDataGui=False):
         super(DataSelectionApplet, self).__init__(title)
         
         # Create a data selection top-level operator on the main graph
@@ -27,7 +27,11 @@ class DataSelectionApplet( Applet ):
             self._serializableItems.append(Ilastik05DataSelectionDeserializer(self._topLevelOperator))
 
         # Instantiate the main GUI, which creates the applet drawers (for now)
-        self._centralWidget = DataSelectionGui( self._topLevelOperator )
+        if batchDataGui:
+            guiMode = GuiMode.Batch
+        else:
+            guiMode = GuiMode.Normal
+        self._centralWidget = DataSelectionGui( self._topLevelOperator, guiMode )
 
         # To save some typing, the menu bar is defined in the .ui file 
         #  along with the rest of the central widget.
