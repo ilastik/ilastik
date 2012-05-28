@@ -10,6 +10,7 @@ import sys
 import copy
 import utility # This is the ilastik shell utility module
 from utility import bind
+from utility.pathHelpers import getPathVariants
 
 import logging
 logger = logging.getLogger(__name__)
@@ -40,6 +41,7 @@ class DataSelectionGui(QMainWindow):
     Manages all GUI elements in the data selection applet.
     This class itself is the central widget and also owns/manages the applet drawer widgets.
     """
+    
     def __init__(self, dataSelectionOperator, guiMode=GuiMode.Normal):
         super(DataSelectionGui, self).__init__()
 
@@ -50,21 +52,6 @@ class DataSelectionGui(QMainWindow):
         
         self.initAppletDrawerUic()
         self.initCentralUic()
-
-        # Closure for handling a change to an individual dataset        
-        def handleItemChange( row, slot ):
-            self.updateTableForSlot(slot)
-        
-        # Closure for handling input list resizes
-        def handleInputListChange(slot, oldsize, newsize):
-            # Our file list widget should match the length of the operator input list
-            self.fileInfoTableWidget.setRowCount( newsize )
-
-            for i, slot in enumerate(self.mainOperator.Dataset):
-                # Update now
-                self.updateTableForSlot( slot )
-                # Update if data changes
-                slot.notifyDirty( self.updateTableForSlot )
 
         def handleNewDataset( multislot, index ):
             assert multislot == self.mainOperator.Dataset
@@ -446,39 +433,6 @@ class DataSelectionGui(QMainWindow):
         for control in controlList:
             control.setEnabled(enabled)
 
-def getPathVariants(originalPath, workingDirectory):
-    """
-    Take the given filePath (which can be absolute or relative, and may include an internal path suffix),
-    and return a tuple of the absolute and relative paths to the file.
-    """
-    lastDotIndex = originalPath.rfind('.')
-    extensionAndInternal = originalPath[lastDotIndex:]
-    extension = extensionAndInternal.split('/')[0]
-
-    relPath = originalPath
-    
-    if originalPath[0] == '/':
-        absPath = originalPath
-        relPath = os.path.relpath(absPath, workingDirectory)
-    else:
-        relPath = originalPath
-        absPath = os.path.normpath( os.path.join(workingDirectory, relPath) )
-        
-    return (absPath, relPath)
-
-if __name__ == "__main__":
-    
-    abs, rel = getPathVariants('/aaa/bbb/ccc/ddd.txt', '/aaa/bbb/ccc/eee')
-    assert abs == '/aaa/bbb/ccc/ddd.txt'
-    assert rel == '../ddd.txt'
-
-    abs, rel = getPathVariants('../ddd.txt', '/aaa/bbb/ccc/eee')
-    assert abs == '/aaa/bbb/ccc/ddd.txt'
-    assert rel == '../ddd.txt'
-
-    abs, rel = getPathVariants('ddd.txt', '/aaa/bbb/ccc')
-    assert abs == '/aaa/bbb/ccc/ddd.txt'
-    assert rel == 'ddd.txt'
 
 
 
