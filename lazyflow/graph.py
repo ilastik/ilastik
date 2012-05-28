@@ -1529,22 +1529,14 @@ class OperatorWrapper(Operator):
         self.inputs = InputDict(self)
         self.outputs = OutputDict(self)
         self.operator = operator
-        self._eventCounter = 0
-        self._processedEvents = {}       
-        self._originalGraph = operator.graph
         self.graph = operator.graph
         self._parent = operator._parent
-        self._connecting = False
         
         assert self.operator is not None
         
         self.name = "Wrapped " + operator.name
-        self._originalGraph = operator.graph
-        self.graph = operator.graph
 
-        self.comprehensionSlots = 1
         self.innerOperators = []
-        self.comprehensionCount = 0
         self.origInputs = self.operator.inputs.copy()
         self.origOutputs = self.operator.outputs.copy()
         if lazyflow.verboseWrapping:
