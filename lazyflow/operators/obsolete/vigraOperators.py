@@ -482,9 +482,6 @@ class OpBaseVigraFilter(OpArrayPiper):
     supportsRoi = False
     supportsWindow = False
     
-    def __init__(self, parent):
-        OpArrayPiper.__init__(self, parent)
-        
     def getOutSlot(self, slot, key, result, sourceArray = None):
         kwparams = {}        
         for islot in self.inputs.values():
@@ -1062,8 +1059,8 @@ class OpH5WriterBigDataset(Operator):
     outputSlots = [OutputSlot("WriteImage")]
 
     def notifyConnectAll(self):    
-        self.outputs["WriteImage"]._shape = (1,)
-        self.outputs["WriteImage"]._dtype = object
+        self.outputs["WriteImage"].meta.shape = (1,)
+        self.outputs["WriteImage"].meta.dtype = object
 
         filename = self.inputs["Filename"].value        
         hdf5Path = self.inputs["hdf5Path"].value
@@ -1072,6 +1069,8 @@ class OpH5WriterBigDataset(Operator):
         g=self.f
         pathElements = hdf5Path.split("/")
         for s in pathElements[:-1]:
+            if s == '':
+                continue
             # Check for existence, create if necessary
             if s in g.keys():
                 g = g[s]
