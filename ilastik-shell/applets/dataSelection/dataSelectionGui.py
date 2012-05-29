@@ -228,7 +228,7 @@ class DataSelectionGui(QMainWindow):
         # Create and add the combobox for storage location options
         self.updateStorageOptionComboBox(row, externalPath)
         
-        if self.guiMode == GuiMode.Batch:
+        if self.guiMode != GuiMode.Batch:
             # Create and add the checkbox for the 'allow labels' option
             allowLabelsCheckbox = QCheckBox()
             allowLabelsCheckbox.setChecked( self.mainOperator.Dataset[row].value.allowLabels )
