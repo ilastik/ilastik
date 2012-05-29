@@ -1,5 +1,4 @@
-from opDataSelection import OpDataSelection
-Location = OpDataSelection.DatasetInfo.Location
+from opDataSelection import OpDataSelection, DatasetInfo
 
 import os
 import vigra
@@ -18,11 +17,13 @@ class DataSelectionSerializer(object):
     TopGroupName = 'DataSelection'
 
     # Constants    
-    LocationStrings = { Location.FileSystem      : 'FileSystem',
-                        Location.ProjectInternal : 'ProjectInternal' }
+    LocationStrings = { DatasetInfo.Location.FileSystem      : 'FileSystem',
+                        DatasetInfo.Location.ProjectInternal : 'ProjectInternal' }
 
-    def __init__(self, mainOperator):
+    def __init__(self, mainOperator, topGroupName=None):
         self.mainOperator = mainOperator
+        if topGroupName is not None:
+             self.TopGroupName = topGroupName
     
     def serializeToHdf5(self, hdf5File, projectFilePath):
         # Check the overall file version
@@ -60,8 +61,7 @@ class DataSelectionSerializer(object):
             infoGroup.create_dataset('location', data=locationString)
             infoGroup.create_dataset('filePath', data=datasetInfo.filePath)
             infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
-            infoGroup.create_dataset('invertColors', data=datasetInfo.invertColors)
-            infoGroup.create_dataset('convertToGrayscale', data=datasetInfo.convertToGrayscale)
+            infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
         
         # Write any missing local datasets to the local_data group
         localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
@@ -69,11 +69,11 @@ class DataSelectionSerializer(object):
         for index, slot in enumerate(self.mainOperator.Dataset):
             info = slot.value
             # If this dataset should be stored in the project, but it isn't there yet
-            if  info.location == Location.ProjectInternal \
+            if  info.location == DatasetInfo.Location.ProjectInternal \
             and info.datasetId not in localDataGroup.keys():
                 # Obtain the data from the corresponding output and store it to the project.
                 # TODO: Optimize this for large datasets by streaming it chunk-by-chunk.
-                dataSlot = self.mainOperator.RawImages[index]
+                dataSlot = self.mainOperator.Image[index]
                 data = dataSlot[...].wait()
 
                 # Vigra thinks its okay to reorder the data if it has axistags,
@@ -87,7 +87,7 @@ class DataSelectionSerializer(object):
         localDatasetIds = [ slot.value.datasetId
                              for index, slot 
                              in enumerate(self.mainOperator.Dataset)
-                             if slot.value.location == Location.ProjectInternal ]
+                             if slot.value.location == DatasetInfo.Location.ProjectInternal ]
 
         # Delete any datasets in the project that aren't needed any more
         for datasetName in localDataGroup.keys():
@@ -95,9 +95,6 @@ class DataSelectionSerializer(object):
                 del localDataGroup[datasetName]
 
         if wroteInternalData:
-            # The operator should use the same project file that we're using
-            self.mainOperator.ProjectFile.setValue(hdf5File)
-            
             # Force the operator to setupOutputs() again so it gets data from the project, not external files
             # TODO: This will cause a slew of 'dirty' operators for any inputs we saved.
             #       Is that a problem?
@@ -116,13 +113,12 @@ class DataSelectionSerializer(object):
         #  paths from relative paths is the project file's directory.
         projectDir = os.path.split(projectFilePath)[0]
         self.mainOperator.WorkingDirectory.setValue( projectDir )
-
-        # Provide the project file to our operator
-        self.mainOperator.ProjectFile.setValue(hdf5File)
+        self.mainOperator.ProjectDataGroup.setValue( self.TopGroupName + '/local_data' )
+        self.mainOperator.ProjectFile.setValue( hdf5File )
 
         # Access the top group and the info group
         try:
-            topGroup = hdf5File[DataSelectionSerializer.TopGroupName]
+            topGroup = hdf5File[self.TopGroupName]
             infoDir = topGroup['infos']
         except KeyError:
             # If our group (or subgroup) doesn't exist, then make sure the operator is empty
@@ -131,24 +127,27 @@ class DataSelectionSerializer(object):
         
         self.mainOperator.Dataset.resize( len(infoDir) )
         for index, (infoGroupName, infoGroup) in enumerate( sorted(infoDir.items()) ):
-            datasetInfo = OpDataSelection.DatasetInfo()
+            datasetInfo = DatasetInfo()
 
             # Make a reverse-lookup of the location storage strings            
             LocationLookup = { v:k for k,v in self.LocationStrings.items() }
             datasetInfo.location = LocationLookup[ str(infoGroup['location'].value) ]
             
-            datasetInfo.invertColors = bool(infoGroup['invertColors'].value)
-            datasetInfo.convertToGrayscale = bool(infoGroup['convertToGrayscale'].value)
-
             # Write to the 'private' members to avoid resetting the dataset id
             datasetInfo._filePath = str(infoGroup['filePath'].value)
             datasetInfo._datasetId = str(infoGroup['datasetId'].value)
+
+            # Deserialize the "allow labels" flag
+            try:
+                datasetInfo.allowLabels = infoGroup['allowLabels'].value
+            except KeyError:
+                pass
             
             # If the data is supposed to be in the project,
             #  check for it now.
-            if datasetInfo.location == Location.ProjectInternal:
+            if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
                 assert datasetInfo.datasetId in topGroup['local_data'].keys()
-            
+
             # Give the new info to the operator
             self.mainOperator.Dataset[index].setValue(datasetInfo)
 
@@ -199,7 +198,8 @@ class Ilastik05DataSelectionDeserializer(object):
         projectDir = os.path.split(projectFilePath)[0]
         self.mainOperator.WorkingDirectory.setValue( projectDir )
 
-        # Provide the project file to our operator
+        # These project file inputs are required, but are not used because the data is treated as "external"
+        self.mainOperator.ProjectDataGroup.setValue( 'DataSets' )
         self.mainOperator.ProjectFile.setValue(hdf5File)
 
         # Access the top group and the info group
@@ -213,15 +213,12 @@ class Ilastik05DataSelectionDeserializer(object):
         
         self.mainOperator.Dataset.resize( len(dataDir) )
         for index, (datasetDirName, datasetDir) in enumerate( sorted(dataDir.items()) ):
-            datasetInfo = OpDataSelection.DatasetInfo()
+            datasetInfo = DatasetInfo()
 
             # Since we are importing from a 0.5 file, all datasets will be external 
             #  to the project (pulled in from the old file as hdf5 datasets)
-            datasetInfo.location = Location.FileSystem
+            datasetInfo.location = DatasetInfo.Location.FileSystem
             
-            datasetInfo.invertColors = False
-            datasetInfo.convertToGrayscale = False
-
             # Write to the 'private' members to avoid resetting the dataset id
             totalDatasetPath = projectFilePath + '/DataSets/' + datasetDirName + '/data'
             datasetInfo._filePath = str(totalDatasetPath)
@@ -248,7 +245,7 @@ class Ilastik05DataSelectionDeserializer(object):
 if __name__ == "__main__":
     import os
     import h5py
-    from lazyflow.graph import Graph
+    from lazyflow.graph import Graph, OperatorWrapper
     from opDataSelection import OpDataSelection
 
     # Define the files we'll be making    
@@ -271,15 +268,14 @@ if __name__ == "__main__":
 
     # Create an operator to work with and give it some input
     graph = Graph()
-    operatorToSave = OpDataSelection(graph=graph)
+    operatorToSave = OperatorWrapper( OpDataSelection(graph=graph) )
     operatorToSave.ProjectFile.setValue(testProject)
     operatorToSave.WorkingDirectory.setValue( os.path.split(__file__)[0] )
+    operatorToSave.ProjectDataGroup.setValue( DataSelectionSerializer.TopGroupName + '/local_data' )
     
-    info = OpDataSelection.DatasetInfo()
-    info.filePath = '5d.npy'
-    info.invertColors = False
-    info.convertToGrayscale = True
-    info.location = Location.ProjectInternal
+    info = DatasetInfo()
+    info.filePath = '/home/bergs/5d.npy'
+    info.location = DatasetInfo.Location.ProjectInternal
     
     operatorToSave.Dataset.resize(1)
     operatorToSave.Dataset[0].setValue(info)
@@ -289,7 +285,7 @@ if __name__ == "__main__":
     serializer.serializeToHdf5(testProject, testProjectName)
     
     # Check for dataset existence
-    datasetInternalPath = DataSelectionSerializer.TopGroupName + '/local_data/' + info.datasetId
+    datasetInternalPath = serializer.TopGroupName + '/local_data/' + info.datasetId
     dataset = testProject[datasetInternalPath][...]
     
     # Check axistags attribute
@@ -298,14 +294,14 @@ if __name__ == "__main__":
     # Debug info...
     #logging.basicConfig(level=logging.DEBUG)
     logger.debug('dataset.shape = ' + str(dataset.shape))
-    logger.debug('should be ' + str(operatorToSave.RawImages[0].meta.shape))
+    logger.debug('should be ' + str(operatorToSave.Image[0].meta.shape))
     logger.debug('dataset axistags:')
     logger.debug(axistags)
     logger.debug('should be:')
-    logger.debug(operatorToSave.RawImages[0].meta.axistags)
+    logger.debug(operatorToSave.Image[0].meta.axistags)
 
-    originalShape = operatorToSave.RawImages[0].meta.shape
-    originalAxisTags = operatorToSave.RawImages[0].meta.axistags
+    originalShape = operatorToSave.Image[0].meta.shape
+    originalAxisTags = operatorToSave.Image[0].meta.axistags
 #    originalAxisOrder = [tag.key for tag in originalAxisTags]
 #
 #    # The dataset axis ordering may have changed when it was written to disk,
@@ -322,16 +318,16 @@ if __name__ == "__main__":
 
     # Create an empty operator
     graph = Graph()
-    operatorToLoad = OpDataSelection(graph=graph)
+    operatorToLoad = OperatorWrapper( OpDataSelection(graph=graph) )
     
     deserializer = DataSelectionSerializer(operatorToLoad)
     deserializer.deserializeFromHdf5(testProject, testProjectName)
     
     assert len(operatorToLoad.Dataset) == len(operatorToSave.Dataset)
-    assert len(operatorToLoad.RawImages) == len(operatorToSave.RawImages)
+    assert len(operatorToLoad.Image) == len(operatorToSave.Image)
     
-    assert operatorToLoad.RawImages[0].meta.shape == operatorToSave.RawImages[0].meta.shape
-    assert operatorToLoad.RawImages[0].meta.axistags == operatorToSave.RawImages[0].meta.axistags
+    assert operatorToLoad.Image[0].meta.shape == operatorToSave.Image[0].meta.shape
+    assert operatorToLoad.Image[0].meta.axistags == operatorToSave.Image[0].meta.axistags
 
 
 

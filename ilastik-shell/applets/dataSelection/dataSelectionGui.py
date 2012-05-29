@@ -1,14 +1,16 @@
-from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject
+from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject, QVariant
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
-from opDataSelection import OpDataSelection
+from opDataSelection import OpDataSelection, DatasetInfo
 
 from functools import partial
 import os
 import sys
 import copy
 import utility # This is the ilastik shell utility module
+from utility import bind
+from utility.pathHelpers import getPathVariants
 
 import logging
 logger = logging.getLogger(__name__)
@@ -22,47 +24,53 @@ class Column():
     Name = 0
     Location = 1
     InternalID = 2
-    Invert = 3
-    Grayscale = 4
+    LabelsAllowed = 3 # Note: For now, this column must come last because it gets removed in batch mode.
 
 class LocationOptions():
     """ Enum for location menu options """
     Project = 0
     AbsolutePath = 1
     RelativePath = 2
-    # ChooseNew    # TODO
+
+class GuiMode():
+    Normal = 0
+    Batch = 1
 
 class DataSelectionGui(QMainWindow):
     """
     Manages all GUI elements in the data selection applet.
     This class itself is the central widget and also owns/manages the applet drawer widgets.
     """
-    def __init__(self, dataSelectionOperator):
+    
+    def __init__(self, dataSelectionOperator, guiMode=GuiMode.Normal):
         super(DataSelectionGui, self).__init__()
 
         self.drawer = None
         self.mainOperator = dataSelectionOperator
         self.menuBar = QMenuBar()
+        self.guiMode = guiMode
         
         self.initAppletDrawerUic()
         self.initCentralUic()
 
-        # Closure for handling a change to an individual dataset        
-        def handleItemChange( row, slot ):
-            self.updateTableForSlot(slot)
+        def handleNewDataset( multislot, index ):
+            assert multislot == self.mainOperator.Dataset
+            # Make room in the table
+            self.fileInfoTableWidget.insertRow( index )
+            
+            # Update the table row data when this slot has new data
+            # We can't bind in the row here because the row may change in the meantime.
+            self.mainOperator.Dataset[index].notifyDirty( bind( self.updateTableForSlot ) )
+
+        self.mainOperator.Dataset.notifyInserted( bind( handleNewDataset ) )
         
-        # Closure for handling input list resizes
-        def handleInputListChange(slot, oldsize, newsize):
-            # Our file list widget should match the length of the operator input list
-            self.fileInfoTableWidget.setRowCount( newsize )
+        def handleDatasetRemoved( multislot, index ):
+            assert multislot == self.mainOperator.Dataset
+            
+            # Simply remove the row we don't need any more
+            self.fileInfoTableWidget.removeRow( index )
 
-            for i, slot in enumerate(self.mainOperator.Dataset):
-                # Update now
-                self.updateTableForSlot( slot )
-                # Update if data changes
-                slot.notifyMetaChanged( self.updateTableForSlot )
-
-        self.mainOperator.Dataset.notifyResized(handleInputListChange)
+        self.mainOperator.Dataset.notifyRemove( bind( handleDatasetRemoved ) )
         
     def initAppletDrawerUic(self):
         """
@@ -111,7 +119,11 @@ class DataSelectionGui(QMainWindow):
         self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.Name, 200)
         self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.Location, 250)
         self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.InternalID, 100)
-        # (Leave the checkbox column widths alone.  They will be auto-sized.)
+
+        if self.guiMode == GuiMode.Batch:
+            # It doesn't make sense to provide a labeling option in batch mode
+            self.fileInfoTableWidget.removeColumn( Column.LabelsAllowed )
+        
         self.fileInfoTableWidget.verticalHeader().hide()
 
         # Set up handlers
@@ -165,10 +177,12 @@ class DataSelectionGui(QMainWindow):
         # Assign values to the new inputs we just allocated.
         # The GUI will be updated by callbacks that are listening to slot changes
         for i in range(0, len(fileNames)):
-            datasetInfo = OpDataSelection.DatasetInfo()
+            datasetInfo = DatasetInfo()
             datasetInfo.filePath = fileNames[i]
-            datasetInfo.invertColors = False
-            datasetInfo.convertToGrayscale = False
+            
+            # Allow labels by default if this gui isn't being used for batch data.
+            datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
+            
             self.mainOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
 
     def updateTableForSlot(self, slot):
@@ -213,18 +227,26 @@ class DataSelectionGui(QMainWindow):
         
         # Create and add the combobox for storage location options
         self.updateStorageOptionComboBox(row, externalPath)
-
-        # Create and add the checkbox for color inversion
-        invertCheckbox = QCheckBox()
-        invertCheckbox.setChecked( self.mainOperator.Dataset[row].value.invertColors )
-        tableWidget.setCellWidget( row, Column.Invert, invertCheckbox)
-        invertCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Invert, invertCheckbox) )
         
-        # Create and add the checkbox for grayscale conversion
-        convertToGrayCheckbox = QCheckBox()
-        convertToGrayCheckbox.setChecked( self.mainOperator.Dataset[row].value.convertToGrayscale )
-        tableWidget.setCellWidget( row, Column.Grayscale, convertToGrayCheckbox)
-        convertToGrayCheckbox.stateChanged.connect( partial(self.handleFlagCheckboxChange, Column.Grayscale, convertToGrayCheckbox) )
+        if self.guiMode != GuiMode.Batch:
+            # Create and add the checkbox for the 'allow labels' option
+            allowLabelsCheckbox = QCheckBox()
+            allowLabelsCheckbox.setChecked( self.mainOperator.Dataset[row].value.allowLabels )
+            tableWidget.setCellWidget( row, Column.LabelsAllowed, allowLabelsCheckbox )
+            allowLabelsCheckbox.stateChanged.connect( partial(self.handleAllowLabelsCheckbox, self.mainOperator.Dataset[row]) )
+    
+    def handleAllowLabelsCheckbox(self, slot, checked):
+        """
+        The user (un)checked the "allow labels" checkbox in one of the table rows.
+        Update the corresponding dataset info in the operator (which is given in the parameter 'slot')
+        """
+        # COPY the dataset so we trigger the slot to be dirty
+        newDatasetInfo = copy.copy(slot.value)
+        newDatasetInfo.allowLabels = ( checked == Qt.Checked )
+        
+        # Only update if necessary
+        if newDatasetInfo != slot.value:
+            slot.setValue( newDatasetInfo )
     
     def updateStorageOptionComboBox(self, row, filePath):
         """
@@ -237,19 +259,32 @@ class DataSelectionGui(QMainWindow):
         relPath = "<project dir>/" + relPath
         
         combo = QComboBox()
-        options = { LocationOptions.Project : "<project>",
-                    LocationOptions.AbsolutePath : absPath,
-                    LocationOptions.RelativePath : relPath }
-        for index, text in sorted(options.items()):
-            combo.addItem(text)
+        options = {} # combo data -> combo text
+        options[ LocationOptions.AbsolutePath ] = absPath
+        options[ LocationOptions.RelativePath ] = relPath
+        
+        # Saving data to the project file is not an option in batch mode
+        if self.guiMode == GuiMode.Normal:
+            options[ LocationOptions.Project ] = "<project>"
+                
+        for option, text in sorted(options.items()):
+            # Add to the combo, storing the option as the item data
+            combo.addItem(text, option)
 
-        if self.mainOperator.Dataset[row].value.location == OpDataSelection.DatasetInfo.Location.ProjectInternal:
-            combo.setCurrentIndex( LocationOptions.Project )
-        elif self.mainOperator.Dataset[row].value.location == OpDataSelection.DatasetInfo.Location.FileSystem:
+        # Select the combo index that matches the current setting
+        location = self.mainOperator.Dataset[row].value.location
+
+        if location == DatasetInfo.Location.ProjectInternal:
+            comboData = LocationOptions.Project
+        elif location == DatasetInfo.Location.FileSystem:
+            # Determine if the path is relative or absolute
             if self.mainOperator.Dataset[row].value.filePath[0] == '/':
-                combo.setCurrentIndex( LocationOptions.AbsolutePath )
+                comboData = LocationOptions.AbsolutePath
             else:
-                combo.setCurrentIndex( LocationOptions.RelativePath )
+                comboData = LocationOptions.RelativePath
+
+        comboIndex = combo.findData( QVariant(comboData) )
+        combo.setCurrentIndex( comboIndex )
 
         combo.currentIndexChanged.connect( partial(self.handleStorageOptionComboIndexChanged, combo) )
         self.fileInfoTableWidget.setCellWidget( row, Column.Location, combo )
@@ -306,15 +341,16 @@ class DataSelectionGui(QMainWindow):
 
         # Check the location setting
         locationCombo = self.fileInfoTableWidget.cellWidget(index, Column.Location)
-        newLocationSelection = locationCombo.currentIndex()
+        comboIndex = locationCombo.currentIndex()
+        newLocationSelection = locationCombo.itemData(comboIndex).toInt()[0] # In PyQt, toInt() returns a tuple
 
         if newLocationSelection == LocationOptions.Project:
-            newLocationSetting = OpDataSelection.DatasetInfo.Location.ProjectInternal
+            newLocationSetting = DatasetInfo.Location.ProjectInternal
         elif newLocationSelection == LocationOptions.AbsolutePath:
-            newLocationSetting = OpDataSelection.DatasetInfo.Location.FileSystem
+            newLocationSetting = DatasetInfo.Location.FileSystem
             newTotalPath = absTotalPath
         elif newLocationSelection == LocationOptions.RelativePath:
-            newLocationSetting = OpDataSelection.DatasetInfo.Location.FileSystem
+            newLocationSetting = DatasetInfo.Location.FileSystem
             newTotalPath = relTotalPath
         
         if newTotalPath != oldTotalPath or newLocationSetting != oldLocationSetting:
@@ -386,36 +422,6 @@ class DataSelectionGui(QMainWindow):
         # Reconnect now that we're finished
         self.fileInfoTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
     
-    def handleFlagCheckboxChange(self, column, checkboxWidget, checkState):
-        """
-        The user clicked on a checkbox in the table.
-        Set the appropriate flag in the operator based on which checkbox it was.
-        """
-        # Figure out which row this checkbox is in
-        tableWidget = self.fileInfoTableWidget
-        changedRow = -1
-        for row in range(0, tableWidget.rowCount()):
-            widget = tableWidget.cellWidget(row, column)
-            if widget == checkboxWidget:
-                changedRow = row
-                break
-        assert changedRow != -1
-        
-        # Be sure to copy so the slot notices the change when we setValue()
-        datasetInfo = copy.copy(self.mainOperator.Dataset[changedRow].value)
-
-        # Now that we've found the row (and therefore the dataset index),
-        #  update this flag in the appropriate operator input slot
-        if column == Column.Invert:
-            datasetInfo.invertColors = (checkState == Qt.Checked)
-            logger.debug("Invert Colors: " + str(datasetInfo.invertColors))
-        elif column == Column.Grayscale:
-            datasetInfo.convertToGrayscale = (checkState == Qt.Checked)
-            logger.debug("Convert to Grayscale: " + str(datasetInfo.convertToGrayscale))
-        else:
-            assert False, "Invalid column for checkbox"
-        self.mainOperator.Dataset[changedRow].setValue( datasetInfo )
-
     def enableControls(self, enabled):
         """
         Enable or disable all of the controls in this applet's central widget.
@@ -427,39 +433,6 @@ class DataSelectionGui(QMainWindow):
         for control in controlList:
             control.setEnabled(enabled)
 
-def getPathVariants(originalPath, workingDirectory):
-    """
-    Take the given filePath (which can be absolute or relative, and may include an internal path suffix),
-    and return a tuple of the absolute and relative paths to the file.
-    """
-    lastDotIndex = originalPath.rfind('.')
-    extensionAndInternal = originalPath[lastDotIndex:]
-    extension = extensionAndInternal.split('/')[0]
-
-    relPath = originalPath
-    
-    if originalPath[0] == '/':
-        absPath = originalPath
-        relPath = os.path.relpath(absPath, workingDirectory)
-    else:
-        relPath = originalPath
-        absPath = os.path.normpath( os.path.join(workingDirectory, relPath) )
-        
-    return (absPath, relPath)
-
-if __name__ == "__main__":
-    
-    abs, rel = getPathVariants('/aaa/bbb/ccc/ddd.txt', '/aaa/bbb/ccc/eee')
-    assert abs == '/aaa/bbb/ccc/ddd.txt'
-    assert rel == '../ddd.txt'
-
-    abs, rel = getPathVariants('../ddd.txt', '/aaa/bbb/ccc/eee')
-    assert abs == '/aaa/bbb/ccc/ddd.txt'
-    assert rel == '../ddd.txt'
-
-    abs, rel = getPathVariants('ddd.txt', '/aaa/bbb/ccc')
-    assert abs == '/aaa/bbb/ccc/ddd.txt'
-    assert rel == 'ddd.txt'
 
 
 

@@ -18,6 +18,7 @@ class OpPixelClassification( Operator ):
     
     InputImages = MultiInputSlot() # Original input data.  Used for display only.
 
+    LabelsAllowedFlags = MultiInputSlot(stype='bool') # Specifies which images are permitted to be labeled 
     LabelInputs = MultiInputSlot(optional = True) # Input for providing label data from an external source
 
     FeatureImages = MultiInputSlot() # Computed feature images (each channel is a different feature)
@@ -29,6 +30,7 @@ class OpPixelClassification( Operator ):
     MaxLabelValue = OutputSlot()
     LabelImages = MultiOutputSlot() # Labels from the user
     NonzeroLabelBlocks = MultiOutputSlot() # A list if slices that contain non-zero label values
+    Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
 
     def __init__( self, graph ):
         """
@@ -36,18 +38,13 @@ class OpPixelClassification( Operator ):
         """
         super(OpPixelClassification, self).__init__(graph=graph)
         
-#        ## Signals (non-qt) ##
-        self.inputDataChangedSignal = SimpleSignal()     # Input data loaded/changed
-        self.labelsChangedSignal = SimpleSignal()        # New/changed label data
-        self.pipelineConfiguredSignal = SimpleSignal()   # Pipeline is fully configured (all inputs are connected and have data)
-        self.predictionMetaChangeSignal = SimpleSignal() # The prediction cache has changed its shape (or dtype).
-                                                         #  The prediction cache's output configuration status is passed as the parameter.
         # Create internal operators
         # Explicitly wrapped:
         self.opInputShapeReader = OperatorWrapper( OpShapeReader(self.graph) )
         self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray( self.graph ) )
         self.predict = OperatorWrapper( OpPredictRandomForest( self.graph ) )
         self.prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache( self.graph ) )
+        self.prediction_cache.Input.resize(0)
 
         # NOT wrapped
         self.opMaxLabel = OpMaxValue(graph=self.graph)
@@ -76,6 +73,7 @@ class OpPixelClassification( Operator ):
         self.opTrain.inputs["nonzeroLabelBlocks"].connect(self.opLabelArray.outputs["nonzeroBlocks"])
         self.opTrain.inputs['fixClassifier'].setValue(False)
 
+        # FIXME: This classifier cache isn't actually used anywhere... Get rid of it?
         self.classifier_cache = OpArrayCache( self.graph )
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
@@ -99,6 +97,7 @@ class OpPixelClassification( Operator ):
         self.NonzeroLabelBlocks.connect(self.opLabelArray.nonzeroBlocks)
         self.PredictionProbabilities.connect(self.predict.PMaps)
         self.CachedPredictionProbabilities.connect(self.prediction_cache.Output)
+        self.Classifier.connect( self.classifier_cache.Output )
         
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
@@ -140,40 +139,6 @@ class OpPixelClassification( Operator ):
         else:
             assert False
 
-    def getUniqueLabels(self):
-        # TODO: Assumes only one image
-        nonZeroValueOutputSlot = self.opLabelArray.outputs["nonzeroValues"]
-        if len(nonZeroValueOutputSlot) > 0:
-            return numpy.unique(numpy.asarray(self.opLabelArray.outputs["nonzeroValues"][0][:].allocate().wait()[0]))
-        else:
-            # Return an empty array
-            return numpy.ndarray((0,), dtype=int)
-
-    def setInputData(self, inputProvider):
-        """
-        Set the pipeline input data, which is given as an operator in inputProvider.
-        """
-
-        # Connect the input data to the pipeline
-        self.images.inputs["Input0"].connect(inputProvider.outputs["Output"])
-
-        # Notify the GUI, etc. that our input data changed
-        self.inputDataChangedSignal.emit(inputProvider)
-        
-    def setAllLabelData(self, labelData):
-        """
-        Replace ALL of the input label data with the given array.
-        Label shape is adjusted if necessary.
-        """
-        # The label data should have the correct shape (last dimension should be 1)
-        assert labelData.shape[-1] == 1
-        self.labels.inputs["shape"].setValue(labelData.shape)
-
-        # Load the entire set of labels into the graph
-        self.labels.inputs["Input"][:] = labelData
-        
-        self.labelsChangedSignal.emit()
-
 class OpShapeReader(Operator):
     """
     This operator outputs the shape of its input image, except the number of channels is set to 1.
@@ -202,10 +167,11 @@ class OpMaxValue(Operator):
     
     def __init__(self, *args, **kwargs):
         super(OpMaxValue, self).__init__(*args, **kwargs)
-        
-    def setupOutputs(self):
         self.Output.meta.shape = (1,)
         self.Output.meta.dtype = object
+        
+    def setupOutputs(self):
+        pass # Output meta information is already set
 
     def execute(self, slot, roi, result):
         # Return the max value of all our inputs

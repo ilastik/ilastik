@@ -13,13 +13,16 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <widget class="QTableWidget" name="fileInfoTableWidget">
+  <widget class="QTableWidget" name="tableWidget">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>10</y>
-     <width>826</width>
-     <height>200</height>
+     <x>9</x>
+     <y>9</y>
+     <width>861</width>
+     <height>291</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -36,22 +39,17 @@
    </property>
    <column>
     <property name="text">
-     <string>Name</string>
+     <string>Dataset</string>
     </property>
    </column>
    <column>
     <property name="text">
-     <string>Location</string>
+     <string>Export Location</string>
     </property>
    </column>
    <column>
     <property name="text">
-     <string>Internal Path</string>
-    </property>
-   </column>
-   <column>
-    <property name="text">
-     <string>Labels Allowed</string>
+     <string>Action</string>
     </property>
    </column>
   </widget>

@@ -20,14 +20,14 @@ class FeatureSelectionApplet( Applet ):
         # Create a data selection top-level operator on the main graph
         # This operator object represents the "model" or master state of the applet which 
         #  the other components of the applet will manipulate and/or listen to for changes.
-        self._topLevelOperator = OperatorWrapper( OpFeatureSelection(graph) )
+        self._topLevelOperator = OperatorWrapper( OpFeatureSelection(graph), promotedSlotNames=set(['InputImage']) )
 
         # Serialization settings are managed by a 
         self._serializableItems = [ FeatureSelectionSerializer(self._topLevelOperator),
                                     Ilastik05FeatureSelectionDeserializer(self._topLevelOperator) ]
 
         # Instantiate the main GUI, which creates the applet drawers (for now)
-        self._centralWidget = FeatureSelectionGui()
+        self._centralWidget = FeatureSelectionGui(self._topLevelOperator)
 
         # To save some typing, the menu bar is defined in the .ui file 
         #  along with the rest of the central widget.
@@ -73,5 +73,5 @@ class FeatureSelectionApplet( Applet ):
         """
         Change the currently displayed image to the one specified by the given index.
         """
-        self._centralWidget.setMainOperator( OperatorWrapperAdapter( self._topLevelOperator, imageIndex ) )
+        self._centralWidget.setImageIndex( imageIndex )
 

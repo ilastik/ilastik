@@ -51,6 +51,7 @@ class PixelClassificationGui(QMainWindow):
         self.pipeline = pipeline
 
         self.imageIndex = 0
+        self.layerstack = None
 
         self.pipeline.InputImages.notifyInserted( bind(self.subscribeToInputImageChanges) )
         self.pipeline.InputImages.notifyRemove( bind(self.subscribeToInputImageChanges) )
@@ -58,15 +59,16 @@ class PixelClassificationGui(QMainWindow):
 
         self.pipeline.LabelImages.notifyInserted( bind(self.subscribeToLabelImageChanges) )
         self.pipeline.LabelImages.notifyRemove( bind(self.subscribeToLabelImageChanges) )
-        self.subscribeToLabelImageChanges()
 
         def handleOutputListChanged():
             """This closure is called when an image is added or removed from the output."""
             if len(self.pipeline.CachedPredictionProbabilities) > 0:
                 self.pipeline.CachedPredictionProbabilities[self.imageIndex].notifyMetaChanged( bind(self.updateForNewClasses) )
+            else:
+                self.clearLabelListGui()
+
         self.pipeline.CachedPredictionProbabilities.notifyInserted( bind(handleOutputListChanged) )
         self.pipeline.CachedPredictionProbabilities.notifyRemove( bind(handleOutputListChanged) )
-        handleOutputListChanged()
         
         def handleOutputListAboutToResize(slot, oldsize, newsize):
             if newsize == 0:
@@ -111,6 +113,9 @@ class PixelClassificationGui(QMainWindow):
             # Subscribe to changes on the graph input.
             self.pipeline.InputImages[self.imageIndex].notifyConnect( bind(self.handleGraphInputChanged) )
             self.pipeline.InputImages[self.imageIndex].notifyMetaChanged( bind(self.handleGraphInputChanged) )
+        else:
+            if self.layerstack is not None:
+                self.layerstack.clear()
 
     def subscribeToLabelImageChanges(self):
         if len(self.pipeline.LabelImages) > 0:
@@ -120,8 +125,15 @@ class PixelClassificationGui(QMainWindow):
 
     def setImageIndex(self, imageIndex):
         self.imageIndex = imageIndex
-        self.subscribeToInputImageChanges()
-        self.handleGraphInputChanged()
+        if self.imageIndex == -1:
+            self.layerstack.clear()
+        else:
+            self.subscribeToInputImageChanges()
+            self.handleGraphInputChanged()
+            self.pipeline.LabelsAllowedFlags[self.imageIndex].notifyDirty( bind( self.changeInteractionMode, Tool.Navigation ) )
+        
+        # Make sure the painting controls are hidden if necessary
+        self.changeInteractionMode(Tool.Navigation)
 
     def setIconToViewMenu(self):
         self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
@@ -408,45 +420,56 @@ class PixelClassificationGui(QMainWindow):
                       Tool.Paint        : "brushing",
                       Tool.Erase        : "brushing" }
 
-        # Update the applet bar caption
-        if toolId == Tool.Navigation:
-            # Hide the brush size control
-            self._labelControlUi.brushSizeCaption.hide()
-            self._labelControlUi.brushSizeComboBox.hide()
-        elif toolId == Tool.Paint:
-            # Show the brush size control and set its caption
-            self._labelControlUi.brushSizeCaption.show()
-            self._labelControlUi.brushSizeComboBox.show()
-            self._labelControlUi.brushSizeCaption.setText("Brush Size:")
-            
-            # If necessary, tell the brushing model to stop erasing
-            if self.editor.brushingModel.erasing:
-                self.editor.brushingModel.disableErasing()
-            # Set the brushing size
-            brushSize = self.brushSizes[self.paintBrushSizeIndex][0]
-            self.editor.brushingModel.setBrushSize(brushSize)
+        # Hide everything by default
+        self._labelControlUi.arrowToolButton.hide()
+        self._labelControlUi.paintToolButton.hide()
+        self._labelControlUi.eraserToolButton.hide()
+        self._labelControlUi.brushSizeComboBox.hide()
+        self._labelControlUi.brushSizeCaption.hide()
 
-            # Make sure the GUI reflects the correct size
-            self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
-            
-            # Make sure we're using the correct label color
-            self.switchLabel( self._labelControlUi.labelListModel.selectedRow() )
-            
-        elif toolId == Tool.Erase:
-            # Show the brush size control and set its caption
-            self._labelControlUi.brushSizeCaption.show()
-            self._labelControlUi.brushSizeComboBox.show()
-            self._labelControlUi.brushSizeCaption.setText("Eraser Size:")
-            
-            # If necessary, tell the brushing model to start erasing
-            if not self.editor.brushingModel.erasing:
-                self.editor.brushingModel.setErasing()
-            # Set the brushing size
-            eraserSize = self.brushSizes[self.eraserSizeIndex][0]
-            self.editor.brushingModel.setBrushSize(eraserSize)
-            
-            # Make sure the GUI reflects the correct size
-            self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
+        if self.imageIndex != -1 and self.pipeline.LabelsAllowedFlags[self.imageIndex].value:
+            self._labelControlUi.arrowToolButton.show()
+            self._labelControlUi.paintToolButton.show()
+            self._labelControlUi.eraserToolButton.show()
+            # Update the applet bar caption
+            if toolId == Tool.Navigation:
+                # Hide the brush size control
+                self._labelControlUi.brushSizeCaption.hide()
+                self._labelControlUi.brushSizeComboBox.hide()
+            elif toolId == Tool.Paint:
+                # Show the brush size control and set its caption
+                self._labelControlUi.brushSizeCaption.show()
+                self._labelControlUi.brushSizeComboBox.show()
+                self._labelControlUi.brushSizeCaption.setText("Brush Size:")
+                
+                # If necessary, tell the brushing model to stop erasing
+                if self.editor.brushingModel.erasing:
+                    self.editor.brushingModel.disableErasing()
+                # Set the brushing size
+                brushSize = self.brushSizes[self.paintBrushSizeIndex][0]
+                self.editor.brushingModel.setBrushSize(brushSize)
+    
+                # Make sure the GUI reflects the correct size
+                self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
+                
+                # Make sure we're using the correct label color
+                self.switchLabel( self._labelControlUi.labelListModel.selectedRow() )
+                
+            elif toolId == Tool.Erase:
+                # Show the brush size control and set its caption
+                self._labelControlUi.brushSizeCaption.show()
+                self._labelControlUi.brushSizeComboBox.show()
+                self._labelControlUi.brushSizeCaption.setText("Eraser Size:")
+                
+                # If necessary, tell the brushing model to start erasing
+                if not self.editor.brushingModel.erasing:
+                    self.editor.brushingModel.setErasing()
+                # Set the brushing size
+                eraserSize = self.brushSizes[self.eraserSizeIndex][0]
+                self.editor.brushingModel.setBrushSize(eraserSize)
+                
+                # Make sure the GUI reflects the correct size
+                self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
 
         self.editor.setInteractionMode( modeNames[toolId] )
 
@@ -489,7 +512,7 @@ class PixelClassificationGui(QMainWindow):
         We need to add/remove labels until we have the right number
         """
         # Get the number of labels in the label data
-        numLabels = self.pipeline.opMaxLabel.Output.value
+        numLabels = self.pipeline.MaxLabelValue.value
         if numLabels == None:
             numLabels = 0
 
@@ -507,6 +530,11 @@ class PixelClassificationGui(QMainWindow):
             if selectedRow == -1:
                 selectedRow = 0 
             self.switchLabel(selectedRow)
+
+    def clearLabelListGui(self):
+        # Remove rows until we have the right number
+        while self._labelControlUi.labelListModel.rowCount() > 0:
+            self.removeLastLabel()
 
     def handleAddLabelButtonClicked(self):
         """
@@ -535,12 +563,6 @@ class PixelClassificationGui(QMainWindow):
         #FIXME: this should watch for model changes
         #drawing will be enabled when the first label is added
         self.changeInteractionMode( Tool.Navigation )
-
-#        if self.pipeline is not None:
-#            print "Label added, changing predictions"
-#            #re-train the forest now that we have more labels
-#            if self.pipeline.NumClasses.value < nlabels:
-#                self.pipeline.NumClasses.setValue( nlabels )
         
         return nlabels
     
@@ -552,7 +574,6 @@ class PixelClassificationGui(QMainWindow):
         numRows = self._labelControlUi.labelListModel.rowCount()
         # This will trigger the signal that calls onLabelAboutToBeRemoved()
         self._labelControlUi.labelListModel.removeRow(numRows-1)
-        numRows = numRows-1
     
         self._programmaticallyRemovingLabels = False
     

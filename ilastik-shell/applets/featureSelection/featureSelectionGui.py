@@ -46,7 +46,7 @@ class FeatureSelectionGui(QMainWindow):
                      "G. Grad Mag",
                      "Diff of G." ]
 
-    def __init__(self):
+    def __init__(self, mainOperator):
         super(FeatureSelectionGui, self).__init__()
 
         # Constants
@@ -61,25 +61,39 @@ class FeatureSelectionGui(QMainWindow):
         self.initFeatureDlg()
         
         self.editor = None
+        self.currentImageIndex = -1
         self.layerstack = LayerStackModel()
         self.initEditor()
         
-        self.mainOperator = None
-        
-    def setMainOperator(self, operator):
-        self.mainOperator = operator
+        self.mainOperator = mainOperator
         self.mainOperator.SelectionMatrix.notifyConnect( bind(self.onFeaturesSelectionsChanged) )
-        self.mainOperator.notifyConfigured( self.handleFeaturesChanged )
+        
+        def handleInputChanged(changedSlot):
+            if self.currentImageIndex != -1 \
+            and self.mainOperator.InputImage[self.currentImageIndex] == changedSlot \
+            and self.mainOperator.configured():
+                self.updateAllLayers()
 
-        if self.mainOperator is None:
-            numRows = len(self.layerstack)
-            self.layerstack.removeRows(0, numRows)
+        def handleInputInsertion(slot, index):
+            slot[index].notifyDirty( bind(handleInputChanged) )
+        
+        self.mainOperator.InputImage.notifyInserted( bind(handleInputInsertion) )
+        self.mainOperator.notifyConfigured( bind(self.updateAllLayers) )
+
+        def handleInputRemoval(slot, index, finalsize):
+            if finalsize == 0 or not self.mainOperator.configured():
+                self.layerstack.clear()
+            elif index == self.currentImageIndex:
+                self.updateAllLayers()
+                
+        self.mainOperator.InputImage.notifyRemove( handleInputRemoval )
+        
+    def setImageIndex(self, index):
+        self.currentImageIndex = index
+        if self.mainOperator.configured():
+            self.updateAllLayers()
         else:
-            if self.mainOperator.configured():
-                self.handleFeaturesChanged()
-            
-            if self.mainOperator.SelectionMatrix.configured():
-                self.onFeaturesSelectionsChanged()
+            self.layerstack.clear()
     
     def initAppletDrawerUic(self):
         """
@@ -218,7 +232,11 @@ class FeatureSelectionGui(QMainWindow):
         Handles changes to our top-level operator's matrix of feature selections.
         """
         # Update the drawer caption
-        self.drawer.caption.setText( "(Selected %d features)" % numpy.sum(self.mainOperator.SelectionMatrix.value) )
+        if not self.mainOperator.SelectionMatrix.configured():
+            self.drawer.caption.setText( "(No features selected)" )
+            self.layerstack.clear()
+        else:
+            self.drawer.caption.setText( "(Selected %d features)" % numpy.sum(self.mainOperator.SelectionMatrix.value) )
 
     def initEditor(self):
         """
@@ -252,14 +270,14 @@ class FeatureSelectionGui(QMainWindow):
         """
         self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
 
-    def handleFeaturesChanged(self):
+    def updateAllLayers(self):
         # Start by removing all layers
         # TODO: We can do better than this.  We should try to determine if some feature layers can be kept.
         numRows = len(self.layerstack)
         self.layerstack.removeRows(0, numRows)
 
         # Update the editor data shape
-        shape = self.mainOperator.InputImage.shape
+        shape = self.mainOperator.InputImage[self.currentImageIndex].shape
         self.editor.dataShape = shape
         
         # First add a black layer on the bottom of the image
@@ -272,7 +290,7 @@ class FeatureSelectionGui(QMainWindow):
 
         # Now add a layer for each feature
         # TODO: This assumes the channel is the last axis 
-        numFeatureChannels = self.mainOperator.CachedOutputImage.meta.shape[-1]
+        numFeatureChannels = self.mainOperator.CachedOutputImage[self.currentImageIndex].meta.shape[-1]
         for featureChannelIndex in reversed(range(0, numFeatureChannels)):
             if featureChannelIndex < len(self.DefaultColorTable):
                 # Choose the next color from our default color table
@@ -290,18 +308,16 @@ class FeatureSelectionGui(QMainWindow):
         """
         # Create an operator to select the channel (feature) we're interested in
         selector=OpSingleChannelSelector(self.mainOperator.graph)
-        selector.Input.connect(self.mainOperator.CachedOutputImage)
+        selector.Input.connect(self.mainOperator.CachedOutputImage[self.currentImageIndex])
         selector.Index.setValue(featureChannelIndex)
         
         # Determine the name for this feature
-        channelAxis = self.mainOperator.InputImage.meta.axistags.channelIndex
-        numOriginalChannels = self.mainOperator.InputImage.meta.shape[channelAxis]
+        channelAxis = self.mainOperator.InputImage[self.currentImageIndex].meta.axistags.channelIndex
+        numOriginalChannels = self.mainOperator.InputImage[self.currentImageIndex].meta.shape[channelAxis]
         originalChannel = featureChannelIndex % numOriginalChannels
         featureNameIndex = featureChannelIndex / numOriginalChannels
         channelNames = ['R', 'G', 'B']
-        # FIXME: It shouldn't be necessary to dig down into the operator to access these names.
-        #        Perhaps the operator should provide them as an output?
-        featureName = self.mainOperator.FeatureNames.value[ featureNameIndex ]
+        featureName = self.mainOperator.FeatureNames[self.currentImageIndex].value[ featureNameIndex ]
         if numOriginalChannels > 1:
             featureName += " (" + channelNames[originalChannel] + ")"
         
