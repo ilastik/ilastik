@@ -16,6 +16,9 @@ class BatchIoApplet( Applet ):
         super(BatchIoApplet, self).__init__(title)
 
         self._topLevelOperator = OperatorWrapper( OpBatchIo(graph=graph), promotedSlotNames=set(['DatasetPath', 'ImageToExport']) )
+        
+        # Ensure the operator has no length yet.
+        self._topLevelOperator.ImageToExport.resize(0)
 
         self._serializableItems = [ BatchIoSerializer(self._topLevelOperator, title) ]
 
