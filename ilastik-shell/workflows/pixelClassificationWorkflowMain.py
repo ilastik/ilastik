@@ -25,70 +25,96 @@ splashImage = QPixmap("../ilastik-splash.png")
 splashScreen = QSplashScreen(splashImage)
 splashScreen.show()
 
-# Create a graph to be shared among all the applets
+# Create a graph to be shared by all operators
 graph = Graph()
 
-# Create the applets for our workflow
+######################
+# Interactive workflow
+######################
+
+## Create applets 
 projectMetadataApplet = ProjectMetadataApplet()
 dataSelectionApplet = DataSelectionApplet(graph, "Input Data", supportIlastik05Import=True, batchDataGui=False)
 featureSelectionApplet = FeatureSelectionApplet(graph)
 pcApplet = PixelClassificationApplet(graph)
 
-# Get handles to each of the applet top-level operators
+## Access applet operators
 opData = dataSelectionApplet.topLevelOperator
 opTrainingFeatures = featureSelectionApplet.topLevelOperator
 opClassify = pcApplet.topLevelOperator
 
-# Connect the operators together
+## Connect operators ##
+
+# Input Image -> Feature Op
+#         and -> Classification Op (for display)
 opTrainingFeatures.InputImage.connect( opData.Image )
 opClassify.InputImages.connect( opData.Image )
-opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
+
+# Feature Images -> Classification Op (for training, prediction)
 opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
 opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
 
-# Batch prediction has it's own workflow (but no training)
+# Training flags -> Classification Op (for GUI restrictions)
+opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
+
+######################
+# Batch workflow
+######################
+
+## Create applets
 batchInputApplet = DataSelectionApplet(graph, "Batch Inputs", supportIlastik05Import=False, batchDataGui=True)
 batchResultsApplet = BatchIoApplet(graph, "Batch Results")
 
+## Access applet operators
 opBatchInputs = batchInputApplet.topLevelOperator
 opBatchResults = batchResultsApplet.topLevelOperator
+
+## Create additional batch workflow operators
 opBatchFeatures = OpFeatureSelection(graph=graph)
 opBatchPredictor = OpPredictRandomForest(graph=graph)
+opSelectBatchDatasetPath = OperatorWrapper( OpAttributeSelector(graph=graph) )
 
-# Simply obtain feature settings (scales, matrix, etc.) from the training features operator
+## Connect Operators ## 
+
+# Provide dataset paths from data selection applet to the batch export applet via an attribute selector
+opSelectBatchDatasetPath.InputObject.connect( opBatchInputs.Dataset )
+opSelectBatchDatasetPath.AttributeName.setValue( 'filePath' )
+opBatchResults.DatasetPath.connect( opSelectBatchDatasetPath.Result )
+
+# Connect (clone) the feature operator inputs from 
+#  the interactive workflow's features operator (which gets them from the GUI)
 opBatchFeatures.Scales.connect( opTrainingFeatures.Scales )
 opBatchFeatures.FeatureIds.connect( opTrainingFeatures.FeatureIds )
 opBatchFeatures.SelectionMatrix.connect( opTrainingFeatures.SelectionMatrix )
 
-# Batch feature inputs are the batch input data
-opBatchFeatures.InputImage.connect( opBatchInputs.Image )
-
-# Obtain the classifier and max label value from the classification applet top-level operator
+# Classifier and LabelsCount are provided by the interactive workflow
 opBatchPredictor.Classifier.connect( opClassify.Classifier )
 opBatchPredictor.LabelsCount.connect( opClassify.MaxLabelValue )
 
-# Input to the predictor are batch input features
+# Connect Image pathway:
+# Input Image -> Features Op -> Prediction Op -> Export
+opBatchFeatures.InputImage.connect( opBatchInputs.Image )
 opBatchPredictor.Image.connect( opBatchFeatures.OutputImage )
-
-# The results we want to export are the probability maps
-opSelectBatchDatasetPath = OperatorWrapper( OpAttributeSelector(graph=graph) )
-opSelectBatchDatasetPath.InputObject.connect( opBatchInputs.Dataset )
-opSelectBatchDatasetPath.AttributeName.setValue( 'filePath' )
-opBatchResults.DatasetPath.connect( opSelectBatchDatasetPath.Result )
 opBatchResults.ImageToExport.connect( opBatchPredictor.PMaps )
+
+######################
+# Shell
+######################
 
 # Create the shell
 shell = IlastikShell()
 
-# Add each applet to the shell
+# Add interactive workflow applets
 shell.addApplet(projectMetadataApplet)
 shell.addApplet(dataSelectionApplet)
 shell.addApplet(featureSelectionApplet)
 shell.addApplet(pcApplet)
+
+# Add batch workflow applets
 shell.addApplet(batchInputApplet)
 shell.addApplet(batchResultsApplet)
 
-# The shell needs a slot to read the image names from.
+# The shell needs a slot from which he can read the list of image names to switch between.
 # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
 opSelectFilename = OperatorWrapper( OpAttributeSelector(graph=graph) )
 opSelectFilename.InputObject.connect( opData.Dataset )
