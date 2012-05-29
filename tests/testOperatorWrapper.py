@@ -6,6 +6,15 @@ class OpSimple(Operator):
     InputA = InputSlot()
     InputB = InputSlot()
     Output = OutputSlot()
+    
+    def setupOutputs(self):
+        self.Output.meta.shape = self.InputA.meta.shape
+        self.Output.meta.dtype = self.InputA.meta.dtype
+    
+    def execute(self, slot, roi, result):
+        assert slot == self.Output
+        
+        result[...] = self.InputA(roi).wait() * self.InputB[0:1].wait()
 
 class OpExplicitMulti(Operator):
     Output = MultiOutputSlot()
@@ -16,6 +25,78 @@ class OpCopyInput(Operator):
     
     def setupOutputs(self):
         self.Output.setValue(self.Input.value)
+
+
+
+class TestBasic(object):
+    
+    @classmethod
+    def setupClass(cls):
+        cls.graph = Graph()
+
+    @classmethod
+    def teardownClass(cls):
+        pass
+    
+    def test_fullWrapping(self):
+        """
+        Test basic wrapping functionality (all slots are promoted)
+        """
+        orig = OpSimple(graph=self.graph)
+        wrapped = OperatorWrapper( orig )
+        assert type(wrapped.InputA) == MultiInputSlot
+        assert type(wrapped.InputB) == MultiInputSlot
+        assert type(wrapped.Output) == MultiOutputSlot
+        
+        assert len(wrapped.InputA) == 0
+        assert len(wrapped.InputB) == 0
+        assert len(wrapped.Output) == 0
+        
+        wrapped.InputA.resize(2)
+        assert len(wrapped.InputB) == 2
+        assert len(wrapped.Output) == 2
+        
+        a = numpy.array([[1,2],[3,4]])
+        b = numpy.array([2])
+        wrapped.InputA[0].setValue(a)
+        wrapped.InputB[0].setValue(b)
+        wrapped.InputA[1].setValue(2*a)
+        wrapped.InputB[1].setValue(3*b)
+
+        result0 = wrapped.Output[0][0:2,0:2].wait()
+        result1 = wrapped.Output[1][0:2,0:2].wait()
+        assert ( result0 == a * b[0] ).all()
+        assert ( result1 == 2*a * 3*b[0] ).all()
+    
+    def test_partialWrapping(self):
+        """
+        By default, OperatorWrapper promotes all slots.
+        This function tests what happens when only a subset of the inputs are promoted.
+        """
+        orig = OpSimple(graph=self.graph)
+        wrapped = OperatorWrapper( orig, promotedSlotNames=set(['InputA']) )
+        assert type(wrapped.InputA) == MultiInputSlot  # Promoted because it was listed in the constructor call
+        assert type(wrapped.InputB) == InputSlot       # NOT promoted
+        assert type(wrapped.Output) == MultiOutputSlot # Promoted because it's an output
+        
+        assert len(wrapped.InputA) == 0
+        assert len(wrapped.InputB) == 0
+        assert len(wrapped.Output) == 0
+        
+        wrapped.InputA.resize(2)
+        assert len(wrapped.InputB) == 0 # Not promoted
+        assert len(wrapped.Output) == 2
+        
+        a = numpy.array([[1,2],[3,4]])
+        b = numpy.array([2])
+        wrapped.InputA[0].setValue(a)
+        wrapped.InputB.setValue(b)
+        wrapped.InputA[1].setValue(2*a)
+
+        result0 = wrapped.Output[0][0:2,0:2].wait()
+        result1 = wrapped.Output[1][0:2,0:2].wait()
+        assert ( result0 == a * b[0] ).all()
+        assert ( result1 == 2*a * b[0] ).all()
 
 class TestMultiOutputToWrapped(object):
 
