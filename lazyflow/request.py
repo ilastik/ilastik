@@ -29,6 +29,18 @@ def wakeUp(thread):
   except:
     pass
 
+def runDebugShell():
+    import traceback
+    traceback.print_exc()
+    import IPython
+    version_str = IPython.__version__.split(".")
+    if int(version_str[1]) < 11:
+      shell = IPython.Shell.IPShellEmbed()
+      shell()
+    else:
+      IPython.embed()
+
+
 
 class Worker(Thread):
   def __init__(self, machine, wid = 0):
@@ -139,11 +151,7 @@ class Worker(Thread):
     except:
         # If something in this worker thread barfs,
         # print the exception traceback and start up an ipython shell.
-        import traceback
-        traceback.print_exc()
-        import IPython
-        shell = IPython.Shell.IPShellEmbed()
-        shell()
+        runDebugShell()
         
 
 
@@ -549,11 +557,7 @@ class Request(object):
     except:
       # If something in this worker thread barfs,
       # print the exception traceback and start up an ipython shell.
-      import traceback
-      traceback.print_exc()
-      import IPython
-      shell = IPython.Shell.IPShellEmbed()
-      shell()
+      runDebugShell()
 
   #
   #
