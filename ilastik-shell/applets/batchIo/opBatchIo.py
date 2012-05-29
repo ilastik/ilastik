@@ -57,8 +57,8 @@ class OpBatchIo(Operator):
                              ExportFormat.Tiff : '.tiff' }
         
         # Create the output data path
-        format = self.Format.value
-        ext = formatExtensions[format]
+        exportFormat = self.Format.value
+        ext = formatExtensions[exportFormat]
         inputPathComponents = PathComponents(self.DatasetPath.value)
         
         # If no export directory was given, use the original input data's directory
@@ -69,7 +69,7 @@ class OpBatchIo(Operator):
         outputPath += '/' + inputPathComponents.filenameBase + self.Suffix.value + ext 
         
         # Set up the path for H5 export
-        if format == ExportFormat.H5:                    
+        if exportFormat == ExportFormat.H5:                    
             # Use the same internal path that the input data used (if any)
             if inputPathComponents.internalPath is not None:
                 self._internalPath = inputPathComponents.internalPath
@@ -77,9 +77,9 @@ class OpBatchIo(Operator):
                 self._internalPath = '/volume/data'
 
             self.OutputDataPath.setValue( outputPath + self._internalPath )
-        elif format == ExportFormat.Npy:
+        elif exportFormat == ExportFormat.Npy:
             pass # TODO
-        elif format == ExportFormat.Tiff:
+        elif exportFormat == ExportFormat.Tiff:
             pass # TODO
 
     def propagateDirty(self, islot, roi):
@@ -99,10 +99,10 @@ class OpBatchIo(Operator):
                 result[0] = True
                 return
             
-            format = self.Format.value
+            exportFormat = self.Format.value
             
             # Export H5
-            if format == ExportFormat.H5:
+            if exportFormat == ExportFormat.H5:
                 pathComp = PathComponents(self.OutputDataPath.value)
                 
                 # Set up the write operator                
@@ -115,9 +115,9 @@ class OpBatchIo(Operator):
                 self.Dirty.setValue( not opH5Writer.WriteImage.value )
                 opH5Writer.close()
 
-            elif format == ExportFormat.Npy:
+            elif exportFormat == ExportFormat.Npy:
                 pass # TODO
-            elif format == ExportFormat.Npy:
+            elif exportFormat == ExportFormat.Npy:
                 pass # TODO
 
             result[0] = not self.Dirty.value
