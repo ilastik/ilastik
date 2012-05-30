@@ -142,7 +142,14 @@ class Ilastik05FeatureSelectionDeserializer(object):
             #  we'll just use the default (blank) selections as initialized above
             pass
         else:
-            assert( userFriendlyFeatureMatrix.shape == (4, 7) )
+            # Number of feature types must be correct or something is totally wrong
+            assert userFriendlyFeatureMatrix.shape[0] == 4
+
+            # Some older versions of ilastik had only 6 scales.            
+            # Add columns of zeros until we have 7 columns.
+            while userFriendlyFeatureMatrix.shape[1] < 7:
+                userFriendlyFeatureMatrix = numpy.append( userFriendlyFeatureMatrix, numpy.zeros((4, 1), dtype=bool), axis=1 )
+            
             # Here's how features map to the old "feature groups"
             # (Note: Nothing maps to the orientation group.)
             featureToGroup = { 0 : 0,  # Gaussian Smoothing -> Color
