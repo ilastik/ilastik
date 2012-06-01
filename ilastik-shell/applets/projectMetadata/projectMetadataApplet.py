@@ -21,7 +21,6 @@ class ProjectMetadataApplet( Applet ):
         # For now, the central widget owns the applet bar gui
         self._drawers = [ ( "Project Metadata", self._centralWidget.getAppletDrawerUi() ) ]
 
-        # No serializable items for now ...
         self._serializableItems = [ ProjectMetadataSerializer(self._projectMetadata),
                                     Ilastik05ProjectMetadataDeserializer(self._projectMetadata) ]
 
