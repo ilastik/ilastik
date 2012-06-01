@@ -57,6 +57,15 @@ opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
 # Training flags -> Classification Op (for GUI restrictions)
 opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 
+###
+#  Test Test Test
+###
+from applets.resultsViewer import ResultsViewerApplet
+resultsViewerApplet = ResultsViewerApplet(graph)
+opResultsViewer = resultsViewerApplet.topLevelOperator
+opResultsViewer.BaseLayer.connect( opData.Image )
+opResultsViewer.ChannelwiseLayers.connect( opTrainingFeatures.OutputImage )
+
 ######################
 # Batch workflow
 ######################
@@ -114,6 +123,9 @@ shell.addApplet(pcApplet)
 shell.addApplet(batchInputApplet)
 shell.addApplet(batchResultsApplet)
 
+# TEST TEST TEST TEST
+shell.addApplet( resultsViewerApplet )
+
 # The shell needs a slot from which he can read the list of image names to switch between.
 # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
 opSelectFilename = OperatorWrapper( OpAttributeSelector(graph=graph) )
@@ -131,17 +143,17 @@ def test():
     from functools import partial
     
     # Open a test project
-    shell.openProjectFile('/home/bergs/test_project.ilp')
+    shell.openProjectFile('/home/bergs/synapse_small.ilp')
     
-    # Select the labeling drawer
-    shell.setSelectedAppletDrawer( 3 )
+    # Select a drawer
+    shell.setSelectedAppletDrawer( 7 )
     
     # Check the 'interactive mode' checkbox.
-    QTimer.singleShot( 2000, partial(pcApplet.centralWidget._labelControlUi.checkInteractive.setChecked, True) )
+    #QTimer.singleShot( 2000, partial(pcApplet.centralWidget._labelControlUi.checkInteractive.setChecked, True) )
 
 
 # Run a test
-#QTimer.singleShot(1, test )
+QTimer.singleShot(1, test )
 
 app.exec_()
 
