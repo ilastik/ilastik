@@ -68,6 +68,11 @@ def popFlagsFromTheKey(key,axistags,flags):
 
 
 class OpMultiArraySlicer(Operator):
+    """
+    Produces a list of image slices along the given axis. 
+    Same as the slicer operator below, but reduces the dimensionality of the data.
+    The sliced axis is discarded in the output image shape.
+    """
     inputSlots = [InputSlot("Input"),InputSlot('AxisFlag')]
     outputSlots = [MultiOutputSlot("Slices",level=1)]
 
@@ -125,6 +130,11 @@ class OpMultiArraySlicer(Operator):
 
 
 class OpMultiArraySlicer2(Operator):
+    """
+    Produces a list of image slices along the given axis. 
+    Same as the slicer operator above, but does not reduce the dimensionality of the data.
+    The output image shape will have a dimension of 1 for the axis that was sliced.
+    """
     #FIXME: This operator return a sigleton in the sliced direction
     #Should be integrated with the above one to have a more consistent notation
     inputSlots = [InputSlot("Input"),InputSlot('AxisFlag')]
@@ -469,48 +479,76 @@ class OpPixelOperator(Operator):
         
 class OpMultiInputConcatenater(Operator):
     name = "OpMultiInputConcatenater"
-    description = "Combine two MultiInput slots into a single MultiOutput slot"
+    description = "Combine two or more MultiInput slots into a single MultiOutput slot"
     
-    Input1 = MultiInputSlot()
-    Input2 = MultiInputSlot()
-    Output = MultiOutputSlot()
+    Inputs = MultiInputSlot(level=2, optional=True)
+    Output = MultiOutputSlot(level=1)
     
     def __init__(self, *args, **kwargs):
         super(OpMultiInputConcatenater, self).__init__(*args, **kwargs)
 
-        # Subscribe to changes on our inputs.
-        self.Input1.notifyInserted( self.handleInputInserted )
-        self.Input2.notifyInserted( self.handleInputInserted )
-        self.Input1.notifyRemove( self.handleInputRemoved )
-        self.Input2.notifyRemove( self.handleInputRemoved )
-    
-    def handleInputInserted(self, slot, inputPosition, totalsize):
+    def getOutputIndex(self, inputMultiSlot, inputIndex):
+        """
+        Determine which output index corresponds to the given input multislot and index.
+        """
+        # Determine the corresponding output index
+        outputIndex = 0
+        # Search for the input slot
+        for index, multislot in enumerate( self.Inputs ):
+            if inputMultiSlot != multislot:
+                # Not the resized slot.  Skip all its subslots
+                outputIndex += len(multislot)
+            else:
+                # Found the resized slot.  Add the offset and stop here.
+                outputIndex += inputIndex
+                return outputIndex
+        
+        assert False
+
+    def handleInputInserted(self, resizedSlot, inputPosition, totalsize):
         """
         A slot was inserted in one of our inputs.
         Insert a slot in the appropriate location of our output, and connect it to the appropriate input subslot.
         """
-        totalOutputLength = len(self.Input1) + len(self.Input2)
-        outputPosition = inputPosition
-        if slot == self.Input2:
-            outputPosition += len(self.Input1)
+        # Determine which output slot this corresponds to
+        outputIndex = self.getOutputIndex(resizedSlot, inputPosition)
 
-        self.Output.insertSlot(outputPosition, totalOutputLength)
-        self.Output[outputPosition].connect( slot[inputPosition] )
+        # Insert new output slot and connect it up.
+        newOutputLength = len( self.Output ) + 1
+        self.Output.insertSlot(outputIndex, newOutputLength)
+        self.Output[outputIndex].connect( resizedSlot[inputPosition] )
         
-    def handleInputRemoved(self, slot, position, totalsize):
+    def handleInputRemoved(self, resizedSlot, inputPosition, totalsize):
         """
         A slot was removed from one of our inputs.
         Remove the appropriate slot from our output.
         """
-        if slot == self.Input1:
-            totalOutputLength = len(self.Input2) + totalsize
-        elif slot == self.Input2:
-            totalOutputLength = len(self.Input1) + totalsize
-            position += len(self.Input1)
-        self.Output.removeSlot(position, totalOutputLength)
+        # Determine which output slot this corresponds to
+        outputIndex = self.getOutputIndex(resizedSlot, inputPosition)
+
+        # Remove the corresponding output slot        
+        newOutputLength = len( self.Output ) - 1
+        self.Output.removeSlot(outputIndex, newOutputLength)
     
     def setupOutputs(self):
-        pass
+        # First pass to determine output length
+        totalOutputLength = 0
+        for index, slot in enumerate( self.Inputs ):
+            totalOutputLength += len(slot)
+
+        self.Output.resize( totalOutputLength )
+        
+        # Second pass to make connections and subscribe to future changes
+        outputIndex = 0
+        for index, slot in enumerate( self.Inputs ):
+            slot.notifyInserted( self.handleInputInserted )
+            slot.notifyRemove( self.handleInputRemoved )
+
+            # Connect subslots to output
+            for i, s in enumerate(slot):
+                self.Output[outputIndex].connect(s)
+                outputIndex += 1
+        
     
     def getSubOutSlot(self, slots, indexes, key, result):
         # Should never be called.  All output slots are directly connected to an input slot.
@@ -518,8 +556,9 @@ class OpMultiInputConcatenater(Operator):
         
 if __name__ == "__main__":
     import numpy
+    from lazyflow.graph import OperatorWrapper
+    from lazyflow.operators import OpArrayPiper
     g = Graph()
-    op = OpMultiInputConcatenater(g)
     
     array1 = numpy.zeros((1,1), dtype=float)
     array2 = numpy.ones((2,2), dtype=float)
@@ -532,19 +571,30 @@ if __name__ == "__main__":
     array2[0,0] = 0.123
     array6[0,0] = 0.456
 
-    op.Input1.resize(3)
-    op.Input1[0].setValue( array1 )
-    op.Input1[1].setValue( array2 )
-    op.Input1[2].setValue( array3 )
+    opIn0Provider = OperatorWrapper( OpArrayPiper(g) )
 
-    op.Input2.resize(3)
-    op.Input2[0].setValue( array4 )
-    op.Input2[1].setValue( array5 )
-    op.Input2[2].setValue( array6 )
+    # We will provide 2 lists to concatenate
+    # The first is provided by a separate operator which we set up in advance    
+    opIn0Provider.Input.resize(3)
+    opIn0Provider.Input[0].setValue( array1 )
+    opIn0Provider.Input[1].setValue( array2 )
+    opIn0Provider.Input[2].setValue( array3 )
+
+    op = OpMultiInputConcatenater(g)
+    op.Inputs.resize(2) # Two lists to concatenate
+
+    # Connect the first list
+    op.Inputs[0].connect( opIn0Provider.Output )
+
+    # Set up the second list directly via setValue() (no external operator)
+    op.Inputs[1].resize(3)
+    op.Inputs[1][0].setValue( array4 )
+    op.Inputs[1][1].setValue( array5 )
+    op.Inputs[1][2].setValue( array6 )
     
-    print op.Input1[0].meta
-    print op.Input1[1].meta
-    print op.Input1[2].meta
+    print op.Inputs[0][0].meta
+    print op.Inputs[0][1].meta
+    print op.Inputs[0][2].meta
     print op.Output[0].meta
     print op.Output[1].meta
     print op.Output[2].meta
@@ -556,7 +606,7 @@ if __name__ == "__main__":
     assert numpy.all(op.Output[1][...].wait() == array2[...])
     assert numpy.all(op.Output[5][...].wait() == array6[...])
 
-    op.Input1.removeSlot(1, 2)
+    op.Inputs[0].removeSlot(1, 2)
     
     print len(op.Output)
     assert len(op.Output) == 5 
