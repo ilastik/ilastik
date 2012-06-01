@@ -99,8 +99,58 @@ class OpAttributeSelector(Operator):
         if needToPropagate:    
             self.Result.setDirty(slice(None))
 
+class OpMetadataInjector(Operator):
+    name = "Metadata injector"
+    category = "Value provider"
+    
+    Input = InputSlot()
+    Output = OutputSlot()
+    
+    # Metadata value is fixed during construction.
+    def __init__(self, metadata, *args, **kwargs):
+        """
+        metadata -- iterable of (attr_name, attr_value) pairs 
+        """
+        super( OpMetadataInjector, self ).__init__(*args, **kwargs)
+        self.extraMetadata = metadata
+    
+    def setupOutputs(self):
+        self.Output.meta = self.Input.meta.copy()
+        
+        # Inject the additional metadata attributes
+        for k,v in self.extraMetadata:
+            setattr(self.Output.meta, k, v)
+    
+    def execute(self, slot, roi, result):
+        result[...] = self.Input(roi)
 
+    def propagateDirty(self, slot, roi):
+        # Forward to the output slot
+        self.Output.setDirty(roi)
 
+if __name__ == "__main__":
+    g = Graph()
+    additionalMetadata = [('layertype', 7)]
+    op = OpMetadataInjector( additionalMetadata, g)
+    op.Input.setValue('Hello')
+    
+    # Make sure all input metadata was copied to the output
+    assert all( ((k,v) in op.Output.meta.items()) for k,v in op.Input.meta.items())
 
+    # Check that the additional metadata was added to the output
+    assert op.Output.meta.layertype == 7
 
-
+    # Make sure dirtyness gets propagated to the output.
+    dirtyList = []
+    def handleDirty(*args):
+        dirtyList.append(True)
+        
+    op.Output.notifyDirty( handleDirty )
+    op.Input.setValue( 8 )
+    assert len(dirtyList) == 1
+    
+    
+    
+    
+    
+    
