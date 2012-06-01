@@ -17,7 +17,7 @@ class GenericViewerApplet( Applet ):
         self._topLevelOperator = OperatorWrapper( OpGenericViewer(graph) )
 
         # Instantiate the main GUI, which creates the applet drawers (for now)
-        self._centralWidget = GenericViewerGui(self._topLevelOperator)
+        self._centralWidget = GenericViewerGui(self._topLevelOperator.OutputLayers)
         self._menuWidget = self._centralWidget.menuBar
         
         # The central widget owns the applet drawer gui

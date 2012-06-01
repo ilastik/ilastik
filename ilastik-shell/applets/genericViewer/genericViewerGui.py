@@ -23,7 +23,7 @@ class LayerType():
     AlphaModulated = 1
     ColorTable = 2
 
-class ViewerAppletGuiBase(QMainWindow):
+class GenericViewerGui(QMainWindow):
     """
     Implements an applet GUI whose central widget is a VolumeEditor 
       and whose layer controls simply contains a layer list widget.
@@ -40,7 +40,7 @@ class ViewerAppletGuiBase(QMainWindow):
         """
         
         """
-        super(ViewerAppletGuiBase, self).__init__()
+        super(GenericViewerGui, self).__init__()
 
         # Constants
         self.DefaultColorTable = self.createDefault16ColorColorTable()
