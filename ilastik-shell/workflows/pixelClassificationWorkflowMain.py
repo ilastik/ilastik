@@ -60,11 +60,11 @@ opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 ###
 #  Test Test Test
 ###
-from applets.resultsViewer import ResultsViewerApplet
-resultsViewerApplet = ResultsViewerApplet(graph)
-opResultsViewer = resultsViewerApplet.topLevelOperator
-opResultsViewer.BaseLayer.connect( opData.Image )
-opResultsViewer.ChannelwiseLayers.connect( opTrainingFeatures.OutputImage )
+from applets.genericViewer import GenericViewerApplet
+genericViewerApplet = GenericViewerApplet(graph)
+opGenericViewer = genericViewerApplet.topLevelOperator
+opGenericViewer.BaseLayer.connect( opData.Image )
+opGenericViewer.ChannelwiseLayers.connect( opTrainingFeatures.OutputImage )
 
 ######################
 # Batch workflow
@@ -124,7 +124,7 @@ shell.addApplet(batchInputApplet)
 shell.addApplet(batchResultsApplet)
 
 # TEST TEST TEST TEST
-shell.addApplet( resultsViewerApplet )
+shell.addApplet( genericViewerApplet )
 
 # The shell needs a slot from which he can read the list of image names to switch between.
 # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.

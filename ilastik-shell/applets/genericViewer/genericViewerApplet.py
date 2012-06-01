@@ -1,23 +1,23 @@
 from ilastikshell.applet import Applet
 
-from opResultsViewer import OpResultsViewer
+from opGenericViewer import OpGenericViewer
 
-from resultsViewerGui import ResultsViewerGui
+from genericViewerGui import GenericViewerGui
 
 from lazyflow.graph import OperatorWrapper
 
-class ResultsViewerApplet( Applet ):
+class GenericViewerApplet( Applet ):
     """
     This is a simple viewer applet
     """
     def __init__( self, graph ):
-        super(ResultsViewerApplet, self).__init__("Results Viewer")
+        super(GenericViewerApplet, self).__init__("Generic Viewer")
 
         # Wrap the top-level operator, since the GUI supports multiple images        
-        self._topLevelOperator = OperatorWrapper( OpResultsViewer(graph) )
+        self._topLevelOperator = OperatorWrapper( OpGenericViewer(graph) )
 
         # Instantiate the main GUI, which creates the applet drawers (for now)
-        self._centralWidget = ResultsViewerGui(self._topLevelOperator)
+        self._centralWidget = GenericViewerGui(self._topLevelOperator)
         self._menuWidget = self._centralWidget.menuBar
         
         # The central widget owns the applet drawer gui

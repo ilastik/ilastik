@@ -2,10 +2,10 @@ from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSl
 import copy
 from lazyflow.operators import Op5ToMulti, OpMultiInputConcatenater, OpMultiArrayStacker, OpMultiArraySlicer2
 
-class OpResultsViewer(Operator):
+class OpGenericViewer(Operator):
     """
     """
-    name = "OpResultsViewer"
+    name = "OpGenericViewer"
     category = "Top-level"
 
     # We have three different inputs.
@@ -24,7 +24,7 @@ class OpResultsViewer(Operator):
     OutputLayers = MultiOutputSlot()
     
     def __init__(self, *args, **kwargs):
-        super(OpResultsViewer, self).__init__(*args, **kwargs)
+        super(OpGenericViewer, self).__init__(*args, **kwargs)
 
         # CONNECTION DIAGRAM:
         #

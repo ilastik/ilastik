@@ -1,1 +1,1 @@
-from resultsViewerApplet import ResultsViewerApplet
+from genericViewerApplet import GenericViewerApplet

@@ -6,13 +6,13 @@ from shellwidgets.viewerAppletGuiBase import ViewerAppletGuiBase
 from PyQt4 import uic
 import os
 
-class ResultsViewerGui( ViewerAppletGuiBase ):
+class GenericViewerGui( ViewerAppletGuiBase ):
     """
     The central widget of the Input Data Selection Applet.
     Provides controls for adding/removing input data images and stacks.
     """
     def __init__(self, mainOperator):
-        super( ResultsViewerGui, self ).__init__(mainOperator.OutputLayers)
+        super( GenericViewerGui, self ).__init__(mainOperator.OutputLayers)
         
         #self.initAppletDrawerUi()
         self.mainOperator = mainOperator
