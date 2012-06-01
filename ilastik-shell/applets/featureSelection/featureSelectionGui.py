@@ -23,7 +23,7 @@ from utility import bind
 
 class FeatureSelectionGui(QMainWindow):
     """
-    Manages all GUI elements in the data selection applet.
+    Manages all GUI elements in the feature selection applet.
     This class itself is the central widget and also owns/manages the applet drawer widgets.
     """
 

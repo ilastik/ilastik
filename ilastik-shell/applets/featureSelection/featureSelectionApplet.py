@@ -7,8 +7,6 @@ from featureSelectionGui import FeatureSelectionGui
 
 from lazyflow.graph import OperatorWrapper
 
-from utility import OperatorWrapperAdapter
-
 class FeatureSelectionApplet( Applet ):
     """
     This applet allows the user to select sets of input data, 
