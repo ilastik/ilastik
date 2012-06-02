@@ -35,9 +35,7 @@ class OpXToMulti(Operator):
         for sname in sorted(self.inputs.keys()):
             slot = self.inputs[sname]
             if slot.connected():
-                self.outputs["Outputs"][i]._dtype = slot.dtype
-                self.outputs["Outputs"][i]._axistags = copy.copy(slot.axistags)
-                self.outputs["Outputs"][i]._shape = slot.shape
+                self.outputs["Outputs"][i].meta.assignFrom( slot.meta )
                 i += 1       
 
     def getSubOutSlot(self, slots, indexes, key, result):
@@ -58,9 +56,7 @@ class OpXToMulti(Operator):
               self.outputs["Outputs"][i].setDirty(roi)
               break
             if slot.connected():
-                self.outputs["Outputs"][i]._dtype = slot.dtype
-                self.outputs["Outputs"][i]._axistags = copy.copy(slot.axistags)
-                self.outputs["Outputs"][i]._shape = slot.shape
+                self.outputs["Outputs"][i].meta.assignFrom( slot.meta )
                 i += 1       
  
 

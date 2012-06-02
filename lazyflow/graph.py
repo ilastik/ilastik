@@ -113,7 +113,7 @@ class MetaDict(dict):
       try:
         if self[name] == value:
           changed = False
-      except:
+      except KeyError:
         pass
       if changed:
         self["_dirty"] = True
@@ -131,6 +131,18 @@ class MetaDict(dict):
     Construct a copy of the meta dict
     """
     return MetaDict(dict.copy(self))
+
+  def assignFrom(self, other):
+    """
+    Copy all the elements from other into this 
+    """
+    dirty = not (self == other)
+    origdirty = self._dirty
+    if dirty:
+        self.clear()
+        for k,v in other.items():
+            self[k] = copy.copy(v)
+    self._dirty = origdirty | dirty
 
 
 class ValueRequest(object):
