@@ -4,12 +4,13 @@ from lazyflow.operators import Op5ToMulti, OpMultiInputConcatenater, OpMultiArra
 
 class OpGenericViewer(Operator):
     """
+    Accepts a couple lists of input images and merges them into an output list of layers for display.
     """
     name = "OpGenericViewer"
     category = "Top-level"
 
     # We have three different inputs.
-    # All are optional, and each is treated differently before it is appended to the 
+    # All are optional.  Which slot you add to determines how the image will be displayed.
 
     # Base layer image: Always goes on the bottom with no alpha channel
     BaseLayer = InputSlot()
@@ -28,69 +29,48 @@ class OpGenericViewer(Operator):
 
         # CONNECTION DIAGRAM:
         #
-        # self.BaseLayer(level=0) -> opBasePromoter.Output(level=1) -> -----------------------------------------------
-        #                                                                                                             \
-        # self.AtomicLayers(level=1) -> ------------------------------------------------------------------------------->> opConcatenator.Output(level=1) --> self.OutputLayers(level=1)
-        #                                                                                                             /
-        # self.ChannelwiseLayers(level=1) -> opChannelStacker.Output(level=0) -> opChannelSlicer.Slices(level=1) -> --
+        # self.BaseLayer(level=0) -> opBasePromoter.Output(level=1) -> ---------------------------------------------------------
+        #                                                                                                                       \
+        # self.AtomicLayers(level=1) -> ----------------------------------------------------------------------------------------->> opLayerListConcatenater.Output(level=1) --> self.OutputLayers(level=1)
+        #                                                                                                                       /
+        # self.ChannelwiseLayers(level=1) -> opWrappedChannelSlicer.Slices(level=2) -> opSliceListConcatenater.Output(level=1)--
         
         # TODO: Inject metadata...
         
         self.opBasePromoter = Op5ToMulti( graph=self.graph, parent=self )
-        self.opBasePromoter.name = 'opBasePromoter'
         self.opBasePromoter.Input0.connect( self.BaseLayer )
 
-        self.opChannelStacker = OpMultiArrayStacker( graph=self.graph, parent=self )
-        self.opChannelStacker.Images.connect( self.ChannelwiseLayers )
-        self.opChannelStacker.AxisFlag.setValue('c')
+        self.opWrappedChannelSlicer = OperatorWrapper( OpMultiArraySlicer2( graph=self.graph, parent=self ) )
+        self.opWrappedChannelSlicer.Input.connect( self.ChannelwiseLayers )
+        self.opWrappedChannelSlicer.AxisFlag.setValue('c')
+
+        self.opSliceListConcatenater = OpMultiInputConcatenater( graph=self.graph, parent=self )
+        self.opSliceListConcatenater.Inputs.connect( self.opWrappedChannelSlicer.Slices )
         
-        self.opChannelSlicer = OpMultiArraySlicer2( graph=self.graph, parent=self )
-        self.opChannelSlicer.Input.connect( self.opChannelStacker.Output )
-        self.opChannelSlicer.AxisFlag.setValue('c')
+        self.opLayerListConcatenater = OpMultiInputConcatenater( graph=self.graph, parent=self )
+        self.opLayerListConcatenater.Inputs.resize(3) # 3 lists to concatenate        
+        self.opLayerListConcatenater.Inputs[0].connect(self.opBasePromoter.Outputs)
+        self.opLayerListConcatenater.Inputs[1].connect(self.AtomicLayers)
+        self.opLayerListConcatenater.Inputs[2].connect(self.opSliceListConcatenater.Output)
 
-        self.opConcatenator = OpMultiInputConcatenater( graph=self.graph, parent=self )
-        self.opConcatenator.Inputs.resize(3) # 3 lists to concatenate        
-        self.opConcatenator.Inputs[0].connect(self.opBasePromoter.Outputs)
-        self.opConcatenator.Inputs[1].connect(self.AtomicLayers)
-        self.opConcatenator.Inputs[2].connect(self.opChannelSlicer.Slices)
-
-        self.OutputLayers.connect( self.opConcatenator.Output )
+        self.OutputLayers.connect( self.opLayerListConcatenater.Output )
 
     def setupOutputs(self):
-        # All inputs must have the same shape (except for channels)
-        multiInputs = []
-        if self.BaseLayer.configured():
-            multiInputs.append( self.opBasePromoter.Outputs )
-        if self.AtomicLayers.configured():
-            multiInputs.append( self.AtomicLayers )
-        if self.ChannelwiseLayers.configured():
-            multiInputs.append( self.ChannelwiseLayers )
-        
-        checkShape = None
-        channelAxisPosition = None
-        for multislot in multiInputs:
-            for index, imageSlot in enumerate( multislot ):
-                if not imageSlot.configured():
-                    continue
-                
-                imageShape = imageSlot.meta.shape
-                if checkShape == None:
-                    channelAxisPosition = imageSlot.meta.axistags.index('c') # Assumes that the channel axis tag is actually present
-                    checkShape = imageShape
+        # Nothing to set up (Output is directly connected to our internal operators).
+        # But this is a convenient place to check for errors.
+        shape = None
+        for index, slot in enumerate(self.OutputLayers):
+            if slot.configured():
+                if shape == None:
+                    shape = slot.meta.shape
+                    channelPosition = slot.meta.axistags.index('c')
+                    shapeNoChannel = list(shape)
+                    shapeNoChannel.pop(channelPosition)
                 else:
-                    # We assume that the channel axis is in the same position for every image
-                    assert channelAxisPosition == imageSlot.meta.axistags.index('c'), "All results images must have the same channel axis position"
-
-                    # Remove channel dimension
-                    checkShapeNoChannel = list(imageShape).pop(channelAxisPosition)
-                    imageShapeNoChannel = list(imageShape).pop(channelAxisPosition)
-                    assert imageShapeNoChannel == checkShapeNoChannel, "All results images must have the same shape (except for num channels)"
-
-        if channelAxisPosition is not None:
-            # Now that we know where to find the channel, tell our internal stacker operator
-            # TODO: Why does the stacker need to know the axis position in advance?
-            #       Could this be an optional input slot for it?
-            self.opChannelStacker.AxisIndex.setValue(channelAxisPosition)
+                    assert slot.meta.axistags.index('c') == channelPosition
+                    imageShapeNoChannel = list(slot.meta.shape)
+                    imageShapeNoChannel.pop(channelPosition)
+                    assert shapeNoChannel == imageShapeNoChannel, "All layers should have the same shape."
         
     def getSubOutSlot(self, slots, indexes, key, result):
         # Should never get here because our output is directly connected to an internal operator
@@ -101,17 +81,41 @@ class OpGenericViewer(Operator):
         # The internal operators will automatically propagate dirtyness to the output.
         pass
 
+if __name__ == "__main__":
+    from lazyflow.operators import *
+    from lazyflow.operators.ioOperators import *
+    graph = Graph()
 
+    opBaseProvider = OpNpyFileReader(graph=graph)
+    opBaseProvider.FileName.setValue( '/home/bergs/5d.npy' )
+    
+    opGenericViewer = OpGenericViewer(graph=graph)        
+    opGenericViewer.BaseLayer.connect( opBaseProvider.Output )
+    
+    opGenericViewer.AtomicLayers.resize(1)
+    opGenericViewer.AtomicLayers[0].connect( opBaseProvider.Output )
 
+    opGenericViewer.ChannelwiseLayers.resize(1)
+    opGenericViewer.ChannelwiseLayers[0].connect( opBaseProvider.Output )
+    
+    assert opGenericViewer.opWrappedChannelSlicer.Slices.level == 2
+    assert len( opGenericViewer.OutputLayers ) == 1 + 1 + 2
+    
+    # Base image is not split up: shape should match input
+    assert opGenericViewer.OutputLayers[0].meta.shape == opBaseProvider.Output.meta.shape
+    
+    # Atomic images are not split up
+    assert opGenericViewer.OutputLayers[1].meta.shape == opBaseProvider.Output.meta.shape
+    
+    # Channelwise layers are divided into a separate layer for each channel.
+    # Each layer's shape should match the input except for the channel
+    assert opGenericViewer.OutputLayers[2].meta.shape == opBaseProvider.Output.meta.shape[:-1] + (1,)
+    assert opGenericViewer.OutputLayers[3].meta.shape == opBaseProvider.Output.meta.shape[:-1] + (1,)
 
-
-
-
-
-
-
-
-
+    assert numpy.all( opGenericViewer.OutputLayers[0][:].wait() == opBaseProvider.Output[:].wait() )
+    assert numpy.all( opGenericViewer.OutputLayers[1][:].wait() == opBaseProvider.Output[:].wait() )
+    assert numpy.all( opGenericViewer.OutputLayers[2][:].wait() == opBaseProvider.Output[:,:,:,:,0].wait() )
+    assert numpy.all( opGenericViewer.OutputLayers[3][:].wait() == opBaseProvider.Output[:,:,:,:,1].wait() )
 
 
 
