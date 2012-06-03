@@ -104,25 +104,21 @@ class OpMetadataInjector(Operator):
     category = "Value provider"
     
     Input = InputSlot()
+    Metadata = InputSlot() # Dict of { string : value }
+    
     Output = OutputSlot()
-    
-    # Metadata value is fixed during construction.
-    def __init__(self, metadata, *args, **kwargs):
-        """
-        metadata -- iterable of (attr_name, attr_value) pairs 
-        """
-        super( OpMetadataInjector, self ).__init__(*args, **kwargs)
-        self.extraMetadata = metadata
-    
+        
     def setupOutputs(self):
-        self.Output.meta = self.Input.meta.copy()
+        self.Output.meta.assignFrom( self.Input.meta )
         
         # Inject the additional metadata attributes
-        for k,v in self.extraMetadata:
+        extraMetadata = self.Metadata.value
+        for k,v in extraMetadata.items():
             setattr(self.Output.meta, k, v)
     
     def execute(self, slot, roi, result):
-        result[...] = self.Input(roi)
+        key = roi.toSlice()
+        result[...] = self.Input(roi.start, roi.stop).wait()
 
     def propagateDirty(self, slot, roi):
         # Forward to the output slot
@@ -130,9 +126,14 @@ class OpMetadataInjector(Operator):
 
 if __name__ == "__main__":
     g = Graph()
-    additionalMetadata = [('layertype', 7)]
-    op = OpMetadataInjector( additionalMetadata, g)
+    op = OpMetadataInjector(graph=g)
+
+    additionalMetadata = {'layertype' : 7}
+    op.Metadata.setValue( additionalMetadata )
     op.Input.setValue('Hello')
+    
+    # Output value should match input value
+    assert op.Output.value == op.Input.value
     
     # Make sure all input metadata was copied to the output
     assert all( ((k,v) in op.Output.meta.items()) for k,v in op.Input.meta.items())
