@@ -653,7 +653,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                         print "EXCEPT3", vres.shape, temp.shape, twriteKey
                         print "EXCEPT3", resultArea.shape,  tresKey, twriteKey
                         print "EXCEPT3", step, t.shape, timeAxis
-                        assert 1==2
+                        raise
                 
 
             
