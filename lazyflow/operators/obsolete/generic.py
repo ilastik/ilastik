@@ -96,10 +96,10 @@ class OpMultiArraySlicer(Operator):
         self.outputs["Slices"].resize(n)
         
         for o in self.outputs["Slices"]:
-            o._dtype=dtype
-            o._axistags=copy.copy(outaxistags)
-            o._shape=outshape 
-        
+            # Output metadata is a modified copy of the input's metadata
+            o.meta.assignFrom( self.Input.meta )
+            o.meta.axistags = outaxistags
+            o.meta.shape = outshape        
             
     def getSubOutSlot(self, slots, indexes, key, result):
         
@@ -158,16 +158,16 @@ class OpMultiArraySlicer2(Operator):
         
         outaxistags=copy.copy(self.inputs["Input"].axistags) 
         
-        del outaxistags[flag]
+        #del outaxistags[flag]
     
         self.outputs["Slices"].resize(n)
         
         for i in range(n):
             o = self.outputs["Slices"][i]
-            o._dtype=dtype
-            o._axistags=copy.copy(outaxistags)
-            o._shape=outshape 
-        
+            # Output metadata is a modified copy of the input's metadata
+            o.meta.assignFrom( self.Input.meta )
+            o.meta.axistags = outaxistags
+            o.meta.shape = outshape
             
     def getSubOutSlot(self, slots, indexes, key, result):
         
