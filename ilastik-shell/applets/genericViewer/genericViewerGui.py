@@ -9,7 +9,7 @@ import labelListModel
 from labelListModel import LabelListModel
 
 from lazyflow.graph import MultiInputSlot, MultiOutputSlot
-from lazyflow.operators import OpSingleChannelSelector
+from lazyflow.operators import OpSingleChannelSelector, OpMultiArraySlicer2
 
 from functools import partial
 import os
@@ -43,7 +43,8 @@ class GenericViewerGui(QMainWindow):
         super(GenericViewerGui, self).__init__()
 
         # Constants
-        self.DefaultColorTable = self.createDefault16ColorColorTable()
+        self.ColorTableSize = 256
+        self.DefaultColorTable = self.createDefaultColorTable(self.ColorTableSize)
 
         assert isinstance(dataProviderMultiMultiSlot, (MultiInputSlot, MultiOutputSlot))
         assert dataProviderMultiMultiSlot.level == 2
@@ -87,9 +88,8 @@ class GenericViewerGui(QMainWindow):
     def setImageIndex(self, imageIndex):
         if self.currentDatasetSlot is not None:
             # We're switching datasets.  Unsubscribe from the old one's notifications.
-            for slot in self.currentDatasetSlot:
-                slot.unregisterInserted( bind(self.handleLayerInsertion) )
-                slot.unregisterRemove( bind(self.handleLayerRemoval) )
+            self.currentDatasetSlot.unregisterInserted( bind(self.handleLayerInsertion) )
+            self.currentDatasetSlot.unregisterRemove( bind(self.handleLayerRemoval) )
 
         # Clear the GUI
         self.layerstack.clear()
@@ -173,21 +173,80 @@ class GenericViewerGui(QMainWindow):
             self.editor.dataShape = slot.meta.shape
 
         # Now create a layer with the slot data
-        # TODO: Check layer metadata to determine the type of layer
-        #       (also check channel dimension to decide between grayscale and color)
         # TODO: Replace the color selection mechanism with something better
         # TODO: Use an Op5ifyer to make sure the layer will be displayed correctly in volumina
-        source = LazyflowSource(slot)
-        if slotIndex < len(self.DefaultColorTable):
+        
+        # Determine the type of layer to make        
+        try:
+            layertype = slot.meta.layertype
+        except KeyError:
+            layertype = LayerType.Standard
+
+        # Create the layer
+        if layertype == LayerType.Standard:
+            # Examine channel dimension to determine Grayscale vs. RGB
+            shape = slot.meta.shape
+            channelAxisIndex = slot.meta.axistags.index('c')
+            numChannels = shape[channelAxisIndex]
+            
+            assert numChannels <= 3, "Can't display a layer with more than three channels."
+            
+            if numChannels == 1:
+                source = LazyflowSource(slot)
+                layer = GrayscaleLayer(source)
+
+            if numChannels >= 2:
+                redSource = OpSingleChannelSelector(graph=self.datasetMultiSlot.operator.graph)
+                redSource.Input.connect(slot)
+                redSource.Index.setValue( 0 )
+
+                greenSource = OpSingleChannelSelector(graph=self.datasetMultiSlot.operator.graph)
+                greenSource.Input.connect(slot)
+                greenSource.Index.setValue( 1 )
+                            
+                if numChannels == 3:
+                    blueSource = OpSingleChannelSelector(graph=self.datasetMultiSlot.operator.graph)
+                    blueSource.Input.connect(slot)
+                    blueSource.Index.setValue( 2 )
+                else:
+                    blueSource = None
+
+                layer = RGBALayer(red = redSource, green = greenSource, blue = blueSource)
+            
+        elif layertype == LayerType.AlphaModulated:
+            # Must be a single-channel image 
+            shape = slot.meta.shape
+            channelAxisIndex = slot.meta.axistags.index('c')
+            assert shape[channelAxisIndex] == 1
+
             # Choose the next color from our default color table
+            assert slotIndex < len(self.DefaultColorTable)
             color = self.DefaultColorTable[slotIndex]
+
+            source = LazyflowSource(slot)
+            layer = AlphaModulatedLayer(source, tintColor=color, normalize = None )
+            layer.opacity = 1.0 # (Since this is alpha-modulated, other layers will be visible anyway)
+
+        elif layertype == LayerType.ColorTable:
+            # Must be a single-channel image 
+            shape = slot.meta.shape
+            channelAxisIndex = slot.meta.axistags.index('c')
+            assert shape[channelAxisIndex] == 1
+
+            # Use the default color table
+            # TODO: Allow the user to specify a color table in the metadata....
+            source = LazyflowSource(slot)
+            layer = ColortableLayer(source, self.DefaultColorTable )
         else:
-            # Choose a random color
-            color = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
-        layer = AlphaModulatedLayer(source, tintColor=color, normalize = None )
-        layer.name = "Layer {}".format(slotIndex)
+            assert False, "Unknown layertype: " + str(layertype)
+
+        try:
+            layerName = slot.meta.name
+        except KeyError:
+            layerName = "Layer {}".format(slotIndex)
+
+        layer.name = layerName
         layer.visible = True
-        layer.opacity = 1.0 # (Since this is alpha-modulated, other layers will be visible anyway)
         layer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
 
         # Add the new layer to the GUI stack
@@ -303,6 +362,8 @@ class GenericViewerGui(QMainWindow):
         self.viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
         self.viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
         self.viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
+        
+        self.editor._lastImageViewFocus = 0
 
     def setIconToViewMenu(self):
         """
@@ -326,8 +387,9 @@ class GenericViewerGui(QMainWindow):
         for control in controlList:
             control.setEnabled(enabled)
 
-    def createDefault16ColorColorTable(self):
+    def createDefaultColorTable(self, colorTableSize):
         c = []
+        # Create some standard colors for the first 16 entries
         c.append(QColor(0, 0, 255))
         c.append(QColor(255, 255, 0))
         c.append(QColor(255, 0, 0))
@@ -344,6 +406,11 @@ class GenericViewerGui(QMainWindow):
         c.append(QColor(192, 192, 192)) #silver
         c.append(QColor(240, 230, 140)) #khaki
         c.append(QColor(69, 69, 69))    # dark grey
+        
+        # Choose random colors for remaining entries
+        while len(c) < colorTableSize:
+            c.append( QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)) )
+        
         return c
 
 
