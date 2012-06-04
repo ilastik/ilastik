@@ -8,6 +8,7 @@ from functools import partial
 import os
 import sys
 import copy
+import h5py
 import utility # This is the ilastik shell utility module
 from utility import bind
 from utility.pathHelpers import getPathVariants
@@ -25,6 +26,8 @@ class Column():
     Location = 1
     InternalID = 2
     LabelsAllowed = 3 # Note: For now, this column must come last because it gets removed in batch mode.
+    
+    NumColumns = 4
 
 class LocationOptions():
     """ Enum for location menu options """
@@ -220,7 +223,10 @@ class DataSelectionGui(QMainWindow):
 
         # Show the filename in the table (defaults to edit widget)
         tableWidget.setItem( row, Column.Name, QTableWidgetItem(fileName) )
-        tableWidget.setItem( row, Column.InternalID, QTableWidgetItem(internalPath) )
+        
+        # Create and add the combobox for the internal path selection
+        self.updateInternalPathComboBox( row, externalPath )
+#        tableWidget.setItem( row, Column.InternalID, QTableWidgetItem(internalPath) )
 
         # Subscribe to changes        
         tableWidget.itemChanged.connect( self.handleRowDataChange )
@@ -234,6 +240,10 @@ class DataSelectionGui(QMainWindow):
             allowLabelsCheckbox.setChecked( self.mainOperator.Dataset[row].value.allowLabels )
             tableWidget.setCellWidget( row, Column.LabelsAllowed, allowLabelsCheckbox )
             allowLabelsCheckbox.stateChanged.connect( partial(self.handleAllowLabelsCheckbox, self.mainOperator.Dataset[row]) )
+            
+        # Update the operator, in case we need to select a new internal path based on the updated combo options
+        # (Won't have any effect if nothing changed this time around.)
+        self.updateFilePath(row)
     
     def handleAllowLabelsCheckbox(self, slot, checked):
         """
@@ -286,8 +296,41 @@ class DataSelectionGui(QMainWindow):
         comboIndex = combo.findData( QVariant(comboData) )
         combo.setCurrentIndex( comboIndex )
 
-        combo.currentIndexChanged.connect( partial(self.handleStorageOptionComboIndexChanged, combo) )
+        combo.currentIndexChanged.connect( partial(self.handleComboSelectionChanged, combo) )
         self.fileInfoTableWidget.setCellWidget( row, Column.Location, combo )
+    
+    def updateInternalPathComboBox( self, row, externalPath ):
+        combo = QComboBox()
+        datasetNames = []
+
+        # Make sure we're dealing with the absolute path (to make this simple)
+        absPath, relPath = getPathVariants(externalPath, self.mainOperator.WorkingDirectory.value)
+        ext = os.path.splitext(absPath)[1]
+        h5Exts = ['.ilp', '.h5', '.hdf5']
+        if ext in h5Exts:
+            # Open the file as a read-only so we can get a list of the internal paths
+            f = h5py.File(absPath, 'r')
+            
+            # Define a closure to collect all of the dataset names in the file.
+            def accumulateDatasetPaths(name, val):
+                if type(val) == h5py._hl.dataset.Dataset:
+                    datasetNames.append( name )
+
+            # Visit every group/dataset in the file            
+            f.visititems(accumulateDatasetPaths)
+            f.close()
+
+        # Add each dataset option to the combo            
+        for path in datasetNames:
+            combo.addItem( path )
+
+        # Define response to changes and add it to the GUI.
+        # Pass in the corresponding the table item so we can figure out which row this came from
+        combo.currentIndexChanged.connect( bind(self.handleComboSelectionChanged, combo) )
+        self.fileInfoTableWidget.setCellWidget( row, Column.InternalID, combo )
+        
+        # Since we just selected a new internal path, call the handler 
+        #self.handleComboSelectionChanged(combo, combo.currentIndex())
     
     def handleRowDataChange(self, changedItem ):
         """
@@ -302,7 +345,7 @@ class DataSelectionGui(QMainWindow):
         needUpdate = True
         needUpdate &= column == Column.Name or column == Column.InternalID
         needUpdate &= self.fileInfoTableWidget.item(row, Column.Name) != None 
-        needUpdate &= self.fileInfoTableWidget.item(row, Column.InternalID) != None
+        needUpdate &= self.fileInfoTableWidget.cellWidget(row, Column.InternalID) != None
         needUpdate &= self.fileInfoTableWidget.cellWidget(row, column) is not None
         
         if needUpdate:
@@ -323,7 +366,10 @@ class DataSelectionGui(QMainWindow):
         oldFilePath = oldTotalPath[:lastDotIndex] + extension
         
         fileNameText = str(self.fileInfoTableWidget.item(index, Column.Name).text())
-        internalPath = str(self.fileInfoTableWidget.item(index, Column.InternalID).text())
+        
+        internalPathCombo = self.fileInfoTableWidget.cellWidget(index, Column.InternalID)
+        #internalPath = str(self.fileInfoTableWidget.item(index, Column.InternalID).text())
+        internalPath = str(internalPathCombo.currentText())
         
         directory = os.path.split(oldFilePath)[0]
         newFileNamePath = fileNameText
@@ -388,17 +434,21 @@ class DataSelectionGui(QMainWindow):
         # The gui and the operator should be in sync
         assert self.fileInfoTableWidget.rowCount() == len(self.mainOperator.Dataset)
 
-    def handleStorageOptionComboIndexChanged(self, combo, newLocationSetting):
-        logger.debug("Combo selection changed: " + combo.itemText(1) + str(newLocationSetting))
+    def handleComboSelectionChanged(self, combo, index):
+        """
+        Handles changes to any combo change in the table (either external path or internal path)
+        """
+        logger.debug("Combo selection changed: " + combo.itemText(1) + str(index))
 
         # Figure out which row this combo is in
         tableWidget = self.fileInfoTableWidget
         changedRow = -1
         for row in range(0, tableWidget.rowCount()):
-            widget = tableWidget.cellWidget(row, Column.Location)
-            if widget == combo:
-                changedRow = row
-                break
+            for column in range(Column.NumColumns):
+                widget = tableWidget.cellWidget(row, column)
+                if widget == combo:
+                    changedRow = row
+                    break
         assert changedRow != -1
         
         self.updateFilePath( changedRow )
