@@ -130,7 +130,7 @@ TinyVector.__rmul__ = TinyVector.__mul__
 sTrl1 =   lambda x: x if type(x) != slice else x.start if x.start != None else 0 
 sTrl2 =  lambda x,y: y if type(y) != slice else y.stop if y.stop != None else x
 sTrl3 = lambda x,y: y + 1 if x == y else y
-def sliceToRoi(s, shape=None, extendSingleton = True):
+def sliceToRoi(s, shape, extendSingleton = True):
     """Args:
             slice: slice object (1D) or list of slice objects (N-D)
        Returns:
