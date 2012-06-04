@@ -16,7 +16,7 @@ from applets.batchIo import BatchIoApplet
 from applets.featureSelection.opFeatureSelection import OpFeatureSelection
 
 from lazyflow.graph import Graph, OperatorWrapper
-from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
+from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector, OpMetadataInjector
 
 app = QApplication([])
 
@@ -60,11 +60,31 @@ opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 ###
 #  Test Test Test
 ###
-from applets.genericViewer import GenericViewerApplet
-genericViewerApplet = GenericViewerApplet(graph)
-opGenericViewer = genericViewerApplet.topLevelOperator
-opGenericViewer.BaseLayer.connect( opData.Image )
-opGenericViewer.ChannelwiseLayers.connect( opTrainingFeatures.OutputImage )
+#from applets.genericViewer import GenericViewerApplet
+#from applets.genericViewer.genericViewerGui import LayerType
+#genericViewerApplet = GenericViewerApplet(graph)
+#opGenericViewer = genericViewerApplet.topLevelOperator
+#
+## Inject metadata to specify the base data layer name
+#opBaseNameInjector = OpMetadataInjector(graph=graph)
+#opBaseNameInjector.Metadata.setValue( { 'name' : 'Input Data',
+#                                        'layertype' : LayerType.AlphaModulated } )
+#opBaseNameInjector.Input.connect( opData.Image )
+#opGenericViewer.BaseLayer.connect( opBaseNameInjector.Output )
+#
+## Inject metadata to specify the feature layer display type
+#opFeatureDisplayInjector = OpMetadataInjector(graph=graph)
+#opFeatureDisplayInjector.Metadata.setValue( {'layertype' : LayerType.AlphaModulated} )
+#opFeatureDisplayInjector.Input.connect( opTrainingFeatures.OutputImage )
+#opGenericViewer.ChannelwiseLayers.connect( opFeatureDisplayInjector.Output )
+
+###############
+# Threshold test
+###############
+from applets.threshold import ThresholdApplet
+thresholdApplet = ThresholdApplet(graph)
+opThresholdViewer = thresholdApplet.topLevelOperator
+opThresholdViewer.InputImage.connect( opData.Image )
 
 ######################
 # Batch workflow
@@ -124,7 +144,8 @@ shell.addApplet(batchInputApplet)
 shell.addApplet(batchResultsApplet)
 
 # TEST TEST TEST TEST
-shell.addApplet( genericViewerApplet )
+#shell.addApplet( genericViewerApplet )
+shell.addApplet( thresholdApplet )
 
 # The shell needs a slot from which he can read the list of image names to switch between.
 # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
@@ -146,7 +167,7 @@ def test():
     shell.openProjectFile('/home/bergs/synapse_small.ilp')
     
     # Select a drawer
-    shell.setSelectedAppletDrawer( 7 )
+    #shell.setSelectedAppletDrawer( 7 )
     
     # Check the 'interactive mode' checkbox.
     #QTimer.singleShot( 2000, partial(pcApplet.centralWidget._labelControlUi.checkInteractive.setChecked, True) )
