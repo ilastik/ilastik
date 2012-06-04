@@ -10,9 +10,9 @@ class OpGenericViewer(Operator):
     category = "Top-level"
 
     # We have three different inputs.
-    # All are optional.  Which slot you add to determines how the image will be displayed.
+    # Which slot you add to determines how the image will be displayed.
 
-    # Base layer image: Always goes on the bottom with no alpha channel
+    # Base layer image: Always goes on the bottom
     BaseLayer = InputSlot()
 
     # Atomic layer inputs: Displayed as-is (multiple channels, if any, will be displayed in the same layer)
@@ -49,9 +49,9 @@ class OpGenericViewer(Operator):
         
         self.opLayerListConcatenater = OpMultiInputConcatenater( graph=self.graph, parent=self )
         self.opLayerListConcatenater.Inputs.resize(3) # 3 lists to concatenate        
-        self.opLayerListConcatenater.Inputs[0].connect(self.opBasePromoter.Outputs)
-        self.opLayerListConcatenater.Inputs[1].connect(self.AtomicLayers)
-        self.opLayerListConcatenater.Inputs[2].connect(self.opSliceListConcatenater.Output)
+        self.opLayerListConcatenater.Inputs[0].connect(self.AtomicLayers)
+        self.opLayerListConcatenater.Inputs[1].connect(self.opSliceListConcatenater.Output)
+        self.opLayerListConcatenater.Inputs[2].connect(self.opBasePromoter.Outputs)
 
         self.OutputLayers.connect( self.opLayerListConcatenater.Output )
 
@@ -86,37 +86,38 @@ if __name__ == "__main__":
     from lazyflow.operators.ioOperators import *
     graph = Graph()
 
-    opBaseProvider = OpNpyFileReader(graph=graph)
-    opBaseProvider.FileName.setValue( '/home/bergs/5d.npy' )
+    # Give the same image to all three inputs
+    opInputProvider = OpNpyFileReader(graph=graph)
+    opInputProvider.FileName.setValue( '/home/bergs/5d.npy' )
     
     opGenericViewer = OpGenericViewer(graph=graph)        
-    opGenericViewer.BaseLayer.connect( opBaseProvider.Output )
+    opGenericViewer.BaseLayer.connect( opInputProvider.Output )
     
     opGenericViewer.AtomicLayers.resize(1)
-    opGenericViewer.AtomicLayers[0].connect( opBaseProvider.Output )
+    opGenericViewer.AtomicLayers[0].connect( opInputProvider.Output )
 
     opGenericViewer.ChannelwiseLayers.resize(1)
-    opGenericViewer.ChannelwiseLayers[0].connect( opBaseProvider.Output )
+    opGenericViewer.ChannelwiseLayers[0].connect( opInputProvider.Output )
     
     assert opGenericViewer.opWrappedChannelSlicer.Slices.level == 2
     assert len( opGenericViewer.OutputLayers ) == 1 + 1 + 2
     
-    # Base image is not split up: shape should match input
-    assert opGenericViewer.OutputLayers[0].meta.shape == opBaseProvider.Output.meta.shape
-    
     # Atomic images are not split up
-    assert opGenericViewer.OutputLayers[1].meta.shape == opBaseProvider.Output.meta.shape
+    assert opGenericViewer.OutputLayers[0].meta.shape == opInputProvider.Output.meta.shape
     
     # Channelwise layers are divided into a separate layer for each channel.
     # Each layer's shape should match the input except for the channel
-    assert opGenericViewer.OutputLayers[2].meta.shape == opBaseProvider.Output.meta.shape[:-1] + (1,)
-    assert opGenericViewer.OutputLayers[3].meta.shape == opBaseProvider.Output.meta.shape[:-1] + (1,)
+    assert opGenericViewer.OutputLayers[1].meta.shape == opInputProvider.Output.meta.shape[:-1] + (1,)
+    assert opGenericViewer.OutputLayers[2].meta.shape == opInputProvider.Output.meta.shape[:-1] + (1,)
 
-    assert numpy.all( opGenericViewer.OutputLayers[0][:].wait() == opBaseProvider.Output[:].wait() )
-    assert numpy.all( opGenericViewer.OutputLayers[1][:].wait() == opBaseProvider.Output[:].wait() )
-    assert numpy.all( opGenericViewer.OutputLayers[2][:].wait() == opBaseProvider.Output[:,:,:,:,0].wait() )
-    assert numpy.all( opGenericViewer.OutputLayers[3][:].wait() == opBaseProvider.Output[:,:,:,:,1].wait() )
+    assert numpy.all( opGenericViewer.OutputLayers[0][:].wait() == opInputProvider.Output[:].wait() )
+    assert numpy.all( opGenericViewer.OutputLayers[1][:].wait() == opInputProvider.Output[:,:,:,:,0].wait() )
+    assert numpy.all( opGenericViewer.OutputLayers[2][:].wait() == opInputProvider.Output[:,:,:,:,1].wait() )
+    assert numpy.all( opGenericViewer.OutputLayers[3][:].wait() == opInputProvider.Output[:].wait() )
 
+    # Base image is not split up: shape should match input
+    assert opGenericViewer.OutputLayers[3].meta.shape == opInputProvider.Output.meta.shape
+    
 
 
 
