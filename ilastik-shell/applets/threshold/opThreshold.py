@@ -3,8 +3,15 @@ from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSl
 from applets.genericViewer.opGenericViewer import OpGenericViewer
 import numpy
 
-# TODO: This class doesn't belong here.  Move it to lazyflow.
-class OpThreshold(Operator):
+# TODO: This class doesn't really belong here, but it isn't general-purpose enough to put in lazyflow yet.
+class OpSimpleThreshold(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpSimpleThreshold"
+    category = "Pointwise"
+    
     InputImage = InputSlot()
     MinValue = InputSlot(stype='int')
     MaxValue = InputSlot(stype='int')
@@ -41,7 +48,7 @@ class OpThresholdViewer(Operator):
         super( OpThresholdViewer, self ).__init__(*args, **kwargs)
         
         self.opGenericViewer = OpGenericViewer(graph=self.graph, parent=self)
-        self.opThreshold = OpThreshold(graph=self.graph, parent=self)
+        self.opThreshold = OpSimpleThreshold(graph=self.graph, parent=self)
         
         self.opThreshold.InputImage.connect( self.InputImage )
         self.opThreshold.MinValue.connect( self.MinValue )
@@ -56,7 +63,7 @@ class OpThresholdViewer(Operator):
 
 if __name__ == "__main__":
     g = Graph()
-    op = OpThreshold(graph=g)
+    op = OpSimpleThreshold(graph=g)
     
     # Data is the sum of the indices
     data = numpy.indices((10,10)).sum(0)
