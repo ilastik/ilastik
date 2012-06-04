@@ -1559,6 +1559,8 @@ class OperatorWrapper(Operator):
         if promotedSlotNames is None:
             # No slots specified: All original slots are promoted by default
             promotedSlotNames = set(self.operator.inputs.keys())
+        else:
+            promotedSlotNames = set(promotedSlotNames)
         
         # ALl Outputs are always promoted
         promotedSlotNames |= set(self.operator.outputs.values())
