@@ -81,8 +81,8 @@ class OpH5Writer(Operator):
         
         
         #define write function
-        def writeResult(request,blockNr, roiSlice):
-            d[roiSlice] = normalize(request.wait())
+        def writeResult(result, blockNr, roiSlice):
+            d[roiSlice] = normalize(result)
             print "writing block %d at %r" % (blockNr, roiSlice)
         
         requests = []
@@ -98,7 +98,9 @@ class OpH5Writer(Operator):
 
             s = roiToSlice(start,stop)
             req = self.inputs["input"][s]
-            req.notify(writeResult,request = req, blockNr = bnr, roiSlice=s)
+            print "Requesting bnr", bnr
+            req.notify(writeResult, blockNr = bnr, roiSlice=s)
+            print "Added callback"
             requests.append(req)
         #execute requests
         for req in requests:
