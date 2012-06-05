@@ -556,7 +556,10 @@ class Slot(object):
         # --> just relay the request
         return self.partner.get(roi, destination)
       else:
-        # normal case
+        # If someone is asking for data from an inputslot that has no value and no partner,
+        #  then something is wrong.
+        assert self._type != "input", "This inputslot has no value and no partner.  You can't ask for its data yet!"
+        # normal (outputslot) case
         # --> construct heavy request object..
         return Request(self._requestFunctionWrapper,roi = roi,destination = destination)        
     
