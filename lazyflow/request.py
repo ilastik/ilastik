@@ -591,35 +591,3 @@ class Request(object):
 
 
 
-if __name__ == "__main__":
-  def callback(s):
-    pass
-    #print "callback: finished ", req
-
-  def testA():
-    time.sleep(1)
-    #print "producer finished"
-
-  def test(s):
-    req = Request(testA)
-    req.notify(callback)
-    req.wait()
-    #print "sleeping ..."
-    time.sleep(1)
-    print s
-    return s
-
-  req = Request( test, s = "hallo !")
-  req.notify(callback)
-  assert req.wait() == "hallo !"
-
-
-  requests = []
-  for i in range(10):
-    req = Request( test, s = "hallo %d" %i)
-    requests.append(req)
-
-
-
-
-
