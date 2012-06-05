@@ -443,7 +443,7 @@ class Slot(object):
 
         # call callbacks
         self._sig_disconnect(self)
-        if self.operator is not None and type(self) == InputSlot:
+        if self.operator is not None and isinstance(self, (InputSlot, MultiInputSlot)):
             self.operator.onDisconnect(self)
 
 
