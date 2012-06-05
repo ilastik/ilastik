@@ -106,11 +106,11 @@ class OpInputDataReader(Operator):
 
         assert self.internalOutput is not None, "Can't read " + filePath + " because it has an unrecognized format."
 
-        self.Output.meta.dtype = self.internalOutput.meta.dtype
-        self.Output.meta.shape = self.internalOutput.meta.shape
-        self.Output.meta.axistags = self.internalOutput.meta.axistags
+        # Directly connect our own output to the internal output
+        self.Output.connect( self.internalOutput )
 
     def execute(self, slot, roi, result):
+        assert False, "Shouldn't get here because our output is directly connected..."
         # Ask our internal operator's output slot to write the result into the destination
         # TODO: Is it really necessary to use a key (slice) here?  Or can the roi be used directly?
         key = roi.toSlice()
