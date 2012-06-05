@@ -115,7 +115,7 @@ class MetaDict(dict):
       try:
         if self[name] == value:
           changed = False
-      except:
+      except KeyError:
         pass
       if changed:
         self["_dirty"] = True
@@ -133,6 +133,18 @@ class MetaDict(dict):
     Construct a copy of the meta dict
     """
     return MetaDict(dict.copy(self))
+
+  def assignFrom(self, other):
+    """
+    Copy all the elements from other into this 
+    """
+    dirty = not (self == other)
+    origdirty = self._dirty
+    if dirty:
+        self.clear()
+        for k,v in other.items():
+            self[k] = copy.copy(v)
+    self._dirty = origdirty | dirty
 
 
 class ValueRequest(object):
@@ -1453,26 +1465,37 @@ class Operator(object):
 class OperatorWrapper(Operator):
     name = ""
     
-    def __init__(self, operator):
+    def __init__(self, operator, promotedSlotNames = None):
+        """
+        Constructs a wrapper for the given operator.
+        That is, manages a list of copies of the original operator, and provides access to these inner operators' slots via external multislots.
+        If the promotedSlots argument is provided, only those slots will be promoted when replicated.
+        All other slots will be replicated without promotion, and their input values will be broadcasted to all inner operators.
+        If the promotedSlots argument is not provided (i.e. promotedSlots=None), the default behavior is to promote ALL replicated slots.
+        Note: Outputslots are always promoted, regardless of whether or not they appear in the promotedSlots argument.
+        """
         self.inputs = InputDict(self)
         self.outputs = OutputDict(self)
         self.operator = operator
-        self._eventCounter = 0
-        self._processedEvents = {}       
-        self._originalGraph = operator.graph
         self.graph = operator.graph
         self._parent = operator._parent
-        self._connecting = False
         
         assert self.operator is not None
         
-        self.name = operator.name
-        self._originalGraph = operator.graph
-        self.graph = operator.graph
+        self.name = "Wrapped " + operator.name
 
-        self.comprehensionSlots = 1
+        if promotedSlotNames is None:
+            # No slots specified: All original slots are promoted by default
+            promotedSlotNames = set(self.operator.inputs.keys())
+        else:
+            promotedSlotNames = set(promotedSlotNames)
+        
+        # ALl Outputs are always promoted
+        promotedSlotNames |= set(self.operator.outputs.values())
+        
+        self.promotedSlots = promotedSlotNames
+        
         self.innerOperators = []
-        self.comprehensionCount = 0
         self.origInputs = self.operator.inputs.copy()
         self.origOutputs = self.operator.outputs.copy()
         if lazyflow.verboseWrapping:
@@ -1486,7 +1509,9 @@ class OperatorWrapper(Operator):
         
         # replicate input slot definitions
         for islot in self.operator.inputSlots:
-            level = islot.level + 1
+            level = islot.level
+            if islot.name in self.promotedSlots:
+                level += 1
             self._inputSlots.append(islot._getInstance(self,level = level))
 
         # replicate output slot definitions
@@ -1497,7 +1522,9 @@ class OperatorWrapper(Operator):
                 
         # replicate input slots for the instance
         for islot in self.operator.inputs.values():
-            level = islot.level + 1
+            level = islot.level
+            if islot.name in self.promotedSlots:
+                level += 1
             ii = islot._getInstance(self,level)
             self.inputs[islot.name] = ii
             setattr(self,islot.name,ii)
@@ -1546,12 +1573,17 @@ class OperatorWrapper(Operator):
         for o in self.outputs.values():
           o._changed()
         
-        # register callbacks for inserted and removed subslots
+        # register callbacks for inserted and removed input subslots
         for s in self.inputs.values():
+          if s.name in self.promotedSlots:
+            s.notifyInserted(self._callbackInserted)
+            s.notifyRemove(self._callbackRemove)
+            s.notifyConnect(self._callbackConnect)
+
+        # register callbacks for inserted and removed output subslots
+        for s in self.outputs.values():
           s.notifyInserted(self._callbackInserted)
           s.notifyRemove(self._callbackRemove)
-          s.notifyConnect(self._callbackConnect)
-
 
     def _callbackInserted(self, slot, index, size):
       self._insertInnerOperator(index, size)
@@ -1561,9 +1593,8 @@ class OperatorWrapper(Operator):
 
     def _callbackConnect(self, slot):
       slot.resize(len(self.innerOperators))
-      for i in range(len(slot)):
-        for index, innerOp in enumerate(self.innerOperators):
-          innerOp.inputs[slot.name].connect(slot[i])
+      for index, innerOp in enumerate(self.innerOperators):
+        innerOp.inputs[slot.name].connect(slot[index])
 
     def _getOriginalOperator(self):
         op = self.operator
@@ -1641,9 +1672,16 @@ class OperatorWrapper(Operator):
       op = self._createInnerOperator()
       self.innerOperators.insert(index, op)
 
-      for key,mslot in self.inputs.items():
-        mslot.insertSlot(index, length)
-        op.inputs[key].connect(mslot[index])
+      # Connect the inner operator's inputs to our outer input slots
+      for key,outerSlot in self.inputs.items():
+        # Only connect to a subslot if it was promoted during wrapping
+        if outerSlot.name in self.promotedSlots:
+            outerSlot.insertSlot(index, length)
+            partner = outerSlot[index]
+        else:
+            partner = outerSlot
+        op.inputs[key].connect(partner)
+      
       for key,mslot in self.outputs.items():
         mslot.insertSlot(index, length)
         mslot[index].connect(op.outputs[key])
@@ -1671,7 +1709,7 @@ class OperatorWrapper(Operator):
         newInnerOps = []
         maxLen = numMax
         for name, islot in self.inputs.items():
-            assert isinstance(islot, MultiInputSlot)
+            #assert isinstance(islot, MultiInputSlot)
             maxLen = max(islot._requiredLength(), maxLen)
         
         while maxLen > len(self.innerOperators):
@@ -1704,7 +1742,13 @@ class OperatorWrapper(Operator):
             self.innerOperators[indexes[0]].getSubOutSlot(slots[1:], indexes[1:], key, result)
         
     def setInSlot(self, slot, key, value):
-        assert False, "All inputs of any OperatorWrapper are always multi, so this function should never be called!"
+        # This should never be called for any slots that were promoted (promoted slots are all multi)
+        assert slot.name not in self.promotedSlots
+        
+        # Broadcast this to all inner operators
+        for innerOp in self.innerOperators:
+            innerSlot = innerOp.inputs[slot.name]
+            innerOp.setInSlot( innerSlot, key, value )
 
     def setSubInSlot(self,multislot,slot,index, key,value):
         # Forward this call to the operator (whose slot is partnered with ours)
