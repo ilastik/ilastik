@@ -251,6 +251,189 @@ class TestMultiSlotResize(object):
         self.op1.Input.resize(5)
         self.op1.Input.resize(0)
 
+class OpDirectConnection(graph.Operator):
+    Input = graph.InputSlot()
+    Output = graph.OutputSlot()
+    
+    def setupOutputs(self):
+        self.Output.connect( self.Input )
+
+class TestSlotStates(object):
+
+    def setup(self):
+        self.g = graph.Graph()
+
+    def teardown(self):
+        pass
+    
+    def test_directlyConnectedOutputs(self):
+        op = OpDirectConnection(graph=self.g)
+        
+        assert not op.Input.connected()
+        assert not op.Output.connected()
+        
+        assert not op.Input.ready()
+        assert not op.Output.ready()
+        
+        connectedSlots = { op.Input  : False,
+                           op.Output : False }
+        def handleConnect(slot):
+            connectedSlots[slot] = True
+        
+        # Test notifyConnect
+        op.Input.notifyConnect( handleConnect )
+        op.Output.notifyConnect( handleConnect )
+        
+        readySlots = { op.Input  : False,
+                       op.Output : False }
+        def handleReady(slot):
+            readySlots[slot] = True
+        
+        # Test notifyReady
+        op.Input.notifyReady( handleReady )
+        op.Output.notifyReady( handleReady )
+
+        data = numpy.zeros((10,10,10,10,10))
+        op.Input.setValue( data )
+        
+        assert op.Input.ready()
+        assert op.Output.ready()
+        
+        assert op.Input.connected()
+        assert op.Output.connected()
+        
+        assert connectedSlots[op.Input] == True
+        assert connectedSlots[op.Output] == True
+
+    def test_implicitlyConnectedOutputs(self):
+        # The array piper copies its input to its output, creating an "implicit" connection
+        op = operators.OpArrayPiper(graph=self.g)
+        
+        assert not op.Input.connected()
+        assert not op.Output.connected()
+        
+        assert not op.Input.ready()
+        assert not op.Output.ready()
+        
+        connectedSlots = { op.Input  : False,
+                           op.Output : False }
+        def handleConnect(slot):
+            connectedSlots[slot] = True
+        
+        # Test notifyConnect
+        op.Input.notifyConnect( handleConnect )
+        op.Output.notifyConnect( handleConnect )
+        
+        readySlots = { op.Input  : False,
+                       op.Output : False }
+        def handleReady(slot):
+            readySlots[slot] = True
+        
+        # Test notifyReady
+        op.Input.notifyReady( handleReady )
+        op.Output.notifyReady( handleReady )
+
+        data = numpy.zeros((10,10,10,10,10))
+        op.Input.setValue( data )
+        
+        assert op.Input.ready()
+        assert op.Output.ready()
+                
+        assert op.Input.connected()
+        assert not op.Output.connected() # Not connected
+        
+        assert connectedSlots[op.Input] == True
+        assert connectedSlots[op.Output] == False
+
+        assert readySlots[op.Input] == True
+        assert readySlots[op.Output] == True
+        
+    def test_clonedSlotState(self):
+        """
+        Create a graph that involves "cloned" inputs and outputs,
+        and verify that their states are changed correctly at the correct times, with callbacks.
+        """
+        # The array piper copies its input to its output, creating an "implicit" connection
+        op = operators.OpArrayPiper(graph=self.g)
+        
+        # op2 gets his input as a clone from op.Input
+        op2 = operators.OpArrayPiper(graph=self.g)
+        op2.Input.connect( op.Input )
+        
+        # op3 gets his input as a clone from op.Output
+        op3 = operators.OpArrayPiper(graph=self.g)
+        op3.Input.connect( op.Output )
+        
+        assert not op.Input.connected()
+        assert not op.Output.connected()
+        
+        assert not op.Input.ready()
+        assert not op.Output.ready()
+        assert not op2.Input.ready()
+        assert not op2.Output.ready()
+        assert not op3.Input.ready()
+        assert not op3.Output.ready()
+        
+        connectedSlots = { op.Input  : False,
+                           op.Output : False }
+        def handleConnect(slot):
+            connectedSlots[slot] = True
+        
+        # Test notifyConnect
+        op.Input.notifyConnect( handleConnect )
+        op.Output.notifyConnect( handleConnect )
+        
+        readySlots = { op.Input  : False,
+                       op.Output : False }
+        def handleReady(slot):
+            readySlots[slot] = True
+        
+        # Test notifyReady
+        op.Input.notifyReady( handleReady )
+        op.Output.notifyReady( handleReady )
+        op2.Input.notifyReady( handleReady )
+        op2.Output.notifyReady( handleReady )
+        op3.Input.notifyReady( handleReady )
+        op3.Output.notifyReady( handleReady )
+
+        # This should trigger setupOutputs and everything to become ready
+        data = numpy.zeros((10,10,10,10,10))
+        op.Input.setValue( data )
+        
+        assert op.Input.ready()
+        assert op.Output.ready()
+        assert op2.Input.ready()
+        assert op2.Output.ready()
+        assert op3.Input.ready()
+        assert op3.Output.ready()
+
+        assert op.Input.connected()
+        assert not op.Output.connected() # Not connected
+        
+        assert connectedSlots[op.Input] == True
+        assert connectedSlots[op.Output] == False
+        
+        assert readySlots[op.Input] == True
+        assert readySlots[op.Output] == True
+        assert readySlots[op2.Input] == True
+        assert readySlots[op2.Output] == True
+        assert readySlots[op3.Input] == True
+        assert readySlots[op3.Output] == True
+
 if __name__ == "__main__":
     import nose
     nose.run( defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1} )
+
+#    test = TestSlotStates()
+#    test.setup()
+#    
+#    test.test_directlyConnectedOutputs()
+
+#    test = TestOperator_setupOutputs()
+#    test.setUp()
+#    test.test_disconnected_connected()    
+    
+
+
+
+

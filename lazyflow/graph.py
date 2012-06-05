@@ -95,9 +95,9 @@ class MetaDict(dict):
             dict.__init__(self,other)
         else:
             dict.__init__(self)
+            self._ready = False  # flag that indicates wether all dependencies of the slot are ready
         self._dirty = True   # flag that indicates wether any piece of meta information changed
                              # since this flag was reset
-        self._ready = False  # flag that indicates wether all dependencies of the slot are ready
         #TODO: remove this, only for backwards compatability
         if not self.has_key("shape"):
             self.shape = None
@@ -161,7 +161,7 @@ class ValueRequest(object):
         return self.result
 
     def notify(self, callback, *args, **kwargs):
-        callback(*args, **kwargs)
+        callback(self.result, *args, **kwargs)
 
     def onCancel(self, callback, *args, **kwargs):
         pass
@@ -218,6 +218,7 @@ class Slot(object):
         self.stype = stype(self)      # the slot type instance
 
         self._sig_changed = OrderedSignal()
+        self._sig_ready = OrderedSignal()
         self._sig_dirty = OrderedSignal()
         self._sig_connect = OrderedSignal()
         self._sig_disconnect = OrderedSignal()
@@ -252,6 +253,15 @@ class Slot(object):
         """
 
         self._sig_changed.subscribe(function, **kwargs)
+
+    def notifyReady(self, function, **kwargs):
+        """
+        Calls the corresponding function when the slot is "ready", meaning it is connected and will produce data when called.
+        (This is implemented by manipulating and monitoring a flag in the slot metadata.
+        first argument of the function is the slot
+        the keyword arguments follow
+        """
+        self._sig_ready.subscribe(function, **kwargs)
 
     def notifyConnect(self, function, **kwargs):
         """
@@ -334,6 +344,12 @@ class Slot(object):
         """
         self._sig_changed.unsubscribe(function)
 
+    def unregisterReady(self, function):
+        """
+        unregister a ready callback
+        """
+        self._sig_ready.unsubscribe(function)
+
     def unregisterResize(self, function):
         """
         unregister a resize callback
@@ -377,6 +393,7 @@ class Slot(object):
         if partner is not None:
             if partner.level == self.level:
                 self.partner = partner
+                notifyReady = self.partner.meta._ready and not self.meta._ready
                 self.meta = self.partner.meta.copy()
 
                 # the slot with more sub-slots determines
@@ -400,11 +417,20 @@ class Slot(object):
                 # call connect callbacks
                 self._sig_connect(self)
 
+                # Notify readiness after partner is updated
+                if notifyReady:
+                    self._sig_ready(self)
+
             elif partner.level < self.level:
                 self.partner = partner
+                notifyReady = self.partner.meta._ready and not self.meta._ready
                 self.meta = self.partner.meta.copy()
                 for i, slot in enumerate(self._subSlots):
                     slot.connect(partner)
+
+                if notifyReady:
+                    self._sig_ready(self)
+
                 self._changed()
                 # call connect callbacks
                 self._sig_connect(self)
@@ -673,9 +699,14 @@ class Slot(object):
             self._value = value
             self.stype.setupMetaForValue(value)
             self.meta._dirty = True
-            self.meta._ready = True # a slot with a value is always ready
+
             for i,s in enumerate(self._subSlots):
                 s.setValue(self._value)
+
+            notify = (self.meta._ready == False)            
+            self.meta._ready = True # a slot with a value is always ready
+            if notify:
+                self._sig_ready(self)
 
             # call connect callbacks
             self._sig_connect(self)
@@ -729,6 +760,19 @@ class Slot(object):
                     break
         return answer
 
+    def ready(self):
+        if self.level == 0:
+            # If this slot is non-multi, then just check our own status
+            ready = self.meta._ready
+        else:
+            # If this slot is multi, check all of our subslots
+            # (If we have no subslots, then we are NOT ready.)
+            # Operators that can properly handle an empty multi-input slot should mark the input as optional.)
+            ready = len(self._subSlots) > 0
+            for p in self._subSlots:
+                ready &= p.ready()
+        return ready
+
     def __call__(self, *args, **kwargs):
         """
         the slot relays all arguments to the __init__ method
@@ -776,12 +820,17 @@ class Slot(object):
         pass
 
     def _changed(self):
+        oldMeta = self.meta
         if self.partner is not None and self.meta != self.partner.meta:
             self.meta = self.partner.meta.copy()
 
         if self._type == "output":
             for o in self._subSlots:
                 o._changed()
+
+        # Notify readiness after subslots are updated
+        if self.meta._ready and not oldMeta._ready:
+            self._sig_ready(self)
 
         wasdirty = self.meta._dirty
         if self.meta._dirty:
@@ -793,7 +842,7 @@ class Slot(object):
             self._configureOperator(self)
 
         if wasdirty:
-                # call changed callbacks
+            # call changed callbacks
             self._sig_changed(self)
 
     def _configureOperator(self, slot, oldSize = 0, newSize = 0, notify = True):
@@ -1278,11 +1327,10 @@ class Operator(object):
         """
         allConfigured = True
         for slot in self.inputs.values():
-            if slot._optional is False and slot.configured() is False:
+            if slot._optional is False and slot.ready() is False:
                 allConfigured = False
                 break
         return allConfigured
-
 
     def _setDefaultInputValues(self):
         for i in self.inputs.values():
@@ -1365,7 +1413,20 @@ class Operator(object):
 
 
     def _setupOutputs(self):
+        # Outputslots may become "ready" during setupOutputs()
+        # Save a copy of the ready flag for each output slot so we can decide whether or not to fire the ready signal.
+        readyFlags = {}
+        for k, oslot in self.outputs.items():
+            readyFlags[k] = oslot.meta._ready
+        
         self.setupOutputs()
+
+        for k, oslot in self.outputs.items():
+            # All outputs are ready after setupOutputs
+            oslot.meta._ready = True
+            # Signal for the outputs that weren't ready before (they are now)
+            if not readyFlags[k]:
+                oslot._sig_ready(oslot)        
 
         #notify outputs of probably changed meta information
         for k,v in self.outputs.items():
