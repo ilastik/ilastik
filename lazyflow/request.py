@@ -4,6 +4,7 @@ import atexit
 from collections import deque
 from Queue import Queue, LifoQueue, Empty, PriorityQueue
 from threading import Thread, current_thread
+import thread
 import greenlet
 import threading
 from helpers import detectCPUs
@@ -22,11 +23,11 @@ def patchIfForeignThread(thread):
         setattr(thread, "last_request", None)
         setattr(thread, "current_request", None)
 
-def wakeUp(thread):
+def wakeUp(thr):
     try:
-        thread.workAvailable = True
-        thread.wlock.release()
-    except:
+        thr.workAvailable = True
+        thr.wlock.release()
+    except thread.error:
         pass
 
 def runDebugShell():
@@ -115,7 +116,7 @@ class Worker(Thread):
                     try:
                         req = requests1.pop()
                         #prio, req = requests.get(block=False)
-                    except:
+                    except IndexError:
                         # requests was empty..
                         pass
                     if req is not None and req.finished is False and req.canceled is False:
@@ -131,7 +132,7 @@ class Worker(Thread):
                         # was available
                         try:
                             req = requests0.pop()
-                        except:
+                        except IndexError:
                             # requests was empty..
                             pass
                         if req is not None and req.finished is False and req.canceled is False:
@@ -145,7 +146,7 @@ class Worker(Thread):
                     # reset the wait lock state, otherwise the surrounding while self.running loop will always be executed twice
                     try:
                         self.wlock.release()
-                    except:
+                    except thread.error:
                         pass
                     self.wlock.acquire()
         except:
@@ -205,7 +206,7 @@ class ThreadPool(object):
         try:
             w = self.freeWorkers.pop()
             wakeUp(w)
-        except:
+        except KeyError:
             pass
 
     def stopThreadPool(self):
@@ -276,7 +277,7 @@ class Lock(object):
             # this Lock object is already acquired by somebody else
             self.lock1.release()
             self.lock2.acquire()
-        except:
+        except thread.error:
             # equivalent to locked
             cur_gr = greenlet.getcurrent()
             self.waiting.append(cur_gr)
@@ -371,7 +372,7 @@ class Request(object):
         """
         try:
             lock.release()
-        except:
+        except thread.error:
             pass
 
     def wait(self, timeout = 0):
@@ -413,7 +414,7 @@ class Request(object):
                     lock = cur_tr.wlock
                     try:
                         lock.release()
-                    except:
+                    except thread.error:
                         pass
                     lock.acquire()
                     #self.waiting_locks.append(lock)
