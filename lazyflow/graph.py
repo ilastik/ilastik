@@ -95,7 +95,9 @@ class MetaDict(dict):
       dict.__init__(self,other)
     else:
       dict.__init__(self)
-    self._dirty = True
+    self._dirty = True   # flag that indicates wether any piece of meta information changed
+                         # since this flag was reset
+    self._ready = False  # flag that indicates wether all dependencies of the slot are ready
     #TODO: remove this, only for backwards compatability
     if not self.has_key("shape"):
       self.shape = None
@@ -214,15 +216,6 @@ class Slot(object):
         self._subSlots = []           # in the case of an MultiInputSlot or MultiOutputSlot this holds the sub-Input/Output slots 
         self._stypeType = stype       # the slot type class
         self.stype = stype(self)      # the slot type instance
-
-#        self._callbacks_changed = dict()    # callback dictionary (function : kw_arguments), the functions are called when the slots meta dict was changed (i.e. shape change, dtype change etc.)
-#        self._callbacks_dirty = dict()      # callback dictionary (function : kw_arguments), the functions are called when the slot gets dirty
-#        self._callbacks_connect = dict()    # callback dictionary (function : kw_arguments), the functions are called when the slots is connected
-#        self._callbacks_disconnect = dict() # callback dictionary (function : kw_arguments), the functions are called when the slots is disconnected
-#        self._callbacks_resize = dict() # callback dictionary (function : kw_arguments), the functions are called before the slots is resized
-#        self._callbacks_resized = dict() # callback dictionary (function : kw_arguments), the functions are called after the slots is resized          
-#        self._callbacks_remove = dict() # callback dictionary (function : kw_arguments), the functions are called before a slot is removed
-#        self._callbacks_inserted = dict() # callback dictionary (function : kw_arguments), the functions are called after the slots is inserted
         
         self._sig_changed = OrderedSignal()
         self._sig_dirty = OrderedSignal()
@@ -248,8 +241,6 @@ class Slot(object):
       first argument of the function is the slot, second argument the roi
       the keyword arguments follow
       """
-#      print "function", function, " registered for dirty with args", args, kwargs
-      #self._callbacks_dirty[function] = (args, kwargs)
       self._sig_dirty.subscribe(function, **kwargs)
 
     
@@ -260,7 +251,6 @@ class Slot(object):
       the keyword arguments follow
       """
       
-      #self._callbacks_changed[function] = kwargs
       self._sig_changed.subscribe(function, **kwargs)
     
     def notifyConnect(self, function, **kwargs):
@@ -269,7 +259,6 @@ class Slot(object):
       first argument of the function is the slot
       the keyword arguments follow
       """
-      #self._callbacks_connect[function] = kwargs
       self._sig_connect.subscribe(function, **kwargs)
     
     def notifyDisconnect(self, function, **kwargs):
@@ -278,7 +267,6 @@ class Slot(object):
       first argument of the function is the slot
       the keyword arguments follow
       """
-      #self._callbacks_disconnect[function] = kwargs
       self._sig_disconnect.subscribe(function, **kwargs)
     
     def notifyResize(self, function, **kwargs):
@@ -289,7 +277,6 @@ class Slot(object):
       argument is the new size
       the keyword arguments follow
       """
-      #self._callbacks_resize[function] = kwargs
       self._sig_resize.subscribe(function, **kwargs)
     
     def notifyResized(self, function, **kwargs):
@@ -300,7 +287,6 @@ class Slot(object):
       argument is the new size
       the keyword arguments follow
       """
-      #self._callbacks_resized[function] = kwargs
       self._sig_resized.subscribe(function, **kwargs)
     
     def notifyRemove(self, function, **kwargs):
@@ -311,7 +297,6 @@ class Slot(object):
       argument is the new size
       the keyword arguments follow
       """
-      #self._callbacks_remove[function] = kwargs
       self._sig_remove.subscribe(function, **kwargs)
     
     def notifyInserted(self, function, **kwargs):
@@ -322,87 +307,55 @@ class Slot(object):
       argument is the new size
       the keyword arguments follow
       """
-      #self._callbacks_inserted[function] = kwargs
       self._sig_inserted.subscribe(function, **kwargs)
+
     
     def unregisterDirty(self, function):
       """
       unregister a dirty callback
       """
-#      try:
-#        self._callbacks_dirty.pop(function)
-#      except KeyError:
-#        pass
       self._sig_dirty.unsubscribe(function)
     
     def unregisterConnect(self, function):
       """
       unregister a connect callback
       """
-#      try:
-#        self._callbacks_connect.pop(function)
-#      except KeyError:
-#        pass
       self._sig_connect.unsubscribe(function)
 
     def unregisterDisconnect(self, function):
       """
       unregister a disconnect callback
       """
-#      try:
-#        self._callbacks_disconnect.pop(function)
-#      except KeyError:
-#        pass
       self._sig_disconnect.unsubscribe(function)
 
     def unregisterMetaChanged(self, function):
       """
       unregister a changed callback
       """
-#      try:
-#        self._callbacks_changed.pop(function)
-#      except KeyError:
-#        pass
       self._sig_changed.unsubscribe(function)
     
     def unregisterResize(self, function):
       """
       unregister a resize callback
       """
-#      try:
-#        self._callbacks_resize.pop(function)
-#      except KeyError:
-#        pass
       self._sig_resize.unsubscribe(function)
     
     def unregisterResized(self, function):
       """
       unregister a resized callback
       """
-#      try:
-#        self._callbacks_resized.pop(function)
-#      except KeyError:
-#        pass
       self._sig_resized.unsubscribe(function)
     
     def unregisterRemove(self, function):
       """
       unregister a remove callback
       """
-#      try:
-#        self._callbacks_remove.pop(function)
-#      except KeyError:
-#        pass
       self._sig_remove.unsubscribe(function)
     
     def unregisterInserted(self, function):
       """
       unregister a inserted callback
       """
-#      try:
-#        self._callbacks_inserted.pop(function)
-#      except KeyError:
-#        pass
       self._sig_inserted.unsubscribe(function)
     
     def connect(self,partner, notify = True):
@@ -446,8 +399,6 @@ class Slot(object):
                 
                 # call connect callbacks
                 self._sig_connect(self)
-#                for f, kw in self._callbacks_connect.iteritems():
-#                  f(self,**kw)
                 
             elif partner.level < self.level:
                 self.partner = partner
@@ -457,8 +408,6 @@ class Slot(object):
                 self._changed()
                 # call connect callbacks
                 self._sig_connect(self)
-#                for f, kw in self._callbacks_connect.iteritems():
-#                  f(self,**kw)
 
             elif partner.level > self.level:
                 if not isinstance(partner, (InputSlot, MultiInputSlot)):
@@ -483,6 +432,7 @@ class Slot(object):
         self._subSlots = []
 
         if self.partner is not None:
+            had_partner = True
             try:
                 self.partner.partners.remove(self)
             except ValueError:
@@ -493,9 +443,7 @@ class Slot(object):
 
         # call callbacks
         self._sig_disconnect(self)
-#        for f,kw in self._callbacks_disconnect.iteritems():
-#          f(self, **kw)
-        if self.operator is not None:
+        if self.operator is not None and type(self) == InputSlot:
           self.operator.onDisconnect(self)
     
 
@@ -518,8 +466,6 @@ class Slot(object):
         
         # call before resize callbacks
         self._sig_resize(self, oldsize, size)
-#        for f,kw in self._callbacks_resize.iteritems():
-#          f(self, oldsize, size, **kw)
 
         while size > len(self):
           self.insertSlot(len(self), len(self)+1, propagate = False)
@@ -540,8 +486,6 @@ class Slot(object):
         
         # call after resize callbacks
         self._sig_resized(self, oldsize, size)
-#        for f,kw in self._callbacks_resized.iteritems():
-#          f(self, oldsize, size, **kw)
 
         self._resizing = False
 
@@ -567,8 +511,6 @@ class Slot(object):
       
       # call after insert callbacks
       self._sig_inserted(self, position, finalsize)
-#      for f,kw in self._callbacks_inserted.iteritems():
-#        f(self, position, finalsize,**kw)
       return slot
       
     def removeSlot(self, position, finalsize, propagate = True):
@@ -583,8 +525,6 @@ class Slot(object):
       slot = self._subSlots.pop(position)
       # call before remove callbacks
       self._sig_remove(self, position, finalsize)
-#      for f,kw in self._callbacks_remove.iteritems():
-#        f(self, position, finalsize, **kw)
       slot.operator = None
       slot.disconnect()
       if propagate:
@@ -641,8 +581,6 @@ class Slot(object):
           
           # call callbacks
           self._sig_dirty(self, roi)
-#          for f,kw in self._callbacks_dirty.iteritems():
-#            f(self, roi, *kw[0], **kw[1])
           
           if self._type == "input":
             self.operator.propagateDirty(self, roi)
@@ -676,8 +614,8 @@ class Slot(object):
                   p.connect(newslot)
         else:
           assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"     
-          roi = self.rtype(self,pslice = key)
           if self._value is not None:
+              roi = self.rtype(self,pslice = key)
               self._value[key] = value
               self.setDirty(roi) # only propagate the dirty key at the very beginning of the chain
           self.operator.setInSlot(self,key,value)
@@ -729,18 +667,15 @@ class Slot(object):
           #if self.stype.isCompatible(value):
           # call disconnect callbacks
           self._sig_disconnect(self)
-#          for f, kw in self._callbacks_disconnect.iteritems():
-#            f(self,**kw)
           self._value = value
           self.stype.setupMetaForValue(value)
           self.meta._dirty = True
+          self.meta._ready = True # a slot with a value is always ready
           for i,s in enumerate(self._subSlots):
               s.setValue(self._value)
 
           # call connect callbacks
           self._sig_connect(self)
-#          for f, kw in self._callbacks_connect.iteritems():
-#            f(self,**kw)
           self._changed()
 
           # Propagate dirtyness
@@ -753,8 +688,6 @@ class Slot(object):
         """
         # call disconnect callbacks
         self._sig_disconnect(self)
-#        for f, kw in self._callbacks_disconnect.iteritems():
-#          f(self,**kw)
         changed = True
         self.resize(len(values))
         for i,s in enumerate(self._subSlots):
@@ -762,8 +695,6 @@ class Slot(object):
         # call connect callbacks
         self._changed()
         self._sig_connect(self)
-#        for f, kw in self._callbacks_connect.iteritems():
-#          f(self,**kw)
 
     def connected(self):
         """
@@ -841,7 +772,6 @@ class Slot(object):
     def onDisconnect(self, slot):
       pass
 
-
     def _changed(self):
       if self.partner is not None and self.meta != self.partner.meta:
         self.meta = self.partner.meta.copy()
@@ -862,8 +792,6 @@ class Slot(object):
       if wasdirty:
           # call changed callbacks
           self._sig_changed(self)
-#      for f, kw in self._callbacks_changed.iteritems():
-#        f(self, **kw)
     
     def _configureOperator(self, slot, oldSize = 0, newSize = 0, notify = True):
         """
@@ -1035,7 +963,7 @@ class OutputSlot(Slot):
     
 
     def disconnect(self):
-        return
+        pass
             
     def registerDirtyCallback(self, function, **kwargs):
         self.notifyDirty(function, **kwargs)
@@ -1757,7 +1685,7 @@ class OperatorWrapper(Operator):
       for key,mslot in self.outputs.items():
         mslot.insertSlot(index, length)
         mslot[index].connect(op.outputs[key])
-        mslot[index]._changed()
+        #mslot[index]._changed()
       return op
     
     def _removeInnerOperator(self, index, length):
@@ -1824,9 +1752,8 @@ class OperatorWrapper(Operator):
 
     def setSubInSlot(self,multislot,slot,index, key,value):
         # Forward this call to the operator (whose slot is partnered with ours)
-        assert len(slot.partners) == 1
-        innerSlot = list(slot.partners)[0]
-        self.innerOperators[index].setInSlot(innerSlot, key, value)
+        slot = self.innerOperators[index].inputs[slot.name]
+        self.innerOperators[index].setInSlot(slot, key, value)
                         
 class Graph(object):
   def __init__(self, numThreads=-1):
