@@ -57,9 +57,9 @@ class FeatureSelectionSerializer(object):
             featureIds = topGroup['FeatureIds'].value
         except KeyError:
             # There's no data in the project, so make sure the operator has no inputs.
-            self.mainOperator.Scales.setValue(None)
-            self.mainOperator.FeatureIds.setValue(None)
-            self.mainOperator.SelectionMatrix.setValue(None)
+            self.mainOperator.Scales.disconnect()
+            self.mainOperator.FeatureIds.disconnect()
+            self.mainOperator.SelectionMatrix.disconnect()
             return
         
         self.mainOperator.Scales.setValue(scales)
@@ -83,9 +83,9 @@ class FeatureSelectionSerializer(object):
         pass
 
     def unload(self):
-        self.mainOperator.Scales.setValue(None)
-        self.mainOperator.FeatureIds.setValue(None)
-        self.mainOperator.SelectionMatrix.setValue(None)
+        self.mainOperator.Scales.disconnect()
+        self.mainOperator.FeatureIds.disconnect()
+        self.mainOperator.SelectionMatrix.disconnect()
 
     def getOrCreateGroup(self, parentGroup, groupName):
         try:
@@ -174,9 +174,9 @@ class Ilastik05FeatureSelectionDeserializer(object):
         pass
 
     def unload(self):
-        self.mainOperator.Scales.setValue(None)
-        self.mainOperator.FeatureIds.setValue(None)
-        self.mainOperator.SelectionMatrix.setValue(None)
+        self.mainOperator.Scales.disconnect()
+        self.mainOperator.FeatureIds.disconnect()
+        self.mainOperator.SelectionMatrix.disconnect()
 
 if __name__ == "__main__":
     import os
