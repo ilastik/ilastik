@@ -1422,10 +1422,12 @@ class Operator(object):
         self.setupOutputs()
 
         for k, oslot in self.outputs.items():
-            # All outputs are ready after setupOutputs
-            oslot.meta._ready = True
-            # Signal for the outputs that weren't ready before (they are now)
-            if not readyFlags[k]:
+            if oslot.partner is None:
+                # All unconnected outputs are ready after setupOutputs
+                oslot.meta._ready = True
+
+            # Signal for the outputs that weren't ready before
+            if oslot.meta._ready and not readyFlags[k]:
                 oslot._sig_ready(oslot)        
 
         #notify outputs of probably changed meta information
