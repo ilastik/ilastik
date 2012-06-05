@@ -2,14 +2,14 @@
 #
 #       image : geometric transformation filters
 #
-#       Copyright 2006-2009 INRIA - CIRAD - INRA  
+#       Copyright 2006-2009 INRIA - CIRAD - INRA
 #
 #       File author(s): Eric Moscardi <eric.moscardi@sophia.inria.fr>
 #
 #       Distributed under the Cecill-C License.
 #       See accompanying file LICENSE.txt or copy at
 #           http://www.cecill.info/licences/Licence_CeCILL-C_V1-en.html
-# 
+#
 #       OpenAlea WebSite : http://openalea.gforge.inria.fr
 #
 ################################################################################
@@ -65,7 +65,7 @@ __name__ = "ourstuff"
 for o in Operators.operators.values():
     print "Wrapping Operator ",o,"for OpenAlea"
     print type(o)
-    
+
     factoryInputs = []
     for slot in o.inputSlots:
         itype = None
@@ -94,8 +94,8 @@ for o in Operators.operators.values():
             itype = IInt()
         elif slot.stype == "float":
             itype = IFloat()
-        factoryOutputs.append( dict(name = slot.name, interface = itype) )    
-    
+        factoryOutputs.append( dict(name = slot.name, interface = itype) )
+
     tempfac = Factory(name = o.name,
                 description = o.description,
                 category = "Lazyflow." + o.category,

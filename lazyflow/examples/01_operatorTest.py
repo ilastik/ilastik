@@ -3,7 +3,7 @@ import threading
 from lazyflow.graph import *
 import copy
 
-from lazyflow.operators.operators import OpArrayPiper 
+from lazyflow.operators.operators import OpArrayPiper
 from lazyflow.operators.vigraOperators import *
 from lazyflow.operators.valueProviders import *
 from lazyflow.operators.classifierOperators import *
@@ -19,7 +19,7 @@ random.seed()
 import pylab
 z = 0
 
-        
+
 
 def arraySplitter(op,img,start,stop, requests, callback, sync):
     """
@@ -27,43 +27,43 @@ def arraySplitter(op,img,start,stop, requests, callback, sync):
     img - empty output array
     start/stop - arrays with start/stop coordinates of img
     """
-    
+
     global z
-    
+
     dim = len(stop)
-    
+
     #difference of start and stop
     diff = []
     for i in range(dim):
         diff.append(stop[i]-start[i])
-        
-    ld = diff.index(max(diff))    
-   
+
+    ld = diff.index(max(diff))
+
     #size of array
     size = 1
     for i in diff:
         size *= i
-    
+
     #random maximum size
-    bsize = random.randint(100,40000)        
+    bsize = random.randint(100,40000)
 
     #if size is small, operator is applied to partial array
     if size < bsize:
         for i in range(dim):
             start[i] = int(start[i]+0.5)
             stop[i] = int(stop[i]+0.5)
-        
+
         #fire request
         req = op.outputs["Output"][roiToSlice(start,stop)].writeInto(img[roiToSlice(start,stop)])
         if sync:
             requests.append(req)
             res = req.wait()
             callback(res, start, stop)
-        else:        
+        else:
             req.notify(callback, start = start, stop = stop)
             requests.append(req)
         return
-    
+
     #split array up into p parts
     p =  random.randint(2,20)
     step = diff[ld]/float(p)
@@ -72,14 +72,14 @@ def arraySplitter(op,img,start,stop, requests, callback, sync):
         start[ld] += step
         stop[ld] = start[ld] + step
         arraySplitter(op,img,start[:],stop[:], requests, callback, sync)
-     
+
 
 imageCounter = 0
 
 def operatorTest(operator_name, sync = False, cache = False):
-    
+
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
-  
+
     #set up operators
     if operator_name == "OpArrayShifter1":
         op = OpArrayShifter1(g)
@@ -101,25 +101,25 @@ def operatorTest(operator_name, sync = False, cache = False):
         op.inputs["Shift"].setValue((10,-12,0))
     else:
         print "Operatorname nicht bekannt!"
-       
+
     def notify(result, start, stop):
         tempKey = roiToSlice(start, stop)
         imgP[tempKey] = result
         global imageCounter
-        
-        vigra.impex.writeImage(imgP,"./tt/result_%09d.jpg" % imageCounter ) 
-        imageCounter +=1   
-    
-    
+
+        vigra.impex.writeImage(imgP,"./tt/result_%09d.jpg" % imageCounter )
+        imageCounter +=1
+
+
     inputImage = vigra.impex.readImage("./tests/ostrich.jpg")
     op.inputs["Input"].setValue(inputImage)
-    
+
     if cache:
         tempOp = operators.OpArrayCache(g)
         tempOp.inputs["Input"].connect(op.outputs["Output"])
-    
-        op = tempOp    
-    
+
+        op = tempOp
+
     #fragmented image
     img1 = numpy.zeros(op.outputs["Output"]._shape , numpy.float32)
 
@@ -129,11 +129,11 @@ def operatorTest(operator_name, sync = False, cache = False):
         start.append(0)
         stop.append(numpy.array(img1.shape)[i])
 
-    requests = []        
-    imgP = numpy.zeros(op.outputs["Output"]._shape , numpy.float32)    
-    
+    requests = []
+    imgP = numpy.zeros(op.outputs["Output"]._shape , numpy.float32)
+
     arraySplitter(op,img1,start[:],stop[:], requests, notify, sync = sync)
-      
+
     print "Length of requests", len(requests)
     for r in requests:
         r.wait()
@@ -141,7 +141,7 @@ def operatorTest(operator_name, sync = False, cache = False):
     #full image
     img2 = op.outputs["Output"][:].allocate().wait()
 
-    
+
     if (img2 == img1).all():
         print "_______________"
         print "Op works correctly"
@@ -149,13 +149,13 @@ def operatorTest(operator_name, sync = False, cache = False):
     else:
         print "_______________"
         print "Op doesn't work correctly"
-        print "_______________" 
-  
-    vigra.impex.writeImage(img1,"./tt/result_fullImage.jpg")     
-    vigra.impex.writeImage(img2,"./tt/result_fragmentedImage.jpg" )     
+        print "_______________"
 
-    
+    vigra.impex.writeImage(img1,"./tt/result_fullImage.jpg")
+    vigra.impex.writeImage(img2,"./tt/result_fragmentedImage.jpg" )
+
+
     g.finalize()
 
-if __name__=="__main__":    
+if __name__=="__main__":
     operatorTest("OpSwapAxes", sync = False, cache = False)

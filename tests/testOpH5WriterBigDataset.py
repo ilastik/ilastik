@@ -16,7 +16,7 @@ class TestOpH5WriterBigDataset(object):
         self.graph = lazyflow.graph.Graph()
         self.testDataFileName = 'bigH5TestData.h5'
         self.datasetInternalPath = 'volume/data'
-        
+
         # Generate some test data
         self.dataShape = (1, 10, 128, 128, 1)
         self.testData = numpy.zeros(self.dataShape)
@@ -35,27 +35,27 @@ class TestOpH5WriterBigDataset(object):
         pass
         # Clean up: Delete the test file.
         #os.remove(self.testDataFileName)
-    
+
     def test_Writer(self):
         # Now read back our test data using an OpNpyFileReader operator
         opWriter = OpH5WriterBigDataset(graph=self.graph)
         opWriter.Filename.setValue( self.testDataFileName )
         opWriter.hdf5Path.setValue( self.datasetInternalPath )
         opWriter.Image.setValue( self.testData )
-        
+
         # Force the operator to execute by asking for the output (a bool)
         success = opWriter.WriteImage.value
         assert success
 
         opWriter.close()
-        
+
         # Check the file.
         f = h5py.File(self.testDataFileName, 'r')
         dataset = f[self.datasetInternalPath]
         assert dataset.shape == self.dataShape
         assert numpy.all( dataset[...] == self.testData[...] )
 
-        
+
 
 if __name__ == "__main__":
     import nose

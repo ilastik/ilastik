@@ -3,7 +3,7 @@ This module implements the basic flow graph
 of the lazyflow module.
 
 Basic usage example:
-    
+
 ---
 import numpy
 import lazyflow.graph
@@ -38,7 +38,7 @@ import psutil
 if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".")[1]) < 3:
     print "Lazyflow: Please install a psutil python module version of at least >= 0.3.0"
     sys.exit(1)
-    
+
 import os
 import time
 import gc
@@ -64,20 +64,20 @@ class OrderedSignal(object):
     """
     def __init__(self):
         self.callbacks = []
-    
+
     def subscribe(self, fn, **kwargs):
         # Remove this function if we already have it
         self.unsubscribe(fn)
         # Add it to the end
         self.callbacks.append((fn, kwargs))
-    
+
     def unsubscribe(self, fn):
         # Find this function and remove its entry
         for i, (f, kw) in enumerate(self.callbacks):
             if f == fn:
                 self.callbacks.pop(i)
                 break
-    
+
     def __call__(self, *args):
         """
         Emit the signal.
@@ -86,95 +86,95 @@ class OrderedSignal(object):
             f(*args, **kw)
 
 class MetaDict(dict):
-  """
-  Helper class that manages the dirty state of the meta data of a slot.
-  changing a meta dicts attributes sets it _dirty flag True.
-  """
-  def __init__(self, other=False):
-    if(other):
-      dict.__init__(self,other)
-    else:
-      dict.__init__(self)
-    self._dirty = True   # flag that indicates wether any piece of meta information changed
-                         # since this flag was reset
-    self._ready = False  # flag that indicates wether all dependencies of the slot are ready
-    #TODO: remove this, only for backwards compatability
-    if not self.has_key("shape"):
-      self.shape = None
-    if not self.has_key("dtype"):
-      self.dtype = None
-    if not self.has_key("axistags"):
-      self.axistags = None
+    """
+    Helper class that manages the dirty state of the meta data of a slot.
+    changing a meta dicts attributes sets it _dirty flag True.
+    """
+    def __init__(self, other=False):
+        if(other):
+            dict.__init__(self,other)
+        else:
+            dict.__init__(self)
+        self._dirty = True   # flag that indicates wether any piece of meta information changed
+                             # since this flag was reset
+        self._ready = False  # flag that indicates wether all dependencies of the slot are ready
+        #TODO: remove this, only for backwards compatability
+        if not self.has_key("shape"):
+            self.shape = None
+        if not self.has_key("dtype"):
+            self.dtype = None
+        if not self.has_key("axistags"):
+            self.axistags = None
 
-  def __setattr__(self,name,value):
-    """
-    Provide convenient acces to the metadict, allows using the . notation instead of [] access
-    """
-    if self.has_key(name):
-      changed = True
-      try:
-        if self[name] == value:
-          changed = False
-      except KeyError:
-        pass
-      if changed:
-        self["_dirty"] = True
-    self[name] = value
-    return value
+    def __setattr__(self,name,value):
+        """
+        Provide convenient acces to the metadict, allows using the . notation instead of [] access
+        """
+        if self.has_key(name):
+            changed = True
+            try:
+                if self[name] == value:
+                    changed = False
+            except KeyError:
+                pass
+            if changed:
+                self["_dirty"] = True
+        self[name] = value
+        return value
 
-  def __getattr__(self,name):
-    """
-    Provide convenient acces to the metadict, allows using the . notation instead of [] access
-    """
-    return self[name]
+    def __getattr__(self,name):
+        """
+        Provide convenient acces to the metadict, allows using the . notation instead of [] access
+        """
+        return self[name]
 
-  def copy(self):
-    """
-    Construct a copy of the meta dict
-    """
-    return MetaDict(dict.copy(self))
+    def copy(self):
+        """
+        Construct a copy of the meta dict
+        """
+        return MetaDict(dict.copy(self))
 
-  def assignFrom(self, other):
-    """
-    Copy all the elements from other into this 
-    """
-    dirty = not (self == other)
-    origdirty = self._dirty
-    if dirty:
-        self.clear()
-        for k,v in other.items():
-            self[k] = copy.copy(v)
-    self._dirty = origdirty | dirty
+    def assignFrom(self, other):
+        """
+        Copy all the elements from other into this
+        """
+        dirty = not (self == other)
+        origdirty = self._dirty
+        if dirty:
+            self.clear()
+            for k,v in other.items():
+                self[k] = copy.copy(v)
+        self._dirty = origdirty | dirty
 
 
 class ValueRequest(object):
-  """
-  Pseudo request that behaves like a request.Request object
+    """
+    Pseudo request that behaves like a request.Request object
 
-  this object is used to prevent the heavy construction of complete Request
-  objects in simple cases where they are not needed.
-  """
-  def __init__(self, value):
-    self.result = value
+    this object is used to prevent the heavy construction of complete Request
+    objects in simple cases where they are not needed.
+    """
+    def __init__(self, value):
+        self.result = value
 
-  def wait(self):
-    return self.result
+    def wait(self):
+        return self.result
 
-  def notify(self, callback, *args, **kwargs):
-    callback(*args, **kwargs)
+    def notify(self, callback, *args, **kwargs):
+        callback(*args, **kwargs)
 
-  def onCancel(self, callback, *args, **kwargs):
-    pass
+    def onCancel(self, callback, *args, **kwargs):
+        pass
 
-  def allocate(self, priority = 0):
-    return self
+    def allocate(self, priority = 0):
+        return self
 
-  def writeInto(self, destination):
-    destination[:] = self.result
-    return self
+    def writeInto(self, destination):
+        destination[:] = self.result
+        return self
 
-  def getResult(self):
-    return self.result
+    def getResult(self):
+        return self.result
 
 
 class Slot(object):
@@ -185,7 +185,7 @@ class Slot(object):
     @property
     def graph(self):
         return self.operator.graph
-                        
+
     def __init__( self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
         """
         Constructor of the Slot class.
@@ -197,12 +197,12 @@ class Slot(object):
           rtype     : the region of interest type (see rtype.py)
           value     : the default value of the slot
           optional  : if True this means the slot needs a value or connection for its parent operator to be functional
-          level     : defines the dimensionality of the slot, 0 = single element (e.g. single numpy.ndarray), 1 = list of elements (e.g. list of strings), 2 = list of list of elements 
+          level     : defines the dimensionality of the slot, 0 = single element (e.g. single numpy.ndarray), 1 = list of elements (e.g. list of strings), 2 = list of list of elements
         """
         if not hasattr(self, "_type"):
-          self._type = None
+            self._type = None
         if type(stype) == str:
-          stype = ArrayLike
+            stype = ArrayLike
         self.partners = []
         self.name = name              # a user readable name for the slot
         self._optional = optional     # defines wether the slot needs a connection or value for a functional operator
@@ -210,13 +210,13 @@ class Slot(object):
         self.partner = None           # in the case of an InputSlot or MultiInputSlot this is the slot to wich it is connected
         self.level = level            # defines the dimensionality of the slot, 0 = single element (e.g. single numpy.ndarray), 1 = list of elements (e.g. list of strings), 2 = list of list of elements
         self._value = None            # in the case of an InputSlot or MultiInputSlot one can directly assign a value to a slot instead of connecting it to a partner, this attribute holds the value
-        self._defaultValue = value    # a InputSlot or MultiInputSlot can 
+        self._defaultValue = value    # a InputSlot or MultiInputSlot can
         self.rtype = rtype            # the region of interest type of the slot ( rtype.py)
         self.meta = MetaDict()        # the MetaDict that holds the slots meta information
-        self._subSlots = []           # in the case of an MultiInputSlot or MultiOutputSlot this holds the sub-Input/Output slots 
+        self._subSlots = []           # in the case of an MultiInputSlot or MultiOutputSlot this holds the sub-Input/Output slots
         self._stypeType = stype       # the slot type class
         self.stype = stype(self)      # the slot type instance
-        
+
         self._sig_changed = OrderedSignal()
         self._sig_dirty = OrderedSignal()
         self._sig_connect = OrderedSignal()
@@ -225,7 +225,7 @@ class Slot(object):
         self._sig_resized = OrderedSignal()
         self._sig_remove = OrderedSignal()
         self._sig_inserted = OrderedSignal()
-        
+
         self._resizing = False
 
     #
@@ -236,128 +236,128 @@ class Slot(object):
 
 
     def notifyDirty(self, function, **kwargs):
-      """
-      calls the corresponding function when the slot gets dirty
-      first argument of the function is the slot, second argument the roi
-      the keyword arguments follow
-      """
-      self._sig_dirty.subscribe(function, **kwargs)
+        """
+        calls the corresponding function when the slot gets dirty
+        first argument of the function is the slot, second argument the roi
+        the keyword arguments follow
+        """
+        self._sig_dirty.subscribe(function, **kwargs)
 
-    
+
     def notifyMetaChanged(self, function, **kwargs):
-      """
-      calls the corresponding function when the slot meta information is changed
-      first argument of the function is the slot
-      the keyword arguments follow
-      """
-      
-      self._sig_changed.subscribe(function, **kwargs)
-    
-    def notifyConnect(self, function, **kwargs):
-      """
-      calls the corresponding function when the slot is connected
-      first argument of the function is the slot
-      the keyword arguments follow
-      """
-      self._sig_connect.subscribe(function, **kwargs)
-    
-    def notifyDisconnect(self, function, **kwargs):
-      """
-      calls the corresponding function when the slot is disconnected
-      first argument of the function is the slot
-      the keyword arguments follow
-      """
-      self._sig_disconnect.subscribe(function, **kwargs)
-    
-    def notifyResize(self, function, **kwargs):
-      """
-      calls the corresponding function before the slot is resized
-      first argument of the function is the slot
-      second argument is the old size and the third
-      argument is the new size
-      the keyword arguments follow
-      """
-      self._sig_resize.subscribe(function, **kwargs)
-    
-    def notifyResized(self, function, **kwargs):
-      """
-      calls the corresponding function after the slot is resized
-      first argument of the function is the slot
-      second argument is the old size and the third
-      argument is the new size
-      the keyword arguments follow
-      """
-      self._sig_resized.subscribe(function, **kwargs)
-    
-    def notifyRemove(self, function, **kwargs):
-      """
-      calls the corresponding function before a slot is removed
-      first argument of the function is the slot
-      second argument is the old size and the third
-      argument is the new size
-      the keyword arguments follow
-      """
-      self._sig_remove.subscribe(function, **kwargs)
-    
-    def notifyInserted(self, function, **kwargs):
-      """
-      calls the corresponding function after a slot has been added
-      first argument of the function is the slot
-      second argument is the old size and the third
-      argument is the new size
-      the keyword arguments follow
-      """
-      self._sig_inserted.subscribe(function, **kwargs)
+        """
+        calls the corresponding function when the slot meta information is changed
+        first argument of the function is the slot
+        the keyword arguments follow
+        """
 
-    
+        self._sig_changed.subscribe(function, **kwargs)
+
+    def notifyConnect(self, function, **kwargs):
+        """
+        calls the corresponding function when the slot is connected
+        first argument of the function is the slot
+        the keyword arguments follow
+        """
+        self._sig_connect.subscribe(function, **kwargs)
+
+    def notifyDisconnect(self, function, **kwargs):
+        """
+        calls the corresponding function when the slot is disconnected
+        first argument of the function is the slot
+        the keyword arguments follow
+        """
+        self._sig_disconnect.subscribe(function, **kwargs)
+
+    def notifyResize(self, function, **kwargs):
+        """
+        calls the corresponding function before the slot is resized
+        first argument of the function is the slot
+        second argument is the old size and the third
+        argument is the new size
+        the keyword arguments follow
+        """
+        self._sig_resize.subscribe(function, **kwargs)
+
+    def notifyResized(self, function, **kwargs):
+        """
+        calls the corresponding function after the slot is resized
+        first argument of the function is the slot
+        second argument is the old size and the third
+        argument is the new size
+        the keyword arguments follow
+        """
+        self._sig_resized.subscribe(function, **kwargs)
+
+    def notifyRemove(self, function, **kwargs):
+        """
+        calls the corresponding function before a slot is removed
+        first argument of the function is the slot
+        second argument is the old size and the third
+        argument is the new size
+        the keyword arguments follow
+        """
+        self._sig_remove.subscribe(function, **kwargs)
+
+    def notifyInserted(self, function, **kwargs):
+        """
+        calls the corresponding function after a slot has been added
+        first argument of the function is the slot
+        second argument is the old size and the third
+        argument is the new size
+        the keyword arguments follow
+        """
+        self._sig_inserted.subscribe(function, **kwargs)
+
+
     def unregisterDirty(self, function):
-      """
-      unregister a dirty callback
-      """
-      self._sig_dirty.unsubscribe(function)
-    
+        """
+        unregister a dirty callback
+        """
+        self._sig_dirty.unsubscribe(function)
+
     def unregisterConnect(self, function):
-      """
-      unregister a connect callback
-      """
-      self._sig_connect.unsubscribe(function)
+        """
+        unregister a connect callback
+        """
+        self._sig_connect.unsubscribe(function)
 
     def unregisterDisconnect(self, function):
-      """
-      unregister a disconnect callback
-      """
-      self._sig_disconnect.unsubscribe(function)
+        """
+        unregister a disconnect callback
+        """
+        self._sig_disconnect.unsubscribe(function)
 
     def unregisterMetaChanged(self, function):
-      """
-      unregister a changed callback
-      """
-      self._sig_changed.unsubscribe(function)
-    
+        """
+        unregister a changed callback
+        """
+        self._sig_changed.unsubscribe(function)
+
     def unregisterResize(self, function):
-      """
-      unregister a resize callback
-      """
-      self._sig_resize.unsubscribe(function)
-    
+        """
+        unregister a resize callback
+        """
+        self._sig_resize.unsubscribe(function)
+
     def unregisterResized(self, function):
-      """
-      unregister a resized callback
-      """
-      self._sig_resized.unsubscribe(function)
-    
+        """
+        unregister a resized callback
+        """
+        self._sig_resized.unsubscribe(function)
+
     def unregisterRemove(self, function):
-      """
-      unregister a remove callback
-      """
-      self._sig_remove.unsubscribe(function)
-    
+        """
+        unregister a remove callback
+        """
+        self._sig_remove.unsubscribe(function)
+
     def unregisterInserted(self, function):
-      """
-      unregister a inserted callback
-      """
-      self._sig_inserted.unsubscribe(function)
-    
+        """
+        unregister a inserted callback
+        """
+        self._sig_inserted.unsubscribe(function)
+
     def connect(self,partner, notify = True):
         """
         Connect a slot to another slot
@@ -368,24 +368,24 @@ class Slot(object):
         if partner is None:
             self.disconnect()
             return
-        
+
         if self.partner == partner and partner.level == self.level:
             return
         if self.level == 0:
-          self.disconnect()
-        
+            self.disconnect()
+
         if partner is not None:
             if partner.level == self.level:
                 self.partner = partner
                 self.meta = self.partner.meta.copy()
-                
+
                 # the slot with more sub-slots determines
                 # the number of subslots
                 if len(self) < len(partner):
                     self.resize(len(partner))
                 elif len(self) > len(partner):
                     partner.resize(len(self))
-                    
+
                 partner.partners.append(self)
                 for i in range(len(self.partner)):
                     p = self.partner[i]
@@ -393,17 +393,17 @@ class Slot(object):
 
                 # call slot type connect function
                 self.stype.connect(partner)
-                
+
                 if self.level > 0 or self.stype.isConfigured():
-                  self._changed()
-                
+                    self._changed()
+
                 # call connect callbacks
                 self._sig_connect(self)
-                
+
             elif partner.level < self.level:
                 self.partner = partner
                 self.meta = self.partner.meta.copy()
-                for i, slot in enumerate(self._subSlots):                
+                for i, slot in enumerate(self._subSlots):
                     slot.connect(partner)
                 self._changed()
                 # call connect callbacks
@@ -411,18 +411,18 @@ class Slot(object):
 
             elif partner.level > self.level:
                 if not isinstance(partner, (InputSlot, MultiInputSlot)):
-                  try:
-                      partner.partners.remove(self)
-                  except ValueError:
-                      pass
+                    try:
+                        partner.partners.remove(self)
+                    except ValueError:
+                        pass
                 if lazyflow.verboseWrapping:
-                  print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
+                    print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
                 if isinstance(self.operator,(OperatorWrapper, Operator)):
                     newop = OperatorWrapper(self.operator)
                     newop.inputs[self.name].connect(partner)
                 else:
                     raise RuntimeError("Trying to connect a higher order slot to a subslot - NOT ALLOWED")
-    
+
     def disconnect(self):
         """
         Disconnect a InputSlot from its partner
@@ -444,8 +444,8 @@ class Slot(object):
         # call callbacks
         self._sig_disconnect(self)
         if self.operator is not None and type(self) == InputSlot:
-          self.operator.onDisconnect(self)
-    
+            self.operator.onDisconnect(self)
+
 
     def resize(self, size):
         """
@@ -455,141 +455,141 @@ class Slot(object):
           size    : the desired number of subslots
         """
         if self.level == 0 or self._resizing:
-          return
+            return
 
         oldsize = len(self)
         if size == oldsize:
-          return
+            return
 
         self._resizing = True
         print "Resizing slot %r of operator %r to size %r" % (self.name, self.operator.name, size)
-        
+
         # call before resize callbacks
         self._sig_resize(self, oldsize, size)
 
         while size > len(self):
-          self.insertSlot(len(self), len(self)+1, propagate = False)
-          # connect newly added slots
-          self._connectSubSlot(len(self) - 1)
-            
+            self.insertSlot(len(self), len(self)+1, propagate = False)
+            # connect newly added slots
+            self._connectSubSlot(len(self) - 1)
+
         while size < len(self):
-          self.removeSlot(len(self)-1, len(self)-1, propagate = False)
-        
+            self.removeSlot(len(self)-1, len(self)-1, propagate = False)
+
         # propagate size change downward
         for c in self.partners:
-          if c.level == self.level:
-            c.resize(size)
-        
+            if c.level == self.level:
+                c.resize(size)
+
         # propagate size change upward
         if self.partner and len(self.partner) < size and self.partner.level == self.level:
-          self.partner.resize(size)
-        
+            self.partner.resize(size)
+
         # call after resize callbacks
         self._sig_resized(self, oldsize, size)
 
         self._resizing = False
 
-        
+
 
     def insertSlot(self, position, finalsize, propagate = True):
-      """
-      Insert a new slot at the specififed position
-      finalsize indicates the final destination size
-      """
-      if len(self) >= finalsize:
-        return self[position]
-      slot =  self._insertNew(position) 
-      print "Inserting slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize)
-      if propagate:
-        if self.partner is not None and self.partner.level == self.level:
-          self.partner.insertSlot(position, finalsize)
-        self._connectSubSlot(position)
+        """
+        Insert a new slot at the specififed position
+        finalsize indicates the final destination size
+        """
+        if len(self) >= finalsize:
+            return self[position]
+        slot =  self._insertNew(position)
+        print "Inserting slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize)
+        if propagate:
+            if self.partner is not None and self.partner.level == self.level:
+                self.partner.insertSlot(position, finalsize)
+            self._connectSubSlot(position)
 
-        for p in self.partners:
-          if p.level == self.level:
-            p.insertSlot(position, finalsize)
-      
-      # call after insert callbacks
-      self._sig_inserted(self, position, finalsize)
-      return slot
-      
+            for p in self.partners:
+                if p.level == self.level:
+                    p.insertSlot(position, finalsize)
+
+        # call after insert callbacks
+        self._sig_inserted(self, position, finalsize)
+        return slot
+
     def removeSlot(self, position, finalsize, propagate = True):
-      """
-      Remove the slot at position
-      finalsize indicates the final size of all subslots
-      """
-      if len(self) <= finalsize:
-        return None
-      assert position < len(self)
-      print "Removing slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize)
-      slot = self._subSlots.pop(position)
-      # call before remove callbacks
-      self._sig_remove(self, position, finalsize)
-      slot.operator = None
-      slot.disconnect()
-      if propagate:
-        if self.partner is not None and self.partner.level == self.level:
-          self.partner.removeSlot(position, finalsize)
-        for p in self.partners:
-          if p.level == self.level:
-            p.removeSlot(position, finalsize)
-    
+        """
+        Remove the slot at position
+        finalsize indicates the final size of all subslots
+        """
+        if len(self) <= finalsize:
+            return None
+        assert position < len(self)
+        print "Removing slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize)
+        slot = self._subSlots.pop(position)
+        # call before remove callbacks
+        self._sig_remove(self, position, finalsize)
+        slot.operator = None
+        slot.disconnect()
+        if propagate:
+            if self.partner is not None and self.partner.level == self.level:
+                self.partner.removeSlot(position, finalsize)
+            for p in self.partners:
+                if p.level == self.level:
+                    p.removeSlot(position, finalsize)
+
     def get( self, roi, destination = None ):
-      """
-      This method is used to retrieve the actual content of a Slot.
+        """
+        This method is used to retrieve the actual content of a Slot.
 
-      Arguments:
-        roi         : the region of interest, e.g. a subregion in the case of an ArrayLike stype
-        destination : this may define a destination area for the request, for example a ndarray into which the results should be written in the case of an ArrayLike stype
+        Arguments:
+          roi         : the region of interest, e.g. a subregion in the case of an ArrayLike stype
+          destination : this may define a destination area for the request, for example a ndarray into which the results should be written in the case of an ArrayLike stype
 
-      Returns:
-        a request.Request object.
-      """
-      if self._value is not None:
-        # this handles the case of an inputslot
-        # having a ._value
-        # --> construct cheaper request object for this case
-        result = self.stype.writeIntoDestination(destination, self._value, roi)
-        return ValueRequest(result)
-      elif self.partner is not None:
-        # this handles the case of an inputslot
-        # --> just relay the request
-        return self.partner.get(roi, destination)
-      else:
-        # If someone is asking for data from an inputslot that has no value and no partner,
-        #  then something is wrong.
-        assert self._type != "input", "This inputslot has no value and no partner.  You can't ask for its data yet!"
-        # normal (outputslot) case
-        # --> construct heavy request object..
-        return Request(self._requestFunctionWrapper,roi = roi,destination = destination)        
-    
+        Returns:
+          a request.Request object.
+        """
+        if self._value is not None:
+            # this handles the case of an inputslot
+            # having a ._value
+            # --> construct cheaper request object for this case
+            result = self.stype.writeIntoDestination(destination, self._value, roi)
+            return ValueRequest(result)
+        elif self.partner is not None:
+            # this handles the case of an inputslot
+            # --> just relay the request
+            return self.partner.get(roi, destination)
+        else:
+            # If someone is asking for data from an inputslot that has no value and no partner,
+            #  then something is wrong.
+            assert self._type != "input", "This inputslot has no value and no partner.  You can't ask for its data yet!"
+            # normal (outputslot) case
+            # --> construct heavy request object..
+            return Request(self._requestFunctionWrapper,roi = roi,destination = destination)
+
     def setDirty(self, *args,**kwargs):
         """
         this method is called by a partnering OutputSlot
         when its content changes.
-        
+
         the key parameter identifies the changed region
         of an numpy.ndarray
         """
         assert self.operator is not None, \
                "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
         if self.stype.isConfigured():
-          if not isinstance(args[0],rtype.Roi):
-            roi = self.rtype(self, *args, **kwargs)
-          else:
-            roi = args[0]
+            if not isinstance(args[0],rtype.Roi):
+                roi = self.rtype(self, *args, **kwargs)
+            else:
+                roi = args[0]
 
-          for c in self.partners:
-            c.setDirty(roi)
-          
-          # call callbacks
-          self._sig_dirty(self, roi)
-          
-          if self._type == "input":
-            self.operator.propagateDirty(self, roi)
+            for c in self.partners:
+                c.setDirty(roi)
+
+            # call callbacks
+            self._sig_dirty(self, roi)
+
+            if self._type == "input":
+                self.operator.propagateDirty(self, roi)
 
 
-                           
+
     def __getitem__(self, key):
         """
         This method provied access to the subslots of a MultiSlot.
@@ -606,31 +606,31 @@ class Slot(object):
         This method provied access to the subslots of a MultiSlot.
         """
         if isinstance(value, Slot):
-          slot = self._subSlots[key]
-          if slot != value:
-              slot.disconnect()
-              self._subSlots[key] = value
-      
-              oldslot = slot        
-              newslot = value
-              for p in oldslot.partners:
-                  p.connect(newslot)
-        else:
-          assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"     
-          if self._value is not None:
-              roi = self.rtype(self,pslice = key)
-              self._value[key] = value
-              self.setDirty(roi) # only propagate the dirty key at the very beginning of the chain
-          self.operator.setInSlot(self,key,value)
+            slot = self._subSlots[key]
+            if slot != value:
+                slot.disconnect()
+                self._subSlots[key] = value
 
-        
+                oldslot = slot
+                newslot = value
+                for p in oldslot.partners:
+                    p.connect(newslot)
+        else:
+            assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"
+            if self._value is not None:
+                roi = self.rtype(self,pslice = key)
+                self._value[key] = value
+                self.setDirty(roi) # only propagate the dirty key at the very beginning of the chain
+            self.operator.setInSlot(self,key,value)
+
+
     def __len__(self):
         """
         In the case of a MultiSlot this returns the number of subslots, i.e. the length of the list
         """
         return len(self._subSlots)
-    
- 
+
+
     @property
     def value(self):
         """
@@ -648,9 +648,9 @@ class Slot(object):
             # _value case
             return self._value
         if isinstance(temp, numpy.ndarray) and temp.shape != (1,):
-          return temp
+            return temp
         else:
-          return temp[0]
+            return temp[0]
 
     def setValue(self, value, notify = True):
         """
@@ -662,28 +662,28 @@ class Slot(object):
         """
         changed = True
         try:
-          if value == self._value:
-            changed = False
+            if value == self._value:
+                changed = False
         except:
-          pass
+            pass
         if changed:
-          #if self.stype.isCompatible(value):
-          # call disconnect callbacks
-          self._sig_disconnect(self)
-          self._value = value
-          self.stype.setupMetaForValue(value)
-          self.meta._dirty = True
-          self.meta._ready = True # a slot with a value is always ready
-          for i,s in enumerate(self._subSlots):
-              s.setValue(self._value)
+            #if self.stype.isCompatible(value):
+            # call disconnect callbacks
+            self._sig_disconnect(self)
+            self._value = value
+            self.stype.setupMetaForValue(value)
+            self.meta._dirty = True
+            self.meta._ready = True # a slot with a value is always ready
+            for i,s in enumerate(self._subSlots):
+                s.setValue(self._value)
 
-          # call connect callbacks
-          self._sig_connect(self)
-          self._changed()
+            # call connect callbacks
+            self._sig_connect(self)
+            self._changed()
 
-          # Propagate dirtyness
-          self.setDirty(slice(None))
-    
+            # Propagate dirtyness
+            self.setDirty(slice(None))
+
     def setValues(self, values):
         """
         set values of subslots with arraylike object
@@ -716,7 +716,7 @@ class Slot(object):
 
     def configured(self):
         """
-        Returns if the slot (and all its subslots) is connected or optional 
+        Returns if the slot (and all its subslots) is connected or optional
         """
         answer = True
         if (self._value is None and self.partner is None) or not self.stype.isConfigured():
@@ -730,13 +730,13 @@ class Slot(object):
         return answer
 
     def __call__(self, *args, **kwargs):
-      """
-      the slot relays all arguments to the __init__ method
-      of the Roi type. this allows lazyflow to support different
-      types of rois without knowing anything about them.
-      """
-      roi = self.rtype(self,*args, **kwargs)
-      return self.get( roi )
+        """
+        the slot relays all arguments to the __init__ method
+        of the Roi type. this allows lazyflow to support different
+        types of rois without knowing anything about them.
+        """
+        roi = self.rtype(self,*args, **kwargs)
+        return self.get( roi )
 
 
 
@@ -746,66 +746,66 @@ class Slot(object):
     #
 
     def _requestFunctionWrapper(self, roi, destination):
-      if destination is None:
-        destination = self.stype.allocateDestination(roi)
-      tres = self.operator.execute(self, roi, destination)
-      return destination
+        if destination is None:
+            destination = self.stype.allocateDestination(roi)
+        tres = self.operator.execute(self, roi, destination)
+        return destination
 
 
     def _getInstance(self, operator, level = None):
         """
         This method constructs a copy of the slot
         this method is used when creating an Instance of an Operator.
-        All defined Input and Output slots of the Class are cloned and inserted into the instance of the Operator. 
+        All defined Input and Output slots of the Class are cloned and inserted into the instance of the Operator.
         """
         if level is None:
-          level = self.level
+            level = self.level
         if self._type == "input":
-          if level > 0:
-            s = MultiInputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
-          else:
-            s = InputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional)
+            if level > 0:
+                s = MultiInputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
+            else:
+                s = InputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional)
         elif self._type == "output":
-          if level > 0:
-            s= MultiOutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
-          else:
-            s= OutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional)
+            if level > 0:
+                s= MultiOutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
+            else:
+                s= OutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional)
         return s
 
     def onDisconnect(self, slot):
-      pass
+        pass
 
     def _changed(self):
-      if self.partner is not None and self.meta != self.partner.meta:
-        self.meta = self.partner.meta.copy()
+        if self.partner is not None and self.meta != self.partner.meta:
+            self.meta = self.partner.meta.copy()
 
-      if self._type == "output":
-        for o in self._subSlots:
-          o._changed()
+        if self._type == "output":
+            for o in self._subSlots:
+                o._changed()
 
-      wasdirty = self.meta._dirty
-      if self.meta._dirty:
-        for c in self.partners:
-          c._changed()
-        self.meta._dirty = False
+        wasdirty = self.meta._dirty
+        if self.meta._dirty:
+            for c in self.partners:
+                c._changed()
+            self.meta._dirty = False
 
-      if self._type != "output":
-        self._configureOperator(self)
-    
-      if wasdirty:
-          # call changed callbacks
-          self._sig_changed(self)
-    
+        if self._type != "output":
+            self._configureOperator(self)
+
+        if wasdirty:
+                # call changed callbacks
+            self._sig_changed(self)
+
     def _configureOperator(self, slot, oldSize = 0, newSize = 0, notify = True):
         """
         call setupOutputs of Operator if all slots
         of the operator are connected and configured
         """
         if self.operator is not None:
-          # check wether all slots are connected and notify operator            
-          if self.operator.configured():
-            self.operator._setupOutputs()
-    
+            # check wether all slots are connected and notify operator
+            if self.operator.configured():
+                self.operator._setupOutputs()
+
     def _requiredLength(self):
         """
         Returns the required number of subslots
@@ -821,29 +821,29 @@ class Slot(object):
             return 0
 
     def _setupOutputs(self):
-      """
-      """
-      self._changed()
-    
-    def _connectSubSlot(self,slot, notify = True):
-      """
-      Connect a subslot either to the partner, or set the correct
-      value in case of  self._value != None
-      """
-      if type(slot) == int:
-        index = slot
-        slot = self._subSlots[slot]
-      else:
-        index = self._subSlots.index(slot)
+        """
+        """
+        self._changed()
 
-      if self.partner is not None:
-          if self.partner.level == self.level:
-              if len(self.partner) > index:
-                  slot.connect(self.partner[index])
-          else:
-              slot.connect(self.partner)
-      if self._value is not None:
-          slot.setValue(self._value, notify = notify)    
+    def _connectSubSlot(self,slot, notify = True):
+        """
+        Connect a subslot either to the partner, or set the correct
+        value in case of  self._value != None
+        """
+        if type(slot) == int:
+            index = slot
+            slot = self._subSlots[slot]
+        else:
+            index = self._subSlots.index(slot)
+
+        if self.partner is not None:
+            if self.partner.level == self.level:
+                if len(self.partner) > index:
+                    slot.connect(self.partner[index])
+            else:
+                slot.connect(self.partner)
+        if self._value is not None:
+            slot.setValue(self._value, notify = notify)
 
 
     def _insertNew(self, position):
@@ -856,70 +856,70 @@ class Slot(object):
         self._subSlots.insert(position, slot)
         slot.name = self.name
         if self._value is not None:
-          slot.setValue(self._value)
+            slot.setValue(self._value)
         return slot
 
     def pop(self, index = -1, event = None):
         if index < 0:
-          index = len(self) + index
+            index = len(self) + index
         self._subSlots.pop(index)
-    
+
     def propagateDirty(self, slot, roi):
         index = self._subSlots.index(slot)
         self.operator.notifySubSlotDirty((self,slot),(index,),roi)
-    
+
     def notifySubSlotDirty(self, slots, indexes, roi):
         index = self._subSlots.index(slots[0])
         self.operator.notifySubSlotDirty((self,)+slots,(index,) + indexes,roi)
-    
+
     @property
     def graph(self):
         return self.operator.graph
 
 
     #
-    #  
+    #
     #  B a c k w a r d s   c o m p a t a b i l i t y
     #
 
     @property
     def shape(self):
-      return self.meta.shape
+        return self.meta.shape
 
     @property
     def dtype(self):
-      return self.meta.dtype
+        return self.meta.dtype
 
     @property
     def axistags(self):
-      return self.meta.axistags
+        return self.meta.axistags
 
     @property
     def _shape(self):
         return self.meta.shape
-        
+
     @_shape.setter
     def _shape(self,value):
-      old = self.meta.shape
-      self.meta.shape = value
+        old = self.meta.shape
+        self.meta.shape = value
 
     @property
     def _axistags(self):
-      return self.meta.axistags
-        
+        return self.meta.axistags
+
     @_axistags.setter
     def _axistags(self, value):
-      old = self.meta.axistags
-      self.meta.axistags = value
+        old = self.meta.axistags
+        self.meta.axistags = value
 
     @property
     def _dtype(self):
-      return self.meta.dtype
+        return self.meta.dtype
 
     @_dtype.setter
     def _dtype(self, value):
-      old = self.meta.dtype
-      self.meta.dtype = value
+        old = self.meta.dtype
+        self.meta.dtype = value
 
 
 
@@ -929,33 +929,33 @@ class InputSlot(Slot):
     """
     The base class for input slots, it provides methods
     to connect the InputSlot to an OutputSlot of another
-    operator (i.e. .connect(partner) call) or allows 
+    operator (i.e. .connect(partner) call) or allows
     to directly provide a value as input (i.e. .setValue(value) call)
     """
-    
+
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False, level = 0):
         self._type = "input"
         super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
         # configure operator in case of slot change
         self.notifyResized(self._configureOperator)
-    
+
 
 class OutputSlot(Slot):
     """
     The base class for output slots, it provides methods
     to connect the OutputSlot to an InputSlot of another
     operator (i.e. .connect(partner) call).
-    
+
     the content of the OutputSlot e.g. the result of the operator
     it belongs to can be requested with the usual
     python array slicing syntax, i.e.
-    
+
     outputslot[3,:,14:32]
-    
+
     this call returns an GetItemRequestObject.
-    """    
-    
-    
+    """
+
+
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
         self._type = "output"
         super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = 0)
@@ -963,30 +963,30 @@ class OutputSlot(Slot):
         self.operator = operator
 
         self._dirtyCallbacks = []
-    
+
 
     def disconnect(self):
         pass
-            
+
     def registerDirtyCallback(self, function, **kwargs):
         self.notifyDirty(function, **kwargs)
-    
+
     def unregisterDirtyCallback(self, function):
         self.unregisterDirty(function)
-            
+
     def __setitem__(self, key, value):
         for p in self.partners:
             p[key] = value
 
-    
+
 
 class MultiInputSlot(Slot):
     """
     The MultiInputSlot is a multidimensional InputSlot.
-    
+
     it contains nested lists of InputSlot objects.
     """
-    
+
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None, optional = False):
         self._type = "input"
         self.partner = None
@@ -1005,23 +1005,23 @@ class MultiInputSlot(Slot):
 class MultiOutputSlot(Slot):
     """
     The MultiOutputSlot is a multidimensional OutputSlot.
-    
+
     it contains nested lists of OutputSlot objects.
     """
-    
-    
+
+
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, optional = False, value = None):
         self._type = "output"
         super(MultiOutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
         self._metaParent = operator
-    
+
 
     def disconnect(self):
         slots = self[:]
         for s in slots:
             s.disconnect()
 
-           
+
 
     def execute(self,slot,roi,result):
         index = self._subSlots.index(slot)
@@ -1041,7 +1041,7 @@ class MultiOutputSlot(Slot):
             raise RuntimeError("MultiOutputSlot.getSubOutSlot: name=%r, operator.name=%r, slots=%r" % \
                                (self.name, self.operator.name, self.operator, slots))
         return self.operator.getSubOutSlot((self,) + slots, (index,) + indexes, key, result)
-    
+
     @property
     def graph(self):
         return self.operator.graph
@@ -1049,9 +1049,9 @@ class MultiOutputSlot(Slot):
 
 
 class InputDict(dict):
-    
+
     def __init__(self, operator):
-      self.operator = operator
+        self.operator = operator
 
 
     def __setitem__(self, key, value):
@@ -1059,18 +1059,18 @@ class InputDict(dict):
         return dict.__setitem__(self, key, value)
     def __getitem__(self, key):
         if self.has_key(key):
-          return dict.__getitem__(self,key)
+            return dict.__getitem__(self,key)
         elif hasattr(self.operator,key):
-          return getattr(self.operator, key)
+            return getattr(self.operator, key)
         else:
-          raise Exception("Operator %s (class: %s) has no input slot named '%s'. available input slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
+            raise Exception("Operator %s (class: %s) has no input slot named '%s'. available input slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
 
 
 
 class OutputDict(dict):
-    
+
     def __init__(self, operator):
-      self.operator = operator
+        self.operator = operator
 
 
     def __setitem__(self, key, value):
@@ -1078,73 +1078,73 @@ class OutputDict(dict):
         return dict.__setitem__(self, key, value)
     def __getitem__(self, key):
         if self.has_key(key):
-          return dict.__getitem__(self,key)
+            return dict.__getitem__(self,key)
         elif hasattr(self.operator,key):
-          return getattr(self.operator, key)
+            return getattr(self.operator, key)
         else:
-          raise Exception("Operator %s (class: %s) has no output slot named '%s'. available output slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
+            raise Exception("Operator %s (class: %s) has no output slot named '%s'. available output slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
 
 
 class OperatorMetaClass(type):
 
     def __new__(cls,name,bases,classDict):
         cls = type.__new__(cls,name,bases,classDict)
-        
+
         setattr(cls,"inputSlots", list(cls.inputSlots))
         setattr(cls,"outputSlots", list(cls.outputSlots))
-        
-        for k,v in cls.__dict__.items():
-          if isinstance(v,(InputSlot, MultiInputSlot)):
-            v.name = k
-            cls.inputSlots.append(v)
 
-          if isinstance(v,(OutputSlot, MultiOutputSlot)):
-            v.name = k
-            cls.outputSlots.append(v)
+        for k,v in cls.__dict__.items():
+            if isinstance(v,(InputSlot, MultiInputSlot)):
+                v.name = k
+                cls.inputSlots.append(v)
+
+            if isinstance(v,(OutputSlot, MultiOutputSlot)):
+                v.name = k
+                cls.outputSlots.append(v)
         return cls
 
     def __call__(cls,*args,**kwargs):
-      # type.__call__ calls instance.__init__ internally
-      instance = type.__call__(cls,*args,**kwargs)
-      instance._after_init()
-      return instance
+        # type.__call__ calls instance.__init__ internally
+        instance = type.__call__(cls,*args,**kwargs)
+        instance._after_init()
+        return instance
 
 
 
 class Operator(object):
     """
     The base class for all Operators.
-    
+
     Operators consist of a class inheriting from this class
     and need to specify their inputs and outputs via
     thei inputSlot and outputSlot class properties.
-    
+
     Each instance of an operator obtains individual
     copies of the inputSlots and outputSlots, which are
     available in the self.inputs and self.outputs instance
     properties.
-    
+
     these instance properties can be used to connect
     the inputs and outputs of different operators.
-    
+
     Example:
         operator1.inputs["InputA"].connect(operator2.outputs["OutputC"])
-    
-    
+
+
     Different examples for simple operators are provided
     in an example directory. plese read through the
     examples to learn how to implement your own operators...
     """
-    
-    #definition of inputs slots
-    inputSlots  = [] 
 
-    #definition of output slots -> operators instances 
-    outputSlots = [] 
+    #definition of inputs slots
+    inputSlots  = []
+
+    #definition of output slots -> operators instances
+    outputSlots = []
     name = ""
     description = ""
     category = "lazyflow"
-    
+
     __metaclass__ = OperatorMetaClass
 
     def __new__( cls, *args, **kwargs ):
@@ -1172,57 +1172,57 @@ class Operator(object):
     def __init__( self, parent = None, graph = None, register = True ):
         # if no parent is given, assign the global graph instance as parent
         if parent is None and graph is None:
-          graph = GlobalGraph()
+            graph = GlobalGraph()
 
         self._configurationNotificationCallbacks = []
         # preserve compatability with old operators
-        # that give the graph as first argument to 
+        # that give the graph as first argument to
         # operators they instantiate
         if parent is not None:
-          if isinstance(parent, Graph):
-            self.graph = parent
-            self._parent = None
-          else:
-            self._parent = parent
-            self.graph = self._parent.graph
+            if isinstance(parent, Graph):
+                self.graph = parent
+                self._parent = None
+            else:
+                self._parent = parent
+                self.graph = self._parent.graph
         if graph is not None:
-          if isinstance(graph, Graph):
-            self.graph = graph
-            self._parent = None
-          elif not  isinstance(graph, bool):
-            self._parent = graph
-            self.graph = self._parent.graph
+            if isinstance(graph, Graph):
+                self.graph = graph
+                self._parent = None
+            elif not  isinstance(graph, bool):
+                self._parent = graph
+                self.graph = self._parent.graph
 
         self._instantiate_slots()
-        
-        
+
+
 
     # continue initialization, when user overrides __init__
     def _after_init(self):
         #provide simple default name for lazy users
-        if self.name == "": 
+        if self.name == "":
             self.name = type(self).__name__
         assert self.graph is not None, "Operator %r: self.graph is None, the parent  (%r) given to the operator must have a valid .graph attribute! " % (self, self._parent)
         # check for slot uniqueness
         temp = {}
         for i in self.inputSlots:
-          if temp.has_key(i.name):
-            raise Exception("ERROR: Operator %s has multiple slots with name %s, please make sure that all input and output slot names are unique" % (self.name, i.name))
-            sys.exit(1)
-          temp[i.name] = True
+            if temp.has_key(i.name):
+                raise Exception("ERROR: Operator %s has multiple slots with name %s, please make sure that all input and output slot names are unique" % (self.name, i.name))
+                sys.exit(1)
+            temp[i.name] = True
 
         for i in self.outputSlots:
-          if temp.has_key(i.name):
-            raise Exception("ERROR: Operator %s has multiple slots with name %s, please make sure that all input and output slot names are unique" % (self.name, i.name))
-            sys.exit(1)
-          temp[i.name] = True
+            if temp.has_key(i.name):
+                raise Exception("ERROR: Operator %s has multiple slots with name %s, please make sure that all input and output slot names are unique" % (self.name, i.name))
+                sys.exit(1)
+            temp[i.name] = True
 
         self._instantiate_slots()
 
         self._setDefaultInputValues()
 
         if len(self.inputs.keys()) == 0:
-          self._setupOutputs()
+            self._setupOutputs()
 
 
 
@@ -1231,81 +1231,81 @@ class Operator(object):
         # defined for the operator for the instance
         for i in self.inputSlots:
             if not self.inputs.has_key(i.name):
-              ii = i._getInstance(self)
-              ii.connect(i.partner)
-              self.inputs[i.name] = ii
+                ii = i._getInstance(self)
+                ii.connect(i.partner)
+                self.inputs[i.name] = ii
 
         for k,v in self.inputs.items():
-          self.__dict__[v.name] = v
-        
+            self.__dict__[v.name] = v
+
         # relicate output slots
-        # defined for the operator for the instance 
+        # defined for the operator for the instance
         for o in self.outputSlots:
             if not self.outputs.has_key(o.name):
-              oo = o._getInstance(self)
-              self.outputs[o.name] = oo         
+                oo = o._getInstance(self)
+                self.outputs[o.name] = oo
 
         for k,v in self.outputs.items():
-          self.__dict__[v.name] = v
+            self.__dict__[v.name] = v
 
     def __setattr__(self, name, value):
-      """
-      This method safeguards that operators do not overwrite slot names with
-      custom instance attributes.
-      """
-      if self.__dict__.has_key("inputs") and self.__dict__.has_key("outputs"):
-        if self.inputs.has_key(name) or self.outputs.has_key(name):
-          assert isinstance(value, Slot), "ERROR: trying to set attribute %r of operator %r to value %r, which is not of type Slot !" % (name, self, value)
-      object.__setattr__(self,name,value)
-      
+        """
+        This method safeguards that operators do not overwrite slot names with
+        custom instance attributes.
+        """
+        if self.__dict__.has_key("inputs") and self.__dict__.has_key("outputs"):
+            if self.inputs.has_key(name) or self.outputs.has_key(name):
+                assert isinstance(value, Slot), "ERROR: trying to set attribute %r of operator %r to value %r, which is not of type Slot !" % (name, self, value)
+        object.__setattr__(self,name,value)
+
 
     def connected(self):
-      """
-      Returns True if all input slots that are non-optional are
-      connected.
-      """
-      allConnected = True
-      for slot in self.inputs.values():
-          if slot._optional is False and slot.connected() is False:
-              allConnected = False
-              break
-      return allConnected
+        """
+        Returns True if all input slots that are non-optional are
+        connected.
+        """
+        allConnected = True
+        for slot in self.inputs.values():
+            if slot._optional is False and slot.connected() is False:
+                allConnected = False
+                break
+        return allConnected
 
     def configured(self):
-      """
-      Returns True if all input slots that are non-optional are
-      connected and configured.
-      """
-      allConfigured = True
-      for slot in self.inputs.values():
-         if slot._optional is False and slot.configured() is False:
-              allConfigured = False
-              break
-      return allConfigured
+        """
+        Returns True if all input slots that are non-optional are
+        connected and configured.
+        """
+        allConfigured = True
+        for slot in self.inputs.values():
+            if slot._optional is False and slot.configured() is False:
+                allConfigured = False
+                break
+        return allConfigured
 
 
     def _setDefaultInputValues(self):
-      for i in self.inputs.values():
-        if i._value is None and i._defaultValue is not None:
-          i.setValue(i._defaultValue)
-         
+        for i in self.inputs.values():
+            if i._value is None and i._defaultValue is not None:
+                i.setValue(i._defaultValue)
+
     def _getOriginalOperator(self):
         return self
-        
+
     def disconnect(self):
         for s in self.outputs.values():
             s.disconnect()
         for s in self.inputs.values():
             s.disconnect()
-    
-    
+
+
     """
-    This method is called when an output of another operator on which 
-    this operators dependds, i.e. to which it is connected gets invalid. 
+    This method is called when an output of another operator on which
+    this operators dependds, i.e. to which it is connected gets invalid.
     The region of interest of the inputslot which is now dirty is specified
     in the key property, the input slot which got dirty is specified in the inputSlot
     property.
-    
+
     This method must calculate what output ports and which subregions of them are
     invalidated by this, and must call the .setDirty(key) of the corresponding
     outputslots.
@@ -1313,35 +1313,35 @@ class Operator(object):
     def propagateDirty(self, inputSlot, roi):
         # default implementation calls old api for backwardcompatability
         if hasattr(roi,"toSlice"):
-          self.notifyDirty(inputSlot,roi.toSlice())
+            self.notifyDirty(inputSlot,roi.toSlice())
         else:
-          print "propagateDirty: roi=", roi
-          raise TypeError(".propagatedirty of Operator %r is not implemented !" % (self)) 
+            print "propagateDirty: roi=", roi
+            raise TypeError(".propagatedirty of Operator %r is not implemented !" % (self))
 
     def notifyDirty(self, inputSlot, key):
         # simple default implementation
-        # -> set all outputs dirty    
+        # -> set all outputs dirty
         for os in self.outputs.values():
             os.setDirty(slice(None,None,None))
 
     """
     This method corresponds to the notifyDirty method, but is used
     for multidimensional inputslots, which contain subslots.
-    
+
     The slots argument is a list of slots in which the first
     element specifies the mainslot (i.e. the slot which is specified
-    in the operator.). The next element specifies the sub slot, i.e. the 
+    in the operator.). The next element specifies the sub slot, i.e. the
     child of the main slot, and so forth.
-    
-    The indexes argument is a list of the subslot indexes. As such it is 
+
+    The indexes argument is a list of the subslot indexes. As such it is
     of lenght n-1 where n is the length of the slots arugment list.
     It contains the indexes of all subslots realtive to their parent slot.
-    
-    The key argument specifies the region of interest.    
+
+    The key argument specifies the region of interest.
     """
     def notifySubSlotDirty(self, slots, indexes, key):
         # simple default implementation
-        # -> set all outputs dirty    
+        # -> set all outputs dirty
         for os in self.outputs.values():
             os.setDirty(slice(None,None,None))
 
@@ -1350,30 +1350,30 @@ class Operator(object):
 
     def _notifyConnect(self, inputSlot):
         pass#self.notifyConnect(inputSlot)
-    
+
     def _notifyConnectAll(self):
         pass
 
     def connect(self, **kwargs):
         for k in kwargs:
-          if k in self.inputs.keys():
-            self.inputs[k].connect(kwargs[k])
-          else:
-            print "ERROR, connect(): operator %s has no slot named %s" % (self.name, k)
-            print "                  available inputSlots are: ", self.inputs.keys()
-            assert(1==2)
+            if k in self.inputs.keys():
+                self.inputs[k].connect(kwargs[k])
+            else:
+                print "ERROR, connect(): operator %s has no slot named %s" % (self.name, k)
+                print "                  available inputSlots are: ", self.inputs.keys()
+                assert(1==2)
 
 
     def _setupOutputs(self):
-      self.setupOutputs()
+        self.setupOutputs()
 
-      #notify outputs of probably changed meta information
-      for k,v in self.outputs.items():
-        v._changed()
-    
-      # Call anyone who wanted to be notified of configuration changes
-      for fn, kwargs in self._configurationNotificationCallbacks:
-          fn(**kwargs)
+        #notify outputs of probably changed meta information
+        for k,v in self.outputs.items():
+            v._changed()
+
+        # Call anyone who wanted to be notified of configuration changes
+        for fn, kwargs in self._configurationNotificationCallbacks:
+            fn(**kwargs)
 
     def notifyConfigured(self, callbackFn, **kwargs):
         """
@@ -1381,7 +1381,7 @@ class Operator(object):
         The callback will be called immediately after this operator's setupOutputs() function is called.
         """
         self._configurationNotificationCallbacks.append( (callbackFn, kwargs) )
-        
+
     def disconnectNotifyConfigured(self, callbackFn, **kwargs):
         """
         Unsubscribe the given callback from the "configured" callback list.
@@ -1389,21 +1389,21 @@ class Operator(object):
         # A ValueError here is probably a real problem in the client code,
         #  so we won't catch that exception.
         self._configurationNotificationCallbacks.remove( (callbackFn, kwargs) )
-    
+
     def setupOutputs(self):
-      """
-      This method is called when all input slots of an operator are
-      successfully connected, a successful connection is also established
-      if the input slot is not connected to another slot, but has
-      a default value defined.
+        """
+        This method is called when all input slots of an operator are
+        successfully connected, a successful connection is also established
+        if the input slot is not connected to another slot, but has
+        a default value defined.
 
-      In this method the operator developer should stup 
-      the .meta information of the outputslots.
+        In this method the operator developer should stup
+        the .meta information of the outputslots.
 
-      The default implementation emulates the old api behaviour.
-      """
-      # emulate old behaviour
-      self.notifyConnectAll()
+        The default implementation emulates the old api behaviour.
+        """
+        # emulate old behaviour
+        self.notifyConnectAll()
 
 
 
@@ -1411,7 +1411,7 @@ class Operator(object):
     OBSOLETE API
     This method is called opon connection of all inputslots of
     an operator.
-    
+
     The operator should setup the output all outputslots accordingly.
     this includes setting their shape and axistags properties.
     """
@@ -1424,13 +1424,13 @@ class Operator(object):
     This method of the operator is called when a connected operator
     or an outside user of the graph wants to retrieve the calculation results
     from the operator.
-    
+
     The slot which is requested is specified in the slot arguemt,
     the region of interest is specified in the key property.
-    The result area into which the calculation results MUST be written is 
+    The result area into which the calculation results MUST be written is
     specified in the result argument. "result" is an numpy.ndarray that
     has the same shape as the region of interest(key).
-    
+
     The method must retrieve all required inputs that are neccessary to
     calculate the requested output area from its input slots,
     run the calculation and put the results into the provided result argument.
@@ -1442,32 +1442,32 @@ class Operator(object):
     """
     This method corresponds to the getOutSlot method, but is used
     for multidimensional inputslots, which contain subslots.
-    
+
     The slots argument is a list of slots in which the first
     element specifies the mainslot (i.e. the slot which is specified
-    in the operator.). The next element specifies the sub slot, i.e. the 
+    in the operator.). The next element specifies the sub slot, i.e. the
     child of the main slot, and so forth.
-    
-    The indexes argument is a list of the subslot indexes. As such it is 
+
+    The indexes argument is a list of the subslot indexes. As such it is
     of lenght n-1 where n is the length of the slots arugment list.
     It contains the indexes of all subslots realtive to their parent slot.
-    
-    The key argument specifies the region of interest.    
+
+    The key argument specifies the region of interest.
     """
     def getSubOutSlot(self, slots, indexes, key, result):
         return None
-    
+
     def setInSlot(self, slot, key, value):
         pass
 
     def setSubInSlot(self,slots,indexes, key,value):
         pass
 
-    
+
 
 class OperatorWrapper(Operator):
     name = ""
-    
+
     def __init__(self, operator, promotedSlotNames = None):
         """
         Constructs a wrapper for the given operator.
@@ -1482,34 +1482,34 @@ class OperatorWrapper(Operator):
         self.operator = operator
         self.graph = operator.graph
         self._parent = operator._parent
-        
+
         assert self.operator is not None
-        
+
         self.name = "Wrapped " + operator.name
 
         if promotedSlotNames is None:
-            # No slots specified: All original slots are promoted by default
+                # No slots specified: All original slots are promoted by default
             promotedSlotNames = set(self.operator.inputs.keys())
         else:
             promotedSlotNames = set(promotedSlotNames)
-        
+
         # ALl Outputs are always promoted
         promotedSlotNames |= set(self.operator.outputs.values())
-        
+
         self.promotedSlots = promotedSlotNames
-        
+
         self.innerOperators = []
         self.origInputs = self.operator.inputs.copy()
         self.origOutputs = self.operator.outputs.copy()
         if lazyflow.verboseWrapping:
-          print "wrapping operator [self=%r] '%s'" % (operator, operator.name)
-        
+            print "wrapping operator [self=%r] '%s'" % (operator, operator.name)
+
         self._inputSlots = []
         self._outputSlots = []
-        
+
         # replicate callbacks
         self._configurationNotificationCallbacks = self.operator._configurationNotificationCallbacks
-        
+
         # replicate input slot definitions
         for islot in self.operator.inputSlots:
             level = islot.level
@@ -1522,7 +1522,7 @@ class OperatorWrapper(Operator):
             level = oslot.level + 1
             self._outputSlots.append(oslot._getInstance(self, level = level))
 
-                
+
         # replicate input slots for the instance
         for islot in self.operator.inputs.values():
             level = islot.level
@@ -1536,7 +1536,7 @@ class OperatorWrapper(Operator):
                 op = op.operator
             op.inputs[islot.name] = ii
             setattr(op,islot.name,ii)
-        
+
         # replicate output slots for the instance
         for oslot in self.operator.outputs.values():
             level = oslot.level + 1
@@ -1560,58 +1560,58 @@ class OperatorWrapper(Operator):
             if value is not None:
                 ii.setValue(value)
             islot.disconnect()
-        
+
         self._setDefaultInputValues()
-                
+
         maxLen = self._ensureInputSize()
-      
+
         #connect output slots
         for oslot in self.origOutputs.values():
-            oo = self.outputs[oslot.name]            
+            oo = self.outputs[oslot.name]
             partners = copy.copy(oslot.partners)
             oslot.disconnect()
-            for p in partners:         
+            for p in partners:
                 p.connect(oo)
-        
+
         for o in self.outputs.values():
-          o._changed()
-        
+            o._changed()
+
         # register callbacks for inserted and removed input subslots
         for s in self.inputs.values():
-          if s.name in self.promotedSlots:
-            s.notifyInserted(self._callbackInserted)
-            s.notifyRemove(self._callbackRemove)
-            s.notifyConnect(self._callbackConnect)
+            if s.name in self.promotedSlots:
+                s.notifyInserted(self._callbackInserted)
+                s.notifyRemove(self._callbackRemove)
+                s.notifyConnect(self._callbackConnect)
 
         # register callbacks for inserted and removed output subslots
         for s in self.outputs.values():
-          s.notifyInserted(self._callbackInserted)
-          s.notifyRemove(self._callbackRemove)
+            s.notifyInserted(self._callbackInserted)
+            s.notifyRemove(self._callbackRemove)
 
     def _callbackInserted(self, slot, index, size):
-      self._insertInnerOperator(index, size)
-    
+        self._insertInnerOperator(index, size)
+
     def _callbackRemove(self, slot, index, size):
-      self._removeInnerOperator(index, size)
+        self._removeInnerOperator(index, size)
 
     def _callbackConnect(self, slot):
-      slot.resize(len(self.innerOperators))
-      for index, innerOp in enumerate(self.innerOperators):
-        innerOp.inputs[slot.name].connect(slot[index])
+        slot.resize(len(self.innerOperators))
+        for index, innerOp in enumerate(self.innerOperators):
+            innerOp.inputs[slot.name].connect(slot[index])
 
     def _getOriginalOperator(self):
         op = self.operator
         while isinstance(op, OperatorWrapper):
             op = self.operator
         return op
-                    
+
     def _testRestoreOriginalOperator(self):
         #TODO: only restore to the level that is needed, not to the most upper one !
         for iname, islot in self.inputs.items():
             if islot.partner is not None:
                 if islot.partner.level > self.origInputs[iname].level:
                     return
-                
+
         if lazyflow.verboseWrapping:
             print "Restoring original operator [self=%r] named '%s'" % (self, self.name)
 
@@ -1621,15 +1621,15 @@ class OperatorWrapper(Operator):
 
         op.operator.outputs = op.origOutputs
         for o in op.operator.outputs.values():
-          setattr(op.operator, o.name, o)
-        
-        
+            setattr(op.operator, o.name, o)
+
+
         op.operator.inputs = op.origInputs
         for i in op.operator.inputs.values():
-          setattr(op.operator, i.name, i)
+            setattr(op.operator, i.name, i)
 
         op = op.operator
-         
+
 
         # restore current connections
         for k, islot in self.inputs.items():
@@ -1643,8 +1643,8 @@ class OperatorWrapper(Operator):
                 p.connect(op.outputs[k])
 
     def onDisconnect(self, slot):
-      self._testRestoreOriginalOperator() 
-                    
+        self._testRestoreOriginalOperator()
+
     def notifyDirty(self, slot, key):
         pass
 
@@ -1658,7 +1658,7 @@ class OperatorWrapper(Operator):
             s.disconnect()
         self._testRestoreOriginalOperator()
 
-    
+
     def _createInnerOperator(self):
         if self.operator.__class__ is not OperatorWrapper:
             opcopy = self.operator.__class__(parent = self)
@@ -1670,51 +1670,51 @@ class OperatorWrapper(Operator):
         return opcopy
 
     def _insertInnerOperator(self, index, length):
-      if len(self.innerOperators) == length:
-        return self.innerOperators[index]
-      op = self._createInnerOperator()
-      self.innerOperators.insert(index, op)
+        if len(self.innerOperators) == length:
+            return self.innerOperators[index]
+        op = self._createInnerOperator()
+        self.innerOperators.insert(index, op)
 
-      # Connect the inner operator's inputs to our outer input slots
-      for key,outerSlot in self.inputs.items():
-        # Only connect to a subslot if it was promoted during wrapping
-        if outerSlot.name in self.promotedSlots:
-            outerSlot.insertSlot(index, length)
-            partner = outerSlot[index]
-        else:
-            partner = outerSlot
-        op.inputs[key].connect(partner)
-      
-      for key,mslot in self.outputs.items():
-        mslot.insertSlot(index, length)
-        mslot[index].connect(op.outputs[key])
-        #mslot[index]._changed()
-      return op
-    
+        # Connect the inner operator's inputs to our outer input slots
+        for key,outerSlot in self.inputs.items():
+            # Only connect to a subslot if it was promoted during wrapping
+            if outerSlot.name in self.promotedSlots:
+                outerSlot.insertSlot(index, length)
+                partner = outerSlot[index]
+            else:
+                partner = outerSlot
+            op.inputs[key].connect(partner)
+
+        for key,mslot in self.outputs.items():
+            mslot.insertSlot(index, length)
+            mslot[index].connect(op.outputs[key])
+            #mslot[index]._changed()
+        return op
+
     def _removeInnerOperator(self, index, length):
-      if len(self.innerOperators) == length:
-        return
-      assert index < len(self.innerOperators)
-      
-      op = self.innerOperators.pop(index)
-      
-      for name, oslot in self.outputs.items():
-        oslot.removeSlot(index, length)
+        if len(self.innerOperators) == length:
+            return
+        assert index < len(self.innerOperators)
 
-      for name, islot in self.inputs.items():
-        islot.removeSlot(index, length)
+        op = self.innerOperators.pop(index)
 
-      op.disconnect()
-      length = len(self.innerOperators)
+        for name, oslot in self.outputs.items():
+            oslot.removeSlot(index, length)
 
-    
+        for name, islot in self.inputs.items():
+            islot.removeSlot(index, length)
+
+        op.disconnect()
+        length = len(self.innerOperators)
+
+
     def _ensureInputSize(self, numMax = 0, event = None):
         newInnerOps = []
         maxLen = numMax
         for name, islot in self.inputs.items():
-            #assert isinstance(islot, MultiInputSlot)
+                #assert isinstance(islot, MultiInputSlot)
             maxLen = max(islot._requiredLength(), maxLen)
-        
+
         while maxLen > len(self.innerOperators):
             self._insertInnerOperator(len(self.innerOperators), maxLen)
 
@@ -1724,16 +1724,16 @@ class OperatorWrapper(Operator):
         return maxLen
 
     def _setupOutputs(self):
-      for name, oslot in self.outputs.items():
-        oslot._changed()
-      
-      # Call anyone who wanted to be notified of configuration changes
-      for fn, kwargs in self._configurationNotificationCallbacks:
-          fn(**kwargs)
+        for name, oslot in self.outputs.items():
+            oslot._changed()
 
-                
+        # Call anyone who wanted to be notified of configuration changes
+        for fn, kwargs in self._configurationNotificationCallbacks:
+            fn(**kwargs)
+
+
     def getOutSlot(self, slot, key, result):
-        #this should never be called !!!        
+            #this should never be called !!!
         assert 1==2
 
     def getSubOutSlot(self, slots, indexes, key, result):
@@ -1743,11 +1743,11 @@ class OperatorWrapper(Operator):
             return self.innerOperators[indexes[0]].getOutSlot(self.innerOperators[indexes[0]].outputs[slots[0].name], key, result)
         else:
             self.innerOperators[indexes[0]].getSubOutSlot(slots[1:], indexes[1:], key, result)
-        
+
     def setInSlot(self, slot, key, value):
         # This should never be called for any slots that were promoted (promoted slots are all multi)
         assert slot.name not in self.promotedSlots
-        
+
         # Broadcast this to all inner operators
         for innerOp in self.innerOperators:
             innerSlot = innerOp.inputs[slot.name]
@@ -1757,37 +1757,34 @@ class OperatorWrapper(Operator):
         # Forward this call to the operator (whose slot is partnered with ours)
         slot = self.innerOperators[index].inputs[slot.name]
         self.innerOperators[index].setInSlot(slot, key, value)
-                        
+
 class Graph(object):
-  def __init__(self, numThreads=-1):
-    pass
+    def __init__(self, numThreads=-1):
+        pass
 
-  def stopGraph(self):
-    pass
+    def stopGraph(self):
+        pass
 
-  def finalize(self):
-    pass
+    def finalize(self):
+        pass
 
-  def resumeGraph(self):
-    pass
+    def resumeGraph(self):
+        pass
 
-  def _registerCache(self, cache):
-    pass
+    def _registerCache(self, cache):
+        pass
 
-  def _notifyMemoryHit(self, *args, **kwargs):
-    pass
+    def _notifyMemoryHit(self, *args, **kwargs):
+        pass
 
-  def _notifyMemoryAllocation(self, *args, **kwargs):
-    pass
+    def _notifyMemoryAllocation(self, *args, **kwargs):
+        pass
 
-  def _notifyFreeMemory(self, *args, **kwargs):
-    pass
+    def _notifyFreeMemory(self, *args, **kwargs):
+        pass
 
 # singleton graph class, that
 # serves as parent graph for all operators
 # wich are created without parent
 class GlobalGraph(Graph):
-  __metaclass__ = Singleton
-
-
-
+    __metaclass__ = Singleton

@@ -6,45 +6,45 @@ if __name__ == "__main__":
 
     random.seed()
     z = 0
-     
-     
-    def compareRequests(op,imgFull,imgPart,start,stop):        
+
+
+    def compareRequests(op,imgFull,imgPart,start,stop):
 
         c = True
-        
-        global z   
-        
+
+        global z
+
         dim = len(stop)
-        
-        
+
+
         diff = []
         for i in range(dim):
             diff.append(stop[i]-start[i])
-            
-        ld = diff.index(max(diff))    
-       
+
+        ld = diff.index(max(diff))
+
         size = 1
         for i in diff:
             size *= i
 
 
-        bsize = random.randint(50000,90000)    
-    
+        bsize = random.randint(50000,90000)
+
         if size < bsize:
             for i in range(dim):
                 start[i] = int(start[i]+0.5)
                 stop[i] = int(stop[i]+0.5)
-            
-            z +=1            
-     
+
+            z +=1
+
             req = op.outputs["Output"][roiToSlice(start,stop)].writeInto(imgPart[roiToSlice(start,stop)])
             res = req.wait()
-            
+
             #vigra.impex.writeImage(res,"/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/tt/result_%05d.jpg" %z)
-            
+
             op.outputs["Output"][roiToSlice(start,stop)].writeInto(imgPart[roiToSlice(start,stop)]).wait()
             #vigra.impex.writeImage(imgPart,"/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/tt/resultPart_%05d.jpg" %z)
-        
+
             if not (imgFull[roiToSlice(start,stop)] == res).all():
                 c = False
             return c
@@ -56,13 +56,13 @@ if __name__ == "__main__":
         for i in range(p):
             start[ld] += step
             stop[ld] = start[ld] + step
-            c = compareRequests(op,imgFull, imgPart,start[:],stop[:])    
-        
-        
+            c = compareRequests(op,imgFull, imgPart,start[:],stop[:])
+
+
         return c
-    
-    
-    
+
+
+
     g = Graph()
 
 
@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
     imgPart = numpy.zeros((840,840))
     dest = op.outputs["Output"][:].allocate().wait()
-    
+
     #vigra.impex.writeImage(dest,"/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/tt/resultFull.jpg")
 
     if compareRequests(op, dest,imgPart,[0,0],[840,840]):

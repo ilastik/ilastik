@@ -1,7 +1,7 @@
 """
-This operator scales the data(e.g an image) of an Input Slot. 
-To make this operator work one has to connect the InputSlot("Input") with an 
-Output Slot of another operator, e.g. vimageReader and set a value for the 
+This operator scales the data(e.g an image) of an Input Slot.
+To make this operator work one has to connect the InputSlot("Input") with an
+Output Slot of another operator, e.g. vimageReader and set a value for the
 InputSlot("ScaleFactor"). When all Input Slots of an operator are connected or set,
 the notifyConnectAll method is called implicit. Here one can do different
 checkings and define the type, shape and axistags of the Output Slot of the operator.
@@ -15,7 +15,7 @@ import threading
 from lazyflow.graph import *
 import copy
 
-from lazyflow.operators.operators import OpArrayPiper 
+from lazyflow.operators.operators import OpArrayPiper
 from lazyflow.operators.vigraOperators import *
 from lazyflow.operators.valueProviders import *
 from lazyflow.operators.classifierOperators import *
@@ -26,21 +26,21 @@ from lazyflow.operators.generic import *
 class OpImageResizer(Operator):
     name = "OpImageResizer"
     description = "Resizes an Image using Spline Interpolation "
- 
+
     #create Input and Output Slots (objects) of the operator
     #the different InputSlots and OutputSlot are saved in the dictionaries
     #"inputs" and "output"
     inputSlots = [InputSlot("Input"), InputSlot("ScaleFactor")]
-    outputSlots = [OutputSlot("Output")]    
-    
-    #this method is called when all InputSlots, 
+    outputSlots = [OutputSlot("Output")]
+
+    #this method is called when all InputSlots,
     #are set or connected with an OutputSlot or a value is set.
     def notifyConnectAll(self):
 
         inputSlot = self.inputs["Input"]
-        self.scaleFactor = self.inputs["ScaleFactor"].value        
+        self.scaleFactor = self.inputs["ScaleFactor"].value
         shape =  self.inputs["Input"].shape
-        
+
         #define the type, shape and axistags of the Output-Slot
         self.outputs["Output"]._dtype = inputSlot.dtype
         self.outputs["Output"]._shape = tuple(numpy.hstack(((numpy.array(shape))[:-1] * self.scaleFactor, (numpy.array(shape))[-1])))
@@ -50,45 +50,45 @@ class OpImageResizer(Operator):
 
     #this method does the scaling
     def getOutSlot(self, slot, key, result):
-        
+
         #get start and stop coordinates of the requested OutputSlot area
-        start, stop = sliceToRoi(key, self.shape) 
-        
+        start, stop = sliceToRoi(key, self.shape)
+
         #additional edge, necessary for the SplineInterpolation to work properly
-        edge = 3        
-        
+        edge = 3
+
         #calculate reading start and stop coordinates(of InputSlot)
         rstart = numpy.maximum(start / self.scaleFactor - edge * self.scaleFactor, start-start )
         rstart[-1] = start[-1] # do not enlarge channel dimension
         rstop = numpy.minimum(stop / self.scaleFactor + edge * self.scaleFactor, self.inputs["Input"].shape)
         rstop[-1] = stop[-1]# do not enlarge channel dimension
-        #create reading key        
+        #create reading key
         rkey = roiToSlice(rstart,rstop)
-        
+
         #get the data of the InputSlot
         img = numpy.ndarray(rstop-rstart,dtype=self.dtype)
         img = self.inputs["Input"][rkey].allocate().wait()
-         
+
         #create result array
         tmp_result = numpy.ndarray(tuple(numpy.hstack(((rstop-rstart)[:-1] * self.scaleFactor, (rstop-rstart)[-1]))), dtype=numpy.float32)
-     
+
         #apply SplineInterpolation
         res = vigra.sampling.resizeImageSplineInterpolation(image = img.astype(numpy.float32), out = tmp_result)
-              
+
         #calculate correction for interpolated edge
-        corr = numpy.maximum(numpy.minimum(start / self.scaleFactor - edge * self.scaleFactor, start-start ) , - edge * self.scaleFactor)        
+        corr = numpy.maximum(numpy.minimum(start / self.scaleFactor - edge * self.scaleFactor, start-start ) , - edge * self.scaleFactor)
 
         #calculate SubKey for interpolated array without interpolated edge
         subStart = (edge*self.scaleFactor+corr)*self.scaleFactor
         subStart[-1] = start[-1]
         subStop = numpy.minimum(stop - start + subStart, res.shape)
         subStop[-1] = stop[-1]
-        
+
         subKey = roiToSlice(subStart, subStop)
-        
+
         #write rescaled image into result
         result[:] = res[subKey]
-        
+
 
     def notifyDirty(self,slot,key):
         self.outputs["Output"].setDirty(key)
@@ -96,7 +96,7 @@ class OpImageResizer(Operator):
     @property
     def shape(self):
         return self.outputs["Output"]._shape
-    
+
     @property
     def dtype(self):
         return self.outputs["Output"]._dtype
@@ -105,9 +105,9 @@ if __name__=="__main__":
     #create new Graphobject
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
 
-    #create ImageReader-Operator      
+    #create ImageReader-Operator
     vimageReader = OpImageReader(g)
-    #read an image 
+    #read an image
     vimageReader.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/tests/ostrich.jpg")
 
     #create Resizer-Operator with Graph-Objekt as argument
@@ -123,7 +123,7 @@ if __name__=="__main__":
 
     #resizer.outputs["Output"][:]returns an "GetItemWriterObject" object.
     #its method "allocate" will be executed, this method call the "writeInto"
-    #method which calls the "fireRequest" method of the, in this case, 
+    #method which calls the "fireRequest" method of the, in this case,
     #"OutputSlot" object which calls another method in "OutputSlot and finally
     #the "getOutSlot" method of our operator.
     #The wait() function blocks other activities and waits till the results

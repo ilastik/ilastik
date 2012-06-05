@@ -5,10 +5,10 @@ from math import ceil, floor
 
 class TinyVector(list):
     __slots__ = []
-    
+
     def copy(self):
         return TinyVector(self)
-    
+
     def __add__(self, other):
         if hasattr(other, "__iter__"):
             return TinyVector(map(lambda x,y: x + y ,self,other))
@@ -22,7 +22,7 @@ class TinyVector(list):
         else:
             self = TinyVector(map(lambda x: x + other ,self))
             return self
-            
+
     def __sub__(self, other):
         if hasattr(other, "__iter__"):
             return TinyVector(map(lambda x,y: x - y ,self,other))
@@ -34,7 +34,7 @@ class TinyVector(list):
             return TinyVector(map(lambda x,y: y - x ,self,other))
         else:
             return TinyVector(map(lambda x: other - x ,self))
-            
+
     def __mul__(self, other):
         if hasattr(other, "__iter__"):
             return TinyVector(map(lambda x,y: x * y ,self,other))
@@ -89,7 +89,7 @@ class TinyVector(list):
             return TinyVector(map(lambda x,y:  x < y,self,other))
         else:
             return TinyVector(map(lambda x:  x < other ,self))
-            
+
     def ceil(self):
         return TinyVector(map(lambda x:  ceil(x) ,self))
         #return numpy.ceil(numpy.array(self))
@@ -97,15 +97,15 @@ class TinyVector(list):
     def floor(self):
         return TinyVector(map(lambda x:  floor(x) ,self))
         #return numpy.floor(numpy.array(self))
-    
+
     def _asint(self):
         return TinyVector(map(lambda x:  x.__int__() ,self))
-    
+
     def insert(self,index, value):
         l = list(self)
         l.insert(index,value)
         return TinyVector(l)
-    
+
     def all(self):
         answer = True
         for e in self:
@@ -113,21 +113,21 @@ class TinyVector(list):
                 answer = False
                 break
         return answer
-                      
+
     def any(self):
         answer = False
         for e in self:
             if e:
                 answer = True
                 break
-        return answer                      
-                      
+        return answer
+
 TinyVector.__radd__ = TinyVector.__add__
-TinyVector.__rmul__ = TinyVector.__mul__   
+TinyVector.__rmul__ = TinyVector.__mul__
 
 
 
-sTrl1 =   lambda x: x if type(x) != slice else x.start if x.start != None else 0 
+sTrl1 =   lambda x: x if type(x) != slice else x.start if x.start != None else 0
 sTrl2 =  lambda x,y: y if type(y) != slice else y.stop if y.stop != None else x
 sTrl3 = lambda x,y: y + 1 if x == y else y
 def sliceToRoi(s, shape, extendSingleton = True):
@@ -137,12 +137,12 @@ def sliceToRoi(s, shape, extendSingleton = True):
             ROI instance corresponding to slice
     """
     if type(s) == tuple or type(s) == list:
-      assert len(s) == len(shape), "sliceToRoi failed: slice=%r, but shape=%r" % (s, shape)
-      start = map(sTrl1, s)
-      stop = map(sTrl2, shape,s)
+        assert len(s) == len(shape), "sliceToRoi failed: slice=%r, but shape=%r" % (s, shape)
+        start = map(sTrl1, s)
+        stop = map(sTrl2, shape,s)
     else: #this handles the [:] case
-      start = [0]*len(shape)
-      stop = shape
+        start = [0]*len(shape)
+        stop = shape
     if extendSingleton:
         stop = map(sTrl3,start,stop)
     return TinyVector(start), TinyVector(stop)
@@ -173,7 +173,7 @@ def roiToSlice(start, stop, hardBind=False):
 def extendSlice(start, stop, shape, sigma, window = 3.5):
     zeros = start - start
     if hasattr(sigma, "__iter__"):
-      sigma = TinyVector(sigma)
+        sigma = TinyVector(sigma)
     newStart = numpy.maximum(start - numpy.ceil(window * sigma), zeros)
     sa = numpy.array(shape)
     newStop = numpy.minimum(stop + numpy.ceil(window * sigma), sa)
@@ -189,4 +189,3 @@ def block_view(A, block= (3, 3)):
     shape= (A.shape[0]/ block[0], A.shape[1]/ block[1])+ block
     strides= (block[0]* A.strides[0], block[1]* A.strides[1])+ A.strides
     return ast(A, shape= shape, strides= strides)
-

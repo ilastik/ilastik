@@ -26,7 +26,7 @@ class DefaultConfigParser(ConfigParser.SafeConfigParser):
             self.configfile = open(CONFIG_DIR+"config", "r+")
         self.readfp(self.configfile)
         self.configfile.close()
-    
+
     def get(self, section, option, default = None):
         """
         accepts a default parameter and returns its value

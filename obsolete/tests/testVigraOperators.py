@@ -28,14 +28,14 @@ operators = [OpGaussianSmoothing,OpOpening, OpClosing, OpHessianOfGaussian]
 
 print "Beginning vigra operator tests..."
 for op in operators:
-    
+
     operinstance = op(graph)
     operinstance.inputs["Input"].connect(ostrichProvider.outputs["Image"])
     operinstance.inputs["sigma"].setValue(float(10)) #connect(sigmaProvider)
     result = operinstance.outputs["Output"][:,:,:].allocate().wait()
     if result.shape[-1] > 3:
         result = result[...,0:3]
-    
+
     a = operinstance.outputs["Output"].axistags
     result = result.view(vigra.VigraArray)
     result.axistags=a
@@ -82,18 +82,18 @@ for i in range(1,2):
     time.sleep(1)
     r1  = g4.outputs["Output"][:,:,1].allocate().wait()
     r2 = g3.outputs["Output"][0][:,:,1].allocate().wait()
-    
+
     assert (r1[:] == r2[:]).all(), i
 
 def pups(dest):
-  pass
+    pass
 
 requests = []
 for i in range(100):
     r = g3.outputs["Output"][0][:,:,:].allocate()
     #r.notify(pups)
     requests.append(r)
-    
+
 import gc
 
 i= 0

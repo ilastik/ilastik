@@ -45,9 +45,9 @@ except:
         ops2 = list(itersubclasses(Operator))
 
         newOps = list(set(list(ops2)).difference(set(list(ops))))
-        
+
         for o in newOps:
             print "    Adding", o.__name__
             globals()[o.__name__] = o
-	'''
+        '''
     sys.stdout.write(os.linesep)

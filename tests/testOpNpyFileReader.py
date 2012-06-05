@@ -8,7 +8,7 @@ class TestOpNpyFileReader(object):
     def setUp(self):
         self.graph = lazyflow.graph.Graph()
         self.testDataFileName = 'NptTestData.npy'
-            
+
         # Start by writing some test data to disk.
         self.testData = numpy.zeros((10, 11))
         for x in range(0,10):
@@ -19,12 +19,12 @@ class TestOpNpyFileReader(object):
     def tearDown(self):
         # Clean up: Delete the test file.
         os.remove(self.testDataFileName)
-    
+
     def test_OpNpyFileReader(self):
         # Now read back our test data using an OpNpyFileReader operator
         npyReader = OpNpyFileReader(self.graph)
         npyReader.FileName.setValue(self.testDataFileName)
-    
+
         # Read the entire file and verify the contents
         a = npyReader.Output[:].wait()
         assert a.shape == (10,11,1) # OpNpyReader automatically added a channel axis

@@ -42,7 +42,7 @@ source0.inputs["Input"][10:20,5:15] = 17
 
 
 def closure(result, req, fuchs):
-    req.wait() 
+    req.wait()
     print "...notify request finished"
     print "Result:", result
     print "Fuchs:", fuchs

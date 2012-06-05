@@ -6,7 +6,7 @@ import os
 import vigra
 
 class TestOpStreamingHdf5Reader(object):
-    
+
     def setUp(self):
         self.graph = Graph()
         self.testDataFileName = 'test.h5'

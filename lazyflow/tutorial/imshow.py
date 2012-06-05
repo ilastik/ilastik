@@ -5,7 +5,7 @@ if QtGui.QApplication.instance() is None:
     qa = QtGui.QApplication([])
 else:
     qa = QtGui.QApplication.instance()
-    
+
 def imshow(arr):
     if not isinstance(arr,vigra.VigraArray):
         arr = arr.swapaxes(0,1).view(numpy.ndarray)

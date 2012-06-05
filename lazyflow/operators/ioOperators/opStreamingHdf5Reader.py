@@ -7,7 +7,7 @@ class OpStreamingHdf5Reader(Operator):
     """
     name = "OpStreamingHdf5Reader"
     category = "Reader"
-    
+
     # The project hdf5 File object (already opened)
     ProjectFile = InputSlot(stype='hdf5File')
 
@@ -16,7 +16,7 @@ class OpStreamingHdf5Reader(Operator):
 
     # Output data
     OutputImage = OutputSlot()
-    
+
     def __init__(self, graph):
         super(OpStreamingHdf5Reader, self).__init__(graph=graph)
 
@@ -26,14 +26,14 @@ class OpStreamingHdf5Reader(Operator):
         internalPath = self.InternalPath.value
 
         dataset = hdf5File[internalPath]
-        
+
         try:
             # Read the axistags property without actually importing the data
             axistagsJson = hdf5File[internalPath].attrs['axistags'] # Throws KeyError if 'axistags' can't be found
             axistags = vigra.AxisTags.fromJSON(axistagsJson)
         except KeyError:
             # No axistags found.
-            numDimensions = len(dataset.shape) 
+            numDimensions = len(dataset.shape)
             assert numDimensions != 1, "OpStreamingHdf5Reader: Support for 1-D data not yet supported"
             assert numDimensions != 2, "OpStreamingHdf5Reader: BUG: 2-D was supposed to be reshaped above."
             if numDimensions == 3:

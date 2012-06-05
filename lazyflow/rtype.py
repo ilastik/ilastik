@@ -23,14 +23,14 @@ class SubRegion(Roi):
             self.stop = TinyVector(stop)
         self.axistags = None
         self.dim = len(self.start)
-    
+
     def __str__( self ):
         return "".join(("Subregion: start '", str(self.start), "' stop '", str(self.stop), "'"))
-    
+
     def setAxistags(self,axistags):
         assert type(axistags) == vigra.vigranumpycore.AxisTags
         self.axistags = axistags
-    
+
     def expandByShape(self,shape):
         """
         extend a roi by a given in shape
@@ -43,7 +43,7 @@ class SubRegion(Roi):
             shape[self.axistags.channelIndex] = 0
         self.start = TinyVector([x-s for x,s in zip(self.start,shape)])
         self.stop = TinyVector([x+s for x,s in zip(self.stop,shape)])
-    
+
     def decreaseByShape(self,shape):
         """
         extend a roi by a given in shape
@@ -56,7 +56,7 @@ class SubRegion(Roi):
             shape[self.axistags.channelIndex] = 0
         self.start = TinyVector([x+s for x,s in zip(self.start,shape)])
         self.stop = TinyVector([x-s for x,s in zip(self.stop,shape)])
-    
+
     def popAxis(self,axis):
         for tag,i in zip(self.axistags,range(len(self.axistags))):
             if tag.key == axis:
@@ -64,9 +64,9 @@ class SubRegion(Roi):
                 popKey = i
         self.start.pop(popKey)
         self.stop.pop(popKey)
-    
+
     def changeCoordinateSystemTo(self,shape):
         pass
-            
+
     def toSlice(self, hardBind = False):
         return roiToSlice(self.start,self.stop, hardBind)

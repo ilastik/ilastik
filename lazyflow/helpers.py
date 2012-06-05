@@ -32,7 +32,7 @@ def itersubclasses(cls, _seen=None):
     >>> class C(A): pass
     >>> class D(B,C): pass
     >>> class E(D): pass
-    >>> 
+    >>>
     >>> for cls in itersubclasses(A):
     ...     print(cls.__name__)
     B
@@ -43,7 +43,7 @@ def itersubclasses(cls, _seen=None):
     >>> [cls.__name__ for cls in itersubclasses(object)] #doctest: +ELLIPSIS
     ['type', ...'tuple', ...]
     """
-    
+
     if not isinstance(cls, type):
         raise TypeError('itersubclasses must be called with '
                         'new-style classes, not %.100r' % cls)
@@ -80,7 +80,7 @@ def detectCPUs():
 
 def generateRandomKeys(maxShape,minShape = 0,minWidth = 0):
     """
-    for a given shape of any dimension this method returns a list of slicings 
+    for a given shape of any dimension this method returns a list of slicings
     which is bounded by maxShape and minShape and has the minimum Width minWidth
     in all dimensions
     """
@@ -92,15 +92,15 @@ def generateRandomKeys(maxShape,minShape = 0,minWidth = 0):
     while len([x for x in tmp if not x[1]-x[0] <= minWidth]) < maxDim:
         tmp = numpy.random.rand(maxDim,2)
         for i in range(maxDim):
-                tmp[i,:] *= (maxShape[i]-minShape[i])
-                tmp[i,:] += minShape[i]
-                tmp[i,:] = numpy.sort(numpy.round(tmp[i,:]))
+            tmp[i,:] *= (maxShape[i]-minShape[i])
+            tmp[i,:] += minShape[i]
+            tmp[i,:] = numpy.sort(numpy.round(tmp[i,:]))
     key = [slice(int(x[0]),int(x[1]),None) for x in tmp]
     return key
 
 def generateRandomRoi(maxShape,minShape = 0,minWidth = 0):
     """
-    for a given shape of any dimension this method returns a roi which is 
+    for a given shape of any dimension this method returns a roi which is
     bounded by maxShape and minShape and has the minimum Width in minWidth
     in all dimensions
     """
@@ -116,26 +116,26 @@ def generateRandomRoi(maxShape,minShape = 0,minWidth = 0):
 
 class AxisIterator:
     def __init__(self, source, sourceAxis, destination, destinationAxis):
-        
+
         self.source = source
         self.sourceAxis = sourceAxis
         self.dest = destination
         self.destAxis = destinationAxis
-        
+
         self.axisDict = {}
         self.revAxisDict = {}
-        
+
         #check for the neccessary interface
 
         if not hasattr(self.source, 'shape'):
             raise RuntimeError('Source has no \'shape\' attribute')
         if not hasattr(self.dest, 'shape'):
             raise RuntimeError('Destination has no \'shape\' attribute')
-        
+
         #ONLY the source needs axistags right now
         if not hasattr(self.source, 'axistags'):
             raise RuntimeError('Source has no \'axistags\' attribute')
-        
+
         if not hasattr(self.source, '__getslice__'):
             raise RuntimeError('Source has no \'__getslice__\' attribute')
         if not hasattr(self.dest, '__getslice__'):
@@ -149,12 +149,12 @@ class AxisIterator:
         # check and parse the AxisStrings
 
         self.axisStringParser()
-        
+
         #split and sort the sourceAxis and the destAxis
 
         self.createAxisDicts()
-        
-        
+
+
         #Setup the Axis,Dest iterspace
 
         self.sourceIterSpace = self.setupIterSpace(self.sourceAxis,self.source.shape)
@@ -162,18 +162,18 @@ class AxisIterator:
 
         self.iterSpace = itertools.product(self.sourceIterSpace,self.destIterSpace)
 
-    
+
     def createAxisDicts(self):
-        
+
         for i in range(len(self.source.axistags)):
             self.axisDict[self.source.axistags[i].key] = i
         self.revAxisDict = dict((v,k) for k, v in self.axisDict.iteritems())
-        
+
     def __iter__(self):
         return self.iterSpace
 
     def axisStringParser(self):
-        
+
         self.sourceAxis = list(self.sourceAxis)
         self.destAxis = list(self.destAxis)
 
@@ -188,7 +188,7 @@ class AxisIterator:
                 if tag.isSpatial():
                     self.sourceAxis.append(tag.key)
             self.sourceAxis.append('c')
-        
+
         if list('spatial') == self.destAxis:
             self.destAxis = []
             for tag in self.source.axistags:
@@ -200,7 +200,7 @@ class AxisIterator:
                 if tag.isSpatial():
                     self.destAxis.append(tag.key)
             self.destAxis.append('c')
-        
+
 
         allowedAxisKeys = set(['t','x','y','z','c'])
         if len(allowedAxisKeys.intersection(set(self.sourceAxis))) < len(self.sourceAxis):
@@ -208,7 +208,7 @@ class AxisIterator:
         if len(allowedAxisKeys.intersection(set(self.destAxis))) < len(self.destAxis):
             raise RuntimeError('There are non-allowed AxisKeys present in Destination')
 
-    
+
     def setupIterSpace(self,string,shape):
 
         #setup raw slicing

@@ -19,7 +19,7 @@ class TestOpInputDataReader(object):
         os.remove(cls.testNpyDataFileName)
         os.remove(cls.testImageFileName)
         os.remove(cls.testH5FileName)
-    
+
     def test_npy(self):
         # Create Numpy test data
         a = numpy.zeros((10, 11))
@@ -40,7 +40,7 @@ class TestOpInputDataReader(object):
         for x in range(0,10):
             for y in range(0,11):
                 assert npyData[x,y] == x+y
-     
+
 
     def test_png(self):
         # Create PNG test data
@@ -49,7 +49,7 @@ class TestOpInputDataReader(object):
             for y in range(a.shape[1]):
                 a[x,y] = (x+y) % 256
         vigra.impex.writeImage(a, self.testImageFileName)
-        
+
         # Read the entire PNG file and verify the contents
         pngReader = OpInputDataReader(graph=self.graph)
         pngReader.FilePath.setValue(self.testImageFileName)
@@ -73,7 +73,7 @@ class TestOpInputDataReader(object):
                 for k in range(0,shape[2]):
                     for l in range(0,shape[3]):
                         for m in range(0,shape[4]):
-                            f['volume/data'][i,j,k,l,m] = i + j + k + l + m    
+                            f['volume/data'][i,j,k,l,m] = i + j + k + l + m
         f.close()
 
         # Read the entire HDF5 file and verify the contents
@@ -81,7 +81,7 @@ class TestOpInputDataReader(object):
         h5Reader.FilePath.setValue(self.testH5FileName + '/volume/data') # Append internal path
         cwd = os.path.split(__file__)[0]
         h5Reader.WorkingDirectory.setValue( cwd )
-    
+
         # Grab a section of the h5 data
         h5Data = h5Reader.Output[0,0,:,:,:].wait()
         assert h5Data.shape == (1,1,3,4,5)
@@ -90,33 +90,7 @@ class TestOpInputDataReader(object):
             for l in range(0,shape[3]):
                 for m in range(0,shape[4]):
                     assert h5Data[0,0,k,l,m] == k + l + m
-    
+
 if __name__ == "__main__":
     import nose
     nose.main(defaultTest=__file__)
-    
-       
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-
-

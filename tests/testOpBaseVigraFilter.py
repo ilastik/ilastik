@@ -15,26 +15,26 @@ from lazyflow.roi import sliceToRoi
 from lazyflow.helpers import generateRandomKeys,generateRandomRoi
 
 class TestOpBaseVigraFilter(unittest.TestCase):
-    
+
     def setUp(self):
 
         FORMAT = ' %(message)s'
         logging.basicConfig(filename='OpBaseVigraFilter.log',filemode='w',level=logging.DEBUG,format=FORMAT)
-        
+
         self.volume = None
         self.testDim = (20,20,20,20)
         self.keyNum = 5
         self.eps = 0.001
         self.windowSize = 4
-        
+
         self.graph = Graph()
         self.sigmaList = [0.3,0.7,1,1.6]#+[3.5,5.0,10.0]
         self.sigmaComboList = [x for x in itertools.product(self.sigmaList,self.sigmaList) if x[0]<x[1]]
-        
+
         self.prepareVolume()
 
     def prepareVolume(self):
-        
+
         self.volume = vigra.VigraArray(self.testDim)
         self.volume[:] = numpy.random.rand(*self.testDim)
         twoDShape = list(self.testDim)
@@ -42,9 +42,9 @@ class TestOpBaseVigraFilter(unittest.TestCase):
         twoDShape = tuple(twoDShape)
         self.twoDvolume = vigra.VigraArray(twoDShape)
         self.twoDvolume[:] = numpy.random.rand(*twoDShape)
-        
+
     def compareBlocks(self,operator,maxSigma):
-        
+
         eps = self.eps
         block = operator.outputs["Output"][:].allocate().wait()
         maxShape = operator.outputs["Output"].shape
@@ -57,9 +57,9 @@ class TestOpBaseVigraFilter(unittest.TestCase):
                 assert 1==1
             else:
                 logging.debug('Operator failed on a block of magnitude '+str(keyDim)+' in tolerance limits of '+str(eps))
-            
+
     def test_DifferenceOfGaussian(self):
-        
+
         opDiffGauss = OpDifferenceOfGaussians(self.graph)
         opDiffGauss.inputs["input"].setValue(self.volume)
         logging.debug('======================OpDifferenceOfGaussian===============')
@@ -73,7 +73,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
         assert 1==1
 
     def test_GaussianSmoothing(self):
-        
+
         opSmoothGauss = OpGaussianSmoothing(self.graph)
         opSmoothGauss.inputs["input"].setValue(self.volume)
         logging.debug('======================OpGaussiaSmoothing===================')
@@ -84,9 +84,9 @@ class TestOpBaseVigraFilter(unittest.TestCase):
             except:
                 logging.debug('Test failed for the following sigma: %s'%sigma)
         assert 1==1
-    
+
 #    def test_CoherenceOrientation(self):
-#        
+#
 #        opCoherence = OpCoherenceOrientation(self.graph)
 #        opCoherence.inputs["input"].setValue(self.twoDvolume)
 #        logging.debug('===================OpCoherenceOrientation==================')
@@ -98,9 +98,9 @@ class TestOpBaseVigraFilter(unittest.TestCase):
 #            except:
 #                logging.debug('Test failed for the following sigma-combination : %s,%s'%(sigma0,sigma1))
 #        assert 1==1
-    
+
     def test_HessianOfGaussianEigenvalues(self):
-        
+
         opHessianOfGaussian = OpHessianOfGaussianEigenvalues(self.graph)
         opHessianOfGaussian.inputs["input"].setValue(self.volume)
         logging.debug('================OpHessianOfGaussianEigenvalues=============')
@@ -111,9 +111,9 @@ class TestOpBaseVigraFilter(unittest.TestCase):
             except:
                 logging.debug('Test failed for the following sigma: %s'%sigma)
         assert 1==1
-    
+
     def test_StructureTensorEigenvalues(self):
-        
+
         opStructureTensor = OpStructureTensorEigenvalues(self.graph)
         opStructureTensor.inputs["input"].setValue(self.volume)
         logging.debug('================OpStructureTensorEigenvalues===============')
@@ -127,7 +127,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
         assert 1==1
 
 #    def test_HessianOfGaussianEigenvaluesFirst(self):
-#        
+#
 #        opHessianOfGaussianEF = OpHessianOfGaussianEigenvaluesFirst(self.graph)
 #        opHessianOfGaussianEF.inputs["input"].setValue(self.volume)
 #        logging.debug('================OpHessianOfGaussianEigenvaluesFirst========')
@@ -138,10 +138,10 @@ class TestOpBaseVigraFilter(unittest.TestCase):
 #            except:
 #                logging.debug('Test failed for the following sigma: %s'%sigma)
 #        assert 1==1
-        
-    
+
+
 #    def test_HessianOfGaussian(self):
-#        
+#
 #        opHessianOfGaussian = OpHessianOfGaussian(self.graph)
 #        opHessianOfGaussian.inputs["input"].setValue(self.volume)
 #        logging.debug('================OpHessianOfGaussian========================')
@@ -152,10 +152,10 @@ class TestOpBaseVigraFilter(unittest.TestCase):
 #            except:
 #                logging.debug('Test failed for the following sigma: %s'%sigma)
 #        assert 1==1
-        
-        
+
+
     def test_GaussianGradientMagnitude(self):
-        
+
         opGaussianGradient = OpGaussianGradientMagnitude(self.graph)
         opGaussianGradient.inputs["input"].setValue(self.volume)
         logging.debug('================OpopGaussianGradient=======================')
@@ -166,7 +166,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
             except:
                 logging.debug('Test failed for the following sigma: %s'%sigma)
         assert 1==1
-    
+
     def test_LaplacianOfGaussian(self):
         opLaplacianOfGaussian = OpLaplacianOfGaussian(self.graph)
         opLaplacianOfGaussian.inputs["input"].setValue(self.volume)

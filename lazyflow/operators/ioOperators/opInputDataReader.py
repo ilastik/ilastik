@@ -15,7 +15,7 @@ class OpInputDataReader(Operator):
     """
     name = "OpInputDataReader"
     category = "Input"
-    
+
     # FilePath is inspected to determine data type.
     # For hdf5 files, append the internal path to the filepath,
     #  e.g. /mydir/myfile.h5/internal/path/to/dataset
@@ -38,10 +38,10 @@ class OpInputDataReader(Operator):
         """
         filePath = self.FilePath.value
         assert type(filePath) == str
-        
+
         # Does this look like a relative path?
         useRelativePath = (filePath[0] != '/')
-        
+
         if useRelativePath:
             # If using a relative path, we need both inputs before proceeding
             if not self.WorkingDirectory.connected():
@@ -49,7 +49,7 @@ class OpInputDataReader(Operator):
             else:
                 # Convert this relative path into an absolute path
                 filePath = self.WorkingDirectory.value + '/' + filePath
-        
+
         self.internalOperator = None
 
         # Check for globstring
@@ -71,17 +71,17 @@ class OpInputDataReader(Operator):
             if ext is not None:
                 externalPath = filePath.split(ext)[0] + ext
                 internalPath = filePath.split(ext)[1]
-                
+
                 # Open the h5 file in read-only mode
                 h5File = h5py.File(externalPath, 'r')
-                
+
                 h5Reader = OpStreamingHdf5Reader(graph=self.graph)
                 h5Reader.ProjectFile.setValue(h5File)
-                
+
                 # Can't set the internal path yet if we don't have one
                 if internalPath != '':
                     h5Reader.InternalPath.setValue(internalPath)
-                
+
                 self.internalOperator = h5Reader
                 self.internalOutput = h5Reader.OutputImage
 
@@ -105,14 +105,13 @@ class OpInputDataReader(Operator):
                 self.internalOutput = vigraReader.Image
 
         assert self.internalOutput is not None, "Can't read " + filePath + " because it has an unrecognized format."
-        
+
         self.Output.meta.dtype = self.internalOutput.meta.dtype
         self.Output.meta.shape = self.internalOutput.meta.shape
         self.Output.meta.axistags = self.internalOutput.meta.axistags
-    
+
     def execute(self, slot, roi, result):
-        # Ask our internal operator's output slot to write the result into the destination        
+        # Ask our internal operator's output slot to write the result into the destination
         # TODO: Is it really necessary to use a key (slice) here?  Or can the roi be used directly?
         key = roi.toSlice()
         self.internalOutput[key].writeInto(result).wait()
-

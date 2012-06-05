@@ -7,7 +7,7 @@ from lazyflow import operators
 
 doProfile = False
 if doProfile:
-  yappi.start()
+    yappi.start()
 
 g = Graph()
 
@@ -21,20 +21,20 @@ lockB = threading.Lock()
 lockA.acquire()
 
 class A(threading.Thread):
-  def run(self):
-    for i in range(1,mcount):
-      lockA.acquire()
-      lockB.release()
+    def run(self):
+        for i in range(1,mcount):
+            lockA.acquire()
+            lockB.release()
 
 class B(threading.Thread):
-  def run(self):
-    for i in range(1,mcount):
-      lockB.acquire()
-      lockA.release()
+    def run(self):
+        for i in range(1,mcount):
+            lockB.acquire()
+            lockA.release()
 
 # import zmq
 # context = zmq.Context(1)
-# 
+#
 # class ZmqA(threading.Thread):
 #   def run(self):
 #     socket = zmq.Socket(context,zmq.PAIR)
@@ -42,8 +42,8 @@ class B(threading.Thread):
 #     for i in range(1,mcount):
 #       socket.send("")#, flags = zmq.NOBLOCK)
 #       msg = socket.recv()
-# 
-# 
+#
+#
 # class ZmqB(threading.Thread):
 #   def run(self):
 #     socket = zmq.Socket(context,zmq.PAIR)
@@ -51,14 +51,14 @@ class B(threading.Thread):
 #     for i in range(1,mcount):
 #       msg = socket.recv()
 #       socket.send("")#, flags = zmq.NOBLOCK)
-# 
+#
 
 class C(object):
-  def __init__(self,shape,dtype=numpy.uint8):
-    self.array = numpy.ndarray(shape,dtype)
+    def __init__(self,shape,dtype=numpy.uint8):
+        self.array = numpy.ndarray(shape,dtype)
 
-  def __getitem__(self,key):
-    return self.array[key]
+    def __getitem__(self,key):
+        return self.array[key]
 
 
 cache = operators.OpArrayCache(g)
@@ -70,7 +70,7 @@ arr = numpy.ndarray((100,100,100,1),numpy.uint8)
 cache.inputs["Input"].setValue(arr)
 p.connect(Input = cache.outputs["Output"])
 
-features = operators.OpPixelFeaturesPresmoothed(g) 
+features = operators.OpPixelFeaturesPresmoothed(g)
 matrix = numpy.ndarray((6,2), numpy.uint8)
 matrix[:] = 0
 matrix[0,:] = 1
@@ -82,7 +82,7 @@ print features.Output.axistags
 
 t1 = time.time()
 for i in range(0,mcount):
-  res = numpy.ndarray((1,),numpy.uint8)
+    res = numpy.ndarray((1,),numpy.uint8)
 t2 = time.time()
 print "\n\n"
 print "PYTHON NUMPY ALLOC OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount)
@@ -91,7 +91,7 @@ print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 
 t1 = time.time()
 for i in range(0,mcount):
-  res = arr[1:2,1:2,1:2]
+    res = arr[1:2,1:2,1:2]
 t2 = time.time()
 print "\n\n"
 print "PYTHON NUMPY CALL OVERHEAD:     %f seconds for %d iterations" % (t2-t1,mcount)
@@ -101,7 +101,7 @@ print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 c = C((100,100,100),numpy.uint8)
 t1 = time.time()
 for i in range(0,mcount):
-  res = c[1:2,1:2,1:2]
+    res = c[1:2,1:2,1:2]
 t2 = time.time()
 print "\n\n"
 print "PYTHON DYN DISPATCH OVERHEAD:   %f seconds for %d iterations" % (t2-t1,mcount)
@@ -124,7 +124,7 @@ print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 
 # a = ZmqA()
 # b = ZmqB()
-# 
+#
 # a.start()
 # time.sleep(0.2)
 # t1 = time.time()
@@ -135,11 +135,11 @@ print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 # print "\n\n"
 # print "ZMQ    THREAD SWITCH OVERHEAD:  %f seconds for %d iterations" % (t2-t1,mcount)
 # print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
-# 
-# 
+#
+#
 t1 = time.time()
 for i in range(0,mcount):
-  p.outputs["Output"][3,3,3,0].allocate().wait()
+    p.outputs["Output"][3,3,3,0].allocate().wait()
 t2 = time.time()
 print "\n\n"
 print "LAZYFLOW SYNC WAIT OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount)
@@ -149,11 +149,11 @@ print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 t1 = time.time()
 requests = []
 for i in range(0,mcount):
-  r = p.outputs["Output"][3,3,3,0].allocate()
-  requests.append(r)
+    r = p.outputs["Output"][3,3,3,0].allocate()
+    requests.append(r)
 
 for r in requests:
-  r.wait()
+    r.wait()
 t2 = time.time()
 print "\n\n"
 print "LAZYFLOW ASYNC WAIT OVERHEAD:   %f seconds for %d iterations" % (t2-t1,mcount)
@@ -163,7 +163,7 @@ print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
 
 t1 = time.time()
 for i in range(0,mcountf):
-  features.outputs["Output"][:50,:50,:50,:].allocate().wait()
+    features.outputs["Output"][:50,:50,:50,:].allocate().wait()
 t2 = time.time()
 print "\n\n"
 print "LAZYFLOW SYNC WAIT FEATURES :    %f seconds for %d iterations" % (t2-t1,mcountf)
@@ -173,17 +173,16 @@ print "                                %0.3fms latency" % ((t2-t1)*1e3/mcountf,)
 t1 = time.time()
 requests = []
 for i in range(0,mcountf):
-  r = features.outputs["Output"][:50,:50,:50,:].allocate()
-  requests.append(r)
+    r = features.outputs["Output"][:50,:50,:50,:].allocate()
+    requests.append(r)
 
 for r in requests:
-  r.wait()
+    r.wait()
 t2 = time.time()
 print "\n\n"
 print "LAZYFLOW ASYNC WAIT FEATURES:   %f seconds for %d iterations" % (t2-t1,mcountf)
 print "                                %0.3fms latency" % ((t2-t1)*1e3/mcountf,)
 
 if doProfile:
-  yappi.stop()
-  yappi.print_stats(sort_type = yappi.SORTTYPE_TTOT)
-
+    yappi.stop()
+    yappi.print_stats(sort_type = yappi.SORTTYPE_TTOT)
