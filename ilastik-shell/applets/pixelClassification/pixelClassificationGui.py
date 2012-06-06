@@ -433,10 +433,14 @@ class PixelClassificationGui(QMainWindow):
             self._labelControlUi.eraserToolButton.show()
             # Update the applet bar caption
             if toolId == Tool.Navigation:
+                # Make sure the arrow button is pressed
+                self._labelControlUi.arrowToolButton.setChecked(True)
                 # Hide the brush size control
                 self._labelControlUi.brushSizeCaption.hide()
                 self._labelControlUi.brushSizeComboBox.hide()
             elif toolId == Tool.Paint:
+                # Make sure the paint button is pressed
+                self._labelControlUi.paintToolButton.setChecked(True)
                 # Show the brush size control and set its caption
                 self._labelControlUi.brushSizeCaption.show()
                 self._labelControlUi.brushSizeComboBox.show()
@@ -456,6 +460,8 @@ class PixelClassificationGui(QMainWindow):
                 self.switchLabel( self._labelControlUi.labelListModel.selectedRow() )
                 
             elif toolId == Tool.Erase:
+                # Make sure the erase button is pressed
+                self._labelControlUi.eraserToolButton.setChecked(True)
                 # Show the brush size control and set its caption
                 self._labelControlUi.brushSizeCaption.show()
                 self._labelControlUi.brushSizeComboBox.show()
@@ -512,7 +518,7 @@ class PixelClassificationGui(QMainWindow):
         We need to add/remove labels until we have the right number
         """
         # Get the number of labels in the label data
-        numLabels = self.pipeline.MaxLabelValue.value
+        numLabels = max(self.pipeline.MaxLabelValue.value, self._labelControlUi.labelListModel.rowCount())
         if numLabels == None:
             numLabels = 0
 
@@ -520,9 +526,9 @@ class PixelClassificationGui(QMainWindow):
         while self._labelControlUi.labelListModel.rowCount() < numLabels:
             self.addNewLabel()
         
-        # Remove rows until we have the right number
-        while self._labelControlUi.labelListModel.rowCount() > numLabels:
-            self.removeLastLabel()
+#        # Remove rows until we have the right number
+#        while self._labelControlUi.labelListModel.rowCount() > numLabels:
+#            self.removeLastLabel()
 
         # Select a label by default so the brushing controller doesn't get confused.
         if numLabels > 0:
@@ -562,7 +568,7 @@ class PixelClassificationGui(QMainWindow):
         
         #FIXME: this should watch for model changes
         #drawing will be enabled when the first label is added
-        self.changeInteractionMode( Tool.Navigation )
+        #self.changeInteractionMode( Tool.Navigation )
         
         return nlabels
     
@@ -604,7 +610,8 @@ class PixelClassificationGui(QMainWindow):
         Add all prediction label layers to the volume editor
         """
         newGuiLabels = set()        
-        nclasses = self._labelControlUi.labelListModel.rowCount()
+        # TODO: Assumes channel is last axis
+        nclasses = self.pipeline.CachedPredictionProbabilities[self.imageIndex].meta.shape[-1]
         # Add prediction results for all classes as separate channels
         for icl in range(nclasses):
             layerGuiLabel = self._labelControlUi.labelListModel._labels[icl]            
