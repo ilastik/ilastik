@@ -427,7 +427,15 @@ class PixelClassificationGui(QMainWindow):
         self._labelControlUi.brushSizeComboBox.hide()
         self._labelControlUi.brushSizeCaption.hide()
 
-        if self.imageIndex != -1 and self.pipeline.LabelsAllowedFlags[self.imageIndex].value:
+        # If the user can't label this image, disable the button and say why its disabled
+        labelsAllowed = self.pipeline.LabelsAllowedFlags[self.imageIndex].value
+        self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed)
+        if labelsAllowed:
+            self._labelControlUi.AddLabelButton.setText("Add Label")
+        else:
+            self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
+
+        if self.imageIndex != -1 and labelsAllowed:
             self._labelControlUi.arrowToolButton.show()
             self._labelControlUi.paintToolButton.show()
             self._labelControlUi.eraserToolButton.show()
