@@ -57,7 +57,7 @@ class ProjectMetadataSerializer(object):
         """ Return true if the current state of this item 
             (in memory) does not match the state of the HDF5 group on disk.
             SerializableItems are responsible for tracking their own dirty/notdirty state."""
-        pass
+        return False
 
     def unload(self):
         """ Called if either
@@ -116,7 +116,7 @@ class Ilastik05ProjectMetadataDeserializer(object):
         """ Return true if the current state of this item 
             (in memory) does not match the state of the HDF5 group on disk.
             SerializableItems are responsible for tracking their own dirty/notdirty state."""
-        pass
+        return False
 
     def unload(self):
         """ Called if either

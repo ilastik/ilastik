@@ -127,7 +127,7 @@ class SeededWatershedSerializer(object):
         Return true if the current state of this item 
         (in memory) does not match the state of the HDF5 group on disk.
         """
-        return True
+        return False
 
     def unload(self):
         """
