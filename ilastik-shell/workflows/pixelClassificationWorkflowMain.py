@@ -174,7 +174,7 @@ def test():
 
 
 # Run a test
-QTimer.singleShot(1, test )
+#QTimer.singleShot(1, test )
 
 app.exec_()
 
