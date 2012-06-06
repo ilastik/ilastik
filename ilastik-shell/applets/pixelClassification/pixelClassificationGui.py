@@ -867,11 +867,11 @@ class PixelClassificationGui(QMainWindow):
             
             self.pipeline.opLabelArray.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)
 
-        # Clear the label layers
+        # Eliminate any previous label sink the editor had
         self.editor.setLabelSink(None)
-        if self.labellayer is not None:
-            # Remove any existing label layer before adding a new one
-            self.removeLayersFromEditorStack(self.labellayer.name)
+        
+        # Remove all layers from the editor.  We have new data.
+        self.layerstack.removeRows( 0, len(self.layerstack) )
 
         # Give the editor the appropriate shape
         shape = self.pipeline.InputImages[self.imageIndex].shape
