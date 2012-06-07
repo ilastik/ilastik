@@ -108,7 +108,9 @@ class Worker(Thread):
                         gr = self.finishedGreenlets.popleft()
                         if gr.request.canceled is False:
                             self.current_request = gr.request
-                            gr.switch()
+                            lock = gr.switch()
+                            if lock:
+                              lock.release()
 
                     # processan higher priority request if available
                     didRequest = False
@@ -125,7 +127,9 @@ class Worker(Thread):
                         self.current_request = req
                         gr.thread = self
                         gr.request = req
-                        gr.switch()
+                        lock = gr.switch()
+                        if lock:
+                          lock.release()
 
                     if didRequest is False:
                         # only do a low priority request if no higher priority request
@@ -141,7 +145,9 @@ class Worker(Thread):
                             self.current_request = req
                             gr.thread = self
                             gr.request = req
-                            gr.switch()
+                            lock = gr.switch()
+                            if lock:
+                              lock.release()
 
                     # reset the wait lock state, otherwise the surrounding while self.running loop will always be executed twice
                     try:
@@ -380,7 +386,7 @@ class Request(object):
         synchronous wait for exectution of function
         """
         cur_gr = greenlet.getcurrent()
-        cur_tr =  threading.current_thread()
+        cur_tr = threading.current_thread()
 
         if self.EnableRequesterStackDebugging:
             import traceback
@@ -407,9 +413,9 @@ class Request(object):
             # just wait for the request to finish
             # we will get woken up
                     self.waiting_greenlets.append(cur_gr)
-                    self.lock.release()
-                    # switch back to parent
-                    cur_gr.parent.switch()
+                    
+                    # switch back to parent, parent will release lock 
+                    cur_gr.parent.switch(self.lock)
                 else:
                     lock = cur_tr.wlock
                     try:
@@ -421,6 +427,8 @@ class Request(object):
                     self.callbacks_finish.append((Request._releaseLock, {"lock" : lock}))
                     self.lock.release()
                     lock.acquire()
+        else:
+          self.lock.release()
         return self.result
 
     def submit(self):
@@ -431,10 +439,8 @@ class Request(object):
             import traceback
             self._requesterStack = traceback.extract_stack()
 
-        if self.finished or self.canceled:
-            return
         self.lock.acquire()
-        if not self.running:
+        if not self.running and not self.finished and not self.canceled:
             self.running = True
             self.lock.release()
             global_thread_pool.putRequest(self)
