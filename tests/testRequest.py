@@ -1,4 +1,4 @@
-from lazyflow.request import Request
+from lazyflow.request import Request, global_thread_pool
 import time
 import random
 import numpy
@@ -61,7 +61,7 @@ class TestRequest(object):
 
         # This closure randomly chooses to either (a) return immediately or (b) fire off more work
         def someWork(depth, force=False, i=0):
-            print 'depth=', depth, 'i=', i
+            #print 'depth=', depth, 'i=', i
             if depth > 0 and (force or random.random() > 0.5):
                 requests = []
                 for i in range(maxBreadth):
@@ -120,12 +120,23 @@ class TestRequest(object):
                     requestLock.acquire()
                     requestCounter[0] += 1
                     requestLock.release()
+            
 
                 for r in requests:
                     r.wait()
 
         req = Request(someWork, depth=6, force=True)
+
+        def blubb(req):
+          pass
+
+        req.notify(blubb)
+        print "pausing graph"
+        global_thread_pool.pause()
+        global_thread_pool.unpause()
+        print "resumed graph"
         req.wait()
+        print "request finished"
 
         
         # Handler should have been called once for each request we fired
@@ -137,6 +148,64 @@ class TestRequest(object):
           assert r.finished
 
         print "waited for all subrequests"
+    
+    def test_pause_unpause(self):
+        handlerCounter = [0]
+        handlerLock = threading.Lock()
+        
+        def completionHandler( result, req ):
+            handlerLock.acquire()
+            handlerCounter[0] += 1
+            handlerLock.release()
+
+        requestCounter = [0]
+        requestLock = threading.Lock()            
+        allRequests = []
+        # This closure randomly chooses to either (a) return immediately or (b) fire off more work
+        def someWork(depth, force=False, i=-1):
+            #print 'depth=', depth, 'i=', i
+            if depth > 0 and (force or random.random() > 0.8):
+                requests = []
+                for i in range(10):
+                    req = Request(someWork, depth=depth-1, i=i)
+                    req.notify(completionHandler, req=req)
+                    requests.append(req)
+                    allRequests.append(req)
+                    
+                    requestLock.acquire()
+                    requestCounter[0] += 1
+                    requestLock.release()
+            
+
+                for r in requests:
+                    r.wait()
+
+        req = Request(someWork, depth=6, force=True)
+
+        def blubb(req):
+          pass
+
+        req.notify(blubb)
+        global_thread_pool.pause()
+        req2 = Request(someWork, depth=6, force=True)
+        req2.notify(blubb)
+        global_thread_pool.unpause()
+        assert req2.finished == False
+        assert req.finished
+        req.wait()
+
+        
+        # Handler should have been called once for each request we fired
+        assert handlerCounter[0] == requestCounter[0]
+
+        print "finished pause_unpause"
+        
+        for r in allRequests:
+          assert r.finished
+
+        print "waited for all subrequests"
+
+
         
 if __name__ == "__main__":
     import nose

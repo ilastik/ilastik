@@ -52,7 +52,7 @@ from collections import deque
 from Queue import Queue, LifoQueue, Empty, PriorityQueue
 from threading import Thread, Event, current_thread, Lock
 import weakref
-from request import Request, Singleton
+from request import Request, Singleton, global_thread_pool
 import rtype
 from roi import sliceToRoi, roiToSlice
 from lazyflow.stype import ArrayLike
