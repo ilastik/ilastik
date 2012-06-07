@@ -439,8 +439,12 @@ class Request(object):
             import traceback
             self._requesterStack = traceback.extract_stack()
 
+        # test before locking, otherwise deadlock ?
+        if self.finished or self.canceled:
+          return self
+
         self.lock.acquire()
-        if not self.running and not self.finished and not self.canceled:
+        if not self.running:
             self.running = True
             self.lock.release()
             global_thread_pool.putRequest(self)
