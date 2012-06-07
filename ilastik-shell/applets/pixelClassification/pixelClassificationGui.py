@@ -333,11 +333,6 @@ class PixelClassificationGui(QMainWindow):
             self.toolButtons[toolId].setChecked(True)
         # If the user is checking a new button
         else:
-            # Uncheck all the other buttons
-            for tool, button in self.toolButtons.items():
-                if tool != toolId:
-                    button.setChecked(False)
-
             self.changeInteractionMode( toolId )
 
     @property
@@ -410,7 +405,12 @@ class PixelClassificationGui(QMainWindow):
     def changeInteractionMode( self, toolId ):
         """
         Implement the GUI's response to the user selecting a new tool.
-        """
+        """        
+        # Uncheck all the other buttons
+        for tool, button in self.toolButtons.items():
+            if tool != toolId:
+                button.setChecked(False)
+
         # If we have no editor, we can't do anything yet
         if self.editor is None:
             return
@@ -872,6 +872,7 @@ class PixelClassificationGui(QMainWindow):
         
         # Remove all layers from the editor.  We have new data.
         self.layerstack.removeRows( 0, len(self.layerstack) )
+        self.predictionLayers.clear()
 
         # Give the editor the appropriate shape
         shape = self.pipeline.InputImages[self.imageIndex].shape
