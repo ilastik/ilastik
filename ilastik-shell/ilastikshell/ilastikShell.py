@@ -31,6 +31,11 @@ class ShellActions(object):
         self.saveProjectAction = None
         self.QuitAction = None
 
+class SideSplitterSizePolicy(object):
+    Manual = 0
+    AutoCurrentDrawer = 1
+    AutoLargestDrawer = 2
+
 class _ShellMenuBar( QWidget ):
     """
     The main window menu bar.
@@ -102,8 +107,11 @@ class IlastikShell( QMainWindow ):
     """
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
-    def __init__( self, workflow = [], parent = None, flags = QtCore.Qt.WindowFlags(0) ):
+    def __init__( self, workflow = [], parent = None, flags = QtCore.Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
         QMainWindow.__init__(self, parent = parent, flags = flags )
+
+        self._sideSplitterSizePolicy = sideSplitterSizePolicy
+        
         import inspect, os
         ilastikShellFilePath = os.path.dirname(inspect.getfile(inspect.currentframe()))
         uic.loadUi( ilastikShellFilePath + "/ui/ilastikShell.ui", self )
@@ -135,7 +143,10 @@ class IlastikShell( QMainWindow ):
         """
         super(IlastikShell, self).show()
         self.enableControls(self.currentProjectFile != None)
-        self.autoSizeSideSplitter()
+        if self._sideSplitterSizePolicy == SideSplitterSizePolicy.Manual:
+            self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoLargestDrawer )
+        else:
+            self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoCurrentDrawer )
 
     def setImageNameListSlot(self, multiSlot):
         assert type(multiSlot) == MultiOutputSlot
@@ -209,24 +220,38 @@ class IlastikShell( QMainWindow ):
                 self._menuBar.setCurrentIndex(applet_index)
                 self.viewerControlStack.setCurrentIndex(applet_index)
                 
-                self.autoSizeSideSplitter()
+                self.autoSizeSideSplitter( self._sideSplitterSizePolicy )
 
     def getModelIndexFromDrawerIndex(self, drawerIndex):
         drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
         return self.appletBar.indexFromItem(drawerTitleItem)
                 
-    def autoSizeSideSplitter(self):
+    def autoSizeSideSplitter(self, sizePolicy):
+        if sizePolicy == SideSplitterSizePolicy.Manual:
+            # In manual mode, don't resize the splitter at all.
+            return
+        
+        if sizePolicy == SideSplitterSizePolicy.AutoCurrentDrawer:
+            # Get the height of the current applet drawer
+            rootItem = self.appletBar.invisibleRootItem()
+            appletDrawerItem = rootItem.child(self.currentAppletIndex).child(0)
+            appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
+            appletDrawerHeight = appletDrawerWidget.frameSize().height()
+
+        if sizePolicy == SideSplitterSizePolicy.AutoLargestDrawer:
+            appletDrawerHeight = 0
+            # Get the height of the largest drawer in the bar
+            for drawerIndex in range( len(self.appletBarMapping) ):
+                rootItem = self.appletBar.invisibleRootItem()
+                appletDrawerItem = rootItem.child(drawerIndex).child(0)
+                appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
+                appletDrawerHeight = max( appletDrawerHeight, appletDrawerWidget.frameSize().height() )
+        
         # Get total height of the titles in the applet bar (not the widgets)
         firstItem = self.appletBar.invisibleRootItem().child(0)
         titleHeight = self.appletBar.visualItemRect(firstItem).size().height()
         numDrawers = len(self.appletBarMapping)
-        totalTitleHeight = numDrawers * titleHeight
-    
-        # Get the height of the current applet drawer               
-        rootItem = self.appletBar.invisibleRootItem()
-        appletDrawerItem = rootItem.child(self.currentAppletIndex).child(0)
-        appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
-        appletDrawerHeight = appletDrawerWidget.frameSize().height()
+        totalTitleHeight = numDrawers * titleHeight    
     
         # Auto-size the splitter height based on the height of the applet bar.
         totalSplitterHeight = sum(self.sideSplitter.sizes())
