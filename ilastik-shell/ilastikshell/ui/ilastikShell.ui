@@ -37,8 +37,51 @@
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
+        <property name="palette">
+         <palette>
+          <active>
+           <colorrole role="Highlight">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>62</red>
+              <green>62</green>
+              <blue>62</blue>
+             </color>
+            </brush>
+           </colorrole>
+          </active>
+          <inactive>
+           <colorrole role="Highlight">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>62</red>
+              <green>62</green>
+              <blue>62</blue>
+             </color>
+            </brush>
+           </colorrole>
+          </inactive>
+          <disabled>
+           <colorrole role="Highlight">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>240</red>
+              <green>240</green>
+              <blue>240</blue>
+             </color>
+            </brush>
+           </colorrole>
+          </disabled>
+         </palette>
+        </property>
+        <property name="lineWidth">
+         <number>2</number>
+        </property>
         <property name="midLineWidth">
          <number>2</number>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>false</bool>
         </property>
         <property name="indentation">
          <number>15</number>
