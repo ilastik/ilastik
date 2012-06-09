@@ -1421,14 +1421,23 @@ class Operator(object):
         pass
 
     def _setupOutputs(self):
+        # Changing the graph causes a chain of recursive calls to setupOutputs.
+        # The callDepthCounter tracks how many calls deep we are so we know when we've come back out again and we're about to return to the user.
+        # The graph's "state tag" should be unique for each change made from the outside, so we only change it once for each external graph change.
+        if self.graph.callDepthCounter == 0:
+            self.graph.newStateTag()
+        self.graph.incrementCallDepth()
+        
         # Outputslots may become "ready" during setupOutputs()
         # Save a copy of the ready flag for each output slot so we can decide whether or not to fire the ready signal.
         readyFlags = {}
         for k, oslot in self.outputs.items():
             readyFlags[k] = oslot.meta._ready
         
+        # Call the subclass
         self.setupOutputs()
 
+        # Determine new "ready" flags
         for k, oslot in self.outputs.items():
             if oslot.partner is None:
                 # All unconnected outputs are ready after setupOutputs
@@ -1436,11 +1445,13 @@ class Operator(object):
 
             # Signal for the outputs that weren't ready before
             if oslot.meta._ready and not readyFlags[k]:
-                oslot._sig_ready(oslot)        
+                oslot._sig_ready(oslot)
 
         #notify outputs of probably changed meta information
         for k,v in self.outputs.items():
             v._changed()
+
+        self.graph.decrementCallDepth()
 
     def handleInputBecameUnready(self, slot):
         # One of our input slots was disconnected.
@@ -1830,8 +1841,27 @@ class OperatorWrapper(Operator):
 
 class Graph(object):
     def __init__(self, numThreads=-1):
-        pass
+        self._callDepthCounter = 0
+        self._stateTag = 0
+        
+    @property
+    def callDepthCounter(self):
+        return self._callDepthCounter
 
+    def incrementCallDepth(self):
+        self._callDepthCounter += 1
+        
+    def decrementCallDepth(self):
+        self._callDepthCounter -= 1
+
+    @property
+    def stateTag(self):
+        return self._stateTag
+    
+    def newStateTag(self):
+        self._stateTag += 1
+        return self._stateTag
+    
     def stopGraph(self):
         pass
 
