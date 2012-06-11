@@ -68,26 +68,11 @@ class FeatureSelectionGui(QMainWindow):
         self.mainOperator = mainOperator
         self.mainOperator.SelectionMatrix.notifyConnect( bind(self.onFeaturesSelectionsChanged) )
         
-        def handleInputChanged(changedSlot):
-            if self.currentImageIndex != -1 \
-            and self.mainOperator.InputImage[self.currentImageIndex] == changedSlot \
-            and self.mainOperator.configured():
-                self.updateAllLayers()
+        def handleOutputInsertion(slot, index):
+            slot[index].notifyDirty( bind(self.updateAllLayers) )
 
-        def handleInputInsertion(slot, index):
-            slot[index].notifyDirty( bind(handleInputChanged) )
-        
-        self.mainOperator.InputImage.notifyInserted( bind(handleInputInsertion) )
-        self.mainOperator.notifyConfigured( bind(self.updateAllLayers) )
+        self.mainOperator.CachedOutputImage.notifyInserted( bind(handleOutputInsertion) )
 
-        def handleInputRemoval(slot, index, finalsize):
-            if finalsize == 0 or not self.mainOperator.configured():
-                self.layerstack.clear()
-            elif index == self.currentImageIndex:
-                self.updateAllLayers()
-                
-        self.mainOperator.InputImage.notifyRemove( handleInputRemoval )
-        
     def setImageIndex(self, index):
         self.currentImageIndex = index
         if self.mainOperator.configured():
