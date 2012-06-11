@@ -419,6 +419,54 @@ class TestSlotStates(object):
         assert readySlots[op2.Output] == True
         assert readySlots[op3.Input] == True
         assert readySlots[op3.Output] == True
+        
+    def test_unready_propagation(self):
+        # The array piper copies its input to its output, creating an "implicit" connection
+        op = operators.OpArrayPiper(graph=self.g)
+        op.name = 'op'
+        
+        # op2 gets his input as a clone from op.Input
+        op2 = operators.OpArrayPiper(graph=self.g)
+        op2.Input.connect( op.Input )
+        op2.name = 'op2'
+        
+        # op3 gets his input as a clone from op.Output
+        op3 = operators.OpArrayPiper(graph=self.g)
+        op3.Input.connect( op.Output )
+        op3.name = 'op3'
+
+        # This should trigger setupOutputs and everything to become ready
+        data = numpy.zeros((10,10,10,10,10))
+        op.Input.setValue( data )
+        
+        assert op.Input.ready()
+        assert op.Output.ready()
+        assert op2.Input.ready()
+        assert op2.Output.ready()
+        assert op3.Input.ready()
+        assert op3.Output.ready()
+
+        assert op.Input.connected()
+        assert not op.Output.connected() # Not connected
+
+        # Disonnecting the head of the chain should cause everything to become unready
+        op.Input.disconnect()
+        
+        assert not op.Input.ready()
+        assert not op.Output.ready()
+        assert not op2.Input.ready()
+        assert not op2.Output.ready()
+        assert not op3.Input.ready()
+        assert not op3.Output.ready()
+        
+    def test_slicing(self):
+        op = operators.OpArrayPiper(graph=self.g)
+        
+        a = numpy.zeros( 5*(10,), dtype=int )
+        op.Input.setValue( a )
+        
+        b = op.Output[:, :, :].wait()
+        assert b.shape == a.shape
 
 if __name__ == "__main__":
     import nose

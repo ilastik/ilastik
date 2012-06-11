@@ -219,6 +219,7 @@ class Slot(object):
 
         self._sig_changed = OrderedSignal()
         self._sig_ready = OrderedSignal()
+        self._sig_unready = OrderedSignal()
         self._sig_dirty = OrderedSignal()
         self._sig_connect = OrderedSignal()
         self._sig_disconnect = OrderedSignal()
@@ -262,6 +263,12 @@ class Slot(object):
         the keyword arguments follow
         """
         self._sig_ready.subscribe(function, **kwargs)
+
+    def notifyUnready(self, function, **kwargs):
+        """
+        Subscribe to "unready" callbacks.  See notifyReady for details.
+        """
+        self._sig_unready.subscribe(function, **kwargs)
 
     def notifyConnect(self, function, **kwargs):
         """
@@ -349,6 +356,12 @@ class Slot(object):
         unregister a ready callback
         """
         self._sig_ready.unsubscribe(function)
+
+    def unregisterUnready(self, function):
+        """
+        unregister an unready callback
+        """
+        self._sig_unready.unsubscribe(function)
 
     def unregisterResize(self, function):
         """
@@ -465,11 +478,22 @@ class Slot(object):
                 pass
         self.partner = None
         self._value = None
+        oldReady = self.meta._ready 
         self.meta = MetaDict()
+
+        # Notify our partners that we changed.
+        self._changed()
 
         # call callbacks
         self._sig_disconnect(self)
+        
+        # If we were ready before, signal that we aren't any more
+        if oldReady:
+            self._sig_unready(self)
+        
         if self.operator is not None and isinstance(self, (InputSlot, MultiInputSlot)):
+            # TODO: Only the OperatorWrapper uses this.
+            #       It should be done with the notifyDisconnect callback, not a special function!
             self.operator.onDisconnect(self)
 
 
@@ -584,7 +608,7 @@ class Slot(object):
         else:
             # If someone is asking for data from an inputslot that has no value and no partner,
             #  then something is wrong.
-            assert self._type != "input", "This inputslot has no value and no partner.  You can't ask for its data yet!"
+            assert self._type != "input", "This inputSlot has no value and no partner.  You can't ask for its data yet!"
             # normal (outputslot) case
             # --> construct heavy request object..
             return Request(self._requestFunctionWrapper,roi = roi,destination = destination)
@@ -829,8 +853,11 @@ class Slot(object):
                 o._changed()
 
         # Notify readiness after subslots are updated
-        if self.meta._ready and not oldMeta._ready:
-            self._sig_ready(self)
+        if self.meta._ready != oldMeta._ready:
+            if self.meta._ready:
+                self._sig_ready(self)
+            else:
+                self._sig_unready(self)
 
         wasdirty = self.meta._dirty
         if self.meta._dirty:
@@ -1223,6 +1250,9 @@ class Operator(object):
         if parent is None and graph is None:
             graph = GlobalGraph()
 
+
+        self._initialized = False
+
         self._configurationNotificationCallbacks = []
         # preserve compatability with old operators
         # that give the graph as first argument to
@@ -1270,9 +1300,13 @@ class Operator(object):
 
         self._setDefaultInputValues()
 
+        for name, islot in self.inputs.items():
+            islot.notifyUnready( self.handleInputBecameUnready )
+
         if len(self.inputs.keys()) == 0:
             self._setupOutputs()
 
+        self._initialized = True
 
 
     def _instantiate_slots(self):
@@ -1325,11 +1359,9 @@ class Operator(object):
         Returns True if all input slots that are non-optional are
         connected and configured.
         """
-        allConfigured = True
+        allConfigured = self._initialized
         for slot in self.inputs.values():
-            if slot._optional is False and slot.ready() is False:
-                allConfigured = False
-                break
+            allConfigured &= ( slot.ready() or slot._optional )
         return allConfigured
 
     def _setDefaultInputValues(self):
@@ -1438,6 +1470,27 @@ class Operator(object):
         for fn, kwargs in self._configurationNotificationCallbacks:
             fn(**kwargs)
 
+    def handleInputBecameUnready(self, slot):
+        # One of our input slots was disconnected.
+        # If it was optional, we don't care.
+        if slot._optional:
+            return
+
+        # Keep track of the old ready statuses so we know if something changed
+        readyFlags = {}
+        for k, oslot in self.outputs.items():
+            readyFlags[k] = oslot.meta._ready
+
+        # All unconnected outputs are no longer ready
+        for oslot in self.outputs.values():
+            oslot.meta._ready &= ( oslot.partner is not None )
+            
+        # If the ready status changed, signal it.
+        for k, oslot in self.outputs.items():
+            if readyFlags[k] != oslot.meta._ready:
+                oslot._sig_unready(self)
+                oslot._changed()
+
     def notifyConfigured(self, callbackFn, **kwargs):
         """
         Subscribe the provided callback function to configuration notifications.
@@ -1545,6 +1598,7 @@ class OperatorWrapper(Operator):
         self.operator = operator
         self.graph = operator.graph
         self._parent = operator._parent
+        self._initialized = False
 
         assert self.operator is not None
 
@@ -1650,6 +1704,9 @@ class OperatorWrapper(Operator):
         for s in self.outputs.values():
             s.notifyInserted(self._callbackInserted)
             s.notifyRemove(self._callbackRemove)
+        
+        self._initialized = True
+
 
     def _callbackInserted(self, slot, index, size):
         self._insertInnerOperator(index, size)
