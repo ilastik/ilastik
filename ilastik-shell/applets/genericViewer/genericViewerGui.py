@@ -108,7 +108,7 @@ class GenericViewerGui(QMainWindow):
 
         # Update the GUI for all layers in the current dataset
         for index, slot in enumerate(self.currentDatasetSlot):
-            if slot.configured():
+            if slot.ready():
                 self.slotIndexToGuiIndex.append(index)
                 self.updateLayer(slot)
             else:
@@ -143,7 +143,7 @@ class GenericViewerGui(QMainWindow):
 
     def updateLayer(self, slot):
         # Can't update if the slot doesn't have data
-        if not slot.configured():
+        if not slot.ready():
             return
         
         slotIndex = list(self.currentDatasetSlot).index(slot)
