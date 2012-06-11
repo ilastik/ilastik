@@ -111,7 +111,7 @@ class PixelClassificationGui(QMainWindow):
         """This closure is called when a new input image is connected to the multi-input slot."""
         if len(self.pipeline.InputImages) > 0:
             # Subscribe to changes on the graph input.
-            self.pipeline.InputImages[self.imageIndex].notifyConnect( bind(self.handleGraphInputChanged) )
+            self.pipeline.InputImages[self.imageIndex].notifyReady( bind(self.handleGraphInputChanged) )
             self.pipeline.InputImages[self.imageIndex].notifyMetaChanged( bind(self.handleGraphInputChanged) )
         else:
             if self.layerstack is not None:
@@ -121,7 +121,7 @@ class PixelClassificationGui(QMainWindow):
         if len(self.pipeline.LabelImages) > 0:
             # Subscribe to changes on the graph input.
             self.pipeline.LabelImages[self.imageIndex].notifyMetaChanged( bind(self.initLabelLayer) )
-            self.pipeline.LabelImages[self.imageIndex].notifyConnect( bind(self.initLabelLayer) )
+            self.pipeline.LabelImages[self.imageIndex].notifyReady( bind(self.initLabelLayer) )
 
     def setImageIndex(self, imageIndex):
         self.imageIndex = imageIndex
@@ -428,7 +428,7 @@ class PixelClassificationGui(QMainWindow):
         self._labelControlUi.brushSizeCaption.hide()
 
         # If the user can't label this image, disable the button and say why its disabled
-        labelsAllowed = self.pipeline.LabelsAllowedFlags[self.imageIndex].value
+        labelsAllowed = self.imageIndex >= 0 and self.pipeline.LabelsAllowedFlags[self.imageIndex].value
         self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed)
         if labelsAllowed:
             self._labelControlUi.AddLabelButton.setText("Add Label")
@@ -534,10 +534,6 @@ class PixelClassificationGui(QMainWindow):
         while self._labelControlUi.labelListModel.rowCount() < numLabels:
             self.addNewLabel()
         
-#        # Remove rows until we have the right number
-#        while self._labelControlUi.labelListModel.rowCount() > numLabels:
-#            self.removeLastLabel()
-
         # Select a label by default so the brushing controller doesn't get confused.
         if numLabels > 0:
             selectedRow = self._labelControlUi.labelListModel.selectedRow()
@@ -792,12 +788,10 @@ class PixelClassificationGui(QMainWindow):
             # Before we append the input data to the viewer,
             # Delete any previous input data layers
             self.removeLayersFromEditorStack(layer1.name)
-
-            def handleSourceResize(slot, oldsize, newsize):
-                if newsize == 0:
-                    self.removeLayersFromEditorStack(layer1.name)
-            self.pipeline.InputImages.notifyResize(handleSourceResize)
-    
+            
+            # If this image subslot is removed, remove it from the layer stack!
+            self.pipeline.InputImages[self.imageIndex].notifyDisconnect( bind(self.removeLayersFromEditorStack, layer1.name) )
+            
             self.initEditor()
     
             # The input data layer should always be on the bottom of the stack (last)
@@ -822,7 +816,9 @@ class PixelClassificationGui(QMainWindow):
         - Create the label layer and insert it into the layer stack.
         - Does not actually add any labels to the GUI.
         """
-        if len(self.pipeline.LabelImages) > 0 and self.editor is not None: #and len(self.pipeline.InputImages) > 0:
+        if len(self.pipeline.LabelImages) > 0 \
+        and self.editor is not None \
+        and self.pipeline.LabelImages[self.imageIndex].ready():
             # Add the layer to draw the labels, but don't add any labels
             self.labelsrc = LazyflowSinkSource(self.pipeline,
                                                self.pipeline.LabelImages[self.imageIndex],
