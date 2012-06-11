@@ -14,7 +14,7 @@ class OpSimple(Operator):
     def execute(self, slot, roi, result):
         assert slot == self.Output
 
-        result[...] = self.InputA(roi).wait() * self.InputB[0:1].wait()
+        result[...] = self.InputA(roi.start, roi.stop).wait() * self.InputB[0:1].wait()
 
 class OpExplicitMulti(Operator):
     Output = MultiOutputSlot()

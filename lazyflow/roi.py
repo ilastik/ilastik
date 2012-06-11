@@ -125,7 +125,44 @@ class TinyVector(list):
 TinyVector.__radd__ = TinyVector.__add__
 TinyVector.__rmul__ = TinyVector.__mul__
 
+def expandSlicing(s, shape):
+    """
+    Args:
+        s: Anything that can be used as a numpy array index:
+           - int
+           - slice
+           - Ellipsis (i.e. ...)
+           - Some combo of the above as a tuple or list
+        
+        shape: The shape of the array that will be accessed
+        
+    Returns:
+        A tuple of length N where N=len(shape)
+        slice(None) is inserted in missing positions so as not to change the meaning of the slicing.
+        e.g. if shape=(1,2,3,4,5):
+            0 --> (0,:,:,:,:)
+            (0:1) --> (0:1,:,:,:,:)
+            : --> (:,:,:,:,:)
+            ... --> (:,:,:,:,:)
+            (0,0,...,4) --> (0,0,:,:,4)            
+    """
+    if type(s) == list:
+        s = tuple(s)
+    if type(s) != tuple:
+        # Convert : to (:,), or 5 to (5,)
+        s = (s,)
 
+    # Compute number of axes missing from the slicing
+    assert len(shape) - len(s) >= 0, "Slicing must not have more elements than the shape."
+
+    # Replace Ellipsis with (:,:,:)
+    if Ellipsis in s:
+        ei = s.index(Ellipsis) # Ellipsis Index
+        s = s[0:ei] + (len(shape) - len(s) + 1)*(slice(None),) + s[ei+1:]
+
+    # Append (:,) until we get the right length
+    s += (len(shape) - len(s))*(slice(None),)
+    return s
 
 sTrl1 =   lambda x: x if type(x) != slice else x.start if x.start != None else 0
 sTrl2 =  lambda x,y: y if type(y) != slice else y.stop if y.stop != None else x
@@ -133,16 +170,14 @@ sTrl3 = lambda x,y: y + 1 if x == y else y
 def sliceToRoi(s, shape, extendSingleton = True):
     """Args:
             slice: slice object (1D) or list of slice objects (N-D)
+            shape: the shape of the array to be sliced
+            extendSingleton: if True, convert int indexes to slices so the dimension of the slicing matches the dimension of the shape.
        Returns:
             ROI instance corresponding to slice
     """
-    if type(s) == tuple or type(s) == list:
-        assert len(s) == len(shape), "sliceToRoi failed: slice=%r, but shape=%r" % (s, shape)
-        start = map(sTrl1, s)
-        stop = map(sTrl2, shape,s)
-    else: #this handles the [:] case
-        start = [0]*len(shape)
-        stop = shape
+    s = expandSlicing(s, shape)
+    start = map(sTrl1, s)
+    stop = map(sTrl2, shape,s)
     if extendSingleton:
         stop = map(sTrl3,start,stop)
     return TinyVector(start), TinyVector(stop)
