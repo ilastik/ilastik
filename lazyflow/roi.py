@@ -153,7 +153,8 @@ def expandSlicing(s, shape):
         s = (s,)
 
     # Compute number of axes missing from the slicing
-    assert len(shape) - len(s) >= 0, "Slicing must not have more elements than the shape."
+    if len(shape) - len(s) < 0:
+        assert s == (Ellipsis,) or s == (slice(None),), "Slicing must not have more elements than the shape, except for [:] and [...] slices"
 
     # Replace Ellipsis with (:,:,:)
     if Ellipsis in s:
@@ -162,6 +163,11 @@ def expandSlicing(s, shape):
 
     # Append (:,) until we get the right length
     s += (len(shape) - len(s))*(slice(None),)
+    
+    # Special case: we allow [:] and [...] for empty shapes ()
+    if shape == ():
+        s = ()
+    
     return s
 
 sTrl1 =   lambda x: x if type(x) != slice else x.start if x.start != None else 0
@@ -202,7 +208,6 @@ def roiToSlice(start, stop, hardBind=False):
         return tuple(res)
     else:
         return tuple(map(rTsl1,start,stop))
-
 
 
 def extendSlice(start, stop, shape, sigma, window = 3.5):

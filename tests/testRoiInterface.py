@@ -73,6 +73,11 @@ class TestRoiUtilities(TestCase):
         assert lazyflow.roi.expandSlicing((0, 1, Ellipsis, 9), shape) == (0, 1, slice(None), slice(None), 9)
         assert lazyflow.roi.expandSlicing([0, 1, Ellipsis, 9], shape) == (0, 1, slice(None), slice(None), 9)
     
+        # Special cases for empty shapes
+        emptyShape = ()
+        assert lazyflow.roi.expandSlicing(Ellipsis, emptyShape ) == emptyShape
+        assert lazyflow.roi.expandSlicing(slice(None), emptyShape ) == emptyShape
+    
     def test_sliceToRoi(self):
         from lazyflow.roi import TinyVector
         shape = (2,4,6,8,10)
