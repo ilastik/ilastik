@@ -106,8 +106,8 @@ class BatchIoSerializer(object):
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
             This way we can avoid invalid state due to a partially loaded project. """ 
         self.mainOperator.ExportDirectory.setValue( '' )
-        self.mainOperator.Format( ExportFormat.H5 )
-        self.mainOperator.Suffix( '_results' )
+        self.mainOperator.Format.setValue( ExportFormat.H5 )
+        self.mainOperator.Suffix.setValue( '_results' )
         self.mainOperator.DatasetPath.resize(0)
 
     def getOrCreateGroup(self, parentGroup, groupName):
