@@ -486,6 +486,7 @@ class OpMultiInputConcatenater(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpMultiInputConcatenater, self).__init__(*args, **kwargs)
+        self._numInputLists = 0
 
     def getOutputIndex(self, inputMultiSlot, inputIndex):
         """
@@ -531,6 +532,13 @@ class OpMultiInputConcatenater(Operator):
         self.Output.removeSlot(outputIndex, newOutputLength)
 
     def setupOutputs(self):
+        # This function is merely provided to initialize ourselves if one of our input lists was set up in advance.
+        # We don't need to do this expensive rebuilding of the output list unless a new input list was added
+        if self._numInputLists == len(self.Inputs):
+            return
+        
+        self._numInputLists = len(self.Inputs)
+            
         # First pass to determine output length
         totalOutputLength = 0
         for index, slot in enumerate( self.Inputs ):
