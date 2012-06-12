@@ -4,7 +4,7 @@ from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QMenuBar, QFrame, QLabel, QStackedLayout, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
                         QStandardItemModel, QTreeWidgetItem, QTreeWidget, QFont, \
-                        QBrush, QColor
+                        QBrush, QColor, QAbstractItemView
 from PyQt4 import QtCore
 
 import h5py
@@ -20,6 +20,8 @@ import sys
 import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
+
+import applet
 
 class ShellActions(object):
     """
@@ -137,12 +139,18 @@ class IlastikShell( QMainWindow ):
         self.populatingImageSelectionCombo = False
         self.imageSelectionCombo.currentIndexChanged.connect( self.changeCurrentInputImageIndex )
         
+        self.enableWorkflow = False # Global mask applied to all applets
+        self._controlCmds = []      # Track the control commands that have been issued by each applet so they can be popped.
+        self._disableCounts = []    # Controls for each applet can be disabled by his peers.
+                                    # No applet can be enabled unless his disableCount == 0
+        
     def show(self):
         """
         Show the window, and enable/disable controls depending on whether or not a project file present.
         """
         super(IlastikShell, self).show()
-        self.enableControls(self.currentProjectFile != None)
+        self.enableWorkflow = (self.currentProjectFile != None)
+        self.updateAppletControlStates()
         if self._sideSplitterSizePolicy == SideSplitterSizePolicy.Manual:
             self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoLargestDrawer )
         else:
@@ -265,23 +273,23 @@ class IlastikShell( QMainWindow ):
         else:
             self.appletBar.setCurrentIndex( modelIndex.parent() )
 
-    def addApplet( self, applet ):
-        self._applets.append(applet)
+    def addApplet( self, app ):
+        self._applets.append(app)
         applet_index = len(self._applets) - 1
-        self.appletStack.addWidget( applet.centralWidget )
-        self._menuBar.addAppletMenuWidget( applet.menuWidget )
+        self.appletStack.addWidget( app.centralWidget )
+        self._menuBar.addAppletMenuWidget( app.menuWidget )
         
         # Viewer controls are optional.
-        if applet.viewerControlWidget is None:
+        if app.viewerControlWidget is None:
             self.viewerControlStack.addWidget( QWidget(parent=self) )
         else:
-            self.viewerControlStack.addWidget( applet.viewerControlWidget )
+            self.viewerControlStack.addWidget( app.viewerControlWidget )
 
         # Add rows to the applet bar model
         rootItem = self.appletBar.invisibleRootItem()
 
         # Add all of the applet bar's items to the toolbox widget
-        for controlName, controlGuiItem in applet.appletDrawers:
+        for controlName, controlGuiItem in app.appletDrawers:
             appletNameItem = QTreeWidgetItem( self.appletBar, QtCore.QStringList( controlName ) )
             appletNameItem.setFont( 0, QFont("Ubuntu", 14) )
             drawerItem = QTreeWidgetItem(appletNameItem)
@@ -294,7 +302,36 @@ class IlastikShell( QMainWindow ):
             #  we need to keep track of which applet this item is associated with
             self.appletBarMapping[rootItem.childCount()-1] = applet_index
 
+        app.guiControlSignal.connect( bind(self.handleAppletGuiControlSignal, applet_index) )
+        self._disableCounts.append(0)
+        self._controlCmds.append( [] )
+        
         return applet_index
+
+    def handleAppletGuiControlSignal(self, applet_index, command=applet.ControlCommand.DisableAll):
+        """
+        Applets fire a signal when they want other applet GUIs to be disabled.
+        This function handles the signal.
+        Each signal is treated as a command to disable other applets.
+        A special command, Pop, undoes the applet's most recent command (i.e. re-enables the applets that were disabled).
+        If an applet is disabled twice (e.g. by two different applets), then it won't become enabled again until both commands have been popped.
+        """
+        if command == applet.ControlCommand.Pop:
+            command = self._controlCmds[applet_index].pop()
+            step = -1 # Since we're popping this command, we'll subtract from the disable counts
+        else:
+            step = 1
+            self._controlCmds[applet_index].append( command ) # Push command onto the stack so we can pop it off when the applet isn't busy any more
+
+        # Increase the disable count for each applet that is affected by this command.
+        for index, count in enumerate(self._disableCounts):
+            if (command == applet.ControlCommand.DisableAll) \
+            or (command == applet.ControlCommand.DisableDownstream and index > applet_index) \
+            or (command == applet.ControlCommand.DisableUpstream and index < applet_index) \
+            or (command == applet.ControlCommand.DisableSelf and index == applet_index):
+                self._disableCounts[index] += step
+
+        self.updateAppletControlStates()
 
     def __len__( self ):
         return self.appletBar.count()
@@ -316,7 +353,8 @@ class IlastikShell( QMainWindow ):
                 self.unloadAllApplets()
                 self.currentProjectFile.close()
                 self.currentProjectFile = None
-                self.enableControls(False)
+                self.enableWorkflow = False
+                self.updateAppletControlStates()
         return projectClosed
     
     def onNewProjectActionTriggered(self):
@@ -401,7 +439,8 @@ class IlastikShell( QMainWindow ):
             self._menuBar.actions.saveProjectAction.setEnabled(True)
     
             # Enable all the applet controls        
-            self.enableControls(True)
+            self.enableWorkflow = True
+            self.updateAppletControlStates()
 
         except:
             logger.error("Project Open Action failed due to the following exception:")
@@ -472,16 +511,34 @@ class IlastikShell( QMainWindow ):
                     unSavedDataExists = item.isDirty()
         return unSavedDataExists
     
-    def enableControls(self, enabled):
+    def updateAppletControlStates(self):
         """
-        Enable or disable all controls of all applets.
+        Enable or disable all controls of all applets according to their disable count.
         """
-        for applet in self._applets:
+        for index, applet in enumerate(self._applets):
+            enabled = self._disableCounts[index] == 0
+
             # Apply to the applet central widget
-            applet.centralWidget.enableControls(enabled)
+            applet.centralWidget.enableControls( enabled and self.enableWorkflow )
+            
             # Apply to the applet bar drawers
             for appletName, appletGui in applet.appletDrawers:
-                appletGui.enableControls(enabled)
+                appletGui.enableControls( enabled and self.enableWorkflow )
+
+#    def scrollToTop(self):
+#        #self.appletBar.verticalScrollBar().setValue( 0 )
+#
+#        self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
+#        
+#        from PyQt4.QtCore import QPropertyAnimation, QVariant
+#        animation = QPropertyAnimation( self.appletBar.verticalScrollBar(), "value", self )
+#        animation.setDuration(2000)
+#        #animation.setStartValue( QVariant( self.appletBar.verticalScrollBar().minimum() ) )
+#        animation.setEndValue( QVariant( self.appletBar.verticalScrollBar().maximum() ) )
+#        animation.start()
+#
+#        #self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerItem )
+
 #
 # Simple standalone test for the IlastikShell
 #

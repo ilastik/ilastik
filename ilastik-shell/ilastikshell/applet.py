@@ -2,6 +2,14 @@ from PyQt4.QtGui import QWidget, QApplication
 
 from utility.simpleSignal import SimpleSignal
 
+class ControlCommand(object):
+    # An enum of commands that applets can use to request that other applet GUIs become disabled
+    Pop = 0                 # Undo the most recent command that the issuing applet sent
+    DisableAll = 1          # Disable all applets in the workflow
+    DisableUpstream = 2     # Disable applets that come before the applet that is issuing the command
+    DisableDownstream = 3   # Disable applets that come after the applet that is issuing the command
+    DisableSelf = 4         # Disable the applet that is issuing the command
+    
 class Applet( object ):
     def __init__( self, name ):
         self.name = name
@@ -13,6 +21,11 @@ class Applet( object ):
         # Progress signal.
         # When the applet is doing something time-consuming, this signal tells the shell.
         self.progressSignal = SimpleSignal() # Signature: emit(percentComplete, canceled=false)
+        
+        # GUI control signal
+        # When an applet wants other applets in the shell to be disabled, he fires this signal.
+        # The applet must fire it again with ControlState.EnableAll as the parameter to re-enable the other applets. 
+        self.guiControlSignal = SimpleSignal() # Signature: emit(controlState=ControlState.DisableAll)
 
     ###
     ### Outputs provided by the Applet to the Shell or Workflow Manager

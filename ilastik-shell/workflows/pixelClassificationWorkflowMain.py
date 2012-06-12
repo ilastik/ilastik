@@ -5,7 +5,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 from PyQt4.QtCore import QTimer
 
-from ilastikshell.ilastikShell import IlastikShell
+from ilastikshell.ilastikShell import IlastikShell, SideSplitterSizePolicy
 
 from applets.pixelClassification import PixelClassificationApplet
 from applets.projectMetadata import ProjectMetadataApplet
@@ -131,7 +131,7 @@ opBatchResults.ImageToExport.connect( opBatchPredictor.PMaps )
 ######################
 
 # Create the shell
-shell = IlastikShell()
+shell = IlastikShell(sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
 
 # Add interactive workflow applets
 shell.addApplet(projectMetadataApplet)
@@ -164,14 +164,19 @@ def test():
     from functools import partial
     
     # Open a test project
-    shell.openProjectFile('/home/bergs/synapse_small.ilp')
+    #shell.openProjectFile('/home/bergs/synapse_small.ilp')
+    shell.openProjectFile('/home/bergs/dummy.ilp')
     
     # Select a drawer
-    #shell.setSelectedAppletDrawer( 7 )
+    shell.setSelectedAppletDrawer( 6 )
     
     # Check the 'interactive mode' checkbox.
     #QTimer.singleShot( 2000, partial(pcApplet.centralWidget._labelControlUi.checkInteractive.setChecked, True) )
 
+#timer = QTimer()
+#timer.setInterval(4000)
+#timer.timeout.connect( shell.scrollToTop )
+#timer.start()
 
 # Run a test
 #QTimer.singleShot(1, test )

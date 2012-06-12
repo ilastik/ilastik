@@ -23,7 +23,7 @@ class BatchIoApplet( Applet ):
         self._serializableItems = [ BatchIoSerializer(self._topLevelOperator, title) ]
 
         # Instantiate the main GUI, which creates the applet drawers
-        self._centralWidget = BatchIoGui( self._topLevelOperator )
+        self._centralWidget = BatchIoGui( self._topLevelOperator, self.guiControlSignal )
         self._menuWidget = self._centralWidget.menuBar
         
         # The central widget owns the applet drawer gui

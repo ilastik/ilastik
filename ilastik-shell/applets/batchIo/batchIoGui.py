@@ -2,6 +2,8 @@ from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
+import threading
+
 from functools import partial
 import os
 import sys
@@ -9,6 +11,8 @@ import copy
 import utility # This is the ilastik shell utility module
 from utility import bind
 from utility import PathComponents
+
+import ilastikshell.applet
 
 import logging
 logger = logging.getLogger(__name__)
@@ -28,7 +32,7 @@ class BatchIoGui(QMainWindow):
     Manages all GUI elements in the data selection applet.
     This class itself is the central widget and also owns/manages the applet drawer widgets.
     """
-    def __init__(self, dataSelectionOperator):
+    def __init__(self, dataSelectionOperator, guiControlSignal):
         super(BatchIoGui, self).__init__()
 
         self.drawer = None
@@ -38,6 +42,8 @@ class BatchIoGui(QMainWindow):
         self.initAppletDrawerUic()
         self.initCentralUic()
         self.chosenExportDirectory = '/'
+        
+        self.guiControlSignal = guiControlSignal
         
         def handleNewDataset( multislot, index ):
             # Make room in the GUI table
@@ -218,11 +224,28 @@ class BatchIoGui(QMainWindow):
             print "Failed to export a result."
     
     def exportAllResults(self):
-        for slot in self.mainOperator.ExportResult:
-            result = slot.value
-            if not result:
-                print "Failed to export a result:" + self.mainOperator.OutputDataPath
+        def exportClosure():
+            # Don't let anyone change the classifier while we're exporting...
+            self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.DisableUpstream )
+            
+            # Also disable this applet's controls
+            self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.DisableSelf )
+            
+            for slot in self.mainOperator.ExportResult:
+                result = slot.value
+                if not result:
+                    print "Failed to export a result:" + self.mainOperator.OutputDataPath
+    
+            # Re-enable our controls
+            self.enableControls(True)
 
+            # Now that we're finished, it's okay to use the other applets again.
+            self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop ) # Enable ourselves
+            self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop ) # Enable the others we disabled
+
+        # Do this in a separate thread so the UI remains responsive
+        exportThread = threading.Thread(target=exportClosure, name="BatchIOExportThread")
+        exportThread.start()
 
     def deleteAllResults(self):
         for slot in self.mainOperator.OutputDataPath:
