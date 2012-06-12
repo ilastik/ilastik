@@ -45,6 +45,7 @@ import gc
 import string
 import types
 import itertools
+import threading
 
 from h5dumprestore import instanceClassToString, stringToClass
 from helpers import itersubclasses, detectCPUs, deprecated, warn_deprecated
@@ -227,8 +228,12 @@ class Slot(object):
         self._sig_resized = OrderedSignal()
         self._sig_remove = OrderedSignal()
         self._sig_inserted = OrderedSignal()
-
+        
         self._resizing = False
+        
+        self._executionCount = 0
+        self._settingUp = False
+        self._condition = threading.Condition()
 
     #
     #
@@ -611,7 +616,12 @@ class Slot(object):
             assert self._type != "input", "This inputSlot has no value and no partner.  You can't ask for its data yet!"
             # normal (outputslot) case
             # --> construct heavy request object..
-            return Request(self._requestFunctionWrapper,roi = roi,destination = destination)
+            request = Request(self._requestFunctionWrapper,roi = roi,destination = destination)
+
+            # We must decrement the execution count even if the request is cancelled
+            request.onCancel( self._decrementExecutionCount )
+            return request
+            
 
     def setDirty(self, *args,**kwargs):
         """
@@ -727,7 +737,7 @@ class Slot(object):
             for i,s in enumerate(self._subSlots):
                 s.setValue(self._value)
 
-            notify = (self.meta._ready == False)            
+            notify = (self.meta._ready == False)
             self.meta._ready = True # a slot with a value is always ready
             if notify:
                 self._sig_ready(self)
@@ -816,9 +826,27 @@ class Slot(object):
     def _requestFunctionWrapper(self, roi, destination):
         if destination is None:
             destination = self.stype.allocateDestination(roi)
+        
+        self._incrementExecutionCount()
         tres = self.operator.execute(self, roi, destination)
+        self._decrementExecutionCount()
+
         return destination
 
+    def _incrementExecutionCount(self):
+        assert self.operator._executionCount >= 0, "BUG: How did the execution count get negative?"
+        # We can't execute while the operator is in the middle of setupOutputs
+        self.operator._condition.acquire()
+        while self.operator._settingUp:
+            self.operator._condition.wait()
+        self.operator._executionCount += 1
+        self.operator._condition.release()
+
+    def _decrementExecutionCount(self, *args):
+        self.operator._condition.acquire()
+        self.operator._executionCount -= 1
+        self.operator._condition.notifyAll()
+        self.operator._condition.release()
 
     def _getInstance(self, operator, level = None):
         """
@@ -1253,6 +1281,10 @@ class Operator(object):
 
         self._initialized = False
 
+        self._condition = threading.Condition()
+        self._executionCount = 0
+        self._settingUp = False
+
         # preserve compatability with old operators
         # that give the graph as first argument to
         # operators they instantiate
@@ -1427,6 +1459,12 @@ class Operator(object):
         if self.graph.callDepthCounter == 0:
             self.graph.newStateTag()
         self.graph.incrementCallDepth()
+
+        # Don't setup this operator if there are currently requests on it.
+        self._condition.acquire()
+        while self._executionCount > 0:
+            self._condition.wait()            
+        self._settingUp = True
         
         # Outputslots may become "ready" during setupOutputs()
         # Save a copy of the ready flag for each output slot so we can decide whether or not to fire the ready signal.
@@ -1436,6 +1474,10 @@ class Operator(object):
         
         # Call the subclass
         self.setupOutputs()
+
+        self._settingUp = False
+        self._condition.notifyAll()
+        self._condition.release()
 
         # Determine new "ready" flags
         for k, oslot in self.outputs.items():
