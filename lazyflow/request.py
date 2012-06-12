@@ -66,21 +66,25 @@ class Worker(Thread):
 
     def stop(self):
         print "stopping worker %r of machine %r" % (self, self.machine)
+        self.flush()
+
+        self.running = False
+        wakeUp(self)
+        self.join()
+
+    def flush(self):
         allDone = False
 
         while not allDone:
         # wait untile all threads have nothing to do anymore
             allDone = True
             for w in self.machine.workers:
-                if w.running and (w.processing or w.workAvailable):
-                    #print "Worker %r still working..." % w
+                if w.running and (w.processing or len(self.machine.requests0) > 0):
+                    #print "Worker %r still working..." % w, len(self.machine.requests0)
                     allDone = False
-                    time.sleep(0.1)
+                    time.sleep(0.03)
                     break
 
-        self.running = False
-        wakeUp(self)
-        self.join()
 
     def run(self):
         try:
@@ -197,6 +201,8 @@ class ThreadPool(object):
             self.workers.add(w)
             w.start()
             self.lastWorker = w
+        self._pausesLock = threading.Lock()
+        self._pauses = 0
 
     def putRequest(self, request):
         """
@@ -206,7 +212,12 @@ class ThreadPool(object):
         """
         #self.requests.put((request.prio,request))
         if request.prio == 0:
-            self.requests0.append(request)
+            if self._pauses == 0:
+              self.requests0.append(request)
+            else:
+              # silently drop request
+              # TODO: notify request of dropping ?
+              pass
         else:
             self.requests1.append(request)
         try:
@@ -225,6 +236,30 @@ class ThreadPool(object):
             for w in self.workers:
                 w.stop()
 
+    def pause(self):
+        """
+        Pause Threadpool : drop new requests, wait unitl existing requests
+        are executed, increase _pauses counter
+        """
+        cur_tr = threading.current_thread()
+        print cur_tr.current_request
+        assert cur_tr.current_request == None, "ERROR: the threadpool cannot be paused from inside a request"
+        self._pausesLock.acquire()
+        self._pauses += 1
+        self._pausesLock.release()
+        for w in self.workers:
+          w.flush()
+
+
+    def unpause(self):
+        """
+        Unpause Threadpool : decreases the pauses counter, when
+        reaching 0 requests are processed again
+        """
+        self._pausesLock.acquire()
+        if self._pauses > 0:
+          self._pauses -= 1
+        self._pausesLock.release()
 
 @atexit.register
 def stopThreadPool():
@@ -344,17 +379,18 @@ class Request(object):
         cur_tr = threading.current_thread()
         patchIfForeignThread(cur_tr)
 
-        if isinstance(cur_gr, CustomGreenlet):
-            self.parent_request = cur_gr.request
-            self.prio = self.parent_request.prio - 1
+        if hasattr(cur_tr, "current_request"):
+            self.parent_request = cur_tr.current_request
+            if self.parent_request is not None:
+              self.prio = self.parent_request.prio - 1
 
-            # self.parent_request.lock.acquire()
-            self.parent_request.child_requests.add(self)
-            # self.parent_request.lock.release()
+              # self.parent_request.lock.acquire()
+              self.parent_request.child_requests.add(self)
+              # self.parent_request.lock.release()
 
-            # always hold back one request that
-            # was created in a thread.
-            # if a second one is created, submit the first one to the job queue
+              # always hold back one request that
+              # was created in a thread.
+              # if a second one is created, submit the first one to the job queue
         last_request = cur_tr.last_request
         if last_request is not None:
             #print "bursting..."
@@ -439,8 +475,12 @@ class Request(object):
             import traceback
             self._requesterStack = traceback.extract_stack()
 
+        # test before locking, otherwise deadlock ?
+        if self.finished or self.canceled:
+          return self
+
         self.lock.acquire()
-        if not self.running and not self.finished and not self.canceled:
+        if not self.running:
             self.running = True
             self.lock.release()
             global_thread_pool.putRequest(self)
