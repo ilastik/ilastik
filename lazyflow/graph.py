@@ -1253,7 +1253,6 @@ class Operator(object):
 
         self._initialized = False
 
-        self._configurationNotificationCallbacks = []
         # preserve compatability with old operators
         # that give the graph as first argument to
         # operators they instantiate
@@ -1466,10 +1465,6 @@ class Operator(object):
         for k,v in self.outputs.items():
             v._changed()
 
-        # Call anyone who wanted to be notified of configuration changes
-        for fn, kwargs in self._configurationNotificationCallbacks:
-            fn(**kwargs)
-
     def handleInputBecameUnready(self, slot):
         # One of our input slots was disconnected.
         # If it was optional, we don't care.
@@ -1490,21 +1485,6 @@ class Operator(object):
             if readyFlags[k] != oslot.meta._ready:
                 oslot._sig_unready(self)
                 oslot._changed()
-
-    def notifyConfigured(self, callbackFn, **kwargs):
-        """
-        Subscribe the provided callback function to configuration notifications.
-        The callback will be called immediately after this operator's setupOutputs() function is called.
-        """
-        self._configurationNotificationCallbacks.append( (callbackFn, kwargs) )
-
-    def disconnectNotifyConfigured(self, callbackFn, **kwargs):
-        """
-        Unsubscribe the given callback from the "configured" callback list.
-        """
-        # A ValueError here is probably a real problem in the client code,
-        #  so we won't catch that exception.
-        self._configurationNotificationCallbacks.remove( (callbackFn, kwargs) )
 
     def setupOutputs(self):
         """
@@ -1623,9 +1603,6 @@ class OperatorWrapper(Operator):
 
         self._inputSlots = []
         self._outputSlots = []
-
-        # replicate callbacks
-        self._configurationNotificationCallbacks = self.operator._configurationNotificationCallbacks
 
         # replicate input slot definitions
         for islot in self.operator.inputSlots:
@@ -1846,10 +1823,6 @@ class OperatorWrapper(Operator):
     def _setupOutputs(self):
         for name, oslot in self.outputs.items():
             oslot._changed()
-
-        # Call anyone who wanted to be notified of configuration changes
-        for fn, kwargs in self._configurationNotificationCallbacks:
-            fn(**kwargs)
 
 
     def getOutSlot(self, slot, key, result):
