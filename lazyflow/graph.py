@@ -1340,19 +1340,6 @@ class Operator(object):
                 assert isinstance(value, Slot), "ERROR: trying to set attribute %r of operator %r to value %r, which is not of type Slot !" % (name, self, value)
         object.__setattr__(self,name,value)
 
-
-    def connected(self):
-        """
-        Returns True if all input slots that are non-optional are
-        connected.
-        """
-        allConnected = True
-        for slot in self.inputs.values():
-            if slot._optional is False and slot.connected() is False:
-                allConnected = False
-                break
-        return allConnected
-
     def configured(self):
         """
         Returns True if all input slots that are non-optional are
