@@ -1420,16 +1420,6 @@ class Operator(object):
     def _notifyConnectAll(self):
         pass
 
-    def connect(self, **kwargs):
-        for k in kwargs:
-            if k in self.inputs.keys():
-                self.inputs[k].connect(kwargs[k])
-            else:
-                print "ERROR, connect(): operator %s has no slot named %s" % (self.name, k)
-                print "                  available inputSlots are: ", self.inputs.keys()
-                assert(1==2)
-
-
     def _setupOutputs(self):
         # Outputslots may become "ready" during setupOutputs()
         # Save a copy of the ready flag for each output slot so we can decide whether or not to fire the ready signal.
