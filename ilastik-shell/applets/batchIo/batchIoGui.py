@@ -61,7 +61,8 @@ class BatchIoGui(QMainWindow):
 
         self.mainOperator.OutputDataPath.notifyRemove( bind( handleDatasetRemoved ) )
         
-        self.mainOperator.notifyConfigured( self.updateDrawerGuiFromOperatorSettings )
+        self.mainOperator.Suffix.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
+        self.mainOperator.ExportDirectory.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
         self.updateDrawerGuiFromOperatorSettings()
         
     def initAppletDrawerUic(self):
@@ -193,11 +194,14 @@ class BatchIoGui(QMainWindow):
         exportNowButton.clicked.connect( bind(self.exportResultsForSlot, self.mainOperator.ExportResult[row] ) )
         self.tableWidget.setCellWidget( row, Column.Action, exportNowButton )
 
-    def updateDrawerGuiFromOperatorSettings(self):
-        self.drawer.outputSuffixEdit.setText( self.mainOperator.Suffix.value )
-        self.drawer.outputDirEdit.setText( self.mainOperator.ExportDirectory.value )
-        self.drawer.saveToDirButton.setChecked( self.mainOperator.ExportDirectory.value != '' )        
-        self.drawer.saveWithInputButton.setChecked( self.mainOperator.ExportDirectory.value == '' )        
+    def updateDrawerGuiFromOperatorSettings(self, *args):
+        if self.mainOperator.Suffix.ready():
+            self.drawer.outputSuffixEdit.setText( self.mainOperator.Suffix.value )
+        
+        if self.mainOperator.ExportDirectory.ready():
+            self.drawer.outputDirEdit.setText( self.mainOperator.ExportDirectory.value )
+            self.drawer.saveToDirButton.setChecked( self.mainOperator.ExportDirectory.value != '' )        
+            self.drawer.saveWithInputButton.setChecked( self.mainOperator.ExportDirectory.value == '' )        
 
     def handleTableSelectionChange(self):
         """
