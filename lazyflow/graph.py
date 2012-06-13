@@ -218,6 +218,8 @@ class Slot(object):
         self._stypeType = stype       # the slot type class
         self.stype = stype(self)      # the slot type instance
 
+        self._currentGraphState = None # Not initialized until the slot is ready
+
         self._sig_changed = OrderedSignal()
         self._sig_ready = OrderedSignal()
         self._sig_unready = OrderedSignal()
@@ -229,6 +231,8 @@ class Slot(object):
         self._sig_remove = OrderedSignal()
         self._sig_inserted = OrderedSignal()
         
+        self._sig_newGraphState = OrderedSignal()
+
         self._resizing = False
         
         self._executionCount = 0
@@ -739,6 +743,7 @@ class Slot(object):
 
             notify = (self.meta._ready == False)
             self.meta._ready = True # a slot with a value is always ready
+            self._currentStateTag = self.operator.graph.stateTag
             if notify:
                 self._sig_ready(self)
 
@@ -875,6 +880,7 @@ class Slot(object):
         oldMeta = self.meta
         if self.partner is not None and self.meta != self.partner.meta:
             self.meta = self.partner.meta.copy()
+            self._currentGraphState = self.partner._currentGraphState
 
         if self._type == "output":
             for o in self._subSlots:
@@ -1466,6 +1472,11 @@ class Operator(object):
             self._condition.wait()            
         self._settingUp = True
         
+        # Update the state tag of every output.
+        # Requests made with the old state tag will not be processed.
+        for k, oslot in self.outputs.items():
+            oslot._currentStateTag = self.graph.stateTag
+
         # Outputslots may become "ready" during setupOutputs()
         # Save a copy of the ready flag for each output slot so we can decide whether or not to fire the ready signal.
         readyFlags = {}
