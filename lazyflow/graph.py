@@ -620,12 +620,64 @@ class Slot(object):
             assert self._type != "input", "This inputSlot has no value and no partner.  You can't ask for its data yet!"
             # normal (outputslot) case
             # --> construct heavy request object..
-            request = Request(self._requestFunctionWrapper,roi = roi,destination = destination)
+            execWrapper = Slot.RequestExecutionWrapper( self )
+            request = Request( execWrapper, roi = roi, destination = destination )
 
             # We must decrement the execution count even if the request is cancelled
-            request.onCancel( self._decrementExecutionCount )
+            request.onCancel( execWrapper._decrementOperatorExecutionCount )
             return request
             
+    class RequestExecutionWrapper(object):
+        def __init__(self, slot):
+            self.started = False
+            self.finished = False
+            self.slot = slot
+            self.operator = slot.operator
+            self.lock = threading.Lock()
+
+        def __call__(self, roi, destination):
+            if destination is None:
+                destination = self.slot.stype.allocateDestination(roi)
+
+            # We are executing the operator.
+            # Incremement the execution count to protect against simultaneous setupOutputs() calls.
+            self._incrementOperatorExecutionCount()
+            
+            # Execute the workload, which might not ever return (if we get cancelled).
+            self.operator.execute(self.slot, roi, destination)
+            
+            # Decrement the execution count
+            self._decrementOperatorExecutionCount()
+            return destination
+
+        def _incrementOperatorExecutionCount(self):
+            self.started = True
+            assert self.operator._executionCount >= 0, "BUG: How did the execution count get negative?"
+            # We can't execute while the operator is in the middle of setupOutputs
+            self.operator._condition.acquire()
+            #print "Acquired condition lock"
+            while self.operator._settingUp:
+                self.operator._condition.wait()
+            self.operator._executionCount += 1
+            self.operator._condition.release()
+    
+        def _decrementOperatorExecutionCount(self, *args):
+            # Must lock here because cancel callbacks are asynchronous.
+            # (Perhaps it would be better if they were called from the worker thread instead...)
+            self.lock.acquire()
+            #print "Acquired wrapper lock"
+            # Only do this once per execution
+            # If we were cancelled after we finished working, don't do anything
+            if self.started and not self.finished:
+                assert self.operator._executionCount > 0, "BUG: Can't decrement the execution count below zero!"
+                self.finished = True
+                self.operator._condition.acquire()
+                #print "Acquired condition lock"
+                self.operator._executionCount -= 1
+                self.operator._condition.notifyAll()
+                self.operator._condition.release()
+
+            self.lock.release()
 
     def setDirty(self, *args,**kwargs):
         """
@@ -827,32 +879,6 @@ class Slot(object):
     #
     #  P r i v a t e  M e t h o d s
     #
-
-    def _requestFunctionWrapper(self, roi, destination):
-        if destination is None:
-            destination = self.stype.allocateDestination(roi)
-        
-        self._incrementExecutionCount()
-        tres = self.operator.execute(self, roi, destination)
-        self._decrementExecutionCount()
-
-        return destination
-
-    def _incrementExecutionCount(self):
-        assert self.operator._executionCount >= 0, "BUG: How did the execution count get negative?"
-        # We can't execute while the operator is in the middle of setupOutputs
-        self.operator._condition.acquire()
-        while self.operator._settingUp:
-            self.operator._condition.wait()
-        self.operator._executionCount += 1
-        self.operator._condition.release()
-
-    def _decrementExecutionCount(self, *args):
-        self.operator._condition.acquire()
-        self.operator._executionCount -= 1
-        self.operator._condition.notifyAll()
-        self.operator._condition.release()
-
     def _getInstance(self, operator, level = None):
         """
         This method constructs a copy of the slot
@@ -1468,6 +1494,7 @@ class Operator(object):
 
         # Don't setup this operator if there are currently requests on it.
         self._condition.acquire()
+        #print "Acquired condition lock"
         while self._executionCount > 0:
             self._condition.wait()            
         self._settingUp = True
