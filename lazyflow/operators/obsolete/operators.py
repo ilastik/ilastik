@@ -338,12 +338,12 @@ class OpArrayCache(OpArrayPiper):
 
     def setupOutputs(self):
         reconfigure = False
-        if  self.inputs["fixAtCurrent"].connected():
+        if  self.inputs["fixAtCurrent"].ready():
             self._fixed =  self.inputs["fixAtCurrent"].value
 
-        if self.inputs["blockShape"].connected() and self.inputs["Input"].connected():
+        if self.inputs["blockShape"].ready() and self.inputs["Input"].ready():
             newBShape = self.inputs["blockShape"].value
-            if self._origBlockShape != newBShape and self.inputs["Input"].connected():
+            if self._origBlockShape != newBShape and self.inputs["Input"].ready():
                 reconfigure = True
             self._origBlockShape = newBShape
             OpArrayPiper.setupOutputs(self)
@@ -373,7 +373,7 @@ class OpArrayCache(OpArrayPiper):
             if not self._fixed:
                 self.outputs["Output"].setDirty(key)
         if slot == self.inputs["fixAtCurrent"]:
-            if  self.inputs["fixAtCurrent"].connected():
+            if  self.inputs["fixAtCurrent"].ready():
                 self._fixed =  self.inputs["fixAtCurrent"].value
 
     def execute(self,slot,roi,result):
@@ -617,7 +617,7 @@ if has_blist:
                 self._denseArray = numpy.zeros(shape, numpy.uint8)
                 self._sparseNZ =  blist.sorteddict()
 
-            if self.inputs["deleteLabel"].connected() and self.inputs["deleteLabel"].value != -1:
+            if self.inputs["deleteLabel"].ready() and self.inputs["deleteLabel"].value != -1:
                 labelNr = self.inputs["deleteLabel"].value
 
                 neutralElement = 0
@@ -642,7 +642,7 @@ if has_blist:
 
         def getOutSlot(self, slot, key, result):
             self.lock.acquire()
-            assert(self.inputs["eraser"].connected() == True and self.inputs["shape"].connected() == True), "OpDenseSparseArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % (self.inputs["eraser"].connected(), self.inputs["shape"].connected())
+            assert(self.inputs["eraser"].ready() == True and self.inputs["shape"].ready() == True), "OpDenseSparseArray:  One of the neccessary input slots is not ready: shape: %r, eraser: %r" % (self.inputs["eraser"].ready(), self.inputs["shape"].ready())
             if slot.name == "Output":
                 result[:] = self._denseArray[key]
             elif slot.name == "nonzeroValues":
@@ -745,10 +745,9 @@ if has_blist:
             self._cacheEraser = None
             self._maxLabel = 0
 
-
         def setupOutputs(self):
             for slot in self.inputs.values():
-                if slot.connected() is False:
+                if slot.ready() is False:
                     continue
                 if slot.name == "shape":
                     self._cacheShape = self.inputs["shape"].value
@@ -849,13 +848,14 @@ if has_blist:
                         if labelNr <= self._maxLabel:
                             self._maxLabel -= 1
                         self.outputs["maxLabel"].setValue(self._maxLabel)
+            
 
         def execute(self, slot, roi, result):
             key = roi.toSlice()
             self.lock.acquire()
-            assert(self.inputs["eraser"].connected() == True and self.inputs["shape"].connected() == True and self.inputs["blockShape"].connected()==True), \
-            "OpBlockedSparseLabelArray:  One of the neccessary input slots is not connected: shape: %r, eraser: %r" % \
-            (self.inputs["eraser"].connected(), self.inputs["shape"].connected())
+            assert(self.inputs["eraser"].ready() == True and self.inputs["shape"].ready() == True and self.inputs["blockShape"].ready()==True), \
+            "OpBlockedSparseLabelArray:  One of the neccessary input slots is not ready: shape: %r, eraser: %r" % \
+            (self.inputs["eraser"].ready(), self.inputs["shape"].ready())
             if slot.name == "Output":
                     #result[:] = self._denseArray[key]
                     #find the block key
@@ -1006,7 +1006,6 @@ class OpBlockedArrayCache(Operator):
                 self._lock = Lock()
 
                 self._configured = True
-
 
     def execute(self, slot, roi, result):
         if not self._configured:
@@ -1161,7 +1160,7 @@ class OpSlicedBlockedArrayCache(Operator):
         if slot == self.inputs["Input"] and not self._fixed:
             self.outputs["Output"].setDirty(key)
         if slot == self.inputs["fixAtCurrent"]:
-            if  self.inputs["fixAtCurrent"].connected():
+            if  self.inputs["fixAtCurrent"].ready():
                 self._fixed =  self.inputs["fixAtCurrent"].value
 
 
