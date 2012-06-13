@@ -562,5 +562,65 @@ class OpMultiInputConcatenater(Operator):
         # Should never be called.  All output slots are directly connected to an input slot.
         assert False
 
+
+class OpTransposeSlots(Operator):
+    """
+    Takes an input slot indexed as [i][j] and produces an output slot indexed as [j][i]
+    Note: Only works for a slot of level 2.
+    """
+    Inputs = MultiInputSlot(level=2)
+    Outputs = MultiOutputSlot(level=2)
+            
+    def setupOutputs(self):
+        minSize = None
+        for i, mslot in enumerate( self.Inputs ):
+            if minSize is None:
+                minSize = len(mslot)
+            else:
+                minSize = min( minSize, len(mslot) ) 
         
-        
+        self.Outputs.resize(minSize)
+        for j, mslot in enumerate( self.Outputs ):
+            mslot.resize( len(self.Inputs) )
+            for i, oslot in enumerate( mslot ):
+                oslot.connect( self.Inputs[i][j] )
+
+    def getSubOutSlot(self, slots, indexes, key, result):
+        # Should never be called.  All output slots are directly connected to an input slot.
+        assert False
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
