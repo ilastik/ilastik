@@ -87,41 +87,58 @@ class Worker(Thread):
 
 
     def run(self):
-        try:
-                # cache value for less dict lookups
-            requests0 = self.machine.requests0
-            requests1 = self.machine.requests1
-            freeWorkers = self.machine.freeWorkers
-
-            while self.running:
-                self.processing = False
-                freeWorkers.add(self)
-                #print "Worker %r sleeping..." % self
-                self.wlock.acquire()
-                self.processing = True
-                #print "Worker %r working..." % self
+            # cache value for less dict lookups
+        requests0 = self.machine.requests0
+        requests1 = self.machine.requests1
+        freeWorkers = self.machine.freeWorkers
+    
+        while self.running:
+            self.processing = False
+            freeWorkers.add(self)
+            #print "Worker %r sleeping..." % self
+            self.wlock.acquire()
+            self.processing = True
+            #print "Worker %r working..." % self
+            try:
+                freeWorkers.remove(self)
+            except KeyError:
+                pass
+            didRequest = True
+            while len(self.finishedGreenlets) != 0 or didRequest:
+                self.workAvailable = False
+                # first process all finished greenlets
+                while not len(self.finishedGreenlets) == 0:
+                    gr = self.finishedGreenlets.popleft()
+                    if gr.request.canceled is False:
+                        self.current_request = gr.request
+                        lock = gr.switch()
+                        if lock:
+                          lock.release()
+    
+                # processan higher priority request if available
+                didRequest = False
+                req = None
                 try:
-                    freeWorkers.remove(self)
-                except KeyError:
+                    req = requests1.pop()
+                    #prio, req = requests.get(block=False)
+                except IndexError:
+                    # requests was empty..
                     pass
-                didRequest = True
-                while len(self.finishedGreenlets) != 0 or didRequest:
-                    self.workAvailable = False
-                    # first process all finished greenlets
-                    while not len(self.finishedGreenlets) == 0:
-                        gr = self.finishedGreenlets.popleft()
-                        if gr.request.canceled is False:
-                            self.current_request = gr.request
-                            lock = gr.switch()
-                            if lock:
-                              lock.release()
-
-                    # processan higher priority request if available
-                    didRequest = False
-                    req = None
+                if req is not None and req.finished is False and req.canceled is False:
+                    didRequest = True
+                    gr = CustomGreenlet(req._execute)
+                    self.current_request = req
+                    gr.thread = self
+                    gr.request = req
+                    lock = gr.switch()
+                    if lock:
+                      lock.release()
+    
+                if didRequest is False:
+                    # only do a low priority request if no higher priority request
+                    # was available
                     try:
-                        req = requests1.pop()
-                        #prio, req = requests.get(block=False)
+                        req = requests0.pop()
                     except IndexError:
                         # requests was empty..
                         pass
@@ -134,37 +151,13 @@ class Worker(Thread):
                         lock = gr.switch()
                         if lock:
                           lock.release()
-
-                    if didRequest is False:
-                        # only do a low priority request if no higher priority request
-                        # was available
-                        try:
-                            req = requests0.pop()
-                        except IndexError:
-                            # requests was empty..
-                            pass
-                        if req is not None and req.finished is False and req.canceled is False:
-                            didRequest = True
-                            gr = CustomGreenlet(req._execute)
-                            self.current_request = req
-                            gr.thread = self
-                            gr.request = req
-                            lock = gr.switch()
-                            if lock:
-                              lock.release()
-
-                    # reset the wait lock state, otherwise the surrounding while self.running loop will always be executed twice
-                    try:
-                        self.wlock.release()
-                    except thread.error:
-                        pass
-                    self.wlock.acquire()
-        except:
-            # If something in this worker thread barfs,
-            # print the exception traceback and start up an ipython shell.
-            runDebugShell()
-
-
+    
+                # reset the wait lock state, otherwise the surrounding while self.running loop will always be executed twice
+                try:
+                    self.wlock.release()
+                except thread.error:
+                    pass
+                self.wlock.acquire()
 
 class Singleton(type):
     """
@@ -551,60 +544,54 @@ class Request(object):
         calls all callbacks specified with onNotify and
         resumes all waiters in other worker threads.
         """
-        try:
-                # assert self.running is True
-                # assert self.finished is False
-            if self.canceled:
-                return
+            # assert self.running is True
+            # assert self.finished is False
+        if self.canceled:
+            return
 
-            cur_tr = threading.current_thread()
-            req_backup = cur_tr.current_request
-            cur_tr.current_request = self
+        cur_tr = threading.current_thread()
+        req_backup = cur_tr.current_request
+        cur_tr.current_request = self
 
-            # do the actual work
-            self.result = self.function(**self.kwargs)
+        # do the actual work
+        self.result = self.function(**self.kwargs)
 
-            self.lock.acquire()
-            self.processing = True
-            self.finished = True
-            waiting_greenlets = self.waiting_greenlets
-            self.waiting_greenlets = None
-            # waiting_locks = self.waiting_locks
-            # self.waiting_locks = None
-            callbacks_finish = self.callbacks_finish
-            self.callbacks_finish = None
-            self.lock.release()
+        self.lock.acquire()
+        self.processing = True
+        self.finished = True
+        waiting_greenlets = self.waiting_greenlets
+        self.waiting_greenlets = None
+        # waiting_locks = self.waiting_locks
+        # self.waiting_locks = None
+        callbacks_finish = self.callbacks_finish
+        self.callbacks_finish = None
+        self.lock.release()
 
-            #self.lock.acquire()
-            if self.parent_request is not None:
-                # self.parent_request.lock.acquire()
-                try:
-                    self.parent_request.child_requests.remove(self)
-                except KeyError:
-                    pass
-                # self.parent_request.lock.release()
-                if self.prio - 1 < self.parent_request.prio:
-                    self.parent_request.prio = self.prio - 1
-            #self.lock.release()
+        #self.lock.acquire()
+        if self.parent_request is not None:
+            # self.parent_request.lock.acquire()
+            try:
+                self.parent_request.child_requests.remove(self)
+            except KeyError:
+                pass
+            # self.parent_request.lock.release()
+            if self.prio - 1 < self.parent_request.prio:
+                self.parent_request.prio = self.prio - 1
+        #self.lock.release()
 
-            for gr in waiting_greenlets:
-                # greenlets ready to continue in the quee of the corresponding workers
-                gr.thread.finishedGreenlets.append(gr)
-                wakeUp(gr.thread)
+        for gr in waiting_greenlets:
+            # greenlets ready to continue in the quee of the corresponding workers
+            gr.thread.finishedGreenlets.append(gr)
+            wakeUp(gr.thread)
 
-            #for l in waiting_locks:
-            #  l.release()
+        #for l in waiting_locks:
+        #  l.release()
 
-            for c in callbacks_finish:
-                # call the callback tuples
-                c[0](self, **c[1])
+        for c in callbacks_finish:
+            # call the callback tuples
+            c[0](self, **c[1])
 
-            cur_tr.current_request = req_backup
-
-        except:
-            # If something in this worker thread barfs,
-            # print the exception traceback and start up an ipython shell.
-            runDebugShell()
+        cur_tr.current_request = req_backup
 
     #
     #
