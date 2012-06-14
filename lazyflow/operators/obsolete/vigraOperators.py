@@ -60,6 +60,15 @@ class OpXToMulti(Operator):
                 i += 1
 
 
+class Op1ToMulti(OpXToMulti):
+    name = "1 Element to Multislot"
+    category = "Misc"
+
+    inputSlots = []
+    for i in xrange(1):
+        inputSlots.append(InputSlot("Input"))
+    outputSlots = [MultiOutputSlot("Outputs")]
+
 class Op5ToMulti(OpXToMulti):
     name = "5 Elements to Multislot"
     category = "Misc"
