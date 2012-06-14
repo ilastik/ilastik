@@ -1,6 +1,5 @@
 from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 
-from applets.genericViewer.opGenericViewer import OpGenericViewer
 import numpy
 
 # TODO: This class doesn't really belong here, but it isn't general-purpose enough to put in lazyflow yet.

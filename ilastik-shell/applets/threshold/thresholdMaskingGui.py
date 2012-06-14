@@ -17,7 +17,7 @@ from utility import bind
 from applets.layerViewer import LayerViewerGui
 from volumina.widgets.thresholdingWidget import ThresholdingWidget
 
-class ThresholdGui(LayerViewerGui):
+class ThresholdMaskingGui(LayerViewerGui):
     """
     """
     
@@ -26,7 +26,7 @@ class ThresholdGui(LayerViewerGui):
     ###########################################
     
     def appletDrawers(self):
-        return [ ("Threshold Viewer", self.getAppletDrawerUi() ) ]
+        return [ ("Threshold Mask Viewer", self.getAppletDrawerUi() ) ]
 
     # (Other methods already provided by our base class)
 
@@ -36,7 +36,7 @@ class ThresholdGui(LayerViewerGui):
     def __init__(self, mainOperator):
         """
         """
-        super(ThresholdGui, self).__init__([mainOperator])
+        super(ThresholdMaskingGui, self).__init__([mainOperator])
         self.mainOperator = mainOperator
         self.handleThresholdGuiValuesChanged(0, 255)
     

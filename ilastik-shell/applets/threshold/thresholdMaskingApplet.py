@@ -1,21 +1,21 @@
 from ilastikshell.applet import Applet
 
-from opThreshold import OpThresholdMasking
-from thresholdGui import ThresholdGui
+from opThresholdMasking import OpThresholdMasking
+from thresholdMaskingGui import ThresholdMaskingGui
 
 from lazyflow.graph import OperatorWrapper
 
-class ThresholdApplet( Applet ):
+class ThresholdMaskingApplet( Applet ):
     """
     This is a simple thresholding applet
     """
     def __init__( self, graph ):
-        super(ThresholdApplet, self).__init__("Threshold Viewer")
+        super(ThresholdMaskingApplet, self).__init__("Threshold Masking Viewer")
 
         # Wrap the top-level operator, since the GUI supports multiple images
         self._topLevelOperator = OperatorWrapper( OpThresholdMasking(graph), promotedSlotNames=['InputImage'] )
 
-        self._gui = ThresholdGui(self._topLevelOperator)
+        self._gui = ThresholdMaskingGui(self._topLevelOperator)
         
     @property
     def topLevelOperator(self):
