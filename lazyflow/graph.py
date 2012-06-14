@@ -676,30 +676,24 @@ class Slot(object):
             self.started = True
             assert self.operator._executionCount >= 0, "BUG: How did the execution count get negative?"
             # We can't execute while the operator is in the middle of setupOutputs
-            self.operator._condition.acquire()
-            #print "Acquired condition lock"
-            while self.operator._settingUp:
-                self.operator._condition.wait()
-            self.operator._executionCount += 1
-            self.operator._condition.release()
+            with self.operator._condition:
+                while self.operator._settingUp:
+                    self.operator._condition.wait()
+                self.operator._executionCount += 1
     
         def _decrementOperatorExecutionCount(self, *args):
             # Must lock here because cancel callbacks are asynchronous.
             # (Perhaps it would be better if they were called from the worker thread instead...)
-            self.lock.acquire()
-            #print "Acquired wrapper lock"
-            # Only do this once per execution
-            # If we were cancelled after we finished working, don't do anything
-            if self.started and not self.finished:
-                assert self.operator._executionCount > 0, "BUG: Can't decrement the execution count below zero!"
-                self.finished = True
-                self.operator._condition.acquire()
-                #print "Acquired condition lock"
-                self.operator._executionCount -= 1
-                self.operator._condition.notifyAll()
-                self.operator._condition.release()
+            with self.lock:
+                # Only do this once per execution
+                # If we were cancelled after we finished working, don't do anything
+                if self.started and not self.finished:
+                    assert self.operator._executionCount > 0, "BUG: Can't decrement the execution count below zero!"
+                    self.finished = True
+                    with self.operator._condition:
+                        self.operator._executionCount -= 1
+                        self.operator._condition.notifyAll()
 
-            self.lock.release()
 
     def setDirty(self, *args,**kwargs):
         """
@@ -1515,29 +1509,27 @@ class Operator(object):
         self.graph.incrementCallDepth()
 
         # Don't setup this operator if there are currently requests on it.
-        self._condition.acquire()
-        #print "Acquired condition lock"
-        while self._executionCount > 0:
-            self._condition.wait()            
-        self._settingUp = True
-        
-        # Update the state tag of every output.
-        # Requests made with the old state tag will not be processed.
-        for k, oslot in self.outputs.items():
-            oslot._currentStateTag = self.graph.stateTag
-
-        # Outputslots may become "ready" during setupOutputs()
-        # Save a copy of the ready flag for each output slot so we can decide whether or not to fire the ready signal.
-        readyFlags = {}
-        for k, oslot in self.outputs.items():
-            readyFlags[k] = oslot.meta._ready
-        
-        # Call the subclass
-        self.setupOutputs()
-
-        self._settingUp = False
-        self._condition.notifyAll()
-        self._condition.release()
+        with self._condition:
+            while self._executionCount > 0:
+                self._condition.wait()            
+            self._settingUp = True
+            
+            # Update the state tag of every output.
+            # Requests made with the old state tag will not be processed.
+            for k, oslot in self.outputs.items():
+                oslot._currentStateTag = self.graph.stateTag
+    
+            # Outputslots may become "ready" during setupOutputs()
+            # Save a copy of the ready flag for each output slot so we can decide whether or not to fire the ready signal.
+            readyFlags = {}
+            for k, oslot in self.outputs.items():
+                readyFlags[k] = oslot.meta._ready
+            
+            # Call the subclass
+            self.setupOutputs()
+    
+            self._settingUp = False
+            self._condition.notifyAll()
 
         # Determine new "ready" flags
         for k, oslot in self.outputs.items():
