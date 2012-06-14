@@ -2,6 +2,8 @@ from PyQt4.QtGui import QWidget, QApplication
 
 from utility.simpleSignal import SimpleSignal
 
+from abc import ABCMeta, abstractproperty
+
 class ControlCommand(object):
     # An enum of commands that applets can use to request that other applet GUIs become disabled
     Pop = 0                 # Undo the most recent command that the issuing applet sent
@@ -11,6 +13,11 @@ class ControlCommand(object):
     DisableSelf = 4         # Disable the applet that is issuing the command
     
 class Applet( object ):
+    
+    __metaclass__ = ABCMeta # Force subclasses to override abstract methods and properties
+
+    Applet._base_initialized = False
+    
     def __init__( self, name ):
         self.name = name
 
@@ -27,11 +34,9 @@ class Applet( object ):
         # The applet must fire it again with ControlState.EnableAll as the parameter to re-enable the other applets. 
         self.guiControlSignal = SimpleSignal() # Signature: emit(controlState=ControlState.DisableAll)
 
-    ###
-    ### Outputs provided by the Applet to the Shell or Workflow Manager
-    ###
+        self._base_initialized = True
 
-    @property
+    @abstractproperty
     def topLevelOperator(self):
         """
         Return the applet's Top Level Operator, which is a single operator for all computation performed by the applet.
@@ -40,31 +45,9 @@ class Applet( object ):
         """
         return None
 
-    @property
-    def centralWidget( self ):
-        """
-        Return the applet's central widget to be displayed on the right side of the window (if any).
-        """
-        return None
-    
-    @property
-    def viewerControlWidget( self ):
-        """
-        Return the applet's viewer control widget (if any).
-        """
-        return None
-
-    @property
-    def appletDrawers(self):
-        """
-        Return a list of the control widgets to be displayed in the left-hand side bar for this applet.
-        Only one will be open at any particular time.
-        """
-        return []
-    
-    @property
-    def menuWidget( self ):
-        return None
+    @abstractproperty
+    def gui(self):
+        raise NotImplementedError
 
     @property
     def dataSerializers(self):
@@ -82,23 +65,19 @@ class Applet( object ):
         of project saved data may save/load that information via a preferences manager.
         """
         return None
-    
-    def setImageIndex(self, imageIndex):
-        """
-        Change the currently displayed image to the one specified by the given index.
-        """
-        pass
 
-def run_applet( applet_type, *args, **kwargs):
-    '''Run applet standalone.'''
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    
-    qapp = QApplication([])
-    applet = applet_type(*args, **kwargs)
-    applet.centralWidget.show()
-    applet.controlWidget.show()
-    qapp.exec_()
+    @property
+    def base_initialized(self):
+        """
+        Do not override this property.
+        Used by the shell to ensure that Applet.__init__ was called by your subclass.
+        """
+        return self._base_initialized
 
-if __name__ == '__main__':
-    run_applet(Applet)
+
+
+
+
+
+
+
