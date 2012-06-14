@@ -32,9 +32,32 @@ class BatchIoGui(QMainWindow):
     Manages all GUI elements in the data selection applet.
     This class itself is the central widget and also owns/manages the applet drawer widgets.
     """
-    def __init__(self, dataSelectionOperator, guiControlSignal):
+    ###########################################
+    ### AppletGuiInterface Concrete Methods ###
+    ###########################################
+    
+    def centralWidget( self ):
+        return self
+
+    def appletDrawers(self):
+        return [ (self.title, self.drawer) ]
+
+    def menuWidget( self ):
+        return self.menuBar
+
+    def viewerControlWidget(self):
+        return None
+
+    def setImageIndex(self, index):
+        pass
+
+    ###########################################
+    ###########################################
+    
+    def __init__(self, dataSelectionOperator, guiControlSignal, title):
         super(BatchIoGui, self).__init__()
 
+        self.title = title
         self.drawer = None
         self.mainOperator = dataSelectionOperator
         self.menuBar = QMenuBar()

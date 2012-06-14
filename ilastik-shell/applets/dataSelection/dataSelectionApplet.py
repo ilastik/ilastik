@@ -15,47 +15,24 @@ class DataSelectionApplet( Applet ):
     """
     def __init__( self, graph, title, supportIlastik05Import=False, batchDataGui=False):
         super(DataSelectionApplet, self).__init__(title)
-        
-        # Create a data selection top-level operator on the main graph
-        # This operator object represents the "model" or master state of the applet which 
-        #  the other components of the applet will manipulate and/or listen to for changes.
+
+        # Our top-level operator is wrapped to enable multi-image support.
+        # All inputs are common to all inputs except for the 'Dataset' input, which is unique for each image.
+        # Hence, 'Dataset' is the only 'promoted' slot.
         self._topLevelOperator = OperatorWrapper( OpDataSelection(graph=graph), promotedSlotNames=set(['Dataset']) )
 
-        # Serialization settings are managed by a 
         self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator, title) ]
         if supportIlastik05Import:
             self._serializableItems.append(Ilastik05DataSelectionDeserializer(self._topLevelOperator))
 
-        # Instantiate the main GUI, which creates the applet drawers (for now)
-        if batchDataGui:
-            guiMode = GuiMode.Batch
-        else:
-            guiMode = GuiMode.Normal
-        self._centralWidget = DataSelectionGui( self._topLevelOperator, guiMode )
-
-        # To save some typing, the menu bar is defined in the .ui file 
-        #  along with the rest of the central widget.
-        # However, we must expose it here as an applet property since we 
-        #  want it to show up properly in the shell
-        self._menuWidget = self._centralWidget.menuBar
+        guiMode = { True: GuiMode.Batch, False: GuiMode.Normal }[batchDataGui]
+        self._gui = DataSelectionGui( self._topLevelOperator, guiMode )
         
-        # The central widget owns the applet drawer gui
-        self._drawers = [ (title, self._centralWidget.drawer) ]
-        
-        # Preferences manager
         self._preferencesManager = DataSelectionPreferencesManager()
     
     @property
-    def centralWidget( self ):
-        return self._centralWidget
-
-    @property
-    def appletDrawers(self):
-        return self._drawers
-    
-    @property
-    def menuWidget( self ):
-        return self._menuWidget
+    def gui( self ):
+        return self._gui
 
     @property
     def dataSerializers(self):

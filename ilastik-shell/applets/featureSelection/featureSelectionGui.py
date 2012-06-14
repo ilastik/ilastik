@@ -46,6 +46,32 @@ class FeatureSelectionGui(QMainWindow):
                      "G. Grad Mag",
                      "Diff of G." ]
 
+    ###########################################
+    ### AppletGuiInterface Concrete Methods ###
+    ###########################################
+    
+    def centralWidget( self ):
+        return self
+
+    def appletDrawers(self):
+        return [ ("Feature Selection", self.drawer) ]
+
+    def menuWidget( self ):
+        return self.menuBar
+
+    def viewerControlWidget(self):
+        return self._viewerControlWidget
+
+    def setImageIndex(self, index):
+        self.currentImageIndex = index
+        if self.mainOperator.configured():
+            self.updateAllLayers()
+        else:
+            self.layerstack.clear()
+
+    ###########################################
+    ###########################################
+
     def __init__(self, mainOperator):
         super(FeatureSelectionGui, self).__init__()
 
@@ -73,13 +99,6 @@ class FeatureSelectionGui(QMainWindow):
 
         self.mainOperator.CachedOutputImage.notifyInserted( bind(handleOutputInsertion) )
 
-    def setImageIndex(self, index):
-        self.currentImageIndex = index
-        if self.mainOperator.configured():
-            self.updateAllLayers()
-        else:
-            self.layerstack.clear()
-    
     def initAppletDrawerUic(self):
         """
         Load the ui file for the applet drawer, which we own.
@@ -106,7 +125,7 @@ class FeatureSelectionGui(QMainWindow):
     def initViewerControlUi(self):
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
-        self.viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
+        self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
     def initCentralUic(self):
         """
@@ -235,15 +254,15 @@ class FeatureSelectionGui(QMainWindow):
         
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
-        model.canMoveSelectedUp.connect(self.viewerControlWidget.UpButton.setEnabled)
-        model.canMoveSelectedDown.connect(self.viewerControlWidget.DownButton.setEnabled)
-        model.canDeleteSelected.connect(self.viewerControlWidget.DeleteButton.setEnabled)     
+        model.canMoveSelectedUp.connect(self._viewerControlWidget.UpButton.setEnabled)
+        model.canMoveSelectedDown.connect(self._viewerControlWidget.DownButton.setEnabled)
+        model.canDeleteSelected.connect(self._viewerControlWidget.DeleteButton.setEnabled)     
 
         # Connect our layer movement buttons to the appropriate layerstack actions
-        self.viewerControlWidget.layerWidget.init(model)
-        self.viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
-        self.viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
-        self.viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
+        self._viewerControlWidget.layerWidget.init(model)
+        self._viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
+        self._viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
+        self._viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
         
         # No brushing model necessary (we're using the editor as a viewer only)
         #self.pipeline.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)
@@ -344,9 +363,9 @@ class FeatureSelectionGui(QMainWindow):
         # All the controls in our GUI
         controlList = [ self.menuBar,
                         self.volumeEditorWidget,
-                        self.viewerControlWidget.UpButton,
-                        self.viewerControlWidget.DownButton,
-                        self.viewerControlWidget.DeleteButton ]
+                        self._viewerControlWidget.UpButton,
+                        self._viewerControlWidget.DownButton,
+                        self._viewerControlWidget.DeleteButton ]
 
         # Enable/disable all of them
         for control in controlList:

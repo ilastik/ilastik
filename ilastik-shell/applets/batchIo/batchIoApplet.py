@@ -18,32 +18,13 @@ class BatchIoApplet( Applet ):
         self._topLevelOperator = OperatorWrapper( OpBatchIo(graph=graph), promotedSlotNames=set(['DatasetPath', 'ImageToExport']) )
         
         # Ensure the operator has no length yet.
+        # FIXME: Why is this necessary??!?! Shouldn't it be zero anyway?
         self._topLevelOperator.ImageToExport.resize(0)
 
         self._serializableItems = [ BatchIoSerializer(self._topLevelOperator, title) ]
 
-        # Instantiate the main GUI, which creates the applet drawers
-        self._centralWidget = BatchIoGui( self._topLevelOperator, self.guiControlSignal )
-        self._menuWidget = self._centralWidget.menuBar
+        self._gui = BatchIoGui( self._topLevelOperator, self.guiControlSignal, title )
         
-        # The central widget owns the applet drawer gui
-        self._drawers = [ (title, self._centralWidget.drawer) ]
-        
-        # No preferences manager
-        self._preferencesManager = None
-    
-    @property
-    def centralWidget( self ):
-        return self._centralWidget
-
-    @property
-    def appletDrawers(self):
-        return self._drawers
-    
-    @property
-    def menuWidget( self ):
-        return self._menuWidget
-
     @property
     def dataSerializers(self):
         return self._serializableItems
@@ -51,7 +32,14 @@ class BatchIoApplet( Applet ):
     @property
     def topLevelOperator(self):
         return self._topLevelOperator
-    
+
     @property
-    def appletPreferencesManager(self):
-         return self._preferencesManager
+    def gui(self):
+        return self._gui
+
+
+
+
+
+
+

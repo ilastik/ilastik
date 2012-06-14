@@ -21,9 +21,20 @@ class ThresholdGui(LayerViewerGui):
     """
     """
     
+    ###########################################
+    ### AppletGuiInterface Concrete Methods ###
+    ###########################################
+    
+    def appletDrawers(self):
+        return [ ("Threshold Viewer", self.getAppletDrawerUi() ) ]
+
+    # (Other methods already provided by our base class)
+
+    ###########################################
+    ###########################################
+    
     def __init__(self, mainOperator):
         """
-        
         """
         super(ThresholdGui, self).__init__([mainOperator])
         self.mainOperator = mainOperator

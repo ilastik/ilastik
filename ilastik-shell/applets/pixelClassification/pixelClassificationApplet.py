@@ -9,55 +9,27 @@ class PixelClassificationApplet( Applet ):
     """
     def __init__( self, graph ):
         Applet.__init__( self, "Pixel Classification" )
-        self.pipeline = OpPixelClassification( graph )
 
-        # Instantiate the main GUI, which creates the applet drawers (for now)
-        self._centralWidget = PixelClassificationGui( self.pipeline, graph )
+        self._topLevelOperator = OpPixelClassification( graph )
 
-        # To save some typing, the menu bar is defined in the .ui file 
-        #  along with the rest of the central widget.
-        # However, we must expose it here as an applet property since we 
-        #  want it to show up properly in the shell
-        self._menuWidget = self._centralWidget.menuBar
-        
-        # For now, the central widget owns the applet bar gui
-        self._controlWidgets = [ ("Label Marking", self._centralWidget.labelControlUi),
-                                 ("Prediction", self._centralWidget.predictionControlUi) ]
+        self._gui = PixelClassificationGui( self._topLevelOperator, graph )
         
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.
-        self._serializableItems = [PixelClassificationSerializer(self.pipeline), # Default serializer for new projects
-                                   Ilastik05ImportDeserializer(self.pipeline)]   # Legacy (v0.5) importer
+        self._serializableItems = [PixelClassificationSerializer(self._topLevelOperator), # Default serializer for new projects
+                                   Ilastik05ImportDeserializer(self._topLevelOperator)]   # Legacy (v0.5) importer
     
     @property
     def topLevelOperator(self):
-        return self.pipeline
-
-    @property
-    def centralWidget( self ):
-        return self._centralWidget
-
-    @property
-    def appletDrawers(self):
-        return self._controlWidgets
-    
-    @property
-    def menuWidget( self ):
-        return self._menuWidget
+        return self._topLevelOperator
 
     @property
     def dataSerializers(self):
         return self._serializableItems
-    
+
     @property
-    def viewerControlWidget(self):
-        return self._centralWidget.viewerControlWidget
-    
-    def setImageIndex(self, imageIndex):
-        """
-        Change the currently displayed image to the one specified by the given index.
-        """
-        if imageIndex is -1 or imageIndex > len(self.pipeline.InputImages):
-            self._centralWidget.setImageIndex(-1)
-        else:
-            self._centralWidget.setImageIndex(imageIndex)
+    def gui(self):
+        return self._gui
+
+
+     

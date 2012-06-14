@@ -38,6 +38,8 @@ class DatasetInfo(object):
 class OpDataSelection(Operator):
     """
     The top-level operator for the data selection applet.
+    This implementation supports single images.
+    Use an OperatorWrapper to enable multi-image support.
     """
     name = "OpDataSelection"
     category = "Top-level"

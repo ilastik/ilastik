@@ -3,39 +3,31 @@ from projectMetadataSerializer import ProjectMetadataSerializer, Ilastik05Projec
 from projectMetadataGui import ProjectMetadataGui
 from projectMetadata import ProjectMetadata
 
-from PyQt4.QtGui import QMenuBar
-
 class ProjectMetadataApplet( Applet ):
     """
-    Implements the pixel classification "applet", which allows the ilastik shell to use it.
+    This applet allows the user to enter project metadata (e.g. Project name, labeler name, etc.)
     """
     def __init__( self ):
-        Applet.__init__( self, "Input Data Selection" )
+        Applet.__init__( self, "Project Metadata" )
         
         self._projectMetadata = ProjectMetadata()
-        self._centralWidget = ProjectMetadataGui(self._projectMetadata)
-
-        # No menu items for this applet, just give an empty menu
-        self._menuWidget = QMenuBar()
-        
-        # For now, the central widget owns the applet bar gui
-        self._drawers = [ ( "Project Metadata", self._centralWidget.getAppletDrawerUi() ) ]
-
+        self._gui = ProjectMetadataGui(self._projectMetadata)
         self._serializableItems = [ ProjectMetadataSerializer(self._projectMetadata),
                                     Ilastik05ProjectMetadataDeserializer(self._projectMetadata) ]
 
     @property
-    def centralWidget( self ):
-        return self._centralWidget
-
-    @property
-    def appletDrawers(self):
-        return self._drawers
-    
-    @property
-    def menuWidget( self ):
-        return self._menuWidget
-
-    @property
     def dataSerializers(self):
         return self._serializableItems
+
+    @property
+    def gui(self):
+        return self._gui
+
+    @property
+    def topLevelOperator(self):
+        # This applet provides a GUI and serializers, but does not affect the graph in any way.
+        return None
+
+
+
+

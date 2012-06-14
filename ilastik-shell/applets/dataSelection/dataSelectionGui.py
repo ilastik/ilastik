@@ -45,6 +45,30 @@ class DataSelectionGui(QMainWindow):
     This class itself is the central widget and also owns/manages the applet drawer widgets.
     """
     
+    ###########################################
+    ### AppletGuiInterface Concrete Methods ###
+    ###########################################
+
+    def centralWidget( self ):
+        return self
+
+    def appletDrawers(self):
+        DrawerNames = { GuiMode.Batch  : 'Batch Inputs',
+                        GuiMode.Normal : 'Input Selection' }        
+        return [ (DrawerNames[self.guiMode], self.drawer) ]
+    
+    def menuWidget( self ):
+        return self.menuBar
+
+    def viewerControlWidget(self):
+        return None # No viewer controls for this applet.
+    
+    def setImageIndex(self, imageIndex):
+        pass # This applet doesn't care which image is currently selected.  It always lists all inputs.
+        
+    ###########################################
+    ###########################################
+
     def __init__(self, dataSelectionOperator, guiMode=GuiMode.Normal):
         super(DataSelectionGui, self).__init__()
 

@@ -45,6 +45,38 @@ def getPathToLocalDirectory():
     return p
 
 class PixelClassificationGui(QMainWindow):
+
+    ###########################################
+    ### AppletGuiInterface Concrete Methods ###
+    ###########################################
+    def centralWidget( self ):
+        return self
+
+    def appletDrawers(self):
+        return [ ("Label Marking", self.labelControlUi),
+                 ("Prediction", self.predictionControlUi) ]
+
+    def menuWidget( self ):
+        return self.menuBar
+
+    def viewerControlWidget(self):
+        return self._viewerControlWidget
+
+    def setImageIndex(self, imageIndex):
+        self.imageIndex = imageIndex
+        if self.imageIndex == -1:
+            self.layerstack.clear()
+        else:
+            self.subscribeToInputImageChanges()
+            self.handleGraphInputChanged()
+            self.pipeline.LabelsAllowedFlags[self.imageIndex].notifyDirty( bind( self.changeInteractionMode, Tool.Navigation ) )
+        
+        # Make sure the painting controls are hidden if necessary
+        self.changeInteractionMode(Tool.Navigation)
+
+    ###########################################
+    ###########################################
+
     def __init__(self, pipeline = None, graph = None ):
         QMainWindow.__init__(self)
         
@@ -123,25 +155,13 @@ class PixelClassificationGui(QMainWindow):
             self.pipeline.LabelImages[self.imageIndex].notifyMetaChanged( bind(self.initLabelLayer) )
             self.pipeline.LabelImages[self.imageIndex].notifyReady( bind(self.initLabelLayer) )
 
-    def setImageIndex(self, imageIndex):
-        self.imageIndex = imageIndex
-        if self.imageIndex == -1:
-            self.layerstack.clear()
-        else:
-            self.subscribeToInputImageChanges()
-            self.handleGraphInputChanged()
-            self.pipeline.LabelsAllowedFlags[self.imageIndex].notifyDirty( bind( self.changeInteractionMode, Tool.Navigation ) )
-        
-        # Make sure the painting controls are hidden if necessary
-        self.changeInteractionMode(Tool.Navigation)
-
     def setIconToViewMenu(self):
         self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
     
     def initViewerControlUi(self):
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
-        self.viewerControlWidget = uic.loadUi(p+"/viewerControls.ui")
+        self._viewerControlWidget = uic.loadUi(p+"/viewerControls.ui")
 
     def initCentralUic(self):
         # We don't know where the user is running this script from,
@@ -853,13 +873,13 @@ class PixelClassificationGui(QMainWindow):
             self.editor.setInteractionMode( 'navigation' )
             self.volumeEditorWidget.init(self.editor)
             model = self.editor.layerStack
-            self.viewerControlWidget.layerWidget.init(model)
-            self.viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
-            model.canMoveSelectedUp.connect(self.viewerControlWidget.UpButton.setEnabled)
-            self.viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
-            model.canMoveSelectedDown.connect(self.viewerControlWidget.DownButton.setEnabled)
-            self.viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
-            model.canDeleteSelected.connect(self.viewerControlWidget.DeleteButton.setEnabled)     
+            self._viewerControlWidget.layerWidget.init(model)
+            self._viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
+            model.canMoveSelectedUp.connect(self._viewerControlWidget.UpButton.setEnabled)
+            self._viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
+            model.canMoveSelectedDown.connect(self._viewerControlWidget.DownButton.setEnabled)
+            self._viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
+            model.canDeleteSelected.connect(self._viewerControlWidget.DeleteButton.setEnabled)     
             
             self.pipeline.opLabelArray.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)
 
@@ -901,9 +921,9 @@ class PixelClassificationGui(QMainWindow):
         # All the controls in our GUI
         controlList = [ self.menuBar,
                         self.volumeEditorWidget,
-                        self.viewerControlWidget.UpButton,
-                        self.viewerControlWidget.DownButton,
-                        self.viewerControlWidget.DeleteButton ]
+                        self._viewerControlWidget.UpButton,
+                        self._viewerControlWidget.DownButton,
+                        self._viewerControlWidget.DeleteButton ]
 
         # Enable/disable all of them
         for control in controlList:

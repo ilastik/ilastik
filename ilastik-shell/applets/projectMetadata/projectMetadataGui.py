@@ -6,9 +6,29 @@ import os
 
 class ProjectMetadataGui( QWidget ):
     """
-    The central widget of the Input Data Selection Applet.
-    Provides controls for adding/removing input data images and stacks.
     """
+    ###########################################
+    ### AppletGuiInterface Concrete Methods ###
+    ###########################################
+    
+    def centralWidget( self ):
+        return self
+
+    def appletDrawers(self):
+        return [ ( "Project Metadata", self.getAppletDrawerUi() ) ]
+
+    def menuWidget( self ):
+        return self.menuBar
+
+    def viewerControlWidget(self):
+        return None # No viewer controls
+
+    def setImageIndex(self, index):
+        pass # This applet does't deal with images.
+    
+    ###########################################
+    ###########################################
+    
     def __init__(self, projectMetadata):
         QWidget.__init__(self)
         
@@ -16,6 +36,8 @@ class ProjectMetadataGui( QWidget ):
         
         self.initMainUi()
         self.initAppletDrawerUi()
+        
+        self.menuBar = QMenuBar()
         
     def initMainUi(self):
         # Load the ui file (find it in our own directory)

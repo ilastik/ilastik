@@ -15,7 +15,7 @@ class LayerViewerApplet( Applet ):
         self._topLevelOperator = None
 
         # Instantiate the main GUI, which creates the applet drawers (for now)
-        self._centralWidget = GenericViewerGui(self._topLevelOperator.OutputLayers)
+        self._centralWidget = None
         self._menuWidget = self._centralWidget.menuBar
         
         # The central widget owns the applet drawer gui
