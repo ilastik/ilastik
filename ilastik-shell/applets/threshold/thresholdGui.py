@@ -27,6 +27,7 @@ class ThresholdGui(LayerViewerGui):
         """
         super(ThresholdGui, self).__init__([mainOperator])
         self.mainOperator = mainOperator
+        self.handleThresholdGuiValuesChanged(0, 255)
     
     def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
