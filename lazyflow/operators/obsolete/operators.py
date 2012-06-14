@@ -848,7 +848,6 @@ if has_blist:
                         if labelNr <= self._maxLabel:
                             self._maxLabel -= 1
                         self.outputs["maxLabel"].setValue(self._maxLabel)
-            
 
         def execute(self, slot, roi, result):
             key = roi.toSlice()
@@ -877,10 +876,19 @@ if has_blist:
 
                     bigkey = roiToSlice(bigstart-start, bigstop-start)
                     smallkey = roiToSlice(smallstart, smallstop)
-                    if not b_ind in self._labelers:
+                    if not b_ind in self._labelers or not self._labelers[b_ind].Output.ready():
                         result[bigkey]=0
                     else:
-                        result[bigkey]=self._labelers[b_ind]._denseArray[smallkey]
+                        try:
+                            labeler = self._labelers[b_ind]
+                            denseArray = labeler._denseArray[smallkey]
+                            result[bigkey]= denseArray
+                        except:
+                            print "Exception in OpBlockedSparseLabelArray.execute, probably due to simultaneous calls to setInSlot() and execute()"
+                            print "labeler =", labeler
+                            print "denseArray =", denseArray
+                            print "result =", result
+                            raise
 
             elif slot.name == "nonzeroValues":
                 nzvalues = set()
