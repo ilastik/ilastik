@@ -197,7 +197,7 @@ class IlastikShell( QMainWindow ):
 
             # Alert each central widget and viewer control widget that the image selection changed
             for i in range( len(self._applets) ):
-                self._applets[i].setImageIndex(newImageIndex)
+                self._applets[i].gui.setImageIndex(newImageIndex)
                 
             self.currentImageIndex = newImageIndex
 
@@ -275,22 +275,25 @@ class IlastikShell( QMainWindow ):
             self.appletBar.setCurrentIndex( modelIndex.parent() )
 
     def addApplet( self, app ):
+        assert isinstance( app, applet.Applet ), "Applets must inherit from Applet base class."
+        assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
+        
         self._applets.append(app)
         applet_index = len(self._applets) - 1
-        self.appletStack.addWidget( app.centralWidget )
-        self._menuBar.addAppletMenuWidget( app.menuWidget )
+        self.appletStack.addWidget( app.gui.centralWidget() )
+        self._menuBar.addAppletMenuWidget( app.gui.menuWidget() )
         
-        # Viewer controls are optional.
-        if app.viewerControlWidget is None:
+        # Viewer controls are optional. If the applet didn't provide one, create an empty widget for him.
+        if app.gui.viewerControlWidget() is None:
             self.viewerControlStack.addWidget( QWidget(parent=self) )
         else:
-            self.viewerControlStack.addWidget( app.viewerControlWidget )
+            self.viewerControlStack.addWidget( app.gui.viewerControlWidget() )
 
         # Add rows to the applet bar model
         rootItem = self.appletBar.invisibleRootItem()
 
         # Add all of the applet bar's items to the toolbox widget
-        for controlName, controlGuiItem in app.appletDrawers:
+        for controlName, controlGuiItem in app.gui.appletDrawers():
             appletNameItem = QTreeWidgetItem( self.appletBar, QtCore.QStringList( controlName ) )
             appletNameItem.setFont( 0, QFont("Ubuntu", 14) )
             drawerItem = QTreeWidgetItem(appletNameItem)
@@ -520,10 +523,10 @@ class IlastikShell( QMainWindow ):
             enabled = self._disableCounts[index] == 0
 
             # Apply to the applet central widget
-            applet.centralWidget.enableControls( enabled and self.enableWorkflow )
+            applet.gui.centralWidget().enableControls( enabled and self.enableWorkflow )
             
             # Apply to the applet bar drawers
-            for appletName, appletGui in applet.appletDrawers:
+            for appletName, appletGui in applet.gui.appletDrawers():
                 appletGui.enableControls( enabled and self.enableWorkflow )
 
 #    def scrollToTop(self):

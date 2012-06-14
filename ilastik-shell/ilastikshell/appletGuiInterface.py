@@ -23,7 +23,7 @@ class AppletGuiInterface():
     @abstractmethod
     def appletDrawers(self):
         """
-        Return a list of drawer widgets for this applet.
+        Return a list of (drawer title, drawer widget) pairs for this applet.
         """
         raise NotImplementedError
     

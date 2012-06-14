@@ -16,7 +16,7 @@ class Applet( object ):
     
     __metaclass__ = ABCMeta # Force subclasses to override abstract methods and properties
 
-    Applet._base_initialized = False
+    _base_initialized = False
     
     def __init__( self, name ):
         self.name = name
