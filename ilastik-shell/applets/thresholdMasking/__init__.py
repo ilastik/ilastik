@@ -1,1 +1,1 @@
-from thresholdApplet import ThresholdApplet
+from thresholdMaskingApplet import ThresholdMaskingApplet

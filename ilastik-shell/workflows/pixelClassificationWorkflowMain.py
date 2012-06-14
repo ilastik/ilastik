@@ -81,10 +81,10 @@ opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 ###############
 # Threshold test
 ###############
-from applets.threshold import ThresholdApplet
-thresholdApplet = ThresholdApplet(graph)
-opThresholdViewer = thresholdApplet.topLevelOperator
-opThresholdViewer.InputImage.connect( opData.Image )
+from applets.thresholdMasking import ThresholdMaskingApplet
+thresholdMaskingApplet = ThresholdMaskingApplet(graph)
+opThresholdMaskingViewer = thresholdMaskingApplet.topLevelOperator
+opThresholdMaskingViewer.InputImage.connect( opData.Image )
 
 ######################
 # Batch workflow
@@ -145,7 +145,7 @@ shell.addApplet(batchResultsApplet)
 
 # TEST TEST TEST TEST
 #shell.addApplet( genericViewerApplet )
-shell.addApplet( thresholdApplet )
+shell.addApplet( thresholdMaskingApplet )
 
 # The shell needs a slot from which he can read the list of image names to switch between.
 # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
@@ -168,7 +168,7 @@ def test():
     shell.openProjectFile('/home/bergs/dummy.ilp')
     
     # Select a drawer
-    shell.setSelectedAppletDrawer( 6 )
+    #shell.setSelectedAppletDrawer( 7 )
     
     # Check the 'interactive mode' checkbox.
     #QTimer.singleShot( 2000, partial(pcApplet.centralWidget._labelControlUi.checkInteractive.setChecked, True) )
@@ -179,7 +179,7 @@ def test():
 #timer.start()
 
 # Run a test
-#QTimer.singleShot(1, test )
+QTimer.singleShot(1, test )
 
 app.exec_()
 
