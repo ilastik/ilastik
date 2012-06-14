@@ -229,6 +229,7 @@ class Slot(object):
         self._sig_resize = OrderedSignal()
         self._sig_resized = OrderedSignal()
         self._sig_remove = OrderedSignal()
+        self._sig_removed = OrderedSignal()
         self._sig_inserted = OrderedSignal()
         
         self._sig_newGraphState = OrderedSignal()
@@ -317,13 +318,23 @@ class Slot(object):
 
     def notifyRemove(self, function, **kwargs):
         """
-        calls the corresponding function before a slot is removed
+        calls the corresponding function BEFORE a slot is removed
         first argument of the function is the slot
         second argument is the old size and the third
         argument is the new size
         the keyword arguments follow
         """
         self._sig_remove.subscribe(function, **kwargs)
+
+    def notifyRemoved(self, function, **kwargs):
+        """
+        calls the corresponding function AFTER a slot is removed
+        first argument of the function is the slot
+        second argument is the old size and the third
+        argument is the new size
+        the keyword arguments follow
+        """
+        self._sig_removed.subscribe(function, **kwargs)
 
     def notifyInserted(self, function, **kwargs):
         """
@@ -389,6 +400,12 @@ class Slot(object):
         unregister a remove callback
         """
         self._sig_remove.unsubscribe(function)
+
+    def unregisterRemoved(self, function):
+        """
+        unregister a removed callback
+        """
+        self._sig_removed.unsubscribe(function)
 
     def unregisterInserted(self, function):
         """
@@ -581,9 +598,11 @@ class Slot(object):
             return None
         assert position < len(self)
         print "Removing slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize)
-        slot = self._subSlots.pop(position)
-        # call before remove callbacks
+        
+        # call before-remove callbacks
         self._sig_remove(self, position, finalsize)
+
+        slot = self._subSlots.pop(position)
         slot.operator = None
         slot.disconnect()
         if propagate:
@@ -592,6 +611,9 @@ class Slot(object):
             for p in self.partners:
                 if p.level == self.level:
                     p.removeSlot(position, finalsize)
+
+        # call after-remove callbacks
+        self._sig_removed(self, position, finalsize)
 
     def get( self, roi, destination = None ):
         """
@@ -1742,13 +1764,13 @@ class OperatorWrapper(Operator):
         for s in self.inputs.values():
             if s.name in self.promotedSlots:
                 s.notifyInserted(self._callbackInserted)
-                s.notifyRemove(self._callbackRemove)
+                s.notifyRemoved(self._callbackRemove)
                 s.notifyConnect(self._callbackConnect)
 
         # register callbacks for inserted and removed output subslots
         for s in self.outputs.values():
             s.notifyInserted(self._callbackInserted)
-            s.notifyRemove(self._callbackRemove)
+            s.notifyRemoved(self._callbackRemove)
         
         self._initialized = True
 
