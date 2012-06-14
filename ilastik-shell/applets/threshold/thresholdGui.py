@@ -14,10 +14,10 @@ import utility # This is the ilastik shell utility module
 import numpy
 from utility import bind
 
-from applets.genericViewer import GenericViewerGui
+from applets.layerViewer import LayerViewerGui
 from volumina.widgets.thresholdingWidget import ThresholdingWidget
 
-class ThresholdGui(GenericViewerGui):
+class ThresholdGui(LayerViewerGui):
     """
     """
     
@@ -25,7 +25,7 @@ class ThresholdGui(GenericViewerGui):
         """
         
         """
-        super(ThresholdGui, self).__init__(mainOperator.OutputLayers)
+        super(ThresholdGui, self).__init__([mainOperator])
         self.mainOperator = mainOperator
     
     def initAppletDrawerUi(self):
@@ -55,3 +55,48 @@ class ThresholdGui(GenericViewerGui):
     def getAppletDrawerUi(self):
         return self._drawer
     
+    def setupLayers(self, currentImageIndex):
+        layers = []
+
+        # Show the thresholded data
+        outputImageSlot = self.mainOperator.Output[ currentImageIndex ]
+        if outputImageSlot.ready():
+            outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
+            outputLayer.name = "min <= x <= max"
+            outputLayer.visible = True
+            outputLayer.opacity = 0.75
+            layers.append(outputLayer)
+        
+        # Show the  data
+        invertedOutputSlot = self.mainOperator.InvertedOutput[ currentImageIndex ]
+        if invertedOutputSlot.ready():
+            invertedLayer = self.createStandardLayerFromSlot( invertedOutputSlot )
+            invertedLayer.name = "(x < min) U (x > max)"
+            invertedLayer.visible = True
+            invertedLayer.opacity = 0.25
+            layers.append(invertedLayer)
+        
+        # Show the raw input data
+        inputImageSlot = self.mainOperator.InputImage[ currentImageIndex ]
+        if inputImageSlot.ready():
+            inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
+            inputLayer.name = "Raw Input"
+            inputLayer.visible = True
+            inputLayer.opacity = 1.0
+            layers.append(inputLayer)
+
+        return layers
+
+
+
+
+
+
+
+
+
+
+
+
+
+
