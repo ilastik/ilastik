@@ -66,7 +66,7 @@ class TestOp5ifyer(unittest.TestCase):
             reorderedInput = self.inArray.withAxes(*[tag.key for tag in vresult.axistags])
             assert numpy.all(vresult == reorderedInput)
 
-    def test_Roi(self):
+    def test_Roi_default_order(self):
         for i in range(self.tests):
             self.prepareVolnOp()
             shape = self.operator.outputs["output"].shape
@@ -94,6 +94,45 @@ class TestOp5ifyer(unittest.TestCase):
 
             # Ensure the result came out in volumina order
             assert self.operator.outputs["output"].meta.axistags == vigra.defaultAxistags('txyzc')
+
+            # Check the data
+            vresult = result.view(vigra.VigraArray)
+            vresult.axistags = self.operator.outputs["output"].meta.axistags
+            reorderedInput = self.inArray.withAxes(*[tag.key for tag in self.operator.outputs["output"].meta.axistags])
+            assert numpy.all(vresult == reorderedInput[roiToSlice(roi[0], roi[1])])
+
+    def test_Roi_custom_order(self):
+        for i in range(self.tests):
+            self.prepareVolnOp()
+            
+            # Specify a strange order for the output axis tags
+            self.operator.order.setValue('ctyzx')
+            shape = self.operator.outputs["output"].shape
+            
+            roi = [None,None]
+            roi[1]=[numpy.random.randint(2,s) if s != 1 else 1 for s in shape]
+            roi[0]=[numpy.random.randint(0,roi[1][i]) if s != 1 else 0 for i,s in enumerate(shape)]
+            roi[0]=TinyVector(roi[0])
+            roi[1]=TinyVector(roi[1])
+            result = self.operator.outputs["output"](roi[0],roi[1]).wait()
+            logger.debug('------------------------------------------------------')
+            logger.debug( "self.array.shape = " + str(self.array.shape) )
+            logger.debug( "type(input) == " + str(type(self.operator.input.value)) )
+            logger.debug( "input.shape == " + str(self.operator.input.meta.shape) )
+            logger.debug( "Input Tags:")
+            logger.debug( str( self.operator.inputs['input'].axistags ) )
+            logger.debug( "Output Tags:" )
+            logger.debug( str(self.operator.output.axistags) )
+            logger.debug( "roi= " + str(roi) )
+            logger.debug( "type(result) == " + str(type(result)) )
+            logger.debug( "result.shape == " + str(result.shape) )
+            logger.debug( '------------------------------------------------------' )
+
+            # Check the shape
+            assert len(result.shape) == 5
+
+            # Ensure the result came out in the same strange order we asked for.
+            assert self.operator.outputs["output"].meta.axistags == vigra.defaultAxistags('ctyzx')
 
             # Check the data
             vresult = result.view(vigra.VigraArray)
