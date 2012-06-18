@@ -124,28 +124,50 @@ class OpMetadataInjector(Operator):
         # Forward to the output slot
         self.Output.setDirty(roi)
 
-if __name__ == "__main__":
-    g = Graph()
-    op = OpMetadataInjector(graph=g)
+class OpMetadataSelector(Operator):
+    name = "OpMetadataSelector"
+    category = "Value provider"
+    
+    Input = InputSlot()
+    MetadataKey = InputSlot( stype='string' )
+    
+    Output = OutputSlot(stype='object')
+    
+    def setupOutputs(self):
+        key = self.MetadataKey.value
+        self.Output.setValue( self.Input.meta[key] )
 
-    additionalMetadata = {'layertype' : 7}
-    op.Metadata.setValue( additionalMetadata )
-    op.Input.setValue('Hello')
+    def execute(self, slot, roi, result):
+        assert False # Output is directly connected
 
-    # Output value should match input value
-    assert op.Output.value == op.Input.value
+    def propagateDirty(self, slot, roi):
+        # Output is dirty if the meta data attribute of interest changed.
+        # Otherwise, not dirty.
+        if slot.name == "MetadataKey":
+            self.Output.setDirty(slice(None))
 
-    # Make sure all input metadata was copied to the output
-    assert all( ((k,v) in op.Output.meta.items()) for k,v in op.Input.meta.items())
+class OpOutputProvider(Operator):
+    name = "OpOutputProvider"
+    category = "test"
+    
+    Output = OutputSlot()
+    
+    def __init__(self, data, meta, *args, **kwargs):
+        super(OpOutputProvider, self).__init__(*args, **kwargs)
+        
+        self._data = data
+        self.Output.meta.assignFrom(meta)
+    
+    def setupOutputs(self):
+        pass
+    
+    def execute(self, slot, roi, result):
+        key = roi.toSlice()
+        result[...] = self._data[key]
 
-    # Check that the additional metadata was added to the output
-    assert op.Output.meta.layertype == 7
 
-    # Make sure dirtyness gets propagated to the output.
-    dirtyList = []
-    def handleDirty(*args):
-        dirtyList.append(True)
 
-    op.Output.notifyDirty( handleDirty )
-    op.Input.setValue( 8 )
-    assert len(dirtyList) == 1
+
+
+
+
