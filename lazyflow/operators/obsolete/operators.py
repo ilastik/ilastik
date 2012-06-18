@@ -727,7 +727,8 @@ if has_blist:
                       InputSlot("shape"),
                       InputSlot("eraser"),
                       InputSlot("deleteLabel", optional = True),
-                      InputSlot("blockShape")]
+                      InputSlot("blockShape"),
+                      InputSlot("axistags", optional = True)]
 
         outputSlots = [OutputSlot("Output"),
                        OutputSlot("nonzeroValues"),
@@ -746,108 +747,114 @@ if has_blist:
             self._maxLabel = 0
 
         def setupOutputs(self):
-            for slot in self.inputs.values():
-                if slot.ready() is False:
-                    continue
-                if slot.name == "shape":
-                    self._cacheShape = self.inputs["shape"].value
-                    self.outputs["Output"].meta.dtype = numpy.uint8
-                    self.outputs["Output"].meta.shape = self._cacheShape
-                    self.outputs["Output"].meta.axistags = vigra.defaultAxistags(len(self._cacheShape))
+            if self.inputs["shape"].ready():
+                self._cacheShape = self.inputs["shape"].value
 
-                    # FIXME: This is a super-special case because we are changing an INPUT shape from within setupOutputs!
-                    if self.inputs["Input"].meta.shape != self._cacheShape:
-                        self.inputs["Input"].meta.shape = self._cacheShape
-                        # If we're wrapped, then we have to propagate this shape change BACKWARDS.
-                        if self.inputs['Input'].partner is not None:
-                            self.inputs['Input'].partner.meta.shape = self._cacheShape
-                        #self.inputs["Input"]._changed()
+                # FIXME: This is a super-special case because we are changing an INPUT shape from within setupOutputs!
+                if self.inputs["Input"].meta.shape != self._cacheShape:
+                    self.inputs["Input"].meta.shape = self._cacheShape
+                    # If we're wrapped, then we have to propagate this shape change BACKWARDS.
+                    if self.inputs['Input'].partner is not None:
+                        self.inputs['Input'].partner.meta.shape = self._cacheShape
+                    #self.inputs["Input"]._changed()
 
-                    self.outputs["nonzeroValues"].meta.dtype = object
-                    self.outputs["nonzeroValues"].meta.shape = (1,)
-                    self.outputs["nonzeroValues"].meta.axistags = vigra.defaultAxistags(1)
+                self.outputs["Output"].meta.dtype = numpy.uint8
+                self.outputs["Output"].meta.shape = self._cacheShape
+                self.outputs["Output"].meta.axistags = vigra.defaultAxistags(len(self._cacheShape)) # Default if no input tags
 
-                    self.outputs["nonzeroCoordinates"].meta.dtype = object
-                    self.outputs["nonzeroCoordinates"].meta.shape = (1,)
-                    self.outputs["nonzeroCoordinates"].meta.axistags = vigra.defaultAxistags(1)
+                # Copy axis tags from input if possible
+                inputAxisTags = self.inputs["Input"].meta.axistags
+                if inputAxisTags is not None:
+                    self.outputs["Output"].meta.axistags = copy.copy(inputAxisTags)
 
-                    self.outputs["nonzeroBlocks"].meta.dtype = object
-                    self.outputs["nonzeroBlocks"].meta.shape = (1,)
-                    self.outputs["nonzeroBlocks"].meta.axistags = vigra.defaultAxistags(1)
+                self.outputs["nonzeroValues"].meta.dtype = object
+                self.outputs["nonzeroValues"].meta.shape = (1,)
+                self.outputs["nonzeroValues"].meta.axistags = vigra.defaultAxistags(1)
 
-                    self.outputs["maxLabel"].meta.dtype = object
-                    self.outputs["maxLabel"].meta.shape = (1,)
-                    self.outputs["maxLabel"].meta.axistags = vigra.defaultAxistags(1)
+                self.outputs["nonzeroCoordinates"].meta.dtype = object
+                self.outputs["nonzeroCoordinates"].meta.shape = (1,)
+                self.outputs["nonzeroCoordinates"].meta.axistags = vigra.defaultAxistags(1)
 
-                    #Filled on request
-                    self._sparseNZ =  blist.sorteddict()
+                self.outputs["nonzeroBlocks"].meta.dtype = object
+                self.outputs["nonzeroBlocks"].meta.shape = (1,)
+                self.outputs["nonzeroBlocks"].meta.axistags = vigra.defaultAxistags(1)
 
-                if slot.name == "eraser":
-                    self._cacheEraser = self.inputs["eraser"].value
-                    for l in self._labelers.values():
-                        l.inputs['eraser'].setValue(self._cacheEraser)
+                self.outputs["maxLabel"].meta.dtype = object
+                self.outputs["maxLabel"].meta.shape = (1,)
+                self.outputs["maxLabel"].meta.axistags = vigra.defaultAxistags(1)
 
-                if slot.name == "blockShape":
-                    self._origBlockShape = self.inputs["blockShape"].value
+                #Filled on request
+                self._sparseNZ =  blist.sorteddict()
 
-                    if type(self._origBlockShape) != tuple:
-                        self._blockShape = (self._origBlockShape,)*len(self._cacheShape)
-                    else:
-                        self._blockShape = self._origBlockShape
+            if self.inputs["axistags"].ready():
+                self.outputs["Output"].meta.axistags = copy.copy(self.inputs["axistags"].value)
 
-                    self._blockShape = numpy.minimum(self._blockShape, self._cacheShape)
+            if self.inputs["eraser"].ready():
+                self._cacheEraser = self.inputs["eraser"].value
+                for l in self._labelers.values():
+                    l.inputs['eraser'].setValue(self._cacheEraser)
 
-                    self._dirtyShape = numpy.ceil(1.0 * numpy.array(self._cacheShape) / numpy.array(self._blockShape))
+            if self.inputs["blockShape"].ready():
+                self._origBlockShape = self.inputs["blockShape"].value
 
-                    if lazyflow.verboseMemory:
-                        print "Reconfigured Sparse labels with ", self._cacheShape, self._blockShape, self._dirtyShape, self._origBlockShape
-                    #FIXME: we don't really need this blockState thing
-                    self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+                if type(self._origBlockShape) != tuple:
+                    self._blockShape = (self._origBlockShape,)*len(self._cacheShape)
+                else:
+                    self._blockShape = self._origBlockShape
 
-                    _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
-                    _blockNumbers.shape = self._dirtyShape
+                self._blockShape = numpy.minimum(self._blockShape, self._cacheShape)
 
-                    _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
-                    _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
+                self._dirtyShape = numpy.ceil(1.0 * numpy.array(self._cacheShape) / numpy.array(self._blockShape))
 
+                if lazyflow.verboseMemory:
+                    print "Reconfigured Sparse labels with ", self._cacheShape, self._blockShape, self._dirtyShape, self._origBlockShape
+                #FIXME: we don't really need this blockState thing
+                self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
 
-                    self._blockNumbers = _blockNumbers
-                    #self._blockIndices = _blockIndices
+                _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
+                _blockNumbers.shape = self._dirtyShape
 
-                    # allocate queryArray object
-                    self._flatBlockIndices =  _blockIndices[:]
-                    self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+                _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
+                _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
 
 
-                if slot.name == "deleteLabel":
-                    print "DELETING LABEL", self.inputs['deleteLabel'].value
-                    for l in self._labelers.values():
-                        l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
+                self._blockNumbers = _blockNumbers
+                #self._blockIndices = _blockIndices
+
+                # allocate queryArray object
+                self._flatBlockIndices =  _blockIndices[:]
+                self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
 
 
-                    #print "not there yet"
-                    return
-                    labelNr = slot.value
-                    if labelNr is not -1:
-                        neutralElement = 0
-                        slot.setValue(-1) #reset state of inputslot
-                        self.lock.acquire()
+            if self.inputs["deleteLabel"].ready():
+                print "DELETING LABEL", self.inputs['deleteLabel'].value
+                for l in self._labelers.values():
+                    l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
 
-                        #remove values to be deleted
-                        updateNZ = numpy.nonzero(numpy.where(self._denseArray == labelNr,1,0))
-                        if len(updateNZ)>0:
-                            updateNZRavel = numpy.ravel_multi_index(updateNZ, self._denseArray.shape)
-                            self._denseArray.ravel()[updateNZRavel] = neutralElement
-                            for index in updateNZRavel:
-                                self._sparseNZ.pop(index)
-                        self._denseArray[:] = numpy.where(self._denseArray > labelNr, self._denseArray - 1, self._denseArray)
-                        self.lock.release()
-                        self.outputs["nonzeroValues"][0] = numpy.array(self._sparseNZ.values())
-                        self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
-                        self.outputs["Output"][:] = self._denseArray #set output dirty
-                        if labelNr <= self._maxLabel:
-                            self._maxLabel -= 1
-                        self.outputs["maxLabel"].setValue(self._maxLabel)
+
+                #print "not there yet"
+                return
+                labelNr = slot.value
+                if labelNr is not -1:
+                    neutralElement = 0
+                    slot.setValue(-1) #reset state of inputslot
+                    self.lock.acquire()
+
+                    #remove values to be deleted
+                    updateNZ = numpy.nonzero(numpy.where(self._denseArray == labelNr,1,0))
+                    if len(updateNZ)>0:
+                        updateNZRavel = numpy.ravel_multi_index(updateNZ, self._denseArray.shape)
+                        self._denseArray.ravel()[updateNZRavel] = neutralElement
+                        for index in updateNZRavel:
+                            self._sparseNZ.pop(index)
+                    self._denseArray[:] = numpy.where(self._denseArray > labelNr, self._denseArray - 1, self._denseArray)
+                    self.lock.release()
+                    self.outputs["nonzeroValues"][0] = numpy.array(self._sparseNZ.values())
+                    self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
+                    self.outputs["Output"][:] = self._denseArray #set output dirty
+                    if labelNr <= self._maxLabel:
+                        self._maxLabel -= 1
+                    self.outputs["maxLabel"].setValue(self._maxLabel)
 
         def execute(self, slot, roi, result):
             key = roi.toSlice()
