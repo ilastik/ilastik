@@ -38,14 +38,8 @@ class OpFeatureSelection(Operator):
         self.opPixelFeatures = OpPixelFeaturesPresmoothed(parent=self)
         self.opPixelFeatureCache = OpBlockedArrayCache(parent=self)
 
-        # Connect the two operators
+        # Connect the cache to the feature output
         self.opPixelFeatureCache.Input.connect(self.opPixelFeatures.Output)
-
-        # Configure the cache        
-        # We choose block shapes that have only 1 channel because the channels may be 
-        #  coming from different features (e.g different filters) and probably shouldn't be cached together.
-        self.opPixelFeatureCache.innerBlockShape.setValue((1,32,32,32,1))
-        self.opPixelFeatureCache.outerBlockShape.setValue((1,128,128,128,1))
         self.opPixelFeatureCache.fixAtCurrent.setValue(False)
 
         # Connect our internal operators to our external inputs 
@@ -59,8 +53,22 @@ class OpFeatureSelection(Operator):
         self.OutputImage.connect( self.opPixelFeatures.Output )
         self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )        
 
+    def setupOutputs(self):        
+        # We choose block shapes that have only 1 channel because the channels may be 
+        #  coming from different features (e.g different filters) and probably shouldn't be cached together.
+        blockDims = { 't' : (1,1),
+                      'z' : (1,1),
+                      'y' : (32,128),
+                      'x' : (32,128),
+                      'c' : (1,1) }
 
+        axisOrder = [ tag.key for tag in self.InputImage.meta.axistags ]
+        innerBlockShape = tuple( blockDims[k][0] for k in axisOrder )
+        outerBlockShape = tuple( blockDims[k][1] for k in axisOrder )
 
+        # Configure the cache        
+        self.opPixelFeatureCache.innerBlockShape.setValue(innerBlockShape)
+        self.opPixelFeatureCache.outerBlockShape.setValue(outerBlockShape)
 
 
 

@@ -384,14 +384,15 @@ class IlastikShell( QMainWindow ):
             fileExtension = os.path.splitext(projectFilePath)[1].lower()
             if fileExtension != '.ilp':
                 projectFilePath += ".ilp"
-                # Since we changed the file path, we need to re-check if we're overwriting an existing file.
-                message = "A file named '" + projectFilePath + "' already exists in this location.\n"
-                message += "Are you sure you want to overwrite it with a blank project?"
-                buttons = QMessageBox.Yes | QMessageBox.Cancel
-                response = QMessageBox.warning(self, "Overwrite existing project?", message, buttons, defaultButton=QMessageBox.Cancel)
-                if response == QMessageBox.Cancel:
-                    # Try again...
-                    fileSelected = False
+                if os.path.exists(projectFilePath):
+                    # Since we changed the file path, we need to re-check if we're overwriting an existing file.
+                    message = "A file named '" + projectFilePath + "' already exists in this location.\n"
+                    message += "Are you sure you want to overwrite it with a blank project?"
+                    buttons = QMessageBox.Yes | QMessageBox.Cancel
+                    response = QMessageBox.warning(self, "Overwrite existing project?", message, buttons, defaultButton=QMessageBox.Cancel)
+                    if response == QMessageBox.Cancel:
+                        # Try again...
+                        fileSelected = False
 
         # Create the blank project file
         h5File = h5py.File(projectFilePath, "w")

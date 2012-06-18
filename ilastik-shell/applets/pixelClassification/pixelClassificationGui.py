@@ -674,7 +674,7 @@ class PixelClassificationGui(QMainWindow):
         # Closure to call when the prediction is finished
         def onPredictionComplete(predictionResults):
             
-            print "Prediction shape=", predictionResults.shape
+            print "Prediction shape=", predictionResults.meta.shape
             
             # Re-enable the GUI
             self._labelControlUi.AddLabelButton.setEnabled(True)
@@ -743,9 +743,9 @@ class PixelClassificationGui(QMainWindow):
         The raw input data to our top-level operator has changed.
         """
         if len(self.pipeline.InputImages) > 0 \
-        and self.pipeline.InputImages[self.imageIndex].shape is not None:
+        and self.pipeline.InputImages[self.imageIndex].meta.shape is not None:
 
-            shape = self.pipeline.InputImages[self.imageIndex].shape
+            shape = self.pipeline.InputImages[self.imageIndex].meta.shape
             srcs    = []
             minMax = []
             
@@ -753,9 +753,7 @@ class PixelClassificationGui(QMainWindow):
             
             #create a layer for each channel of the input:
             slicer=OpMultiArraySlicer2(self.g)
-            opFiver = Op5ifyer(graph=self.g)
-            opFiver.input.connect(self.pipeline.InputImages[self.imageIndex])
-            slicer.inputs["Input"].connect(opFiver.output)
+            slicer.inputs["Input"].connect(self.pipeline.InputImages[self.imageIndex])
             
             slicer.inputs["AxisFlag"].setValue('c')
            
@@ -890,9 +888,14 @@ class PixelClassificationGui(QMainWindow):
         self.layerstack.removeRows( 0, len(self.layerstack) )
         self.predictionLayers.clear()
 
-        # Give the editor the appropriate shape
-        shape = self.pipeline.InputImages[self.imageIndex].shape
-        self.editor.dataShape = shape
+        # Give the editor the appropriate shape (transposed via an Op5ifyer adapter).
+        op5 = Op5ifyer( graph=self.pipeline.graph )
+        op5.input.connect( self.pipeline.InputImages[self.imageIndex] )
+        self.editor.dataShape = op5.output.meta.shape
+        
+        # We just needed the operator to determine the transposed shape.
+        # Disconnect it so it can be deleted.
+        op5.input.disconnect()
 
     def _createDefault16ColorColorTable(self):
         c = []

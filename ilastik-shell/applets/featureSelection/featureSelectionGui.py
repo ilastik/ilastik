@@ -2,6 +2,7 @@ from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
+from volumina.adaptors import Op5ifyer
 from volumina.api import ArraySource, LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
                          AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
 
@@ -280,17 +281,22 @@ class FeatureSelectionGui(QMainWindow):
         numRows = len(self.layerstack)
         self.layerstack.removeRows(0, numRows)
 
-        # Update the editor data shape
-        shape = self.mainOperator.InputImage[self.currentImageIndex].shape
-        self.editor.dataShape = shape
+        # Give the editor the appropriate shape (transposed via an Op5ifyer adapter).
+        op5 = Op5ifyer( graph=self.mainOperator.graph )
+        op5.input.connect( self.mainOperator.InputImage[self.currentImageIndex] )
+        self.editor.dataShape = op5.output.meta.shape
+        
+        # We just needed the operator to determine the transposed shape.
+        # Disconnect it so it can be deleted.
+        op5.input.disconnect()
         
         # First add a black layer on the bottom of the image
         # TODO: Optimize: Replace this ArraySource with a special operator that always returns zero
-        singleChannelShape = shape[:-1] + (1,)
-        blackSource = ArraySource( numpy.zeros(singleChannelShape, dtype=numpy.float32) )
-        blackLayer = GrayscaleLayer(blackSource)
-        blackLayer.name = "Black background"
-        self.layerstack.insert(0, blackLayer)
+#        singleChannelShape = shape[:-1] + (1,)
+#        blackSource = ArraySource( numpy.zeros(singleChannelShape, dtype=numpy.float32) )
+#        blackLayer = GrayscaleLayer(blackSource)
+#        blackLayer.name = "Black background"
+#        self.layerstack.insert(0, blackLayer)
 
         # Now add a layer for each feature
         # TODO: This assumes the channel is the last axis 
@@ -327,7 +333,8 @@ class FeatureSelectionGui(QMainWindow):
         
         featureSource = LazyflowSource(selector.Output)
         featureSource.setObjectName(featureName)
-        featureLayer = AlphaModulatedLayer(featureSource, tintColor=ref_label.color, normalize = None )
+#        featureLayer = AlphaModulatedLayer(featureSource, tintColor=ref_label.color, normalize = None )
+        featureLayer = GrayscaleLayer( featureSource )
         featureLayer.name = featureSource.objectName()
 
         # By default, only the first feature is visible

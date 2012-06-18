@@ -1,7 +1,7 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
 
 from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, OpArrayPiper, Op5ToMulti, OpBlockedSparseLabelArray, OpArrayCache, \
-                               OpTrainRandomForestBlocked, OpPredictRandomForest, OpSlicedBlockedArrayCache
+                               OpTrainRandomForestBlocked, OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMetadataSelector
 
 from utility.simpleSignal import SimpleSignal
 import numpy
@@ -50,12 +50,16 @@ class OpPixelClassification( Operator ):
         self.opMaxLabel = OpMaxValue(graph=self.graph)
         self.opTrain = OpTrainRandomForestBlocked( self.graph )
 
+        # Set up label cache shape input
         self.opInputShapeReader.Input.connect( self.InputImages )
         self.opLabelArray.inputs["shape"].connect( self.opInputShapeReader.OutputShape )
+
+        # Set up other label cache inputs
+        self.LabelInputs.connect( self.InputImages )
         self.opLabelArray.inputs["Input"].connect( self.LabelInputs )
         self.opLabelArray.inputs["blockShape"].setValue((1, 32, 32, 32, 1))
         self.opLabelArray.inputs["eraser"].setValue(100)
-        
+                
         # Initialize the delete input to -1, which means "no label".
         # Now changing this input to a positive value will cause label deletions.
         # (The deleteLabel input is monitored for changes.)
@@ -129,7 +133,7 @@ class OpPixelClassification( Operator ):
             shapeList[channelIndex] = 1
             self.LabelInputs[i].meta.shape = tuple(shapeList)
             self.LabelInputs[i].meta.axistags = self.InputImages[i].meta.axistags
-            
+        
     def setSubInSlot(self, multislot,slot,index, key,value):
         # We can't connect our external label input to the internal sparse label array 
         #  because the array wants to control the shape of the input (based on his 'shape' input)
