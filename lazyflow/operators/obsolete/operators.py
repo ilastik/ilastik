@@ -727,8 +727,7 @@ if has_blist:
                       InputSlot("shape"),
                       InputSlot("eraser"),
                       InputSlot("deleteLabel", optional = True),
-                      InputSlot("blockShape"),
-                      InputSlot("axistags", optional = True)]
+                      InputSlot("blockShape")]
 
         outputSlots = [OutputSlot("Output"),
                        OutputSlot("nonzeroValues"),
@@ -786,9 +785,6 @@ if has_blist:
                 #Filled on request
                 self._sparseNZ =  blist.sorteddict()
 
-            if self.inputs["axistags"].ready():
-                self.outputs["Output"].meta.axistags = copy.copy(self.inputs["axistags"].value)
-
             if self.inputs["eraser"].ready():
                 self._cacheEraser = self.inputs["eraser"].value
                 for l in self._labelers.values():
@@ -827,15 +823,14 @@ if has_blist:
 
 
             if self.inputs["deleteLabel"].ready():
-                print "DELETING LABEL", self.inputs['deleteLabel'].value
                 for l in self._labelers.values():
                     l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
-
 
                 #print "not there yet"
                 return
                 labelNr = slot.value
                 if labelNr is not -1:
+                    print "DELETING LABEL", self.inputs['deleteLabel'].value
                     neutralElement = 0
                     slot.setValue(-1) #reset state of inputslot
                     self.lock.acquire()
