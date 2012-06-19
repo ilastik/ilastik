@@ -102,13 +102,16 @@ class PixelClassificationSerializer(AppletSerializer):
         This way we can avoid invalid state due to a partially loaded project. """ 
         self.mainOperator.LabelInputs.resize(0)
 
-class Ilastik05ImportDeserializer(object):
+class Ilastik05ImportDeserializer(AppletSerializer):
     """
     Special (de)serializer for importing ilastik 0.5 projects.
     For now, this class is import-only.  Only the deserialize function is implemented.
     If the project is not an ilastik0.5 project, this serializer does nothing.
     """
+    SerializerVersion = 0.1
+
     def __init__(self, topLevelOperator):
+        super( Ilastik05ImportDeserializer, self ).__init__( '', self.SerializerVersion )
         self.mainOperator = topLevelOperator
     
     def serializeToHdf5(self, hdf5Group, projectFilePath):
