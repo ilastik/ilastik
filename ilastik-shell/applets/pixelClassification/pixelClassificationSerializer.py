@@ -1,36 +1,19 @@
 import numpy
 from utility.dataImporter import DataImporter
+from ilastikshell.appletSerializer import AppletSerializer
 
-class PixelClassificationSerializer(object):
+
+class PixelClassificationSerializer(AppletSerializer):
     """
     Encapsulate the serialization scheme for pixel classification workflow parameters and datasets.
     """
-    TopGroupName = 'PixelClassification'
     SerializerVersion = 0.1
     
-    def __init__(self, topLevelOperator):
-        self.mainOperator = topLevelOperator
+    def __init__(self, mainOperator, projectFileGroupName):
+        super( PixelClassificationSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
+        self.mainOperator = mainOperator
     
-    def serializeToHdf5(self, hdf5File, filePath):
-        # The group we were given is the root (file).
-        # Check the version
-        ilastikVersion = hdf5File["ilastikVersion"].value
-
-        # TODO: Fix this when the version number scheme is more thought out
-        if ilastikVersion != 0.6:
-            # This class is for 0.6 projects only.
-            # v0.5 projects are handled in a different serializer (below).
-            return
-
-        # Access our top group (create it if necessary)
-        topGroup = self.getOrCreateGroup(hdf5File, self.TopGroupName)
-        
-        # Set the version
-        if 'StorageVersion' not in topGroup.keys():
-            topGroup.create_dataset('StorageVersion', data=self.SerializerVersion)
-        else:
-            topGroup['StorageVersion'][()] = self.SerializerVersion
-        
+    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Delete all labels from the file
         self.deleteIfPresent(topGroup, 'LabelSets')
         labelSetDir = topGroup.create_group('LabelSets')
@@ -54,23 +37,8 @@ class PixelClassificationSerializer(object):
                 # Add the slice this block came from as an attribute of the dataset
                 labelGroup[blockName].attrs['blockSlice'] = self.slicingToString(slicing)
 
-    def deserializeFromHdf5(self, hdf5File, filePath):
-        # Check the overall version.
-        # We only support v0.6 at the moment.
-        ilastikVersion = hdf5File["ilastikVersion"].value
-        if ilastikVersion != 0.6:
-            return
-
-        # Access the top group and all required datasets
-        #  If something is missing we simply return without adding any input to the operator.
-        try:
-            topGroup = hdf5File[self.TopGroupName]
-            labelSetGroup = topGroup['LabelSets']
-        except KeyError:
-            # There's no label data in the project.  Make sure the operator doesn't have any label data.
-            self.mainOperator.LabelInputs.resize(0)
-            return
-
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        labelSetGroup = topGroup['LabelSets']
         numImages = len(labelSetGroup)
         self.mainOperator.LabelInputs.resize(numImages)
 
@@ -82,18 +50,6 @@ class PixelClassificationSerializer(object):
                 slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
                 # Slice in this data to the label input
                 self.mainOperator.LabelInputs[index][slicing] = blockData[...]
-
-    def getOrCreateGroup(self, parentGroup, groupName):
-        try:
-            return parentGroup[groupName]
-        except KeyError:
-            return parentGroup.create_group(groupName)
-
-    def deleteIfPresent(self, parentGroup, name):
-        try:
-            del parentGroup[name]
-        except KeyError:
-            pass
 
     def slicingToString(self, slicing):
         """
@@ -196,4 +152,18 @@ class Ilastik05ImportDeserializer(object):
     def unload(self):
         # This is a special-case import deserializer.  Let the real deserializer handle unloading.
         pass 
+
+    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
+        assert False
+
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        # This deserializer is a special-case.
+        # It doesn't make use of the serializer base class, which makes assumptions about the file structure.
+        # Instead, if overrides the public serialize/deserialize functions directly
+        assert False
+
+
+
+
+
 
