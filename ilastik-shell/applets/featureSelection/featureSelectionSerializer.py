@@ -30,6 +30,8 @@ class FeatureSelectionSerializer(AppletSerializer):
             topGroup.create_dataset('SelectionMatrix', data=self.mainOperator.SelectionMatrix.value)
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        if topGroup is None:
+            return
         # These keys are guaranteed to be present if we have a group at all 
         scales = topGroup['Scales'].value
         featureIds = topGroup['FeatureIds'].value
