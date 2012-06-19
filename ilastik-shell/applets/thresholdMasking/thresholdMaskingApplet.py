@@ -2,6 +2,7 @@ from ilastikshell.applet import Applet
 
 from opThresholdMasking import OpThresholdMasking
 from thresholdMaskingGui import ThresholdMaskingGui
+from thresholdMaskingSerializer import ThresholdMaskingSerializer
 
 from lazyflow.graph import OperatorWrapper
 
@@ -17,9 +18,15 @@ class ThresholdMaskingApplet( Applet ):
 
         self._gui = ThresholdMaskingGui(self._topLevelOperator)
         
+        self._serializableItems = [ ThresholdMaskingSerializer(self._topLevelOperator, projectFileGroupName) ]
+        
     @property
     def topLevelOperator(self):
         return self._topLevelOperator
+
+    @property
+    def dataSerializers(self):
+        return self._serializableItems
 
     @property
     def viewerControlWidget(self):
