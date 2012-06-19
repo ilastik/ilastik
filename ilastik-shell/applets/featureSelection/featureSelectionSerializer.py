@@ -1,36 +1,23 @@
 import numpy
 
-class FeatureSelectionSerializer(object):
+from ilastikshell.appletSerializer import AppletSerializer
+
+class FeatureSelectionSerializer(AppletSerializer):
     """
     Serializes the user's pixel feature selections to an ilastik v0.6 project file.
     """
     SerializerVersion = 0.1
-    TopGroupName = "FeatureSelections"
     
-    def __init__(self, mainOperator):
+    def __init__(self, mainOperator, projectFileGroupName):
+        super( FeatureSelectionSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
         self.mainOperator = mainOperator
     
-    def serializeToHdf5(self, hdf5File, filePath):
-        # Check the overall version.
-        # We only support v0.6 at the moment.
-        ilastikVersion = hdf5File["ilastikVersion"].value
-        if ilastikVersion != 0.6:
-            return
-    
+    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Can't store anything without both scales and features
         if not self.mainOperator.Scales.connected() \
         or not self.mainOperator.FeatureIds.connected():
             return
     
-        # Access our top group (create it if necessary)
-        topGroup = self.getOrCreateGroup(hdf5File, self.TopGroupName)
-        
-        # Set the version
-        if 'StorageVersion' not in topGroup.keys():
-            topGroup.create_dataset('StorageVersion', data=self.SerializerVersion)
-        else:
-            topGroup['StorageVersion'][()] = self.SerializerVersion
-        
         # Delete previous entries if they exist
         self.deleteIfPresent(topGroup, 'Scales')
         self.deleteIfPresent(topGroup, 'FeatureIds')
@@ -42,25 +29,10 @@ class FeatureSelectionSerializer(object):
         if self.mainOperator.SelectionMatrix.connected():
             topGroup.create_dataset('SelectionMatrix', data=self.mainOperator.SelectionMatrix.value)
 
-    def deserializeFromHdf5(self, hdf5File, filePath):
-        # Check the overall version.
-        # We only support v0.6 at the moment.
-        ilastikVersion = hdf5File["ilastikVersion"].value
-        if ilastikVersion != 0.6:
-            return
-
-        # Access the top group and all required datasets
-        #  If something is missing we simply return without adding any input to the operator.
-        try:
-            topGroup = hdf5File[self.TopGroupName]
-            scales = topGroup['Scales'].value
-            featureIds = topGroup['FeatureIds'].value
-        except KeyError:
-            # There's no data in the project, so make sure the operator has no inputs.
-            self.mainOperator.Scales.disconnect()
-            self.mainOperator.FeatureIds.disconnect()
-            self.mainOperator.SelectionMatrix.disconnect()
-            return
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        # These keys are guaranteed to be present if we have a group at all 
+        scales = topGroup['Scales'].value
+        featureIds = topGroup['FeatureIds'].value
         
         self.mainOperator.Scales.setValue(scales)
         self.mainOperator.FeatureIds.setValue(featureIds)
@@ -178,78 +150,15 @@ class Ilastik05FeatureSelectionDeserializer(object):
         self.mainOperator.FeatureIds.disconnect()
         self.mainOperator.SelectionMatrix.disconnect()
 
-if __name__ == "__main__":
-    import os
-    import numpy
-    import h5py
-    from lazyflow.graph import Graph
-    from opFeatureSelection import OpFeatureSelection
 
-    # Define the files we'll be making    
-    testProjectName = 'test_project.ilp'
-    # Clean up: Remove the test data files we created last time (just in case)
-    for f in [testProjectName]:
-        try:
-            os.remove(f)
-        except:
-            pass
+    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
+        assert False
 
-    # Create an empty project
-    testProject = h5py.File(testProjectName)
-    testProject.create_dataset("ilastikVersion", data=0.6)
-    
-    # Create an operator to work with and give it some input
-    graph = Graph()
-    operatorToSave = OpFeatureSelection(graph=graph)
-
-    # Configure scales        
-    scales = [0.1, 0.2, 0.3, 0.4, 0.5]
-    operatorToSave.Scales.setValue(scales)
-
-    # Configure feature types
-    featureIds = [ 'GaussianSmoothing',
-                   'LaplacianOfGaussian' ]
-    operatorToSave.FeatureIds.setValue(featureIds)
-
-    # All False (no features selected)
-    selectionMatrix = numpy.zeros((2, 5), dtype=bool)
-
-    # Change a few to True
-    selectionMatrix[0,0] = True
-    selectionMatrix[1,0] = True
-    selectionMatrix[0,2] = True
-    selectionMatrix[1,4] = True
-    operatorToSave.SelectionMatrix.setValue(selectionMatrix)
-    
-    # Serialize!
-    serializer = FeatureSelectionSerializer(operatorToSave)
-    serializer.serializeToHdf5(testProject)
-    
-    assert (testProject['FeatureSelections/Scales'].value == scales).all()
-    assert (testProject['FeatureSelections/FeatureIds'].value == featureIds).all()
-    assert (testProject['FeatureSelections/SelectionMatrix'].value == selectionMatrix).all()
-
-    # Deserialize into a fresh operator
-    operatorToLoad = OpFeatureSelection(graph=graph)
-    deserializer = FeatureSelectionSerializer(operatorToLoad)
-    deserializer.deserializeFromHdf5(testProject)
-    
-    assert (operatorToLoad.Scales.value == scales).all()
-    assert (operatorToLoad.FeatureIds.value == featureIds).all()
-    assert (operatorToLoad.SelectionMatrix.value == selectionMatrix).all()
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        # This deserializer is a special-case.
+        # It doesn't make use of the serializer base class, which makes assumptions about the file structure.
+        # Instead, if overrides the public serialize/deserialize functions directly
+        assert False
 
 
 

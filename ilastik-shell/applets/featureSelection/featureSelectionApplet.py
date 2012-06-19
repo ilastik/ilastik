@@ -22,7 +22,7 @@ class FeatureSelectionApplet( Applet ):
         self._serializableItems = [ FeatureSelectionSerializer(self._topLevelOperator),
                                     Ilastik05FeatureSelectionDeserializer(self._topLevelOperator) ]
 
-        self._gui = FeatureSelectionGui(self._topLevelOperator)
+        self._gui = FeatureSelectionGui(self._topLevelOperator, 'FeatureSelections')
             
     @property
     def dataSerializers(self):
