@@ -130,11 +130,10 @@ class AppletSerializer(object):
         # If our group isn't there, then give up.
         try:
             topGroup = hdf5File[self.topGroupName]
+            groupVersion = topGroup['StorageVersion'][()]
         except KeyError:
-            return
-        
-        # Read the version
-        groupVersion = topGroup['StorageVersion'][()]
+            topGroup = None
+            groupVersion = None
         
         # Call the subclass to do the actual work
         self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath)

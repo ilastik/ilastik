@@ -16,10 +16,11 @@ class ProjectMetadataSerializer(AppletSerializer):
         self.setDataset(metadataGroup, 'Description', self.projectMetadata.description)
     
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
-        metadataGroup = topGroup
-        self.projectMetadata.projectName = self.getDataset(metadataGroup, 'ProjectName')
-        self.projectMetadata.labeler = self.getDataset(metadataGroup, 'Labeler')
-        self.projectMetadata.description = self.getDataset(metadataGroup, 'Description')
+        if topGroup is None:
+            return
+        self.projectMetadata.projectName = self.getDataset(topGroup, 'ProjectName')
+        self.projectMetadata.labeler = self.getDataset(topGroup, 'Labeler')
+        self.projectMetadata.description = self.getDataset(topGroup, 'Description')
 
     def isDirty(self):
         """ Return true if the current state of this item 

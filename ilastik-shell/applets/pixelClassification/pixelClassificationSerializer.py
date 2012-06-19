@@ -38,6 +38,9 @@ class PixelClassificationSerializer(AppletSerializer):
                 labelGroup[blockName].attrs['blockSlice'] = self.slicingToString(slicing)
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        if topGroup is None:
+            return
+
         labelSetGroup = topGroup['LabelSets']
         numImages = len(labelSetGroup)
         self.mainOperator.LabelInputs.resize(numImages)

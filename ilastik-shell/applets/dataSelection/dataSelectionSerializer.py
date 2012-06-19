@@ -92,6 +92,9 @@ class DataSelectionSerializer( AppletSerializer ):
         self.mainOperator.ProjectDataGroup.setValue( self.topGroupName + '/local_data' )
         self.mainOperator.ProjectFile.setValue( hdf5File )
 
+        if topGroup is None:
+            return
+
         infoDir = topGroup['infos']
         
         self.mainOperator.Dataset.resize( len(infoDir) )
