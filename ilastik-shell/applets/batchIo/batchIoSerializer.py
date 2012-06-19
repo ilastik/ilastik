@@ -1,44 +1,27 @@
 import os
 import sys
 import copy
-from utility import VersionManager
 
 from opBatchIo import ExportFormat
+
+from ilastikshell.appletSerializer import AppletSerializer
 
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel( logging.DEBUG )
 logger.addHandler( logging.StreamHandler(sys.stdout) )
 
-class BatchIoSerializer(object):
+class BatchIoSerializer(AppletSerializer):
     """
     Serializes the user's input data selections to an ilastik v0.6 project file.
     """
     SerializerVersion = 0.1
-    TopGroupName = 'BatchIo'
 
-    def __init__(self, mainOperator, topGroupName=None):
+    def __init__(self, mainOperator, projectFileGroupName):
+        super( BatchIoSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
         self.mainOperator = mainOperator
-        if topGroupName is not None:
-             self.TopGroupName = topGroupName
     
-    def serializeToHdf5(self, hdf5File, projectFilePath):
-        # Check the overall file version
-        ilastikVersion = hdf5File["ilastikVersion"].value
-
-        # Make sure we can find our way around the project tree
-        if not VersionManager.isProjectFileVersionCompatible(ilastikVersion):
-            return
-        
-        # Access our top group (create it if necessary)
-        topGroup = self.getOrCreateGroup(hdf5File, self.TopGroupName)
-        
-        # Set the version
-        if 'StorageVersion' not in topGroup.keys():
-            topGroup.create_dataset('StorageVersion', data=self.SerializerVersion)
-        else:
-            topGroup['StorageVersion'][()] = self.SerializerVersion
-        
+    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Delete any datasets we're about to write
         self.deleteIfPresent( topGroup, 'ExportDirectory' )
         self.deleteIfPresent( topGroup, 'Format' )
@@ -62,22 +45,7 @@ class BatchIoSerializer(object):
             # Store the dirty flag so we can restore the previous session efficiently
             dataGroup.create_dataset('Dirty', data=self.mainOperator.Dirty[index])
             
-    def deserializeFromHdf5(self, hdf5File, projectFilePath):
-        # Check the overall file version
-        ilastikVersion = hdf5File["ilastikVersion"].value
-
-        # Make sure we can find our way around the project tree
-        if not VersionManager.isProjectFileVersionCompatible(ilastikVersion):
-            return
-        
-        # Get a handle to the top group.
-        try:
-            topGroup = hdf5File[self.TopGroupName]
-        except KeyError:
-            # Top group isn't present.  Clear the operator and give up. 
-            self.unload()
-            return
-
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         try:
             exportDir = topGroup['ExportDirectory'][()]
             format = topGroup['Format'][()]
@@ -91,7 +59,6 @@ class BatchIoSerializer(object):
                 pass
         except KeyError:
             self.unload()
-        
 
     def isDirty(self):
         """ Return true if the current state of this item 
@@ -109,17 +76,3 @@ class BatchIoSerializer(object):
         self.mainOperator.Format.setValue( ExportFormat.H5 )
         self.mainOperator.Suffix.setValue( '_results' )
         self.mainOperator.DatasetPath.resize(0)
-
-    def getOrCreateGroup(self, parentGroup, groupName):
-        try:
-            return parentGroup[groupName]
-        except KeyError:
-            return parentGroup.create_group(groupName)
-
-    def deleteIfPresent(self, parentGroup, name):
-        try:
-            del parentGroup[name]
-        except KeyError:
-            pass
-
-

@@ -13,7 +13,7 @@ class DataSelectionApplet( Applet ):
     This applet allows the user to select sets of input data, 
     which are provided as outputs in the corresponding top-level applet operator.
     """
-    def __init__( self, graph, title, supportIlastik05Import=False, batchDataGui=False):
+    def __init__( self, graph, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False):
         super(DataSelectionApplet, self).__init__(title)
 
         # Our top-level operator is wrapped to enable multi-image support.
@@ -21,7 +21,7 @@ class DataSelectionApplet( Applet ):
         # Hence, 'Dataset' is the only 'promoted' slot.
         self._topLevelOperator = OperatorWrapper( OpDataSelection(graph=graph), promotedSlotNames=set(['Dataset']) )
 
-        self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator, title) ]
+        self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator, projectFileGroupName) ]
         if supportIlastik05Import:
             self._serializableItems.append(Ilastik05DataSelectionDeserializer(self._topLevelOperator))
 

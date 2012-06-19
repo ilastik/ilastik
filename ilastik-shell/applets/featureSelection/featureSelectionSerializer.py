@@ -59,23 +59,13 @@ class FeatureSelectionSerializer(AppletSerializer):
         self.mainOperator.FeatureIds.disconnect()
         self.mainOperator.SelectionMatrix.disconnect()
 
-    def getOrCreateGroup(self, parentGroup, groupName):
-        try:
-            return parentGroup[groupName]
-        except KeyError:
-            return parentGroup.create_group(groupName)
-
-    def deleteIfPresent(self, parentGroup, name):
-        try:
-            del parentGroup[name]
-        except KeyError:
-            pass
-
-class Ilastik05FeatureSelectionDeserializer(object):
+class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
     """
     Deserializes the user's pixel feature selections from an ilastik v0.5 project file.
     """
+    SerializerVersion = 0.1
     def __init__(self, mainOperator):
+        super( Ilastik05FeatureSelectionDeserializer, self ).__init__( '', self.SerializerVersion )
         self.mainOperator = mainOperator
     
     def serializeToHdf5(self, hdf5File, filePath):

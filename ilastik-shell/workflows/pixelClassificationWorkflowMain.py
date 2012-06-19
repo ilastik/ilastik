@@ -34,9 +34,9 @@ graph = Graph()
 
 ## Create applets 
 projectMetadataApplet = ProjectMetadataApplet()
-dataSelectionApplet = DataSelectionApplet(graph, "Input Data", supportIlastik05Import=True, batchDataGui=False)
-featureSelectionApplet = FeatureSelectionApplet(graph)
-pcApplet = PixelClassificationApplet(graph)
+dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+featureSelectionApplet = FeatureSelectionApplet(graph, "Feature Selection", "FeatureSelections")
+pcApplet = PixelClassificationApplet(graph, "PixelClassification")
 
 ## Access applet operators
 opData = dataSelectionApplet.topLevelOperator
@@ -91,7 +91,7 @@ opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 #######################
 #
 ### Create applets
-#batchInputApplet = DataSelectionApplet(graph, "Batch Inputs", supportIlastik05Import=False, batchDataGui=True)
+#batchInputApplet = DataSelectionApplet(graph, "Batch Inputs", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
 #batchResultsApplet = BatchIoApplet(graph, "Batch Results")
 #
 ### Access applet operators

@@ -52,8 +52,11 @@ class ProjectMetadataSerializer(AppletSerializer):
             result = ''
         return result
 
-class Ilastik05ProjectMetadataDeserializer(object):    
+class Ilastik05ProjectMetadataDeserializer(AppletSerializer):
+    SerializerVersion = 0.1
+
     def __init__(self, projectMetadata):
+        super( Ilastik05ProjectMetadataDeserializer, self ).__init__( '', self.SerializerVersion )
         self.projectMetadata = projectMetadata
     
     def serializeToHdf5(self, hdf5File, filePath):

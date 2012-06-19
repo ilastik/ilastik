@@ -135,13 +135,14 @@ class DataSelectionSerializer( AppletSerializer ):
         self.mainOperator.Dataset.resize( 0 )
 
 
-class Ilastik05DataSelectionDeserializer(object):
+class Ilastik05DataSelectionDeserializer(AppletSerializer):
     """
     Deserializes the user's input data selections from an ilastik v0.5 project file.
     """
-
+    SerializerVersion = 0.1
+    
     def __init__(self, mainOperator):
-        super( DataSelectionSerializer, self ).__init__( '', self.SerializerVersion )
+        super( Ilastik05DataSelectionDeserializer, self ).__init__( '', self.SerializerVersion )
         self.mainOperator = mainOperator
     
     def serializeToHdf5(self, hdf5File, projectFilePath):
