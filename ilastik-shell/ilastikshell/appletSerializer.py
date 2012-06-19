@@ -138,3 +138,10 @@ class AppletSerializer(object):
         # Call the subclass to do the actual work
         self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath)
 
+    @property
+    def base_initialized(self):
+        """
+        Do not override this property.
+        Used by the shell to ensure that Applet.__init__ was called by your subclass.
+        """
+        return self._base_initialized

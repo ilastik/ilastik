@@ -438,6 +438,7 @@ class IlastikShell( QMainWindow ):
             # Applet serializable items are given the whole file (root group)
             for applet in self._applets:
                 for item in applet.dataSerializers:
+                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
                     item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
 
             # Now that a project is loaded, the user is allowed to save
@@ -472,6 +473,7 @@ class IlastikShell( QMainWindow ):
             # Applet serializable items are given the whole file (root group) for now
             for applet in self._applets:
                 for item in applet.dataSerializers:
+                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
                     item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
         except:
             logger.error("Project Save Action failed due to the following exception:")
