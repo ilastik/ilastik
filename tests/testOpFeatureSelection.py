@@ -1,6 +1,6 @@
 import os
 import numpy
-from lazyflow.graph import Graph
+from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.ioOperators import OpInputDataReader
 from applets.featureSelection.opFeatureSelection import OpFeatureSelection
 
@@ -15,7 +15,7 @@ class TestOpFeatureSelection(object):
         graph = Graph()
         
         # Define operators
-        featureSelector = OpFeatureSelection(graph=graph)
+        featureSelector = OperatorWrapper( OpFeatureSelection(graph=graph) )
         reader = OpInputDataReader(graph=graph)
         
         # Set input data
@@ -26,8 +26,8 @@ class TestOpFeatureSelection(object):
         reader.FilePath.setValue( filePath )
         
         # Connect input
-        featureSelector.InputImages.resize(1)
-        featureSelector.InputImages[0].connect( reader.Output )
+        featureSelector.InputImage.resize(1)
+        featureSelector.InputImage[0].connect( reader.Output )
         
         # Configure scales        
         scales = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
@@ -52,7 +52,7 @@ class TestOpFeatureSelection(object):
         
         # Compute results for the top slice only
         topSlice = [0, slice(None), slice(None), 0, slice(None)]
-        result = featureSelector.OutputImages[0][topSlice].allocate().wait()
+        result = featureSelector.OutputImage[0][topSlice].allocate().wait()
         
         numFeatures = numpy.sum(featureSelectionMatrix)
         inputChannels = reader.Output.meta.shape[-1]
