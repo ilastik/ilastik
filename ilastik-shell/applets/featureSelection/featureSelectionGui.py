@@ -286,6 +286,10 @@ class FeatureSelectionGui(QMainWindow):
         op5.input.connect( self.mainOperator.InputImage[self.currentImageIndex] )
         self.editor.dataShape = op5.output.meta.shape
         
+        # Zoom at a 1-1 scale to avoid loading big datasets entirely...
+        for view in self.editor.imageViews:
+            view.doScaleTo(1)
+        
         # We just needed the operator to determine the transposed shape.
         # Disconnect it so it can be deleted.
         op5.input.disconnect()
@@ -301,7 +305,7 @@ class FeatureSelectionGui(QMainWindow):
         # Now add a layer for each feature
         # TODO: This assumes the channel is the last axis 
         numFeatureChannels = self.mainOperator.CachedOutputImage[self.currentImageIndex].meta.shape[-1]
-        for featureChannelIndex in reversed(range(0, numFeatureChannels)):
+        for featureChannelIndex in range(0, numFeatureChannels):
             if featureChannelIndex < len(self.DefaultColorTable):
                 # Choose the next color from our default color table
                 color = self.DefaultColorTable[featureChannelIndex]
@@ -341,7 +345,7 @@ class FeatureSelectionGui(QMainWindow):
         featureLayer.opacity = 1.0
         featureLayer.visible = (featureChannelIndex == 0)
         featureLayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
-        self.layerstack.insert(0, featureLayer )
+        self.layerstack.insert(len(self.layerstack), featureLayer )
 
     def createDefault16ColorColorTable(self):
         c = []
