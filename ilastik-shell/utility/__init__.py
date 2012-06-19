@@ -1,5 +1,4 @@
 from simpleSignal import SimpleSignal
-from versionManager import VersionManager
 from bind import bind
 from operatorWrapperAdapter import OperatorWrapperAdapter
 from pathHelpers import getPathVariants, PathComponents
