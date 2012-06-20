@@ -31,8 +31,8 @@ class DataSelectionSerializer( AppletSerializer ):
         self.mainOperator.ProjectDataGroup.notifyDirty( bind(handleDirty) )
         self.mainOperator.WorkingDirectory.notifyDirty( bind(handleDirty) )
         
-        def handleNewDataset(slot):
-            slot.notifyDirty( bind(handleDirty) )
+        def handleNewDataset(slot, index):
+            slot[index].notifyDirty( bind(handleDirty) )
         # Dataset is a multi-slot, so subscribe to dirty callbacks on each slot as it is added
         self.mainOperator.Dataset.notifyInserted( bind(handleNewDataset) )
         

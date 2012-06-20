@@ -31,8 +31,8 @@ class BatchIoSerializer(AppletSerializer):
         self.mainOperator.Format.notifyDirty( bind(handleDirty) )
         self.mainOperator.Suffix.notifyDirty( bind(handleDirty) )
         
-        def handleNewDataset(slot):
-            slot.notifyDirty( bind(handleDirty) )
+        def handleNewDataset(slot, index):
+            slot[index].notifyDirty( bind(handleDirty) )
         # DatasetPath is a multi-slot, so subscribe to dirty callbacks on each slot as it is added
         self.mainOperator.DatasetPath.notifyInserted( bind(handleNewDataset) )
     

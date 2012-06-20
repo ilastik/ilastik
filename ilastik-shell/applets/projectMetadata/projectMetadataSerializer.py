@@ -7,7 +7,10 @@ class ProjectMetadataSerializer(AppletSerializer):
         super( ProjectMetadataSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
         self.projectMetadata = projectMetadata
         self._dirty = False
-        projectMetadata.changedSignal.connect( self.handleChanges )
+
+        def handleChange():
+            self._dirty = True
+        projectMetadata.changedSignal.connect( handleChange )
     
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         metadataGroup = topGroup
@@ -57,9 +60,6 @@ class ProjectMetadataSerializer(AppletSerializer):
             result = ''
         return result
     
-    def changedSignal(self):
-        self._dirty = True
-
 class Ilastik05ProjectMetadataDeserializer(AppletSerializer):
     SerializerVersion = 0.1
 
