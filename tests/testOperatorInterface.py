@@ -317,6 +317,53 @@ class TestSlotStates(object):
         assert readySlots[op.Input] == True
         assert readySlots[op.Output] == True
         
+    def test_implicitlyConnectedMultiOutputs(self):
+        # The array piper copies its input to its output, creating an "implicit" connection
+        op = operators.Op5ToMulti(graph=self.g)
+        
+        assert not op.Input0.connected()
+        assert not op.Outputs.connected()
+        
+        assert not op.Input0.ready()
+        assert not op.Outputs.ready()
+        
+        connectedSlots = set()
+        def handleConnect(slot):
+            connectedSlots.add(slot)
+        
+        # Test notifyConnect
+        op.Input0.notifyConnect( handleConnect )
+        op.Outputs.notifyConnect( handleConnect )
+        
+        readySlots = set()
+        def handleReady(slot):
+            readySlots.add(slot)
+        
+        # Test notifyReady
+        op.Input0.notifyReady( handleReady )
+        op.Outputs.notifyReady( handleReady )
+
+        def subscribeToReady(slot, index, *args):
+            slot[index].notifyReady(handleReady)
+        op.Outputs.notifyInserted( subscribeToReady )
+
+        data = numpy.zeros((10,10,10,10,10))
+        op.Input0.setValue( data )
+        
+        assert op.Input0.ready()
+        assert op.Outputs.ready()
+                
+        assert op.Input0.connected()
+        assert not op.Outputs.connected() # Not connected
+        
+        assert op.Input0 in connectedSlots
+        assert op.Outputs not in connectedSlots # Not connected
+        assert op.Outputs[0] not in connectedSlots
+
+        assert op.Input0 in readySlots
+        assert op.Outputs in readySlots
+        assert op.Outputs[0] in readySlots
+        
     def test_clonedSlotState(self):
         """
         Create a graph that involves "cloned" inputs and outputs,
@@ -442,9 +489,8 @@ if __name__ == "__main__":
     nose.run( defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1} )
 
 #    test = TestSlotStates()
-#    test.setup()
-#    
-#    test.test_directlyConnectedOutputs()
+#    test.setup()    
+#    test.test_implicitlyConnectedMultiOutputs()
 
 #    test = TestOperator_setupOutputs()
 #    test.setUp()

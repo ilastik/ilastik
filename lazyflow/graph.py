@@ -141,11 +141,15 @@ class MetaDict(dict):
         """
         dirty = not (self == other)
         origdirty = self._dirty
+        origready = self._ready
         if dirty:
             self.clear()
             for k,v in other.items():
                 self[k] = copy.copy(v)
         self._dirty = origdirty | dirty
+
+        # Readiness can't be assigned.  It can only be assigned in _setupOutputs or setValue (or copied via _changed)
+        self._ready = origready
 
 
 class ValueRequest(object):
@@ -880,6 +884,19 @@ class Slot(object):
                 ready &= p.ready()
         return ready
 
+    def _setReady(self):
+        wasReady = self.ready()
+
+        for p in self._subSlots:
+            p._setReady()        
+
+        self.meta._ready = True
+        
+        if not wasReady:
+            # Notify partners of changed readystatus
+            self._changed()
+            self._sig_ready(self)
+
     def __call__(self, *args, **kwargs):
         """
         the slot relays all arguments to the __init__ method
@@ -1535,11 +1552,7 @@ class Operator(object):
         for k, oslot in self.outputs.items():
             if oslot.partner is None:
                 # All unconnected outputs are ready after setupOutputs
-                oslot.meta._ready = True
-
-            # Signal for the outputs that weren't ready before
-            if oslot.meta._ready and not readyFlags[k]:
-                oslot._sig_ready(oslot)
+                oslot._setReady()
 
         #notify outputs of probably changed meta information
         for k,v in self.outputs.items():
