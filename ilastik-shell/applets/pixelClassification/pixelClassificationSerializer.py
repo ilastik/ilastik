@@ -1,4 +1,8 @@
+import os
+import tempfile
 import numpy
+import vigra
+import h5py
 from utility.dataImporter import DataImporter
 from ilastikshell.appletSerializer import AppletSerializer
 from utility import bind
@@ -17,12 +21,17 @@ class PixelClassificationSerializer(AppletSerializer):
         # Set up handlers for dirty detection        
         def handleDirty():
             self._dirty = True
-        def handleNewImage(slot):
-            slot.notifyDirty( bind(handleDirty) )
+        def handleNewImage(slot, index):
+            slot[index].notifyDirty( bind(handleDirty) )
         # LabelImages is a multi-slot, so subscribe to dirty callbacks on each slot as it is added
         self.mainOperator.LabelImages.notifyInserted( bind(handleNewImage) )
     
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
+        self._serializeLabels( topGroup )
+        self._serializeClassifier( topGroup )
+        self._dirty = False
+
+    def _serializeLabels(self, topGroup):
         # Delete all labels from the file
         self.deleteIfPresent(topGroup, 'LabelSets')
         labelSetDir = topGroup.create_group('LabelSets')
@@ -45,12 +54,38 @@ class PixelClassificationSerializer(AppletSerializer):
                 
                 # Add the slice this block came from as an attribute of the dataset
                 labelGroup[blockName].attrs['blockSlice'] = self.slicingToString(slicing)
-        self._dirty = False
+
+    def _serializeClassifier(self, topGroup):
+        self.deleteIfPresent(topGroup, 'Classifier')
+
+        if not self.mainOperator.Classifier.ready():
+            return
+
+        classifier = self.mainOperator.Classifier.value
+        
+        # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
+        # Instead, we'll use vigra to write the classifier to a temporary file.
+        tmpDir = tempfile.mkdtemp()
+        cachePath = tmpDir + '/classifier_cache.h5'
+        classifier.writeHDF5(cachePath, 'Classifier')
+        
+        # Open the temp file and copy to our project group
+        cacheFile = h5py.File(cachePath, 'r')
+        topGroup.copy(cacheFile['Classifier'], 'Classifier')
+        
+        cacheFile.close()
+        os.remove(cachePath)
+        os.removedirs(tmpDir)
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         if topGroup is None:
             return
+        
+        self._deserializeLabels( topGroup )
+        self._deserializeClassifier( topGroup )
+        self._dirty = False
 
+    def _deserializeLabels(self, topGroup):
         labelSetGroup = topGroup['LabelSets']
         numImages = len(labelSetGroup)
         self.mainOperator.LabelInputs.resize(numImages)
@@ -59,11 +94,37 @@ class PixelClassificationSerializer(AppletSerializer):
         for index, (groupName, labelGroup) in enumerate( sorted(labelSetGroup.items()) ):
             # For each block of label data in the file
             for blockData in labelGroup.values():
-                # The location of this label data block within the image is stored as an attribute
+                # The location of this label data block within the image is stored as an hdf5 attribute
                 slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
                 # Slice in this data to the label input
                 self.mainOperator.LabelInputs[index][slicing] = blockData[...]
-        self._dirty = False
+
+    def _deserializeClassifier(self, topGroup):
+        if topGroup is None:
+            return
+        
+        try:
+            classifierGroup = topGroup['Classifier']
+        except KeyError:
+            return
+        
+        # Due to non-shared hdf5 dlls, vigra can't read directly from our open hdf5 group.
+        # Instead, we'll copy the classfier data to a temporary file and give it to vigra.
+        tmpDir = tempfile.mkdtemp()
+        cachePath = tmpDir + '/classifier_cache.h5'
+        cacheFile = h5py.File(cachePath, 'w')
+        cacheFile.copy(classifierGroup, 'Classifier')
+        cacheFile.close()
+
+        classifier = vigra.learning.RandomForest(cachePath, 'Classifier')
+        os.remove(cachePath)
+        os.removedirs(tmpDir)
+        
+        # Now force the classifier into our classifier cache.
+        # The downstream operators (e.g. the prediction operator) can use the classifier without inducing it to be re-trained.
+        # (This assumes that the classifier we are loading is consistent with the images and labels that we just loaded.
+        #  As soon as training input changes, it will be retrained.)
+        self.mainOperator.classifier_cache.forceValue( classifier )
 
     def slicingToString(self, slicing):
         """

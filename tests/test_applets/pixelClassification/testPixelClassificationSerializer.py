@@ -1,32 +1,45 @@
 import os
 import numpy
 import h5py
-from lazyflow.graph import Graph, Operator, MultiInputSlot, MultiOutputSlot
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache
 from applets.pixelClassification.opPixelClassification import OpPixelClassification
 from applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
 
-class OpDenseLabelArray(Operator):
+class OpMockPixelClassifier(Operator):
     """
     This class is a simple stand-in for the real pixel classification operator.
-    It just has inputs/outputs related to labeling.
+    Uses hard-coded data shape and block shape.
+    It just has inputs/outputs related to labeling and the classifier.
     """
-    name = "OpDenseLabelArray"
+    name = "OpMockPixelClassifier"
 
     LabelInputs = MultiInputSlot(optional = True) # Input for providing label data from an external source
 
     NonzeroLabelBlocks = MultiOutputSlot(stype='object') # A list if slices that contain non-zero label values
     LabelImages = MultiOutputSlot() # Labels from the user
     
+    Classifier = OutputSlot(stype='object')
+    
     def __init__(self, *args, **kwargs):
-        super(OpDenseLabelArray, self).__init__(*args, **kwargs)
+        super(OpMockPixelClassifier, self).__init__(*args, **kwargs)
         self._data = []
         self.shape = (1,10,100,100,1)
+        
+        self.opClassifier = OpTrainRandomForestBlocked(graph=self.graph, parent=self)
+        self.opClassifier.Labels.connect(self.LabelImages)
+        self.opClassifier.nonzeroLabelBlocks.connect(self.NonzeroLabelBlocks)
+        self.opClassifier.fixClassifier.setValue(False)
+        
+        self.classifier_cache = OpValueCache(graph=self.graph, parent=self)
+        self.classifier_cache.Input.connect( self.opClassifier.Classifier )
     
     def setupOutputs(self):
         numImages = len(self.LabelInputs)
 
         self.NonzeroLabelBlocks.resize( numImages )
         self.LabelImages.resize( numImages )
+        self.opClassifier.Images.resize( numImages )
 
         for i in range(numImages):
             self._data.append( numpy.zeros(self.shape) )
@@ -35,7 +48,11 @@ class OpDenseLabelArray(Operator):
 
             self.LabelImages[i].meta.shape = self.shape
             self.LabelImages[i].meta.dtype = numpy.float64
-
+            
+            # Classify with random data
+            self.opClassifier.Images[i].setValue( numpy.random.random(self.shape) )
+        
+        self.Classifier.connect( self.opClassifier.Classifier )
         
     def setSubInSlot(self, multislot, slot, index, key, value):
         assert slot.name == "LabelInputs"
@@ -58,13 +75,13 @@ class OpDenseLabelArray(Operator):
         if slot.name == "LabelImages":
             result[...] = self._data[index][key]
         
-class TestOpDenseLabelArray(object):
+class TestOpMockPixelClassifier(object):
     """
     Quick test for the stand-in operator we're using for the serializer test.
     """
     def test(self):
         g = Graph()
-        op = OpDenseLabelArray(graph=g)
+        op = OpMockPixelClassifier(graph=g)
         
         op.LabelInputs.resize( 1 )
 
@@ -83,6 +100,8 @@ class TestOpDenseLabelArray(object):
         assert len(nonZeroBlocks) == 2
         assert nonZeroBlocks[0][2].start == 0
         assert nonZeroBlocks[1][2].start == 50
+        
+        assert op.Classifier.ready()
         
 
 class TestPixelClassificationSerializer(object):
@@ -103,14 +122,14 @@ class TestPixelClassificationSerializer(object):
         
         # Create an operator to work with and give it some input
         g = Graph()
-        op = OpDenseLabelArray(graph=g)
+        op = OpMockPixelClassifier(graph=g)
         
         op.LabelInputs.resize( 1 )
 
         # Create some labels
         labeldata = numpy.zeros(op.shape)
-        labeldata[:,:,0:5,:,:] = 7
-        labeldata[:,:,50:60,:] = 8
+        labeldata[:,:,0:5,:,:] = 1
+        labeldata[:,:,50:60,:] = 2
 
         # Slice them into our operator
         op.LabelInputs[0][:,:,0:5,:,:] = labeldata[:,:,0:5,:,:]
@@ -118,12 +137,12 @@ class TestPixelClassificationSerializer(object):
             
         # Serialize!
         operatorToSave = op
-        serializer = PixelClassificationSerializer(operatorToSave, 'PixelClassicationLabels')
+        serializer = PixelClassificationSerializer(operatorToSave, 'PixelClassicationTest')
         serializer.serializeToHdf5(testProject, testProjectName)
         
         # Deserialize into a fresh operator
-        operatorToLoad = OpDenseLabelArray(graph=g)
-        deserializer = PixelClassificationSerializer(operatorToLoad, 'PixelClassicationLabels')
+        operatorToLoad = OpMockPixelClassifier(graph=g)
+        deserializer = PixelClassificationSerializer(operatorToLoad, 'PixelClassicationTest')
         deserializer.deserializeFromHdf5(testProject, testProjectName)
 
         # Did the data go in and out of the file without problems?

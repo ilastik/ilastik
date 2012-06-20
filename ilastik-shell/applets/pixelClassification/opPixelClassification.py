@@ -1,11 +1,7 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
 
-from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, OpArrayPiper, Op5ToMulti, OpBlockedSparseLabelArray, OpArrayCache, \
-                               OpTrainRandomForestBlocked, OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMetadataSelector
-
-from utility.simpleSignal import SimpleSignal
-import numpy
-import copy
+from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, \
+                               OpTrainRandomForestBlocked, OpPredictRandomForest, OpSlicedBlockedArrayCache
 
 class OpPixelClassification( Operator ):
     """
@@ -77,8 +73,8 @@ class OpPixelClassification( Operator ):
         self.opTrain.inputs["nonzeroLabelBlocks"].connect(self.opLabelArray.outputs["nonzeroBlocks"])
         self.opTrain.inputs['fixClassifier'].setValue(False)
 
-        # FIXME: This classifier cache isn't actually used anywhere... Get rid of it?
-        self.classifier_cache = OpArrayCache( self.graph )
+        # The classifier is cached here to allow serializers to force in a pre-calculated classifier...
+        self.classifier_cache = OpValueCache( self.graph )
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
         ##
