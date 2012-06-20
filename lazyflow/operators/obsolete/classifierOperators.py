@@ -49,6 +49,7 @@ class OpTrainRandomForest(Operator):
         featMatrix=numpy.concatenate(featMatrix,axis=0)
         labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
 
+        # TODO: Make treecount configurable via an InputSlot
         RF=vigra.learning.RandomForest(100)
         try:
             RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
