@@ -166,6 +166,70 @@ class OpOutputProvider(Operator):
         result[...] = self._data[key]
 
 
+class OpValueCache(Operator):
+    """
+    This operator caches a value in its entirety, 
+    and allows for the value to be "forced in" from an external user.
+    No memory management, no blockwise access.
+    """
+    
+    name = "OpValueCache"
+    category = "Cache"
+    
+    Input = InputSlot()
+    Output = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super(OpValueCache, self).__init__(*args, **kwargs)
+        self._dirty = False
+        self._value = None
+    
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
+        self._dirty = True
+    
+    def execute(self, slot, roi, result):
+        if self._dirty:
+            self._value = self.Input.value
+            self._dirty = False
+        result[...] = self._value
+
+    def propagateDirty(self, islot, roi):
+        self._dirty = True
+        self.Output.setDirty(roi)
+
+    def forceValue(self, value):
+        """
+        Allows a 'back door' to force data into this cache.
+        Note: Use this function carefully.
+        """
+        self._value = value
+        self._dirty = False
+        self.Output.setDirty(slice(None))
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

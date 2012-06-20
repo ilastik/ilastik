@@ -1,7 +1,7 @@
 import numpy
 import vigra
 import lazyflow
-from lazyflow.operators import OpMetadataInjector, OpOutputProvider, OpMetadataSelector
+from lazyflow.operators import OpMetadataInjector, OpOutputProvider, OpMetadataSelector, OpValueCache
 
 class TestOpMetadataInjector(object):
     
@@ -77,7 +77,28 @@ class TestOpMetadataSelector(object):
         op.MetadataKey.setValue('axistags')
         assert op.Output.value == meta.axistags
 
+class TestOpValueCache(object):
+    
+    def test(self):
+        graph = lazyflow.graph.Graph()
+        op = OpValueCache()
+        assert not op._dirty
+        op.Input.setValue('Hello')
+        assert op._dirty
+        assert op.Output.value == 'Hello'
 
+        outputDirtyCount = [0]
+        def handleOutputDirty(slot, roi):
+            outputDirtyCount[0] += 1
+        op.Output.notifyDirty(handleOutputDirty)
+        
+        op.forceValue('Goodbye')
+        # The cache itself isn't dirty (won't ask input for value)
+        assert not op._dirty
+        assert op.Output.value == 'Goodbye'
+        
+        # But the cache notified downstream slots that his value changed
+        assert outputDirtyCount[0] == 1
 
 if __name__ == "__main__":
     import nose
