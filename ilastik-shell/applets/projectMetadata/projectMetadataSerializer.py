@@ -6,6 +6,8 @@ class ProjectMetadataSerializer(AppletSerializer):
     def __init__(self, projectMetadata, projectFileGroupName):
         super( ProjectMetadataSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
         self.projectMetadata = projectMetadata
+        self._dirty = False
+        projectMetadata.changedSignal.connect( self.handleChanges )
     
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         metadataGroup = topGroup
@@ -14,6 +16,7 @@ class ProjectMetadataSerializer(AppletSerializer):
         self.setDataset(metadataGroup, 'ProjectName', self.projectMetadata.projectName)
         self.setDataset(metadataGroup, 'Labeler', self.projectMetadata.labeler)
         self.setDataset(metadataGroup, 'Description', self.projectMetadata.description)
+        self._dirty = False
     
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         if topGroup is None:
@@ -21,12 +24,13 @@ class ProjectMetadataSerializer(AppletSerializer):
         self.projectMetadata.projectName = self.getDataset(topGroup, 'ProjectName')
         self.projectMetadata.labeler = self.getDataset(topGroup, 'Labeler')
         self.projectMetadata.description = self.getDataset(topGroup, 'Description')
+        self._dirty = False
 
     def isDirty(self):
         """ Return true if the current state of this item 
             (in memory) does not match the state of the HDF5 group on disk.
             SerializableItems are responsible for tracking their own dirty/notdirty state."""
-        return False
+        return self._dirty
 
     def unload(self):
         """ Called if either
@@ -52,6 +56,9 @@ class ProjectMetadataSerializer(AppletSerializer):
         except KeyError:
             result = ''
         return result
+    
+    def changedSignal(self):
+        self._dirty = True
 
 class Ilastik05ProjectMetadataDeserializer(AppletSerializer):
     SerializerVersion = 0.1

@@ -1,7 +1,7 @@
 import numpy
 from utility.dataImporter import DataImporter
 from ilastikshell.appletSerializer import AppletSerializer
-
+from utility import bind
 
 class PixelClassificationSerializer(AppletSerializer):
     """
@@ -12,6 +12,15 @@ class PixelClassificationSerializer(AppletSerializer):
     def __init__(self, mainOperator, projectFileGroupName):
         super( PixelClassificationSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
         self.mainOperator = mainOperator
+        self._dirty = False
+
+        # Set up handlers for dirty detection        
+        def handleDirty():
+            self._dirty = True
+        def handleNewImage(slot):
+            slot.notifyDirty( bind(handleDirty) )
+        # LabelImages is a multi-slot, so subscribe to dirty callbacks on each slot as it is added
+        self.mainOperator.LabelImages.notifyInserted( bind(handleNewImage) )
     
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Delete all labels from the file
@@ -36,6 +45,7 @@ class PixelClassificationSerializer(AppletSerializer):
                 
                 # Add the slice this block came from as an attribute of the dataset
                 labelGroup[blockName].attrs['blockSlice'] = self.slicingToString(slicing)
+        self._dirty = False
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         if topGroup is None:
@@ -53,6 +63,7 @@ class PixelClassificationSerializer(AppletSerializer):
                 slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
                 # Slice in this data to the label input
                 self.mainOperator.LabelInputs[index][slicing] = blockData[...]
+        self._dirty = False
 
     def slicingToString(self, slicing):
         """
@@ -91,7 +102,7 @@ class PixelClassificationSerializer(AppletSerializer):
         Return true if the current state of this item 
         (in memory) does not match the state of the HDF5 group on disk.
         """
-        return False
+        return self._dirty
 
     def unload(self):
         """

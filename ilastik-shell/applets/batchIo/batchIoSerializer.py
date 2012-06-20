@@ -6,6 +6,8 @@ from opBatchIo import ExportFormat
 
 from ilastikshell.appletSerializer import AppletSerializer
 
+from utility import bind
+
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel( logging.DEBUG )
@@ -20,6 +22,19 @@ class BatchIoSerializer(AppletSerializer):
     def __init__(self, mainOperator, projectFileGroupName):
         super( BatchIoSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
         self.mainOperator = mainOperator
+        
+        self._dirty = False
+        
+        def handleDirty():
+            self._dirty = True
+        self.mainOperator.ExportDirectory.notifyDirty( bind(handleDirty) )
+        self.mainOperator.Format.notifyDirty( bind(handleDirty) )
+        self.mainOperator.Suffix.notifyDirty( bind(handleDirty) )
+        
+        def handleNewDataset(slot):
+            slot.notifyDirty( bind(handleDirty) )
+        # DatasetPath is a multi-slot, so subscribe to dirty callbacks on each slot as it is added
+        self.mainOperator.DatasetPath.notifyInserted( bind(handleNewDataset) )
     
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Delete any datasets we're about to write
@@ -44,6 +59,7 @@ class BatchIoSerializer(AppletSerializer):
             
             # Store the dirty flag so we can restore the previous session efficiently
             dataGroup.create_dataset('Dirty', data=self.mainOperator.Dirty[index])
+        self._dirty = False
             
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         if topGroup is None:
@@ -62,12 +78,13 @@ class BatchIoSerializer(AppletSerializer):
                 pass
         except KeyError:
             self.unload()
+        self._dirty = False
 
     def isDirty(self):
         """ Return true if the current state of this item 
             (in memory) does not match the state of the HDF5 group on disk.
             SerializableItems are responsible for tracking their own dirty/notdirty state."""
-        return False
+        return self._dirty
 
     def unload(self):
         """ Called if either

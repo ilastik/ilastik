@@ -3,7 +3,7 @@ from opDataSelection import OpDataSelection, DatasetInfo
 import os
 import vigra
 import copy
-from utility import SimpleSignal # from the ilastik-shell utility module
+from utility import bind
 
 from ilastikshell.appletSerializer import AppletSerializer
 
@@ -23,6 +23,18 @@ class DataSelectionSerializer( AppletSerializer ):
     def __init__(self, mainOperator, projectFileGroupName):
         super( DataSelectionSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
         self.mainOperator = mainOperator
+        self._dirty = False
+        
+        def handleDirty():
+            self._dirty = True
+        self.mainOperator.ProjectFile.notifyDirty( bind(handleDirty) )
+        self.mainOperator.ProjectDataGroup.notifyDirty( bind(handleDirty) )
+        self.mainOperator.WorkingDirectory.notifyDirty( bind(handleDirty) )
+        
+        def handleNewDataset(slot):
+            slot.notifyDirty( bind(handleDirty) )
+        # Dataset is a multi-slot, so subscribe to dirty callbacks on each slot as it is added
+        self.mainOperator.Dataset.notifyInserted( bind(handleNewDataset) )
         
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # If the operator has a some other project file, something's wrong
@@ -83,6 +95,8 @@ class DataSelectionSerializer( AppletSerializer ):
             #       Is that a problem?
             infoCopy = copy.copy(self.mainOperator.Dataset[0].value)
             self.mainOperator.Dataset[0].setValue(infoCopy)
+        
+        self._dirty = False
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         # The 'working directory' for the purpose of constructing absolute 
@@ -123,11 +137,13 @@ class DataSelectionSerializer( AppletSerializer ):
             # Give the new info to the operator
             self.mainOperator.Dataset[index].setValue(datasetInfo)
 
+        self._dirty = False
+
     def isDirty(self):
         """ Return true if the current state of this item 
             (in memory) does not match the state of the HDF5 group on disk.
             SerializableItems are responsible for tracking their own dirty/notdirty state."""
-        return False
+        return self._dirty
 
     def unload(self):
         """ Called if either

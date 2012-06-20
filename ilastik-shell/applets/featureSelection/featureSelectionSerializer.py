@@ -2,6 +2,8 @@ import numpy
 
 from ilastikshell.appletSerializer import AppletSerializer
 
+from utility import bind
+
 class FeatureSelectionSerializer(AppletSerializer):
     """
     Serializes the user's pixel feature selections to an ilastik v0.6 project file.
@@ -10,12 +12,19 @@ class FeatureSelectionSerializer(AppletSerializer):
     
     def __init__(self, mainOperator, projectFileGroupName):
         super( FeatureSelectionSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
-        self.mainOperator = mainOperator
+        self.mainOperator = mainOperator    
+        self._dirty = False
+
+        def handleDirty():
+            self._dirty = True
+        self.mainOperator.Scales.notifyDirty( bind(handleDirty) )
+        self.mainOperator.FeatureIds.notifyDirty( bind(handleDirty) )
+        self.mainOperator.SelectionMatrix.notifyDirty( bind(handleDirty) )
     
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Can't store anything without both scales and features
-        if not self.mainOperator.Scales.connected() \
-        or not self.mainOperator.FeatureIds.connected():
+        if not self.mainOperator.Scales.ready() \
+        or not self.mainOperator.FeatureIds.ready():
             return
     
         # Delete previous entries if they exist
@@ -26,8 +35,9 @@ class FeatureSelectionSerializer(AppletSerializer):
         # Store the new values (as numpy arrays)
         topGroup.create_dataset('Scales', data=self.mainOperator.Scales.value)
         topGroup.create_dataset('FeatureIds', data=self.mainOperator.FeatureIds.value)
-        if self.mainOperator.SelectionMatrix.connected():
+        if self.mainOperator.SelectionMatrix.ready():
             topGroup.create_dataset('SelectionMatrix', data=self.mainOperator.SelectionMatrix.value)
+        self._dirty = False
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         if topGroup is None:
@@ -49,12 +59,13 @@ class FeatureSelectionSerializer(AppletSerializer):
             assert selectionMatrix.shape[1] == len(scales)
         except KeyError:
             pass
+        self._dirty = False
 
     def isDirty(self):
         """ Return true if the current state of this item 
             (in memory) does not match the state of the HDF5 group on disk.
             SerializableItems are responsible for tracking their own dirty/notdirty state."""
-        return False
+        return self._dirty
 
     def unload(self):
         self.mainOperator.Scales.disconnect()
