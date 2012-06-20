@@ -237,7 +237,8 @@ class OpArrayCache(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("blockShape", value = 64), InputSlot("fixAtCurrent", value = False)]
     outputSlots = [OutputSlot("Output")]
 
-    def __init__(self, parent):
+    def __init__(self, *args, **kwargs):
+        super( OpArrayPiper, self ).__init__(*args, **kwargs)
         self._origBlockShape = 64
         self._blockShape = None
         self._dirtyShape = None
@@ -249,7 +250,6 @@ class OpArrayCache(OpArrayPiper):
         self._cacheLock = request.Lock()#greencall.Lock()
         self._lazyAlloc = True
         self._cacheHits = 0
-        OpArrayPiper.__init__(self, parent)
         self.graph._registerCache(self)
 
     def _memorySize(self):
