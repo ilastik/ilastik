@@ -50,7 +50,7 @@ class DataSelectionSerializer( AppletSerializer ):
                 
         # Rebuild the list of infos
         for index, slot in enumerate(self.mainOperator.Dataset):
-            infoGroup = infoDir.create_group('info{:03d}'.format(index))
+            infoGroup = infoDir.create_group('info{:04d}'.format(index))
             datasetInfo = slot.value
             locationString = self.LocationStrings[datasetInfo.location]
             infoGroup.create_dataset('location', data=locationString)
