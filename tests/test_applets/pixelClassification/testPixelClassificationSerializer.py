@@ -1,6 +1,7 @@
 import os
 import numpy
 import h5py
+import vigra
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache
 from applets.pixelClassification.opPixelClassification import OpPixelClassification
@@ -10,7 +11,7 @@ class OpMockPixelClassifier(Operator):
     """
     This class is a simple stand-in for the real pixel classification operator.
     Uses hard-coded data shape and block shape.
-    It just has inputs/outputs related to labeling and the classifier.
+    Provides hard-coded outputs.
     """
     name = "OpMockPixelClassifier"
 
@@ -21,10 +22,13 @@ class OpMockPixelClassifier(Operator):
     
     Classifier = OutputSlot(stype='object')
     
+    PredictionProbabilities = MultiOutputSlot()
+    
     def __init__(self, *args, **kwargs):
         super(OpMockPixelClassifier, self).__init__(*args, **kwargs)
         self._data = []
         self.shape = (1,10,100,100,1)
+        self.prediction_shape = self.shape[:-1] + (2,) # Hard-coded to provide 2 classes
         
         self.opClassifier = OpTrainRandomForestBlocked(graph=self.graph, parent=self)
         self.opClassifier.Labels.connect(self.LabelImages)
@@ -33,12 +37,18 @@ class OpMockPixelClassifier(Operator):
         
         self.classifier_cache = OpValueCache(graph=self.graph, parent=self)
         self.classifier_cache.Input.connect( self.opClassifier.Classifier )
+        
+        p1 = numpy.indices(self.shape).sum(0) / 207.0
+        p2 = 1 - p1
+
+        self.predictionData = numpy.concatenate((p1,p2), axis=4)
     
     def setupOutputs(self):
         numImages = len(self.LabelInputs)
 
         self.NonzeroLabelBlocks.resize( numImages )
         self.LabelImages.resize( numImages )
+        self.PredictionProbabilities.resize( numImages )
         self.opClassifier.Images.resize( numImages )
 
         for i in range(numImages):
@@ -49,6 +59,11 @@ class OpMockPixelClassifier(Operator):
             self.LabelImages[i].meta.shape = self.shape
             self.LabelImages[i].meta.dtype = numpy.float64
             
+            # Hard-coded: Two prediction classes
+            self.PredictionProbabilities[i].meta.shape = self.prediction_shape
+            self.PredictionProbabilities[i].meta.dtype = numpy.float64
+            self.PredictionProbabilities[i].meta.axistags = vigra.defaultAxistags('txyzc')
+            
             # Classify with random data
             self.opClassifier.Images[i].setValue( numpy.random.random(self.shape) )
         
@@ -57,6 +72,7 @@ class OpMockPixelClassifier(Operator):
     def setSubInSlot(self, multislot, slot, index, key, value):
         assert slot.name == "LabelInputs"
         self._data[index][key] = value
+        self.LabelImages[index].setDirty(key)
     
     def getSubOutSlot(self, slots, indexes, key, result):
         slot = slots[0]
@@ -74,7 +90,9 @@ class OpMockPixelClassifier(Operator):
             result[0] = blocks
         if slot.name == "LabelImages":
             result[...] = self._data[index][key]
-        
+        if slot.name == "PredictionProbabilities":
+            result[...] = self.predictionData[key]
+            
 class TestOpMockPixelClassifier(object):
     """
     Quick test for the stand-in operator we're using for the serializer test.
@@ -123,6 +141,8 @@ class TestPixelClassificationSerializer(object):
         # Create an operator to work with and give it some input
         g = Graph()
         op = OpMockPixelClassifier(graph=g)
+        operatorToSave = op
+        serializer = PixelClassificationSerializer(operatorToSave, 'PixelClassificationTest')
         
         op.LabelInputs.resize( 1 )
 
@@ -134,15 +154,19 @@ class TestPixelClassificationSerializer(object):
         # Slice them into our operator
         op.LabelInputs[0][:,:,0:5,:,:] = labeldata[:,:,0:5,:,:]
         op.LabelInputs[0][:,:,50:60,:,:] = labeldata[:,:,50:60,:,:]
+        
+        # Simulate the predictions changing by setting the prediction output dirty
+        op.PredictionProbabilities[0].setDirty(slice(None))
             
         # Serialize!
-        operatorToSave = op
-        serializer = PixelClassificationSerializer(operatorToSave, 'PixelClassicationTest')
         serializer.serializeToHdf5(testProject, testProjectName)
+
+        # Check that the prediction data was written to the file
+        assert (testProject['PixelClassificationTest/Predictions/predictions0000'][...] == op.PredictionProbabilities[0][...].wait()).all()
         
         # Deserialize into a fresh operator
         operatorToLoad = OpMockPixelClassifier(graph=g)
-        deserializer = PixelClassificationSerializer(operatorToLoad, 'PixelClassicationTest')
+        deserializer = PixelClassificationSerializer(operatorToLoad, 'PixelClassificationTest')
         deserializer.deserializeFromHdf5(testProject, testProjectName)
 
         # Did the data go in and out of the file without problems?

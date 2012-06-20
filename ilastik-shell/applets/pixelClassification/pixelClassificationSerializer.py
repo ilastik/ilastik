@@ -7,6 +7,11 @@ from utility.dataImporter import DataImporter
 from ilastikshell.appletSerializer import AppletSerializer
 from utility import bind
 
+class Section():
+    Labels = 0
+    Classifier = 1
+    Predictions = 2
+
 class PixelClassificationSerializer(AppletSerializer):
     """
     Encapsulate the serialization scheme for pixel classification workflow parameters and datasets.
@@ -16,20 +21,38 @@ class PixelClassificationSerializer(AppletSerializer):
     def __init__(self, mainOperator, projectFileGroupName):
         super( PixelClassificationSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
         self.mainOperator = mainOperator
-        self._dirty = False
+        self._initDirtyFlags()
 
-        # Set up handlers for dirty detection        
-        def handleDirty():
-            self._dirty = True
-        def handleNewImage(slot, index):
-            slot[index].notifyDirty( bind(handleDirty) )
-        # LabelImages is a multi-slot, so subscribe to dirty callbacks on each slot as it is added
-        self.mainOperator.LabelImages.notifyInserted( bind(handleNewImage) )
+        # Set up handlers for dirty detection
+        def handleDirty(section):
+            self._dirtyFlags[section] = True
+
+        self.mainOperator.Classifier.notifyDirty( bind(handleDirty, Section.Classifier) )
+
+        def handleNewImage(section, slot, index):
+            slot[index].notifyDirty( bind(handleDirty, section) )
+
+        # These are multi-slots, so subscribe to dirty callbacks on each of their subslots as they are created
+        self.mainOperator.LabelImages.notifyInserted( bind(handleNewImage, Section.Labels) )
+        self.mainOperator.PredictionProbabilities.notifyInserted( bind(handleNewImage, Section.Predictions) )
     
+    def _initDirtyFlags(self):
+        self._dirtyFlags = { Section.Labels      : False,
+                             Section.Classifier  : False,
+                             Section.Predictions : False }
+
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
-        self._serializeLabels( topGroup )
-        self._serializeClassifier( topGroup )
-        self._dirty = False
+        if self._dirtyFlags[Section.Labels]:
+            self._serializeLabels( topGroup )
+
+        if self._dirtyFlags[Section.Classifier]:
+            self._serializeClassifier( topGroup )
+
+        if self._dirtyFlags[Section.Predictions]:
+            self._serializePredictions( topGroup )
+
+        # Clear the dirty flags (project file is now in sync with the operator)
+        self._initDirtyFlags()
 
     def _serializeLabels(self, topGroup):
         # Delete all labels from the file
@@ -55,6 +78,8 @@ class PixelClassificationSerializer(AppletSerializer):
                 # Add the slice this block came from as an attribute of the dataset
                 labelGroup[blockName].attrs['blockSlice'] = self.slicingToString(slicing)
 
+        self._dirtyFlags[Section.Labels] = False
+
     def _serializeClassifier(self, topGroup):
         self.deleteIfPresent(topGroup, 'Classifier')
 
@@ -76,6 +101,20 @@ class PixelClassificationSerializer(AppletSerializer):
         cacheFile.close()
         os.remove(cachePath)
         os.removedirs(tmpDir)
+        self._dirtyFlags[Section.Classifier] = False
+
+    def _serializePredictions(self, topGroup):
+        self.deleteIfPresent(topGroup, 'Predictions')
+        predictionDir = topGroup.create_group('Predictions')
+        
+        numImages = len(self.mainOperator.PredictionProbabilities)
+        for imageIndex in range(numImages):
+            datasetName = 'predictions{:04d}'.format(imageIndex)
+            # TODO: Optimize this for large datasets by streaming it in chunks
+            #       ... and combine that with a progress signal
+            predictionDir.create_dataset( datasetName, data=self.mainOperator.PredictionProbabilities[imageIndex][...].wait() )
+
+        self._dirtyFlags[Section.Predictions] = False
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         if topGroup is None:
@@ -83,7 +122,6 @@ class PixelClassificationSerializer(AppletSerializer):
         
         self._deserializeLabels( topGroup )
         self._deserializeClassifier( topGroup )
-        self._dirty = False
 
     def _deserializeLabels(self, topGroup):
         labelSetGroup = topGroup['LabelSets']
@@ -98,6 +136,8 @@ class PixelClassificationSerializer(AppletSerializer):
                 slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
                 # Slice in this data to the label input
                 self.mainOperator.LabelInputs[index][slicing] = blockData[...]
+
+        self._dirtyFlags[Section.Labels] = False
 
     def _deserializeClassifier(self, topGroup):
         if topGroup is None:
@@ -125,6 +165,7 @@ class PixelClassificationSerializer(AppletSerializer):
         # (This assumes that the classifier we are loading is consistent with the images and labels that we just loaded.
         #  As soon as training input changes, it will be retrained.)
         self.mainOperator.classifier_cache.forceValue( classifier )
+        self._dirtyFlags[Section.Classifier] = False
 
     def slicingToString(self, slicing):
         """
