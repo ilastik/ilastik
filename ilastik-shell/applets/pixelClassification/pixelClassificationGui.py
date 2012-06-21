@@ -22,8 +22,8 @@ from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
                          AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
 from volumina.adaptors import Op5ifyer
-from labelListView import Label
-from labelListModel import LabelListModel
+from igms.labelListView import Label
+from igms.labelListModel import LabelListModel
 
 from ilastikshell.applet import Applet
 

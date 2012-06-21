@@ -6,8 +6,8 @@ from volumina.adaptors import Op5ifyer
 from volumina.api import ArraySource, LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
                          AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
 
-import labelListModel
-from labelListModel import LabelListModel
+import igms.labelListModel
+from igms.labelListModel import LabelListModel
 
 from lazyflow.operators import OpSingleChannelSelector
 
