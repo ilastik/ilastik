@@ -1,36 +1,60 @@
+import os
+import tempfile
 import numpy
+import vigra
+import h5py
 from utility.dataImporter import DataImporter
+from ilastikshell.appletSerializer import AppletSerializer
+from utility import bind
 
-class PixelClassificationSerializer(object):
+class Section():
+    Labels = 0
+    Classifier = 1
+    Predictions = 2
+
+class PixelClassificationSerializer(AppletSerializer):
     """
     Encapsulate the serialization scheme for pixel classification workflow parameters and datasets.
     """
-    TopGroupName = 'PixelClassification'
     SerializerVersion = 0.1
     
-    def __init__(self, topLevelOperator):
-        self.mainOperator = topLevelOperator
+    def __init__(self, mainOperator, projectFileGroupName):
+        super( PixelClassificationSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
+        self.mainOperator = mainOperator
+        self._initDirtyFlags()
+
+        # Set up handlers for dirty detection
+        def handleDirty(section):
+            self._dirtyFlags[section] = True
+
+        self.mainOperator.Classifier.notifyDirty( bind(handleDirty, Section.Classifier) )
+
+        def handleNewImage(section, slot, index):
+            slot[index].notifyDirty( bind(handleDirty, section) )
+
+        # These are multi-slots, so subscribe to dirty callbacks on each of their subslots as they are created
+        self.mainOperator.LabelImages.notifyInserted( bind(handleNewImage, Section.Labels) )
+        self.mainOperator.PredictionProbabilities.notifyInserted( bind(handleNewImage, Section.Predictions) )
     
-    def serializeToHdf5(self, hdf5File, filePath):
-        # The group we were given is the root (file).
-        # Check the version
-        ilastikVersion = hdf5File["ilastikVersion"].value
+    def _initDirtyFlags(self):
+        self._dirtyFlags = { Section.Labels      : False,
+                             Section.Classifier  : False,
+                             Section.Predictions : False }
 
-        # TODO: Fix this when the version number scheme is more thought out
-        if ilastikVersion != 0.6:
-            # This class is for 0.6 projects only.
-            # v0.5 projects are handled in a different serializer (below).
-            return
+    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
+        if self._dirtyFlags[Section.Labels]:
+            self._serializeLabels( topGroup )
 
-        # Access our top group (create it if necessary)
-        topGroup = self.getOrCreateGroup(hdf5File, self.TopGroupName)
-        
-        # Set the version
-        if 'StorageVersion' not in topGroup.keys():
-            topGroup.create_dataset('StorageVersion', data=self.SerializerVersion)
-        else:
-            topGroup['StorageVersion'][()] = self.SerializerVersion
-        
+        if self._dirtyFlags[Section.Classifier]:
+            self._serializeClassifier( topGroup )
+
+        if self._dirtyFlags[Section.Predictions]:
+            self._serializePredictions( topGroup )
+
+        # Clear the dirty flags (project file is now in sync with the operator)
+        self._initDirtyFlags()
+
+    def _serializeLabels(self, topGroup):
         # Delete all labels from the file
         self.deleteIfPresent(topGroup, 'LabelSets')
         labelSetDir = topGroup.create_group('LabelSets')
@@ -54,23 +78,53 @@ class PixelClassificationSerializer(object):
                 # Add the slice this block came from as an attribute of the dataset
                 labelGroup[blockName].attrs['blockSlice'] = self.slicingToString(slicing)
 
-    def deserializeFromHdf5(self, hdf5File, filePath):
-        # Check the overall version.
-        # We only support v0.6 at the moment.
-        ilastikVersion = hdf5File["ilastikVersion"].value
-        if ilastikVersion != 0.6:
+        self._dirtyFlags[Section.Labels] = False
+
+    def _serializeClassifier(self, topGroup):
+        self.deleteIfPresent(topGroup, 'Classifier')
+
+        if not self.mainOperator.Classifier.ready():
             return
 
-        # Access the top group and all required datasets
-        #  If something is missing we simply return without adding any input to the operator.
-        try:
-            topGroup = hdf5File[self.TopGroupName]
-            labelSetGroup = topGroup['LabelSets']
-        except KeyError:
-            # There's no label data in the project.  Make sure the operator doesn't have any label data.
-            self.mainOperator.LabelInputs.resize(0)
-            return
+        classifier = self.mainOperator.Classifier.value
+        
+        # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
+        # Instead, we'll use vigra to write the classifier to a temporary file.
+        tmpDir = tempfile.mkdtemp()
+        cachePath = tmpDir + '/classifier_cache.h5'
+        classifier.writeHDF5(cachePath, 'Classifier')
+        
+        # Open the temp file and copy to our project group
+        cacheFile = h5py.File(cachePath, 'r')
+        topGroup.copy(cacheFile['Classifier'], 'Classifier')
+        
+        cacheFile.close()
+        os.remove(cachePath)
+        os.removedirs(tmpDir)
+        self._dirtyFlags[Section.Classifier] = False
 
+    def _serializePredictions(self, topGroup):
+        self.deleteIfPresent(topGroup, 'Predictions')
+        predictionDir = topGroup.create_group('Predictions')
+        
+        numImages = len(self.mainOperator.PredictionProbabilities)
+        for imageIndex in range(numImages):
+            datasetName = 'predictions{:04d}'.format(imageIndex)
+            # TODO: Optimize this for large datasets by streaming it in chunks
+            #       ... and combine that with a progress signal
+            predictionDir.create_dataset( datasetName, data=self.mainOperator.PredictionProbabilities[imageIndex][...].wait() )
+
+        self._dirtyFlags[Section.Predictions] = False
+
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        if topGroup is None:
+            return
+        
+        self._deserializeLabels( topGroup )
+        self._deserializeClassifier( topGroup )
+
+    def _deserializeLabels(self, topGroup):
+        labelSetGroup = topGroup['LabelSets']
         numImages = len(labelSetGroup)
         self.mainOperator.LabelInputs.resize(numImages)
 
@@ -78,22 +132,40 @@ class PixelClassificationSerializer(object):
         for index, (groupName, labelGroup) in enumerate( sorted(labelSetGroup.items()) ):
             # For each block of label data in the file
             for blockData in labelGroup.values():
-                # The location of this label data block within the image is stored as an attribute
+                # The location of this label data block within the image is stored as an hdf5 attribute
                 slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
                 # Slice in this data to the label input
                 self.mainOperator.LabelInputs[index][slicing] = blockData[...]
 
-    def getOrCreateGroup(self, parentGroup, groupName):
-        try:
-            return parentGroup[groupName]
-        except KeyError:
-            return parentGroup.create_group(groupName)
+        self._dirtyFlags[Section.Labels] = False
 
-    def deleteIfPresent(self, parentGroup, name):
+    def _deserializeClassifier(self, topGroup):
+        if topGroup is None:
+            return
+        
         try:
-            del parentGroup[name]
+            classifierGroup = topGroup['Classifier']
         except KeyError:
-            pass
+            return
+        
+        # Due to non-shared hdf5 dlls, vigra can't read directly from our open hdf5 group.
+        # Instead, we'll copy the classfier data to a temporary file and give it to vigra.
+        tmpDir = tempfile.mkdtemp()
+        cachePath = tmpDir + '/classifier_cache.h5'
+        cacheFile = h5py.File(cachePath, 'w')
+        cacheFile.copy(classifierGroup, 'Classifier')
+        cacheFile.close()
+
+        classifier = vigra.learning.RandomForest(cachePath, 'Classifier')
+        os.remove(cachePath)
+        os.removedirs(tmpDir)
+        
+        # Now force the classifier into our classifier cache.
+        # The downstream operators (e.g. the prediction operator) can use the classifier without inducing it to be re-trained.
+        # (This assumes that the classifier we are loading is consistent with the images and labels that we just loaded.
+        #  As soon as training input changes, it will be retrained.)
+        self.mainOperator.classifier_cache.forceValue( classifier )
+        self._dirtyFlags[Section.Classifier] = False
 
     def slicingToString(self, slicing):
         """
@@ -132,7 +204,7 @@ class PixelClassificationSerializer(object):
         Return true if the current state of this item 
         (in memory) does not match the state of the HDF5 group on disk.
         """
-        return False
+        return self._dirty
 
     def unload(self):
         """
@@ -143,13 +215,16 @@ class PixelClassificationSerializer(object):
         This way we can avoid invalid state due to a partially loaded project. """ 
         self.mainOperator.LabelInputs.resize(0)
 
-class Ilastik05ImportDeserializer(object):
+class Ilastik05ImportDeserializer(AppletSerializer):
     """
     Special (de)serializer for importing ilastik 0.5 projects.
     For now, this class is import-only.  Only the deserialize function is implemented.
     If the project is not an ilastik0.5 project, this serializer does nothing.
     """
+    SerializerVersion = 0.1
+
     def __init__(self, topLevelOperator):
+        super( Ilastik05ImportDeserializer, self ).__init__( '', self.SerializerVersion )
         self.mainOperator = topLevelOperator
     
     def serializeToHdf5(self, hdf5Group, projectFilePath):
@@ -196,4 +271,18 @@ class Ilastik05ImportDeserializer(object):
     def unload(self):
         # This is a special-case import deserializer.  Let the real deserializer handle unloading.
         pass 
+
+    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
+        assert False
+
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        # This deserializer is a special-case.
+        # It doesn't make use of the serializer base class, which makes assumptions about the file structure.
+        # Instead, if overrides the public serialize/deserialize functions directly
+        assert False
+
+
+
+
+
 

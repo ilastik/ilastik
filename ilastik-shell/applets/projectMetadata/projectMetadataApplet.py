@@ -12,7 +12,7 @@ class ProjectMetadataApplet( Applet ):
         
         self._projectMetadata = ProjectMetadata()
         self._gui = ProjectMetadataGui(self._projectMetadata)
-        self._serializableItems = [ ProjectMetadataSerializer(self._projectMetadata),
+        self._serializableItems = [ ProjectMetadataSerializer(self._projectMetadata, "ProjectMetadata"),
                                     Ilastik05ProjectMetadataDeserializer(self._projectMetadata) ]
 
     @property

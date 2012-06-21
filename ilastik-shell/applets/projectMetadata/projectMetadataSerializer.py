@@ -1,63 +1,39 @@
-from utility import VersionManager
+from ilastikshell.appletSerializer import AppletSerializer
 
-
-class ProjectMetadataSerializer(object):
+class ProjectMetadataSerializer(AppletSerializer):
     SerializerVersion = 0.1
-    TopGroupName = 'ProjectMetadata'     
     
-    def __init__(self, projectMetadata):
+    def __init__(self, projectMetadata, projectFileGroupName):
+        super( ProjectMetadataSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
         self.projectMetadata = projectMetadata
+        self._dirty = False
+
+        def handleChange():
+            self._dirty = True
+        projectMetadata.changedSignal.connect( handleChange )
     
-    def serializeToHdf5(self, hdf5File, filePath):
-        # Check the overall file version
-        ilastikVersion = hdf5File["ilastikVersion"].value
-
-        # Make sure we can find our way around the project tree
-        if not VersionManager.isProjectFileVersionCompatible(ilastikVersion):
-            return
-
-        # Access the metadata group (create it if necessary)
-        try:
-            metadataGroup = hdf5File[ProjectMetadataSerializer.TopGroupName]
-        except KeyError:
-            metadataGroup = hdf5File.create_group(ProjectMetadataSerializer.TopGroupName)
-        
-        # Set the version
-        if 'StorageVersion' not in metadataGroup.keys():
-            metadataGroup.create_dataset('StorageVersion', data=self.SerializerVersion)
-        else:
-            metadataGroup['StorageVersion'][()] = self.SerializerVersion
+    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
+        metadataGroup = topGroup
 
         # Write each of our values to the group
         self.setDataset(metadataGroup, 'ProjectName', self.projectMetadata.projectName)
         self.setDataset(metadataGroup, 'Labeler', self.projectMetadata.labeler)
         self.setDataset(metadataGroup, 'Description', self.projectMetadata.description)
+        self._dirty = False
     
-    def deserializeFromHdf5(self, hdf5File, filePath):
-        # Check the overall file version
-        ilastikVersion = hdf5File["ilastikVersion"].value
-
-        # Make sure we can find our way around the project tree
-        if not VersionManager.isProjectFileVersionCompatible(ilastikVersion):
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        if topGroup is None:
             return
-        
-        try:
-            metadataGroup = hdf5File[ProjectMetadataSerializer.TopGroupName]
-        except KeyError:
-            self.projectMetadata.projectName = ''
-            self.projectMetadata.labeler = ''
-            self.projectMetadata.description = ''
-            return
-
-        self.projectMetadata.projectName = self.getDataset(metadataGroup, 'ProjectName')
-        self.projectMetadata.labeler = self.getDataset(metadataGroup, 'Labeler')
-        self.projectMetadata.description = self.getDataset(metadataGroup, 'Description')
+        self.projectMetadata.projectName = self.getDataset(topGroup, 'ProjectName')
+        self.projectMetadata.labeler = self.getDataset(topGroup, 'Labeler')
+        self.projectMetadata.description = self.getDataset(topGroup, 'Description')
+        self._dirty = False
 
     def isDirty(self):
         """ Return true if the current state of this item 
             (in memory) does not match the state of the HDF5 group on disk.
             SerializableItems are responsible for tracking their own dirty/notdirty state."""
-        return False
+        return self._dirty
 
     def unload(self):
         """ Called if either
@@ -83,9 +59,12 @@ class ProjectMetadataSerializer(object):
         except KeyError:
             result = ''
         return result
+    
+class Ilastik05ProjectMetadataDeserializer(AppletSerializer):
+    SerializerVersion = 0.1
 
-class Ilastik05ProjectMetadataDeserializer(object):    
     def __init__(self, projectMetadata):
+        super( Ilastik05ProjectMetadataDeserializer, self ).__init__( '', self.SerializerVersion )
         self.projectMetadata = projectMetadata
     
     def serializeToHdf5(self, hdf5File, filePath):
@@ -135,43 +114,14 @@ class Ilastik05ProjectMetadataDeserializer(object):
             result = ''
         return result
 
-# Simple test
-if __name__ == "__main__":
-    import os
-    import h5py
-    from projectMetadata import ProjectMetadata
-    
-    testProjectName = 'test_project.ilp'
-    # Clean up: Delete any lingering test files from the previous run.
-    try:
-        os.remove(testProjectName)
-    except:
-        pass
-    
-    testProject = h5py.File(testProjectName)
-    testProject.create_dataset('ilastikVersion', data=0.6)
-    
-    metadata = ProjectMetadata()
-    metadata.projectName = "Test Project"
-    metadata.labeler = "Test Labeler"
-    metadata.description = "Test Description"
-    
-    # Create an empty hdf5 file to serialize to.
-    serializer = ProjectMetadataSerializer(metadata)
-    serializer.serializeToHdf5(testProject)
-    
-    assert testProject[ProjectMetadataSerializer.TopGroupName]['ProjectName'].value == metadata.projectName
-    assert testProject[ProjectMetadataSerializer.TopGroupName]['Labeler'].value == metadata.labeler
-    assert testProject[ProjectMetadataSerializer.TopGroupName]['Description'].value == metadata.description
-    
-    # Now deserialize
-    newMetadata = ProjectMetadata()
-    deserializer = ProjectMetadataSerializer(newMetadata)
-    deserializer.deserializeFromHdf5(testProject)
-    
-    assert newMetadata.projectName == metadata.projectName
-    assert newMetadata.labeler == metadata.labeler
-    assert newMetadata.description == metadata.description
+    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
+        assert False
+
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        # This deserializer is a special-case.
+        # It doesn't make use of the serializer base class, which makes assumptions about the file structure.
+        # Instead, if overrides the public serialize/deserialize functions directly
+        assert False
 
 
 

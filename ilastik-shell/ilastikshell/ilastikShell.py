@@ -12,7 +12,7 @@ import traceback
 import os
 from functools import partial
 
-from utility import VersionManager
+from versionManager import VersionManager
 from utility import bind
 from lazyflow.graph import MultiOutputSlot
 
@@ -435,15 +435,16 @@ class IlastikShell( QMainWindow ):
         self.currentProjectFile = hdf5File
         self.currentProjectPath = projectFilePath
         try:            
-            # Applet serializable items are given the whole file (root group) for now
+            # Applet serializable items are given the whole file (root group)
             for applet in self._applets:
                 for item in applet.dataSerializers:
+                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
                     item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
 
             # Now that a project is loaded, the user is allowed to save
             self._menuBar.actions.saveProjectAction.setEnabled(True)
     
-            # Enable all the applet controls        
+            # Enable all the applet controls
             self.enableWorkflow = True
             self.updateAppletControlStates()
 
@@ -472,6 +473,7 @@ class IlastikShell( QMainWindow ):
             # Applet serializable items are given the whole file (root group) for now
             for applet in self._applets:
                 for item in applet.dataSerializers:
+                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
                     item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
         except:
             logger.error("Project Save Action failed due to the following exception:")

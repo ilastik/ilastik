@@ -34,9 +34,9 @@ graph = Graph()
 
 ## Create applets 
 projectMetadataApplet = ProjectMetadataApplet()
-dataSelectionApplet = DataSelectionApplet(graph, "Input Data", supportIlastik05Import=True, batchDataGui=False)
-featureSelectionApplet = FeatureSelectionApplet(graph)
-pcApplet = PixelClassificationApplet(graph)
+dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+featureSelectionApplet = FeatureSelectionApplet(graph, "Feature Selection", "FeatureSelections")
+pcApplet = PixelClassificationApplet(graph, "PixelClassification")
 
 ## Access applet operators
 opData = dataSelectionApplet.topLevelOperator
@@ -78,53 +78,53 @@ opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 #opFeatureDisplayInjector.Input.connect( opTrainingFeatures.OutputImage )
 #opGenericViewer.ChannelwiseLayers.connect( opFeatureDisplayInjector.Output )
 
-###############
-# Threshold test
-###############
-from applets.thresholdMasking import ThresholdMaskingApplet
-thresholdMaskingApplet = ThresholdMaskingApplet(graph)
-opThresholdMaskingViewer = thresholdMaskingApplet.topLevelOperator
-opThresholdMaskingViewer.InputImage.connect( opData.Image )
+################
+## Threshold test
+################
+#from applets.thresholdMasking import ThresholdMaskingApplet
+#thresholdMaskingApplet = ThresholdMaskingApplet(graph)
+#opThresholdMaskingViewer = thresholdMaskingApplet.topLevelOperator
+#opThresholdMaskingViewer.InputImage.connect( opData.Image )
 
-######################
-# Batch workflow
-######################
-
-## Create applets
-batchInputApplet = DataSelectionApplet(graph, "Batch Inputs", supportIlastik05Import=False, batchDataGui=True)
-batchResultsApplet = BatchIoApplet(graph, "Batch Results")
-
-## Access applet operators
-opBatchInputs = batchInputApplet.topLevelOperator
-opBatchResults = batchResultsApplet.topLevelOperator
-
-## Create additional batch workflow operators
-opBatchFeatures = OpFeatureSelection(graph=graph)
-opBatchPredictor = OpPredictRandomForest(graph=graph)
-opSelectBatchDatasetPath = OperatorWrapper( OpAttributeSelector(graph=graph) )
-
-## Connect Operators ## 
-
-# Provide dataset paths from data selection applet to the batch export applet via an attribute selector
-opSelectBatchDatasetPath.InputObject.connect( opBatchInputs.Dataset )
-opSelectBatchDatasetPath.AttributeName.setValue( 'filePath' )
-opBatchResults.DatasetPath.connect( opSelectBatchDatasetPath.Result )
-
-# Connect (clone) the feature operator inputs from 
-#  the interactive workflow's features operator (which gets them from the GUI)
-opBatchFeatures.Scales.connect( opTrainingFeatures.Scales )
-opBatchFeatures.FeatureIds.connect( opTrainingFeatures.FeatureIds )
-opBatchFeatures.SelectionMatrix.connect( opTrainingFeatures.SelectionMatrix )
-
-# Classifier and LabelsCount are provided by the interactive workflow
-opBatchPredictor.Classifier.connect( opClassify.Classifier )
-opBatchPredictor.LabelsCount.connect( opClassify.MaxLabelValue )
-
-# Connect Image pathway:
-# Input Image -> Features Op -> Prediction Op -> Export
-opBatchFeatures.InputImage.connect( opBatchInputs.Image )
-opBatchPredictor.Image.connect( opBatchFeatures.OutputImage )
-opBatchResults.ImageToExport.connect( opBatchPredictor.PMaps )
+#######################
+## Batch workflow
+#######################
+#
+### Create applets
+#batchInputApplet = DataSelectionApplet(graph, "Batch Inputs", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
+#batchResultsApplet = BatchIoApplet(graph, "Batch Results")
+#
+### Access applet operators
+#opBatchInputs = batchInputApplet.topLevelOperator
+#opBatchResults = batchResultsApplet.topLevelOperator
+#
+### Create additional batch workflow operators
+#opBatchFeatures = OpFeatureSelection(graph=graph)
+#opBatchPredictor = OpPredictRandomForest(graph=graph)
+#opSelectBatchDatasetPath = OperatorWrapper( OpAttributeSelector(graph=graph) )
+#
+### Connect Operators ## 
+#
+## Provide dataset paths from data selection applet to the batch export applet via an attribute selector
+#opSelectBatchDatasetPath.InputObject.connect( opBatchInputs.Dataset )
+#opSelectBatchDatasetPath.AttributeName.setValue( 'filePath' )
+#opBatchResults.DatasetPath.connect( opSelectBatchDatasetPath.Result )
+#
+## Connect (clone) the feature operator inputs from 
+##  the interactive workflow's features operator (which gets them from the GUI)
+#opBatchFeatures.Scales.connect( opTrainingFeatures.Scales )
+#opBatchFeatures.FeatureIds.connect( opTrainingFeatures.FeatureIds )
+#opBatchFeatures.SelectionMatrix.connect( opTrainingFeatures.SelectionMatrix )
+#
+## Classifier and LabelsCount are provided by the interactive workflow
+#opBatchPredictor.Classifier.connect( opClassify.Classifier )
+#opBatchPredictor.LabelsCount.connect( opClassify.MaxLabelValue )
+#
+## Connect Image pathway:
+## Input Image -> Features Op -> Prediction Op -> Export
+#opBatchFeatures.InputImage.connect( opBatchInputs.Image )
+#opBatchPredictor.Image.connect( opBatchFeatures.OutputImage )
+#opBatchResults.ImageToExport.connect( opBatchPredictor.PMaps )
 
 ######################
 # Shell
@@ -139,13 +139,13 @@ shell.addApplet(dataSelectionApplet)
 shell.addApplet(featureSelectionApplet)
 shell.addApplet(pcApplet)
 
-# Add batch workflow applets
-shell.addApplet(batchInputApplet)
-shell.addApplet(batchResultsApplet)
-
-# TEST TEST TEST TEST
-#shell.addApplet( genericViewerApplet )
-shell.addApplet( thresholdMaskingApplet )
+## Add batch workflow applets
+#shell.addApplet(batchInputApplet)
+#shell.addApplet(batchResultsApplet)
+#
+## TEST TEST TEST TEST
+##shell.addApplet( genericViewerApplet )
+#shell.addApplet( thresholdMaskingApplet )
 
 # The shell needs a slot from which he can read the list of image names to switch between.
 # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
@@ -179,7 +179,7 @@ def test():
 #timer.start()
 
 # Run a test
-QTimer.singleShot(1, test )
+#QTimer.singleShot(1, test )
 
 app.exec_()
 

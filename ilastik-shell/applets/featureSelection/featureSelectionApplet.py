@@ -12,14 +12,14 @@ class FeatureSelectionApplet( Applet ):
     This applet allows the user to select sets of input data, 
     which are provided as outputs in the corresponding top-level applet operator.
     """
-    def __init__( self, graph ):
-        super(FeatureSelectionApplet, self).__init__("Feature Selection")
+    def __init__( self, graph, guiName, projectFileGroupName ):
+        super(FeatureSelectionApplet, self).__init__(guiName)
 
         # Top-level operator is wrapped to support multiple images.
         # Note that the only promoted input slot is the image.  All other inputs are shared among all inner operators.        
         self._topLevelOperator = OperatorWrapper( OpFeatureSelection(graph), promotedSlotNames=set(['InputImage']) )
 
-        self._serializableItems = [ FeatureSelectionSerializer(self._topLevelOperator),
+        self._serializableItems = [ FeatureSelectionSerializer(self._topLevelOperator, projectFileGroupName),
                                     Ilastik05FeatureSelectionDeserializer(self._topLevelOperator) ]
 
         self._gui = FeatureSelectionGui(self._topLevelOperator)
