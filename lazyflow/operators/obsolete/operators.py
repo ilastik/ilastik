@@ -1111,8 +1111,8 @@ class OpSlicedBlockedArrayCache(Operator):
     inputSlots = [InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent", value = False)]
     outputSlots = [OutputSlot("Output")]
 
-    def __init__(self, parent):
-        Operator.__init__(self, parent)
+    def __init__(self, *args, **kwargs):
+        super(OpSlicedBlockedArrayCache, self).__init__(*args, **kwargs)
         self._lock = Lock()
         self._innerOps = []
 
