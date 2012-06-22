@@ -13,6 +13,7 @@ class ThresholdMaskingSerializer(AppletSerializer):
         self.mainOperator = mainOperator
         self._dirty = False
         self.mainOperator.MinValue.notifyDirty( self.handleDirty )
+        self.mainOperator.MaxValue.notifyDirty( self.handleDirty )
     
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Ensure the operator has input values before continuing

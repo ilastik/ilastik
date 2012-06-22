@@ -1,18 +1,7 @@
-from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
-from volumina.api import ArraySource, LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
-                         AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
-
-from lazyflow.graph import MultiInputSlot, MultiOutputSlot
-from lazyflow.operators import OpSingleChannelSelector, OpMultiArraySlicer2
-
-from functools import partial
 import os
-import utility # This is the ilastik shell utility module
-import numpy
-from utility import bind
 
 from applets.layerViewer import LayerViewerGui
 from volumina.widgets.thresholdingWidget import ThresholdingWidget

@@ -2,7 +2,6 @@ from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSl
 
 import numpy
 
-# TODO: This class doesn't really belong here, but it isn't general-purpose enough to put in lazyflow yet.
 class OpThresholdMasking(Operator):
     """
     Given an input image and max/min bounds,
