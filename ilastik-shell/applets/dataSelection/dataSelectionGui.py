@@ -249,7 +249,7 @@ class DataSelectionGui(QMainWindow):
         tableWidget.setItem( row, Column.Name, QTableWidgetItem(fileName) )
         
         # Create and add the combobox for the internal path selection
-        self.updateInternalPathComboBox( row, externalPath )
+        self.updateInternalPathComboBox( row, externalPath, internalPath )
 #        tableWidget.setItem( row, Column.InternalID, QTableWidgetItem(internalPath) )
 
         # Subscribe to changes        
@@ -323,7 +323,7 @@ class DataSelectionGui(QMainWindow):
         combo.currentIndexChanged.connect( partial(self.handleComboSelectionChanged, combo) )
         self.fileInfoTableWidget.setCellWidget( row, Column.Location, combo )
     
-    def updateInternalPathComboBox( self, row, externalPath ):
+    def updateInternalPathComboBox( self, row, externalPath, internalPath ):
         combo = QComboBox()
         datasetNames = []
 
@@ -337,8 +337,8 @@ class DataSelectionGui(QMainWindow):
             
             # Define a closure to collect all of the dataset names in the file.
             def accumulateDatasetPaths(name, val):
-                if type(val) == h5py._hl.dataset.Dataset:
-                    datasetNames.append( name )
+                if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
+                    datasetNames.append( '/' + name )
 
             # Visit every group/dataset in the file            
             f.visititems(accumulateDatasetPaths)
@@ -347,6 +347,11 @@ class DataSelectionGui(QMainWindow):
         # Add each dataset option to the combo            
         for path in datasetNames:
             combo.addItem( path )
+
+        # If the internal path we used previously is in the combo list, select it.
+        prevSelection = combo.findText( internalPath )
+        if prevSelection != -1:
+            combo.setCurrentIndex( prevSelection )
 
         # Define response to changes and add it to the GUI.
         # Pass in the corresponding the table item so we can figure out which row this came from
