@@ -46,6 +46,7 @@ import string
 import types
 import itertools
 import threading
+import logging
 
 from h5dumprestore import instanceClassToString, stringToClass
 from helpers import itersubclasses, detectCPUs, deprecated, warn_deprecated
@@ -186,6 +187,8 @@ class Slot(object):
     """
     Base class for InputSlot, OutputSlot, MultiInputSlot and MultiOutputSlot
     """
+
+    logger = logging.getLogger(__name__ + '.Slot')
 
     @property
     def graph(self):
@@ -485,7 +488,7 @@ class Slot(object):
                     except ValueError:
                         pass
                 if lazyflow.verboseWrapping:
-                    print "-> Wrapping operator because own level is", self.level, "partner level is", partner.level
+                    self.logger.info("-> Wrapping operator because own level is", self.level, "partner level is", partner.level)
                 if isinstance(self.operator,(OperatorWrapper, Operator)):
                     newop = OperatorWrapper(self.operator)
                     newop.inputs[self.name].connect(partner)
@@ -542,7 +545,7 @@ class Slot(object):
             return
 
         self._resizing = True
-        print "Resizing slot %r of operator %r to size %r" % (self.name, self.operator.name, size)
+        self.logger.debug("Resizing slot %r of operator %r to size %r" % (self.name, self.operator.name, size))
 
         # call before resize callbacks
         self._sig_resize(self, oldsize, size)
@@ -579,7 +582,7 @@ class Slot(object):
         if len(self) >= finalsize:
             return self[position]
         slot =  self._insertNew(position)
-        print "Inserting slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize)
+        self.logger.debug("Inserting slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize))
         if propagate:
             if self.partner is not None and self.partner.level == self.level:
                 self.partner.insertSlot(position, finalsize)
@@ -601,7 +604,7 @@ class Slot(object):
         if len(self) <= finalsize:
             return None
         assert position < len(self)
-        print "Removing slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize)
+        self.logger.debug("Removing slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize))
         
         # call before-remove callbacks
         self._sig_remove(self, position, finalsize)
@@ -1305,6 +1308,8 @@ class Operator(object):
     examples to learn how to implement your own operators...
     """
 
+    logger = logging.getLogger(__name__ + '.Operator')
+
     #definition of inputs slots
     inputSlots  = []
 
@@ -1478,7 +1483,7 @@ class Operator(object):
         if hasattr(roi,"toSlice"):
             self.notifyDirty(inputSlot,roi.toSlice())
         else:
-            print "propagateDirty: roi=", roi
+            self.logger.debug("propagateDirty: roi={}".format(roi))
             raise TypeError(".propagatedirty of Operator %r is not implemented !" % (self))
 
     def notifyDirty(self, inputSlot, key):
@@ -1659,6 +1664,8 @@ class Operator(object):
 class OperatorWrapper(Operator):
     name = ""
 
+    logger = logging.getLogger(__name__ + '.OperatorWrapper')
+
     def __init__(self, operator, promotedSlotNames = None):
         """
         Constructs a wrapper for the given operator.
@@ -1694,7 +1701,7 @@ class OperatorWrapper(Operator):
         self.origInputs = self.operator.inputs.copy()
         self.origOutputs = self.operator.outputs.copy()
         if lazyflow.verboseWrapping:
-            print "wrapping operator [self=%r] '%s'" % (operator, operator.name)
+            self.logger.debug("wrapping operator [self=%r] '%s'" % (operator, operator.name))
 
         self._inputSlots = []
         self._outputSlots = []
@@ -1805,7 +1812,7 @@ class OperatorWrapper(Operator):
                     return
 
         if lazyflow.verboseWrapping:
-            print "Restoring original operator [self=%r] named '%s'" % (self, self.name)
+            self.logger.info("Restoring original operator [self=%r] named '%s'" % (self, self.name))
 
         op = self
         while isinstance(op.operator, (OperatorWrapper)):
