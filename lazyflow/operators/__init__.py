@@ -15,6 +15,9 @@ except:
     from obsolete import classifierOperators
     from obsolete import valueProviders
     from obsolete import operators
+    
+    from opVigraWatershed import OpVigraWatershed
+    from opColorizeLabels import OpColorizeLabels
 
     ops = itersubclasses(Operator)
     print "Loading default Operators..."
