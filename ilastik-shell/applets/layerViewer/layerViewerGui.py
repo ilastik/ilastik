@@ -190,18 +190,21 @@ class LayerViewerGui(QMainWindow):
             layer = GrayscaleLayer(source)
 
         if numChannels >= 2:
-            redSource = OpSingleChannelSelector(graph=slot.graph)
-            redSource.Input.connect(slot)
-            redSource.Index.setValue( 0 )
+            redProvider = OpSingleChannelSelector(graph=slot.graph)
+            redProvider.Input.connect(slot)
+            redProvider.Index.setValue( 0 )
+            redSource = LazyflowSource( redProvider.Output )
 
-            greenSource = OpSingleChannelSelector(graph=slot.graph)
-            greenSource.Input.connect(slot)
-            greenSource.Index.setValue( 1 )
+            greenProvider = OpSingleChannelSelector(graph=slot.graph)
+            greenProvider.Input.connect(slot)
+            greenProvider.Index.setValue( 1 )
+            greenSource = LazyflowSource( greenProvider.Output )
                         
             if numChannels == 3:
-                blueSource = OpSingleChannelSelector(graph=slot.graph)
-                blueSource.Input.connect(slot)
-                blueSource.Index.setValue( 2 )
+                blueProvider = OpSingleChannelSelector(graph=slot.graph)
+                blueProvider.Input.connect(slot)
+                blueProvider.Index.setValue( 2 )
+                blueSource = LazyflowSource( blueProvider.Output )
             else:
                 blueSource = None
 
