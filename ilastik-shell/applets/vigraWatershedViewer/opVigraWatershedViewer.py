@@ -1,6 +1,6 @@
 from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 
-from lazyflow.operators import OpSlicedBlockedArrayCache, OpSingleChannelSelector, OpMultiArraySlicer2
+from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 
 from lazyflow.operators import OpVigraWatershed, OpColorizeLabels
 
@@ -51,29 +51,9 @@ if __name__ == "__main__":
     inputData = inputData.astype('float32')
     inputData = inputData.view(vigra.VigraArray)
     inputData.axistags = vigra.defaultAxistags('txyzc')
-#
-#    print inputData.shape
-#    
-#    op = OpVigraWatershed(graph=graph)
-#    op.InputImage.setValue( inputData )
-#    op.PaddingWidth.setValue(10)
-#    
-#    result = op.Output[:, 0:5, 6:20, 30:40,...].wait()
-#
-#
-#    
-#    opColorize = OpColorizeLabels(graph=graph)
-#    opColorize.Input.setValue(result)
-#    colored = opColorize.Output[...].wait()
-#
-#    print colored.shape
-#    print result.shape
-#
-#    print colored[:,:,:,0:10,:]
-
     
     # Does this crash?
-    opViewer = OpWatershedViewer(graph=graph)
+    opViewer = OpVigraWatershedViewer(graph=graph)
     opViewer.InputImage.setValue( inputData )
     result = opViewer.Output[:, 0:5, 6:20, 30:40,...].wait()
     
