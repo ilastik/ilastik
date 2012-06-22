@@ -9,6 +9,7 @@ import greenlet
 import threading
 from helpers import detectCPUs
 import math
+import logging
 
 greenlet.GREENLET_USE_GC = False #use garbage collection
 sys.setrecursionlimit(1000)
@@ -44,10 +45,13 @@ def runDebugShell():
 
 
 class Worker(Thread):
+    
+    logger = logging.getLogger(__name__ + '.Worker')
+    
     def __init__(self, machine, wid = 0):
         Thread.__init__(self)
         self.daemon = True # kill automatically on application exit!
-        print "Creating worker %r for ThreadPool %r" % (self, machine)
+        self.logger.info( "Creating worker %r for ThreadPool %r" % (self, machine) )
         self.wid = wid
         self.machine = machine
         self.running = True
@@ -65,7 +69,7 @@ class Worker(Thread):
 
 
     def stop(self):
-        print "stopping worker %r of machine %r" % (self, self.machine)
+        self.logger.info("stopping worker %r of machine %r" % (self, self.machine))
         self.flush()
 
         self.running = False
@@ -350,6 +354,7 @@ class Request(object):
     of cancellation, finished computation etc.
     """
 
+    logger = logging.getLogger(__name__ + '.Request')
     EnableRequesterStackDebugging = False
 
     def __init__(self, function, **kwargs):
@@ -535,8 +540,7 @@ class Request(object):
                     c.cancel()
                 self.canceled = True
         else:
-            print "tryed to cancel but, ",self.finished, self.canceled
-
+            self.logger.info( "tried to cancel but: self.finished={}, self.canceled={}".format(self.finished, self.canceled) )
 
     def _execute(self):
         """
