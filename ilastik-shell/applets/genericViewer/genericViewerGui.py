@@ -46,7 +46,6 @@ class GenericViewerGui(QMainWindow):
         self.ColorTableSize = 256
         self.DefaultColorTable = self.createDefaultColorTable(self.ColorTableSize)
 
-        assert isinstance(dataProviderMultiMultiSlot, (MultiInputSlot, MultiOutputSlot))
         assert dataProviderMultiMultiSlot.level == 2
         self.datasetMultiSlot = dataProviderMultiMultiSlot
 
@@ -104,7 +103,7 @@ class GenericViewerGui(QMainWindow):
 
         # Each subslot in the currentDatasetSlot provides a layer
         self.currentDatasetSlot = self.datasetMultiSlot[imageIndex]
-        assert isinstance(self.currentDatasetSlot, (MultiInputSlot, MultiOutputSlot))
+        assert self.currentDatasetSlot.level == 1
 
         # Update the GUI for all layers in the current dataset
         for index, slot in enumerate(self.currentDatasetSlot):
