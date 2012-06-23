@@ -6,8 +6,7 @@ from volumina.adaptors import Op5ifyer
 from volumina.api import ArraySource, LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
                          AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
 
-import igms.labelListModel
-from igms.labelListModel import LabelListModel
+from igms.labelListModel import LabelListModel, Label
 
 from lazyflow.operators import OpSingleChannelSelector
 
@@ -313,7 +312,7 @@ class FeatureSelectionGui(QMainWindow):
                 # Choose a random color
                 color = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
             
-            label = labelListModel.Label( str(featureChannelIndex), color )
+            label = Label( str(featureChannelIndex), color )
             self.addFeatureLayer(featureChannelIndex, label)
 
     def addFeatureLayer(self, featureChannelIndex, ref_label):
