@@ -633,6 +633,9 @@ class PixelClassificationGui(QMainWindow):
         """
         Add all prediction label layers to the volume editor
         """
+        if not self.pipeline.CachedPredictionProbabilities[self.imageIndex].ready():
+            return
+        
         newGuiLabels = set()        
         # TODO: Assumes channel is last axis
         nclasses = self.pipeline.CachedPredictionProbabilities[self.imageIndex].meta.shape[-1]
