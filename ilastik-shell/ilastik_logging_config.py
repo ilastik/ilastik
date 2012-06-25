@@ -18,7 +18,7 @@ default_log_config = {
             'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
         },
         'location': {
-            'format': '%(levelname)s %(name)s:%(funcName)s:%(lineno)d %(message)s'
+            'format': '%(levelname)s %(thread)d %(name)s:%(funcName)s:%(lineno)d %(message)s'
         },
         'simple': {
             'format': '%(levelname)s %(message)s'
@@ -42,20 +42,58 @@ default_log_config = {
         'level': 'DEBUG',
     },
     'loggers': {
-        # By convention, trace-level log statements are prefixed with 'TRACE' and are output at the DEBUG level.
-        # To see trace statements, set this logger to DEBUG
-        'TRACE': {
-            'handlers':['console'],
-            'propagate': False,
-            'level':'DEBUG',
-        },
+        # Regular loggers
         'lazyflow': {
             'handlers':['console','console_warn'],
             'propagate': False,
-            'level':'DEBUG',
+            'level':'INFO',
         },
-        'lazyflow.graph.OperatorWrapper': {
+        'lazyflow.graph': {
             'handlers':['console', 'console_warn'],
+            'propagate': False,
+            'level':'INFO',
+        },
+        'lazyflow.graph.Slot': {
+            'handlers':['console', 'console_warn'],
+            'propagate': False,
+            'level':'INFO',
+        },
+        'lazyflow.operators': {
+            'handlers':['console', 'console_warn'],
+            'propagate': False,
+            'level':'INFO',
+        },
+        'volumina': {
+            'handlers':['console', 'console_warn'],
+            'propagate': False,
+            'level':'INFO',
+        },
+        'applets': {
+            'handlers':['console', 'console_warn'],
+            'propagate': False,
+            'level':'INFO',
+        },
+        # TRACE LOGGERS
+        # The python logging module doesn't provide a separate trace logging level, so we use a workaround.
+        # By convention, trace statements go to a special logger named with a TRACE prefix.
+        # To see such trace statements, set these loggers to the DEBUG level.
+        'TRACE': {
+            'handlers':['console'],
+            'propagate': False,
+            'level':'INFO',
+        },
+        'TRACE.lazyflow.graph.Operator': {
+            'handlers':['console'],
+            'propagate': False,
+            'level':'INFO',
+        },
+        'TRACE.lazyflow.graph.OperatorWrapper': {
+            'handlers':['console'],
+            'propagate': False,
+            'level':'INFO',
+        },
+        'TRACE.applets': {
+            'handlers':['console'],
             'propagate': False,
             'level':'INFO',
         },
