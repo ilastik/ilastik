@@ -37,6 +37,7 @@ class OpFeatureSelection(Operator):
         # Two internal operators: features and cache
         self.opPixelFeatures = OpPixelFeaturesPresmoothed(parent=self)
         self.opPixelFeatureCache = OpBlockedArrayCache(parent=self)
+        self.opPixelFeatureCache.name = "opPixelFeatureCache"
 
         # Connect the cache to the feature output
         self.opPixelFeatureCache.Input.connect(self.opPixelFeatures.Output)
