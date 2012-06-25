@@ -735,8 +735,8 @@ if has_blist:
                        OutputSlot("nonzeroBlocks"),
                        OutputSlot("maxLabel")]
 
-        def __init__(self,parent):
-            Operator.__init__(self,parent)
+        def __init__(self, *args, **kwargs):
+            Operator.__init__(self, *args, **kwargs)
             self.lock = threading.Lock()
 
             self._sparseNZ = None
