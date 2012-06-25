@@ -11,7 +11,7 @@ import copy
 import logging
 logger = logging.getLogger(__name__)
 tracelogger = logging.getLogger("TRACE." + __name__)
-
+from lazyflow.tracer import Tracer
 
 class OpTrainRandomForest(Operator):
     name = "TrainRandomForest"
@@ -30,40 +30,40 @@ class OpTrainRandomForest(Operator):
 
 
     def getOutSlot(self, slot, key, result):
-
-        featMatrix=[]
-        labelsMatrix=[]
-        for i,labels in enumerate(self.inputs["Labels"]):
-            if labels.shape is not None:
-                labels=labels[:].allocate().wait()
-
-                indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
-                #Maybe later request only part of the region?
-
-                image=self.inputs["Images"][i][:].allocate().wait()
-
-                features=image[indexes]
-                labels=labels[indexes]
-
-                featMatrix.append(features)
-                labelsMatrix.append(labels)
-
-
-        featMatrix=numpy.concatenate(featMatrix,axis=0)
-        labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
-
-        # TODO: Make treecount configurable via an InputSlot
-        RF=vigra.learning.RandomForest(100)
-        try:
-            RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
-        except:
-            logger.error( "ERROR: could not learn classifier" )
-            logger.error( "featMatrix={}, labelsMatrix={}".format(featMatrix, labelsMatrix) )
-            logger.error( "featMatrix shape={}, dtype={}".format(featMatrix.shape, featMatrix.dtype) )
-            logger.error( "labelsMatrix shape={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.dtype ) )
-            raise
-
-        result[0]=RF
+        with Tracer(logger, level=logging.INFO, msg="OpTrainRandomForest: Training Classifier"):
+            featMatrix=[]
+            labelsMatrix=[]
+            for i,labels in enumerate(self.inputs["Labels"]):
+                if labels.shape is not None:
+                    labels=labels[:].allocate().wait()
+    
+                    indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
+                    #Maybe later request only part of the region?
+    
+                    image=self.inputs["Images"][i][:].allocate().wait()
+    
+                    features=image[indexes]
+                    labels=labels[indexes]
+    
+                    featMatrix.append(features)
+                    labelsMatrix.append(labels)
+    
+    
+            featMatrix=numpy.concatenate(featMatrix,axis=0)
+            labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
+    
+            # TODO: Make treecount configurable via an InputSlot
+            RF=vigra.learning.RandomForest(100)
+            try:
+                RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
+            except:
+                logger.error( "ERROR: could not learn classifier" )
+                logger.error( "featMatrix={}, labelsMatrix={}".format(featMatrix, labelsMatrix) )
+                logger.error( "featMatrix shape={}, dtype={}".format(featMatrix.shape, featMatrix.dtype) )
+                logger.error( "labelsMatrix shape={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.dtype ) )
+                raise
+    
+            result[0]=RF
 
     def setInSlot(self, slot, key, value):
         if self.inputs["fixClassifier"].value == False:
@@ -102,60 +102,61 @@ class OpTrainRandomForestBlocked(Operator):
 
 
     def execute(self, slot, roi, result):
-        key = roi.toSlice()
-        featMatrix=[]
-        labelsMatrix=[]
-        for i,labels in enumerate(self.inputs["Labels"]):
-            if labels.shape is not None:
-                #labels=labels[:].allocate().wait()
-                blocks = self.inputs["nonzeroLabelBlocks"][i][0].allocate().wait()
-                reqlistlabels = []
-                reqlistfeat = []
-                for b in blocks[0]:
-
-                    request = labels[b].allocate()
-                    featurekey = list(b)
-                    featurekey[-1] = slice(None, None, None)
-                    request2 = self.inputs["Images"][i][featurekey].allocate()
-
-                    reqlistlabels.append(request)
-                    reqlistfeat.append(request2)
-
-                def dummyNotify(req):
-                    pass
-
-                for ir, req in enumerate(reqlistfeat):
-                    image = req.notify(dummyNotify)
-
-                for ir, req in enumerate(reqlistlabels):
-                    labblock = req.notify(dummyNotify)
-
-                for ir, req in enumerate(reqlistlabels):
-                    labblock = req.wait()
-                    image = reqlistfeat[ir].wait()
-                    indexes=numpy.nonzero(labblock[...,0].view(numpy.ndarray))
-
-                    features=image[indexes]
-                    labbla=labblock[indexes]
-
-                    featMatrix.append(features)
-                    labelsMatrix.append(labbla)
-
-
-        featMatrix=numpy.concatenate(featMatrix,axis=0)
-        labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
-
-        RF=vigra.learning.RandomForest(100)
-        try:
-            RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
-        except:
-            logger.error( "ERROR: could not learn classifier" )
-            logger.error( "featMatrix={}, labelsMatrix={}".format(featMatrix, labelsMatrix) )
-            logger.error( "featMatrix shape={}, dtype={}".format(featMatrix.shape, featMatrix.dtype) )
-            logger.error( "labelsMatrix shape={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.dtype ) )
-            raise
-        assert RF is not None, "RF = %r" % RF
-        result[0]=RF
+        with Tracer(logger, level=logging.INFO, msg="OpTrainRandomForestBlocked: Training Classifier"):
+            key = roi.toSlice()
+            featMatrix=[]
+            labelsMatrix=[]
+            for i,labels in enumerate(self.inputs["Labels"]):
+                if labels.shape is not None:
+                    #labels=labels[:].allocate().wait()
+                    blocks = self.inputs["nonzeroLabelBlocks"][i][0].allocate().wait()
+                    reqlistlabels = []
+                    reqlistfeat = []
+                    for b in blocks[0]:
+    
+                        request = labels[b].allocate()
+                        featurekey = list(b)
+                        featurekey[-1] = slice(None, None, None)
+                        request2 = self.inputs["Images"][i][featurekey].allocate()
+    
+                        reqlistlabels.append(request)
+                        reqlistfeat.append(request2)
+    
+                    def dummyNotify(req):
+                        pass
+    
+                    for ir, req in enumerate(reqlistfeat):
+                        image = req.notify(dummyNotify)
+    
+                    for ir, req in enumerate(reqlistlabels):
+                        labblock = req.notify(dummyNotify)
+    
+                    for ir, req in enumerate(reqlistlabels):
+                        labblock = req.wait()
+                        image = reqlistfeat[ir].wait()
+                        indexes=numpy.nonzero(labblock[...,0].view(numpy.ndarray))
+    
+                        features=image[indexes]
+                        labbla=labblock[indexes]
+    
+                        featMatrix.append(features)
+                        labelsMatrix.append(labbla)
+    
+    
+            featMatrix=numpy.concatenate(featMatrix,axis=0)
+            labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
+    
+            RF=vigra.learning.RandomForest(100)
+            try:
+                RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
+            except:
+                logger.error( "ERROR: could not learn classifier" )
+                logger.error( "featMatrix={}, labelsMatrix={}".format(featMatrix, labelsMatrix) )
+                logger.error( "featMatrix shape={}, dtype={}".format(featMatrix.shape, featMatrix.dtype) )
+                logger.error( "labelsMatrix shape={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.dtype ) )
+                raise
+            assert RF is not None, "RF = %r" % RF
+            result[0]=RF
 
     def setInSlot(self, slot, key, value):
         if self.inputs["fixClassifier"].value == False:
