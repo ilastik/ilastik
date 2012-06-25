@@ -763,6 +763,7 @@ class PixelClassificationGui(QMainWindow):
             predictLayer.ref_object = ref_label
     
             #make sure that labels (index = 0) stay on top!
+            predictLayer.visible = False
             self.layerstack.insert(1, predictLayer )
             predictLayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
             self.predictionLayers.add(predictLayer)
