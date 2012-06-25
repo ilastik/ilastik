@@ -18,6 +18,9 @@ from applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector, OpMetadataInjector
 
+import ilastik_logging_config
+ilastik_logging_config.init_default_config()
+
 app = QApplication([])
 
 # Splash Screen
@@ -164,8 +167,8 @@ def test():
     from functools import partial
     
     # Open a test project
-    #shell.openProjectFile('/home/bergs/synapse_small.ilp')
-    shell.openProjectFile('/home/bergs/dummy.ilp')
+    shell.openProjectFile('/home/bergs/synapse_small.ilp')
+    #shell.openProjectFile('/home/bergs/dummy.ilp')
     
     # Select a drawer
     #shell.setSelectedAppletDrawer( 7 )
