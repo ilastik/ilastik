@@ -8,6 +8,9 @@ import greenlet, threading
 import vigra
 import copy
 
+import logging
+logger = logging.getLogger(__name__)
+tracelogger = logging.getLogger("TRACE." + __name__)
 
 
 class OpTrainRandomForest(Operator):
@@ -54,10 +57,11 @@ class OpTrainRandomForest(Operator):
         try:
             RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
         except:
-            print "ERROR: could not learn classifier"
-            print featMatrix, labelsMatrix
-            print featMatrix.shape, featMatrix.dtype
-            print labelsMatrix.shape, labelsMatrix.dtype
+            logger.error( "ERROR: could not learn classifier" )
+            logger.error( "featMatrix={}, labelsMatrix={}".format(featMatrix, labelsMatrix) )
+            logger.error( "featMatrix shape={}, dtype={}".format(featMatrix.shape, featMatrix.dtype) )
+            logger.error( "labelsMatrix shape={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.dtype ) )
+            raise
 
         result[0]=RF
 
@@ -145,10 +149,11 @@ class OpTrainRandomForestBlocked(Operator):
         try:
             RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
         except:
-            print "ERROR: couldnt learn classifier"
-            print featMatrix, labelsMatrix
-            print featMatrix.shape, featMatrix.dtype
-            print labelsMatrix.shape, labelsMatrix.dtype
+            logger.error( "ERROR: could not learn classifier" )
+            logger.error( "featMatrix={}, labelsMatrix={}".format(featMatrix, labelsMatrix) )
+            logger.error( "featMatrix shape={}, dtype={}".format(featMatrix.shape, featMatrix.dtype) )
+            logger.error( "labelsMatrix shape={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.dtype ) )
+            raise
         assert RF is not None, "RF = %r" % RF
         result[0]=RF
 
@@ -233,7 +238,7 @@ class OpPredictRandomForest(Operator):
 
     def notifyDirty(self, slot, key):
         if slot == self.inputs["Classifier"]:
-            print "OpPredict: Classifier changed, setting dirty"
+            logger.debug("OpPredictRandomForest: Classifier changed, setting dirty")
             self.outputs["PMaps"].setDirty(slice(None,None,None))
         elif slot == self.inputs["Image"]:
             nlabels=self.inputs["LabelsCount"].value
