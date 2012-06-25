@@ -124,7 +124,6 @@ class PixelClassificationGui(QMainWindow):
             self._normalize_data=True
             
             if 'notnormalize' in sys.argv:
-                print sys.argv
                 self._normalize_data=False
                 sys.argv.remove('notnormalize')
     
@@ -401,7 +400,7 @@ class PixelClassificationGui(QMainWindow):
 
     def toggleInteractive(self, checked):
         with Tracer(traceLogger):
-            print "toggling interactive mode to '%r'" % checked
+            logger.debug("toggling interactive mode to '%r'" % checked)
             
             #Check if the number of labels in the layer stack is equals to the number of Painted labels
             if checked==True:
@@ -546,7 +545,7 @@ class PixelClassificationGui(QMainWindow):
 
     def switchLabel(self, row):
         with Tracer(traceLogger):
-            print "switching to label=%r" % (self._labelControlUi.labelListModel[row])
+            logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
             #+1 because first is transparent
             #FIXME: shouldn't be just row+1 here
             self.editor.brushingModel.setDrawnNumber(row+1)
@@ -554,7 +553,7 @@ class PixelClassificationGui(QMainWindow):
         
     def switchColor(self, row, color):
         with Tracer(traceLogger):
-            print "label=%d changes color to %r" % (row, color)
+            logger.debug("label=%d changes color to %r" % (row, color))
             self.labellayer.colorTable[row]=color.rgba()
             self.editor.brushingModel.setBrushColor(color)
             self.editor.scheduleSlicesRedraw()
@@ -647,7 +646,7 @@ class PixelClassificationGui(QMainWindow):
             
             nout = start-end+1
             ncurrent = self._labelControlUi.labelListModel.rowCount()
-            print "removing", nout, "out of ", ncurrent
+            logger.debug("removing", nout, "out of ", ncurrent)
             
             for il in range(start, end+1):
                 # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
@@ -710,7 +709,7 @@ class PixelClassificationGui(QMainWindow):
             # Closure to call when the prediction is finished
             def onPredictionComplete(predictionResults):
                 with Tracer(traceLogger):
-                    print "Prediction shape=", predictionResults.meta.shape
+                    logger.debug("Prediction shape=", predictionResults.meta.shape)
                     
                     # Re-enable the GUI
                     self._labelControlUi.AddLabelButton.setEnabled(True)
@@ -749,12 +748,10 @@ class PixelClassificationGui(QMainWindow):
             predictLayer.opacity = 0.5
             
             def setLayerColor(c):
-                print "as the color of label '%s' has changed, setting layer's '%s' tint color to %r" % (ref_label.name, predictLayer.name, c)
                 predictLayer.tintColor = c
             ref_label.colorChanged.connect(setLayerColor)
             def setLayerName(n):
                 newName = "Prediction for %s" % ref_label.name
-                print "as the name of label '%s' has changed, setting layer's '%s' name to '%s'" % (ref_label.name, predictLayer.name, newName)
                 predictLayer.name = newName
             setLayerName(ref_label.name)
             ref_label.nameChanged.connect(setLayerName)
@@ -772,7 +769,6 @@ class PixelClassificationGui(QMainWindow):
         with Tracer(traceLogger):
             for il, layer in enumerate(self.layerstack):
                 if layer.ref_object==ref_label:
-                    print "found the prediction", layer.ref_object, ref_label
                     self.predictionLayers.remove(layer)
                     self.layerstack.removeRows(il, 1)
                     break
@@ -789,7 +785,7 @@ class PixelClassificationGui(QMainWindow):
                 srcs    = []
                 minMax = []
                 
-                print "* Data has shape=%r" % (shape,)
+                logger.info("Data has shape=%r" % (shape,))
                 
                 #create a layer for each channel of the input:
                 slicer=OpMultiArraySlicer2(self.g)
@@ -807,7 +803,7 @@ class PixelClassificationGui(QMainWindow):
                             data=slicer.outputs['Slices'][ich][:].allocate().wait()
                             #find the minimum and maximum value for normalization
                             mm = (numpy.min(data), numpy.max(data))
-                        print "  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1])
+                        logger.info("  - channel %d: min=%r, max=%r" % (ich, mm[0], mm[1]))
                         minMax.append(mm)
                     else:
                         minMax.append(None)
@@ -820,13 +816,13 @@ class PixelClassificationGui(QMainWindow):
                 if nchannels == 1:
                     layer1 = GrayscaleLayer(srcs[0], normalize=minMax[0])
                     layer1.set_range(0,minMax[0])
-                    print "  - showing raw data as grayscale"
+                    logger.info("  - showing raw data as grayscale")
                 elif nchannels==2:
                     layer1 = RGBALayer(red  = srcs[0], normalizeR=minMax[0],
                                        green = srcs[1], normalizeG=minMax[1])
                     layer1.set_range(0, minMax[0])
                     layer1.set_range(1, minMax[1])
-                    print "  - showing channel 1 as red, channel 2 as green"
+                    logger.info("  - showing channel 1 as red, channel 2 as green")
                 elif nchannels==3:
                     layer1 = RGBALayer(red   = srcs[0], normalizeR=minMax[0],
                                        green = srcs[1], normalizeG=minMax[1],
@@ -834,11 +830,10 @@ class PixelClassificationGui(QMainWindow):
                     layer1.set_range(0, minMax[0])
                     layer1.set_range(1, minMax[1])
                     layer1.set_range(2, minMax[2])
-                    print "  - showing channel 1 as red, channel 2 as green, channel 3 as blue"
+                    logger.info("  - showing channel 1 as red, channel 2 as green, channel 3 as blue")
                 else:
-                    print "only 1,2 or 3 channels supported so far"
+                    logger.error("only 1,2 or 3 channels supported so far")
                     return
-                print
                 
                 layer1.name = "Input data"
                 layer1.ref_object = None
