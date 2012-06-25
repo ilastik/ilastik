@@ -36,15 +36,15 @@ class OpPixelClassification( Operator ):
         
         # Create internal operators
         # Explicitly wrapped:
-        self.opInputShapeReader = OperatorWrapper( OpShapeReader(self.graph) )
-        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray( self.graph ) )
-        self.predict = OperatorWrapper( OpPredictRandomForest( self.graph ) )
-        self.prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache( self.graph ) )
+        self.opInputShapeReader = OperatorWrapper( OpShapeReader(graph=self.graph) )
+        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray( graph=self.graph ) )
+        self.predict = OperatorWrapper( OpPredictRandomForest( graph=self.graph ) )
+        self.prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
         self.prediction_cache.Input.resize(0)
 
         # NOT wrapped
         self.opMaxLabel = OpMaxValue(graph=self.graph)
-        self.opTrain = OpTrainRandomForestBlocked( self.graph )
+        self.opTrain = OpTrainRandomForestBlocked( graph=self.graph )
 
         # Set up label cache shape input
         self.opInputShapeReader.Input.connect( self.InputImages )
@@ -74,7 +74,7 @@ class OpPixelClassification( Operator ):
         self.opTrain.inputs['fixClassifier'].setValue(False)
 
         # The classifier is cached here to allow serializers to force in a pre-calculated classifier...
-        self.classifier_cache = OpValueCache( self.graph )
+        self.classifier_cache = OpValueCache( graph=self.graph )
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
         ##

@@ -17,7 +17,7 @@ class FeatureSelectionApplet( Applet ):
 
         # Top-level operator is wrapped to support multiple images.
         # Note that the only promoted input slot is the image.  All other inputs are shared among all inner operators.        
-        self._topLevelOperator = OperatorWrapper( OpFeatureSelection(graph), promotedSlotNames=set(['InputImage']) )
+        self._topLevelOperator = OperatorWrapper( OpFeatureSelection(graph=graph), promotedSlotNames=set(['InputImage']) )
 
         self._serializableItems = [ FeatureSelectionSerializer(self._topLevelOperator, projectFileGroupName),
                                     Ilastik05FeatureSelectionDeserializer(self._topLevelOperator) ]
