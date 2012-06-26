@@ -183,16 +183,19 @@ class OpValueCache(Operator):
         super(OpValueCache, self).__init__(*args, **kwargs)
         self._dirty = False
         self._value = None
+        self._lock = threading.Lock()
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
         self._dirty = True
     
     def execute(self, slot, roi, result):
-        if self._dirty:
-            self._value = self.Input.value
-            self._dirty = False
-        result[...] = self._value
+        # Optimization: We don't let more than one caller trigger the value to be computed at the same time
+        with self._lock:
+            if self._dirty:
+                self._value = self.Input.value
+                self._dirty = False
+            result[...] = self._value
 
     def propagateDirty(self, islot, roi):
         self._dirty = True
