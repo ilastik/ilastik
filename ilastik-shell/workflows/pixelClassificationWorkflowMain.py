@@ -18,8 +18,8 @@ from applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector, OpMetadataInjector
 
-import ilastik_logging_config
-ilastik_logging_config.init_default_config()
+import ilastik_logging
+ilastik_logging.startUpdateInterval(10)
 
 app = QApplication([])
 

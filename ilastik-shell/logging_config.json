@@ -1,0 +1,20 @@
+{
+	"version" : 1,
+	"incremental" : true,
+	"root": { "level": "DEBUG", "handlers": ["console", "console_warn"] },	
+    "loggers": {
+        "lazyflow": 							{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false },
+        "lazyflow.graph": 						{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false },
+		"lazyflow.graph.Slot": 					{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false },
+        "lazyflow.operators": 					{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false },
+        "volumina": 							{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false },
+        "applets": 								{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false },
+        "TRACE": 								{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false },
+        "TRACE.lazyflow.graph.Slot": 			{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false },
+        "TRACE.lazyflow.graph.Operator": 		{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false },
+        "TRACE.lazyflow.graph.OperatorWrapper":	{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false },
+        "TRACE.lazyflow.operators":		 		{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false },
+        "TRACE.applets": 						{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false },
+        "TRACE.volumina": 						{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": false }
+    }
+}

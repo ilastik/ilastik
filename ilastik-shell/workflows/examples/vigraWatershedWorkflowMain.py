@@ -6,7 +6,7 @@ from ilastikshell import IlastikShell, SideSplitterSizePolicy
 from applets.dataSelection import DataSelectionApplet
 from applets.vigraWatershedViewer import VigraWatershedViewerApplet
 
-import ilastik_logging_config
+import ilastik_logging
 
 def createShell():
     # This Graph is shared by all applets and operators
@@ -27,13 +27,11 @@ def createShell():
     # The shell populates his "current view" image list combo using a slot of image names from the data selection applet.    
     shell.setImageNameListSlot( dataSelectionApplet.topLevelOperator.ImageName )
 
-    return shell    
+    return shell
 
 if __name__ == "__main__":
-    
-    # Initialize logging
-    ilastik_logging_config.init_logging()
-    
+        
+    ilastik_logging.startUpdateInterval(10)
     app = QApplication([])
     
     # Splash Screen
