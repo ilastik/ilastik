@@ -905,9 +905,10 @@ class Slot(object):
         for p in self._subSlots:
             p._setReady()        
 
-        self.meta._ready = True
+        self.meta._ready = (self.level == 0) or (len(self._subSlots) > 0)
         
-        if not wasReady:
+        # If we just became ready...
+        if not wasReady and self.meta._ready:
             # Notify partners of changed readystatus
             self._changed()
             self._sig_ready(self)
