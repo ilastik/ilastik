@@ -17,6 +17,8 @@ import utility # This is the ilastik shell utility module
 import numpy
 from utility import bind
 
+from volumina.adaptors import Op5ifyer
+
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -248,7 +250,14 @@ class LayerViewerGui(QMainWindow):
             for provider in self.dataProviderSlots:
                 for i, slot in enumerate(provider[self.imageIndex]):
                     if newDataShape is None and slot.ready():
-                        newDataShape = slot.meta.shape
+                        # Use an Op5ifyer adapter to transpose the shape for us.
+                        op5 = Op5ifyer( graph=slot.graph )
+                        op5.input.connect( slot )
+                        newDataShape = op5.output.meta.shape
+
+                        # We just needed the operator to determine the transposed shape.
+                        # Disconnect it so it can be garbage collected.
+                        op5.input.disconnect()
             if newDataShape is not None and self.editor.dataShape != newDataShape:
                 self.editor.dataShape = newDataShape
     
