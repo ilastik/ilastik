@@ -105,7 +105,7 @@ class FeatureSelectionGui(QMainWindow):
             def handleOutputInsertion(slot, index):
                 slot[index].notifyDirty( bind(self.updateAllLayers) )
     
-            self.mainOperator.CachedOutputImage.notifyInserted( bind(handleOutputInsertion) )
+            self.mainOperator.OutputImage.notifyInserted( bind(handleOutputInsertion) )
 
     def initAppletDrawerUic(self):
         """
@@ -321,7 +321,7 @@ class FeatureSelectionGui(QMainWindow):
     
             # Now add a layer for each feature
             # TODO: This assumes the channel is the last axis 
-            numFeatureChannels = self.mainOperator.CachedOutputImage[self.currentImageIndex].meta.shape[-1]
+            numFeatureChannels = self.mainOperator.OutputImage[self.currentImageIndex].meta.shape[-1]
             for featureChannelIndex in range(0, numFeatureChannels):
                 if featureChannelIndex < len(self.DefaultColorTable):
                     # Choose the next color from our default color table
@@ -340,7 +340,7 @@ class FeatureSelectionGui(QMainWindow):
         with Tracer(traceLogger):
             # Create an operator to select the channel (feature) we're interested in
             selector=OpSingleChannelSelector(self.mainOperator.graph)
-            selector.Input.connect(self.mainOperator.CachedOutputImage[self.currentImageIndex])
+            selector.Input.connect(self.mainOperator.OutputImage[self.currentImageIndex])
             selector.Index.setValue(featureChannelIndex)
             
             # Determine the name for this feature
