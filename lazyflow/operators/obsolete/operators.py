@@ -242,20 +242,25 @@ class OpArrayCache(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("blockShape", value = 64), InputSlot("fixAtCurrent", value = False)]
     outputSlots = [OutputSlot("Output")]
 
+    loggingName = __name__ + ".OpArrayCache"
+    logger = logging.getLogger(loggingName)
+    traceLogger = logging.getLogger("TRACE." + loggingName)
+
     def __init__(self, *args, **kwargs):
-        super( OpArrayPiper, self ).__init__(*args, **kwargs)
-        self._origBlockShape = 64
-        self._blockShape = None
-        self._dirtyShape = None
-        self._blockState = None
-        self._dirtyState = None
-        self._fixed = False
-        self._cache = None
-        self._lock = Lock()
-        self._cacheLock = request.Lock()#greencall.Lock()
-        self._lazyAlloc = True
-        self._cacheHits = 0
-        self.graph._registerCache(self)
+        with Tracer(self.traceLogger):
+            super( OpArrayPiper, self ).__init__(*args, **kwargs)
+            self._origBlockShape = 64
+            self._blockShape = None
+            self._dirtyShape = None
+            self._blockState = None
+            self._dirtyState = None
+            self._fixed = False
+            self._cache = None
+            self._lock = Lock()
+            self._cacheLock = request.Lock()#greencall.Lock()
+            self._lazyAlloc = True
+            self._cacheHits = 0
+            self.graph._registerCache(self)
 
     def _memorySize(self):
         if self._cache is not None:
@@ -264,101 +269,105 @@ class OpArrayCache(OpArrayPiper):
             return 0
 
     def _freeMemory(self):
-        self._cacheLock.acquire()
-        freed  = self._memorySize()
-        if self._cache is not None:
-            fshape = self._cache.shape
-            try:
-                self._cache.resize((1,))
-            except ValueError:
-                freed = 0
-                if lazyflow.verboseMemory:
-                    print "WARN: OpArrayCache: freeing failed due to view references"
-            if freed > 0:
-                if lazyflow.verboseMemory:
-                    print "OpArrayCache: freed cache of shape", fshape
-
-                self._lock.acquire()
-                self._blockState[:] = 1
-                del self._cache
-                self._cache = None
-                self._lock.release()
-        self._cacheLock.release()
-        return freed
+        with Tracer(self.traceLogger):
+            self._cacheLock.acquire()
+            freed  = self._memorySize()
+            if self._cache is not None:
+                fshape = self._cache.shape
+                try:
+                    self._cache.resize((1,))
+                except ValueError:
+                    freed = 0
+                    if lazyflow.verboseMemory:
+                        self.logger.warn("OpArrayCache: freeing failed due to view references")
+                if freed > 0:
+                    if lazyflow.verboseMemory:
+                        self.logger.debug("OpArrayCache: freed cache of shape:{}".format(fshape))
+    
+                    self._lock.acquire()
+                    self._blockState[:] = 1
+                    del self._cache
+                    self._cache = None
+                    self._lock.release()
+            self._cacheLock.release()
+            return freed
 
     def _allocateManagementStructures(self):
-        if type(self._origBlockShape) != tuple:
-            self._blockShape = (self._origBlockShape,)*len(self.shape)
-        else:
-            self._blockShape = self._origBlockShape
-
-        self._blockShape = numpy.minimum(self._blockShape, self.shape)
-
-        self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
-
-        if lazyflow.verboseMemory:
-            print "Configured OpArrayCache with ", self.shape, self._blockShape, self._dirtyShape, self._origBlockShape
-
-        # if the entry in _dirtyArray differs from _dirtyState
-        # the entry is considered dirty
-        self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
-        self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
-
-        _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
-        _blockNumbers.shape = self._dirtyShape
-
-        _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
-        _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
-
-
-#        self._blockNumbers = _blockNumbers
-#        self._blockIndices = _blockIndices
-#
-                            #TODO: introduce constants for readability
-                            #0 is "in process"
-        self._blockState[:]= 1 #this is the dirty state
-        self._dirtyState = 2 #this is the clean state
-
-        # allocate queryArray object
-        self._flatBlockIndices =  _blockIndices[:]
-        self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
-#        for p in self._flatBlockIndices:
-#            self._blockQuery[p] = BlockQueue()
+        with Tracer(self.traceLogger):
+            if type(self._origBlockShape) != tuple:
+                self._blockShape = (self._origBlockShape,)*len(self.shape)
+            else:
+                self._blockShape = self._origBlockShape
+    
+            self._blockShape = numpy.minimum(self._blockShape, self.shape)
+    
+            self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+    
+            if lazyflow.verboseMemory:
+                self.logger.debug("Configured OpArrayCache with shape={}, blockShape={}, dirtyShape={}, origBlockShape={}".format(self.shape, self._blockShape, self._dirtyShape, self._origBlockShape))
+    
+            # if the entry in _dirtyArray differs from _dirtyState
+            # the entry is considered dirty
+            self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
+            self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+    
+            _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
+            _blockNumbers.shape = self._dirtyShape
+    
+            _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
+            _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
+    
+    
+    #        self._blockNumbers = _blockNumbers
+    #        self._blockIndices = _blockIndices
+    #
+                                #TODO: introduce constants for readability
+                                #0 is "in process"
+            self._blockState[:]= 1 #this is the dirty state
+            self._dirtyState = 2 #this is the clean state
+    
+            # allocate queryArray object
+            self._flatBlockIndices =  _blockIndices[:]
+            self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+    #        for p in self._flatBlockIndices:
+    #            self._blockQuery[p] = BlockQueue()
 
 
     def _allocateCache(self):
-        self._cacheLock.acquire()
-
-        if self._cache is None or (self._cache.shape != self.shape):
-            mem = numpy.ndarray(self.shape, dtype = self.dtype)
-            if lazyflow.verboseMemory:
-                print "OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes
-            self.graph._notifyMemoryAllocation(self, mem.nbytes)
-            if self._blockState is None:
-                self._allocateManagementStructures()
-            inputSlot = self.inputs["Input"]
-            self.graph._notifyFreeMemory(self._memorySize())
-            self._cache = mem
-        self._cacheLock.release()
+        with Tracer(self.traceLogger):
+            self._cacheLock.acquire()
+    
+            if self._cache is None or (self._cache.shape != self.shape):
+                mem = numpy.ndarray(self.shape, dtype = self.dtype)
+                if lazyflow.verboseMemory:
+                    self.logger.debug("OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes)
+                self.graph._notifyMemoryAllocation(self, mem.nbytes)
+                if self._blockState is None:
+                    self._allocateManagementStructures()
+                inputSlot = self.inputs["Input"]
+                self.graph._notifyFreeMemory(self._memorySize())
+                self._cache = mem
+            self._cacheLock.release()
 
     def setupOutputs(self):
-        reconfigure = False
-        if  self.inputs["fixAtCurrent"].ready():
-            self._fixed =  self.inputs["fixAtCurrent"].value
-
-        if self.inputs["blockShape"].ready() and self.inputs["Input"].ready():
-            newBShape = self.inputs["blockShape"].value
-            if self._origBlockShape != newBShape and self.inputs["Input"].ready():
-                reconfigure = True
-            self._origBlockShape = newBShape
-            OpArrayPiper.setupOutputs(self)
-
-        if reconfigure and self.shape is not None:
-            self._lock.acquire()
-            self._allocateManagementStructures()
-            if not self._lazyAlloc:
-                self._allocateCache()
-            self._lock.release()
+        with Tracer(self.traceLogger):
+            reconfigure = False
+            if  self.inputs["fixAtCurrent"].ready():
+                self._fixed =  self.inputs["fixAtCurrent"].value
+    
+            if self.inputs["blockShape"].ready() and self.inputs["Input"].ready():
+                newBShape = self.inputs["blockShape"].value
+                if self._origBlockShape != newBShape and self.inputs["Input"].ready():
+                    reconfigure = True
+                self._origBlockShape = newBShape
+                OpArrayPiper.setupOutputs(self)
+    
+            if reconfigure and self.shape is not None:
+                self._lock.acquire()
+                self._allocateManagementStructures()
+                if not self._lazyAlloc:
+                    self._allocateCache()
+                self._lock.release()
 
 
 
@@ -1034,7 +1043,7 @@ class OpBlockedArrayCache(Operator):
                     self._configured = True
 
     def execute(self, slot, roi, result):
-        with Tracer(self.traceLogger, msg='roi={}, result={}'.format(roi, result)):
+        with Tracer(self.traceLogger, msg='roi={}'.format(roi)):
             if not self._configured:
                 # this happends when the operator is not yet fully configured due to fixAtCurrent == True
                 result[:] = 0
@@ -1196,7 +1205,7 @@ class OpSlicedBlockedArrayCache(Operator):
             if slot == self.inputs["Input"] and not self._fixed:
                 self.outputs["Output"].setDirty(key)
             if slot == self.inputs["fixAtCurrent"]:
-                if  self.inputs["fixAtCurrent"].ready():
+                if self.inputs["fixAtCurrent"].ready():
                     self._fixed =  self.inputs["fixAtCurrent"].value
 
 
