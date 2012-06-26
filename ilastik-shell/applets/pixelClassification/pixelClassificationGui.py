@@ -69,16 +69,17 @@ class PixelClassificationGui(QMainWindow):
 
     def setImageIndex(self, imageIndex):
         with Tracer(traceLogger):
-            self.imageIndex = imageIndex
-            if self.imageIndex == -1:
-                self.layerstack.clear()
-            else:
-                self.subscribeToInputImageChanges()
-                self.handleGraphInputChanged()
-                self.pipeline.LabelsAllowedFlags[self.imageIndex].notifyDirty( bind( self.changeInteractionMode, Tool.Navigation ) )
-            
-            # Make sure the painting controls are hidden if necessary
-            self.changeInteractionMode(Tool.Navigation)
+            if self.imageIndex != imageIndex:
+                self.imageIndex = imageIndex
+                if self.imageIndex == -1:
+                    self.layerstack.clear()
+                else:
+                    self.subscribeToInputImageChanges()
+                    self.handleGraphInputChanged()
+                    self.pipeline.LabelsAllowedFlags[self.imageIndex].notifyDirty( bind( self.changeInteractionMode, Tool.Navigation ) )
+                
+                # Make sure the painting controls are hidden if necessary
+                self.changeInteractionMode(Tool.Navigation)
 
     ###########################################
     ###########################################
