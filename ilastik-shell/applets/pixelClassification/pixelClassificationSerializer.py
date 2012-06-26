@@ -7,6 +7,12 @@ from utility.dataImporter import DataImporter
 from ilastikshell.appletSerializer import AppletSerializer
 from utility import bind
 
+import logging
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger("TRACE." + __name__)
+
+from lazyflow.tracer import Tracer
+
 class Section():
     Labels = 0
     Classifier = 1
@@ -19,22 +25,23 @@ class PixelClassificationSerializer(AppletSerializer):
     SerializerVersion = 0.1
     
     def __init__(self, mainOperator, projectFileGroupName):
-        super( PixelClassificationSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
-        self.mainOperator = mainOperator
-        self._initDirtyFlags()
-
-        # Set up handlers for dirty detection
-        def handleDirty(section):
-            self._dirtyFlags[section] = True
-
-        self.mainOperator.Classifier.notifyDirty( bind(handleDirty, Section.Classifier) )
-
-        def handleNewImage(section, slot, index):
-            slot[index].notifyDirty( bind(handleDirty, section) )
-
-        # These are multi-slots, so subscribe to dirty callbacks on each of their subslots as they are created
-        self.mainOperator.LabelImages.notifyInserted( bind(handleNewImage, Section.Labels) )
-        self.mainOperator.PredictionProbabilities.notifyInserted( bind(handleNewImage, Section.Predictions) )
+        with Tracer(traceLogger):
+            super( PixelClassificationSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
+            self.mainOperator = mainOperator
+            self._initDirtyFlags()
+    
+            # Set up handlers for dirty detection
+            def handleDirty(section):
+                self._dirtyFlags[section] = True
+    
+            self.mainOperator.Classifier.notifyDirty( bind(handleDirty, Section.Classifier) )
+    
+            def handleNewImage(section, slot, index):
+                slot[index].notifyDirty( bind(handleDirty, section) )
+    
+            # These are multi-slots, so subscribe to dirty callbacks on each of their subslots as they are created
+            self.mainOperator.LabelImages.notifyInserted( bind(handleNewImage, Section.Labels) )
+            self.mainOperator.PredictionProbabilities.notifyInserted( bind(handleNewImage, Section.Predictions) )
     
     def _initDirtyFlags(self):
         self._dirtyFlags = { Section.Labels      : False,
@@ -42,130 +49,137 @@ class PixelClassificationSerializer(AppletSerializer):
                              Section.Predictions : False }
 
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
-        if self._dirtyFlags[Section.Labels]:
-            self._serializeLabels( topGroup )
-
-        if self._dirtyFlags[Section.Classifier]:
-            self._serializeClassifier( topGroup )
-
-        if self._dirtyFlags[Section.Predictions]:
-            self._serializePredictions( topGroup )
-
-        # Clear the dirty flags (project file is now in sync with the operator)
-        self._initDirtyFlags()
+        with Tracer(traceLogger):
+            if self._dirtyFlags[Section.Labels]:
+                self._serializeLabels( topGroup )
+    
+            if self._dirtyFlags[Section.Classifier]:
+                self._serializeClassifier( topGroup )
+    
+            if self._dirtyFlags[Section.Predictions]:
+                self._serializePredictions( topGroup )
+    
+            # Clear the dirty flags (project file is now in sync with the operator)
+            self._initDirtyFlags()
 
     def _serializeLabels(self, topGroup):
-        # Delete all labels from the file
-        self.deleteIfPresent(topGroup, 'LabelSets')
-        labelSetDir = topGroup.create_group('LabelSets')
-
-        numImages = len(self.mainOperator.NonzeroLabelBlocks)
-        for imageIndex in range(numImages):
-            # Create a group for this image
-            labelGroupName = 'labels{:03d}'.format(imageIndex)
-            labelGroup = labelSetDir.create_group(labelGroupName)
-            
-            # Get a list of slicings that contain labels
-            nonZeroBlocks = self.mainOperator.NonzeroLabelBlocks[imageIndex].value
-            for blockIndex, slicing in enumerate(nonZeroBlocks):
-                # Read the block from the label output
-                block = self.mainOperator.LabelImages[imageIndex][slicing].wait()
+        with Tracer(traceLogger):
+            # Delete all labels from the file
+            self.deleteIfPresent(topGroup, 'LabelSets')
+            labelSetDir = topGroup.create_group('LabelSets')
+    
+            numImages = len(self.mainOperator.NonzeroLabelBlocks)
+            for imageIndex in range(numImages):
+                # Create a group for this image
+                labelGroupName = 'labels{:03d}'.format(imageIndex)
+                labelGroup = labelSetDir.create_group(labelGroupName)
                 
-                # Store the block as a new dataset
-                blockName = 'block{:04d}'.format(blockIndex)
-                labelGroup.create_dataset(blockName, data=block)
-                
-                # Add the slice this block came from as an attribute of the dataset
-                labelGroup[blockName].attrs['blockSlice'] = self.slicingToString(slicing)
-
-        self._dirtyFlags[Section.Labels] = False
+                # Get a list of slicings that contain labels
+                nonZeroBlocks = self.mainOperator.NonzeroLabelBlocks[imageIndex].value
+                for blockIndex, slicing in enumerate(nonZeroBlocks):
+                    # Read the block from the label output
+                    block = self.mainOperator.LabelImages[imageIndex][slicing].wait()
+                    
+                    # Store the block as a new dataset
+                    blockName = 'block{:04d}'.format(blockIndex)
+                    labelGroup.create_dataset(blockName, data=block)
+                    
+                    # Add the slice this block came from as an attribute of the dataset
+                    labelGroup[blockName].attrs['blockSlice'] = self.slicingToString(slicing)
+    
+            self._dirtyFlags[Section.Labels] = False
 
     def _serializeClassifier(self, topGroup):
-        self.deleteIfPresent(topGroup, 'Classifier')
-
-        if not self.mainOperator.Classifier.ready():
-            return
-
-        classifier = self.mainOperator.Classifier.value
-        
-        # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
-        # Instead, we'll use vigra to write the classifier to a temporary file.
-        tmpDir = tempfile.mkdtemp()
-        cachePath = tmpDir + '/classifier_cache.h5'
-        classifier.writeHDF5(cachePath, 'Classifier')
-        
-        # Open the temp file and copy to our project group
-        cacheFile = h5py.File(cachePath, 'r')
-        topGroup.copy(cacheFile['Classifier'], 'Classifier')
-        
-        cacheFile.close()
-        os.remove(cachePath)
-        os.removedirs(tmpDir)
-        self._dirtyFlags[Section.Classifier] = False
+        with Tracer(traceLogger):
+            self.deleteIfPresent(topGroup, 'Classifier')
+    
+            if not self.mainOperator.Classifier.ready():
+                return
+    
+            classifier = self.mainOperator.Classifier.value
+            
+            # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
+            # Instead, we'll use vigra to write the classifier to a temporary file.
+            tmpDir = tempfile.mkdtemp()
+            cachePath = tmpDir + '/classifier_cache.h5'
+            classifier.writeHDF5(cachePath, 'Classifier')
+            
+            # Open the temp file and copy to our project group
+            cacheFile = h5py.File(cachePath, 'r')
+            topGroup.copy(cacheFile['Classifier'], 'Classifier')
+            
+            cacheFile.close()
+            os.remove(cachePath)
+            os.removedirs(tmpDir)
+            self._dirtyFlags[Section.Classifier] = False
 
     def _serializePredictions(self, topGroup):
-        self.deleteIfPresent(topGroup, 'Predictions')
-        predictionDir = topGroup.create_group('Predictions')
-        
-        numImages = len(self.mainOperator.PredictionProbabilities)
-        for imageIndex in range(numImages):
-            datasetName = 'predictions{:04d}'.format(imageIndex)
-            # TODO: Optimize this for large datasets by streaming it in chunks
-            #       ... and combine that with a progress signal
-            predictionDir.create_dataset( datasetName, data=self.mainOperator.PredictionProbabilities[imageIndex][...].wait() )
-
-        self._dirtyFlags[Section.Predictions] = False
+        with Tracer(traceLogger):
+            self.deleteIfPresent(topGroup, 'Predictions')
+            predictionDir = topGroup.create_group('Predictions')
+            
+            numImages = len(self.mainOperator.PredictionProbabilities)
+            for imageIndex in range(numImages):
+                datasetName = 'predictions{:04d}'.format(imageIndex)
+                # TODO: Optimize this for large datasets by streaming it in chunks
+                #       ... and combine that with a progress signal
+                predictionDir.create_dataset( datasetName, data=self.mainOperator.PredictionProbabilities[imageIndex][...].wait() )
+    
+            self._dirtyFlags[Section.Predictions] = False
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
-        if topGroup is None:
-            return
-        
-        self._deserializeLabels( topGroup )
-        self._deserializeClassifier( topGroup )
+        with Tracer(traceLogger):
+            if topGroup is None:
+                return
+            
+            self._deserializeLabels( topGroup )
+            self._deserializeClassifier( topGroup )
 
     def _deserializeLabels(self, topGroup):
-        labelSetGroup = topGroup['LabelSets']
-        numImages = len(labelSetGroup)
-        self.mainOperator.LabelInputs.resize(numImages)
-
-        # For each image in the file
-        for index, (groupName, labelGroup) in enumerate( sorted(labelSetGroup.items()) ):
-            # For each block of label data in the file
-            for blockData in labelGroup.values():
-                # The location of this label data block within the image is stored as an hdf5 attribute
-                slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
-                # Slice in this data to the label input
-                self.mainOperator.LabelInputs[index][slicing] = blockData[...]
-
-        self._dirtyFlags[Section.Labels] = False
+        with Tracer(traceLogger):
+            labelSetGroup = topGroup['LabelSets']
+            numImages = len(labelSetGroup)
+            self.mainOperator.LabelInputs.resize(numImages)
+    
+            # For each image in the file
+            for index, (groupName, labelGroup) in enumerate( sorted(labelSetGroup.items()) ):
+                # For each block of label data in the file
+                for blockData in labelGroup.values():
+                    # The location of this label data block within the image is stored as an hdf5 attribute
+                    slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
+                    # Slice in this data to the label input
+                    self.mainOperator.LabelInputs[index][slicing] = blockData[...]
+    
+            self._dirtyFlags[Section.Labels] = False
 
     def _deserializeClassifier(self, topGroup):
-        if topGroup is None:
-            return
+        with Tracer(traceLogger):
+            if topGroup is None:
+                return
+            
+            try:
+                classifierGroup = topGroup['Classifier']
+            except KeyError:
+                pass
+            else:
+                # Due to non-shared hdf5 dlls, vigra can't read directly from our open hdf5 group.
+                # Instead, we'll copy the classfier data to a temporary file and give it to vigra.
+                tmpDir = tempfile.mkdtemp()
+                cachePath = tmpDir + '/classifier_cache.h5'
+                cacheFile = h5py.File(cachePath, 'w')
+                cacheFile.copy(classifierGroup, 'Classifier')
+                cacheFile.close()
         
-        try:
-            classifierGroup = topGroup['Classifier']
-        except KeyError:
-            return
-        
-        # Due to non-shared hdf5 dlls, vigra can't read directly from our open hdf5 group.
-        # Instead, we'll copy the classfier data to a temporary file and give it to vigra.
-        tmpDir = tempfile.mkdtemp()
-        cachePath = tmpDir + '/classifier_cache.h5'
-        cacheFile = h5py.File(cachePath, 'w')
-        cacheFile.copy(classifierGroup, 'Classifier')
-        cacheFile.close()
-
-        classifier = vigra.learning.RandomForest(cachePath, 'Classifier')
-        os.remove(cachePath)
-        os.removedirs(tmpDir)
-        
-        # Now force the classifier into our classifier cache.
-        # The downstream operators (e.g. the prediction operator) can use the classifier without inducing it to be re-trained.
-        # (This assumes that the classifier we are loading is consistent with the images and labels that we just loaded.
-        #  As soon as training input changes, it will be retrained.)
-        self.mainOperator.classifier_cache.forceValue( classifier )
-        self._dirtyFlags[Section.Classifier] = False
+                classifier = vigra.learning.RandomForest(cachePath, 'Classifier')
+                os.remove(cachePath)
+                os.removedirs(tmpDir)
+                
+                # Now force the classifier into our classifier cache.
+                # The downstream operators (e.g. the prediction operator) can use the classifier without inducing it to be re-trained.
+                # (This assumes that the classifier we are loading is consistent with the images and labels that we just loaded.
+                #  As soon as training input changes, it will be retrained.)
+                self.mainOperator.classifier_cache.forceValue( classifier )
+            self._dirtyFlags[Section.Classifier] = False
 
     def slicingToString(self, slicing):
         """
@@ -214,6 +228,7 @@ class PixelClassificationSerializer(AppletSerializer):
             (e.g. not all items could be deserialized properly due to a corrupted ilp)
         This way we can avoid invalid state due to a partially loaded project. """ 
         self.mainOperator.LabelInputs.resize(0)
+        self.mainOperator.classifier_cache.Input.setDirty(slice(None))
 
 class Ilastik05ImportDeserializer(AppletSerializer):
     """
