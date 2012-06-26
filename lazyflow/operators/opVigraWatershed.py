@@ -4,10 +4,9 @@ import numpy
 import vigra
 import logging
 
+logger = logging.getLogger(__name__)
+
 class OpVigraWatershed(Operator):
-
-    logger = logging.getLogger(__name__)
-
     """
     Operator wrapper for vigra's default watershed function.
     """
@@ -62,22 +61,24 @@ class OpVigraWatershed(Operator):
 
             # Reduce to 3-D (keep order of xyz axes)
             inputRegion = inputRegion.withAxes( *[tag.key for tag in tags if tag.key in 'xyz'] )
-            self.logger.debug( 'inputRegion 3D shape:{}'.format(inputRegion.shape) )
+            logger.debug( 'inputRegion 3D shape:{}'.format(inputRegion.shape) )
             
-            self.logger.debug( "roi={}".format(roi) )
-            self.logger.debug( "paddedSlices={}".format(paddedSlices) )
-            self.logger.debug( "outputSlices={}".format(outputSlices) )
+            logger.debug( "roi={}".format(roi) )
+            logger.debug( "paddedSlices={}".format(paddedSlices) )
+            logger.debug( "outputSlices={}".format(outputSlices) )
             
             # This is where the magic happens
+            logger.info( "Computing Watershed of block {}, dtype={}".format(paddedSlices, inputRegion.dtype) )
             watershed, maxLabel = vigra.analysis.watersheds(inputRegion)
+            logger.info( "Finished Watershed" )
             
-            self.logger.debug( "watershed 3D output shape={}".format(watershed.shape) )
-            self.logger.debug( "maxLabel={}".format(maxLabel) )
+            logger.debug( "watershed 3D output shape={}".format(watershed.shape) )
+            logger.debug( "maxLabel={}".format(maxLabel) )
 
             # Promote back to 5-D
             watershed = watershed.withAxes( *[tag.key for tag in tags] )
-            self.logger.debug( "watershed 5D shape: {}".format(watershed.shape) )
-            self.logger.debug( "watershed axistags: {}".format(watershed.axistags) )
+            logger.debug( "watershed 5D shape: {}".format(watershed.shape) )
+            logger.debug( "watershed axistags: {}".format(watershed.axistags) )
             
             #print numpy.unique(watershed[outputSlices]).shape
             # Return only the region the user requested
