@@ -36,6 +36,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
         with Tracer(traceLogger):
             super(VigraWatershedViewerGui, self).__init__([mainOperator])
             self.mainOperator = mainOperator
+            self.mainOperator.FreezeCache.setValue(True)
             #self.mainOperator.PaddingWidth.setValue(10)
         
             self._colortable = []
@@ -88,6 +89,14 @@ class VigraWatershedViewerGui(LayerViewerGui):
             while len(self._colortable) < minLength:
                 self._colortable += [ QColor(randChannel(), randChannel(), randChannel()).rgba() ]
             return self._colortable
+
+    def showEvent(self, e):
+        # Update while we're visible
+        self.mainOperator.FreezeCache.setValue(False)
+
+    def hideEvent(self, e):
+        # Don't update while we're not visible
+        self.mainOperator.FreezeCache.setValue(True)
 
 
 

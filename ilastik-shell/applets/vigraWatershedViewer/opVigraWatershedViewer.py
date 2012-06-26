@@ -15,6 +15,7 @@ class OpVigraWatershedViewer(Operator):
     category = "top-level"
     
     InputImage = InputSlot()
+    FreezeCache = InputSlot()
     Output = OutputSlot()
     
     def __init__(self, *args, **kwargs):
@@ -29,6 +30,7 @@ class OpVigraWatershedViewer(Operator):
 
         # Inner and outer block shapes are the same.
         # We're using this cache for the "sliced" property, not the "blocked" property.
+        self.opWatershedCache.fixAtCurrent.connect( self.FreezeCache )
         self.opWatershedCache.innerBlockShape.setValue( ((1,256,256,1,1),(1,256,1,256,1),(1,1,256,256,1)) )
         self.opWatershedCache.outerBlockShape.setValue( ((1,256,256,1,1),(1,256,1,256,1),(1,1,256,256,1)) )
         self.opWatershedCache.Input.connect(self.opWatershed.Output)
@@ -40,7 +42,8 @@ class OpVigraWatershedViewer(Operator):
     def setupOutputs(self):
         # Can't make this last connection in __init__ because 
         #  opChannelSelector.Slices won't have any data until its input is ready 
-        self.opWatershed.InputImage.connect(self.opChannelSelector.Slices[0])
+        if len(self.opChannelSelector.Slices) > 0:
+            self.opWatershed.InputImage.connect(self.opChannelSelector.Slices[0])
 
 if __name__ == "__main__":
     import lazyflow
