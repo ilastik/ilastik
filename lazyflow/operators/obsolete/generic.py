@@ -143,20 +143,18 @@ class OpMultiArraySlicer2(Operator):
     name = "Multi Array Slicer"
     category = "Misc"
 
-    def notifyConnectAll(self):
-
-        dtype=self.inputs["Input"].dtype
+    def setupOutputs(self):
+        dtype=self.inputs["Input"].meta.dtype
         flag=self.inputs["AxisFlag"].value
 
-        indexAxis=self.inputs["Input"].axistags.index(flag)
-        outshape=list(self.inputs["Input"].shape)
+        indexAxis=self.inputs["Input"].meta.axistags.index(flag)
+        outshape=list(self.inputs["Input"].meta.shape)
         n=outshape.pop(indexAxis)
-
 
         outshape.insert(indexAxis, 1)
         outshape=tuple(outshape)
 
-        outaxistags=copy.copy(self.inputs["Input"].axistags)
+        outaxistags=copy.copy(self.inputs["Input"].meta.axistags)
 
         #del outaxistags[flag]
 
@@ -168,6 +166,14 @@ class OpMultiArraySlicer2(Operator):
             o.meta.assignFrom( self.Input.meta )
             o.meta.axistags = outaxistags
             o.meta.shape = outshape
+
+        # If our input slot changes shape, we need to set up again        
+        self.Input.notifyMetaChanged(self.handleInputMetaChanged)
+        
+    def handleInputMetaChanged(self, *args):
+        # Note that we're calling the underscore version here so that changes are propagated to our partners
+        # FIXME: There should be a more straightforward way of doing this...
+        self._setupOutputs()
 
     def getSubOutSlot(self, slots, indexes, key, result):
 
