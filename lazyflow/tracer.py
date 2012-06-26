@@ -27,8 +27,7 @@ class Tracer(object):
         if self._logger.isEnabledFor( self._level ):
             stack = inspect.stack()
             self._caller = stack[1][3]
-            stackDepth = len(stack) - 1
-            self._logger.log(self._level, '({})'.format(stackDepth) + self._caller + ' ' + self._msg)
+            self._logger.log(self._level, self._caller + ' ' + self._msg)
 
     def __exit__(self, *args):
         if self._logger.isEnabledFor( self._level ):
