@@ -1666,7 +1666,7 @@ class Operator(object):
     def setInSlot(self, slot, key, value):
         pass
 
-    def setSubInSlot(self,slots,indexes, key,value):
+    def setSubInSlot(self,multislot,slot,index, key,value):
         pass
 
 
