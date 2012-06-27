@@ -177,13 +177,13 @@ class IONode(Node):
 
         self.valNode = None
 
-        if isinstance(self.ob, InputSlot):
+        if isinstance(self.ob, InputSlot) and self.ob.level == 0:
             self.obtype = "InputSlot"
-        elif isinstance(self.ob, MultiInputSlot):
+        elif isinstance(self.ob, InputSlot):
             self.obtype = "MultiInputSlot"
-        elif isinstance(self.ob, OutputSlot):
+        elif isinstance(self.ob, OutputSlot) and self.ob.level == 0:
             self.obtype = "OutputSlot"
-        elif isinstance(self.ob, MultiOutputSlot):
+        elif isinstance(self.ob, OutputSlot):
             self.obtype = "MultiOutputSlot"
 
         self._writeInfo()
@@ -218,7 +218,7 @@ class IONode(Node):
                     self.partners.append(nNode)
                     self.addNext(nNode)
                 else:
-                    if isinstance(partner, (InputSlot, MultiInputSlot, OutputSlot, MultiOutputSlot)):
+                    if isinstance(partner, (InputSlot, OutputSlot)):
                         nNode = IONode(self.tree,partner)
                         self.tree.addNode(nNode)
                         self.partners.append(nNode)
@@ -238,7 +238,7 @@ class IONode(Node):
                 self.partners.append(nNode)
                 self.addNext(nNode)
             else:
-                if isinstance(self.ob.partner, (InputSlot, MultiInputSlot, OutputSlot, MultiOutputSlot)):
+                if isinstance(self.ob.partner, (InputSlot, OutputSlot)):
                     nNode = IONode(self.tree,self.ob.partner)
                     self.tree.addNode(nNode)
                     self.partners.append(nNode)

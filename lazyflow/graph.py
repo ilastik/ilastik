@@ -487,7 +487,7 @@ class Slot(object):
                     self._sig_connect(self)
     
                 elif partner.level > self.level:
-                    if not isinstance(partner, (InputSlot, MultiInputSlot)):
+                    if not isinstance(partner, (InputSlot)):
                         try:
                             partner.partners.remove(self)
                         except ValueError:
@@ -530,7 +530,7 @@ class Slot(object):
             if oldReady:
                 self._sig_unready(self)
             
-            if self.operator is not None and isinstance(self, (InputSlot, MultiInputSlot)):
+            if self.operator is not None and isinstance(self, InputSlot):
                 # TODO: Only the OperatorWrapper uses this.
                 #       It should be done with the notifyDisconnect callback, not a special function!
                 self.operator.onDisconnect(self)
@@ -771,7 +771,19 @@ class Slot(object):
                 self._value[key] = value
                 self.setDirty(roi) # only propagate the dirty key at the very beginning of the chain
             self.operator.setInSlot(self,key,value)
+            # Forward to partners
+            for p in self.partners:
+                p[key] = value
 
+    def setInSlot(self, slot, key, value):
+        """
+        For now, Slots of level > 0 pretend to be operators (as far as their subslots are concerned).
+        That's why they have to have this setInSlot() method.
+        """
+        # Determine which subslot this is
+        index = self._subSlots.index(slot)
+        # Forward the call to our operator using setSubInSlot
+        self.operator.setSubInSlot(self, slot, index, key, value)
 
     def __len__(self):
         """
@@ -1127,8 +1139,8 @@ class InputSlot(Slot):
     """
 
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False, level = 0):
-        self._type = "input"
         super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
+        self._type = "input"
         # configure operator in case of slot change
         self.notifyResized(self._configureOperator)
 
@@ -1150,96 +1162,50 @@ class OutputSlot(Slot):
 
 
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
-        self._type = "output"
         super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = 0)
-        self._metaParent = operator
-        self.operator = operator
-
-        self._dirtyCallbacks = []
-
-
-    def disconnect(self):
-        pass
-
-    def registerDirtyCallback(self, function, **kwargs):
-        self.notifyDirty(function, **kwargs)
-
-    def unregisterDirtyCallback(self, function):
-        self.unregisterDirty(function)
-
-    def __setitem__(self, key, value):
-        for p in self.partners:
-            p[key] = value
-
-
-
-class MultiInputSlot(Slot):
-    """
-    The MultiInputSlot is a multidimensional InputSlot.
-
-    it contains nested lists of InputSlot objects.
-    """
-
-    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None, optional = False):
-        self._type = "input"
-        self.partner = None
-        self._subSlots = []
-        self.inputs = {}
-        super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
-        # configure operator in case of slot change
-        self.notifyResized(self._configureOperator)
-
-    def setInSlot(self, slot, key, value):
-        # Determine which subslot this is
-        index = self._subSlots.index(slot)
-        # Forward the call to our operator using setSubInSlot
-        self.operator.setSubInSlot(self, slot, index, key, value)
-
-class MultiOutputSlot(Slot):
-    """
-    The MultiOutputSlot is a multidimensional OutputSlot.
-
-    it contains nested lists of OutputSlot objects.
-    """
-
-
-    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, optional = False, value = None):
         self._type = "output"
-        super(MultiOutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
-        self._metaParent = operator
 
+    def getOutSlot(self, slot, key, result):
+        """
+        For now, OutputSlots with level > 0 must pretend to be operators.  That's why this function is here.
+        """
+        index = self._subSlots.index(slot)
+        return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
 
-    def disconnect(self):
-        slots = self[:]
-        for s in slots:
-            s.disconnect()
-
-
-
+    def getSubOutSlot(self, slots, indexes, key, result):
+        """
+        For now, OutputSlots with level > 0 must pretend to be operators.  That's why this function is here.
+        """
+        try:
+            index = self._subSlots.index(slots[0])
+        except:
+            raise RuntimeError("OutputSlot.getSubOutSlot: name=%r, operator.name=%r, slots=%r" % \
+                               (self.name, self.operator.name, self.operator, slots))
+        return self.operator.getSubOutSlot((self,) + slots, (index,) + indexes, key, result)
+ 
     def execute(self,slot,roi,result):
+        """
+        For now, OutputSlots with level > 0 must pretend to be operators.  That's why this function is here.
+        """
         index = self._subSlots.index(slot)
         #TODO: remove this special case  once all operators are ported
         key = roiToSlice(roi.start,roi.stop)
         return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
 
+class MultiInputSlot(InputSlot):
+    """
+    MultiInputSlots are the same as InputSlots, but they default to level=1
+    """
 
-    def getOutSlot(self, slot, key, result):
-        index = self._subSlots.index(slot)
-        return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
+    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None, optional = False):
+        super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
 
-    def getSubOutSlot(self, slots, indexes, key, result):
-        try:
-            index = self._subSlots.index(slots[0])
-        except:
-            raise RuntimeError("MultiOutputSlot.getSubOutSlot: name=%r, operator.name=%r, slots=%r" % \
-                               (self.name, self.operator.name, self.operator, slots))
-        return self.operator.getSubOutSlot((self,) + slots, (index,) + indexes, key, result)
-
-    @property
-    def graph(self):
-        return self.operator.graph
-
-
+class MultiOutputSlot(OutputSlot):
+    """
+    MultiOutputSlots are the same as InputSlots, but they default to level=1
+    """
+    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, optional = False, value = None):
+        super(MultiOutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
 
 class InputDict(dict):
 
@@ -1248,7 +1214,7 @@ class InputDict(dict):
 
 
     def __setitem__(self, key, value):
-        assert isinstance(value, (InputSlot, MultiInputSlot)), "ERROR: all elements of .inputs must be of type InputSlot or MultiInputSlot, you provided %r !" % (value,)
+        assert isinstance(value, InputSlot), "ERROR: all elements of .inputs must be of type InputSlot or MultiInputSlot, you provided %r !" % (value,)
         return dict.__setitem__(self, key, value)
     def __getitem__(self, key):
         if self.has_key(key):
@@ -1267,7 +1233,7 @@ class OutputDict(dict):
 
 
     def __setitem__(self, key, value):
-        assert isinstance(value, (OutputSlot, MultiOutputSlot)), "ERROR: all elements of .outputs must be of type OutputSlot or MultiOutputSlot, you provided %r !" % (value,)
+        assert isinstance(value, OutputSlot), "ERROR: all elements of .outputs must be of type OutputSlot or MultiOutputSlot, you provided %r !" % (value,)
         return dict.__setitem__(self, key, value)
     def __getitem__(self, key):
         if self.has_key(key):
@@ -1287,11 +1253,11 @@ class OperatorMetaClass(type):
         setattr(cls,"outputSlots", list(cls.outputSlots))
 
         for k,v in cls.__dict__.items():
-            if isinstance(v,(InputSlot, MultiInputSlot)):
+            if isinstance(v,InputSlot, ):
                 v.name = k
                 cls.inputSlots.append(v)
 
-            if isinstance(v,(OutputSlot, MultiOutputSlot)):
+            if isinstance(v,OutputSlot):
                 v.name = k
                 cls.outputSlots.append(v)
         return cls
@@ -1775,7 +1741,8 @@ class OperatorWrapper(Operator):
                 self.inputs[islot.name] = ii
                 setattr(self,islot.name,ii)
                 op = self.operator
-                while isinstance(op.operator, (Operator, MultiInputSlot)):
+                while isinstance(op.operator, Operator) \
+                      or (isinstance(op.operator, InputSlot) and op.level > 0):
                     op = op.operator
                 op.inputs[islot.name] = ii
                 setattr(op,islot.name,ii)
@@ -1787,7 +1754,8 @@ class OperatorWrapper(Operator):
                 self.outputs[oslot.name] = oo
                 setattr(self,oslot.name,oo)
                 op = self.operator
-                while isinstance(op.operator, (Operator, MultiOutputSlot)):
+                while isinstance(op.operator, Operator) \
+                      or (isinstance(op.operator, OutputSlot) and op.level > 0):
                     op = op.operator
                 op.outputs[oslot.name] = oo
                 setattr(op,oslot.name,oo)
@@ -1973,7 +1941,6 @@ class OperatorWrapper(Operator):
             newInnerOps = []
             maxLen = numMax
             for name, islot in self.inputs.items():
-                    #assert isinstance(islot, MultiInputSlot)
                 maxLen = max(islot._requiredLength(), maxLen)
     
             while maxLen > len(self.innerOperators):
