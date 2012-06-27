@@ -92,12 +92,17 @@ class PixelClassificationSerializer(AppletSerializer):
     def _serializeClassifier(self, topGroup):
         with Tracer(traceLogger):
             self.deleteIfPresent(topGroup, 'Classifier')
+            self._dirtyFlags[Section.Classifier] = False
     
             if not self.mainOperator.Classifier.ready():
                 return
-    
+
             classifier = self.mainOperator.Classifier.value
-            
+
+            # Classifier can be None if there isn't any training data yet.
+            if classifier is None:
+                return
+
             # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
             # Instead, we'll use vigra to write the classifier to a temporary file.
             tmpDir = tempfile.mkdtemp()
@@ -111,7 +116,6 @@ class PixelClassificationSerializer(AppletSerializer):
             cacheFile.close()
             os.remove(cachePath)
             os.removedirs(tmpDir)
-            self._dirtyFlags[Section.Classifier] = False
 
     def _serializePredictions(self, topGroup):
         with Tracer(traceLogger):
