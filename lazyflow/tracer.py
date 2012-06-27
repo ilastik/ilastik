@@ -21,6 +21,7 @@ class Tracer(object):
         else:
             self._logger = logger
         self._level = level
+        self._caller = None
         self._msg = msg
 
     def __enter__(self):
@@ -30,5 +31,5 @@ class Tracer(object):
             self._logger.log(self._level, self._caller + ' ' + self._msg)
 
     def __exit__(self, *args):
-        if self._logger.isEnabledFor( self._level ):
+        if self._logger.isEnabledFor( self._level ) and self._caller is not None:
             self._logger.log(self._level, self._caller)
