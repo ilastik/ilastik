@@ -1162,7 +1162,7 @@ class OutputSlot(Slot):
 
 
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
-        super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = 0)
+        super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
         self._type = "output"
 
     def getOutSlot(self, slot, key, result):
