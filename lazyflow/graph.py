@@ -1354,6 +1354,10 @@ class Operator(object):
         obj.inputs = InputDict(obj)
         obj.outputs = OutputDict(obj)
         obj.register = True
+        
+        # Save the arguments we were initialized with so we can 
+        #  create sibling operators if necessary (e.g. in an OperatorWrapper)
+        obj.initializationArgs = (args, kwargs)
 
         ##
         # wrap old api
@@ -1457,6 +1461,14 @@ class Operator(object):
     
             for k,v in self.outputs.items():
                 self.__dict__[v.name] = v
+
+    @property
+    def parent(self):
+        return self._parent
+    
+    @parent.setter
+    def parent(self, p):
+        self._parent = p
 
     def __setattr__(self, name, value):
         """
@@ -1903,7 +1915,11 @@ class OperatorWrapper(Operator):
     def _createInnerOperator(self):
         with Tracer(self.traceLogger, msg=self.name):
             if self.operator.__class__ is not OperatorWrapper:
-                opcopy = self.operator.__class__(parent = self)
+                # Create each inner operator with the same init parameters that were used with the original
+                args = self.operator.initializationArgs[0]
+                kwargs = self.operator.initializationArgs[1]
+                opcopy = self.operator.__class__(*args, **kwargs)
+                opcopy.parent = self
                 opcopy.name = self.operator.name
             else:
                 if lazyflow.verboseWrapping:
