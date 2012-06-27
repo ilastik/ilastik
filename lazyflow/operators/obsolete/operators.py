@@ -601,13 +601,13 @@ if has_blist:
                        OutputSlot("nonzeroCoordinates"),
                        OutputSlot("maxLabel")]
 
-        def __init__(self, parent):
+        def __init__(self, *args, **kwargs):
+            super(OpSparseLabelArray, self).__init__( *args, **kwargs )
             self.lock = threading.Lock()
             self._denseArray = None
             self._sparseNZ = None
             self._oldShape = (0,)
-            self._maxLabel = 0
-            Operator.__init__(self,parent)
+            self._maxLabel = 0            
 
         def notifyConnectAll(self):
             if (self._oldShape != self.inputs["shape"].value).all():
@@ -755,7 +755,7 @@ if has_blist:
 
         def __init__(self, *args, **kwargs):
             with Tracer(self.traceLogger):
-                Operator.__init__(self, *args, **kwargs)
+                super(OpBlockedSparseLabelArray, self).__init__( *args, **kwargs )
                 self.lock = threading.Lock()
     
                 self._sparseNZ = None
@@ -990,9 +990,9 @@ class OpBlockedArrayCache(Operator):
     logger = logging.getLogger(loggerName)
     traceLogger = logging.getLogger("TRACE." + loggerName)
 
-    def __init__(self,parent):
+    def __init__(self, *args, **kwargs):
         with Tracer(self.traceLogger):
-            Operator.__init__(self,parent)
+            super(OpBlockedArrayCache, self).__init__( *args, **kwargs )
             self._configured = False
             self.source = OpArrayPiper(self)
             self.source.inputs["Input"].connect(self.inputs["Input"])
