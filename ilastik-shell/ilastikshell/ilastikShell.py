@@ -21,6 +21,8 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
+import ilastik_logging
+
 import applet
 
 class ShellActions(object):
@@ -499,6 +501,9 @@ class IlastikShell( QMainWindow ):
         if self.currentProjectFile is not None:
             self.currentProjectFile.close()
         self.currentProjectFile = None
+
+        # Stop the thread that checks for log config changes.
+        ilastik_logging.stopUpdates()
 
         qApp.quit()
 
