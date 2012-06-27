@@ -5,6 +5,7 @@ import gc
 import lazyflow.roi
 import threading
 import copy
+import lazyflow.request
 
 from operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
 
@@ -179,11 +180,15 @@ class OpValueCache(Operator):
     Input = InputSlot()
     Output = OutputSlot()
     
+    loggerName = __name__ + ".OpValueCache"
+    logger = logging.getLogger(loggerName)
+    traceLogger = logging.getLogger("TRACE." + __name__)
+    
     def __init__(self, *args, **kwargs):
         super(OpValueCache, self).__init__(*args, **kwargs)
         self._dirty = False
         self._value = None
-        self._lock = threading.Lock()
+        self._lock = lazyflow.request.Lock() # Must use special greenlet-aware lock
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
@@ -191,11 +196,13 @@ class OpValueCache(Operator):
     
     def execute(self, slot, roi, result):
         # Optimization: We don't let more than one caller trigger the value to be computed at the same time
-        with self._lock:
+        with Tracer(self.traceLogger):
+            self._lock.acquire()
             if self._dirty:
                 self._value = self.Input.value
                 self._dirty = False
             result[...] = self._value
+            self._lock.release()
 
     def propagateDirty(self, islot, roi):
         self._dirty = True
