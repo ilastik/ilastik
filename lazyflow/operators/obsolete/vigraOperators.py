@@ -245,7 +245,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     val=self.matrix[i,j]
                     if val:
                         self.multi.inputs["Input%02d" %(i*dimRow+j)].connect(oparray[i][j].outputs["Output"])
-                        logger.info("connected  Input%02d of self.multi" %(i*dimRow+j))
+                        logger.debug("connected  Input%02d of self.multi" %(i*dimRow+j))
                         featureNames.append(featureNameArray[i][j])
 
             #additional connection with FakeOperator
