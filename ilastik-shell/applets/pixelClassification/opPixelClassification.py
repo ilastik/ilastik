@@ -129,15 +129,6 @@ class OpPixelClassification( Operator ):
             shapeList[channelIndex] = 1
             self.LabelInputs[i].meta.shape = tuple(shapeList)
             self.LabelInputs[i].meta.axistags = self.InputImages[i].meta.axistags
-        
-    def setSubInSlot(self, multislot,slot,index, key,value):
-        # We can't connect our external label input to the internal sparse label array 
-        #  because the array wants to control the shape of the input (based on his 'shape' input)
-        # Therefore, we 'manually' push data into the slot here.
-        if slot.name == 'LabelInputs':
-            self.opLabelArray.Input[index][key] = value
-        else:
-            assert False
 
 class OpShapeReader(Operator):
     """
