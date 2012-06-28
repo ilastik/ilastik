@@ -103,8 +103,10 @@ class PixelClassificationGui(QMainWindow):
             def handleOutputListChanged():
                 """This closure is called when an image is added or removed from the output."""
                 with Tracer(traceLogger):
-                    if len(self.pipeline.CachedPredictionProbabilities) > 0:
-                        self.pipeline.CachedPredictionProbabilities[self.imageIndex].notifyMetaChanged( bind(self.updateForNewClasses) )
+                    if self.imageIndex != -1 and len(self.pipeline.CachedPredictionProbabilities) > 0:
+                        callback = bind(self.updateForNewClasses)
+                        self.pipeline.CachedPredictionProbabilities[self.imageIndex].notifyMetaChanged( callback )
+                        self.pipeline.CachedPredictionProbabilities[self.imageIndex].notifyDisconnect( bind( self.pipeline.CachedPredictionProbabilities[self.imageIndex].unregisterMetaChanged, callback ) )
                     else:
                         self.clearLabelListGui()
     
