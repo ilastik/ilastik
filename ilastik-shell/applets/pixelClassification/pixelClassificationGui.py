@@ -103,21 +103,21 @@ class PixelClassificationGui(QMainWindow):
             def handleOutputListChanged():
                 """This closure is called when an image is added or removed from the output."""
                 with Tracer(traceLogger):
-                    if self.imageIndex != -1 and len(self.pipeline.CachedPredictionProbabilities) > 0:
+                    if self.imageIndex != -1 and len(self.pipeline.PredictionProbabilities) > 0:
                         callback = bind(self.updateForNewClasses)
-                        self.pipeline.CachedPredictionProbabilities[self.imageIndex].notifyMetaChanged( callback )
-                        self.pipeline.CachedPredictionProbabilities[self.imageIndex].notifyDisconnect( bind( self.pipeline.CachedPredictionProbabilities[self.imageIndex].unregisterMetaChanged, callback ) )
+                        self.pipeline.PredictionProbabilities[self.imageIndex].notifyMetaChanged( callback )
+                        self.pipeline.PredictionProbabilities[self.imageIndex].notifyDisconnect( bind( self.pipeline.PredictionProbabilities[self.imageIndex].unregisterMetaChanged, callback ) )
                     else:
                         self.clearLabelListGui()
     
-            self.pipeline.CachedPredictionProbabilities.notifyInserted( bind(handleOutputListChanged) )
-            self.pipeline.CachedPredictionProbabilities.notifyRemove( bind(handleOutputListChanged) )
+            self.pipeline.PredictionProbabilities.notifyInserted( bind(handleOutputListChanged) )
+            self.pipeline.PredictionProbabilities.notifyRemove( bind(handleOutputListChanged) )
             
             def handleOutputListAboutToResize(slot, oldsize, newsize):
                 with Tracer(traceLogger):
                     if newsize == 0:
                         self.removeAllPredictionLayers()
-            self.pipeline.CachedPredictionProbabilities.notifyResize(handleOutputListAboutToResize)
+            self.pipeline.PredictionProbabilities.notifyResize(handleOutputListAboutToResize)
             
             # Editor will be initialized when data is loaded
             self.editor = None
@@ -666,12 +666,12 @@ class PixelClassificationGui(QMainWindow):
         Add all prediction label layers to the volume editor
         """
         with Tracer(traceLogger):
-            if not self.pipeline.CachedPredictionProbabilities[self.imageIndex].ready():
+            if not self.pipeline.PredictionProbabilities[self.imageIndex].ready():
                 return
             
             newGuiLabels = set()        
             # TODO: Assumes channel is last axis
-            nclasses = self.pipeline.CachedPredictionProbabilities[self.imageIndex].meta.shape[-1]
+            nclasses = self.pipeline.PredictionProbabilities[self.imageIndex].meta.shape[-1]
             # Add prediction results for all classes as separate channels
             for icl in range(nclasses):
                 layerGuiLabel = self._labelControlUi.labelListModel._labels[icl]            
@@ -728,7 +728,7 @@ class PixelClassificationGui(QMainWindow):
     
             # Request the prediction for the entire image stack.
             # Call our callback when it's finished
-            self.pipeline.CachedPredictionProbabilities[self.imageIndex][:].notify( onPredictionComplete )
+            self.pipeline.PredictionProbabilities[self.imageIndex][:].notify( onPredictionComplete )
     
     def addPredictionLayer(self, icl, ref_label):
         """
@@ -736,7 +736,7 @@ class PixelClassificationGui(QMainWindow):
         """
         with Tracer(traceLogger):
             selector=OpSingleChannelSelector(self.g)
-            selector.inputs["Input"].connect(self.pipeline.CachedPredictionProbabilities[self.imageIndex])
+            selector.inputs["Input"].connect(self.pipeline.PredictionProbabilities[self.imageIndex])
             selector.inputs["Index"].setValue(icl)
             
     ##      self.pipeline.prediction_cache.inputs["fixAtCurrent"].setValue(not self._labelControlUi.checkInteractive.isChecked())
