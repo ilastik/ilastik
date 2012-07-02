@@ -111,7 +111,3 @@ class OpInputDataReader(Operator):
 
     def execute(self, slot, roi, result):
         assert False, "Shouldn't get here because our output is directly connected..."
-        # Ask our internal operator's output slot to write the result into the destination
-        # TODO: Is it really necessary to use a key (slice) here?  Or can the roi be used directly?
-        key = roi.toSlice()
-        self.internalOutput[key].writeInto(result).wait()
