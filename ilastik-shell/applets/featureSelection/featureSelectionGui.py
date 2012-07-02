@@ -1,23 +1,14 @@
-from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
-from volumina.adaptors import Op5ifyer
-from volumina.api import ArraySource, LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
-                         AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
-
-from igms.labelListModel import LabelListModel, Label
+from volumina.api import LazyflowSource, GrayscaleLayer
 
 from lazyflow.operators import OpSingleChannelSelector
-
-from opFeatureSelection import OpFeatureSelection
 
 from igms.featureTableWidget import FeatureEntry
 from igms.featureDlg import FeatureDlg
 
-from functools import partial
 import os
-import utility # This is the ilastik shell utility module
 import numpy
 from utility import bind
 
@@ -26,13 +17,12 @@ logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
 from lazyflow.tracer import Tracer
+from applets.layerViewer import LayerViewerGui
 
-class FeatureSelectionGui(QMainWindow):
+class FeatureSelectionGui(LayerViewerGui):
     """
-    Manages all GUI elements in the feature selection applet.
-    This class itself is the central widget and also owns/manages the applet drawer widgets.
     """
-
+    
     # Constants    
     ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
     DefaultColorTable = None
@@ -56,57 +46,26 @@ class FeatureSelectionGui(QMainWindow):
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
     
-    def centralWidget( self ):
-        return self
-
     def appletDrawers(self):
-        return [ ("Feature Selection", self.drawer) ]
+        return [ ("Feature Selection", self.drawer ) ]
 
-    def menuWidget( self ):
-        return self.menuBar
-
-    def viewerControlWidget(self):
-        return self._viewerControlWidget
-
-    def setImageIndex(self, index):
-        with Tracer(traceLogger):
-            self.currentImageIndex = index
-            if self.mainOperator.configured():
-                self.updateAllLayers()
-            else:
-                self.layerstack.clear()
+    # (Other methods already provided by our base class)
 
     ###########################################
     ###########################################
-
+    
     def __init__(self, mainOperator):
+        """
+        """
         with Tracer(traceLogger):
-            super(FeatureSelectionGui, self).__init__()
-    
-            # Constants
-            FeatureSelectionGui.DefaultColorTable = self.createDefault16ColorColorTable()
-    
-            self.menuBar = QMenuBar()
-            
+            super(FeatureSelectionGui, self).__init__([ mainOperator.FeatureLayers ])
+            self.mainOperator = mainOperator
+
             self.drawer = None
             self.initAppletDrawerUic()
-            self.initCentralUic()
-            self.initViewerControlUi()
             self.initFeatureDlg()
-            
-            self.editor = None
-            self.currentImageIndex = -1
-            self.layerstack = LayerStackModel()
-            self.initEditor()
-            
-            self.mainOperator = mainOperator
             self.mainOperator.SelectionMatrix.notifyConnect( bind(self.onFeaturesSelectionsChanged) )
-            
-            def handleOutputInsertion(slot, index):
-                slot[index].notifyDirty( bind(self.updateAllLayers) )
     
-            self.mainOperator.OutputImage.notifyInserted( bind(handleOutputInsertion) )
-
     def initAppletDrawerUic(self):
         """
         Load the ui file for the applet drawer, which we own.
@@ -131,76 +90,45 @@ class FeatureSelectionGui(QMainWindow):
             # Expose the enable function with the name the shell expects
             self.drawer.enableControls = enableDrawerControls
     
-    def initViewerControlUi(self):
+    def setupLayers(self, currentImageIndex):
         with Tracer(traceLogger):
-            p = os.path.split(__file__)[0]+'/'
-            if p == "/": p = "."+p
-            self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
+            layers = []
 
-    def initCentralUic(self):
+            outputSlot = self.mainOperator.FeatureLayers[currentImageIndex]
+            if outputSlot.ready():
+                # Now add a layer for each feature
+                numFeatureChannels = len(outputSlot)
+                for featureChannelIndex in range(0, numFeatureChannels):
+                    layer = self.getFeatureLayer(currentImageIndex, featureChannelIndex)
+                    layers.append( layer )                
+            return layers
+
+    def getFeatureLayer(self, currentImageIndex, featureChannelIndex):
         """
-        Load the GUI from the ui file into this class and connect it with event handlers.
+        Display a feature in the layer editor.
         """
         with Tracer(traceLogger):
-            # Load the ui file into this class (find it in our own directory)
-            localDir = os.path.split(__file__)[0]
-            uic.loadUi(localDir+"/centralWidget.ui", self)
-                
-            def toggleDebugPatches(show):
-                self.editor.showDebugPatches = show
-            def fitToScreen():
-                shape = self.editor.posModel.shape
-                for i, v in enumerate(self.editor.imageViews):
-                    s = list(shape)
-                    del s[i]
-                    v.changeViewPort(v.scene().data2scene.mapRect(QRectF(0,0,*s)))  
-                    
-            def fitImage():
-                if hasattr(self.editor, '_lastImageViewFocus'):
-                    self.editor.imageViews[self.editor._lastImageViewFocus].fitImage()
-                    
-            def restoreImageToOriginalSize():
-                if hasattr(self.editor, '_lastImageViewFocus'):
-                    self.editor.imageViews[self.editor._lastImageViewFocus].doScaleTo()
-                        
-            def rubberBandZoom():
-                if hasattr(self.editor, '_lastImageViewFocus'):
-                    if not self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom:
-                        self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = True
-                        self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup = self.editor.imageViews[self.editor._lastImageViewFocus].cursor()
-                        self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(Qt.CrossCursor)
-                    else:
-                        self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = False
-                        self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup)
-                    
-            def hideHud():
-                hide = not self.editor.imageViews[0]._hud.isVisible()
-                for i, v in enumerate(self.editor.imageViews):
-                    v.setHudVisible(hide)
-                    
-            def toggleSelectedHud():
-                if hasattr(self.editor, '_lastImageViewFocus'):
-                    self.editor.imageViews[self.editor._lastImageViewFocus].toggleHud()
-                    
-            def centerAllImages():
-                for i, v in enumerate(self.editor.imageViews):
-                    v.centerImage()
-                    
-            def centerImage():
-                if hasattr(self.editor, '_lastImageViewFocus'):
-                    self.editor.imageViews[self.editor._lastImageViewFocus].centerImage()
-                    self.actionOnly_for_current_view.setEnabled(True)
-            
-            self.actionCenterAllImages.triggered.connect(centerAllImages)
-            self.actionCenterImage.triggered.connect(centerImage)
-            self.actionToggleAllHuds.triggered.connect(hideHud)
-            self.actionToggleSelectedHud.triggered.connect(toggleSelectedHud)
-            self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
-            self.actionFitToScreen.triggered.connect(fitToScreen)
-            self.actionFitImage.triggered.connect(fitImage)
-            self.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
-            self.actionRubberBandZoom.triggered.connect(rubberBandZoom)
-                
+            # Determine the name for this feature
+            channelAxis = self.mainOperator.InputImage[currentImageIndex].meta.axistags.channelIndex
+            numOriginalChannels = self.mainOperator.InputImage[currentImageIndex].meta.shape[channelAxis]
+            originalChannel = featureChannelIndex % numOriginalChannels
+            featureNameIndex = featureChannelIndex / numOriginalChannels
+            channelNames = ['R', 'G', 'B']
+            featureNames = self.mainOperator.FeatureNames[currentImageIndex].value
+            featureName = featureNames[ featureNameIndex ]
+            if numOriginalChannels > 1:
+                featureName += " (" + channelNames[originalChannel] + ")"
+
+            # Create a grayscale layer for it.            
+            featureLayer = self.createStandardLayerFromSlot( self.mainOperator.FeatureLayers[currentImageIndex][featureChannelIndex] )    
+            # By default, only the first feature is visible
+            featureLayer.visible = (featureChannelIndex == 0)
+            featureLayer.opacity = 1.0
+            featureLayer.name = featureName
+            featureLayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
+
+            return featureLayer
+
     def initFeatureDlg(self):
         """
         Initialize the feature selection widget.
@@ -256,151 +184,6 @@ class FeatureSelectionGui(QMainWindow):
                 self.layerstack.clear()
             else:
                 self.drawer.caption.setText( "(Selected %d features)" % numpy.sum(self.mainOperator.SelectionMatrix.value) )
-
-    def initEditor(self):
-        """
-        Initialize the Volume Editor GUI.
-        """
-        with Tracer(traceLogger):
-            self.editor = VolumeEditor(self.layerstack)
-    
-            self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
-            self.editor.setInteractionMode( 'navigation' )
-            self.volumeEditorWidget.init(self.editor)
-            
-            # The editor's layerstack is in charge of which layer movement buttons are enabled
-            model = self.editor.layerStack
-            model.canMoveSelectedUp.connect(self._viewerControlWidget.UpButton.setEnabled)
-            model.canMoveSelectedDown.connect(self._viewerControlWidget.DownButton.setEnabled)
-            model.canDeleteSelected.connect(self._viewerControlWidget.DeleteButton.setEnabled)     
-    
-            # Connect our layer movement buttons to the appropriate layerstack actions
-            self._viewerControlWidget.layerWidget.init(model)
-            self._viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
-            self._viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
-            self._viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
-            
-            # No brushing model necessary (we're using the editor as a viewer only)
-            #self.pipeline.labels.inputs["eraser"].setValue(self.editor.brushingModel.erasingNumber)
-        
-    def setIconToViewMenu(self):
-        """
-        In the "Only for Current View" menu item of the View menu, 
-        show the user which axis is the current one by changing the menu item icon.
-        """
-        with Tracer(traceLogger):
-            self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
-
-    def updateAllLayers(self):
-        with Tracer(traceLogger):
-            # Start by removing all layers
-            # TODO: We can do better than this.  We should try to determine if some feature layers can be kept.
-            numRows = len(self.layerstack)
-            self.layerstack.removeRows(0, numRows)
-    
-            # Give the editor the appropriate shape (transposed via an Op5ifyer adapter).
-            op5 = Op5ifyer( graph=self.mainOperator.graph )
-            op5.input.connect( self.mainOperator.InputImage[self.currentImageIndex] )
-            self.editor.dataShape = op5.output.meta.shape
-            
-            # Zoom at a 1-1 scale to avoid loading big datasets entirely...
-            for view in self.editor.imageViews:
-                view.doScaleTo(1)
-            
-            # We just needed the operator to determine the transposed shape.
-            # Disconnect it so it can be deleted.
-            op5.input.disconnect()
-            
-            # First add a black layer on the bottom of the image
-            # TODO: Optimize: Replace this ArraySource with a special operator that always returns zero
-    #        singleChannelShape = shape[:-1] + (1,)
-    #        blackSource = ArraySource( numpy.zeros(singleChannelShape, dtype=numpy.float32) )
-    #        blackLayer = GrayscaleLayer(blackSource)
-    #        blackLayer.name = "Black background"
-    #        self.layerstack.insert(0, blackLayer)
-    
-            # Now add a layer for each feature
-            # TODO: This assumes the channel is the last axis 
-            numFeatureChannels = self.mainOperator.OutputImage[self.currentImageIndex].meta.shape[-1]
-            for featureChannelIndex in range(0, numFeatureChannels):
-                if featureChannelIndex < len(self.DefaultColorTable):
-                    # Choose the next color from our default color table
-                    color = self.DefaultColorTable[featureChannelIndex]
-                else:
-                    # Choose a random color
-                    color = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
-                
-                label = Label( str(featureChannelIndex), color )
-                self.addFeatureLayer(featureChannelIndex, label)
-
-    def addFeatureLayer(self, featureChannelIndex, ref_label):
-        """
-        Display a feature in the layer editor.
-        """
-        with Tracer(traceLogger):
-            # Create an operator to select the channel (feature) we're interested in
-            selector=OpSingleChannelSelector(self.mainOperator.graph)
-            selector.Input.connect(self.mainOperator.OutputImage[self.currentImageIndex])
-            selector.Index.setValue(featureChannelIndex)
-            
-            # Determine the name for this feature
-            channelAxis = self.mainOperator.InputImage[self.currentImageIndex].meta.axistags.channelIndex
-            numOriginalChannels = self.mainOperator.InputImage[self.currentImageIndex].meta.shape[channelAxis]
-            originalChannel = featureChannelIndex % numOriginalChannels
-            featureNameIndex = featureChannelIndex / numOriginalChannels
-            channelNames = ['R', 'G', 'B']
-            featureName = self.mainOperator.FeatureNames[self.currentImageIndex].value[ featureNameIndex ]
-            if numOriginalChannels > 1:
-                featureName += " (" + channelNames[originalChannel] + ")"
-            
-            featureSource = LazyflowSource(selector.Output)
-            featureSource.setObjectName(featureName)
-    #        featureLayer = AlphaModulatedLayer(featureSource, tintColor=ref_label.color, normalize = None )
-            featureLayer = GrayscaleLayer( featureSource )
-            featureLayer.name = featureSource.objectName()
-    
-            # By default, only the first feature is visible
-            featureLayer.opacity = 1.0
-            featureLayer.visible = (featureChannelIndex == 0)
-            featureLayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
-            self.layerstack.insert(len(self.layerstack), featureLayer )
-
-    def createDefault16ColorColorTable(self):
-        with Tracer(traceLogger):
-            c = []
-            c.append(QColor(0, 0, 255))
-            c.append(QColor(255, 255, 0))
-            c.append(QColor(255, 0, 0))
-            c.append(QColor(0, 255, 0))
-            c.append(QColor(0, 255, 255))
-            c.append(QColor(255, 0, 255))
-            c.append(QColor(255, 105, 180)) #hot pink
-            c.append(QColor(102, 205, 170)) #dark aquamarine
-            c.append(QColor(165,  42,  42)) #brown        
-            c.append(QColor(0, 0, 128))     #navy
-            c.append(QColor(255, 165, 0))   #orange
-            c.append(QColor(173, 255,  47)) #green-yellow
-            c.append(QColor(128,0, 128))    #purple
-            c.append(QColor(192, 192, 192)) #silver
-            c.append(QColor(240, 230, 140)) #khaki
-            c.append(QColor(69, 69, 69))    # dark grey
-            return c
-
-    def enableControls(self, enabled):
-        """
-        Enable or disable all of the controls in this applet's central widget.
-        """
-        with Tracer(traceLogger):
-            # All the controls in our GUI
-            controlList = [ self.menuBar,
-                            self.volumeEditorWidget,
-                            self._viewerControlWidget.UpButton,
-                            self._viewerControlWidget.DownButton,
-                            self._viewerControlWidget.DeleteButton ]
-    
-            # Enable/disable all of them
-            for control in controlList:
-                control.setEnabled(enabled)
 
 
 

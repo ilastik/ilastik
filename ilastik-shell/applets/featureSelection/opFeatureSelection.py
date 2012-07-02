@@ -1,6 +1,6 @@
 from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 
-from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache
+from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, OpMultiArraySlicer2
 import copy
 
 class OpFeatureSelection(Operator):
@@ -30,6 +30,8 @@ class OpFeatureSelection(Operator):
     CachedOutputImage = OutputSlot()
 
     FeatureNames = OutputSlot() # The name of each feature used is also provided as a list of strings
+
+    FeatureLayers = MultiOutputSlot() # For the GUI, we also provide each feature as a separate slot in this multislot
     
     def __init__(self, *args, **kwargs):
         super(OpFeatureSelection, self).__init__(*args, **kwargs)
@@ -53,6 +55,12 @@ class OpFeatureSelection(Operator):
         self.FeatureNames.connect( self.opPixelFeatures.FeatureNames )
         self.OutputImage.connect( self.opPixelFeatures.Output )
         self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )        
+
+        # Also provide each feature as a separate layer (for the GUI)
+        self.opFeatureSlicer = OpMultiArraySlicer2(parent=self)
+        self.opFeatureSlicer.Input.connect( self.OutputImage )
+        self.opFeatureSlicer.AxisFlag.setValue('c')
+        self.FeatureLayers.connect( self.opFeatureSlicer.Slices )
 
     def setupOutputs(self):        
         # We choose block shapes that have only 1 channel because the channels may be 
