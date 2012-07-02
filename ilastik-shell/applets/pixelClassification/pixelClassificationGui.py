@@ -712,7 +712,7 @@ class PixelClassificationGui(QMainWindow):
             # Closure to call when the prediction is finished
             def onPredictionComplete(predictionResults):
                 with Tracer(traceLogger):
-                    logger.debug("Prediction shape=", predictionResults.meta.shape)
+                    logger.debug("Prediction shape=", predictionResults.shape)
                     
                     # Re-enable the GUI
                     self._labelControlUi.AddLabelButton.setEnabled(True)
@@ -728,7 +728,7 @@ class PixelClassificationGui(QMainWindow):
     
             # Request the prediction for the entire image stack.
             # Call our callback when it's finished
-            self.pipeline.PredictionProbabilities[self.imageIndex][:].notify( onPredictionComplete )
+            self.pipeline.CachedPredictionProbabilities[self.imageIndex][:].notify( onPredictionComplete )
     
     def addPredictionLayer(self, icl, ref_label):
         """
