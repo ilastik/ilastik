@@ -520,12 +520,12 @@ class Slot(object):
             oldReady = self.meta._ready 
             self.meta = MetaDict()
     
-            # Notify our partners that we changed.
-            self._changed()
-    
             # call callbacks
             self._sig_disconnect(self)
             
+            # Notify our partners that we changed.
+            self._changed()
+    
             # If we were ready before, signal that we aren't any more
             if oldReady:
                 self._sig_unready(self)
