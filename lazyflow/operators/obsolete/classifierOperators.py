@@ -10,7 +10,7 @@ import copy
 
 import logging
 logger = logging.getLogger(__name__)
-tracelogger = logging.getLogger("TRACE." + __name__)
+traceLogger = logging.getLogger("TRACE." + __name__)
 from lazyflow.tracer import Tracer
 
 class OpTrainRandomForest(Operator):
@@ -100,7 +100,6 @@ class OpTrainRandomForestBlocked(Operator):
             # No need to set dirty here: notifyDirty handles it.
             #self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
-
     def execute(self, slot, roi, result):
         with Tracer(logger, level=logging.INFO, msg="OpTrainRandomForestBlocked: Training Classifier"):
             key = roi.toSlice()
@@ -112,6 +111,7 @@ class OpTrainRandomForestBlocked(Operator):
                     blocks = self.inputs["nonzeroLabelBlocks"][i][0].allocate().wait()
                     reqlistlabels = []
                     reqlistfeat = []
+                    traceLogger.debug("Sending requests for {} non-zero blocks (labels and data)".format( len(blocks[0])) )
                     for b in blocks[0]:
     
                         request = labels[b].allocate()
@@ -121,6 +121,8 @@ class OpTrainRandomForestBlocked(Operator):
     
                         reqlistlabels.append(request)
                         reqlistfeat.append(request2)
+
+                    traceLogger.debug("Requests prepared")
     
                     def dummyNotify(req):
                         pass
@@ -130,9 +132,13 @@ class OpTrainRandomForestBlocked(Operator):
     
                     for ir, req in enumerate(reqlistlabels):
                         labblock = req.notify(dummyNotify)
+
+                    traceLogger.debug("Requests fired")
     
                     for ir, req in enumerate(reqlistlabels):
+                        traceLogger.debug("Waiting for a label block...")
                         labblock = req.wait()
+                        traceLogger.debug("Waiting for an image block...")
                         image = reqlistfeat[ir].wait()
                         indexes=numpy.nonzero(labblock[...,0].view(numpy.ndarray))
     
@@ -141,22 +147,29 @@ class OpTrainRandomForestBlocked(Operator):
     
                         featMatrix.append(features)
                         labelsMatrix.append(labbla)
-    
-    
-            featMatrix=numpy.concatenate(featMatrix,axis=0)
-            labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
-    
-            RF=vigra.learning.RandomForest(100)
-            try:
-                RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
-            except:
-                logger.error( "ERROR: could not learn classifier" )
-                logger.error( "featMatrix={}, labelsMatrix={}".format(featMatrix, labelsMatrix) )
-                logger.error( "featMatrix shape={}, dtype={}".format(featMatrix.shape, featMatrix.dtype) )
-                logger.error( "labelsMatrix shape={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.dtype ) )
-                raise
-            assert RF is not None, "RF = %r" % RF
-            result[0]=RF
+
+                    traceLogger.debug("Requests processed")    
+
+            if len(featMatrix) == 0 or len(labelsMatrix) == 0:
+                # If there was no actual data for the random forest to train with, we return None
+                result[0] = None
+            else:
+                featMatrix=numpy.concatenate(featMatrix,axis=0)
+                labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
+
+                RF=vigra.learning.RandomForest(100)
+                try:
+                    logger.debug("Learning with Vigra...")
+                    RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
+                    logger.debug("Vigra finished")
+                except:
+                    logger.error( "ERROR: could not learn classifier" )
+                    logger.error( "featMatrix={}, labelsMatrix={}".format(featMatrix, labelsMatrix) )
+                    logger.error( "featMatrix shape={}, dtype={}".format(featMatrix.shape, featMatrix.dtype) )
+                    logger.error( "labelsMatrix shape={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.dtype ) )
+                    raise
+                assert RF is not None, "RF = %r" % RF
+                result[0]=RF
 
     def setInSlot(self, slot, key, value):
         if self.inputs["fixClassifier"].value == False:
@@ -184,36 +197,23 @@ class OpPredictRandomForest(Operator):
     outputSlots = [OutputSlot("PMaps")]
 
     def setupOutputs(self):
-        inputSlot = self.inputs["Image"]
         nlabels=self.inputs["LabelsCount"].value
-
-
-        """
-        self.outputs["PMaps"].resize(len(inputSlot)) #clearAllSlots()
-        for i,islot in enumerate(self.inputs["Images"]):
-            oslot = self.outputs["PMaps"][i]
-            if islot.partner is not None:
-                oslot._dtype = numpy.float32
-                oslot._shape = islot.shape[:-1]+(nlabels,)
-                oslot._axistags = islot.axistags
-
-        """
-        oslot = self.outputs["PMaps"]
-        islot=self.inputs["Image"]
-
-        oslot._dtype = numpy.uint8
-        #oslot._dtype = numpy.float32
-
-        oslot._axistags = islot.axistags
-        oslot._shape = islot.shape[:-1]+(nlabels,)
-
+        self.PMaps.meta.dtype = numpy.uint8
+        self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
+        self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,) # FIXME: This assumes that channel is the last axis
 
     def execute(self,slot, roi, result):
         key = roi.toSlice()
         nlabels=self.inputs["LabelsCount"].value
 
+        traceLogger.debug("OpPredictRandomForest: Requesting classifier. roi={}".format(roi))
         RF=self.inputs["Classifier"].value
-        assert RF.labelCount() == nlabels, "ERROR: OpPredictRandomForest, labelCount differs from true labelCount! %r vs. %r" % (RF.labelCount(), nlabels)
+        if RF is None:
+            # Training operator may return 'None' if there was no data to train with
+            result[...] = numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.uint8)[...]
+            return
+        traceLogger.debug("OpPredictRandomForest: Got classifier")        
+        #assert RF.labelCount() == nlabels, "ERROR: OpPredictRandomForest, labelCount differs from true labelCount! %r vs. %r" % (RF.labelCount(), nlabels)
 
         newKey = key[:-1]
         newKey += (slice(0,self.inputs["Image"].shape[-1],None),)
@@ -221,19 +221,17 @@ class OpPredictRandomForest(Operator):
         res = self.inputs["Image"][newKey].allocate().wait()
 
         shape=res.shape
-        prod = 1
-        for i,e in enumerate(shape):
-            if i < len(shape) - 1:
-                prod *= e
-
+        prod = numpy.prod(shape[:-1])
         features=res.reshape(prod, shape[-1])
 
         prediction=RF.predictProbabilities(features.astype(numpy.float32))
-
         prediction = prediction.reshape(*(shape[:-1] + (RF.labelCount(),)))
 
-        #result[:]=prediction[...,key[-1]]
-        result[:]=prediction[...,key[-1]]*255
+        # If our LabelsCount is higher than the number of labels in the training set,
+        # then our results aren't really valid.
+        # Duplicate the last label's predictions
+        chanslice = slice(min(key[-1].start, RF.labelCount()-1), min(key[-1].stop, RF.labelCount()))
+        result[...]=prediction[...,chanslice]*255 # FIXME: This assumes that channel is the last axis
 
 
 
