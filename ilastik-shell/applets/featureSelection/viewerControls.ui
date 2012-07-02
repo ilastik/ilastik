@@ -38,12 +38,12 @@
          </sizepolicy>
         </property>
         <property name="text">
-         <string>&lt;b&gt;Layers:&lt;/b&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Features:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="LayerWidget" name="layerWidget">
+       <widget class="QListWidget" name="listWidget">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
           <horstretch>0</horstretch>
@@ -52,77 +52,11 @@
         </property>
        </widget>
       </item>
-      <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
-        <item>
-         <widget class="QToolButton" name="UpButton">
-          <property name="toolTip">
-           <string>move layer up</string>
-          </property>
-          <property name="text">
-           <string>Up</string>
-          </property>
-          <property name="icon">
-           <iconset>
-            <normaloff>icons/go-up.png</normaloff>icons/go-up.png</iconset>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QToolButton" name="DownButton">
-          <property name="toolTip">
-           <string>move layer down</string>
-          </property>
-          <property name="text">
-           <string>Down</string>
-          </property>
-          <property name="icon">
-           <iconset>
-            <normaloff>icons/go-down.png</normaloff>icons/go-down.png</iconset>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <spacer name="horizontalSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QToolButton" name="DeleteButton">
-          <property name="toolTip">
-           <string>delete layer</string>
-          </property>
-          <property name="text">
-           <string>Remove</string>
-          </property>
-          <property name="icon">
-           <iconset>
-            <normaloff>icons/list-remove.png</normaloff>icons/list-remove.png</iconset>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
      </layout>
     </widget>
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>LayerWidget</class>
-   <extends>QListView</extends>
-   <header>volumina.widgets.layerwidget</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

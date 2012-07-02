@@ -49,6 +49,9 @@ class FeatureSelectionGui(LayerViewerGui):
     def appletDrawers(self):
         return [ ("Feature Selection", self.drawer ) ]
 
+    def viewerControlWidget(self):
+        return self._viewerControlWidget
+
     # (Other methods already provided by our base class)
 
     ###########################################
@@ -61,12 +64,10 @@ class FeatureSelectionGui(LayerViewerGui):
             super(FeatureSelectionGui, self).__init__([ mainOperator.FeatureLayers ])
             self.mainOperator = mainOperator
 
-            self.drawer = None
-            self.initAppletDrawerUic()
             self.initFeatureDlg()
             self.mainOperator.SelectionMatrix.notifyConnect( bind(self.onFeaturesSelectionsChanged) )
     
-    def initAppletDrawerUic(self):
+    def initAppletDrawerUi(self):
         """
         Load the ui file for the applet drawer, which we own.
         """
@@ -89,6 +90,43 @@ class FeatureSelectionGui(LayerViewerGui):
     
             # Expose the enable function with the name the shell expects
             self.drawer.enableControls = enableDrawerControls
+
+    def initViewerControlUi(self):
+        """
+        Load the viewer controls GUI, which appears below the applet bar.
+        In our case, the viewer control GUI consists mainly of a layer list.
+        """
+        with Tracer(traceLogger):
+            p = os.path.split(__file__)[0]+'/'
+            if p == "/": p = "."+p
+            self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
+            
+            layerListWidget = self._viewerControlWidget.listWidget
+
+            # Need to handle data changes because the layerstack model hasn't 
+            # updated his data yet by the time he calls the rowsInserted signal            
+            def handleLayerStackDataChanged(startIndex, stopIndex):
+                row = startIndex.row()
+                layerListWidget.item(row).setText(self.layerstack[row].name)
+            self.layerstack.dataChanged.connect(handleLayerStackDataChanged)
+            
+            def handleInsertedLayers(parent, start, end):
+                for i in range(start, end+1):
+                    layerListWidget.insertItem(i, self.layerstack[i].name)
+
+            def handleRemovedLayers(parent, start, end):
+                for i in range(start, end+1):
+                    layerListWidget.takeItem(i)
+                
+            self.layerstack.rowsInserted.connect( handleInsertedLayers )
+            self.layerstack.rowsRemoved.connect( handleRemovedLayers )
+            
+            def handleSelectionChanged(row):
+                # Only the selected row is visible
+                for i, layer in enumerate(self.layerstack):
+                    layer.visible = (i == row)
+            
+            layerListWidget.currentRowChanged.connect( handleSelectionChanged )
     
     def setupLayers(self, currentImageIndex):
         with Tracer(traceLogger):
