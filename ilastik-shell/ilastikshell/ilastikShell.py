@@ -484,14 +484,14 @@ class IlastikShell( QMainWindow ):
         # Flush any changes we made to disk, but don't close the file.
         self.currentProjectFile.flush()
         
-    def onQuitActionTriggered(self):
+    def onQuitActionTriggered(self, force=False):
         """
         The user wants to quit the application.
         Check his project for unsaved data and ask if he really means it.
         """
         logger.info("Quit Action Triggered")
         
-        if self.isProjectDataDirty():
+        if not force and self.isProjectDataDirty():
             message = "Your project has unsaved data.  Are you sure you want to discard your changes and quit?"
             buttons = QMessageBox.Discard | QMessageBox.Cancel
             response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)

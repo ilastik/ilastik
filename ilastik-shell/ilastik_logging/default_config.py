@@ -39,6 +39,7 @@ default_log_config = {
         "lazyflow.graph":                       {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.graph.Slot":                  {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.operators":                   {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
+        "lazyflow.operators.obsolete.vigraOperators":         { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.operators.obsolete.classifierOperators":    { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "volumina":                             {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "applets":                              {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
@@ -56,7 +57,8 @@ default_log_config = {
         "TRACE.lazyflow.operators.obsolete.operators.OpArrayCache":     { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
         "TRACE.lazyflow.operators.obsolete.valueProviders.OpValueCache":{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
         "TRACE.applets":                                                { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.volumina":                                               { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False }
+        "TRACE.volumina":                                               { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
+        "TRACE.volumina.imageScene2D":                                  { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False }
     }
 }
 
