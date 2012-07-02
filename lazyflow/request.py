@@ -533,14 +533,17 @@ class Request(object):
             # call the callback tuples
                 canceled = c[0](self, *c[1],**c[2])
                 if canceled is False:
+                    self.logger.debug( "onCancel callback refused cancellation" )
                     break
             if canceled:
+                self.logger.debug( "cancelling request" )
                 for c in child_requests:
                     print "canceling child.."
                     c.cancel()
                 self.canceled = True
         else:
-            self.logger.info( "tried to cancel but: self.finished={}, self.canceled={}".format(self.finished, self.canceled) )
+            self.lock.release()
+            self.logger.debug( "tried to cancel but: self.finished={}, self.canceled={}".format(self.finished, self.canceled) )
 
     def _execute(self):
         """
