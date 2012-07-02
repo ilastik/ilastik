@@ -344,7 +344,6 @@ class OpArrayCache(OpArrayPiper):
                 self.graph._notifyMemoryAllocation(self, mem.nbytes)
                 if self._blockState is None:
                     self._allocateManagementStructures()
-                inputSlot = self.inputs["Input"]
                 self.graph._notifyFreeMemory(self._memorySize())
                 self._cache = mem
             self._cacheLock.release()
@@ -397,7 +396,9 @@ class OpArrayCache(OpArrayPiper):
 
         start, stop = sliceToRoi(key, self.shape)
 
+        self.traceLogger.debug("Acquiring ArrayCache lock...")
         self._lock.acquire()
+        self.traceLogger.debug("ArrayCache lock acquired.")
 
         ch = self._cacheHits
         ch += 1
@@ -436,6 +437,7 @@ class OpArrayCache(OpArrayPiper):
         def onCancel(req):
             return False # indicate that this request cannot be canceled
 
+        self.traceLogger.debug("Creating cache input requests")
         for i in range(tileArray.shape[1]):
 
             drStart3 = tileArray[:half,i]
@@ -481,13 +483,16 @@ class OpArrayCache(OpArrayPiper):
 #        # indicate the inprocessing state, by setting array to 0
         if not self._fixed:
             blockSet[:]  = fastWhere(cond, 0, blockSet, numpy.uint8)
+
         self._lock.release()
 
         temp = itertools.count(0)
 
         #wait for all requests to finish
+        self.traceLogger.debug( "Firing all {} cache input requests...".format(len(dirtyRequests)) )
         for req, reqBlockKey, reqSubBlockKey in dirtyRequests:
             res = req.wait()
+        self.traceLogger.debug( "All cache input requests received." )
 
         # indicate the finished inprocess state
         if not self._fixed and temp.next() == 0:
@@ -506,7 +511,9 @@ class OpArrayCache(OpArrayPiper):
         if self._cache is not None:
             result[:] = self._cache[roiToSlice(start, stop)]
         else:
+            self.traceLogger.debug( "WAITING FOR INPUT WITH THE CACHE LOCK LOCKED!" )
             self.inputs["Input"][roiToSlice(start, stop)].writeInto(result).wait()
+            self.traceLogger.debug( "INPUT RECEIVED WITH THE CACHE LOCK LOCKED." )
         self._lock.release()
 
     def setInSlot(self, slot, key, value):
@@ -1207,6 +1214,9 @@ class OpSlicedBlockedArrayCache(Operator):
             if slot == self.inputs["fixAtCurrent"]:
                 if self.inputs["fixAtCurrent"].ready():
                     self._fixed =  self.inputs["fixAtCurrent"].value
+                else:
+                    # Should always be ready, no?
+                    assert False
 
 
     def setInSlot(self,slot,key):
