@@ -54,7 +54,7 @@ class LayerViewerGui(QMainWindow):
     ###########################################
     ###########################################
 
-    def __init__(self, operators, layerSetupCallback=None):
+    def __init__(self, dataProviderSlots, layerSetupCallback=None):
         """
         Args:
             dataProviderSlot - A list of slots that we'll listen for changes on.
@@ -66,9 +66,9 @@ class LayerViewerGui(QMainWindow):
             super(LayerViewerGui, self).__init__()
     
             self.dataProviderSlots = []
-            dataProviderSlots = []
-            for op in operators:
-                dataProviderSlots += op.outputs.values()
+#            dataProviderSlots = []
+#            for op in operators:
+#                dataProviderSlots += op.outputs.values()
     
             for slot in dataProviderSlots:
                 if slot.level == 1:
@@ -154,7 +154,7 @@ class LayerViewerGui(QMainWindow):
             # Make sure we're notified if a layer is inserted in the future so we can subscribe to its ready notifications
             for provider in self.dataProviderSlots:
                 provider[self.imageIndex].notifyInserted( bind(self.handleLayerInsertion) )
-                provider[self.imageIndex].notifyRemove( bind(self.handleLayerRemoval) )
+                provider[self.imageIndex].notifyRemoved( bind(self.handleLayerRemoval) )
 
     def handleLayerInsertion(self, slot, slotIndex):
         """
@@ -245,6 +245,10 @@ class LayerViewerGui(QMainWindow):
                 # Clear all existing layers.
                 self.layerstack.clear()
                 self.lastUpdateImageIndex = self.imageIndex
+
+                # Zoom at a 1-1 scale to avoid loading big datasets entirely...
+                for view in self.editor.imageViews:
+                    view.doScaleTo(1)
             
             # Reinitialize the editor datashape with the first ready slot we've got
             newDataShape = None

@@ -31,7 +31,7 @@ class ThresholdMaskingGui(LayerViewerGui):
         """
         """
         with Tracer(traceLogger):
-            super(ThresholdMaskingGui, self).__init__([mainOperator])
+            super(ThresholdMaskingGui, self).__init__([mainOperator.Output, mainOperator.InvertedOutput])
             self.mainOperator = mainOperator
             self.handleThresholdGuiValuesChanged(0, 255)
     
