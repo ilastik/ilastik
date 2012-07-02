@@ -1,6 +1,10 @@
 from lazyflow.graph import *
 from lazyflow import roi
 
+import logging
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger("TRACE." + __name__)
+from lazyflow.tracer import Tracer
 
 def axisTagObjectFromFlag(flag):
 
@@ -173,7 +177,8 @@ class OpMultiArraySlicer2(Operator):
     def handleInputMetaChanged(self, *args):
         # Note that we're calling the underscore version here so that changes are propagated to our partners
         # FIXME: There should be a more straightforward way of doing this...
-        self._setupOutputs()
+        if self.configured():
+            self._setupOutputs()
 
     def getSubOutSlot(self, slots, indexes, key, result):
 
@@ -349,55 +354,57 @@ class OpSubRegion(Operator):
     outputSlots = [OutputSlot("Output")]
 
     def notifyConnectAll(self):
-        start = self.inputs["Start"].value
-        stop = self.inputs["Stop"].value
-        assert isinstance(start, tuple)
-        assert isinstance(stop, tuple)
-        assert len(start) == len(self.inputs["Input"].shape)
-        assert len(start) == len(stop)
-        assert (numpy.array(stop)>= numpy.array(start)).all()
-
-        temp = tuple(numpy.array(stop) - numpy.array(start))
-        #drop singleton dimensions
-        outShape = ()
-        for e in temp:
-            if e > 0:
-                outShape = outShape + (e,)
-
-        self.outputs["Output"]._shape = outShape
-        self.outputs["Output"]._axistags = self.inputs["Input"].axistags
-        self.outputs["Output"]._dtype = self.inputs["Input"].dtype
+        with Tracer(traceLogger):
+            start = self.inputs["Start"].value
+            stop = self.inputs["Stop"].value
+            assert isinstance(start, tuple)
+            assert isinstance(stop, tuple)
+            assert len(start) == len(self.inputs["Input"].shape)
+            assert len(start) == len(stop)
+            assert (numpy.array(stop)>= numpy.array(start)).all()
+        
+            temp = tuple(numpy.array(stop) - numpy.array(start))
+            #drop singleton dimensions
+            outShape = ()
+            for e in temp:
+                if e > 0:
+                    outShape = outShape + (e,)
+        
+            self.outputs["Output"]._shape = outShape
+            self.outputs["Output"]._axistags = self.inputs["Input"].axistags
+            self.outputs["Output"]._dtype = self.inputs["Input"].dtype
 
     def getOutSlot(self, slot, key, resultArea):
-        start = self.inputs["Start"].value
-        stop = self.inputs["Stop"].value
-
-        temp = tuple()
-        for i in xrange(len(start)):
-            if stop[i] - start[i] > 0:
-                temp += (stop[i]-start[i],)
-
-        readStart, readStop = sliceToRoi(key, temp)
-
-
-
-        newKey = ()
-        resultKey = ()
-        i = 0
-        i2 = 0
-        for kkk in xrange(len(start)):
-            e = stop[kkk] - start[kkk]
-            if e > 0:
-                newKey += (slice(start[i2] + readStart[i], start[i2] + readStop[i],None),)
-                resultKey += (slice(0,temp[i2],None),)
-                i +=1
-            else:
-                newKey += (slice(start[i2], start[i2], None),)
-                resultKey += (0,)
-            i2 += 1
-
-        res = self.inputs["Input"][newKey].allocate().wait()
-        resultArea[:] = res[resultKey]
+        with Tracer(traceLogger):
+            start = self.inputs["Start"].value
+            stop = self.inputs["Stop"].value
+    
+            temp = tuple()
+            for i in xrange(len(start)):
+                if stop[i] - start[i] > 0:
+                    temp += (stop[i]-start[i],)
+    
+            readStart, readStop = sliceToRoi(key, temp)
+    
+    
+    
+            newKey = ()
+            resultKey = ()
+            i = 0
+            i2 = 0
+            for kkk in xrange(len(start)):
+                e = stop[kkk] - start[kkk]
+                if e > 0:
+                    newKey += (slice(start[i2] + readStart[i], start[i2] + readStop[i],None),)
+                    resultKey += (slice(0,temp[i2],None),)
+                    i +=1
+                else:
+                    newKey += (slice(start[i2], start[i2], None),)
+                    resultKey += (0,)
+                i2 += 1
+    
+            res = self.inputs["Input"][newKey].allocate().wait()
+            resultArea[:] = res[resultKey]
 
 
 
