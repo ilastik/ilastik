@@ -46,7 +46,7 @@ class LayerViewerGui(QMainWindow):
         return self.menuBar
 
     def viewerControlWidget(self):
-        return self._viewerControlWidget
+        return self.__viewerControlWidget
 
     def setImageIndex(self, index):
         self._setImageIndex(index)
@@ -90,11 +90,13 @@ class LayerViewerGui(QMainWindow):
     
             self.menuBar = QMenuBar()
             
+            self.layerstack = LayerStackModel()
+
             self.initAppletDrawerUi() # Default implementation loads a blank drawer.
             self.initCentralUic()
+            self.__viewerControlWidget = None
             self.initViewerControlUi()
             
-            self.layerstack = LayerStackModel()
             self.initEditor()
             
             self.imageIndex = -1
@@ -288,7 +290,7 @@ class LayerViewerGui(QMainWindow):
         with Tracer(traceLogger):
             p = os.path.split(__file__)[0]+'/'
             if p == "/": p = "."+p
-            self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
+            self.__viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
     def initAppletDrawerUi(self):
         """
@@ -385,15 +387,17 @@ class LayerViewerGui(QMainWindow):
             
             # The editor's layerstack is in charge of which layer movement buttons are enabled
             model = self.editor.layerStack
-            model.canMoveSelectedUp.connect(self._viewerControlWidget.UpButton.setEnabled)
-            model.canMoveSelectedDown.connect(self._viewerControlWidget.DownButton.setEnabled)
-            model.canDeleteSelected.connect(self._viewerControlWidget.DeleteButton.setEnabled)     
+
+            if self.__viewerControlWidget is not None:
+                model.canMoveSelectedUp.connect(self.__viewerControlWidget.UpButton.setEnabled)
+                model.canMoveSelectedDown.connect(self.__viewerControlWidget.DownButton.setEnabled)
+                model.canDeleteSelected.connect(self.__viewerControlWidget.DeleteButton.setEnabled)     
     
-            # Connect our layer movement buttons to the appropriate layerstack actions
-            self._viewerControlWidget.layerWidget.init(model)
-            self._viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
-            self._viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
-            self._viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
+                # Connect our layer movement buttons to the appropriate layerstack actions
+                self.__viewerControlWidget.layerWidget.init(model)
+                self.__viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
+                self.__viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
+                self.__viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
             
             self.editor._lastImageViewFocus = 0
 
@@ -411,10 +415,12 @@ class LayerViewerGui(QMainWindow):
         """
         # All the controls in our GUI
         controlList = [ self.menuBar,
-                        self.volumeEditorWidget,
-                        self._viewerControlWidget.UpButton,
-                        self._viewerControlWidget.DownButton,
-                        self._viewerControlWidget.DeleteButton ]
+                        self.volumeEditorWidget]
+
+        if self.__viewerControlWidget is not None:
+            controlList += [ self.__viewerControlWidget.UpButton,
+                             self.__viewerControlWidget.DownButton,
+                             self.__viewerControlWidget.DeleteButton ]
 
         # Enable/disable all of them
         for control in controlList:
