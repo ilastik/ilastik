@@ -98,6 +98,7 @@ class LayerViewerGui(QMainWindow):
             self.initEditor()
             
             self.imageIndex = -1
+            self.lastUpdateImageIndex = -1
             
             def handleDatasetInsertion(slot, imageIndex):
                 if self.imageIndex == -1 and self.areProvidersInSync():
@@ -135,13 +136,11 @@ class LayerViewerGui(QMainWindow):
                     provider[self.imageIndex].unregisterInserted( bind(self.handleLayerInsertion) )
                     provider[self.imageIndex].unregisterRemove( bind(self.handleLayerRemoval) )
     
-            # Clear the GUI
-            self.layerstack.clear()
-    
             self.imageIndex = imageIndex
             
             # Don't repopulate the GUI if there isn't a current dataset.  Stop now. 
             if imageIndex is -1:
+                self.layerstack.clear()
                 return
     
             # Update the GUI for all layers in the current dataset
@@ -234,11 +233,19 @@ class LayerViewerGui(QMainWindow):
             
             # Ask the subclass for the updated layer list
             newGuiLayers = self.layerSetupCallback(self.imageIndex)
+
+            # Copy the old visibilities and opacities
+            if self.imageIndex != self.lastUpdateImageIndex:
+                existing = {l.layerId : l for l in self.layerstack}
+                for layer in newGuiLayers:
+                    if layer.layerId in existing.keys():
+                        layer.visible = existing[layer.layerId].visible
+                        layer.opacity = existing[layer.layerId].opacity
+
+                # Clear all existing layers.
+                self.layerstack.clear()
+                self.lastUpdateImageIndex = self.imageIndex
             
-            # Testing: Simply remove everything and add it all back
-            # TODO: Selectively remove/add rows based on what actually changed.
-            self.layerstack.clear()
-    
             # Reinitialize the editor datashape with the first ready slot we've got
             newDataShape = None
             for provider in self.dataProviderSlots:
@@ -252,13 +259,23 @@ class LayerViewerGui(QMainWindow):
                         # We just needed the operator to determine the transposed shape.
                         # Disconnect it so it can be garbage collected.
                         op5.input.disconnect()
+
             if newDataShape is not None and self.editor.dataShape != newDataShape:
                 self.editor.dataShape = newDataShape
     
+            # Insert all layers that aren't already in the layerstack
+            # (Identified by the layerId attribute)
+            existingLayerIds = [l.layerId for l in self.layerstack]
             for index, layer in enumerate(newGuiLayers):
-                layer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
-                self.layerstack.insert( index, layer )
-        
+                if layer.layerId not in existingLayerIds:
+                    self.layerstack.insert( index, layer )
+
+            # Remove any old layers that aren't in the new stack
+            newLayerIds = [l.layerId for l in newGuiLayers]
+            for index, layer in enumerate(self.layerstack):
+                if layer.layerId not in newLayerIds:
+                    self.layerstack.removeRow(index)
+
     def initViewerControlUi(self):
         """
         Load the viewer controls GUI, which appears below the applet bar.
