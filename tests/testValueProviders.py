@@ -1,6 +1,9 @@
+import time
+import threading
 import numpy
 import vigra
 import lazyflow
+import lazyflow.graph
 from lazyflow.operators import OpMetadataInjector, OpOutputProvider, OpMetadataSelector, OpValueCache
 
 class TestOpMetadataInjector(object):
@@ -79,7 +82,24 @@ class TestOpMetadataSelector(object):
 
 class TestOpValueCache(object):
     
-    def test(self):
+    class OpSlowComputation(lazyflow.graph.Operator):
+        Input = lazyflow.graph.InputSlot()
+        Output = lazyflow.graph.OutputSlot()
+
+        def __init__(self, *args, **kwargs):
+            super(TestOpValueCache.OpSlowComputation, self).__init__(*args, **kwargs)
+            self.executionCount = 0
+        
+        def setupOutputs(self):
+            self.Output.meta.assignFrom(self.Input.meta)
+        
+        def execute(self, slot, roi, result):
+            self.executionCount += 1
+            time.sleep(2)
+            result[...] = self.Input.value
+        
+    
+    def test_basic(self):
         graph = lazyflow.graph.Graph()
         op = OpValueCache()
         assert not op._dirty
@@ -100,6 +120,39 @@ class TestOpValueCache(object):
         # But the cache notified downstream slots that his value changed
         assert outputDirtyCount[0] == 1
 
+    def test_multithread(self):
+        graph = lazyflow.graph.Graph()
+        opCompute = TestOpValueCache.OpSlowComputation(graph=graph)
+        opCache = OpValueCache(graph=graph)
+
+        opCompute.Input.setValue(100)
+        opCache.Input.connect(opCompute.Output)
+
+        def checkOutput():
+            assert opCache.Output.value == 100
+
+        threads = []
+        for i in range(100):
+            threads.append( threading.Thread(target=checkOutput) )
+        
+        for t in threads:
+            t.start()
+            
+        for t in threads:
+            t.join()
+
+        assert opCompute.executionCount == 1
+        assert opCache._dirty == False
+        assert opCache._request is None
+        assert opCache.Output.value == 100
+
 if __name__ == "__main__":
+#    import logging
+#    traceLogger = logging.getLogger("TRACE.lazyflow.operators.obsolete.valueProviders.OpValueCache")
+#    traceLogger.setLevel(logging.DEBUG)
+#    handler = logging.StreamHandler()
+#    handler.setLevel(logging.DEBUG)
+#    traceLogger.addHandler(handler)
+
     import nose
     nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})

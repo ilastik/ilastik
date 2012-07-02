@@ -4,8 +4,8 @@ from lazyflow.graph import *
 import gc
 import lazyflow.roi
 import threading
+import thread
 import copy
-import lazyflow.request
 
 from operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
 
@@ -182,13 +182,14 @@ class OpValueCache(Operator):
     
     loggerName = __name__ + ".OpValueCache"
     logger = logging.getLogger(loggerName)
-    traceLogger = logging.getLogger("TRACE." + __name__)
+    traceLogger = logging.getLogger("TRACE." + loggerName)
     
     def __init__(self, *args, **kwargs):
         super(OpValueCache, self).__init__(*args, **kwargs)
         self._dirty = False
         self._value = None
-        self._lock = lazyflow.request.Lock() # Must use special greenlet-aware lock
+        self._lock = threading.Lock()
+        self._request = None
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
@@ -196,13 +197,46 @@ class OpValueCache(Operator):
     
     def execute(self, slot, roi, result):
         # Optimization: We don't let more than one caller trigger the value to be computed at the same time
-        with Tracer(self.traceLogger):
-            self._lock.acquire()
-            if self._dirty:
-                self._value = self.Input.value
+        # If some other caller has already requested the value, we'll just wait for the request he already made.
+        class State():
+            Dirty = 0
+            Waiting = 1
+            Clean = 2
+
+        request = None
+        value = None
+        with self._lock:
+            # What state are we in?
+            if not self._dirty:
+                state = State.Clean
+            elif self._request is not None:
+                state = State.Waiting
+            else:
+                state = State.Dirty
+
+            self.traceLogger.debug("State is: {}".format( {State.Dirty : 'Dirty', State.Waiting : 'Waiting', State.Clean : 'Clean'}[state]) )
+            
+            # Obtain the request to wait for (create it if necessary)
+            if state == State.Dirty:
+                request = self.Input[...]
+                self._request = request
+            elif state == State.Waiting:
+                request = self._request
+            else:
+                value = self._value
+
+        # Now release the lock and block for the request
+        if state != State.Clean:
+            value = request.wait()
+        
+        result[...] = value
+        
+        # If we made the request, set the members
+        if state == State.Dirty:
+            with self._lock:
+                self._value = value
+                self._request = None
                 self._dirty = False
-            result[...] = self._value
-            self._lock.release()
 
     def propagateDirty(self, islot, roi):
         self._dirty = True
@@ -213,9 +247,10 @@ class OpValueCache(Operator):
         Allows a 'back door' to force data into this cache.
         Note: Use this function carefully.
         """
-        self._value = value
-        self._dirty = False
-        self.Output.setDirty(slice(None))
+        with self._lock:
+            self._value = value
+            self._dirty = False
+            self.Output.setDirty(slice(None))
         
 
 
