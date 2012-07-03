@@ -58,7 +58,7 @@ class OpFeatureSelection(Operator):
 
         # Also provide each feature as a separate layer (for the GUI)
         self.opFeatureSlicer = OpMultiArraySlicer2(parent=self)
-        self.opFeatureSlicer.Input.connect( self.OutputImage )
+        self.opFeatureSlicer.Input.connect( self.opPixelFeatures.Output )
         self.opFeatureSlicer.AxisFlag.setValue('c')
         self.FeatureLayers.connect( self.opFeatureSlicer.Slices )
 
