@@ -34,10 +34,9 @@ class VigraWatershedViewerGui(LayerViewerGui):
         """
         """
         with Tracer(traceLogger):
-            super(VigraWatershedViewerGui, self).__init__([mainOperator])
+            super(VigraWatershedViewerGui, self).__init__([mainOperator.InputImage, mainOperator.Output])
             self.mainOperator = mainOperator
             self.mainOperator.FreezeCache.setValue(True)
-            #self.mainOperator.PaddingWidth.setValue(10)
         
             self._colortable = []
     
@@ -58,8 +57,6 @@ class VigraWatershedViewerGui(LayerViewerGui):
             outputImageSlot = self.mainOperator.Output[ currentImageIndex ]
             if outputImageSlot.ready():
                 outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
-    #            source = LazyflowSource( self.mainOperator.Output[currentImageIndex] )
-    #            outputLayer = ColortableLayer( source, colorTable = self.getColortable(100000) )
                 outputLayer.name = "watershed"
                 outputLayer.visible = True
                 outputLayer.opacity = 0.5
