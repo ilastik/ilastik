@@ -106,27 +106,7 @@ class BatchIoGui(QMainWindow):
             
             self.drawer.exportAllButton.clicked.connect( self.exportAllResults )
             self.drawer.deleteAllButton.clicked.connect( self.deleteAllResults )
-        
-        def enableAppletDrawerControls(enabled):
-            """
-            Enable or disable all of the controls in this applet's drawer widget.
-            """
-            # All the controls in our GUI
-            controlList = [ self.drawer.saveWithInputButton,
-                            self.drawer.saveToDirButton,
-                            self.drawer.outputDirEdit,
-                            self.drawer.outputDirChooseButton,
-                            self.drawer.exportAllButton,
-                            self.drawer.deleteAllButton,
-                            self.drawer.outputSuffixEdit ]
-    
-            # Enable/disable all of them
-            for control in controlList:
-                control.setEnabled(enabled)
 
-        # Expose the enable function with the name the shell expects
-        self.drawer.enableControls = enableAppletDrawerControls
-    
     def initCentralUic(self):
         """
         Load the GUI from the ui file into this class and connect it with event handlers.
@@ -273,10 +253,7 @@ class BatchIoGui(QMainWindow):
                         result = slot.value
                         if not result:
                             print "Failed to export a result:" + self.mainOperator.OutputDataPath
-            
-                    # Re-enable our controls
-                    self.enableControls(True)
-        
+                    
                     # Now that we're finished, it's okay to use the other applets again.
                     self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop ) # Enable ourselves
                     self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop ) # Enable the others we disabled
@@ -289,22 +266,6 @@ class BatchIoGui(QMainWindow):
         with Tracer(traceLogger):
             for slot in self.mainOperator.OutputDataPath:
                 os.remove(slot.value)
-
-    def enableControls(self, enabled):
-        """
-        Enable or disable all of the controls in this applet's central widget.
-        """
-        # All the controls in our GUI
-        controlList = [ self.tableWidget ]
-
-        # Enable/disable all of them
-        for control in controlList:
-            control.setEnabled(enabled)
-
-
-
-
-
 
 
 

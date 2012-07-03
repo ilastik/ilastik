@@ -114,22 +114,6 @@ class DataSelectionGui(QMainWindow):
             self.drawer.addFileButton.clicked.connect(self.handleAddFileButtonClicked)
             self.drawer.addStackButton.clicked.connect(self.handleAddStackButtonClicked)
             self.drawer.removeFileButton.clicked.connect(self.handleRemoveButtonClicked)
-            
-            def enableAppletDrawerControls(enabled):
-                """
-                Enable or disable all of the controls in this applet's drawer widget.
-                """
-                # All the controls in our GUI
-                controlList = [ self.drawer.addFileButton,
-                                self.drawer.addStackButton,
-                                self.drawer.removeFileButton ]
-        
-                # Enable/disable all of them
-                for control in controlList:
-                    control.setEnabled(enabled)
-    
-            # Expose the enable function with the name the shell expects
-            self.drawer.enableControls = enableAppletDrawerControls
     
     def initCentralUic(self):
         """
@@ -515,18 +499,6 @@ class DataSelectionGui(QMainWindow):
             # Reconnect now that we're finished
             self.fileInfoTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
     
-    def enableControls(self, enabled):
-        """
-        Enable or disable all of the controls in this applet's central widget.
-        """
-        # All the controls in our GUI
-        controlList = [ self.fileInfoTableWidget ]
-
-        # Enable/disable all of them
-        for control in controlList:
-            control.setEnabled(enabled)
-
-
 
 
 

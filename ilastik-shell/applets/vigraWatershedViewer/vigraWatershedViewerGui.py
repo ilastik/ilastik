@@ -46,13 +46,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
             # Load the ui file (find it in our own directory)
             localDir = os.path.split(__file__)[0]
             self._drawer = uic.loadUi(localDir+"/drawer.ui")
-            
-            def enableDrawerControls(enabled):
-                pass
-    
-            # Expose the enable function with the name the shell expects
-            self._drawer.enableControls = enableDrawerControls
-        
+                
     def getAppletDrawerUi(self):
         return self._drawer
     

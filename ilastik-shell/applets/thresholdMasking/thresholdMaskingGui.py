@@ -48,13 +48,7 @@ class ThresholdMaskingGui(LayerViewerGui):
             thresholdWidget = ThresholdingWidget(self)
             thresholdWidget.valueChanged.connect( self.handleThresholdGuiValuesChanged )
             layout.addWidget( thresholdWidget )
-            
-            def enableDrawerControls(enabled):
-                pass
-    
-            # Expose the enable function with the name the shell expects
-            self._drawer.enableControls = enableDrawerControls
-    
+                
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):
             self.mainOperator.MinValue.setValue(minVal)

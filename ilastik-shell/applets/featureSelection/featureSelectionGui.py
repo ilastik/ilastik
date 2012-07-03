@@ -77,19 +77,6 @@ class FeatureSelectionGui(LayerViewerGui):
             self.drawer = uic.loadUi(localDir+"/featureSelectionDrawer.ui")
             self.drawer.SelectFeaturesButton.clicked.connect(self.onFeatureButtonClicked)
     
-            def enableDrawerControls(enabled):
-                """
-                Enable or disable all of the controls in this applet's drawer widget.
-                """
-                # All the controls in our GUI
-                controlList = [ self.drawer.SelectFeaturesButton ]
-        
-                # Enable/disable all of them
-                for control in controlList:
-                    control.setEnabled(enabled)
-    
-            # Expose the enable function with the name the shell expects
-            self.drawer.enableControls = enableDrawerControls
 
     def initViewerControlUi(self):
         """

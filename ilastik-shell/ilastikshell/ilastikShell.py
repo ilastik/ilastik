@@ -531,11 +531,11 @@ class IlastikShell( QMainWindow ):
             enabled = self._disableCounts[index] == 0
 
             # Apply to the applet central widget
-            applet.gui.centralWidget().enableControls( enabled and self.enableWorkflow )
+            applet.gui.centralWidget().setEnabled( enabled and self.enableWorkflow )
             
             # Apply to the applet bar drawers
             for appletName, appletGui in applet.gui.appletDrawers():
-                appletGui.enableControls( enabled and self.enableWorkflow )
+                appletGui.setEnabled( enabled and self.enableWorkflow )
 
 #    def scrollToTop(self):
 #        #self.appletBar.verticalScrollBar().setValue( 0 )

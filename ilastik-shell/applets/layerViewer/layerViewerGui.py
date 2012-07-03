@@ -301,11 +301,6 @@ class LayerViewerGui(QMainWindow):
             # Load the ui file (find it in our own directory)
             localDir = os.path.split(__file__)[0]
             self._drawer = uic.loadUi(localDir+"/drawer.ui")
-            
-            def enableDrawerControls(enabled):
-                pass
-            # Expose the enable function with the name the shell expects
-            self._drawer.enableControls = enableDrawerControls
     
     def getAppletDrawerUi(self):
         return self._drawer
@@ -408,23 +403,6 @@ class LayerViewerGui(QMainWindow):
         """
         with Tracer(traceLogger):
             self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
-
-    def enableControls(self, enabled):
-        """
-        Enable or disable all of the controls in this applet's central widget.
-        """
-        # All the controls in our GUI
-        controlList = [ self.menuBar,
-                        self.volumeEditorWidget]
-
-        if self.__viewerControlWidget is not None:
-            controlList += [ self.__viewerControlWidget.UpButton,
-                             self.__viewerControlWidget.DownButton,
-                             self.__viewerControlWidget.DeleteButton ]
-
-        # Enable/disable all of them
-        for control in controlList:
-            control.setEnabled(enabled)
 
 
 
