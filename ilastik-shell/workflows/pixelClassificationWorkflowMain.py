@@ -60,74 +60,48 @@ opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
 # Training flags -> Classification Op (for GUI restrictions)
 opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 
-###
-#  Test Test Test
-###
-#from applets.genericViewer import GenericViewerApplet
-#from applets.genericViewer.genericViewerGui import LayerType
-#genericViewerApplet = GenericViewerApplet(graph)
-#opGenericViewer = genericViewerApplet.topLevelOperator
-#
-## Inject metadata to specify the base data layer name
-#opBaseNameInjector = OpMetadataInjector(graph=graph)
-#opBaseNameInjector.Metadata.setValue( { 'name' : 'Input Data',
-#                                        'layertype' : LayerType.AlphaModulated } )
-#opBaseNameInjector.Input.connect( opData.Image )
-#opGenericViewer.BaseLayer.connect( opBaseNameInjector.Output )
-#
-## Inject metadata to specify the feature layer display type
-#opFeatureDisplayInjector = OpMetadataInjector(graph=graph)
-#opFeatureDisplayInjector.Metadata.setValue( {'layertype' : LayerType.AlphaModulated} )
-#opFeatureDisplayInjector.Input.connect( opTrainingFeatures.OutputImage )
-#opGenericViewer.ChannelwiseLayers.connect( opFeatureDisplayInjector.Output )
+######################
+# Batch workflow
+######################
 
-################
-## Threshold test
-################
-#from applets.thresholdMasking import ThresholdMaskingApplet
-#thresholdMaskingApplet = ThresholdMaskingApplet(graph)
-#opThresholdMaskingViewer = thresholdMaskingApplet.topLevelOperator
-#opThresholdMaskingViewer.InputImage.connect( opData.Image )
+## Create applets
+batchInputApplet = DataSelectionApplet(graph, "Batch Inputs", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
+batchResultsApplet = BatchIoApplet(graph, "Batch Results")
 
-#######################
-## Batch workflow
-#######################
-#
-### Create applets
-#batchInputApplet = DataSelectionApplet(graph, "Batch Inputs", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
-#batchResultsApplet = BatchIoApplet(graph, "Batch Results")
-#
-### Access applet operators
-#opBatchInputs = batchInputApplet.topLevelOperator
-#opBatchResults = batchResultsApplet.topLevelOperator
-#
-### Create additional batch workflow operators
-#opBatchFeatures = OpFeatureSelection(graph=graph)
-#opBatchPredictor = OpPredictRandomForest(graph=graph)
-#opSelectBatchDatasetPath = OperatorWrapper( OpAttributeSelector(graph=graph) )
-#
-### Connect Operators ## 
-#
-## Provide dataset paths from data selection applet to the batch export applet via an attribute selector
-#opSelectBatchDatasetPath.InputObject.connect( opBatchInputs.Dataset )
-#opSelectBatchDatasetPath.AttributeName.setValue( 'filePath' )
-#opBatchResults.DatasetPath.connect( opSelectBatchDatasetPath.Result )
-#
-## Connect (clone) the feature operator inputs from 
-##  the interactive workflow's features operator (which gets them from the GUI)
-#opBatchFeatures.Scales.connect( opTrainingFeatures.Scales )
-#opBatchFeatures.FeatureIds.connect( opTrainingFeatures.FeatureIds )
-#opBatchFeatures.SelectionMatrix.connect( opTrainingFeatures.SelectionMatrix )
-#
-## Classifier and LabelsCount are provided by the interactive workflow
-#opBatchPredictor.Classifier.connect( opClassify.Classifier )
-#opBatchPredictor.LabelsCount.connect( opClassify.MaxLabelValue )
-#
-## Connect Image pathway:
-## Input Image -> Features Op -> Prediction Op -> Export
-#opBatchFeatures.InputImage.connect( opBatchInputs.Image )
-#opBatchPredictor.Image.connect( opBatchFeatures.OutputImage )
-#opBatchResults.ImageToExport.connect( opBatchPredictor.PMaps )
+## Access applet operators
+opBatchInputs = batchInputApplet.topLevelOperator
+opBatchInputs.name = 'opBatchInputs'
+opBatchResults = batchResultsApplet.topLevelOperator
+
+## Create additional batch workflow operators
+opBatchFeatures = OperatorWrapper( OpFeatureSelection(graph=graph), promotedSlotNames=['InputImage'] )
+opBatchFeatures.name = "opBatchFeatures"
+opBatchPredictor = OperatorWrapper( OpPredictRandomForest(graph=graph), promotedSlotNames=['Image'])
+opBatchPredictor.name = "opBatchPredictor"
+opSelectBatchDatasetPath = OperatorWrapper( OpAttributeSelector(graph=graph) )
+
+## Connect Operators ## 
+
+# Provide dataset paths from data selection applet to the batch export applet via an attribute selector
+opSelectBatchDatasetPath.InputObject.connect( opBatchInputs.Dataset )
+opSelectBatchDatasetPath.AttributeName.setValue( 'filePath' )
+opBatchResults.DatasetPath.connect( opSelectBatchDatasetPath.Result )
+
+# Connect (clone) the feature operator inputs from 
+#  the interactive workflow's features operator (which gets them from the GUI)
+opBatchFeatures.Scales.connect( opTrainingFeatures.Scales )
+opBatchFeatures.FeatureIds.connect( opTrainingFeatures.FeatureIds )
+opBatchFeatures.SelectionMatrix.connect( opTrainingFeatures.SelectionMatrix )
+
+# Classifier and LabelsCount are provided by the interactive workflow
+opBatchPredictor.Classifier.connect( opClassify.Classifier )
+opBatchPredictor.LabelsCount.connect( opClassify.MaxLabelValue )
+
+# Connect Image pathway:
+# Input Image -> Features Op -> Prediction Op -> Export
+opBatchFeatures.InputImage.connect( opBatchInputs.Image )
+opBatchPredictor.Image.connect( opBatchFeatures.OutputImage )
+opBatchResults.ImageToExport.connect( opBatchPredictor.PMaps )
 
 ######################
 # Shell
@@ -142,13 +116,9 @@ shell.addApplet(dataSelectionApplet)
 shell.addApplet(featureSelectionApplet)
 shell.addApplet(pcApplet)
 
-## Add batch workflow applets
-#shell.addApplet(batchInputApplet)
-#shell.addApplet(batchResultsApplet)
-#
-## TEST TEST TEST TEST
-##shell.addApplet( genericViewerApplet )
-#shell.addApplet( thresholdMaskingApplet )
+# Add batch workflow applets
+shell.addApplet(batchInputApplet)
+shell.addApplet(batchResultsApplet)
 
 # The shell needs a slot from which he can read the list of image names to switch between.
 # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
@@ -168,6 +138,8 @@ def test():
     
     # Open a test project
     shell.openProjectFile('/home/bergs/synapse_small.ilp')
+    #shell.openProjectFile('/home/bergs/flyem.ilp')
+    #shell.openProjectFile('/tmp/synapse_small.ilp')
     #shell.openProjectFile('/home/bergs/dummy.ilp')
     
     # Select a drawer
