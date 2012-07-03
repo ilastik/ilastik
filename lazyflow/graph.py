@@ -492,8 +492,12 @@ class Slot(object):
                             partner.partners.remove(self)
                         except ValueError:
                             pass
-                    if lazyflow.verboseWrapping:
-                        self.logger.info("-> Wrapping operator because own level is", self.level, "partner level is", partner.level)
+
+                    # Implicit wrapping is not recommended.
+                    # If you know what you're doing, it's not hard to explicitly create an OperatorWrapper yourself.
+                    message = "IMPLICIT WRAPPING: {}.{}.level == {}, but {}.{}.level == {}"
+                    message = message.format( partner.operator.name, partner.name, partner.level, self.operator.name, self.name, self.level )
+                    self.logger.warn(message)
                     if isinstance(self.operator,(OperatorWrapper, Operator)):
                         newop = OperatorWrapper(self.operator)
                         newop.inputs[self.name].connect(partner)
@@ -1714,7 +1718,10 @@ class OperatorWrapper(Operator):
             self.origInputs = self.operator.inputs.copy()
             self.origOutputs = self.operator.outputs.copy()
             if lazyflow.verboseWrapping:
-                self.logger.debug("wrapping operator [self=%r] '%s'" % (operator, operator.name))
+                msgLevel = logging.INFO
+            else:
+                msgLevel = logging.DEBUG
+            self.logger.log(msgLevel, "wrapping operator [self=%r] '%s'" % (operator, operator.name))
     
             self._inputSlots = []
             self._outputSlots = []
@@ -1831,8 +1838,7 @@ class OperatorWrapper(Operator):
                     if islot.partner.level > self.origInputs[iname].level:
                         return
     
-            if lazyflow.verboseWrapping:
-                self.logger.info("Restoring original operator [self=%r] named '%s'" % (self, self.name))
+            self.logger.info("Restoring original operator [self=%r] named '%s'" % (self, self.name))
     
             op = self
             while isinstance(op.operator, (OperatorWrapper)):
@@ -1891,7 +1897,10 @@ class OperatorWrapper(Operator):
                 opcopy.name = self.operator.name
             else:
                 if lazyflow.verboseWrapping:
-                    print "_createInnerOperator OperatorWrapper"
+                    msgLevel = logging.INFO
+                else:
+                    msgLevel = logging.DEBUG
+                self.logger.log(msgLevel, "_createInnerOperator OperatorWrapper")
                 opcopy = OperatorWrapper(self.operator._createInnerOperator())
             return opcopy
 
