@@ -645,21 +645,25 @@ if has_blist:
                 self.inputs["deleteLabel"].setValue(-1) #reset state of inputslot
                 self.lock.acquire()
 
-                #remove values to be deleted
+                # Find the entries to remove
                 updateNZ = numpy.nonzero(numpy.where(self._denseArray == labelNr,1,0))
                 if len(updateNZ)>0:
-                    updateNZRavel = numpy.ravel_multi_index(updateNZ, self._denseArray.shape)
+                    # Convert to 1-D indexes for the raveled version
+                    updateNZRavel = numpy.ravel_multi_index(updateNZ, self._denseArray.shape)                                        
+                    # Zero out the entries we don't want any more
                     self._denseArray.ravel()[updateNZRavel] = neutralElement
+                    # Remove the zeros from the sparse list
                     for index in updateNZRavel:
                         self._sparseNZ.pop(index)
+                # Labels are continuous values: Shift all higher label values down by 1.
                 self._denseArray[:] = numpy.where(self._denseArray > labelNr, self._denseArray - 1, self._denseArray)
                 self.lock.release()
-                self.outputs["nonzeroValues"][0] = numpy.array(self._sparseNZ.values())
-                self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
-                self.outputs["Output"][:] = self._denseArray #set output dirty
+                self.outputs["nonzeroValues"].setDirty(slice(None))
+                self.outputs["nonzeroCoordinates"].setDirty(slice(None))
+                self.outputs["Output"].setDirty(slice(None))
                 if labelNr <= self._maxLabel:
                     self._maxLabel -= 1
-                self.outputs["maxLabel"][0] = self._maxLabel
+                self.outputs["maxLabel"].setValue(self._maxLabel)
 
         def getOutSlot(self, slot, key, result):
             self.lock.acquire()
@@ -853,31 +857,6 @@ if has_blist:
                     for l in self._labelers.values():
                         l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
     
-                    #print "not there yet"
-                    return
-                    labelNr = slot.value
-                    if labelNr is not -1:
-                        print "DELETING LABEL", self.inputs['deleteLabel'].value
-                        neutralElement = 0
-                        slot.setValue(-1) #reset state of inputslot
-                        self.lock.acquire()
-    
-                        #remove values to be deleted
-                        updateNZ = numpy.nonzero(numpy.where(self._denseArray == labelNr,1,0))
-                        if len(updateNZ)>0:
-                            updateNZRavel = numpy.ravel_multi_index(updateNZ, self._denseArray.shape)
-                            self._denseArray.ravel()[updateNZRavel] = neutralElement
-                            for index in updateNZRavel:
-                                self._sparseNZ.pop(index)
-                        self._denseArray[:] = numpy.where(self._denseArray > labelNr, self._denseArray - 1, self._denseArray)
-                        self.lock.release()
-                        self.outputs["nonzeroValues"][0] = numpy.array(self._sparseNZ.values())
-                        self.outputs["nonzeroCoordinates"][0] = numpy.array(self._sparseNZ.keys())
-                        self.outputs["Output"][:] = self._denseArray #set output dirty
-                        if labelNr <= self._maxLabel:
-                            self._maxLabel -= 1
-                        self.outputs["maxLabel"].setValue(self._maxLabel)
-
         def execute(self, slot, roi, result):
             with Tracer(self.traceLogger):
                 key = roi.toSlice()
