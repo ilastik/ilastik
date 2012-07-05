@@ -157,6 +157,13 @@ class OpTrainRandomForestBlocked(Operator):
                 featMatrix=numpy.concatenate(featMatrix,axis=0)
                 labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
 
+                if numpy.isnan(featMatrix).any():
+                    channelAxis = self.Images.meta.axistags('c')
+                    corruptChannels = numpy.where( numpy.isnan(featMatrix)[channelAxis] )
+                    assert False, "Random Forest Feature Matrix has NaNs in channels: {}".format(corruptChannels)
+                
+                assert not numpy.isnan(labelsMatrix).any(), "Random Forest Label Matrix has NaNs!"
+
                 RF=vigra.learning.RandomForest(100)
                 try:
                     logger.debug("Learning with Vigra...")
@@ -164,9 +171,8 @@ class OpTrainRandomForestBlocked(Operator):
                     logger.debug("Vigra finished")
                 except:
                     logger.error( "ERROR: could not learn classifier" )
-                    logger.error( "featMatrix={}, labelsMatrix={}".format(featMatrix, labelsMatrix) )
-                    logger.error( "featMatrix shape={}, dtype={}".format(featMatrix.shape, featMatrix.dtype) )
-                    logger.error( "labelsMatrix shape={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.dtype ) )
+                    logger.error( "featMatrix shape={}, max={}, dtype={}".format(featMatrix.shape, featMatrix.max(), featMatrix.dtype) )
+                    logger.error( "labelsMatrix shape={}, max={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.max(), labelsMatrix.dtype ) )
                     raise
                 assert RF is not None, "RF = %r" % RF
                 result[0]=RF
