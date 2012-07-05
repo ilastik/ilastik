@@ -26,6 +26,8 @@ import ilastik_logging
 import applet
 import appletGuiInterface
 
+import platform
+
 class ShellActions(object):
     """
     The shell provides the applet constructors with access to his GUI actions.
@@ -55,6 +57,10 @@ class IlastikShell( QMainWindow ):
         uic.loadUi( ilastikShellFilePath + "/ui/ilastikShell.ui", self )
         self._applets = []
         self.appletBarMapping = {}
+
+        if 'Ubuntu' in platform.platform():
+            # Native menus are prettier, but aren't working on Ubuntu at this time (Qt 4.7, Ubuntu 11)
+            self.menuBar().setNativeMenuBar(False)
 
         (self._projectMenu, self._shellActions) = self._createProjectMenu()
         self.menuBar().addMenu(self._projectMenu)
