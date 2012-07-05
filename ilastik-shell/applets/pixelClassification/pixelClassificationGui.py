@@ -3,7 +3,7 @@ from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, 
 
 import os, sys, numpy, copy
 
-from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject
+from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject, QEvent
 from PyQt4.QtGui import *
 
 from PyQt4 import uic
@@ -51,6 +51,8 @@ def getPathToLocalDirectory():
 
 class PixelClassificationGui(QMainWindow):
 
+    ResetLabelSelectionEvent = QEvent.Type(QEvent.registerEventType())
+
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
@@ -92,7 +94,7 @@ class PixelClassificationGui(QMainWindow):
     
             self.imageIndex = 0
             self.layerstack = None
-    
+
             self.pipeline.InputImages.notifyInserted( bind(self.subscribeToInputImageChanges) )
             self.pipeline.InputImages.notifyRemove( bind(self.subscribeToInputImageChanges) )
             self.subscribeToInputImageChanges()
@@ -100,6 +102,8 @@ class PixelClassificationGui(QMainWindow):
             self.pipeline.LabelImages.notifyInserted( bind(self.subscribeToLabelImageChanges) )
             self.pipeline.LabelImages.notifyRemove( bind(self.subscribeToLabelImageChanges) )
     
+            self._colorTable16 = self._createDefault16ColorColorTable()
+            
             def handleOutputListChanged():
                 """This closure is called when an image is added or removed from the output."""
                 with Tracer(traceLogger):
@@ -130,8 +134,6 @@ class PixelClassificationGui(QMainWindow):
                 self._normalize_data=False
                 sys.argv.remove('notnormalize')
     
-            self._colorTable16 = self._createDefault16ColorColorTable()
-            
             self.g = graph if graph else Graph()
             self.fixableOperators = [self.pipeline.prediction_cache]
             
@@ -407,8 +409,6 @@ class PixelClassificationGui(QMainWindow):
             # Prediction layers should be switched on/off when the interactive checkbox is toggled
             for layer in self.predictionLayers:
                 layer.visible = checked
-    
-            self.editor.scheduleSlicesRedraw()
 
     def changeInteractionMode( self, toolId ):
         """
@@ -473,9 +473,6 @@ class PixelClassificationGui(QMainWindow):
                     # Make sure the GUI reflects the correct size
                     self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
                     
-                    # Make sure we're using the correct label color
-                    self.switchLabel( self._labelControlUi.labelListModel.selectedRow() )
-                    
                 elif toolId == Tool.Erase:
                     # Make sure the erase button is pressed
                     self._labelControlUi.eraserToolButton.setChecked(True)
@@ -526,7 +523,16 @@ class PixelClassificationGui(QMainWindow):
             logger.debug("label=%d changes color to %r" % (row, color))
             self.labellayer.colorTable[row]=color.rgba()
             self.editor.brushingModel.setBrushColor(color)
-            self.editor.scheduleSlicesRedraw()
+
+    def event(self, event):
+        if event.type() == self.ResetLabelSelectionEvent:
+            logger.debug("Resetting label selection")
+            if len(self._labelControlUi.labelListModel) > 0:
+                self._labelControlUi.labelListView.selectRow(0)
+            else:
+                self.changeInteractionMode(Tool.Navigation)
+        
+        return True
     
     def updateForNewClasses(self):
         with Tracer(traceLogger):
@@ -574,12 +580,15 @@ class PixelClassificationGui(QMainWindow):
         Return the new number of labels in the control.
         """
         with Tracer(traceLogger):
-            color = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
             numLabels = len(self._labelControlUi.labelListModel)
-            if numLabels < len(self._colorTable16):
-                color = self._colorTable16[numLabels]
-            self.labellayer.colorTable.append(color.rgba())
-            
+            if numLabels >= len(self._colorTable16)-1:
+                # If the color table isn't large enough to handle all our labels,
+                #  append a random color
+                randomColor = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
+                self._colorTable16.append( randomColor.rgba() )
+
+            color = QColor()
+            color.setRgba(self._colorTable16[numLabels+1]) # First entry is transparent (for zero label)
             self._labelControlUi.labelListModel.insertRow(self._labelControlUi.labelListModel.rowCount(), Label("Label %d" % (self._labelControlUi.labelListModel.rowCount() + 1), color))
             nlabels = self._labelControlUi.labelListModel.rowCount()
     
@@ -614,11 +623,10 @@ class PixelClassificationGui(QMainWindow):
             if self._programmaticallyRemovingLabels:
                 return
             
-            nout = start-end+1
-            ncurrent = self._labelControlUi.labelListModel.rowCount()
-            logger.debug("removing", nout, "out of ", ncurrent)
-            
-            for il in range(start, end+1):
+            for il in reversed(range(start, end+1)):
+                ncount = self._labelControlUi.labelListModel.rowCount()
+                logger.debug("removing label {} out of {}".format( il, ncount ))
+
                 # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
                 #  to search through the entire list of labels and delete the entries for the matching label.
                 self.pipeline.opLabelArray.inputs["deleteLabel"].setValue(il+1)
@@ -627,6 +635,19 @@ class PixelClassificationGui(QMainWindow):
                 #  Otherwise, you can never delete the same label twice in a row.
                 #  (Only *changes* to the input are acted upon.)
                 self.pipeline.opLabelArray.inputs["deleteLabel"].setValue(-1)
+
+                # Remove the deleted label's color from the color table so that renumbered labels keep their colors.                
+                oldColor = self._colorTable16.pop(il+1)
+                
+                # Recycle the deleted color back into the table (for the next label to be added)
+                self._colorTable16.insert(ncount-end+start, oldColor)
+            
+            currentSelection = self._labelControlUi.labelListModel.selectedRow()
+            if currentSelection == -1:
+                # If we're deleting the currently selected row, then switch to a different row
+                logger.debug("Posting reset label selection event...")
+                e = QEvent( self.ResetLabelSelectionEvent )
+                QApplication.postEvent(self, e)
             
     def setupPredictionLayers(self):
         """
@@ -820,7 +841,7 @@ class PixelClassificationGui(QMainWindow):
                 # The input data layer should always be on the bottom of the stack (last)
                 #  so we can always see the labels and predictions.
                 self.layerstack.insert(len(self.layerstack), layer1)
-                layer1.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
+                #layer1.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
     
                 self.initLabelLayer()
 
@@ -844,17 +865,17 @@ class PixelClassificationGui(QMainWindow):
             if len(self.pipeline.LabelImages) > 0 \
             and self.editor is not None \
             and self.pipeline.LabelImages[self.imageIndex].ready():
+                traceLogger.debug("Setting up labels for image index={}".format(self.imageIndex) )
                 # Add the layer to draw the labels, but don't add any labels
                 self.labelsrc = LazyflowSinkSource(self.pipeline,
                                                    self.pipeline.LabelImages[self.imageIndex],
                                                    self.pipeline.LabelInputs[self.imageIndex])
                 self.labelsrc.setObjectName("labels")
             
-                transparent = QColor(0,0,0,0)
-                self.labellayer = ColortableLayer(self.labelsrc, colorTable = [transparent.rgba()] )
+                self.labellayer = ColortableLayer(self.labelsrc, colorTable = self._colorTable16 )
                 self.labellayer.name = "Labels"
                 self.labellayer.ref_object = None
-                self.labellayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
+                self.labellayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw ) ###
             
                 # Remove any label layer we had before
                 self.removeLayersFromEditorStack( self.labellayer.name )
@@ -907,24 +928,26 @@ class PixelClassificationGui(QMainWindow):
 
     def _createDefault16ColorColorTable(self):
         with Tracer(traceLogger):
-            c = []
-            c.append(QColor(0, 0, 255))
-            c.append(QColor(255, 255, 0))
-            c.append(QColor(255, 0, 0))
-            c.append(QColor(0, 255, 0))
-            c.append(QColor(0, 255, 255))
-            c.append(QColor(255, 0, 255))
-            c.append(QColor(255, 105, 180)) #hot pink
-            c.append(QColor(102, 205, 170)) #dark aquamarine
-            c.append(QColor(165,  42,  42)) #brown        
-            c.append(QColor(0, 0, 128))     #navy
-            c.append(QColor(255, 165, 0))   #orange
-            c.append(QColor(173, 255,  47)) #green-yellow
-            c.append(QColor(128,0, 128))    #purple
-            c.append(QColor(192, 192, 192)) #silver
-            c.append(QColor(240, 230, 140)) #khaki
-            c.append(QColor(69, 69, 69))    # dark grey
-            return c
+            colors = []
+            colors.append(QColor(0,0,0,0)) # Transparent for the zero label
+            colors.append(QColor(0, 0, 255))
+            colors.append(QColor(255, 255, 0))
+            colors.append(QColor(255, 0, 0))
+            colors.append(QColor(0, 255, 0))
+            colors.append(QColor(0, 255, 255))
+            colors.append(QColor(255, 0, 255))
+            colors.append(QColor(255, 105, 180)) #hot pink
+            colors.append(QColor(102, 205, 170)) #dark aquamarine
+            colors.append(QColor(165,  42,  42)) #brown        
+            colors.append(QColor(0, 0, 128))     #navy
+            colors.append(QColor(255, 165, 0))   #orange
+            colors.append(QColor(173, 255,  47)) #green-yellow
+            colors.append(QColor(128,0, 128))    #purple
+            colors.append(QColor(192, 192, 192)) #silver
+            colors.append(QColor(240, 230, 140)) #khaki
+            colors.append(QColor(69, 69, 69))    # dark grey
+            
+            return [c.rgba() for c in colors]
 
 
 
