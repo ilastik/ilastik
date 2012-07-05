@@ -40,8 +40,8 @@ class BatchIoGui(QMainWindow):
     def appletDrawers(self):
         return [ (self.title, self.drawer) ]
 
-    def menuWidget( self ):
-        return self.menuBar
+    def menus( self ):
+        return []
 
     def viewerControlWidget(self):
         return None
@@ -59,7 +59,6 @@ class BatchIoGui(QMainWindow):
             self.title = title
             self.drawer = None
             self.mainOperator = dataSelectionOperator
-            self.menuBar = QMenuBar()
             
             self.initAppletDrawerUic()
             self.initCentralUic()

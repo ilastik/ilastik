@@ -42,8 +42,8 @@ class LayerViewerGui(QMainWindow):
     def appletDrawers(self):
         return ['Viewer', QWidget()]
 
-    def menuWidget( self ):
-        return self.menuBar
+    def menus( self ):
+        return [self.menuView] # From the .ui file
 
     def viewerControlWidget(self):
         return self.__viewerControlWidget
@@ -88,8 +88,6 @@ class LayerViewerGui(QMainWindow):
             if self.layerSetupCallback is None:
                 self.layerSetupCallback = self.setupLayers
     
-            self.menuBar = QMenuBar()
-            
             self.layerstack = LayerStackModel()
 
             self.initAppletDrawerUi() # Default implementation loads a blank drawer.

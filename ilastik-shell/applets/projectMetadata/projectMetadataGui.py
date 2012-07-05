@@ -22,8 +22,8 @@ class ProjectMetadataGui( QWidget ):
     def appletDrawers(self):
         return [ ( "Project Metadata", self.getAppletDrawerUi() ) ]
 
-    def menuWidget( self ):
-        return self.menuBar
+    def menus( self ):
+        return []
 
     def viewerControlWidget(self):
         return None # No viewer controls
@@ -41,8 +41,6 @@ class ProjectMetadataGui( QWidget ):
         
         self.initMainUi()
         self.initAppletDrawerUi()
-        
-        self.menuBar = QMenuBar()
         
     def initMainUi(self):
         with Tracer(traceLogger):
@@ -84,10 +82,6 @@ class ProjectMetadataGui( QWidget ):
                 
     def getAppletDrawerUi(self):
         return self._drawer
-
-
-
-
 
 
 

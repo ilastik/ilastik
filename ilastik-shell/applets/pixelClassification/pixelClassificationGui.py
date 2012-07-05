@@ -63,8 +63,8 @@ class PixelClassificationGui(QMainWindow):
         return [ ("Label Marking", self.labelControlUi),
                  ("Prediction", self.predictionControlUi) ]
 
-    def menuWidget( self ):
-        return self.menuBar
+    def menus( self ):
+        return [self.menuView] # From the .ui file
 
     def viewerControlWidget(self):
         return self._viewerControlWidget

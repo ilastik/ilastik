@@ -28,9 +28,9 @@ class AppletGuiInterface():
         raise NotImplementedError
     
     @abstractmethod
-    def menuWidget( self ):
+    def menus( self ):
         """
-        Return a widget to be displayed in the menu bar to the right of the shell's "General" menu.
+        Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.
         """
         raise NotImplementedError
 
@@ -55,7 +55,7 @@ class AppletGuiInterface():
         if cls is AppletGuiInterface:
             requiredMethods = [ 'centralWidget',
                                 'appletDrawers',
-                                'menuWidget',
+                                'menus',
                                 'viewerControlWidget',
                                 'setImageIndex' ]
             return True if _has_attributes(C, requiredMethods) else False
@@ -75,9 +75,9 @@ if __name__ == "__main__":
             """
             raise NotImplementedError
         
-        def menuWidget( self ):
+        def menus( self ):
             """
-            Return a widget to be displayed in the menu bar to the right of the shell's "General" menu.
+            Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.
             """
             raise NotImplementedError
     

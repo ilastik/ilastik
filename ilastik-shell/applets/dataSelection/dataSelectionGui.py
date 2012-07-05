@@ -55,8 +55,8 @@ class DataSelectionGui(QMainWindow):
                         GuiMode.Normal : 'Input Selection' }        
         return [ (DrawerNames[self.guiMode], self.drawer) ]
     
-    def menuWidget( self ):
-        return self.menuBar
+    def menus( self ):
+        return []
 
     def viewerControlWidget(self):
         return None # No viewer controls for this applet.
@@ -73,7 +73,6 @@ class DataSelectionGui(QMainWindow):
     
             self.drawer = None
             self.mainOperator = dataSelectionOperator
-            self.menuBar = QMenuBar()
             self.guiMode = guiMode
             
             self.initAppletDrawerUic()

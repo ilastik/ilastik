@@ -24,6 +24,7 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 import ilastik_logging
 
 import applet
+import appletGuiInterface
 
 class ShellActions(object):
     """
@@ -40,73 +41,6 @@ class SideSplitterSizePolicy(object):
     AutoCurrentDrawer = 1
     AutoLargestDrawer = 2
 
-class _ShellMenuBar( QWidget ):
-    """
-    The main window menu bar.
-    Only the "General" menu is provided by the shell.
-    Applets can add their own custom menus, which appear next to the General menu.
-    """
-    def __init__( self, parent ):
-        QWidget.__init__(self, parent=parent)
-
-        # Any actions we add to the shell GUI will be stored in this member
-        self.actions = ShellActions()
-        
-        # Our menu will consist of two pieces:
-        #  - A "general" menu that is always visible on the left
-        #  - An "applet" menu-ish widget that is visible on the right
-        # Our top-level layout is an HBox for holding the two sections
-        self._layout = QHBoxLayout( self )
-        self._layout.setSpacing(0)
-        self.setLayout( self._layout )
-
-        self.initGeneralMenu(parent)
-
-        # Each applet can specify whatever he wants in the menu (not necessarily a QMenuBar)
-        # Create a stacked widget to contain the applet menu-ish widgets
-        #  and add it to the top-level HBox layout
-        self._appletMenuStack = QStackedWidget(self)
-        self._layout.addWidget( self._appletMenuStack, 1 )
-        
-    def initGeneralMenu(self, parent):
-        # Create a menu for "General" (non-applet) actions
-        self._generalMenu = QMenu("General", self)
-
-        # Menu item: New Project 
-        self.actions.newProjectAction = self._generalMenu.addAction("&New Project...")
-        self.actions.newProjectAction.triggered.connect(parent.onNewProjectActionTriggered)
-
-        # Menu item: Open Project 
-        self.actions.openProjectAction = self._generalMenu.addAction("&Open Project...")
-        self.actions.openProjectAction.triggered.connect(parent.onOpenProjectActionTriggered)
-
-        # Menu item: Save Project
-        self.actions.saveProjectAction = self._generalMenu.addAction("&Save Project...")
-        self.actions.saveProjectAction.triggered.connect(parent.onSaveProjectActionTriggered)
-        # Can't save until a project is loaded for the first time
-        self.actions.saveProjectAction.setEnabled(False)
-
-        # Menu item: Quit
-        self.actions.quitAction = self._generalMenu.addAction("&Quit")
-        self.actions.quitAction.triggered.connect(parent.onQuitActionTriggered)
-        self.actions.quitAction.setShortcut( QKeySequence.Quit )
-
-        # Create a menu bar widget and populate it with the general menu
-        self._generalMenuBar = QMenuBar(self)
-        self._generalMenuBar.setNativeMenuBar( False ) # Native menus are broken on Ubuntu at the moment
-        self._generalMenuBar.addMenu(self._generalMenu)
-        self._layout.addWidget( self._generalMenuBar )
-        
-    def addAppletMenuWidget( self, appletMenuWidget ):
-        # Add this widget to the applet menu area stack
-        self._appletMenuStack.addWidget(appletMenuWidget)
-
-    def setCurrentIndex( self, index ):
-        self._appletMenuStack.setCurrentIndex( index )
-    
-    def getCurrentIndex(self):
-        return self._layout.currentWidget()
-
 class IlastikShell( QMainWindow ):    
     """
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
@@ -122,8 +56,8 @@ class IlastikShell( QMainWindow ):
         self._applets = []
         self.appletBarMapping = {}
 
-        self._menuBar = _ShellMenuBar( self )
-        self.setMenuWidget( self._menuBar  )
+        (self._projectMenu, self._shellActions) = self._createProjectMenu()
+        self.menuBar().addMenu(self._projectMenu)
 
         for applet in workflow:
             self.addApplet(applet)
@@ -147,6 +81,34 @@ class IlastikShell( QMainWindow ):
         self._disableCounts = []    # Controls for each applet can be disabled by his peers.
                                     # No applet can be enabled unless his disableCount == 0
         
+
+    def _createProjectMenu(self):
+        # Create a menu for "General" (non-applet) actions
+        menu = QMenu("Project", self)
+
+        shellActions = ShellActions()
+
+        # Menu item: New Project
+        shellActions.newProjectAction = menu.addAction("&New Project...")
+        shellActions.newProjectAction.triggered.connect(self.onNewProjectActionTriggered)
+
+        # Menu item: Open Project 
+        shellActions.openProjectAction = menu.addAction("&Open Project...")
+        shellActions.openProjectAction.triggered.connect(self.onOpenProjectActionTriggered)
+
+        # Menu item: Save Project
+        shellActions.saveProjectAction = menu.addAction("&Save Project...")
+        shellActions.saveProjectAction.triggered.connect(self.onSaveProjectActionTriggered)
+        # Can't save until a project is loaded for the first time
+        shellActions.saveProjectAction.setEnabled(False)
+
+        # Menu item: Quit
+        shellActions.quitAction = menu.addAction("&Quit")
+        shellActions.quitAction.triggered.connect(self.onQuitActionTriggered)
+        shellActions.quitAction.setShortcut( QKeySequence.Quit )
+        
+        return (menu, shellActions)
+    
     def show(self):
         """
         Show the window, and enable/disable controls depending on whether or not a project file present.
@@ -228,8 +190,11 @@ class IlastikShell( QMainWindow ):
 
                 # Select the appropriate central widget, menu widget, and viewer control widget for this applet
                 self.appletStack.setCurrentIndex(applet_index)
-                self._menuBar.setCurrentIndex(applet_index)
                 self.viewerControlStack.setCurrentIndex(applet_index)
+                self.menuBar().clear()
+                self.menuBar().addMenu(self._projectMenu)
+                for m in self._applets[applet_index].gui.menus():
+                    self.menuBar().addMenu(m)
                 
                 self.autoSizeSideSplitter( self._sideSplitterSizePolicy )
 
@@ -279,11 +244,12 @@ class IlastikShell( QMainWindow ):
     def addApplet( self, app ):
         assert isinstance( app, applet.Applet ), "Applets must inherit from Applet base class."
         assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
+
+        assert issubclass( type(app.gui), appletGuiInterface.AppletGuiInterface ), "Applet GUIs must conform to the Applet GUI interface."
         
         self._applets.append(app)
         applet_index = len(self._applets) - 1
         self.appletStack.addWidget( app.gui.centralWidget() )
-        self._menuBar.addAppletMenuWidget( app.gui.menuWidget() )
         
         # Viewer controls are optional. If the applet didn't provide one, create an empty widget for him.
         if app.gui.viewerControlWidget() is None:
@@ -444,7 +410,7 @@ class IlastikShell( QMainWindow ):
                     item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
 
             # Now that a project is loaded, the user is allowed to save
-            self._menuBar.actions.saveProjectAction.setEnabled(True)
+            self._shellActions.saveProjectAction.setEnabled(True)
     
             # Enable all the applet controls
             self.enableWorkflow = True
