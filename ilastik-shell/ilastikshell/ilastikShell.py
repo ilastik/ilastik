@@ -1,10 +1,11 @@
 from PyQt4 import uic
 from PyQt4 import Qt
+from PyQt4.QtCore import pyqtSignal, QObject, QEvent
 from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QMenuBar, QFrame, QLabel, QStackedLayout, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
                         QStandardItemModel, QTreeWidgetItem, QTreeWidget, QFont, \
-                        QBrush, QColor, QAbstractItemView
+                        QBrush, QColor, QAbstractItemView, QProgressBar, QApplication
 from PyQt4 import QtCore
 
 import h5py
@@ -19,7 +20,8 @@ from lazyflow.graph import MultiOutputSlot
 import sys
 import logging
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler(sys.stdout))
+traceLogger = logging.getLogger("TRACE." + __name__)
+from lazyflow.tracer import Tracer
 
 import ilastik_logging
 
@@ -27,6 +29,9 @@ import applet
 import appletGuiInterface
 
 import platform
+import numpy
+
+import threading
 
 class ShellActions(object):
     """
@@ -43,10 +48,73 @@ class SideSplitterSizePolicy(object):
     AutoCurrentDrawer = 1
     AutoLargestDrawer = 2
 
-class IlastikShell( QMainWindow ):    
+class ProgressDisplayManager(QObject):
+    """
+    Manages progress signals from applets and displays them in the status bar.
+    """
+    
+    # Instead of connecting to applet progress signals directly,
+    # we forward them through this qt signal.
+    # This way we get the benefits of a queued connection without 
+    #  requiring the applet interface to be dependent on qt.
+    dispatchSignal = pyqtSignal(int, int, "bool")
+    
+    def __init__(self, statusBar):
+        """
+        """
+        super(ProgressDisplayManager, self).__init__( parent=statusBar.parent() )
+        self.statusBar = statusBar
+        self.appletPercentages = {} # applet_index : percent_progress
+        self.progressBar = None
+
+        # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread        
+        self.dispatchSignal.connect(self.handleAppletProgressImpl)
+    
+    def addApplet(self, index, app):
+        # Subscribe to progress updates from this applet,
+        # and include the applet index in the signal parameters.
+        app.progressSignal.connect( bind(self.handleAppletProgress, index) )
+
+    def handleAppletProgress(self, index, percentage, cancelled=False):
+        # Forward the signal to the handler via our qt signal, which provides a queued connection.
+        self.dispatchSignal.emit( index, percentage, cancelled )
+
+    def handleAppletProgressImpl(self, index, percentage, cancelled):
+        # No need for locking; this function is always run from the GUI thread
+        with Tracer(traceLogger, msg="from applet {}: {}%, cancelled={}".format(index, percentage, cancelled)):
+            if cancelled:
+                if index in self.appletPercentages.keys():
+                    del self.appletPercentages[index]
+            else:
+                self.appletPercentages[index] = percentage
+    
+            numActive = len(self.appletPercentages)
+            if numActive > 0:
+                totalPercentage = numpy.prod(self.appletPercentages.values()) / numActive
+            
+            if numActive == 0 or totalPercentage == 100:
+                if self.progressBar is not None:
+                    self.statusBar.removeWidget(self.progressBar)
+                    self.progressBar = None
+            else:
+                if self.progressBar is None:
+                    self.progressBar = QProgressBar()
+                    self.statusBar.addWidget(self.progressBar)
+                self.progressBar.setValue(totalPercentage)
+
+class CallableEvent( QEvent ):
+    EventType = QEvent.Type(QEvent.registerEventType())
+
+    def __init__(self, fn):
+        QEvent.__init__(self, self.EventType)
+        self.fn = fn
+
+class IlastikShell( QMainWindow ):
     """
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
+
+
     def __init__( self, workflow = [], parent = None, flags = QtCore.Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
         QMainWindow.__init__(self, parent = parent, flags = flags )
 
@@ -87,6 +155,17 @@ class IlastikShell( QMainWindow ):
         self._disableCounts = []    # Controls for each applet can be disabled by his peers.
                                     # No applet can be enabled unless his disableCount == 0
         
+        self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
+
+    def event(self, e):
+        """
+        Hook in to the Qt event mechanism to handle custom events.
+        """
+        if e.type() == CallableEvent.EventType:
+            e.fn()
+            return True
+        else:
+            return super(IlastikShell, self).event(e)
 
     def _createProjectMenu(self):
         # Create a menu for "General" (non-applet) actions
@@ -283,7 +362,9 @@ class IlastikShell( QMainWindow ):
         app.guiControlSignal.connect( bind(self.handleAppletGuiControlSignal, applet_index) )
         self._disableCounts.append(0)
         self._controlCmds.append( [] )
-        
+
+        self.progressDisplayManager.addApplet(applet_index, app)
+                
         return applet_index
 
     def handleAppletGuiControlSignal(self, applet_index, command=applet.ControlCommand.DisableAll):
@@ -309,8 +390,9 @@ class IlastikShell( QMainWindow ):
             or (command == applet.ControlCommand.DisableSelf and index == applet_index):
                 self._disableCounts[index] += step
 
-        self.updateAppletControlStates()
-
+        # Update the control states in the GUI thread
+        QApplication.postEvent( self, CallableEvent(self.updateAppletControlStates) )
+    
     def __len__( self ):
         return self.appletBar.count()
 
