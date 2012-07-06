@@ -516,14 +516,18 @@ class PixelClassificationGui(QMainWindow):
             self.editor.brushingModel.setBrushColor(color)
 
     def event(self, event):
+        """
+        Hook in to the Qt event mechanism to handle custom events.
+        """
         if event.type() == self.ResetLabelSelectionEvent:
             logger.debug("Resetting label selection")
             if len(self._labelControlUi.labelListModel) > 0:
                 self._labelControlUi.labelListView.selectRow(0)
             else:
                 self.changeInteractionMode(Tool.Navigation)
-        
-        return True
+            return True
+        else:
+            return super( PixelClassificationGui, self ).event(event)
     
     def updateForNewClasses(self):
         with Tracer(traceLogger):
@@ -691,7 +695,7 @@ class PixelClassificationGui(QMainWindow):
             # Closure to call when the prediction is finished
             def onPredictionComplete(predictionResults):
                 with Tracer(traceLogger):
-                    logger.debug("Prediction shape=", predictionResults.shape)
+                    logger.debug("Prediction shape={}".format(predictionResults.shape))
                     
                     # Re-enable the GUI
                     self._labelControlUi.AddLabelButton.setEnabled(True)
