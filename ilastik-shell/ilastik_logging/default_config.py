@@ -43,6 +43,7 @@ default_log_config = {
         "lazyflow.operators.obsolete.classifierOperators":    { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "volumina":                             {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "applets":                              {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
+        "ilastikshell":                         {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         # Python doesn't provide a trace log level, so we use a workaround.
         # By convention, trace loggers have the same hierarchy as the regular loggers, but are prefixed with 'TRACE' and always emite DEBUG messages
         # To enable trace messages, change one or more of these to use level DEBUG
@@ -57,6 +58,7 @@ default_log_config = {
         "TRACE.lazyflow.operators.obsolete.operators.OpArrayCache":     { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
         "TRACE.lazyflow.operators.obsolete.valueProviders.OpValueCache":{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
         "TRACE.applets":                                                { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
+        "TRACE.ilastikshell":                                           { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
         "TRACE.volumina":                                               { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
         "TRACE.volumina.imageScene2D":                                  { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False }
     }
