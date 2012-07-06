@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 from lazyflow.tracer import Tracer
 
+from opBatchIo import SupportedFormats
+
 class Column():
     """ Enum for table column positions """
     Dataset = 0
@@ -84,6 +86,7 @@ class BatchIoGui(QMainWindow):
             
             self.mainOperator.Suffix.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
             self.mainOperator.ExportDirectory.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
+            self.mainOperator.Format.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
             self.updateDrawerGuiFromOperatorSettings()
         
     def initAppletDrawerUic(self):
@@ -105,6 +108,10 @@ class BatchIoGui(QMainWindow):
             
             self.drawer.exportAllButton.clicked.connect( self.exportAllResults )
             self.drawer.deleteAllButton.clicked.connect( self.deleteAllResults )
+            
+            for i, formatInfo in sorted(SupportedFormats.items()):
+                self.drawer.exportFormatCombo.addItem( formatInfo.name + ' (.' + formatInfo.extension + ')' )
+            self.drawer.exportFormatCombo.currentIndexChanged.connect( partial(self.handleExportFormatChanged) )
 
     def initCentralUic(self):
         """
@@ -144,6 +151,10 @@ class BatchIoGui(QMainWindow):
     
             for index, slot in enumerate(self.mainOperator.OutputDataPath):
                 self.updateTableForSlot(slot)
+    
+    def handleExportFormatChanged(self, index):
+        with Tracer(traceLogger):
+            self.mainOperator.Format.setValue( index )
     
     def chooseNewExportDirectory(self):
         """
@@ -210,7 +221,11 @@ class BatchIoGui(QMainWindow):
             if self.mainOperator.ExportDirectory.ready():
                 self.drawer.outputDirEdit.setText( self.mainOperator.ExportDirectory.value )
                 self.drawer.saveToDirButton.setChecked( self.mainOperator.ExportDirectory.value != '' )        
-                self.drawer.saveWithInputButton.setChecked( self.mainOperator.ExportDirectory.value == '' )        
+                self.drawer.saveWithInputButton.setChecked( self.mainOperator.ExportDirectory.value == '' )
+            
+            if self.mainOperator.Format.ready():
+                formatId = self.mainOperator.Format.value
+                self.drawer.exportFormatCombo.setCurrentIndex( formatId )
 
     def handleTableSelectionChange(self):
         """

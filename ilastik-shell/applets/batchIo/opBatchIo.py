@@ -17,6 +17,14 @@ class ExportFormat():
     Npy = 1
     Tiff = 2 # 3d only, up to 3 channels
 
+    def __init__(self, name, extension):
+        self.name = name
+        self.extension = extension    
+
+SupportedFormats = { ExportFormat.H5   : ExportFormat("Hdf5", '.h5'),
+                     ExportFormat.Npy  : ExportFormat("Numpy", '.npy'),
+                     ExportFormat.Tiff : ExportFormat("Tiff", '.tiff') }
+
 class OpBatchIo(Operator):
     """
     The top-level operator for the Batch IO applet.
@@ -51,14 +59,10 @@ class OpBatchIo(Operator):
         self.Suffix.setValue( '_results' )
         self.Dirty.setValue(True)
 
-    def setupOutputs(self):
-        formatExtensions = { ExportFormat.H5   : '.h5',
-                             ExportFormat.Npy  : '.npy',
-                             ExportFormat.Tiff : '.tiff' }
-        
+    def setupOutputs(self):        
         # Create the output data path
-        exportFormat = self.Format.value
-        ext = formatExtensions[exportFormat]
+        formatId = self.Format.value
+        ext = SupportedFormats[formatId].extension
         inputPathComponents = PathComponents(self.DatasetPath.value)
         
         # If no export directory was given, use the original input data's directory
