@@ -1,12 +1,10 @@
-from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiOutputSlot
 
 from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, OpMultiArraySlicer2
-import copy
 
 class OpFeatureSelection(Operator):
     """
     The top-level operator for the feature selection applet.
-    MultiInputSlot for images, but only single input slots for feature selection matrix and set of scales.
     """
     name = "OpFeatureSelection"
     category = "Top-level"

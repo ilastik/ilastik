@@ -1,9 +1,7 @@
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
-import copy
 
-import numpy
 import uuid
 
 class DatasetInfo(object):

@@ -1,10 +1,6 @@
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
-from volumina.api import LazyflowSource, GrayscaleLayer
-
-from lazyflow.operators import OpSingleChannelSelector
-
 from igms.featureTableWidget import FeatureEntry
 from igms.featureDlg import FeatureDlg
 

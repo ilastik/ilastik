@@ -1,5 +1,3 @@
-import numpy
-
 from ilastikshell.appletSerializer import AppletSerializer
 
 class ThresholdMaskingSerializer(AppletSerializer):

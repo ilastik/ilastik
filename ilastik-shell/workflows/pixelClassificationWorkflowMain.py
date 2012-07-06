@@ -16,7 +16,7 @@ from applets.batchIo import BatchIoApplet
 from applets.featureSelection.opFeatureSelection import OpFeatureSelection
 
 from lazyflow.graph import Graph, OperatorWrapper
-from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector, OpMetadataInjector
+from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
 
 import ilastik_logging
 ilastik_logging.startUpdateInterval(10)

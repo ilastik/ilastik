@@ -1,6 +1,6 @@
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
+from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators import OpH5WriterBigDataset
 import copy
 

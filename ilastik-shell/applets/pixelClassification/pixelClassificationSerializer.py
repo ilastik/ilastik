@@ -1,9 +1,7 @@
 import os
 import tempfile
-import numpy
 import vigra
 import h5py
-from utility.dataImporter import DataImporter
 from ilastikshell.appletSerializer import AppletSerializer
 from utility import bind
 

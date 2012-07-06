@@ -1,7 +1,6 @@
 from opDataSelection import OpDataSelection, DatasetInfo
 
 import os
-import vigra
 import copy
 from utility import bind
 

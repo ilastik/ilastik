@@ -1,4 +1,4 @@
-from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject, QVariant
+from PyQt4.QtCore import Qt, QVariant
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
@@ -6,10 +6,8 @@ from opDataSelection import OpDataSelection, DatasetInfo
 
 from functools import partial
 import os
-import sys
 import copy
 import h5py
-import utility # This is the ilastik shell utility module
 from utility import bind
 from utility.pathHelpers import getPathVariants
 

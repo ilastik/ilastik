@@ -1,4 +1,4 @@
-from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 

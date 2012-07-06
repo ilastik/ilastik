@@ -1,9 +1,5 @@
 from ilastikshell.applet import Applet
 
-from layerViewerGui import LayerViewerGui
-
-from lazyflow.graph import OperatorWrapper
-
 class LayerViewerApplet( Applet ):
     """
     This is a simple viewer applet

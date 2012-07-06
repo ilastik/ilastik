@@ -1,13 +1,10 @@
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
-from volumina.api import ColortableLayer, LazyflowSource
-
 import random
 import os
 
 from applets.layerViewer import LayerViewerGui
-from volumina.widgets.thresholdingWidget import ThresholdingWidget
 
 import logging
 logger = logging.getLogger(__name__)

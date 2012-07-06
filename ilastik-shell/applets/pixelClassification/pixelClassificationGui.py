@@ -1,6 +1,3 @@
-from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, OpArrayPiper, Op5ToMulti, OpBlockedSparseLabelArray, OpArrayCache, \
-                               OpTrainRandomForestBlocked, OpPredictRandomForest, OpSlicedBlockedArrayCache
-
 import os, sys, numpy, copy
 
 from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject, QEvent
@@ -11,14 +8,8 @@ from PyQt4 import uic
 from igms.stackloader import StackLoader
 
 from lazyflow.graph import Graph
-from lazyflow.operators import Op5ToMulti, OpArrayCache, OpBlockedArrayCache, \
-                               OpArrayPiper, OpPredictRandomForest, \
-                               OpSingleChannelSelector, OpSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForest, \
-                               OpMultiArraySlicer2,OpH5Reader, OpBlockedSparseLabelArray, \
-                               OpMultiArrayStacker, OpTrainRandomForestBlocked, \
-                               OpH5ReaderBigDataset, OpSlicedBlockedArrayCache, OpPixelFeaturesPresmoothed
-
+from lazyflow.operators import OpSingleChannelSelector, OpMultiArraySlicer2 
+                               
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, \
                          AlphaModulatedLayer, LayerStackModel, VolumeEditor, LazyflowSinkSource
 from volumina.adaptors import Op5ifyer
