@@ -1,10 +1,7 @@
 import numpy
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
-from lazyflow.roi import sliceToRoi, roiToSlice, block_view
-from Queue import Empty
-from collections import deque
-import greenlet, threading
+from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot
+from lazyflow.roi import sliceToRoi, roiToSlice
 import vigra
 import copy
 

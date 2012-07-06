@@ -1,10 +1,6 @@
-import numpy, vigra
-import time
 from lazyflow.graph import *
-import gc
 import lazyflow.roi
 import threading
-import thread
 import copy
 
 from operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
