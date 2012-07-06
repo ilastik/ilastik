@@ -51,7 +51,7 @@ class BatchIoGui(QMainWindow):
     ###########################################
     ###########################################
     
-    def __init__(self, dataSelectionOperator, guiControlSignal, title):
+    def __init__(self, dataSelectionOperator, guiControlSignal, progressSignal, title):
         with Tracer(traceLogger):
             super(BatchIoGui, self).__init__()
     
@@ -64,6 +64,7 @@ class BatchIoGui(QMainWindow):
             self.chosenExportDirectory = '/'
             
             self.guiControlSignal = guiControlSignal
+            self.progressSignal = progressSignal
             
             def handleNewDataset( multislot, index ):
                 # Make room in the GUI table
@@ -231,33 +232,48 @@ class BatchIoGui(QMainWindow):
             # Reconnect now that we're finished
             self.tableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
         
+    def exportSlots(self, slotList ):
+        with Tracer(traceLogger):
+            try:
+                # Don't let anyone change the classifier while we're exporting...
+                self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.DisableUpstream )
+                
+                # Also disable this applet's controls
+                self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.DisableSelf )
+
+                # Start with 1% so the progress bar shows up
+                self.progressSignal.emit(1)
+
+                for i, slot in enumerate(slotList):
+                    logger.debug("Exporting result {}".format(i))
+                    result = slot.value
+                    if not result:
+                        logger.error("Failed to export an image.")            
+    
+                    # We're making progress... 
+                    self.progressSignal.emit( 100*(i+1)/float(len(slotList)) )
+                    
+                # Ensure the shell knows we're really done.
+                self.progressSignal.emit(100)
+            except:
+                # Cancel our progress.
+                self.progressSignal.emit(0, True)
+                raise
+            finally:            
+                # Now that we're finished, it's okay to use the other applets again.
+                self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop ) # Enable ourselves
+                self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop ) # Enable the others we disabled
+
     def exportResultsForSlot(self, slot):
         with Tracer(traceLogger):
-            result = slot.value
-            if not result:
-                print "Failed to export a result."
+            # Do this in a separate thread so the UI remains responsive
+            exportThread = threading.Thread(target=bind(self.exportSlots, [slot]), name="BatchIOExportThread")
+            exportThread.start()
     
     def exportAllResults(self):
         with Tracer(traceLogger):
-            def exportClosure():
-                with Tracer(traceLogger):
-                    # Don't let anyone change the classifier while we're exporting...
-                    self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.DisableUpstream )
-                    
-                    # Also disable this applet's controls
-                    self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.DisableSelf )
-                    
-                    for slot in self.mainOperator.ExportResult:
-                        result = slot.value
-                        if not result:
-                            print "Failed to export a result:" + self.mainOperator.OutputDataPath
-                    
-                    # Now that we're finished, it's okay to use the other applets again.
-                    self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop ) # Enable ourselves
-                    self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop ) # Enable the others we disabled
-    
             # Do this in a separate thread so the UI remains responsive
-            exportThread = threading.Thread(target=exportClosure, name="BatchIOExportThread")
+            exportThread = threading.Thread(target=bind(self.exportSlots, self.mainOperator.ExportResult), name="BatchIOExportThread")
             exportThread.start()
 
     def deleteAllResults(self):

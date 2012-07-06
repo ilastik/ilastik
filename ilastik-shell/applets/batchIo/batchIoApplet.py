@@ -23,7 +23,7 @@ class BatchIoApplet( Applet ):
 
         self._serializableItems = [ BatchIoSerializer(self._topLevelOperator, title) ]
 
-        self._gui = BatchIoGui( self._topLevelOperator, self.guiControlSignal, title )
+        self._gui = BatchIoGui( self._topLevelOperator, self.guiControlSignal, self.progressSignal, title )
         
     @property
     def dataSerializers(self):
