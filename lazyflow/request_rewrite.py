@@ -63,8 +63,11 @@ class Worker(threading.Thread):
         self.logger.debug("Created.")
     
     def run(self):
+        """
+        Keep executing available jobs (requests) until we're stopped.
+        """
         # Try to get some work.
-        current_request = self.get_next_job()
+        current_request = self._get_next_job()
 
         while not self.stopped:
             # Start (or resume) the work by switching to its greenlet
@@ -76,25 +79,47 @@ class Worker(threading.Thread):
                 current_request.suspended.set()
 
             # Try to get some work.
-            current_request = self.get_next_job()
+            current_request = self._get_next_job()
 
-    def get_next_job(self):
+    def stop(self):
+        """
+        Tell this worker to stop running.
+        Does not block for thread completion.
+        """
+        self.stopped = True
+        # Wake up the thread if it's waiting for work
+        if self.job_queue_condition.acquire(False): # Don't block for the condition if we're busy.
+            self.job_queue_condition.notify()
+            self.job_queue_condition.release()
+
+    def wake_up(self, request):
+        """
+        Add this request to the queue of requests that are ready to be processed.
+        The request may or not be started already.
+        """
+        assert request.assigned_worker is self
+        with self.job_queue_condition:
+            self.job_queue.append(request)
+            self.job_queue_condition.notify()
+
+    def _get_next_job(self):
         """
         Get the next available job to perform.  Block if necessary until a job is available.
         """
-        next_request = self.pop_job()
+        next_request = self._pop_job()
 
         # Keep trying until we get a job        
         while next_request is None and not self.stopped:
             with self.job_queue_condition:
                 # Wait for work to become available
                 self.job_queue_condition.wait()
-                next_request = self.pop_job()
+                next_request = self._pop_job()
 
         return next_request
     
-    def pop_job(self):
+    def _pop_job(self):
         """
+        Non-blocking.
         If possible, get a job from our own job queue.
         Otherwise, get one from the global job queue.
         Return None if neither queue has work to do.
@@ -110,19 +135,6 @@ class Worker(threading.Thread):
             return req
         except IndexError:
             return None
-    
-    def wake_up(self, request):
-        """
-        Add this request to the queue of requests that are ready to be processed.
-        The request may or not be started already.
-        """
-        assert request.assigned_worker is self
-        with self.job_queue_condition:
-            self.job_queue.append(request)
-            self.job_queue_condition.notify()
-    
-    def stop(self):
-        self.stopped = True
     
 class Singleton(type):
     """
@@ -152,18 +164,13 @@ class ThreadPool(object):
         self.unassigned_requests = deque()
 
         num_workers = multiprocessing.cpu_count()
-        self.workers = self.start_workers( num_workers )
-
-    def start_workers(self, num_workers):
-        workers = set()
-        for i in range(num_workers):
-            w = Worker(self, i)
-            workers.add( w )
-            w.start()
-            logger.debug("Started " + w.name)
-        return workers
+        self.workers = self._start_workers( num_workers )
 
     def wake_up(self, request):
+        """
+        Schedule the request its assigned worker.
+        Assign it a worker first if necessary.
+        """
         # Once a request has been assigned, it can't eve
         if request.assigned_worker is not None:
             request.assigned_worker.wake_up( request )
@@ -172,21 +179,37 @@ class ThreadPool(object):
             # Notify all currently waiting workers that there's new work
             self._notify_all_workers()
 
+    def stop(self):
+        """
+        Stop all threads in the pool, and block for them to complete.
+        """
+        for w in self.workers:
+            w.stop()
+        
+        for w in self.workers:
+            w.join()
+    
+    def _start_workers(self, num_workers):
+        """
+        Start a set of workers and return the set.
+        """
+        workers = set()
+        for i in range(num_workers):
+            w = Worker(self, i)
+            workers.add( w )
+            w.start()
+            logger.debug("Started " + w.name)
+        return workers
+
     def _notify_all_workers(self):
+        """
+        Wake up all worker threads that are currently waiting for work.
+        """
         for worker in self.workers:
             if worker.job_queue_condition.acquire(False): # Don't block for the condition if the worker is busy.
                 worker.job_queue_condition.notify()
                 worker.job_queue_condition.release()
 
-    def stop(self):
-        for w in self.workers:
-            w.stop()
-        
-        self._notify_all_workers()
-        
-        for w in self.workers:
-            w.join()
-    
 global_thread_pool = ThreadPool()
             
 
@@ -241,10 +264,11 @@ class Request( object ):
         # Do the actual work
         self.result = self.fn()
 
-        # Notify callbacks and waiting threads
         with self._lock:
             self.finished = True
-            self._sig_finished(self.result)
+
+        # Notify callbacks and waiting threads
+        self._sig_finished(self.result)
         self.finished_event.set()
 
         self.logger.debug("Finished")
@@ -256,9 +280,9 @@ class Request( object ):
         with self._lock:
             if not self.started:
                 self.started = True
-                self.wake_up()
+                self._wake_up()
     
-    def wake_up(self):
+    def _wake_up(self):
         """
         Resume this request's execution (put it back on the worker's job queue).
         """
@@ -276,7 +300,7 @@ class Request( object ):
         #  so make it's parent = the current worker
         self.greenlet.switch()
         
-    def suspend(self):
+    def _suspend(self):
         """
         Suspend this request so another one can be woken up by the worker.
         """
@@ -298,7 +322,7 @@ class Request( object ):
         current_request = Request.current_request()
 
         if current_request is None:
-            # This is a non-worker thread, so just wait the old-fashioned way
+            # This is a non-worker thread, so just block the old-fashioned way
             self.finished_event.wait()
         else:
             # We're running in the context of a request.
@@ -307,13 +331,13 @@ class Request( object ):
                 if not self.finished:
                     current_request.blocking_requests.add(self)
                     self.pending_requests.add(current_request)
-                    self.notify_finished( partial(current_request.handle_finished_request, self) )
-            current_request.suspend()
+                    self.notify_finished( partial(current_request._handle_finished_request, self) )
+            current_request._suspend()
 
         assert self.finished
         return self.result
 
-    def handle_finished_request(self, request, result):
+    def _handle_finished_request(self, request, result):
         """
         Called when a request that we were waiting for has completed.
         Wake ourselves up so we can resume execution.
@@ -322,7 +346,7 @@ class Request( object ):
             # We're not waiting for this one any more
             self.blocking_requests.remove(request)
             if len(self.blocking_requests) == 0:
-                self.wake_up()
+                self._wake_up()
     
     def notify_finished(self, fn):
         """
@@ -332,11 +356,11 @@ class Request( object ):
         # Schedule this request if it hasn't been scheduled yet.
         self.submit()
 
-        with self._lock:            
-            if self.finished:
-                # Call immediately
-                fn(self.result)
-            else:
+        if self.finished:
+            # Call immediately
+            fn(self.result)
+        else:
+            with self._lock:
                 # Call when we eventually finish
                 self._sig_finished.subscribe(fn)
     
@@ -383,7 +407,11 @@ if __name__ == "__main__":
     global_thread_pool.stop()
 
 
-
+    # TODO: Write tests for:
+    # - From within a finished callback for some request
+    #   -- Block for the same request
+    #   -- Block for some other request
+    
 
 
 
