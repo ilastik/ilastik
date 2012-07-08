@@ -7,11 +7,11 @@ from functools import partial
 import sys
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter('%(levelname)s %(name)s %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+#logger.setLevel(logging.DEBUG)
+#handler = logging.StreamHandler(sys.stdout)
+#formatter = logging.Formatter('%(levelname)s %(name)s %(message)s')
+#handler.setFormatter(formatter)
+#logger.addHandler(handler)
 
 class RequestGreenlet(greenlet.greenlet):
     def __init__(self, owning_request, fn):
@@ -88,9 +88,8 @@ class Worker(threading.Thread):
         """
         self.stopped = True
         # Wake up the thread if it's waiting for work
-        if self.job_queue_condition.acquire(False): # Don't block for the condition if we're busy.
+        with self.job_queue_condition:
             self.job_queue_condition.notify()
-            self.job_queue_condition.release()
 
     def wake_up(self, request):
         """
@@ -120,7 +119,9 @@ class Worker(threading.Thread):
 
         assert next_request is not None or self.stopped
         
-        self.logger.debug("Got work.")
+        if not self.stopped:
+            self.logger.debug("Got work.")
+
         return next_request
     
     def _pop_job(self):
@@ -213,9 +214,8 @@ class ThreadPool(object):
         Wake up all worker threads that are currently waiting for work.
         """
         for worker in self.workers:
-            if worker.job_queue_condition.acquire(False): # Don't block for the condition if the worker is busy.
+            with worker.job_queue_condition:
                 worker.job_queue_condition.notify()
-                worker.job_queue_condition.release()
 
 global_thread_pool = ThreadPool()
             
