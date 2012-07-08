@@ -75,7 +75,7 @@ class Worker(threading.Thread):
 
             # Now the request's greenlet has switched back to us.  Did it finish?
             if not current_request.finished:
-                # Not finished.  Since its greenlet isn't running, the flag the request as suspended.           
+                # Not finished.  Since its greenlet isn't running, flag the request as suspended.
                 current_request.suspended.set()
 
             # Try to get some work.
@@ -106,15 +106,21 @@ class Worker(threading.Thread):
         """
         Get the next available job to perform.  Block if necessary until a job is available.
         """
-        next_request = self._pop_job()
+        next_request = None
 
         # Keep trying until we get a job        
-        while next_request is None and not self.stopped:
-            with self.job_queue_condition:
+        with self.job_queue_condition:
+            next_request = self._pop_job()
+
+            while next_request is None and not self.stopped:
                 # Wait for work to become available
+                self.logger.debug("Waiting for work...")
                 self.job_queue_condition.wait()
                 next_request = self._pop_job()
 
+        assert next_request is not None or self.stopped
+        
+        self.logger.debug("Got work.")
         return next_request
     
     def _pop_job(self):
@@ -171,12 +177,13 @@ class ThreadPool(object):
         Schedule the request its assigned worker.
         Assign it a worker first if necessary.
         """
-        # Once a request has been assigned, it can't eve
+        # Once a request has been assigned, it must always be processed in the same worker
         if request.assigned_worker is not None:
             request.assigned_worker.wake_up( request )
         else:
             self.unassigned_requests.append(request)
             # Notify all currently waiting workers that there's new work
+            logger.debug("Notifying workers of new work")
             self._notify_all_workers()
 
     def stop(self):
@@ -291,7 +298,7 @@ class Request( object ):
         # Not valid to wake up unless we're suspended
         self.suspended.wait()
         global_thread_pool.wake_up(self)
-
+ 
     def switch_to(self):
         """
         Switch to this request's greenlet
@@ -326,13 +333,16 @@ class Request( object ):
             self.finished_event.wait()
         else:
             # We're running in the context of a request.
-            # Instead of blocking the thread, suspend the current request and wake up a different one on this thread.
+            # If we have to wait, suspend the current request instead of blocking the thread.
             with self._lock:
-                if not self.finished:
+                suspend_needed = not self.finished
+                if suspend_needed:
                     current_request.blocking_requests.add(self)
                     self.pending_requests.add(current_request)
                     self.notify_finished( partial(current_request._handle_finished_request, self) )
-            current_request._suspend()
+
+            if suspend_needed:
+                current_request._suspend()
 
         assert self.finished
         return self.result
@@ -356,13 +366,15 @@ class Request( object ):
         # Schedule this request if it hasn't been scheduled yet.
         self.submit()
 
-        if self.finished:
-            # Call immediately
-            fn(self.result)
-        else:
-            with self._lock:
+        with self._lock:
+            finished = self.finished
+            if not finished:
                 # Call when we eventually finish
                 self._sig_finished.subscribe(fn)
+
+        if finished:
+            # Call immediately
+            fn(self.result)
     
     @classmethod
     def current_request(cls):
@@ -377,7 +389,7 @@ class Request( object ):
             # There is no request associated with this greenlet.
             # It must be a regular (foreign) thread.
             return None
-        
+
 if __name__ == "__main__":
 
     import time
