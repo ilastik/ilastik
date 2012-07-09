@@ -73,11 +73,6 @@ class Worker(threading.Thread):
             # Start (or resume) the work by switching to its greenlet
             current_request.switch_to()
 
-            # Now the request's greenlet has switched back to us.  Did it finish?
-            if not current_request.finished:
-                # Not finished.  Since its greenlet isn't running, flag the request as suspended.
-                current_request.suspended.set()
-
             # Try to get some work.
             current_request = self._get_next_job()
 
@@ -224,6 +219,22 @@ class Request( object ):
     
     logger = logging.getLogger(__name__ + '.Request')
 
+    class CancellationException(Exception):
+        """
+        This is thrown when the whole request has been cancelled.
+        If you catch this exception, clean up and return immediately.
+        """
+        pass
+
+    class InvalidRequestException(Exception):
+        """
+        This is thrown when calling wait on a request that has already been cancelled,
+        which can only happen if the request was spawned elsewhere 
+        (i.e. you are waiting for someone else's request to avoid duplicate work).
+        When this occurs, you will typically restart the request yourself.
+        """
+        pass
+
     def __init__(self, fn):
         # Workload
         self.fn = fn
@@ -232,10 +243,9 @@ class Request( object ):
         # State
         self.started = False
         self.cancelled = False
+        self.uncancellable = False
         self.finished = False
         self.finished_event = threading.Event()
-        self.suspended = threading.Event()
-        self.suspended.set()
 
         # Execution
         self.greenlet = None # Not created until assignment to a worker
@@ -272,17 +282,26 @@ class Request( object ):
         """
         self.logger.debug("Executing in " + threading.current_thread().name)
 
-        # Entering our own greenlet.  Not suspended.
-        self.suspended.clear()
-        
-        # Do the actual work
-        self.result = self.fn()
+        # Did someone cancel us before we even started?
+        if not self.cancelled:
+            try:
+                # Do the actual work
+                self.result = self.fn()
+            except Request.CancellationException:
+                # Don't propagate cancellations back to the worker thread,
+                # even if the user didn't catch them.
+                pass
 
         with self._lock:
             self.finished = True
 
-        # Notify callbacks and waiting threads
-        self._sig_finished(self.result)
+        if not self.cancelled:
+            # Notify callbacks
+            self._sig_finished(self.result)
+        else:
+            self.logger.debug("Finished a cancelled request.")
+
+        # Notify non-request-based threads
         self.finished_event.set()
 
         self.logger.debug("Finished")
@@ -301,9 +320,6 @@ class Request( object ):
         Resume this request's execution (put it back on the worker's job queue).
         """
         self.logger.debug("Waking up")
-
-        # Not valid to wake up unless we're suspended
-        self.suspended.wait()
         global_thread_pool.wake_up(self)
  
     def switch_to(self):
@@ -317,11 +333,12 @@ class Request( object ):
         Suspend this request so another one can be woken up by the worker.
         """
         # Switch back to the worker that we're currently running in.
-        # The worker will flag us as suspended.
         self.greenlet.parent.switch()
         
-        # Re-entering our own greenlet.  No longer suspended.
-        self.suspended.clear()
+        # Now we're back (no longer suspended)
+        # Were we cancelled in the meantime?
+        if self.cancelled:
+            raise Request.CancellationException()
     
     def wait(self):
         """
@@ -334,12 +351,29 @@ class Request( object ):
         current_request = Request.current_request()
 
         if current_request is None:
+            # Don't allow this request to be cancelled, since a real thread is waiting for it.
+            self.uncancellable = True
+
             # This is a non-worker thread, so just block the old-fashioned way
             self.finished_event.wait()
+            
+            # It turns out this request was already cancelled.
+            if self.cancelled:
+                raise Request.InvalidRequestException()
         else:
             # We're running in the context of a request.
             # If we have to wait, suspend the current request instead of blocking the thread.
             with self._lock:
+                # Before we suspend the current request, check to see if it's been cancelled since it last blocked
+                if current_request.cancelled:
+                    raise Request.CancellationException()
+                
+                # If the current request isn't cancelled but we are,
+                # then the current request is trying to wait for a request (i.e. self) that was spawned elsewhere and already cancelled.
+                # If they really want it, they'll have to spawn it themselves.
+                if self.cancelled:
+                    raise Request.InvalidRequestException()
+
                 suspend_needed = not self.finished
                 if suspend_needed:
                     current_request.blocking_requests.add(self)
@@ -382,16 +416,20 @@ class Request( object ):
             fn(self.result)
         
     def cancel(self):
+        # We can only be cancelled if: 
+        # (1) There are no foreign threads blocking for us (flagged via self.uncancellable) AND
+        # (2) our parent request (if any) is already cancelled AND
+        # (3) all requests that are pending for this one are already cancelled
         with self._lock:
-            # We can't be cancelled unless our parent request is already cancelled
-            cancelled = self.parent_request is not None and self.parent_request.cancelled
-            # We can't be cancelled unless all pending requests are cancelled.
+            cancelled = not self.uncancellable
+            cancelled &= (self.parent_request is None or self.parent_request.cancelled)
             for r in self.pending_requests:
                 cancelled &= r.cancelled
 
             self.cancelled = cancelled
 
         if self.cancelled:
+            # Cancel all requests that were spawned from this one.
             for child in self.child_requests:
                 child.cancel()
     
