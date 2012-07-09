@@ -1,4 +1,4 @@
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OrderedSignal
 
 from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators import OpH5WriterBigDataset
@@ -42,6 +42,8 @@ class OpBatchIo(Operator):
     Dirty = OutputSlot(stype='bool')            # Whether or not the result currently matches what's on disk
     OutputDataPath = OutputSlot(stype='string') # When requested, attempts to store the data to disk.  Returns the path that the data was saved to.
     ExportResult = OutputSlot(stype='string')
+    
+    ProgressSignal = OutputSlot(stype='object')
 
     def __init__(self, *args, **kwargs):
         super(OpBatchIo, self).__init__(*args, **kwargs)
@@ -58,6 +60,9 @@ class OpBatchIo(Operator):
         self.Format.setValue( ExportFormat.H5 )
         self.Suffix.setValue( '_results' )
         self.Dirty.setValue(True)
+        
+        self.progressSignal = OrderedSignal()
+        self.ProgressSignal.setValue( self.progressSignal )
 
     def setupOutputs(self):        
         # Create the output data path
@@ -73,7 +78,7 @@ class OpBatchIo(Operator):
         outputPath += '/' + inputPathComponents.filenameBase + self.Suffix.value + ext 
         
         # Set up the path for H5 export
-        if exportFormat == ExportFormat.H5:                    
+        if formatId == ExportFormat.H5:                    
             # Use the same internal path that the input data used (if any)
             if inputPathComponents.internalPath is not None:
                 self._internalPath = inputPathComponents.internalPath
@@ -81,10 +86,10 @@ class OpBatchIo(Operator):
                 self._internalPath = '/volume/data'
 
             self.OutputDataPath.setValue( outputPath + self._internalPath )
-        elif exportFormat == ExportFormat.Npy:
-            pass # TODO
-        elif exportFormat == ExportFormat.Tiff:
-            pass # TODO
+        elif formatId == ExportFormat.Npy:
+            self.OutputDataPath.setValue( outputPath )
+        elif formatId == ExportFormat.Tiff:
+            self.OutputDataPath.setValue( outputPath )
 
     def propagateDirty(self, islot, roi):
         # Out input data changed, so we have work to do when we get executed.
@@ -109,20 +114,23 @@ class OpBatchIo(Operator):
             if exportFormat == ExportFormat.H5:
                 pathComp = PathComponents(self.OutputDataPath.value)
                 
-                # Set up the write operator                
+                # Set up the write operator
                 opH5Writer = OpH5WriterBigDataset(graph=self.graph)
                 opH5Writer.Filename.setValue( pathComp.externalPath )
                 opH5Writer.hdf5Path.setValue( pathComp.internalPath )
                 opH5Writer.Image.connect( self.ImageToExport )
+
+                # The H5 Writer provides it's own progress signal, so just connect ours to it.
+                opH5Writer.progressSignal.subscribe( self.progressSignal )
 
                 # Trigger the write
                 self.Dirty.setValue( not opH5Writer.WriteImage.value )
                 opH5Writer.close()
 
             elif exportFormat == ExportFormat.Npy:
-                pass # TODO
+                assert False # TODO
             elif exportFormat == ExportFormat.Npy:
-                pass # TODO
+                assert False # TODO
 
             result[0] = not self.Dirty.value
 

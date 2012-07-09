@@ -210,7 +210,7 @@ class BatchIoGui(QMainWindow):
             self.tableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( outputDataPath ) )
     
             exportNowButton = QPushButton("Export")
-            exportNowButton.clicked.connect( bind(self.exportResultsForSlot, self.mainOperator.ExportResult[row] ) )
+            exportNowButton.clicked.connect( bind(self.exportResultsForSlot, self.mainOperator.ExportResult[row], self.mainOperator.ProgressSignal[row] ) )
             self.tableWidget.setCellWidget( row, Column.Action, exportNowButton )
 
     def updateDrawerGuiFromOperatorSettings(self, *args):
@@ -220,8 +220,10 @@ class BatchIoGui(QMainWindow):
             
             if self.mainOperator.ExportDirectory.ready():
                 self.drawer.outputDirEdit.setText( self.mainOperator.ExportDirectory.value )
-                self.drawer.saveToDirButton.setChecked( self.mainOperator.ExportDirectory.value != '' )        
+                self.drawer.saveToDirButton.setChecked( self.mainOperator.ExportDirectory.value != '' )
                 self.drawer.saveWithInputButton.setChecked( self.mainOperator.ExportDirectory.value == '' )
+                self.drawer.outputDirChooseButton.setEnabled( self.drawer.saveToDirButton.isChecked() )
+                self.drawer.outputDirEdit.setEnabled( self.drawer.saveToDirButton.isChecked() )
             
             if self.mainOperator.Format.ready():
                 formatId = self.mainOperator.Format.value
@@ -247,7 +249,7 @@ class BatchIoGui(QMainWindow):
             # Reconnect now that we're finished
             self.tableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
         
-    def exportSlots(self, slotList ):
+    def exportSlots(self, slotList, progressSignalSlotList ):
         with Tracer(traceLogger):
             try:
                 # Don't let anyone change the classifier while we're exporting...
@@ -259,13 +261,21 @@ class BatchIoGui(QMainWindow):
                 # Start with 1% so the progress bar shows up
                 self.progressSignal.emit(1)
 
+                def signalFileProgress(slotIndex, percent):
+                    self.progressSignal.emit( (100*slotIndex + percent) / len(slotList) ) 
+
                 for i, slot in enumerate(slotList):
                     logger.debug("Exporting result {}".format(i))
+
+                    # If the operator provides a progress signal, use it.
+                    slotProgressSignal = progressSignalSlotList[i].value
+                    slotProgressSignal.subscribe( partial(signalFileProgress, i) )
+                    
                     result = slot.value
                     if not result:
                         logger.error("Failed to export an image.")            
     
-                    # We're making progress... 
+                    # We're finished with this file. 
                     self.progressSignal.emit( 100*(i+1)/float(len(slotList)) )
                     
                 # Ensure the shell knows we're really done.
@@ -279,16 +289,16 @@ class BatchIoGui(QMainWindow):
                 self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop ) # Enable ourselves
                 self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop ) # Enable the others we disabled
 
-    def exportResultsForSlot(self, slot):
+    def exportResultsForSlot(self, slot, progressSlot):
         with Tracer(traceLogger):
             # Do this in a separate thread so the UI remains responsive
-            exportThread = threading.Thread(target=bind(self.exportSlots, [slot]), name="BatchIOExportThread")
+            exportThread = threading.Thread(target=bind(self.exportSlots, [slot], [progressSlot]), name="BatchIOExportThread")
             exportThread.start()
     
     def exportAllResults(self):
         with Tracer(traceLogger):
             # Do this in a separate thread so the UI remains responsive
-            exportThread = threading.Thread(target=bind(self.exportSlots, self.mainOperator.ExportResult), name="BatchIOExportThread")
+            exportThread = threading.Thread(target=bind(self.exportSlots, self.mainOperator.ExportResult, self.mainOperator.ProgressSignal), name="BatchIOExportThread")
             exportThread.start()
 
     def deleteAllResults(self):
