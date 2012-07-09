@@ -48,15 +48,26 @@ class PixelClassificationSerializer(AppletSerializer):
 
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         with Tracer(traceLogger):
+
+            numSteps = sum( self._dirtyFlags.values() )
+            progress = 0
+            increment = 100/numSteps
+
             if self._dirtyFlags[Section.Labels]:
-                self._serializeLabels( topGroup )
+                self._serializeLabels( topGroup )            
+                progress += increment
+                self.progressSignal.emit( progress )
     
             if self._dirtyFlags[Section.Classifier]:
                 self._serializeClassifier( topGroup )
+                progress += increment
+                self.progressSignal.emit( progress )
     
-            if self._dirtyFlags[Section.Predictions]:
-                self._serializePredictions( topGroup )
-    
+#            if self._dirtyFlags[Section.Predictions]:
+#                self._serializePredictions( topGroup )
+#                progress += increment
+#                self.progressSignal.emit( progress )
+
             # Clear the dirty flags (project file is now in sync with the operator)
             self._initDirtyFlags()
 
@@ -133,9 +144,12 @@ class PixelClassificationSerializer(AppletSerializer):
         with Tracer(traceLogger):
             if topGroup is None:
                 return
-            
+
+            self.progressSignal.emit(0)            
             self._deserializeLabels( topGroup )
+            self.progressSignal.emit(50)            
             self._deserializeClassifier( topGroup )
+            self.progressSignal.emit(100)
 
     def _deserializeLabels(self, topGroup):
         with Tracer(traceLogger):
