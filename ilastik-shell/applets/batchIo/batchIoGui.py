@@ -50,6 +50,10 @@ class BatchIoGui(QMainWindow):
     def setImageIndex(self, index):
         pass
 
+    def reset(self):
+        # Nothing to do (Every control in our GUI is dynamically updated via slot changes)
+        pass
+
     ###########################################
     ###########################################
     

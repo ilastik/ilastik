@@ -50,6 +50,10 @@ class LayerViewerGui(QMainWindow):
 
     def setImageIndex(self, index):
         self._setImageIndex(index)
+        
+    def reset(self):
+        # Nothing to do (the central widget and layers will unload automatically, and we have no drawer...)
+        pass
 
     ###########################################
     ###########################################

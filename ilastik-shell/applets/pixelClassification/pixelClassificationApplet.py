@@ -12,7 +12,7 @@ class PixelClassificationApplet( Applet ):
 
         self._topLevelOperator = OpPixelClassification( graph )
 
-        self._gui = PixelClassificationGui( self._topLevelOperator, graph )
+        self._gui = PixelClassificationGui( self._topLevelOperator, self.guiControlSignal )
         
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.

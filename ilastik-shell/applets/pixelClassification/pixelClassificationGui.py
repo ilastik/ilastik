@@ -16,6 +16,7 @@ from volumina.adaptors import Op5ifyer
 from igms.labelListView import Label
 from igms.labelListModel import LabelListModel
 
+import ilastikshell
 from ilastikshell.applet import Applet
 
 import vigra
@@ -74,14 +75,25 @@ class PixelClassificationGui(QMainWindow):
                 # Make sure the painting controls are hidden if necessary
                 self.changeInteractionMode(Tool.Navigation)
 
+    def reset(self):
+        # Ensure that we are NOT in interactive mode
+        self._labelControlUi.checkInteractive.setChecked(False)
+        
+        # Clear the label list GUI
+        self.clearLabelListGui()
+        
+        # Start in navigation mode (not painting)
+        self.changeInteractionMode(Tool.Navigation)
+
     ###########################################
     ###########################################
 
-    def __init__(self, pipeline = None, graph = None ):
+    def __init__(self, pipeline, guiControlSignal ):
         with Tracer(traceLogger):
             QMainWindow.__init__(self)
             
             self.pipeline = pipeline
+            self.guiControlSignal = guiControlSignal
     
             self.imageIndex = 0
             self.layerstack = None
@@ -94,6 +106,8 @@ class PixelClassificationGui(QMainWindow):
             self.pipeline.LabelImages.notifyRemove( bind(self.subscribeToLabelImageChanges) )
     
             self._colorTable16 = self._createDefault16ColorColorTable()
+
+            self.interactiveModeActive = False
             
             def handleOutputListChanged():
                 """This closure is called when an image is added or removed from the output."""
@@ -125,7 +139,6 @@ class PixelClassificationGui(QMainWindow):
                 self._normalize_data=False
                 sys.argv.remove('notnormalize')
     
-            self.g = graph if graph else Graph()
             self.fixableOperators = [self.pipeline.prediction_cache]
             
             #The old ilastik provided the following scale names:
@@ -386,9 +399,6 @@ class PixelClassificationGui(QMainWindow):
                     mexBox.setText("There are no features selected ")
                     mexBox.exec_()
                     return
-            else:
-                self.g.stopGraph()
-                self.g.resumeGraph()                
     
             self._labelControlUi.AddLabelButton.setEnabled(not checked)
             self._labelControlUi.labelListModel.allowRemove(not checked)
@@ -400,6 +410,16 @@ class PixelClassificationGui(QMainWindow):
             # Prediction layers should be switched on/off when the interactive checkbox is toggled
             for layer in self.predictionLayers:
                 layer.visible = checked
+
+            # If we're changing modes, enable/disable other applets accordingly
+            if self.interactiveModeActive != checked:
+                if checked:
+                    self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.DisableUpstream )
+                    self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.DisableDownstream )
+                else:
+                    self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop )                
+                    self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop )
+            self.interactiveModeActive = checked
 
     def changeInteractionMode( self, toolId ):
         """
@@ -718,7 +738,7 @@ class PixelClassificationGui(QMainWindow):
         Add a prediction layer to the editor.
         """
         with Tracer(traceLogger):
-            selector=OpSingleChannelSelector(self.g)
+            selector=OpSingleChannelSelector(self.pipeline.graph)
             selector.inputs["Input"].connect(self.pipeline.PredictionProbabilities[self.imageIndex])
             selector.inputs["Index"].setValue(icl)
             
@@ -774,7 +794,7 @@ class PixelClassificationGui(QMainWindow):
                 logger.info("Data has shape=%r" % (shape,))
                 
                 #create a layer for each channel of the input:
-                slicer=OpMultiArraySlicer2(self.g)
+                slicer=OpMultiArraySlicer2(self.pipeline.graph)
                 slicer.inputs["Input"].connect(self.pipeline.InputImages[self.imageIndex])
                 
                 slicer.inputs["AxisFlag"].setValue('c')
