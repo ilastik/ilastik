@@ -112,12 +112,16 @@ class ProgressDisplayManager(QObject):
                     self.statusBar.addWidget(self.progressBar)
                 self.progressBar.setValue(totalPercentage)
 
-class CallableEvent( QEvent ):
+class ThunkEvent( QEvent ):
+    """
+    A QEvent subclass that holds a callable which can be executed by its listeners.
+    Sort of like a "queued connection" signal.
+    """
     EventType = QEvent.Type(QEvent.registerEventType())
 
-    def __init__(self, fn):
+    def __init__(self, func):
         QEvent.__init__(self, self.EventType)
-        self.fn = fn
+        self.thunk = func
 
 class IlastikShell( QMainWindow ):
     """
@@ -171,8 +175,8 @@ class IlastikShell( QMainWindow ):
         """
         Hook in to the Qt event mechanism to handle custom events.
         """
-        if e.type() == CallableEvent.EventType:
-            e.fn()
+        if e.type() == ThunkEvent.EventType:
+            e.thunk()
             return True
         else:
             return super(IlastikShell, self).event(e)
@@ -401,8 +405,8 @@ class IlastikShell( QMainWindow ):
                 self._disableCounts[index] += step
 
         # Update the control states in the GUI thread
-        QApplication.postEvent( self, CallableEvent(self.updateAppletControlStates) )
-    
+        QApplication.postEvent( self, ThunkEvent(self.updateAppletControlStates) )
+
     def __len__( self ):
         return self.appletBar.count()
 
@@ -419,7 +423,7 @@ class IlastikShell( QMainWindow ):
                 response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
                 projectClosed = (response == QMessageBox.Yes)
 
-            if projectClosed:                
+            if projectClosed:
                 self.unloadAllApplets()
                 self.currentProjectFile.close()
                 self.currentProjectFile = None
@@ -519,6 +523,9 @@ class IlastikShell( QMainWindow ):
             self.enableWorkflow = True
             self.updateAppletControlStates()
 
+            # Reset the GUI (which may enable/disable specific controls)
+            applet.gui.reset()
+
         except:
             logger.error("Project Open Action failed due to the following exception:")
             traceback.print_exc()
@@ -534,6 +541,10 @@ class IlastikShell( QMainWindow ):
         Unload all applets into a blank state.
         """
         for applet in self._applets:
+            # Reset the GUI
+            applet.gui.reset()
+
+            # Unload the project data
             for item in applet.dataSerializers:
                 item.unload()
     
@@ -607,6 +618,7 @@ class IlastikShell( QMainWindow ):
         """
         Enable or disable all controls of all applets according to their disable count.
         """
+        drawerIndex = 0
         for index, applet in enumerate(self._applets):
             enabled = self._disableCounts[index] == 0
 
@@ -616,6 +628,16 @@ class IlastikShell( QMainWindow ):
             # Apply to the applet bar drawers
             for appletName, appletGui in applet.gui.appletDrawers():
                 appletGui.setEnabled( enabled and self.enableWorkflow )
+            
+                # Apply to the applet bar drawer headings, too
+                drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
+                if enabled and self.enableWorkflow:
+                    drawerTitleItem.setFlags( QtCore.Qt.ItemIsEnabled )
+                else:
+                    drawerTitleItem.setFlags( QtCore.Qt.NoItemFlags )
+                
+                drawerIndex += 1
+
 
 #    def scrollToTop(self):
 #        #self.appletBar.verticalScrollBar().setValue( 0 )

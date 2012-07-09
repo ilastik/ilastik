@@ -50,6 +50,14 @@ class AppletGuiInterface():
         """
         raise NotImplementedError
 
+    @abstractmethod    
+    def reset(self):
+        """
+        Called by the shell when the current project has been unloaded.
+        The GUI should reset itself to its initial state, whatever that is.
+        """
+        raise NotImplementedError
+
     @classmethod
     def __subclasshook__(cls, C):
         if cls is AppletGuiInterface:
