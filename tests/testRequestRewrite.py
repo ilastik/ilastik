@@ -187,18 +187,28 @@ class TestRequest(object):
         """
         Start a workload and cancel it.  Verify that it was actually cancelled before all the work was finished.
         """
-        workcounter = [0]
-        def workload():
-            workcounter[0] += 1
-            time.sleep(0.1)
+        counter_lock = threading.RLock()
 
+        def workload():
+            time.sleep(0.01)
+            return 1
+        
+        got_cancel = [False]
+        workcounter = [0]
         def big_workload():
-            requests = []
-            for i in range(100):
-                requests.append( Request(workload) )
-            
-            for r in requests:
-                r.wait()
+            try:
+                requests = []
+                for i in range(100):
+                    requests.append( Request(workload) )
+                
+                for r in requests:
+                    workcounter[0] += r.wait()
+                
+                assert False, "This test is designed so that big_workload should be cancelled before it finishes all its work"
+                for r in requests:
+                    assert not r.cancelled
+            except Request.CancellationException:
+                got_cancel[0] = True
         
         completed = [False]
         def handle_complete( result ):
@@ -206,11 +216,14 @@ class TestRequest(object):
         
         req = Request( big_workload )
         req.notify_finished( handle_complete )
-        time.sleep(0.1)
+        time.sleep(.5)
         req.cancel()
+        
+        assert req.cancelled
         
         time.sleep(2)
         assert not completed[0]
+        assert got_cancel[0]
         
         # Make sure this test is functioning properly:
         # The cancellation should have occurred in the middle (not before the request even got started)

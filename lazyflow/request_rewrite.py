@@ -223,6 +223,10 @@ class Request( object ):
         """
         This is thrown when the whole request has been cancelled.
         If you catch this exception, clean up and return immediately.
+        
+        This exception may be thrown when the cancel flag is checked in the wait() function:
+            - immediately before the request is suspended OR
+            - immediately after the request is woken up from suspension
         """
         pass
 
@@ -231,7 +235,7 @@ class Request( object ):
         This is thrown when calling wait on a request that has already been cancelled,
         which can only happen if the request was spawned elsewhere 
         (i.e. you are waiting for someone else's request to avoid duplicate work).
-        When this occurs, you will typically restart the request yourself.
+        When this occurs, you will typically want to restart the request yourself.
         """
         pass
 
@@ -260,9 +264,12 @@ class Request( object ):
         self.parent_request = current_request
         if current_request is not None:
             current_request.child_requests.add(self)
+            if current_request.cancelled:
+                self.cancelled = True
 
         self._lock = threading.RLock()
         self._sig_finished = OrderedSignal()
+        self._sig_cancelled = OrderedSignal()
         
         self.logger.debug("Created request")
 
@@ -295,11 +302,11 @@ class Request( object ):
         with self._lock:
             self.finished = True
 
-        if not self.cancelled:
-            # Notify callbacks
-            self._sig_finished(self.result)
+        # Notify callbacks (one or the other, not both)
+        if self.cancelled:
+            self._sig_cancelled(self.result)
         else:
-            self.logger.debug("Finished a cancelled request.")
+            self._sig_finished(self.result)
 
         # Notify non-request-based threads
         self.finished_event.set()
@@ -335,11 +342,6 @@ class Request( object ):
         # Switch back to the worker that we're currently running in.
         self.greenlet.parent.switch()
         
-        # Now we're back (no longer suspended)
-        # Were we cancelled in the meantime?
-        if self.cancelled:
-            raise Request.CancellationException()
-    
     def wait(self):
         """
         Start this request if necessary, then wait for it to complete.  Return the request's result.
@@ -363,11 +365,12 @@ class Request( object ):
         else:
             # We're running in the context of a request.
             # If we have to wait, suspend the current request instead of blocking the thread.
-            with self._lock:
-                # Before we suspend the current request, check to see if it's been cancelled since it last blocked
-                if current_request.cancelled:
-                    raise Request.CancellationException()
-                
+
+            # Before we suspend the current request, check to see if it's been cancelled since it last blocked
+            if current_request.cancelled:
+                raise Request.CancellationException()
+
+            with self._lock:                
                 # If the current request isn't cancelled but we are,
                 # then the current request is trying to wait for a request (i.e. self) that was spawned elsewhere and already cancelled.
                 # If they really want it, they'll have to spawn it themselves.
@@ -378,10 +381,18 @@ class Request( object ):
                 if suspend_needed:
                     current_request.blocking_requests.add(self)
                     self.pending_requests.add(current_request)
+                    # No matter what, we need to be notified when this request stops.
+                    # (Exactly one of these callback signals will fire.)
                     self.notify_finished( partial(current_request._handle_finished_request, self) )
+                    self.notify_cancelled( partial(current_request._handle_finished_request, self) )
 
             if suspend_needed:
                 current_request._suspend()
+
+                # Now we're back (no longer suspended)
+                # Were we cancelled in the meantime?
+                if current_request.cancelled:
+                    raise Request.CancellationException()    
 
         assert self.finished
         return self.result
@@ -412,6 +423,25 @@ class Request( object ):
                 self._sig_finished.subscribe(fn)
 
         if finished:
+            # Call immediately
+            fn(self.result)
+            
+    def notify_cancelled(self, fn):
+        """
+        Register a callback function to be called when this request is finished due to cancellation.
+        If we're already finished and cancelled, call it now.
+        """
+        # Schedule this request if it hasn't been scheduled yet.
+        self.submit()
+
+        with self._lock:
+            finished = self.finished
+            cancelled = self.cancelled
+            if not finished:
+                # Call when we eventually finish
+                self._sig_cancelled.subscribe(fn)
+
+        if finished and cancelled:
             # Call immediately
             fn(self.result)
         
