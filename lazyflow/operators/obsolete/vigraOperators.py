@@ -1063,6 +1063,10 @@ class OpH5WriterBigDataset(Operator):
     inputSlots = [InputSlot("Filename", stype = "filestring"), InputSlot("hdf5Path", stype = "string"), InputSlot("Image")]
     outputSlots = [OutputSlot("WriteImage")]
 
+    def __init__(self, *args, **kwargs):
+        super(OpH5WriterBigDataset, self).__init__(*args, **kwargs)
+        self.progressSignal = OrderedSignal()
+
     def notifyConnectAll(self):
         self.outputs["WriteImage"].meta.shape = (1,)
         self.outputs["WriteImage"].meta.dtype = object
@@ -1112,6 +1116,8 @@ class OpH5WriterBigDataset(Operator):
                                 compression_opts=4)
 
     def getOutSlot(self, slot, key, result):
+        self.progressSignal(0)
+        
         requests=self.computeRequests()
         imSlot = self.inputs["Image"]
 
@@ -1123,6 +1129,9 @@ class OpH5WriterBigDataset(Operator):
         for i,t in enumerate(tmp):
             r=requests[i]
             self.d[r]=t.wait()
+            # Since requests come back in an arbitrary order, this progress will not be smooth.
+            # It's the best we can do for now.
+            self.progressSignal( 100*i/len(tmp) )
             logger.debug("request ", i, "out of ", len(tmp), "executed")
 
         # Save the axistags as a dataset attribute
@@ -1130,6 +1139,8 @@ class OpH5WriterBigDataset(Operator):
 
         # We're finished.
         result[0] = True
+
+        self.progressSignal(100)
 
     def computeRequests(self):
         #TODO: reimplement the request better
