@@ -98,7 +98,10 @@ class Worker(threading.Thread):
 
     def _get_next_job(self):
         """
-        Get the next available job to perform.  Block if necessary until a job is available.
+        Get the next available job to perform.
+        If necessary, block until:
+            - a job is available (return the next request) OR
+            - the worker has been stopped (might return None)
         """
         next_request = None
 
@@ -170,8 +173,8 @@ class ThreadPool(object):
 
     def wake_up(self, request):
         """
-        Schedule the request its assigned worker.
-        Assign it a worker first if necessary.
+        Schedule the given request on the worker that is assigned to it.
+        If necessary, first assign a worker to it.
         """
         # Once a request has been assigned, it must always be processed in the same worker
         if request.assigned_worker is not None:
@@ -185,6 +188,7 @@ class ThreadPool(object):
     def stop(self):
         """
         Stop all threads in the pool, and block for them to complete.
+        Postcondition: All worker threads have stopped.  Unfinished requests are simply dropped.
         """
         for w in self.workers:
             w.stop()
@@ -222,9 +226,11 @@ class Request( object ):
     class CancellationException(Exception):
         """
         This is thrown when the whole request has been cancelled.
-        If you catch this exception, clean up and return immediately.
+        If you catch this exception from within a request, clean up and return immediately.
+        If you have nothing to clean up, you are not required to handle this exception.
         
-        This exception may be thrown when the cancel flag is checked in the wait() function:
+        Implementation details:
+        This exception is thrown when the cancel flag is checked in the wait() function:
             - immediately before the request is suspended OR
             - immediately after the request is woken up from suspension
         """
@@ -233,13 +239,17 @@ class Request( object ):
     class InvalidRequestException(Exception):
         """
         This is thrown when calling wait on a request that has already been cancelled,
-        which can only happen if the request was spawned elsewhere 
+        which can only happen if the request you're waiting for was spawned elsewhere 
         (i.e. you are waiting for someone else's request to avoid duplicate work).
         When this occurs, you will typically want to restart the request yourself.
         """
         pass
 
     def __init__(self, fn):
+        """
+        Constructor.
+        Postconditions: The request has the same cancelled status as its parent
+        """
         # Workload
         self.fn = fn
         self.result = None
@@ -263,9 +273,9 @@ class Request( object ):
         current_request = Request.current_request()
         self.parent_request = current_request
         if current_request is not None:
-            current_request.child_requests.add(self)
-            if current_request.cancelled:
-                self.cancelled = True
+            with current_request._lock:
+                current_request.child_requests.add(self)
+                self.cancelled = current_request.cancelled
 
         self._lock = threading.RLock()
         self._sig_finished = OrderedSignal()
@@ -304,7 +314,7 @@ class Request( object ):
 
         # Notify callbacks (one or the other, not both)
         if self.cancelled:
-            self._sig_cancelled(self.result)
+            self._sig_cancelled()
         else:
             self._sig_finished(self.result)
 
@@ -397,7 +407,7 @@ class Request( object ):
         assert self.finished
         return self.result
 
-    def _handle_finished_request(self, request, result):
+    def _handle_finished_request(self, request, *args):
         """
         Called when a request that we were waiting for has completed.
         Wake ourselves up so we can resume execution.
@@ -477,33 +487,52 @@ class Request( object ):
             # It must be a regular (foreign) thread.
             return None
 
-if __name__ == "__main__":
+    ##########################################
+    #### Backwards-compatible API support ####
+    ##########################################
 
-    import time
-    import atexit
-    def onExit():
-        print "Exiting..."    
-    atexit.register(onExit)
-
-    def g():
-        print "g() 1"
-        time.sleep(1)
-        return 1
-
-    def f():
-        print "f() 1"
-        time.sleep(1)
-        r = Request(g)
-        result = r.wait()
-        print "f() 2"
+    class PartialWithAppendedArgs(object):
+        """
+        Like functools.partial, but any kwargs provided are given last when calling the target.
+        """
+        def __init__(self, fn, *args, **kwargs):
+            self.func = fn
+            self.args = args
+            self.kwargs = kwargs
         
-        return 2*result
+        def __call__(self, *args):
+            totalargs = args + self.args
+            return self.func( *totalargs, **self.kwargs)
     
-    r = Request(f)
-    res = r.wait()
-    print "result =",res
+    def onFinish(self, fn, **kwargs):
+        f = Request.PartialWithAppendedArgs( fn, **kwargs )
+        # Technically, this submits the request, which the old api didn't do,
+        # but the old api never guaranteed when the request would be submitted, anyway...
+        self.notify_finished( f )
 
-    global_thread_pool.stop()
+    def onCancel(self, fn, *args, **kwargs):
+        # Cheating here: The only operator that uses this old api function is OpArrayCache,
+        # which doesn't do anything except return False to say "don't cancel me"
+        
+        # We'll just call it right now and set our flag with the result
+        self.uncancellable = not fn(*args, **kwargs)
+
+    def notify(self, fn, **kwargs):
+        f = Request.PartialWithAppendedArgs( fn, **kwargs )
+        self.notify_finished( f )
+
+    def allocate(self, priority = 0):
+        return self
+
+    def writeInto(self, destination):
+        self.fn = Request.PartialWithAppendedArgs( self.fn, destination=destination )
+        return self
+
+    def getResult(self):
+        return self.result
+
+    def __call__(self):
+        return self.wait()
 
 
 

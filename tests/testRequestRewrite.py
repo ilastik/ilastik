@@ -275,6 +275,46 @@ class TestRequest(object):
         t.start()
         result = req.wait()
         assert result == 10
+    
+    def test_old_api_support(self):
+        def someWork(destination=None):
+            if destination is None:
+                destination = [""]
+            time.sleep(0.001)
+            destination[0] = "Hello,"
+            return destination
+
+        callback_result = ['']
+        def callback(result):
+            callback_result[0] = result
+
+        def test(s, destination=None,):
+            req = Request(someWork)
+            req.onFinish(callback)
+            s2 = req.wait()[0]
+            time.sleep(0.001)
+            if destination is None:
+                destination = [""]
+            destination[0] = s2 + s
+            return destination
+
+        req = Request( partial(test, s = " World!") )
+        result = [""]
+        req.writeInto(result)
+        req.notify(callback)
+        
+        # Wait for the result
+        assert req.wait()[0] == "Hello, World!"      # Wait for it
+        assert callback_result[0][0] == "Hello, World!" # From the callback
+        assert result[0] == req.wait()[0]
+
+        requests = []
+        for i in range(10):
+            req = Request( partial(test, s = "hallo %d" %i) )
+            requests.append(req)
+
+        for r in requests:
+            r.wait()
 
 if __name__ == "__main__":
     import nose
