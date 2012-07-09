@@ -231,10 +231,11 @@ class Request( object ):
 
         # State
         self.started = False
+        self.cancelled = False
         self.finished = False
+        self.finished_event = threading.Event()
         self.suspended = threading.Event()
         self.suspended.set()
-        self.finished_event = threading.Event()
 
         # Execution
         self.greenlet = None # Not created until assignment to a worker
@@ -243,6 +244,12 @@ class Request( object ):
         # Request relationships
         self.pending_requests = set()  # Requests that are waiting for this one
         self.blocking_requests = set() # Requests that this one is waiting for (currently one at most since wait() can only be called on one request at a time)
+        self.child_requests = set()    # Requests that were created from within this request (NOT the same as pending_requests)
+        
+        current_request = Request.current_request()
+        self.parent_request = current_request
+        if current_request is not None:
+            current_request.child_requests.add(self)
 
         self._lock = threading.RLock()
         self._sig_finished = OrderedSignal()
@@ -303,8 +310,6 @@ class Request( object ):
         """
         Switch to this request's greenlet
         """
-        # The greenlet should return to the current worker thread when it's finished,
-        #  so make it's parent = the current worker
         self.greenlet.switch()
         
     def _suspend(self):
@@ -315,7 +320,7 @@ class Request( object ):
         # The worker will flag us as suspended.
         self.greenlet.parent.switch()
         
-        # Re-entering our own greenlet.  Not suspended.
+        # Re-entering our own greenlet.  No longer suspended.
         self.suspended.clear()
     
     def wait(self):
@@ -375,6 +380,20 @@ class Request( object ):
         if finished:
             # Call immediately
             fn(self.result)
+        
+    def cancel(self):
+        with self._lock:
+            # We can't be cancelled unless our parent request is already cancelled
+            cancelled = self.parent_request is not None and self.parent_request.cancelled
+            # We can't be cancelled unless all pending requests are cancelled.
+            for r in self.pending_requests:
+                cancelled &= r.cancelled
+
+            self.cancelled = cancelled
+
+        if self.cancelled:
+            for child in self.child_requests:
+                child.cancel()
     
     @classmethod
     def current_request(cls):
