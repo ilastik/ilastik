@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from ilastikshell import VersionManager
+from utility.simpleSignal import SimpleSignal
 
 class AppletSerializer(object):
     __metaclass__ = ABCMeta # Force subclasses to override abstract methods and properties
@@ -98,6 +99,9 @@ class AppletSerializer(object):
     def __init__(self, topGroupName, version):
         self._version = version
         self._topGroupName = topGroupName
+        
+        self.progressSignal = SimpleSignal() # Signature: emit(percentComplete)
+
         self._base_initialized = True
 
     def serializeToHdf5(self, hdf5File, projectFilePath):
@@ -107,6 +111,8 @@ class AppletSerializer(object):
         # Make sure we can find our way around the project tree
         if not VersionManager.isProjectFileVersionCompatible(ilastikVersion):
             return
+
+        self.progressSignal.emit(0)
         
         topGroup = self.getOrCreateGroup(hdf5File, self.topGroupName)
         
@@ -115,9 +121,12 @@ class AppletSerializer(object):
             topGroup.create_dataset('StorageVersion', data=self._version)
         else:
             topGroup['StorageVersion'][()] = self._version
-        
-        # Call the subclass to do the actual work
-        self._serializeToHdf5(topGroup, hdf5File, projectFilePath)
+
+        try:
+            # Call the subclass to do the actual work
+            self._serializeToHdf5(topGroup, hdf5File, projectFilePath)
+        finally:
+            self.progressSignal.emit(100)
 
     def deserializeFromHdf5(self, hdf5File, projectFilePath):
         # Check the overall file version
@@ -127,6 +136,8 @@ class AppletSerializer(object):
         if not VersionManager.isProjectFileVersionCompatible(ilastikVersion):
             return
 
+        self.progressSignal.emit(0)
+
         # If our group isn't there, then give up.
         try:
             topGroup = hdf5File[self.topGroupName]
@@ -135,8 +146,11 @@ class AppletSerializer(object):
             topGroup = None
             groupVersion = None
         
-        # Call the subclass to do the actual work
-        self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath)
+        try:
+            # Call the subclass to do the actual work
+            self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath)
+        finally:
+            self.progressSignal.emit(100)
 
     @property
     def base_initialized(self):

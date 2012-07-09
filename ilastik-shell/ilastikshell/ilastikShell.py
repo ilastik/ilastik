@@ -74,6 +74,11 @@ class ProgressDisplayManager(QObject):
         # Subscribe to progress updates from this applet,
         # and include the applet index in the signal parameters.
         app.progressSignal.connect( bind(self.handleAppletProgress, index) )
+        
+        # Also subscribe to this applet's serializer progress updates.
+        # (Progress will always come from either the serializer or the applet itself; not both at once.)
+        for serializer in app.dataSerializers:
+            serializer.progressSignal.connect( bind( self.handleAppletProgress, index ) )
 
     def handleAppletProgress(self, index, percentage, cancelled=False):
         # Forward the signal to the handler via our qt signal, which provides a queued connection.
@@ -86,16 +91,21 @@ class ProgressDisplayManager(QObject):
                 if index in self.appletPercentages.keys():
                     del self.appletPercentages[index]
             else:
-                self.appletPercentages[index] = percentage
+                # If this appears to be the first progress signal for the applet and it's already 100,
+                #  it is really a duplicate 100% update.  Ignore it.
+                # (100% progress is not a valid starting value.)
+                if not (index not in self.appletPercentages and percentage == 100):
+                    self.appletPercentages[index] = percentage
     
             numActive = len(self.appletPercentages)
             if numActive > 0:
-                totalPercentage = numpy.prod(self.appletPercentages.values()) / numActive
+                totalPercentage = numpy.sum(self.appletPercentages.values()) / numActive
             
             if numActive == 0 or totalPercentage == 100:
                 if self.progressBar is not None:
                     self.statusBar.removeWidget(self.progressBar)
                     self.progressBar = None
+                    self.appletPercentages.clear()
             else:
                 if self.progressBar is None:
                     self.progressBar = QProgressBar()
@@ -133,6 +143,8 @@ class IlastikShell( QMainWindow ):
         (self._projectMenu, self._shellActions) = self._createProjectMenu()
         self.menuBar().addMenu(self._projectMenu)
 
+        self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
+
         for applet in workflow:
             self.addApplet(applet)
 
@@ -155,8 +167,6 @@ class IlastikShell( QMainWindow ):
         self._disableCounts = []    # Controls for each applet can be disabled by his peers.
                                     # No applet can be enabled unless his disableCount == 0
         
-        self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
-
     def event(self, e):
         """
         Hook in to the Qt event mechanism to handle custom events.
@@ -486,7 +496,12 @@ class IlastikShell( QMainWindow ):
         Load the data from the given hdf5File (which should already be open).
         """
         assert self.currentProjectFile is None
-        
+
+        # Minor GUI nicety: Activate all applet progress signals so 
+        #  that progress doesn't jump up and down as they get activated in sequence.
+        for applet in self._applets:
+            applet.progressSignal.emit(0)
+
         # Save this as the current project
         self.currentProjectFile = hdf5File
         self.currentProjectPath = projectFilePath
@@ -511,6 +526,9 @@ class IlastikShell( QMainWindow ):
             logger.error("Aborting Project Open Action")
             self.unloadAllApplets()
 
+        for applet in self._applets:
+            applet.progressSignal.emit(100)
+
     def unloadAllApplets(self):
         """
         Unload all applets into a blank state.
@@ -525,6 +543,11 @@ class IlastikShell( QMainWindow ):
         assert self.currentProjectFile != None
         assert self.currentProjectPath != None
 
+        # Minor GUI nicety: Pre-activate all applet progress signals so 
+        #  that progress doesn't jump up and down as they get activated in sequence.
+        for applet in self._applets:
+            applet.progressSignal.emit(0)
+
         try:        
             # Applet serializable items are given the whole file (root group) for now
             for applet in self._applets:
@@ -537,7 +560,10 @@ class IlastikShell( QMainWindow ):
 
         # Flush any changes we made to disk, but don't close the file.
         self.currentProjectFile.flush()
-        
+
+        for applet in self._applets:
+            applet.progressSignal.emit(100)
+
     def onQuitActionTriggered(self, force=False):
         """
         The user wants to quit the application.
