@@ -476,14 +476,6 @@ if __name__ == "__main__":
     global_thread_pool.stop()
 
 
-    # TODO: Write tests for:
-    # - From within a finished callback for some request
-    #   -- Block for the same request
-    #   -- Block for some other request
-    
-
-
-
 
 
 

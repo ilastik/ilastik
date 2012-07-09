@@ -96,7 +96,7 @@ class TestRequest(object):
 
     def test_callWaitDuringCallback(self):
         """
-        When using request.notify_finished(...) to handle request completions, the handler should be allowed to call request.wait().
+        When using request.notify_finished(...) to handle request completions, the handler should be allowed to call request.wait() on the request that it's handling.
         """
         def handler(req, result):
             return
@@ -108,6 +108,26 @@ class TestRequest(object):
         req = Request(workFn)
         req.notify_finished( partial(handler, req) )
         req.wait()
+    
+    def test_block_during_calback(self):
+        """
+        It is valid for request finish handlers to fire off and wait for requests.
+        This tests that feature.
+        """
+        def workload():
+            time.sleep(0.1)
+            return 1
+        
+        total_result = [0]
+        def handler(result):
+            req = Request(workload)
+            total_result[0] = result + req.wait() # Waiting on some other request from WITHIN a request callback
+
+        req = Request( workload )
+        req.notify_finished( handler )
+        assert req.wait() == 1
+        assert total_result[0] == 2
+        
 
     def test_lotsOfSmallRequests(self):
         """
