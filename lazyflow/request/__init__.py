@@ -1,4 +1,4 @@
-backend = 'old'
+backend = 'new'
 
 if backend == 'old':
     from request import *

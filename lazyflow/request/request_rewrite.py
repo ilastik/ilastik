@@ -444,9 +444,6 @@ class Request( object ):
         Register a callback function to be called when this request is finished due to cancellation.
         If we're already finished and cancelled, call it now.
         """
-        # Schedule this request if it hasn't been scheduled yet.
-        self.submit()
-
         with self._lock:
             finished = self.finished
             cancelled = self.cancelled
