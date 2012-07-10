@@ -1060,7 +1060,7 @@ class OpH5WriterBigDataset(Operator):
     name = "H5 File Writer BigDataset"
     category = "Output"
 
-    inputSlots = [InputSlot("hdf5File"), # Must be an already-open hdf5File for writing to
+    inputSlots = [InputSlot("hdf5File"), # Must be an already-open hdf5File (or group) for writing to
                   InputSlot("hdf5Path", stype = "string"),
                   InputSlot("Image")]
 
@@ -1090,15 +1090,21 @@ class OpH5WriterBigDataset(Operator):
 
         dataShape=self.Image.meta.shape
         dtype = self.Image.meta.dtype
+        axistags = self.Image.meta.axistags
+
+        numChannels = dataShape[ axistags.index('c') ]
 
         # Set up our chunk shape
         # (Guess that x-y slices are more common)
+        # We are aiming for a chunk shape that is around 300k in size
         chunkDims = {}
         chunkDims['t'] = 1
-        chunkDims['z'] = 1
         chunkDims['x'] = 128
         chunkDims['y'] = 128
-        chunkDims['c'] = 1
+        chunkDims['c'] = numChannels
+        chunkDims['z'] = 300000 / (chunkDims['x'] * chunkDims['y'] * numChannels * dtype().nbytes)
+
+        assert chunkDims['z'] > 0, "Apparently you have a lot of channels and/or a huge dtype.  Fix the chunk shape formula above."
 
         chunkShape = ()
         for i in range( len(dataShape) ):
@@ -1130,11 +1136,17 @@ class OpH5WriterBigDataset(Operator):
 
         for i,t in enumerate(tmp):
             r=requests[i]
-            self.d[r]=t.wait()
-            # Since requests come back in an arbitrary order, this progress will not be smooth.
-            # It's the best we can do for now.
+
+            logger.debug("requesting block {}".format(i))
+            block = t.wait()
+            
+            logger.debug("writing block {}".format(i))
+            self.d[r]=block
+            
+            # Since requests finish in an arbitrary order (but we always block for them in the same order),
+            # this progress feedback will not be smooth.  It's the best we can do for now.
             self.progressSignal( 100*i/len(tmp) )
-            logger.debug("request ", i, "out of ", len(tmp), "executed")
+            logger.debug( "request {} out of {} executed".format( i, len(tmp) ) )
 
         # Save the axistags as a dataset attribute
         self.d.attrs['axistags'] = self.Image.meta.axistags.toJSON()
