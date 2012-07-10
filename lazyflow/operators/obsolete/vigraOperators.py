@@ -1126,27 +1126,40 @@ class OpH5WriterBigDataset(Operator):
     def getOutSlot(self, slot, key, result):
         self.progressSignal(0)
         
-        requests=self.computeRequests()
+        slicings=self.computeRequestSlicings()
+        numSlicings = len(slicings)
         imSlot = self.inputs["Image"]
 
-        tmp=[]
+        # Throttle: Only allow 10 outstanding requests at a time.
+        # Otherwise, the whole set of requests can be outstanding and use up ridiculous amounts of memory.        
+        activeRequests = deque()
+        activeSlicings = deque()
+        # Start by activating 10 requests 
+        for i in range(10):
+            s = slicings.pop()
+            activeSlicings.append(s)
+            activeRequests.append( self.inputs["Image"][s] )
+        
+        counter = 0
 
-        for r in requests:
-            tmp.append(self.inputs["Image"][r].allocate())
+        while len(activeRequests) > 0:
+            # Wait for a request to finish
+            req = activeRequests.popleft()
+            s=activeSlicings.popleft()
+            data = req.wait()
+            self.d[s]=data
 
-        for i,t in enumerate(tmp):
-            r=requests[i]
-
-            logger.debug("requesting block {}".format(i))
-            block = t.wait()
-            
-            logger.debug("writing block {}".format(i))
-            self.d[r]=block
+            if len(slicings) > 0:
+                # Create a new active request
+                s = slicings.pop()
+                activeSlicings.append(s)
+                activeRequests.append( self.inputs["Image"][s] )
             
             # Since requests finish in an arbitrary order (but we always block for them in the same order),
             # this progress feedback will not be smooth.  It's the best we can do for now.
-            self.progressSignal( 100*i/len(tmp) )
-            logger.debug( "request {} out of {} executed".format( i, len(tmp) ) )
+            self.progressSignal( 100*counter/numSlicings )
+            logger.debug( "request {} out of {} executed".format( counter, numSlicings ) )
+            counter += 1
 
         # Save the axistags as a dataset attribute
         self.d.attrs['axistags'] = self.Image.meta.axistags.toJSON()
@@ -1156,7 +1169,7 @@ class OpH5WriterBigDataset(Operator):
 
         self.progressSignal(100)
 
-    def computeRequests(self):
+    def computeRequestSlicings(self):
         #TODO: reimplement the request better
         shape=numpy.asarray(self.inputs['Image'].shape)
 
