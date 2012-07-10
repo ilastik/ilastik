@@ -121,11 +121,11 @@ class Worker(threading.Thread):
         """
         # Try our own queue first
         if len(self.job_queue) > 0:
-            return self.job_queue.pop()
+            return self.job_queue.popleft()
 
         # Otherwise, try to claim a job from the global unassigned list            
         try:
-            req = self.thread_pool.unassigned_requests.pop()
+            req = self.thread_pool.unassigned_requests.popleft()
         except IndexError:
             return None
         else:
