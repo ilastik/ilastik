@@ -993,6 +993,16 @@ class OpBlockedArrayCache(Operator):
             shape = inputSlot.meta.shape
             if shape != self.Output.meta.shape:
                 self._configured = False
+                
+            if min(shape) == 0:
+                # FIXME: This is evil, but there's no convenient way around it.
+                # We don't want our output to be flagged as 'ready'
+                # The only way to do that is to temporarily connect it to an unready operator
+                opTmp = OpArrayPiper(graph=self.graph)
+                opTmp.Output.connect( self.Output )
+                return
+            else:
+                self.Output.disconnect()
     
             if not self._configured:
                 self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
