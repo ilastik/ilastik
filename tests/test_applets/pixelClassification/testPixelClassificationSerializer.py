@@ -157,6 +157,9 @@ class TestPixelClassificationSerializer(object):
         
         # Simulate the predictions changing by setting the prediction output dirty
         op.PredictionProbabilities[0].setDirty(slice(None))
+
+        # Enable prediction storage
+        serializer.predictionStorageEnabled = True
             
         # Serialize!
         serializer.serializeToHdf5(testProject, testProjectName)

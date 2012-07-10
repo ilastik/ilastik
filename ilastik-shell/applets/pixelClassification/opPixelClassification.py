@@ -20,6 +20,8 @@ class OpPixelClassification( Operator ):
     FeatureImages = MultiInputSlot() # Computed feature images (each channel is a different feature)
     CachedFeatureImages = MultiInputSlot() # Cached feature data.
 
+    FreezePredictions = InputSlot(stype='bool')
+
     PredictionProbabilities = MultiOutputSlot() # Classification predictions
     CachedPredictionProbabilities = MultiOutputSlot() # Classification predictions (via a cache)
     
@@ -33,6 +35,8 @@ class OpPixelClassification( Operator ):
         Instantiate all internal operators and connect them together.
         """
         super(OpPixelClassification, self).__init__(graph=graph)
+
+        self.FreezePredictions.setValue(True) # Default
         
         # Create internal operators
         # Explicitly wrapped:
@@ -86,7 +90,7 @@ class OpPixelClassification( Operator ):
         
         # 
         self.prediction_cache.name = "PredictionCache"
-        self.prediction_cache.inputs["fixAtCurrent"].setValue(True)
+        self.prediction_cache.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.prediction_cache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
         self.prediction_cache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
         self.prediction_cache.inputs["Input"].connect(self.predict.outputs["PMaps"])

@@ -17,7 +17,7 @@ from igms.labelListView import Label
 from igms.labelListModel import LabelListModel
 
 import ilastikshell
-from ilastikshell.applet import Applet
+from ilastikshell.applet import Applet, ShellRequest
 
 import vigra
 
@@ -88,12 +88,14 @@ class PixelClassificationGui(QMainWindow):
     ###########################################
     ###########################################
 
-    def __init__(self, pipeline, guiControlSignal ):
+    def __init__(self, pipeline, guiControlSignal, shellRequestSignal, predictionSerializer ):
         with Tracer(traceLogger):
             QMainWindow.__init__(self)
             
             self.pipeline = pipeline
             self.guiControlSignal = guiControlSignal
+            self.shellRequestSignal = shellRequestSignal
+            self.predictionSerializer = predictionSerializer
     
             self.imageIndex = 0
             self.layerstack = None
@@ -139,8 +141,6 @@ class PixelClassificationGui(QMainWindow):
                 self._normalize_data=False
                 sys.argv.remove('notnormalize')
     
-            self.fixableOperators = [self.pipeline.prediction_cache]
-            
             #The old ilastik provided the following scale names:
             #['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Megahuge', 'Gigahuge']
             #The corresponding scales are:
@@ -403,9 +403,8 @@ class PixelClassificationGui(QMainWindow):
             self._labelControlUi.AddLabelButton.setEnabled(not checked)
             self._labelControlUi.labelListModel.allowRemove(not checked)
             self._predictionControlUi.trainAndPredictButton.setEnabled(not checked)
-            
-            for o in self.fixableOperators:
-                o.inputs["fixAtCurrent"].setValue(not checked)
+
+            self.pipeline.FreezePredictions.setValue( not checked )            
     
             # Prediction layers should be switched on/off when the interactive checkbox is toggled
             for layer in self.predictionLayers:
@@ -700,38 +699,55 @@ class PixelClassificationGui(QMainWindow):
         """
         with Tracer(traceLogger):
             # "unfix" any operator inputs that were frozen before
-            for o in self.fixableOperators:
-                o.inputs["fixAtCurrent"].setValue(False)
-    
-            # Can't change labels while we're in the middle of a prediction
-            self._labelControlUi.labelListModel.allowRemove(False)
+            predictionsFrozen = self.pipeline.FreezePredictions.value
+            self.pipeline.FreezePredictions.setValue(False)
+
+            # First, do a regular save.
+            # During a regular save, predictions are not saved to the project file.
+            # (It takes too much time if the user only needs the classifier.)
+            self.shellRequestSignal.emit( ShellRequest.RequestSave )
             
-            # Disable the parts of the GUI that can't be used while we're predicting . . .
-            self._labelControlUi.AddLabelButton.setEnabled(False)
-            # TODO: Need a way to disable upstream inputs while this is going on . . .
-            #self._featureSelectionUi.SelectFeaturesButton.setEnabled(False)
-            self._predictionControlUi.trainAndPredictButton.setEnabled(False)
-    
-            # Closure to call when the prediction is finished
-            def onPredictionComplete(predictionResults):
-                with Tracer(traceLogger):
-                    logger.debug("Prediction shape={}".format(predictionResults.shape))
-                    
-                    # Re-enable the GUI
-                    self._labelControlUi.AddLabelButton.setEnabled(True)
-        #            self._featureSelectionUi.SelectFeaturesButton.setEnabled(True)
-                    self._predictionControlUi.trainAndPredictButton.setEnabled(True)
-                    
-                    # Re-fix the operators now that the computation is complete.
-                    for o in self.fixableOperators:
-                        o.inputs["fixAtCurrent"].setValue(True)
-        
-                    # Redraw the image in the GUI
-                    self.editor.scheduleSlicesRedraw()
-    
-            # Request the prediction for the entire image stack.
-            # Call our callback when it's finished
-            self.pipeline.CachedPredictionProbabilities[self.imageIndex][:].notify( onPredictionComplete )
+            # Enable prediction storage and ask the shell to save the project again.
+            # (This way the second save will occupy the whole progress bar.)
+            self.predictionSerializer.predictionStorageEnabled = True
+            traceLogger.debug("Starting prediction save")
+            self.shellRequestSignal.emit( ShellRequest.RequestSave )
+            traceLogger.debug("Finished prediction save?")
+            self.predictionSerializer.predictionStorageEnabled = False
+
+            # Restore original cache state
+            self.pipeline.FreezePredictions.setValue(predictionsFrozen)
+            
+#            # Can't change labels while we're in the middle of a prediction
+#            self._labelControlUi.labelListModel.allowRemove(False)
+#            
+#            # Disable the parts of the GUI that can't be used while we're predicting . . .
+#            self._labelControlUi.AddLabelButton.setEnabled(False)
+#
+#            # TODO: Need a way to disable upstream inputs while this is going on . . .
+#            #self._featureSelectionUi.SelectFeaturesButton.setEnabled(False)
+#            self._predictionControlUi.trainAndPredictButton.setEnabled(False)
+#    
+#            # Closure to call when the prediction is finished
+#            def onPredictionComplete(predictionResults):
+#                with Tracer(traceLogger):
+#                    logger.debug("Prediction shape={}".format(predictionResults.shape))
+#                    
+#                    # Re-enable the GUI
+#                    self._labelControlUi.AddLabelButton.setEnabled(True)
+#                    self._predictionControlUi.trainAndPredictButton.setEnabled(True)
+#                    self._labelControlUi.labelListModel.allowRemove(True)
+#                    
+#                    # Re-fix the operators now that the computation is complete.
+#                    for o in self.fixableOperators:
+#                        o.inputs["fixAtCurrent"].setValue(True)
+#        
+#                    # Redraw the image in the GUI
+#                    self.editor.scheduleSlicesRedraw()
+#    
+#            # Request the prediction for the entire image stack.
+#            # Call our callback when it's finished
+#            self.pipeline.CachedPredictionProbabilities[self.imageIndex][:].notify( onPredictionComplete )
     
     def addPredictionLayer(self, icl, ref_label):
         """

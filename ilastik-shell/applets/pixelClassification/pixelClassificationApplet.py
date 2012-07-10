@@ -12,13 +12,16 @@ class PixelClassificationApplet( Applet ):
 
         self._topLevelOperator = OpPixelClassification( graph )
 
-        self._gui = PixelClassificationGui( self._topLevelOperator, self.guiControlSignal )
-        
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.
         self._serializableItems = [PixelClassificationSerializer(self._topLevelOperator, projectFileGroupName), # Default serializer for new projects
                                    Ilastik05ImportDeserializer(self._topLevelOperator)]   # Legacy (v0.5) importer
 
+        # GUI needs access to the serializer to enable/disable prediction storage
+        predictionSerializer = self._serializableItems[0]
+
+        self._gui = PixelClassificationGui( self._topLevelOperator, self.guiControlSignal, self.shellRequestSignal, predictionSerializer )
+        
         # FIXME: For now, we can directly connect the progress signal from the classifier training operator
         #  directly to the applet's overall progress signal, because it's the only thing we report progress for at the moment.
         # If we start reporting progress for multiple tasks that might occur simulatneously,
@@ -36,6 +39,3 @@ class PixelClassificationApplet( Applet ):
     @property
     def gui(self):
         return self._gui
-
-
-     
