@@ -274,6 +274,9 @@ class Request( object ):
         
         self.logger.debug("Created request")
         
+        # Auto-submit immediately
+        self.submit()
+        
     def set_assigned_worker(self, worker):
         """
         Assign this request to the given worker thread.  (A request cannot switch between threads.)
@@ -347,9 +350,6 @@ class Request( object ):
         """
         Start this request if necessary, then wait for it to complete.  Return the request's result.
         """
-        # Schedule this request if it hasn't been scheduled yet.
-        self.submit()
-
         # Identify the request that is waiting for us (the current context)
         current_request = Request.current_request()
 
@@ -414,9 +414,6 @@ class Request( object ):
         Register a callback function to be called when this request is finished.
         If we're already finished, call it now.
         """
-        # Schedule this request if it hasn't been scheduled yet.
-        self.submit()
-
         with self._lock:
             finished = self.finished
             if not finished:
