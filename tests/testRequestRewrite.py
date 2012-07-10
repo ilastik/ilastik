@@ -1,4 +1,4 @@
-from lazyflow.request_rewrite import Request, global_thread_pool
+from lazyflow.request.request_rewrite import Request, global_thread_pool
 import time
 import random
 import numpy
@@ -59,40 +59,6 @@ class TestRequest(object):
 
         for r in requests:
             r.wait()
-
-#    def test_withH5Py(self):
-#        """
-#        We have suspicions that greenlet and h5py don't interact well with eachother.
-#        This tests basic functionality.
-#        TODO: Expand it for better coverage.
-#        """
-#        maxDepth = 5
-#        maxBreadth = 10
-#
-#        h5File = h5py.File( 'requestTest.h5', 'w' )
-#        dataset = h5File.create_dataset( 'test/data', data=numpy.zeros( (maxDepth, maxBreadth), dtype=int ))
-#
-#        def writeToH5Py(result, index, req):
-#            dataset[index] += 1
-#
-#        # This closure randomly chooses to either (a) return immediately or (b) fire off more work
-#        def someWork(depth, force=False, i=0):
-#            #print 'depth=', depth, 'i=', i
-#            if depth > 0 and (force or random.random() > 0.5):
-#                requests = []
-#                for i in range(maxBreadth):
-#                    req = Request(someWork, depth=depth-1, i=i)
-#                    req.notify(writeToH5Py, index=(depth-1, i), req=req)
-#                    requests.append(req)
-#
-#                for r in requests:
-#                    r.wait()
-#
-#        req = Request(someWork, depth=maxDepth, force=True)
-#        req.wait()
-#        h5File.close()
-#
-#        print "finished testWithH5Py"
 
     def test_callWaitDuringCallback(self):
         """
@@ -183,7 +149,7 @@ class TestRequest(object):
 
         logger.info("waited for all subrequests")
     
-    def test_cancel(self):
+    def test_cancel_basic(self):
         """
         Start a workload and cancel it.  Verify that it was actually cancelled before all the work was finished.
         """
@@ -230,6 +196,68 @@ class TestRequest(object):
         # If not, then adjust the timing of the cancellation, above.
         assert workcounter[0] != 0
         assert workcounter[0] != 100
+
+    def test_dont_cancel_shared_request(self):
+        """
+        Test that a request isn't cancelled if it has requests pending for it.
+        """
+
+        cancelled_requests = []
+        
+        def f1():
+            time.sleep(1)
+            return "RESULT"
+        
+        r1 = Request(f1)
+        r1.notify_cancelled( partial(cancelled_requests.append, 1) )
+        
+        def f2():
+            try:
+                return r1.wait()
+            except:
+                cancelled_requests.append(2)
+
+        r2 = Request(f2)
+        
+        def f3():
+            try:
+                return r1.wait()
+            except:
+                cancelled_requests.append(3)
+        
+        r3 = Request(f3)
+        
+        def otherThread():
+            r2.wait()
+
+        t = threading.Thread(target=otherThread)
+        t.start()
+        r3.submit()
+        
+        time.sleep(0.5)
+        
+        # By now both r2 and r3 are waiting for the result of r1
+        # Cancelling r3 should not cancel r1.
+        r3.cancel()
+
+        t.join() # Wait for r2 to finish
+
+        assert r1.started
+        assert r1.finished        
+        assert not r1.cancelled # Not cancelled, even though we cancelled a request that was waiting for it.
+        assert 1 not in cancelled_requests 
+
+        assert r2.started
+        assert r2.finished
+        assert not r2.cancelled # Not cancelled.
+        assert 1 not in cancelled_requests
+        assert r2.wait() == "RESULT" 
+
+        assert r3.started
+        assert r3.finished
+        assert r3.cancelled # Successfully cancelled.
+        assert 3 in cancelled_requests
+
         
     def test_early_cancel(self):
         """
@@ -277,6 +305,9 @@ class TestRequest(object):
         assert result == 10
     
     def test_old_api_support(self):
+        """
+        For now, the request_rewrite supports the old interface, too.
+        """
         def someWork(destination=None):
             if destination is None:
                 destination = [""]
