@@ -51,7 +51,8 @@ class PixelClassificationSerializer(AppletSerializer):
 
             numSteps = sum( self._dirtyFlags.values() )
             progress = 0
-            increment = 100/numSteps
+            if numSteps > 0:
+                increment = 100/numSteps
 
             if self._dirtyFlags[Section.Labels]:
                 self._serializeLabels( topGroup )            
