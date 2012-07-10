@@ -69,7 +69,7 @@ class OpPixelClassification( Operator ):
         ##
         
         self.opTrain.inputs['Labels'].connect(self.opLabelArray.outputs["Output"])
-        self.opTrain.inputs['Images'].connect(self.CachedFeatureImages)
+        self.opTrain.inputs['Images'].connect(self.FeatureImages)
         self.opTrain.inputs["nonzeroLabelBlocks"].connect(self.opLabelArray.outputs["nonzeroBlocks"])
         self.opTrain.inputs['fixClassifier'].setValue(False)
 
