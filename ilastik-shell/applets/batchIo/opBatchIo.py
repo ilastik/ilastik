@@ -113,10 +113,13 @@ class OpBatchIo(Operator):
             # Export H5
             if exportFormat == ExportFormat.H5:
                 pathComp = PathComponents(self.OutputDataPath.value)
+
+                # Open the file
+                hdf5File = h5py.File(pathComp.externalPath)
                 
                 # Set up the write operator
                 opH5Writer = OpH5WriterBigDataset(graph=self.graph)
-                opH5Writer.Filename.setValue( pathComp.externalPath )
+                opH5Writer.hdf5File.setValue( hdf5File )
                 opH5Writer.hdf5Path.setValue( pathComp.internalPath )
                 opH5Writer.Image.connect( self.ImageToExport )
 
@@ -125,7 +128,7 @@ class OpBatchIo(Operator):
 
                 # Trigger the write
                 self.Dirty.setValue( not opH5Writer.WriteImage.value )
-                opH5Writer.close()
+                hdf5File.close()
 
             elif exportFormat == ExportFormat.Npy:
                 assert False # TODO
