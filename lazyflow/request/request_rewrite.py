@@ -18,32 +18,20 @@ class RequestGreenlet(greenlet.greenlet):
         super(RequestGreenlet, self).__init__(fn)
         self.owning_request = owning_request
 
-class OrderedSignal(object):
+class SimpleSignal(object):
     """
     A callback mechanism that ensures callbacks occur in the same order as subscription.
     """
     def __init__(self):
-        self.callbacks = []
+        self.callbacks = set()
 
-    def subscribe(self, fn, **kwargs):
-        # Remove this function if we already have it
-        self.unsubscribe(fn)
-        # Add it to the end
-        self.callbacks.append((fn, kwargs))
+    def subscribe(self, fn):
+        self.callbacks.add(fn)
 
-    def unsubscribe(self, fn):
-        # Find this function and remove its entry
-        for i, (f, kw) in enumerate(self.callbacks):
-            if f == fn:
-                self.callbacks.pop(i)
-                break
-
-    def __call__(self, *args):
-        """
-        Emit the signal.
-        """
-        for f, kw in self.callbacks:
-            f(*args, **kw)
+    def __call__(self, *args, **kwargs):
+        """Emit the signal."""
+        for f in self.callbacks:
+            f(*args, **kwargs)
 
 class Worker(threading.Thread):
     """
@@ -281,11 +269,11 @@ class Request( object ):
                 self.cancelled = current_request.cancelled
 
         self._lock = threading.RLock()
-        self._sig_finished = OrderedSignal()
-        self._sig_cancelled = OrderedSignal()
+        self._sig_finished = SimpleSignal()
+        self._sig_cancelled = SimpleSignal()
         
         self.logger.debug("Created request")
-
+        
     def set_assigned_worker(self, worker):
         """
         Assign this request to the given worker thread.  (A request cannot switch between threads.)
