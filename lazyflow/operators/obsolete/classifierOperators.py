@@ -1,6 +1,6 @@
 import numpy
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, OrderedSignal
 from lazyflow.roi import sliceToRoi, roiToSlice
 import vigra
 import copy
@@ -88,6 +88,10 @@ class OpTrainRandomForestBlocked(Operator):
                   MultiInputSlot("nonzeroLabelBlocks")]
     outputSlots = [OutputSlot("Classifier")]
 
+    def __init__(self, *args, **kwargs):
+        super(OpTrainRandomForestBlocked, self).__init__(*args, **kwargs)
+        self.progressSignal = OrderedSignal()
+
     def setupOutputs(self):
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"]._dtype = object
@@ -99,6 +103,11 @@ class OpTrainRandomForestBlocked(Operator):
 
     def execute(self, slot, roi, result):
         with Tracer(logger, level=logging.INFO, msg="OpTrainRandomForestBlocked: Training Classifier"):
+            
+            progress = 0
+            self.progressSignal(progress)
+            numImages = len(self.Images)
+
             key = roi.toSlice()
             featMatrix=[]
             labelsMatrix=[]
@@ -106,6 +115,10 @@ class OpTrainRandomForestBlocked(Operator):
                 if labels.shape is not None:
                     #labels=labels[:].allocate().wait()
                     blocks = self.inputs["nonzeroLabelBlocks"][i][0].allocate().wait()
+
+                    progress += 10/numImages
+                    self.progressSignal(progress)
+
                     reqlistlabels = []
                     reqlistfeat = []
                     traceLogger.debug("Sending requests for {} non-zero blocks (labels and data)".format( len(blocks[0])) )
@@ -132,13 +145,21 @@ class OpTrainRandomForestBlocked(Operator):
 
                     traceLogger.debug("Requests fired")
     
+                    numLabelBlocks = len(reqlistlabels)
+                    progressInc = (80-10)/numLabelBlocks/numImages
                     for ir, req in enumerate(reqlistlabels):
                         traceLogger.debug("Waiting for a label block...")
                         labblock = req.wait()
+                        progress += progressInc/2
+                        self.progressSignal(progress)
+                        
+
                         traceLogger.debug("Waiting for an image block...")
                         image = reqlistfeat[ir].wait()
+                        progress += progressInc/2
+                        self.progressSignal(progress)
+
                         indexes=numpy.nonzero(labblock[...,0].view(numpy.ndarray))
-    
                         features=image[indexes]
                         labbla=labblock[indexes]
     
@@ -146,6 +167,7 @@ class OpTrainRandomForestBlocked(Operator):
                         labelsMatrix.append(labbla)
 
                     traceLogger.debug("Requests processed")    
+                    self.progressSignal(80/numImages)
 
             if len(featMatrix) == 0 or len(labelsMatrix) == 0:
                 # If there was no actual data for the random forest to train with, we return None
@@ -155,8 +177,8 @@ class OpTrainRandomForestBlocked(Operator):
                 labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
 
                 if numpy.isnan(featMatrix).any():
-                    channelAxis = self.Images.meta.axistags('c')
-                    corruptChannels = numpy.where( numpy.isnan(featMatrix)[channelAxis] )
+                    channelAxis = self.Images[0].meta.axistags.index('c')
+                    corruptChannels = numpy.where( numpy.isnan(featMatrix) )[channelAxis]
                     assert False, "Random Forest Feature Matrix has NaNs in channels: {}".format(corruptChannels)
                 
                 assert not numpy.isnan(labelsMatrix).any(), "Random Forest Label Matrix has NaNs!"
@@ -171,6 +193,8 @@ class OpTrainRandomForestBlocked(Operator):
                     logger.error( "featMatrix shape={}, max={}, dtype={}".format(featMatrix.shape, featMatrix.max(), featMatrix.dtype) )
                     logger.error( "labelsMatrix shape={}, max={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.max(), labelsMatrix.dtype ) )
                     raise
+                finally:
+                    self.progressSignal(100)
                 assert RF is not None, "RF = %r" % RF
                 result[0]=RF
 
