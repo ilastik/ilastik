@@ -7,9 +7,12 @@ from opDataSelection import OpDataSelection, DatasetInfo
 from functools import partial
 import os
 import copy
+import glob
 import h5py
 from utility import bind
 from utility.pathHelpers import getPathVariants
+
+import vigra
 
 import logging
 logger = logging.getLogger(__name__)
@@ -174,14 +177,25 @@ class DataSelectionGui(QMainWindow):
     
             # If the user didn't cancel        
             if not directoryName.isNull():
-                # We assume png by default, but the user can change 
-                #  the extension in the table if they use a different image format
-                # TODO: Examine the directory contents and guess the user's image format
-                globString = str(directoryName) + '/*.png'
-                
-                # Simply add the globstring as though it were a regular file path.
-                # The top-level operator knows how to deal with it.
-                self.addFileNames([globString])
+                globString = self.getGlobString( str(directoryName) )                
+                if globString is not None:
+                    # Simply add the globstring as though it were a regular file path.
+                    # The top-level operator knows how to deal with it.
+                    self.addFileNames([globString])
+
+    def getGlobString(self, directory):
+        exts = vigra.impex.listExtensions().split()
+        for ext in exts:
+            fullGlob = directory + '/*.' + ext
+            filenames = glob.glob(fullGlob)
+            if len(filenames) > 0:
+                # Be helpful: find the longest globstring we can
+                prefix = os.path.commonprefix(filenames)
+                return prefix + '*.' + ext
+        
+        # Couldn't find an image file in the directory...
+        return None
+        
 
     def addFileNames(self, fileNames):
         """
@@ -200,7 +214,7 @@ class DataSelectionGui(QMainWindow):
                 
                 # Allow labels by default if this gui isn't being used for batch data.
                 datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
-                
+
                 self.mainOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
 
     def updateTableForSlot(self, slot):
