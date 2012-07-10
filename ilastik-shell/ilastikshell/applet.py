@@ -11,7 +11,11 @@ class ControlCommand(object):
     DisableUpstream = 2     # Disable applets that come before the applet that is issuing the command
     DisableDownstream = 3   # Disable applets that come after the applet that is issuing the command
     DisableSelf = 4         # Disable the applet that is issuing the command
-    
+
+class ShellRequest(object):
+    # These are the things an applet can ask the shell to do via the shellRequestSignal
+    RequestSave = 0
+
 class Applet( object ):
     
     __metaclass__ = ABCMeta # Force subclasses to override abstract methods and properties
@@ -33,6 +37,9 @@ class Applet( object ):
         # When an applet wants other applets in the shell to be disabled, he fires this signal.
         # The applet must fire it again with ControlState.EnableAll as the parameter to re-enable the other applets. 
         self.guiControlSignal = SimpleSignal() # Signature: emit(controlState=ControlState.DisableAll)
+
+        # Shell request signal is used to trigger certain shell requests.
+        self.shellRequestSignal = SimpleSignal() # Signature:emit(request)
 
         self._base_initialized = True
 

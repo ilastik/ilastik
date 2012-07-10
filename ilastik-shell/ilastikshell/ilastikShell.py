@@ -122,6 +122,9 @@ class ThunkEvent( QEvent ):
     def __init__(self, func):
         QEvent.__init__(self, self.EventType)
         self.thunk = func
+    
+    def __call__(self):
+        self.thunk()
 
 class IlastikShell( QMainWindow ):
     """
@@ -176,7 +179,7 @@ class IlastikShell( QMainWindow ):
         Hook in to the Qt event mechanism to handle custom events.
         """
         if e.type() == ThunkEvent.EventType:
-            e.thunk()
+            e()
             return True
         else:
             return super(IlastikShell, self).event(e)
@@ -373,11 +376,16 @@ class IlastikShell( QMainWindow ):
             #  we need to keep track of which applet this item is associated with
             self.appletBarMapping[rootItem.childCount()-1] = applet_index
 
+        # Set up handling of GUI commands from this applet
         app.guiControlSignal.connect( bind(self.handleAppletGuiControlSignal, applet_index) )
         self._disableCounts.append(0)
         self._controlCmds.append( [] )
 
+        # Set up handling of progress updates from this applet
         self.progressDisplayManager.addApplet(applet_index, app)
+        
+        # Set up handling of shell requests from this applet
+        app.shellRequestSignal.connect( partial(self.handleShellRequest, applet_index) )
                 
         return applet_index
 
@@ -406,6 +414,13 @@ class IlastikShell( QMainWindow ):
 
         # Update the control states in the GUI thread
         QApplication.postEvent( self, ThunkEvent(self.updateAppletControlStates) )
+
+    def handleShellRequest(self, applet_index, requestAction):
+        """
+        An applet is asking us to do something.  Handle the request.
+        """
+        if requestAction == applet.ShellRequest.RequestSave:
+            self._shellActions.saveProjectAction.trigger()
 
     def __len__( self ):
         return self.appletBar.count()
@@ -501,8 +516,8 @@ class IlastikShell( QMainWindow ):
         """
         assert self.currentProjectFile is None
 
-        # Minor GUI nicety: Activate all applet progress signals so 
-        #  that progress doesn't jump up and down as they get activated in sequence.
+        # Minor GUI nicety: Pre-activate the progress signals for all applets so
+        #  the progress manager treats these tasks as a group instead of several sequential jobs.
         for applet in self._applets:
             applet.progressSignal.emit(0)
 
@@ -554,17 +569,20 @@ class IlastikShell( QMainWindow ):
         assert self.currentProjectFile != None
         assert self.currentProjectPath != None
 
-        # Minor GUI nicety: Pre-activate all applet progress signals so 
-        #  that progress doesn't jump up and down as they get activated in sequence.
+        # Minor GUI nicety: Pre-activate the progress signals for dirty applets so
+        #  the progress manager treats these tasks as a group instead of several sequential jobs.
         for applet in self._applets:
-            applet.progressSignal.emit(0)
+            for ser in applet.dataSerializers:
+                if ser.isDirty():
+                    applet.progressSignal.emit(0)
 
         try:        
             # Applet serializable items are given the whole file (root group) for now
             for applet in self._applets:
                 for item in applet.dataSerializers:
                     assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
+                    if item.isDirty():
+                        item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
         except:
             logger.error("Project Save Action failed due to the following exception:")
             traceback.print_exc()            

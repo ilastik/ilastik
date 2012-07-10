@@ -138,7 +138,7 @@ class AppletSerializer(object):
 
         self.progressSignal.emit(0)
 
-        # If our group isn't there, then give up.
+        # If the top group isn't there, call the deserializer with 'None'
         try:
             topGroup = hdf5File[self.topGroupName]
             groupVersion = topGroup['StorageVersion'][()]
