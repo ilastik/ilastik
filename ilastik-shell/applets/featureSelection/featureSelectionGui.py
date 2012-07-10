@@ -190,9 +190,15 @@ class FeatureSelectionGui(LayerViewerGui):
             self.mainOperator.Scales.setValue( self.ScalesList )
             self.mainOperator.FeatureIds.setValue(self.FeatureIds)
     
-            # Give the new features to the pipeline 
+            # Give the new features to the pipeline (if there are any)
             featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
-            self.mainOperator.SelectionMatrix.setValue( featureMatrix )
+            if featureMatrix.any():
+                self.mainOperator.SelectionMatrix.setValue( featureMatrix )
+            else:
+                # Not valid to give a matrix with no features selected.
+                # Disconnect.
+                self.mainOperator.SelectionMatrix.disconnect()
+                
     
     def onFeaturesSelectionsChanged(self):
         """
