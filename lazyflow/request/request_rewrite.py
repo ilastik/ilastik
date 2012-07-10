@@ -115,7 +115,9 @@ class Worker(threading.Thread):
                 self.job_queue_condition.wait()
                 next_request = self._pop_job()
 
-        assert next_request is not None or self.stopped
+        if not self.stopped:
+            assert next_request is not None
+            assert next_request.assigned_worker is self
         
         if not self.stopped:
             self.logger.debug("Got work.")
@@ -136,10 +138,11 @@ class Worker(threading.Thread):
         # Otherwise, try to claim a job from the global unassigned list            
         try:
             req = self.thread_pool.unassigned_requests.pop()
-            req.set_assigned_worker(self)
-            return req
         except IndexError:
             return None
+        else:
+            req.set_assigned_worker(self)
+            return req
     
 class Singleton(type):
     """
@@ -515,7 +518,7 @@ class Request( object ):
         # which doesn't do anything except return False to say "don't cancel me"
         
         # We'll just call it right now and set our flag with the result
-        self.uncancellable = not fn(*args, **kwargs)
+        self.uncancellable = not fn(self, *args, **kwargs)
 
     def notify(self, fn, **kwargs):
         f = Request.PartialWithAppendedArgs( fn, **kwargs )
