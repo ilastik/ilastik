@@ -645,7 +645,7 @@ class Slot(object):
             request = Request( execWrapper )
 
             # We must decrement the execution count even if the request is cancelled
-            request.onCancel( execWrapper._decrementOperatorExecutionCount )
+            request.onCancel( execWrapper.handleCancel )
             return request
             
     class RequestExecutionWrapper(object):
@@ -672,22 +672,27 @@ class Slot(object):
             # We are executing the operator.
             # Incremement the execution count to protect against simultaneous setupOutputs() calls.
             self._incrementOperatorExecutionCount()
+
+            try:
+                # Execute the workload, which might not ever return (if we get cancelled).
+                result_op = self.operator.execute(self.slot, (), roi, destination)
             
-            # Execute the workload, which might not ever return (if we get cancelled).
-            result_op = self.operator.execute(self.slot, (), roi, destination)
-            
-            # copy data from result_op to destination, if destinatino was actually given by the user, and the returned result_op is different from destination. (but don't copy if result_op is None, this means legacy op which wrote into destination anyway)
-            if destination_given and result_op is not None and id(result_op) != id(destination):
-                self.slot.stype.copy_data(dst = destination, src = result_op)
-            elif result_op is not None:
-                # FIXME: this should be moved to a isCompatible check in stypes.py
-                if hasattr(result_op, "shape"):
+                # copy data from result_op to destination, if destinatino was actually given by the user, and the returned result_op is different from destination. (but don't copy if result_op is None, this means legacy op which wrote into destination anyway)
+                if destination_given and result_op is not None and id(result_op) != id(destination):
+                    self.slot.stype.copy_data(dst = destination, src = result_op)
+                elif result_op is not None:
+                    # FIXME: this should be moved to a isCompatible check in stypes.py
+                    if hasattr(result_op, "shape"):
                     assert result_op.shape == destination.shape, " ERROR: Operator %r has failed to provide a result of correct shape. result shape is %r vs %r.  roi was %r" % (self.operator,result_op.shape, destination.shape, str(roi) )
-                destination = result_op
+                    destination = result_op
                 
-            # Decrement the execution count
-            self._decrementOperatorExecutionCount()
-            return destination
+                # Decrement the execution count
+                self._decrementOperatorExecutionCount()
+                return destination
+            except: # except Request.CancellationException
+                # Decrement the execution count
+                self._decrementOperatorExecutionCount()
+                raise
 
         def _incrementOperatorExecutionCount(self):
             self.started = True
@@ -698,7 +703,15 @@ class Slot(object):
                     self.operator._condition.wait()
                 self.operator._executionCount += 1
     
-        def _decrementOperatorExecutionCount(self, *args):
+        def handleCancel(self, *args):
+            # The new request api does clean up by handling an exception,
+            #  not in this callback.
+            # Only clean up if we are using the old request api
+            using_old_api = len(args) > 0 and not hasattr(args[0], 'notify_cancelled')
+            if using_old_api:
+                self._decrementOperatorExecutionCount()
+    
+        def _decrementOperatorExecutionCount(self):
             # Must lock here because cancel callbacks are asynchronous.
             # (Perhaps it would be better if they were called from the worker thread instead...)
             with self.lock:
@@ -710,7 +723,6 @@ class Slot(object):
                     with self.operator._condition:
                         self.operator._executionCount -= 1
                         self.operator._condition.notifyAll()
-
 
     def setDirty(self, *args,**kwargs):
         """
