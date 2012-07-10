@@ -134,30 +134,30 @@ class OpTrainRandomForestBlocked(Operator):
 
                     traceLogger.debug("Requests prepared")
     
-                    def dummyNotify(req):
-                        pass
+                    numLabelBlocks = len(reqlistlabels)
+                    progress = [progress]
+                    progressInc = (80-10)/numLabelBlocks/numImages
+
+                    def progressNotify(req):
+                        # Note: If we wanted perfect progress reporting, we're lock here,
+                        # but that would slow things down and imperfect reporting is okay for our purposes.
+                        progress[0] += progressInc/2
+                        self.progressSignal(progress[0])
     
                     for ir, req in enumerate(reqlistfeat):
-                        image = req.notify(dummyNotify)
+                        image = req.notify(progressNotify)
     
                     for ir, req in enumerate(reqlistlabels):
-                        labblock = req.notify(dummyNotify)
+                        labblock = req.notify(progressNotify)
 
                     traceLogger.debug("Requests fired")
     
-                    numLabelBlocks = len(reqlistlabels)
-                    progressInc = (80-10)/numLabelBlocks/numImages
                     for ir, req in enumerate(reqlistlabels):
                         traceLogger.debug("Waiting for a label block...")
                         labblock = req.wait()
-                        progress += progressInc/2
-                        self.progressSignal(progress)
-                        
 
                         traceLogger.debug("Waiting for an image block...")
                         image = reqlistfeat[ir].wait()
-                        progress += progressInc/2
-                        self.progressSignal(progress)
 
                         indexes=numpy.nonzero(labblock[...,0].view(numpy.ndarray))
                         features=image[indexes]
