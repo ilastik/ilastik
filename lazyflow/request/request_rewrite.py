@@ -453,7 +453,7 @@ class Request( object ):
 
         if finished and cancelled:
             # Call immediately
-            fn(self.result)
+            fn()
         
     def cancel(self):
         # We can only be cancelled if: 
@@ -467,10 +467,14 @@ class Request( object ):
                 cancelled &= r.cancelled
 
             self.cancelled = cancelled
+            if cancelled:
+                # Any children added after this point will receive our same cancelled status
+                child_requests = self.child_requests
+                self.child_requests = set()
 
         if self.cancelled:
             # Cancel all requests that were spawned from this one.
-            for child in self.child_requests:
+            for child in child_requests:
                 child.cancel()
     
     @classmethod
