@@ -34,12 +34,19 @@ class TestOpH5WriterBigDataset(object):
     def tearDown(self):
         pass
         # Clean up: Delete the test file.
-        #os.remove(self.testDataFileName)
+        try:
+            os.remove(self.testDataFileName)
+        except:
+            pass
 
     def test_Writer(self):
-        # Now read back our test data using an OpNpyFileReader operator
+        
+        # Create the h5 file
+        hdf5File = h5py.File(self.testDataFileName)
+        
+        
         opWriter = OpH5WriterBigDataset(graph=self.graph)
-        opWriter.Filename.setValue( self.testDataFileName )
+        opWriter.hdf5File.setValue( hdf5File )
         opWriter.hdf5Path.setValue( self.datasetInternalPath )
         opWriter.Image.setValue( self.testData )
 
@@ -47,7 +54,7 @@ class TestOpH5WriterBigDataset(object):
         success = opWriter.WriteImage.value
         assert success
 
-        opWriter.close()
+        hdf5File.close()
 
         # Check the file.
         f = h5py.File(self.testDataFileName, 'r')

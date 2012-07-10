@@ -1060,7 +1060,10 @@ class OpH5WriterBigDataset(Operator):
     name = "H5 File Writer BigDataset"
     category = "Output"
 
-    inputSlots = [InputSlot("Filename", stype = "filestring"), InputSlot("hdf5Path", stype = "string"), InputSlot("Image")]
+    inputSlots = [InputSlot("hdf5File"), # Must be an already-open hdf5File for writing to
+                  InputSlot("hdf5Path", stype = "string"),
+                  InputSlot("Image")]
+
     outputSlots = [OutputSlot("WriteImage")]
 
     def __init__(self, *args, **kwargs):
@@ -1071,9 +1074,8 @@ class OpH5WriterBigDataset(Operator):
         self.outputs["WriteImage"].meta.shape = (1,)
         self.outputs["WriteImage"].meta.dtype = object
 
-        filename = self.inputs["Filename"].value
+        self.f = self.inputs["hdf5File"].value
         hdf5Path = self.inputs["hdf5Path"].value
-        self.f = h5py.File(filename)
 
         g=self.f
         pathElements = hdf5Path.split("/")
@@ -1167,9 +1169,6 @@ class OpH5WriterBigDataset(Operator):
             stop=numpy.minimum(start+shift,shape)
             reqList.append(roiToSlice(start,stop))
         return reqList
-
-    def close(self):
-        self.f.close()
 
 
 
