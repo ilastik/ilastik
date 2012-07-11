@@ -134,6 +134,11 @@ class OpPixelClassification( Operator ):
             self.LabelInputs[i].meta.shape = tuple(shapeList)
             self.LabelInputs[i].meta.axistags = self.InputImages[i].meta.axistags
 
+    def notifyDirty(self, inputSlot, key):
+        # Nothing to do here: All outputs are directly connected to 
+        #  internal operators that handle their own dirty propagation.
+        pass
+
 class OpShapeReader(Operator):
     """
     This operator outputs the shape of its input image, except the number of channels is set to 1.
