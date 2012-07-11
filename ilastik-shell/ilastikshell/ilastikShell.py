@@ -41,6 +41,7 @@ class ShellActions(object):
     def __init__(self):
         self.openProjectAction = None
         self.saveProjectAction = None
+        self.importProjectAction = None
         self.QuitAction = None
 
 class SideSplitterSizePolicy(object):
@@ -183,6 +184,10 @@ class IlastikShell( QMainWindow ):
         shellActions.saveProjectAction.triggered.connect(self.onSaveProjectActionTriggered)
         # Can't save until a project is loaded for the first time
         shellActions.saveProjectAction.setEnabled(False)
+
+        # Menu item: Import Project
+        shellActions.importProjectAction = menu.addAction("&Import Project...")
+        shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
 
         # Menu item: Quit
         shellActions.quitAction = menu.addAction("&Quit")
@@ -421,12 +426,15 @@ class IlastikShell( QMainWindow ):
                 projectClosed = (response == QMessageBox.Yes)
 
             if projectClosed:
-                self.unloadAllApplets()
-                self.currentProjectFile.close()
-                self.currentProjectFile = None
-                self.enableWorkflow = False
-                self.updateAppletControlStates()
+                self.closeCurrentProject()
         return projectClosed
+
+    def closeCurrentProject(self):
+        self.unloadAllApplets()
+        self.currentProjectFile.close()
+        self.currentProjectFile = None
+        self.enableWorkflow = False
+        self.updateAppletControlStates()
     
     def onNewProjectActionTriggered(self):
         logger.debug("New Project action triggered")
@@ -435,6 +443,14 @@ class IlastikShell( QMainWindow ):
         if not self.ensureNoCurrentProject():
             return
         
+        h5File, projectFilePath = self.createBlankProjectFile()
+        
+        if h5File is not None:
+            self.loadProject(h5File, projectFilePath)
+
+    def createBlankProjectFile(self):
+        logger.debug("Creating blank project file")
+        
         fileSelected = False
         while not fileSelected:
             projectFilePath = QFileDialog.getSaveFileName(
@@ -442,7 +458,7 @@ class IlastikShell( QMainWindow ):
             
             # If the user cancelled, stop now
             if projectFilePath.isNull():
-                return
+                return None, None
     
             projectFilePath = str(projectFilePath)
             fileSelected = True
@@ -465,8 +481,42 @@ class IlastikShell( QMainWindow ):
         h5File = h5py.File(projectFilePath, "w")
         h5File.create_dataset("ilastikVersion", data=VersionManager.CurrentIlastikVersion)
         
-        self.loadProject(h5File, projectFilePath)
+        return h5File, projectFilePath
 
+    def onImportProjectActionTriggered(self):
+        """
+        Import an existing project into a new file.
+        This involves opening the old file, saving it to a new file, and then opening the new file.
+        """
+        logger.debug("Import Project Action")
+
+        if not self.ensureNoCurrentProject():
+            return
+
+        # Select the ordiginal project and load it into the workflow.
+        self.onOpenProjectActionTriggered()
+
+        # Select and create the new (blank) project file
+        h5File, projectFilePath = self.createBlankProjectFile()
+
+        if h5File is None:
+            # The user cancelled.
+            self.closeCurrentProject()
+        else:
+            # Export the current workflow state to the new file.
+            # (Somewhat hacky: We temporarily swap the new file object as our current one during the save.)
+            origProjectFile = self.currentProjectFile
+            self.currentProjectFile = h5File
+            self.currentProjectPath = projectFilePath
+            self.onSaveProjectActionTriggered()
+            self.currentProjectFile = origProjectFile
+    
+            # Close the original project
+            self.closeCurrentProject()
+    
+            # Reload the workflow from the new file
+            self.loadProject(h5File, projectFilePath)
+        
     def onOpenProjectActionTriggered(self):
         logger.debug("Open Project action triggered")
 

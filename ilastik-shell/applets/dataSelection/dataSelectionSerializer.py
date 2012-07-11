@@ -40,10 +40,6 @@ class DataSelectionSerializer( AppletSerializer ):
         
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         with Tracer(traceLogger):
-            # If the operator has a some other project file, something's wrong
-            if self.mainOperator.ProjectFile.connected():
-                assert self.mainOperator.ProjectFile.value == hdf5File
-            
             # Access the info group
             infoDir = self.getOrCreateGroup(topGroup, 'infos')
             

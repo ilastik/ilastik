@@ -351,18 +351,17 @@ class Ilastik05ImportDeserializer(AppletSerializer):
                 except KeyError:
                     # We'll get a KeyError if this project doesn't have labels for this dataset.
                     # That's allowed, so we simply continue.
-                    continue
-                self.mainOperator.LabelInputs[index][...] = dataset.value[...]
+                    pass
+                else:
+                    self.mainOperator.LabelInputs[index][...] = dataset.value[...]
 
     def importClassifier(self, hdf5File):
         """
         Import the random forest classifier (if any) from the v0.5 project file.
         """
-        # Not implemented:
-        # ilastik 0.5 can SAVE the RF, but it can't load it back (vigra doesn't provide a function for that).
-        # For now, we simply emulate that behavior.
-        # (Technically, v0.5 would retrieve the user's "number of trees" setting, 
-        #  but this applet doesn't expose that setting to the user anyway.)
+        # Not yet implemented.
+        # The old version of ilastik didn't actually deserialize the 
+        #  classifier, but it did determine how many trees were used.
         pass
     
     def isDirty(self):
