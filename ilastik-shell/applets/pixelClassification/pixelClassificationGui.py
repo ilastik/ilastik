@@ -119,7 +119,7 @@ class PixelClassificationGui(QMainWindow):
             def handleOutputListChanged():
                 """This closure is called when an image is added or removed from the output."""
                 with Tracer(traceLogger):
-                    if self.imageIndex != -1 and len(self.pipeline.PredictionProbabilities) > 0:
+                    if len(self.pipeline.PredictionProbabilities) > 0:
                         callback = bind(self.updateForNewClasses)
                         self.pipeline.PredictionProbabilities[self.imageIndex].notifyMetaChanged( callback )
                         self.pipeline.PredictionProbabilities[self.imageIndex].notifyDisconnect( bind( self.pipeline.PredictionProbabilities[self.imageIndex].unregisterMetaChanged, callback ) )
@@ -673,7 +673,7 @@ class PixelClassificationGui(QMainWindow):
         Add all prediction label layers to the volume editor
         """
         with Tracer(traceLogger):
-            if not self.pipeline.PredictionProbabilities[self.imageIndex].ready():
+            if self.imageIndex == -1 or not self.pipeline.PredictionProbabilities[self.imageIndex].ready():
                 return
             
             newGuiLabels = set()        
