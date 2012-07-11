@@ -5,6 +5,7 @@ import h5py
 from ilastikshell.appletSerializer import AppletSerializer
 from utility import bind
 from lazyflow.operators import OpH5WriterBigDataset
+import threading
 
 import logging
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class PixelClassificationSerializer(AppletSerializer):
             super( PixelClassificationSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
             self.mainOperator = mainOperator
             self._initDirtyFlags()
-    
+   
             # Set up handlers for dirty detection
             def handleDirty(section):
                 self._dirtyFlags[section] = True
@@ -43,7 +44,8 @@ class PixelClassificationSerializer(AppletSerializer):
             self.mainOperator.PredictionProbabilities.notifyInserted( bind(handleNewImage, Section.Predictions) )
 
             self._predictionStorageEnabled = False
-    
+            self._predictionStorageRequest = None
+                
     @property
     def predictionStorageEnabled(self):
         return self._predictionStorageEnabled
@@ -51,7 +53,7 @@ class PixelClassificationSerializer(AppletSerializer):
     @predictionStorageEnabled.setter
     def predictionStorageEnabled(self, enabled):
         self._predictionStorageEnabled = enabled
-    
+        
     def _initDirtyFlags(self):
         self._dirtyFlags = { Section.Labels      : False,
                              Section.Classifier  : False,
@@ -74,9 +76,11 @@ class PixelClassificationSerializer(AppletSerializer):
                 self._serializeClassifier( topGroup )
                 progress += increment
                 self.progressSignal.emit( progress )
-    
+
+            # Need to call serialize predictions even if it isn't dirty
+            # (Since it isn't always stored.)    
+            self._serializePredictions( topGroup, progress, progress + increment )
             if self._dirtyFlags[Section.Predictions]:
-                self._serializePredictions( topGroup, progress, progress + increment )
                 progress += increment
                 self.progressSignal.emit( progress )
 
@@ -143,39 +147,68 @@ class PixelClassificationSerializer(AppletSerializer):
         (Avoid inconsistent project states, e.g. don't allow old predictions to be stored with a new classifier.)
         """
         with Tracer(traceLogger):
-            self.deleteIfPresent(topGroup, 'Predictions')
-            predictionDir = topGroup.create_group('Predictions')
+            # If the predictions are missing, then maybe the user wants them stored (even if they aren't dirty)
+            if self._dirtyFlags[Section.Predictions] or 'Predictions' not in topGroup.keys():
 
-            if self.predictionStorageEnabled:
-                numImages = len(self.mainOperator.PredictionProbabilities)
+                self.deleteIfPresent(topGroup, 'Predictions')
+                predictionDir = topGroup.create_group('Predictions')
 
-                if numImages > 0:
-                    increment = (endProgress - startProgress) / float(numImages)
+                if self.predictionStorageEnabled:
+                    numImages = len(self.mainOperator.PredictionProbabilities)
+    
+                    if numImages > 0:
+                        increment = (endProgress - startProgress) / float(numImages)
+    
+                    for imageIndex in range(numImages):
+                        # Have we been cancelled?
+                        if not self.predictionStorageEnabled:
+                            break
+    
+                        datasetName = 'predictions{:04d}'.format(imageIndex)
+    
+                        progress = [startProgress]
+    
+                        # Use a big dataset writer to do this in chunks
+                        opWriter = OpH5WriterBigDataset(self.mainOperator.graph)
+                        opWriter.hdf5File.setValue( predictionDir )
+                        opWriter.hdf5Path.setValue( datasetName )
+                        opWriter.Image.connect( self.mainOperator.PredictionProbabilities[imageIndex] )
+                        
+                        # Create the request
+                        self._predictionStorageRequest = opWriter.WriteImage[...]
+    
+                        def handleProgress(percent):
+                            # Stop sending progress if we were cancelled
+                            if self.predictionStorageEnabled:
+                                progress[0] = startProgress + percent * (increment / 100.0)
+                                self.progressSignal.emit( progress[0] )
+                        opWriter.progressSignal.subscribe( handleProgress )
+    
+                        finishedEvent = threading.Event()
+                        def handleFinish(request):
+                            finishedEvent.set()
+    
+                        def handleCancel(request):
+                            self._predictionStorageRequest = None
+                            finishedEvent.set()
+    
+                        # Trigger the write and wait for it to complete or cancel.
+                        self._predictionStorageRequest.notify(handleFinish)
+                        self._predictionStorageRequest.onCancel(handleCancel)
+                        finishedEvent.wait()
+                        
+                    # If we were cancelled, delete the predictions we just started
+                    if not self.predictionStorageEnabled:
+                        self.deleteIfPresent('Predictions/' + datasetName)
+                        startProgress = progress[0]
+                        
+                    self._dirtyFlags[Section.Predictions] = False
 
-                for imageIndex in range(numImages):
-                    datasetName = 'predictions{:04d}'.format(imageIndex)
-
-                    progress = [startProgress]
-
-                    # Use a big dataset writer to do this in chunks
-                    opWriter = OpH5WriterBigDataset(self.mainOperator.graph)
-                    opWriter.hdf5File.setValue( predictionDir )
-                    opWriter.hdf5Path.setValue( datasetName )
-                    opWriter.Image.connect( self.mainOperator.PredictionProbabilities[imageIndex] )
-                    
-                    def handleProgress(percent):
-                        progress[0] = startProgress + percent * (increment / 100.0)
-                        self.progressSignal.emit( progress[0] )
-                    opWriter.progressSignal.subscribe( handleProgress )
-
-                    # Trigger the write
-                    success = opWriter.WriteImage.value
-                    if not success:
-                        raise RuntimeError("Error while writing predictions to project file.")
-                    
-                    startProgress = progress[0]
-                    
-                self._dirtyFlags[Section.Predictions] = False
+    def cancel(self):
+        """Currently, this only cancels prediction storage."""
+        if self._predictionStorageRequest is not None:
+            self.predictionStorageEnabled = False
+            self._predictionStorageRequest.cancel()
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         with Tracer(traceLogger):

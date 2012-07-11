@@ -20,9 +20,10 @@ import ilastikshell
 from ilastikshell.applet import Applet, ShellRequest
 
 import vigra
+import threading
 
 from utility.simpleSignal import SimpleSignal
-from utility import bind
+from utility import bind, ThunkEvent, ThunkEventHandler
 
 import logging
 from lazyflow.tracer import Tracer
@@ -96,6 +97,9 @@ class PixelClassificationGui(QMainWindow):
             self.guiControlSignal = guiControlSignal
             self.shellRequestSignal = shellRequestSignal
             self.predictionSerializer = predictionSerializer
+
+            # Register for thunk events (easy UI calls from non-GUI threads)
+            self.thunkEventHandler = ThunkEventHandler(self)
     
             self.imageIndex = 0
             self.layerstack = None
@@ -110,6 +114,7 @@ class PixelClassificationGui(QMainWindow):
             self._colorTable16 = self._createDefault16ColorColorTable()
 
             self.interactiveModeActive = False
+            self._currentlySavingPredictions = False
             
             def handleOutputListChanged():
                 """This closure is called when an image is added or removed from the output."""
@@ -698,25 +703,38 @@ class PixelClassificationGui(QMainWindow):
         Handle this event by asking the pipeline for a prediction over the entire output region.
         """
         with Tracer(traceLogger):
-            # "unfix" any operator inputs that were frozen before
-            predictionsFrozen = self.pipeline.FreezePredictions.value
-            self.pipeline.FreezePredictions.setValue(False)
+            # The button does double-duty as a cancel button while predictions are being stored
+            if self._currentlySavingPredictions:
+                self.predictionSerializer.cancel()
+            else:
+                # Compute new predictions as needed
+                predictionsFrozen = self.pipeline.FreezePredictions.value
+                self.pipeline.FreezePredictions.setValue(False)
+                self._currentlySavingPredictions = True
+                
+                originalButtonText = "Save Predictions"
+                self._predictionControlUi.trainAndPredictButton.setText("Cancel Save")
+    
+                def saveThreadFunc():
+                    with Tracer(traceLogger):
+                        # First, do a regular save.
+                        # During a regular save, predictions are not saved to the project file.
+                        # (It takes too much time if the user only needs the classifier.)
+                        self.shellRequestSignal.emit( ShellRequest.RequestSave )
+                        
+                        # Enable prediction storage and ask the shell to save the project again.
+                        # (This way the second save will occupy the whole progress bar.)
+                        self.predictionSerializer.predictionStorageEnabled = True
+                        self.shellRequestSignal.emit( ShellRequest.RequestSave )
+                        self.predictionSerializer.predictionStorageEnabled = False
+        
+                        # Restore original states (must use events for UI calls)
+                        self.thunkEventHandler.post(self._predictionControlUi.trainAndPredictButton.setText, originalButtonText)
+                        self.pipeline.FreezePredictions.setValue(predictionsFrozen)
+                        self._currentlySavingPredictions = False
 
-            # First, do a regular save.
-            # During a regular save, predictions are not saved to the project file.
-            # (It takes too much time if the user only needs the classifier.)
-            self.shellRequestSignal.emit( ShellRequest.RequestSave )
-            
-            # Enable prediction storage and ask the shell to save the project again.
-            # (This way the second save will occupy the whole progress bar.)
-            self.predictionSerializer.predictionStorageEnabled = True
-            traceLogger.debug("Starting prediction save")
-            self.shellRequestSignal.emit( ShellRequest.RequestSave )
-            traceLogger.debug("Finished prediction save?")
-            self.predictionSerializer.predictionStorageEnabled = False
-
-            # Restore original cache state
-            self.pipeline.FreezePredictions.setValue(predictionsFrozen)
+                saveThread = threading.Thread(target=saveThreadFunc)
+                saveThread.start()
             
 #            # Can't change labels while we're in the middle of a prediction
 #            self._labelControlUi.labelListModel.allowRemove(False)
