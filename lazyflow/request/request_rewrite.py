@@ -268,7 +268,7 @@ class Request( object ):
                 current_request.child_requests.add(self)
                 self.cancelled = current_request.cancelled
 
-        self._lock = threading.RLock()
+        self._lock = threading.Lock()
         self._sig_finished = SimpleSignal()
         self._sig_cancelled = SimpleSignal()
         
@@ -384,8 +384,8 @@ class Request( object ):
                     self.pending_requests.add(current_request)
                     # No matter what, we need to be notified when this request stops.
                     # (Exactly one of these callback signals will fire.)
-                    self.notify_finished( partial(current_request._handle_finished_request, self) )
-                    self.notify_cancelled( partial(current_request._handle_finished_request, self) )
+                    self._notify_finished_unlocked( partial(current_request._handle_finished_request, self) )
+                    self._notify_cancelled_unlocked( partial(current_request._handle_finished_request, self) )
 
             if suspend_needed:
                 current_request._suspend()
@@ -423,7 +423,21 @@ class Request( object ):
         if finished:
             # Call immediately
             fn(self.result)
-            
+
+    def _notify_finished_unlocked(self, fn):
+        """
+        Same as notify_finished, but doesn't obtain the lock.
+        Lock must be held before calling.
+        """
+        finished = self.finished
+        if not finished:
+            # Call when we eventually finish
+            self._sig_finished.subscribe(fn)
+
+        if finished:
+            # Call immediately
+            fn(self.result)
+
     def notify_cancelled(self, fn):
         """
         Register a callback function to be called when this request is finished due to cancellation.
@@ -435,6 +449,21 @@ class Request( object ):
             if not finished:
                 # Call when we eventually finish
                 self._sig_cancelled.subscribe(fn)
+
+        if finished and cancelled:
+            # Call immediately
+            fn()
+
+    def _notify_cancelled_unlocked(self, fn):
+        """
+        Same as notify_cancelled, but doesn't obtain the lock.
+        Lock must be held before calling.
+        """
+        finished = self.finished
+        cancelled = self.cancelled
+        if not finished:
+            # Call when we eventually finish
+            self._sig_cancelled.subscribe(fn)
 
         if finished and cancelled:
             # Call immediately
