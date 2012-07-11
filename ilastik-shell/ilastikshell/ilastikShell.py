@@ -14,7 +14,7 @@ import os
 from functools import partial
 
 from versionManager import VersionManager
-from utility import bind
+from utility import bind, ThunkEvent, ThunkEventHandler
 from lazyflow.graph import MultiOutputSlot
 
 import sys
@@ -112,20 +112,6 @@ class ProgressDisplayManager(QObject):
                     self.statusBar.addWidget(self.progressBar)
                 self.progressBar.setValue(totalPercentage)
 
-class ThunkEvent( QEvent ):
-    """
-    A QEvent subclass that holds a callable which can be executed by its listeners.
-    Sort of like a "queued connection" signal.
-    """
-    EventType = QEvent.Type(QEvent.registerEventType())
-
-    def __init__(self, func):
-        QEvent.__init__(self, self.EventType)
-        self.thunk = func
-    
-    def __call__(self):
-        self.thunk()
-
 class IlastikShell( QMainWindow ):
     """
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
@@ -134,6 +120,9 @@ class IlastikShell( QMainWindow ):
 
     def __init__( self, workflow = [], parent = None, flags = QtCore.Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
         QMainWindow.__init__(self, parent = parent, flags = flags )
+
+        # Register for thunk events (easy UI calls from non-GUI threads)
+        self.thunkEventHandler = ThunkEventHandler(self)
 
         self._sideSplitterSizePolicy = sideSplitterSizePolicy
         
@@ -173,17 +162,8 @@ class IlastikShell( QMainWindow ):
         self._controlCmds = []      # Track the control commands that have been issued by each applet so they can be popped.
         self._disableCounts = []    # Controls for each applet can be disabled by his peers.
                                     # No applet can be enabled unless his disableCount == 0
-        
-    def event(self, e):
-        """
-        Hook in to the Qt event mechanism to handle custom events.
-        """
-        if e.type() == ThunkEvent.EventType:
-            e()
-            return True
-        else:
-            return super(IlastikShell, self).event(e)
 
+        
     def _createProjectMenu(self):
         # Create a menu for "General" (non-applet) actions
         menu = QMenu("Project", self)
@@ -413,14 +393,16 @@ class IlastikShell( QMainWindow ):
                 self._disableCounts[index] += step
 
         # Update the control states in the GUI thread
-        QApplication.postEvent( self, ThunkEvent(self.updateAppletControlStates) )
+        self.thunkEventHandler.post( self.updateAppletControlStates )
 
     def handleShellRequest(self, applet_index, requestAction):
         """
         An applet is asking us to do something.  Handle the request.
         """
-        if requestAction == applet.ShellRequest.RequestSave:
-            self._shellActions.saveProjectAction.trigger()
+        with Tracer(traceLogger):
+            if requestAction == applet.ShellRequest.RequestSave:
+                # Call the handler directly to ensure this is a synchronous call (not queued to the GUI thread)
+                self.onSaveProjectActionTriggered()
 
     def __len__( self ):
         return self.appletBar.count()
@@ -565,7 +547,7 @@ class IlastikShell( QMainWindow ):
     
     def onSaveProjectActionTriggered(self):
         logger.debug("Save Project action triggered")
-        
+
         assert self.currentProjectFile != None
         assert self.currentProjectPath != None
 
@@ -592,7 +574,7 @@ class IlastikShell( QMainWindow ):
 
         for applet in self._applets:
             applet.progressSignal.emit(100)
-
+            
     def onQuitActionTriggered(self, force=False):
         """
         The user wants to quit the application.
