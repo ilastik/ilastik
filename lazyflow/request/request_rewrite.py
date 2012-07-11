@@ -20,7 +20,7 @@ class RequestGreenlet(greenlet.greenlet):
 
 class SimpleSignal(object):
     """
-    A callback mechanism that ensures callbacks occur in the same order as subscription.
+    Simple callback mechanism. Not synchronized.  No unsubscribe function.
     """
     def __init__(self):
         self.callbacks = set()
