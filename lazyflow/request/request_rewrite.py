@@ -274,8 +274,8 @@ class Request( object ):
         
         self.logger.debug("Created request")
         
-        # Auto-submit immediately
-        self.submit()
+        # FIXME: Can't auto-submit here because the writeInto() function gets called AFTER request construction.
+        #self.submit()
         
     def set_assigned_worker(self, worker):
         """
@@ -350,6 +350,8 @@ class Request( object ):
         """
         Start this request if necessary, then wait for it to complete.  Return the request's result.
         """
+        self.submit()
+        
         # Identify the request that is waiting for us (the current context)
         current_request = Request.current_request()
 
@@ -414,6 +416,8 @@ class Request( object ):
         Register a callback function to be called when this request is finished.
         If we're already finished, call it now.
         """
+        self.submit()
+        
         with self._lock:
             finished = self.finished
             if not finished:

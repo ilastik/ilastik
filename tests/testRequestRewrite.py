@@ -156,7 +156,7 @@ class TestRequest(object):
         counter_lock = threading.RLock()
 
         def workload():
-            time.sleep(0.01)
+            time.sleep(0.1)
             return 1
         
         got_cancel = [False]
@@ -242,6 +242,8 @@ class TestRequest(object):
 
         t.join() # Wait for r2 to finish
 
+        time.sleep(0.5)
+
         assert r1.started
         assert r1.finished        
         assert not r1.cancelled # Not cancelled, even though we cancelled a request that was waiting for it.
@@ -315,9 +317,9 @@ class TestRequest(object):
             destination[0] = "Hello,"
             return destination
 
-        callback_result = ['']
+        callback_result = [ [] ]
         def callback(result):
-            callback_result[0] = result
+            callback_result[0] = result[0]
 
         def test(s, destination=None,):
             req = Request(someWork)
@@ -330,14 +332,15 @@ class TestRequest(object):
             return destination
 
         req = Request( partial(test, s = " World!") )
-        result = [""]
-        req.writeInto(result)
+        preAllocatedResult = [""]
+        req.writeInto(preAllocatedResult)
         req.notify(callback)
         
         # Wait for the result
         assert req.wait()[0] == "Hello, World!"      # Wait for it
-        assert callback_result[0][0] == "Hello, World!" # From the callback
-        assert result[0] == req.wait()[0]
+        assert callback_result[0] == "Hello, World!" # From the callback
+
+        assert preAllocatedResult[0] == req.wait()[0], "This might fail if the request was started BEFORE writeInto() was called"
 
         requests = []
         for i in range(10):
