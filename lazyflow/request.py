@@ -428,6 +428,7 @@ class Request(object):
 
         # if we are waiting for something else
         # burst the last reqeust
+        patchIfForeignThread(cur_tr)
         last_request = cur_tr.last_request
         if last_request is not None and last_request != self:
             #print "bursting..."
@@ -439,7 +440,6 @@ class Request(object):
             if not self.running:
                 self.running = True
                 self.lock.release()
-                patchIfForeignThread(cur_tr)
                 self._execute()
             else:
                 # wait for results
