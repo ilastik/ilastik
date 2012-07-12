@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 from lazyflow.tracer import Tracer
 
+from utility import bind
+
 class ThresholdMaskingGui(LayerViewerGui):
     """
     """
@@ -31,10 +33,10 @@ class ThresholdMaskingGui(LayerViewerGui):
         """
         """
         with Tracer(traceLogger):
-            super(ThresholdMaskingGui, self).__init__([mainOperator.Output, mainOperator.InvertedOutput])
             self.mainOperator = mainOperator
+            super(ThresholdMaskingGui, self).__init__([mainOperator.Output, mainOperator.InvertedOutput])
             self.handleThresholdGuiValuesChanged(0, 255)
-    
+            
     def initAppletDrawerUi(self):
         with Tracer(traceLogger):
             # Load the ui file (find it in our own directory)
@@ -48,12 +50,24 @@ class ThresholdMaskingGui(LayerViewerGui):
             thresholdWidget = ThresholdingWidget(self)
             thresholdWidget.valueChanged.connect( self.handleThresholdGuiValuesChanged )
             layout.addWidget( thresholdWidget )
+            
+            def updateDrawerFromOperator():
+                minValue, maxValue = (0,255)
+
+                if self.mainOperator.MinValue.ready():
+                    minValue = self.mainOperator.MinValue.value
+                if self.mainOperator.MaxValue.ready():
+                    maxValue = self.mainOperator.MaxValue.value
+
+                thresholdWidget.setValue(minValue, maxValue)                
+                
+            self.mainOperator.MinValue.notifyDirty( bind(updateDrawerFromOperator) )
+            self.mainOperator.MaxValue.notifyDirty( bind(updateDrawerFromOperator) )
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):
             self.mainOperator.MinValue.setValue(minVal)
             self.mainOperator.MaxValue.setValue(maxVal)
-            self.editor.scheduleSlicesRedraw()
     
     def getAppletDrawerUi(self):
         return self._drawer
