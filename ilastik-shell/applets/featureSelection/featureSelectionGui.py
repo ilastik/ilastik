@@ -146,7 +146,6 @@ class FeatureSelectionGui(LayerViewerGui):
             featureLayer.visible = (featureChannelIndex == 0)
             featureLayer.opacity = 1.0
             featureLayer.name = featureName
-            featureLayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
 
             return featureLayer
 

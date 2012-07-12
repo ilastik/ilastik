@@ -735,37 +735,6 @@ class PixelClassificationGui(QMainWindow):
 
                 saveThread = threading.Thread(target=saveThreadFunc)
                 saveThread.start()
-            
-#            # Can't change labels while we're in the middle of a prediction
-#            self._labelControlUi.labelListModel.allowRemove(False)
-#            
-#            # Disable the parts of the GUI that can't be used while we're predicting . . .
-#            self._labelControlUi.AddLabelButton.setEnabled(False)
-#
-#            # TODO: Need a way to disable upstream inputs while this is going on . . .
-#            #self._featureSelectionUi.SelectFeaturesButton.setEnabled(False)
-#            self._predictionControlUi.trainAndPredictButton.setEnabled(False)
-#    
-#            # Closure to call when the prediction is finished
-#            def onPredictionComplete(predictionResults):
-#                with Tracer(traceLogger):
-#                    logger.debug("Prediction shape={}".format(predictionResults.shape))
-#                    
-#                    # Re-enable the GUI
-#                    self._labelControlUi.AddLabelButton.setEnabled(True)
-#                    self._predictionControlUi.trainAndPredictButton.setEnabled(True)
-#                    self._labelControlUi.labelListModel.allowRemove(True)
-#                    
-#                    # Re-fix the operators now that the computation is complete.
-#                    for o in self.fixableOperators:
-#                        o.inputs["fixAtCurrent"].setValue(True)
-#        
-#                    # Redraw the image in the GUI
-#                    self.editor.scheduleSlicesRedraw()
-#    
-#            # Request the prediction for the entire image stack.
-#            # Call our callback when it's finished
-#            self.pipeline.CachedPredictionProbabilities[self.imageIndex][:].notify( onPredictionComplete )
     
     def addPredictionLayer(self, icl, ref_label):
         """
@@ -802,7 +771,6 @@ class PixelClassificationGui(QMainWindow):
             #make sure that labels (index = 0) stay on top!
             predictLayer.visible = False
             self.layerstack.insert(1, predictLayer )
-            predictLayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
             self.predictionLayers.add(predictLayer)
                
     def removePredictionLayer(self, ref_label):
@@ -890,7 +858,6 @@ class PixelClassificationGui(QMainWindow):
                 # The input data layer should always be on the bottom of the stack (last)
                 #  so we can always see the labels and predictions.
                 self.layerstack.insert(len(self.layerstack), layer1)
-                #layer1.visibleChanged.connect( self.editor.scheduleSlicesRedraw )
     
                 self.initLabelLayer()
 
@@ -924,7 +891,6 @@ class PixelClassificationGui(QMainWindow):
                 self.labellayer = ColortableLayer(self.labelsrc, colorTable = self._colorTable16 )
                 self.labellayer.name = "Labels"
                 self.labellayer.ref_object = None
-                self.labellayer.visibleChanged.connect( self.editor.scheduleSlicesRedraw ) ###
             
                 # Remove any label layer we had before
                 self.removeLayersFromEditorStack( self.labellayer.name )
