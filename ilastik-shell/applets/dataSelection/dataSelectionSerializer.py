@@ -1,4 +1,5 @@
 from opDataSelection import OpDataSelection, DatasetInfo
+from lazyflow.operators.ioOperators import OpStackToH5Writer
 
 import os
 import copy
@@ -66,7 +67,7 @@ class DataSelectionSerializer( AppletSerializer ):
                 if  info.location == DatasetInfo.Location.ProjectInternal \
                 and info.datasetId not in localDataGroup.keys():
                     # Obtain the data from the corresponding output and store it to the project.
-                    # TODO: Optimize this for large datasets by streaming it chunk-by-chunk.
+                    # TODO: Optimize this for large datasets by streaming it chunk-by-chunk using an OpH5WriterBigDataset!
                     dataSlot = self.mainOperator.Image[index]
                     data = dataSlot[...].wait()
     
@@ -96,6 +97,32 @@ class DataSelectionSerializer( AppletSerializer ):
                 self.mainOperator.Dataset[0].setValue(infoCopy)
             
             self._dirty = False
+
+    def importStackAsLocalDataset(self, info):
+        """
+        Add the given stack data to the project file as a local dataset.
+        Create a datainfo and append it to our operator.
+        """
+        with Tracer(traceLogger):
+            projectFileHdf5 = self.mainOperator.ProjectFile.value
+            topGroup = self.getOrCreateGroup(projectFileHdf5, self.topGroupName)
+            localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
+
+            globstring = info.filePath
+            info.location = DatasetInfo.Location.ProjectInternal
+            
+            opWriter = OpStackToH5Writer(graph=self.mainOperator.graph)
+            opWriter.hdf5Group.setValue(localDataGroup)
+            opWriter.hdf5Path.setValue(info.datasetId)
+            opWriter.GlobString.setValue(globstring)
+            
+            success = opWriter.WriteImage.value
+            
+            numDatasets = len(self.mainOperator.Dataset)
+            self.mainOperator.Dataset.resize( numDatasets + 1 )
+            self.mainOperator.Dataset[numDatasets].setValue(info)
+
+            return success
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         with Tracer(traceLogger):

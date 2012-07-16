@@ -26,7 +26,7 @@ class DataSelectionApplet( Applet ):
             self._serializableItems.append(Ilastik05DataSelectionDeserializer(self._topLevelOperator))
 
         guiMode = { True: GuiMode.Batch, False: GuiMode.Normal }[batchDataGui]
-        self._gui = DataSelectionGui( self._topLevelOperator, guiMode )
+        self._gui = DataSelectionGui( self._topLevelOperator, self._serializableItems[0], guiMode )
         
         self._preferencesManager = DataSelectionPreferencesManager()
     
