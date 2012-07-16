@@ -311,7 +311,7 @@ class PixelClassificationGui(QMainWindow):
             _labelControlUi.labelListModel.dataChanged.connect(onDataChanged)
             
             # Initialize the arrow tool button with an icon and handler
-            iconPath = getPathToLocalDirectory() + "/icons/arrow.png"
+            iconPath = getPathToLocalDirectory() + "/icons/arrow.jpg"
             arrowIcon = QIcon(iconPath)
             _labelControlUi.arrowToolButton.setIcon(arrowIcon)
             _labelControlUi.arrowToolButton.setCheckable(True)
@@ -350,7 +350,7 @@ class PixelClassificationGui(QMainWindow):
             
             _labelControlUi.brushSizeComboBox.currentIndexChanged.connect(self.onBrushSizeChange)
             self.paintBrushSizeIndex = 0
-            self.eraserSizeIndex = 0
+            self.eraserSizeIndex = 4
             
             self._labelControlUi.checkInteractive.setEnabled(True)
             
@@ -754,7 +754,7 @@ class PixelClassificationGui(QMainWindow):
             
             predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color, normalize = None )
             predictLayer.nameChanged.connect(srcName)
-            predictLayer.opacity = 0.5
+            predictLayer.opacity = 0.25
             
             def setLayerColor(c):
                 predictLayer.tintColor = c
