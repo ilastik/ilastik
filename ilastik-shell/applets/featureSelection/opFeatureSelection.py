@@ -1,6 +1,6 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiOutputSlot
 
-from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, OpMultiArraySlicer2
+from lazyflow.operators import OpPixelFeaturesPresmoothed, OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 
 class OpFeatureSelection(Operator):
     """
@@ -36,7 +36,7 @@ class OpFeatureSelection(Operator):
 
         # Two internal operators: features and cache
         self.opPixelFeatures = OpPixelFeaturesPresmoothed(parent=self)
-        self.opPixelFeatureCache = OpBlockedArrayCache(parent=self)
+        self.opPixelFeatureCache = OpSlicedBlockedArrayCache(parent=self)
         self.opPixelFeatureCache.name = "opPixelFeatureCache"
 
         # Connect the cache to the feature output
@@ -63,20 +63,37 @@ class OpFeatureSelection(Operator):
     def setupOutputs(self):        
         # We choose block shapes that have only 1 channel because the channels may be 
         #  coming from different features (e.g different filters) and probably shouldn't be cached together.
-        blockDims = { 't' : (1,1),
-                      'z' : (1,1),
-                      'y' : (32,128),
-                      'x' : (32,128),
-                      'c' : (1,1) }
+        blockDimsX = { 't' : (1,1),
+                       'z' : (32,128),
+                       'y' : (32,128),
+                       'x' : (1,1),
+                       'c' : (1,1) }
+
+        blockDimsY = { 't' : (1,1),
+                       'z' : (32,128),
+                       'y' : (1,1),
+                       'x' : (32,128),
+                       'c' : (1,1) }
+
+        blockDimsZ = { 't' : (1,1),
+                       'z' : (1,1),
+                       'y' : (32,128),
+                       'x' : (32,128),
+                       'c' : (1,1) }
 
         axisOrder = [ tag.key for tag in self.InputImage.meta.axistags ]
-        innerBlockShape = tuple( blockDims[k][0] for k in axisOrder )
-        outerBlockShape = tuple( blockDims[k][1] for k in axisOrder )
+        innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
+        outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+
+        innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
+        outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
+
+        innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
+        outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
 
         # Configure the cache        
-        self.opPixelFeatureCache.innerBlockShape.setValue(innerBlockShape)
-        self.opPixelFeatureCache.outerBlockShape.setValue(outerBlockShape)
-
+        self.opPixelFeatureCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+        self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
 
 
