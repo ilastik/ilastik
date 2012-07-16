@@ -1077,16 +1077,11 @@ class OpH5WriterBigDataset(Operator):
         self.f = self.inputs["hdf5File"].value
         hdf5Path = self.inputs["hdf5Path"].value
 
-        g=self.f
-        pathElements = hdf5Path.split("/")
-        for s in pathElements[:-1]:
-            if s == '':
-                continue
-            # Check for existence, create if necessary
-            if s in g.keys():
-                g = g[s]
-            else:
-                g = g.create_group(s)
+        hdf5GroupName, datasetName = os.path.split(hdf5Path)
+        if hdf5Path in self.f:
+            g = self.f[hdf5GroupName]
+        else:
+            g = self.f.create_group(hdf5GroupName)
 
         dataShape=self.Image.meta.shape
         axistags = self.Image.meta.axistags
@@ -1117,10 +1112,9 @@ class OpH5WriterBigDataset(Operator):
             chunkShape += ( min( chunkDims[axisKey], dataShape[i] ), )
 
         self.chunkShape = chunkShape
-        datasetName = pathElements[-1]
         if datasetName in g.keys():
             del g[datasetName]
-        self.d=g.create_dataset(pathElements[-1],
+        self.d=g.create_dataset(datasetName,
                                 shape=dataShape,
                                 dtype=dtype,
                                 chunks=self.chunkShape,
@@ -1198,12 +1192,6 @@ class OpH5WriterBigDataset(Operator):
             stop=numpy.minimum(start+shift,shape)
             reqList.append(roiToSlice(start,stop))
         return reqList
-
-
-
-
-
-
 
 
 class OpH5ReaderBigDataset(Operator):
