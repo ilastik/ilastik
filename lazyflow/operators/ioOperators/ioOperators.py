@@ -1,6 +1,11 @@
+import math
 import vigra,numpy,h5py,glob
 from lazyflow.graph import Operator,OutputSlot,InputSlot
 from lazyflow.roi import roiToSlice
+
+import logging
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger('TRACE.' + __name__)
 
 class OpH5Writer(Operator):
     name = "H5 File Writer"
@@ -144,7 +149,9 @@ class OpStackLoader(Operator):
     def execute(self, slot, roi, result):
         i=0
         key = roi.toSlice()
+        traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
         for fileName in self.fileNameList[key[3]]:
+            traceLogger.debug( "Reading image: {}".format(fileName) )
             assert (self.info.getShape() == vigra.impex.ImageInfo(fileName).getShape()), 'not all files have the same shape'
             result[...,i,:] = vigra.impex.readImage(fileName)[key[1],key[2],key[4]]
             i = i+1
@@ -198,3 +205,154 @@ class OpStackWriter(Operator):
                 for j in range(image.shape[2]):
                     for k in range(image.shape[4]):
                         vigra.impex.writeImage(image[:,i,j,:,k],filepath+"-zt-x_%04d_y_%04d_c_%04d." % (i,j,k)+filetype)
+
+class OpStackToH5Writer(Operator):
+    name = "OpStackToH5Writer"
+    category = "IO"
+    
+    GlobString = InputSlot(stype='globstring')
+    hdf5Group = InputSlot(stype='object')
+    hdf5Path  = InputSlot(stype='string')
+    
+    # Requesting the output induces the copy from stack to h5 file.
+    WriteImage = OutputSlot(stype='bool')
+
+    def __init__(self, *args, **kwargs):
+        super(OpStackToH5Writer, self).__init__(*args, **kwargs)
+        self.opStackLoader = OpStackLoader(graph=self.graph, parent=self)
+        
+        self.opStackLoader.globstring.connect( self.GlobString )
+    
+    def setupOutputs(self):
+        self.WriteImage.meta.shape = (1,)
+        self.WriteImage.meta.dtype = object
+
+    def execute(self, slot, roi, result):
+        # Copy the data image-by-image
+        stackTags = self.opStackLoader.stack.meta.axistags
+        zAxis = stackTags.index('z')
+        dataShape=self.opStackLoader.stack.meta.shape
+        numImages = self.opStackLoader.stack.meta.shape[zAxis]
+        
+        axistags = self.opStackLoader.stack.axistags
+        dtype = self.opStackLoader.stack.dtype
+        if type(dtype) is numpy.dtype:
+            # Make sure we're dealing with a type (e.g. numpy.float64),
+            #  not a numpy.dtype
+            dtype = dtype.type
+
+        numChannels = dataShape[ axistags.index('c') ]
+
+        # Set up our chunk shape: Aim for a cube that's roughly 300k in size
+        dtypeBytes = dtype().nbytes
+        cubeDim = math.pow( 300000 / (numChannels * dtypeBytes), (1/3.0) )
+        cubeDim = int(cubeDim)
+
+        chunkDims = {}
+        chunkDims['t'] = 1
+        chunkDims['x'] = cubeDim
+        chunkDims['y'] = cubeDim
+        chunkDims['z'] = cubeDim
+        chunkDims['c'] = numChannels
+        
+        # h5py guide to chunking says chunks of 300k or less "work best"
+        assert chunkDims['x'] * chunkDims['y'] * chunkDims['z'] * numChannels * dtypeBytes  <= 300000
+
+        chunkShape = ()
+        for i in range( len(dataShape) ):
+            axisKey = axistags[i].key
+            # Chunk shape can't be larger than the data shape
+            chunkShape += ( min( chunkDims[axisKey], dataShape[i] ), )
+
+        # Create the dataset
+        internalPath = self.hdf5Path.value
+        group = self.hdf5Group.value
+        if internalPath in group:
+            del group[internalPath]
+
+        data = group.create_dataset(internalPath,
+                                    #compression='gzip',
+                                    #compression_opts=4
+                                    shape=dataShape,
+                                    dtype=dtype,
+                                    chunks=chunkShape)
+        # Now copy each image
+        for z in range(numImages):
+            # Ask for an entire z-slice (exactly one whole image from the stack)
+            slicing = [slice(None)] * len(stackTags)
+            slicing[zAxis] = slice(z, z+1)            
+            data[tuple(slicing)] = self.opStackLoader.stack[slicing].wait()
+            
+        # We're done
+        result[...] = True
+        
+if __name__ == '__main__':
+    from lazyflow.graph import Graph
+    import h5py
+    import sys
+
+    traceLogger.addHandler(logging.StreamHandler(sys.stdout))
+    traceLogger.setLevel(logging.DEBUG)
+    traceLogger.debug("HELLO")
+    
+    f = h5py.File('/tmp/flyem_sample_stack.h5')
+    internalPath = 'volume/data'
+        
+    # OpStackToH5Writer
+    graph = Graph()
+    opStackToH5 = OpStackToH5Writer()
+    opStackToH5.GlobString.setValue('/tmp/flyem_sample_stack/*.png')
+    opStackToH5.hdf5Group.setValue(f)
+    opStackToH5.hdf5Path.setValue(internalPath)
+    
+    success = opStackToH5.WriteImage.value
+    assert success
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
+
