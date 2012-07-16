@@ -31,12 +31,12 @@ class FeatureSelectionGui(LayerViewerGui):
                    'DifferenceOfGaussians' ]
 
     # Note: The order of these feature names must match the order of the feature Ids above
-    FeatureNames = [ "G-smooth",
-                     "L-of-G",
-                     "ST EVs",
-                     "H-of-G EVs",
-                     "G. Grad Mag",
-                     "Diff of G." ]
+    FeatureNames = [ "Gaussian Smoothing",
+                     "Laplacian of Gaussian",
+                     "Structure Tensor Eigenvalues",
+                     "Hessian of Gaussian Eigenvalues",
+                     "Gaussian Gradient Magnitude",
+                     "Difference of Gaussians" ]
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
