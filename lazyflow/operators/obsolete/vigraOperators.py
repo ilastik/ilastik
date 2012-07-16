@@ -1089,8 +1089,12 @@ class OpH5WriterBigDataset(Operator):
                 g = g.create_group(s)
 
         dataShape=self.Image.meta.shape
-        dtype = self.Image.meta.dtype
         axistags = self.Image.meta.axistags
+        dtype = self.Image.meta.dtype
+        if type(dtype) is numpy.dtype:
+            # Make sure we're dealing with a type (e.g. numpy.float64),
+            #  not a numpy.dtype
+            dtype = dtype.type
 
         numChannels = dataShape[ axistags.index('c') ]
 
