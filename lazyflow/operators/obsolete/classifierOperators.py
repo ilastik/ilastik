@@ -135,12 +135,14 @@ class OpTrainRandomForestBlocked(Operator):
                     traceLogger.debug("Requests prepared")
     
                     numLabelBlocks = len(reqlistlabels)
-                    progress = [progress]
-                    progressInc = (80-10)/numLabelBlocks/numImages
+                    progress = [progress] # Store in list for closure access
+                    if numLabelBlocks > 0:
+                        progressInc = (80-10)/numLabelBlocks/numImages
 
                     def progressNotify(req):
-                        # Note: If we wanted perfect progress reporting, we're lock here,
-                        # but that would slow things down and imperfect reporting is okay for our purposes.
+                        # Note: If we wanted perfect progress reporting, we could use lock here 
+                        #       to protect the progress from being incremented simultaneously.
+                        #       But that would slow things down and imperfect reporting is okay for our purposes.
                         progress[0] += progressInc/2
                         self.progressSignal(progress[0])
     
@@ -165,6 +167,8 @@ class OpTrainRandomForestBlocked(Operator):
     
                         featMatrix.append(features)
                         labelsMatrix.append(labbla)
+
+                    progress = progress[0]
 
                     traceLogger.debug("Requests processed")    
                     self.progressSignal(80/numImages)
