@@ -28,6 +28,12 @@ default_log_config = {
             "class":"logging.StreamHandler", # Defaults to sys.stderr
             "formatter":"verbose"
         },
+        "console_trace":{
+            "level":"DEBUG",
+            #"class":"logging.StreamHandler",
+            "class":"ilastik_logging.loggingHelpers.StdOutStreamHandler",
+            "formatter": "verbose"
+        },
     },
     "root": {
         "handlers": ["console", "console_warn"],
@@ -47,20 +53,21 @@ default_log_config = {
         # Python doesn't provide a trace log level, so we use a workaround.
         # By convention, trace loggers have the same hierarchy as the regular loggers, but are prefixed with 'TRACE' and always emite DEBUG messages
         # To enable trace messages, change one or more of these to use level DEBUG
-        "TRACE":                                                        { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.lazyflow.graph.Slot":                                    { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.lazyflow.graph.Operator":                                { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.lazyflow.graph.OperatorWrapper":                         { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.obsolete":                            { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.obsolete.operators":                  { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.obsolete.generic":                    { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.obsolete.classifierOperators":        { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.obsolete.operators.OpArrayCache":     { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.lazyflow.operators.obsolete.valueProviders.OpValueCache":{ "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.applets":                                                { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.ilastikshell":                                           { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.volumina":                                               { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
-        "TRACE.volumina.imageScene2D":                                  { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False }
+        "TRACE":                                                        { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.lazyflow.graph.Slot":                                    { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.lazyflow.graph.Operator":                                { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.lazyflow.graph.OperatorWrapper":                         { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.lazyflow.operators.ioOperators":                         { "level":"INFO", "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.lazyflow.operators.obsolete":                            { "level":"INFO", "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.lazyflow.operators.obsolete.operators":                  { "level":"INFO", "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.lazyflow.operators.obsolete.generic":                    { "level":"INFO", "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.lazyflow.operators.obsolete.classifierOperators":        { "level":"INFO", "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.lazyflow.operators.obsolete.operators.OpArrayCache":     { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.lazyflow.operators.obsolete.valueProviders.OpValueCache":{ "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.applets":                                                { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.ilastikshell":                                           { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.volumina":                                               { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.volumina.imageScene2D":                                  { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False }
     }
 }
 
