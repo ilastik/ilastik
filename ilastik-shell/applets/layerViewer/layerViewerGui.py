@@ -240,11 +240,11 @@ class LayerViewerGui(QMainWindow):
 
             # Copy the old visibilities and opacities
             if self.imageIndex != self.lastUpdateImageIndex:
-                existing = {l.layerId : l for l in self.layerstack}
+                existing = {l.name : l for l in self.layerstack}
                 for layer in newGuiLayers:
-                    if layer.layerId in existing.keys():
-                        layer.visible = existing[layer.layerId].visible
-                        layer.opacity = existing[layer.layerId].opacity
+                    if layer.name in existing.keys():
+                        layer.visible = existing[layer.name].visible
+                        layer.opacity = existing[layer.name].opacity
 
                 # Clear all existing layers.
                 self.layerstack.clear()
@@ -272,16 +272,16 @@ class LayerViewerGui(QMainWindow):
                 self.editor.dataShape = newDataShape
     
             # Insert all layers that aren't already in the layerstack
-            # (Identified by the layerId attribute)
-            existingLayerIds = [l.layerId for l in self.layerstack]
+            # (Identified by the name attribute)
+            existingNames = [l.name for l in self.layerstack]
             for index, layer in enumerate(newGuiLayers):
-                if layer.layerId not in existingLayerIds:
+                if layer.name not in existingNames:
                     self.layerstack.insert( index, layer )
 
             # Remove any old layers that aren't in the new stack
-            newLayerIds = [l.layerId for l in newGuiLayers]
+            newNames = [l.name for l in newGuiLayers]
             for index, layer in enumerate(self.layerstack):
-                if layer.layerId not in newLayerIds:
+                if layer.name not in newNames:
                     self.layerstack.removeRow(index)
 
     def initViewerControlUi(self):
