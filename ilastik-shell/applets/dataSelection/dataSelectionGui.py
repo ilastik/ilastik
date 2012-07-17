@@ -72,13 +72,14 @@ class DataSelectionGui(QMainWindow):
     ###########################################
     ###########################################
 
-    def __init__(self, dataSelectionOperator, guiMode=GuiMode.Normal):
+    def __init__(self, dataSelectionOperator, serializer, guiMode=GuiMode.Normal):
         with Tracer(traceLogger):
             super(DataSelectionGui, self).__init__()
     
             self.drawer = None
             self.mainOperator = dataSelectionOperator
             self.guiMode = guiMode
+            self.serializer = serializer
             
             self.initAppletDrawerUic()
             self.initCentralUic()
@@ -179,9 +180,14 @@ class DataSelectionGui(QMainWindow):
             if not directoryName.isNull():
                 globString = self.getGlobString( str(directoryName) )                
                 if globString is not None:
-                    # Simply add the globstring as though it were a regular file path.
-                    # The top-level operator knows how to deal with it.
-                    self.addFileNames([globString])
+                    info = DatasetInfo()
+                    info.filePath = globString
+                    
+                    # Allow labels by default if this gui isn't being used for batch data.
+                    info.allowLabels = ( self.guiMode == GuiMode.Normal )
+
+                    # Serializer will update the operator for us, which will propagate to the GUI.
+                    self.serializer.importStackAsLocalDataset( info )
 
     def getGlobString(self, directory):
         exts = vigra.impex.listExtensions().split()
