@@ -91,8 +91,8 @@ class OpPixelClassification( Operator ):
         # 
         self.prediction_cache.name = "PredictionCache"
         self.prediction_cache.inputs["fixAtCurrent"].connect( self.FreezePredictions )
-        self.prediction_cache.inputs["innerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
-        self.prediction_cache.inputs["outerBlockShape"].setValue(((1,256,256,4,2),(1,256,4,256,2),(1,4,256,256,2)))
+        self.prediction_cache.inputs["innerBlockShape"].setValue(((1,128,128,1,2),(1,128,1,128,2),(1,1,128,128,2)))
+        self.prediction_cache.inputs["outerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
         self.prediction_cache.inputs["Input"].connect(self.predict.outputs["PMaps"])
 
         # Connect our internal outputs to our external outputs
