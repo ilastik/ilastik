@@ -1000,9 +1000,11 @@ class OpBlockedArrayCache(Operator):
                 # The only way to do that is to temporarily connect it to an unready operator
                 opTmp = OpArrayPiper(graph=self.graph)
                 opTmp.Output.connect( self.Output )
+                self._configured = False
                 return
             else:
-                self.Output.disconnect()
+                if self.Output.partner is not None:
+                    self.Output.disconnect()
     
             if not self._configured:
                 self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
