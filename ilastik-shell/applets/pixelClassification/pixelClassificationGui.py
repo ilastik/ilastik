@@ -409,7 +409,7 @@ class PixelClassificationGui(QMainWindow):
             self._labelControlUi.labelListModel.allowRemove(not checked)
             self._predictionControlUi.trainAndPredictButton.setEnabled(not checked)
 
-            self.pipeline.FreezePredictions.setValue( not checked )            
+            self.pipeline.FreezePredictions.setValue( not checked )
     
             # Prediction layers should be switched on/off when the interactive checkbox is toggled
             for layer in self.predictionLayers:
@@ -696,6 +696,8 @@ class PixelClassificationGui(QMainWindow):
         with Tracer(traceLogger):
             for label in self.predictionLayerGuiLabels:
                 self.removePredictionLayer(label)
+            
+            self.predictionLayerGuiLabels.clear()
     
     def onTrainAndPredictButtonClicked(self):
         """
@@ -755,6 +757,7 @@ class PixelClassificationGui(QMainWindow):
             predictLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.color, normalize = None )
             predictLayer.nameChanged.connect(srcName)
             predictLayer.opacity = 0.25
+            predictLayer.visible = self._labelControlUi.checkInteractive.isChecked()
             
             def setLayerColor(c):
                 predictLayer.tintColor = c
@@ -769,7 +772,6 @@ class PixelClassificationGui(QMainWindow):
             predictLayer.ref_object = ref_label
     
             #make sure that labels (index = 0) stay on top!
-            predictLayer.visible = False
             self.layerstack.insert(1, predictLayer )
             self.predictionLayers.add(predictLayer)
                
@@ -860,6 +862,7 @@ class PixelClassificationGui(QMainWindow):
                 self.layerstack.insert(len(self.layerstack), layer1)
     
                 self.initLabelLayer()
+                self.setupPredictionLayers()
 
     def removeLayersFromEditorStack(self, layerName):
         """
@@ -929,8 +932,8 @@ class PixelClassificationGui(QMainWindow):
             self.editor.setLabelSink(None)
             
             # Remove all layers from the editor.  We have new data.
+            self.removeAllPredictionLayers()
             self.layerstack.removeRows( 0, len(self.layerstack) )
-            self.predictionLayers.clear()
     
             # Give the editor the appropriate shape (transposed via an Op5ifyer adapter).
             op5 = Op5ifyer( graph=self.pipeline.graph )
