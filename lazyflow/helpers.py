@@ -115,129 +115,54 @@ def generateRandomRoi(maxShape,minShape = 0,minWidth = 0):
 
 
 class AxisIterator:
+    """
+    An Iterator Class that iterates over slices of a source and a destination
+    array. sourceAxis and destinationAxis specify the volume which is iterated
+    over. Transform specifies the ratio between the source and destinaton slices.  
+    """
     def __init__(self, source, sourceAxis, destination, destinationAxis, transform):
-        
         self.source = source
-        self.sourceAxis = sourceAxis
         self.dest = destination
-        self.destAxis = destinationAxis
-        self.transform = transform
-        self.sourceTransform = [None] * len(self.source.shape)
-        self.destTransform = [None] * len(self.dest.shape)
-        self.axisDict = {}
-        self.revAxisDict = {}
-        
-        #check for the neccessary interface
-        if not hasattr(self.source, 'shape'):
-            raise RuntimeError('Source has no \'shape\' attribute')
-        if not hasattr(self.dest, 'shape'):
-            raise RuntimeError('Destination has no \'shape\' attribute')
-        
-        #ONLY the source needs axistags right now
-        if not hasattr(self.source, 'axistags'):
-            raise RuntimeError('Source has no \'axistags\' attribute')
-        if not hasattr(self.source, '__getslice__'):
-            raise RuntimeError('Source has no \'__getslice__\' attribute')
-        if not hasattr(self.dest, '__getslice__'):
-            raise RuntimeError('Destination has no \'__getslice__\' attribute')
-        if not isinstance(self.sourceAxis, str):
-            raise RuntimeError('SourceAxis must be a string')
-        if not isinstance(self.destAxis, str):
-            raise RuntimeError('DestinationAxis must be a string')
-        
-        #TODO: check for proper transformational iteration conditions:
-        
-        # check and parse the AxisStrings
-        self.axisStringParser()
-        #split and sort the sourceAxis and the destAxis
+        self.sourceAxis = self.axisStringParser(sourceAxis)
+        self.destAxis = self.axisStringParser(destinationAxis)
         self.createAxisDicts()
-        # parse transforms
-        self.transformParser()
-        # expand the transforms for easy handling
-        self.expandTransforms()
-        #Setup the Axis,Dest iterspace
+        self.transform = self.transformParser(transform)
         self.setupIterSpace()
-        
-    def expandTransforms(self):
-        
-        #care, confusing code
-        for i in range(len(self.source.shape)):
-            if self.revAxisDict[i] in self.sourceAxis:
-                self.destTransform[i] = self.transform[0][self.sourceAxis.index(self.revAxisDict[i])]
-            else:
-                self.destTransform[i] = 1
-        
-        for i in range(len(self.dest.shape)):
-            if self.revAxisDict[i] in self.destAxis:
-                self.sourceTransform[i] = self.transform[1][self.destAxis.index(self.revAxisDict[i])]
-            else:
-                self.sourceTransform[i] = 1
-        
-    def createAxisDicts(self):
-        
-        for i in range(len(self.source.axistags)):
-            self.axisDict[self.source.axistags[i].key] = i
-        self.revAxisDict = dict((v, k) for k, v in self.axisDict.iteritems())
-        
-    def __iter__(self):
-        return self.iterSpace.__iter__()
-    
-    def transformParser(self):
-        if len(self.transform[0]) == 0:
-            self.transform[0] = (1,) * len(self.source.shape)
-        if len(self.transform[1]) == 0:
-            self.transform[1] = (1,) * len(self.source.shape)
-        if type(self.transform[1]) == dict:
+
+    def transformParser(self,transform):
+        transform = [(1,) * len(self.source.shape) if len(transform[i]) == 0 \
+                     else transform[i] for i in range(len(transform))]
+        if type(transform[1]) == dict:
             tmp = [1]*len(self.dest.shape)
             for s in list('txyzc'):
-                if s in self.transform[1].keys():
-                    tmp[self.axisDict[s]] = self.transform[1][s]
-            self.transform[1] = tuple(tmp) 
-
-    def axisStringParser(self):
-        self.sourceAxis = list(self.sourceAxis)
-        self.destAxis = list(self.destAxis)
-        if list('spatial') == self.sourceAxis:
-            self.sourceAxis = []
-            for tag in self.source.axistags:
-                if tag.isSpatial():
-                    self.sourceAxis.append(tag.key)
-        if list('spatialc') == self.sourceAxis:
-            self.sourceAxis = []
-            for tag in self.source.axistags:
-                if tag.isSpatial():
-                    self.sourceAxis.append(tag.key)
-            self.sourceAxis.append('c')
-        if list('spatial') == self.destAxis:
-            self.destAxis = []
-            for tag in self.source.axistags:
-                if tag.isSpatial():
-                    self.destAxis.append(tag.key)
-        if list('spatialc') == self.destAxis:
-            self.destAxis = []
-            for tag in self.source.axistags:
-                if tag.isSpatial():
-                    self.destAxis.append(tag.key)
-            self.destAxis.append('c')
-
-        allowedAxisKeys = set(['t', 'x', 'y', 'z', 'c'])
-        if len(allowedAxisKeys.intersection(set(self.sourceAxis))) < len(self.sourceAxis):
-            raise RuntimeError('There are non-allowed AxisKeys present in Source')
-        if len(allowedAxisKeys.intersection(set(self.destAxis))) < len(self.destAxis):
-            raise RuntimeError('There are non-allowed AxisKeys present in Destination')
-        #check for proper dimensional iteration conditions:
+                if s in transform[1].keys():
+                    tmp[self.axisDict[s]] = transform[1][s]
+            transform[1] = tuple(tmp)
+        return transform
         
-        if len(self.destAxis) != len(self.sourceAxis):
-            raise RuntimeError('Source and Target iteration dimensions are not equal')
-        if len(self.destAxis) > len(self.dest.shape):
-            print len(self.destAxis), len(self.dest.shape)
-        if len(self.sourceAxis) > len(self.source.shape):
-            raise RuntimeError('source iteration dimension is greater then source dimension')
-
-        #TODO:check Consistency of transforms
+    def createAxisDicts(self):
+        self.axisDict = dict((self.source.axistags[i].key,i) for i in range(len(self.source.axistags)))
+        self.revAxisDict = dict((v, k) for k, v in self.axisDict.iteritems())
         
+    def axisStringParser(self,axis=None):
+        axis = list(axis)
+        if list('spatial') == axis:
+            axis = []
+            for tag in self.source.axistags:
+                if tag.isSpatial():
+                    axis.append(tag.key)
+        if list('spatialc') == axis:
+            axis = []
+            for tag in self.source.axistags:
+                if tag.isSpatial():
+                    axis.append(tag.key)
+            axis.append('c')
+        return axis
+    
+    def __iter__(self):
+        return self.iterSpace.__iter__()
+
     def setupIterSpace(self):
-        
         def getSlicing(shape, string, transform = None):
             slicing = []
             mask = []
@@ -246,7 +171,6 @@ class AxisIterator:
                     mask.append(range(0, shape[i],transform[i]))
                 else:
                     mask.append(None)
-            
             iterL = [m for m in mask if m is not None]
             iterS = itertools.product(*iterL)
             for s in iterS:
@@ -263,7 +187,6 @@ class AxisIterator:
                         sl.append(slice(0, None, None))
                 slicing.append(sl)
             return slicing
-            
+        
         self.iterSpace = zip(getSlicing(self.source.shape, self.sourceAxis,self.transform[0]),\
                              getSlicing(self.dest.shape, self.destAxis,self.transform[1]))
-
