@@ -1136,16 +1136,10 @@ class Slot(object):
     #   methods aimed to enhance usability
     #
     
-    def copyConfig(self,slot):
-        self._dtype = slot._dtype
-        self._axistags = slot._axistags
-        self._shape = slot._shape
-        
     def setShapeAtAxisTo(self,axis,size):
         tmpshape = list(self.shape)
         tmpshape[self.axistags.index(axis)] = size
-        self._shape = tuple(tmpshape)
-    
+        self.meta.shape = tuple(tmpshape)
     
     def __str__(self):
         if self.axistags is None:
@@ -1164,10 +1158,6 @@ class Slot(object):
         return 'Shape \t\t'+str(self.shape) +'\n'\
                 + axisStr +\
                'Dtype \t\t' + str(self.dtype)
-
-
-
-
 
 
 class InputSlot(Slot):

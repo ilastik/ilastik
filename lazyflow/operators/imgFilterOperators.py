@@ -36,7 +36,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         inputSlot = self.inputs["Input"]
         outputSlot = self.outputs["Output"]
         channelNum = self.resultingChannels()
-        outputSlot.copyConfig(inputSlot)
+        outputSlot.meta.assignFrom(inputSlot.meta)
         outputSlot.setShapeAtAxisTo('c', channelNum)
         
     def execute(self,slot,roi,result):
@@ -82,7 +82,7 @@ class OpGaussianSmoothing(OpBaseVigraFilter):
         return sigma
         
     def resultingChannels(self):
-        return self.inputs["Input"]._shape[self.inputs["Input"]._axistags.index('c')]
+        return self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.index('c')]
     
     def channelsPerChannel(self):
         return 1
@@ -138,7 +138,7 @@ class OpDifferenceOfGaussians(OpBaseVigraFilter):
         return max(sigma0,sigma1)
     
     def resultingChannels(self):
-        return self.inputs["Input"]._shape[self.inputs["Input"]._axistags.index('c')]
+        return self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.index('c')]
     
     def channelsPerChannel(self):
         return 1
@@ -163,7 +163,7 @@ class OpLaplacianOfGaussian(OpBaseVigraFilter):
         return scale
     
     def resultingChannels(self):
-        return self.inputs["Input"]._shape[self.inputs["Input"]._axistags.index('c')]
+        return self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.index('c')]
 
 class OpStructureTensorEigenvalues(OpBaseVigraFilter):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float"),InputSlot("Sigma2", stype = "float")]
@@ -241,7 +241,7 @@ class OpGaussianGradientMagnitude(OpBaseVigraFilter):
         return sigma
 
     def resultingChannels(self):
-        return self.inputs["Input"]._shape[self.inputs["Input"]._axistags.index('c')]
+        return self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.index('c')]
     
 
 class OpPixelFeaturesPresmoothed(Operator):
@@ -304,12 +304,12 @@ class OpPixelFeaturesPresmoothed(Operator):
                     k += 1
                     
         self.stacker.inputs["AxisFlag"].setValue('c')
-        self.stacker.inputs["AxisIndex"].setValue(self.source.outputs["Output"]._axistags.index('c'))
+        self.stacker.inputs["AxisIndex"].setValue(self.source.outputs["Output"].meta.axistags.index('c'))
         self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
         
-        self.outputs["Output"]._axistags = self.stacker.outputs["Output"]._axistags
-        self.outputs["Output"]._shape = self.stacker.outputs["Output"]._shape
-        self.outputs["Output"]._dtype = numpy.float32 
+        self.outputs["Output"].meta.axistags = self.stacker.outputs["Output"].meta.axistags
+        self.outputs["Output"].meta.shape = self.stacker.outputs["Output"].meta.shape
+        self.outputs["Output"].meta.dtype = numpy.float32 
         
         #transpose operatorMatrix for better handling
         opMatrix = self.operatorMatrix
