@@ -1,5 +1,4 @@
 from lazyflow.graph import Operator,InputSlot,OutputSlot
-from lazyflow.operators.obsolete.valueProviders import OpArrayPiper
 from lazyflow.helpers import AxisIterator
 from lazyflow.operators.obsolete.generic import OpMultiArrayStacker
 from lazyflow.operators.obsolete.vigraOperators import Op50ToMulti
@@ -7,7 +6,7 @@ import numpy,vigra
 from math import sqrt
 from functools import partial
 
-class OpBaseVigraFilter(OpArrayPiper):
+class OpBaseVigraFilter(Operator):
     
     inputSlots = []
     outputSlots = [OutputSlot("Output")]
@@ -19,7 +18,7 @@ class OpBaseVigraFilter(OpArrayPiper):
     windowSize = 4.0
     
     def __init__(self, parent):
-        OpArrayPiper.__init__(self, parent)
+        Operator.__init__(self, parent)
         self.iterator = None
         
     def resultingChannels(self):
@@ -253,7 +252,6 @@ class OpPixelFeaturesPresmoothed(Operator):
     def __init__(self,parent):
         Operator.__init__(self, parent, register=True)
         
-        self.source = OpArrayPiper(self.graph)
         self.multi = Op50ToMulti(self.graph)
         self.stacker = OpMultiArrayStacker(self.graph)
         self.smoother = OpGaussianSmoothing(self.graph)
@@ -266,7 +264,6 @@ class OpPixelFeaturesPresmoothed(Operator):
     def setupOutputs(self):
         
         #TODO: Different assertions and stuff.
-        self.source.inputs["Input"].connect(self.inputs["Input"])
         self.inMatrix = self.inputs["Matrix"].value
         self.inScales = self.inputs["Scales"].value
         self.modSigmas = [0]*len(self.inScales)
@@ -296,7 +293,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             for j in xrange(len(self.inMatrix[i])): #Cycle through sigmas == j
                 if self.inMatrix[i][j]:
                     self.operatorMatrix[i][j] = operatorList[i](self.graph)
-                    self.operatorMatrix[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                    self.operatorMatrix[i][j].inputs["Input"].connect(self.inputs["Input"])
                     self.operatorMatrix[i][j].inputs["Sigma"].setValue(self.destSigma)
                     if scaleMultiplyList[i]:
                         self.operatorMatrix[i][j].inputs["Sigma2"].setValue(self.destSigma*scaleMultiplyList[i])
@@ -304,7 +301,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     k += 1
                     
         self.stacker.inputs["AxisFlag"].setValue('c')
-        self.stacker.inputs["AxisIndex"].setValue(self.source.outputs["Output"].meta.axistags.index('c'))
+        self.stacker.inputs["AxisIndex"].setValue(self.inputs["Input"].meta.axistags.index('c'))
         self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
         
         self.outputs["Output"].meta.axistags = self.stacker.outputs["Output"].meta.axistags
@@ -335,7 +332,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
         #Request Required Region
         srcRoi = roi.expandByShape(self.maxSigma*self.windowSize)
-        source = self.source.outputs["Output"](srcRoi.start,srcRoi.stop).wait()
+        source = self.inputs["Input"](srcRoi.start,srcRoi.stop).wait()
         
         #disconnect all operators
         opM = self.operatorMatrix
