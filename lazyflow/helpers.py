@@ -120,29 +120,36 @@ class AxisIterator:
     array. sourceAxis and destinationAxis specify the volume which is iterated
     over. Transform specifies the ratio between the source and destinaton slices.  
     """
-    def __init__(self, source, sourceAxis, destination, destinationAxis, transform):
+    def __init__(self, source, sourceAxis, destination, destinationAxis, transform,destinationTags=None):
         self.source = source
         self.dest = destination
+        self.sourceAxisDict,self.revSourceAxisDict = self.createAxisDicts(source)
+        #this distinction is JUST for lazyflow
+        if hasattr(destination,'meta.axistags') or hasattr(destination,'axistags'):
+            self.destAxisDict,self.revDestAxisDict = self.createAxisDicts(destination) 
+        else:
+            self.destAxisDict,self.revDestAxisDict = self.sourceAxisDict,self.revSourceAxisDict
         self.sourceAxis = self.axisStringParser(sourceAxis)
         self.destAxis = self.axisStringParser(destinationAxis)
-        self.createAxisDicts()
-        self.transform = self.transformParser(transform)
+        self.transform = [self.transformParser(transform[0],self.sourceAxisDict),\
+                          self.transformParser(transform[1],self.destAxisDict)]
         self.setupIterSpace()
 
-    def transformParser(self,transform):
-        transform = [(1,) * len(self.source.shape) if len(transform[i]) == 0 \
-                     else transform[i] for i in range(len(transform))]
-        if type(transform[1]) == dict:
+    def transformParser(self,transform,axisDict):
+        if len(transform) == 0:
+            transform = (1,) * len(axisDict)  
+        if type(transform) == dict:
             tmp = [1]*len(self.dest.shape)
             for s in list('txyzc'):
-                if s in transform[1].keys():
-                    tmp[self.axisDict[s]] = transform[1][s]
-            transform[1] = tuple(tmp)
+                if s in transform.keys():
+                    tmp[axisDict[s]] = transform[s]
+            transform = tuple(tmp)
         return transform
         
-    def createAxisDicts(self):
-        self.axisDict = dict((self.source.axistags[i].key,i) for i in range(len(self.source.axistags)))
-        self.revAxisDict = dict((v, k) for k, v in self.axisDict.iteritems())
+    def createAxisDicts(self,array):
+        axisDict = dict((array.axistags[i].key,i) for i in range(len(array.axistags)))
+        revAxisDict = dict((v, k) for k, v in axisDict.iteritems())
+        return axisDict,revAxisDict    
         
     def axisStringParser(self,axis=None):
         axis = list(axis)
@@ -163,11 +170,11 @@ class AxisIterator:
         return self.iterSpace.__iter__()
 
     def setupIterSpace(self):
-        def getSlicing(shape, string, transform = None):
+        def getSlicing(shape, string,revAxDic, transform = None):
             slicing = []
             mask = []
             for i in range(len(shape)):
-                if self.revAxisDict[i] in [s for s in list('txyzc') if s not in string]:
+                if revAxDic[i] in [s for s in list('txyzc') if s not in string]:
                     mask.append(range(0, shape[i],transform[i]))
                 else:
                     mask.append(None)
@@ -188,5 +195,5 @@ class AxisIterator:
                 slicing.append(sl)
             return slicing
         
-        self.iterSpace = zip(getSlicing(self.source.shape, self.sourceAxis,self.transform[0]),\
-                             getSlicing(self.dest.shape, self.destAxis,self.transform[1]))
+        self.iterSpace = zip(getSlicing(self.source.shape, self.sourceAxis,self.revSourceAxisDict,self.transform[0]),\
+                             getSlicing(self.dest.shape, self.destAxis,self.revDestAxisDict,self.transform[1]))
