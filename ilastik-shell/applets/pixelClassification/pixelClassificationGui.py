@@ -302,8 +302,10 @@ class PixelClassificationGui(QMainWindow):
                         assert(firstRow == lastRow) #only one data item changes at a time
         
                         #in this case, the actual data (for example color) has changed
-                        self.switchColor(firstRow+1, _labelControlUi.labelListModel[firstRow].color)
-                        self.editor.scheduleSlicesRedraw()
+                        color = _labelControlUi.labelListModel[firstRow].color
+                        self._colorTable16[firstRow+1] = color.rgba()
+                        self.editor.brushingModel.setBrushColor(color)
+                        self.initLabelLayer()
                     else:
                         #this column is used for the 'delete' buttons, we don't care
                         #about data changed here
@@ -537,13 +539,7 @@ class PixelClassificationGui(QMainWindow):
             #FIXME: shouldn't be just row+1 here
             self.editor.brushingModel.setDrawnNumber(row+1)
             self.editor.brushingModel.setBrushColor(self._labelControlUi.labelListModel[row].color)
-        
-    def switchColor(self, row, color):
-        with Tracer(traceLogger):
-            logger.debug("label=%d changes color to %r" % (row, color))
-            self.labellayer.colorTable[row]=color.rgba()
-            self.editor.brushingModel.setBrushColor(color)
-
+    
     def event(self, event):
         """
         Hook in to the Qt event mechanism to handle custom events.
