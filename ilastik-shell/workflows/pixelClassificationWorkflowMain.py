@@ -1,3 +1,15 @@
+import h5py
+# Before doing anything else, monkey-patch ndarray to always init with nans.
+# (Hopefully this will help us track down a bug...)
+import numpy
+class nan_ndarray(numpy.ndarray):
+    def __init__(self, *args, **kwargs):
+        super(nan_ndarray, self).__init__(*args, **kwargs)
+        self[...] = numpy.nan
+        self.monkeypatched = True
+numpy.original_ndarray = numpy.ndarray
+numpy.ndarray = nan_ndarray
+
 #make the program quit on Ctrl+C
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -20,6 +32,7 @@ from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
 
 import ilastik_logging
 ilastik_logging.startUpdateInterval(10)
+
 
 app = QApplication([])
 
@@ -137,13 +150,14 @@ def test():
     from functools import partial
     
     # Open a test project
-    shell.openProjectFile('/home/bergs/synapse_small.ilp')
+    #shell.openProjectFile('/home/bergs/synapse_small.ilp')
     #shell.openProjectFile('/home/bergs/flyem.ilp')
     #shell.openProjectFile('/tmp/synapse_small.ilp')
     #shell.openProjectFile('/home/bergs/dummy.ilp')
+    shell.openProjectFile('/tmp/gigafly.ilp')
     
     # Select a drawer
-    #shell.setSelectedAppletDrawer( 7 )
+    shell.setSelectedAppletDrawer( 3 )
     
     # Check the 'interactive mode' checkbox.
     #QTimer.singleShot( 2000, partial(pcApplet.centralWidget._labelControlUi.checkInteractive.setChecked, True) )
