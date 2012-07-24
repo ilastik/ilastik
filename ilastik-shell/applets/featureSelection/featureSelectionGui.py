@@ -192,7 +192,15 @@ class FeatureSelectionGui(LayerViewerGui):
             # Give the new features to the pipeline (if there are any)
             featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
             if featureMatrix.any():
+                previousFeatureCount = numpy.count_nonzero(self.mainOperator.SelectionMatrix.value)
+                newFeatureCount = numpy.count_nonzero(featureMatrix)
+
                 self.mainOperator.SelectionMatrix.setValue( featureMatrix )
+                
+                # FIXME: If the features changed but the NUMBER of features didn't, then the 
+                #        LayerViewerGui.updateAllLayers function won't get called unless we call it explicitly here.
+                if previousFeatureCount == newFeatureCount:
+                    self.updateAllLayers()
             else:
                 # Not valid to give a matrix with no features selected.
                 # Disconnect.
