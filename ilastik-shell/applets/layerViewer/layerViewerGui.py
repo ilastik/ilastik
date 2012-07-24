@@ -315,6 +315,11 @@ class LayerViewerGui(QMainWindow):
             # Load the ui file into this class (find it in our own directory)
             localDir = os.path.split(__file__)[0]
             uic.loadUi(localDir+"/centralWidget.ui", self)
+
+            # Menu is specified in a separate ui file with a dummy window
+            self.menuGui = uic.loadUi(localDir+"/menu.ui") # Save as member so it doesn't get picked up by GC
+            self.menuBar = self.menuGui.menuBar
+            self.menuView = self.menuGui.menuView
                 
             def toggleDebugPatches(show):
                 self.editor.showDebugPatches = show
@@ -361,15 +366,15 @@ class LayerViewerGui(QMainWindow):
                     self.editor.imageViews[self.editor._lastImageViewFocus].centerImage()
                     self.actionOnly_for_current_view.setEnabled(True)
             
-            self.actionCenterAllImages.triggered.connect(centerAllImages)
-            self.actionCenterImage.triggered.connect(centerImage)
-            self.actionToggleAllHuds.triggered.connect(hideHud)
-            self.actionToggleSelectedHud.triggered.connect(toggleSelectedHud)
-            self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
-            self.actionFitToScreen.triggered.connect(fitToScreen)
-            self.actionFitImage.triggered.connect(fitImage)
-            self.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
-            self.actionRubberBandZoom.triggered.connect(rubberBandZoom)
+            self.menuGui.actionCenterAllImages.triggered.connect(centerAllImages)
+            self.menuGui.actionCenterImage.triggered.connect(centerImage)
+            self.menuGui.actionToggleAllHuds.triggered.connect(hideHud)
+            self.menuGui.actionToggleSelectedHud.triggered.connect(toggleSelectedHud)
+            self.menuGui.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
+            self.menuGui.actionFitToScreen.triggered.connect(fitToScreen)
+            self.menuGui.actionFitImage.triggered.connect(fitImage)
+            self.menuGui.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
+            self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)
                 
     def initEditor(self):
         """

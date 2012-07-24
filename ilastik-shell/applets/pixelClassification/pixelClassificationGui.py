@@ -197,6 +197,11 @@ class PixelClassificationGui(QMainWindow):
             if p == "/": p = "."+p
             uic.loadUi(p+"/centralWidget.ui", self)
             
+            # Menu is specified in a separate ui file with a dummy window
+            self.menuGui = uic.loadUi(p+"/menu.ui") # Save as member so it doesn't get picked up by GC
+            self.menuBar = self.menuGui.menuBar
+            self.menuView = self.menuGui.menuView
+            
             def toggleDebugPatches(show):
                 self.editor.showDebugPatches = show
             def fitToScreen():
@@ -243,15 +248,15 @@ class PixelClassificationGui(QMainWindow):
                     self.editor.imageViews[self.editor._lastImageViewFocus].centerImage()
                     self.actionOnly_for_current_view.setEnabled(True)
             
-            self.actionCenterAllImages.triggered.connect(centerAllImages)
-            self.actionCenterImage.triggered.connect(centerImage)
-            self.actionToggleAllHuds.triggered.connect(hideHud)
-            self.actionToggleSelectedHud.triggered.connect(toggleSelectedHud)
-            self.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
-            self.actionFitToScreen.triggered.connect(fitToScreen)
-            self.actionFitImage.triggered.connect(fitImage)
-            self.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
-            self.actionRubberBandZoom.triggered.connect(rubberBandZoom)
+            self.menuGui.actionCenterAllImages.triggered.connect(centerAllImages)
+            self.menuGui.actionCenterImage.triggered.connect(centerImage)
+            self.menuGui.actionToggleAllHuds.triggered.connect(hideHud)
+            self.menuGui.actionToggleSelectedHud.triggered.connect(toggleSelectedHud)
+            self.menuGui.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
+            self.menuGui.actionFitToScreen.triggered.connect(fitToScreen)
+            self.menuGui.actionFitImage.triggered.connect(fitImage)
+            self.menuGui.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
+            self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)
                     
             self.layerstack = LayerStackModel()
             self.predictionLayers = set()

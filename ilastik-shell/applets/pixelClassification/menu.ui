@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>ClassificationWorkflowWindow</class>
- <widget class="QMainWindow" name="ClassificationWorkflowWindow">
+ <class>DummyWindow</class>
+ <widget class="QMainWindow" name="DummyWindow">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -13,29 +13,37 @@
   <property name="windowTitle">
    <string>Ilastik Classification Workflow</string>
   </property>
-  <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_3">
-    <property name="margin">
-     <number>0</number>
+  <widget class="QWidget" name="dummy"/>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1339</width>
+     <height>29</height>
+    </rect>
+   </property>
+   <property name="nativeMenuBar">
+    <bool>false</bool>
+   </property>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>&amp;View</string>
     </property>
-    <item>
-     <widget class="QSplitter" name="splitter">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <widget class="VolumeEditorWidget" name="volumeEditorWidget" native="true">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-         <horstretch>99</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-      </widget>
-     </widget>
-    </item>
-   </layout>
+    <addaction name="actionFitToScreen"/>
+    <addaction name="actionToggleAllHuds"/>
+    <addaction name="actionCenterAllImages"/>
+    <addaction name="actionShowDebugPatches"/>
+    <addaction name="separator"/>
+    <addaction name="actionOnly_for_current_view"/>
+    <addaction name="actionFitImage"/>
+    <addaction name="actionToggleSelectedHud"/>
+    <addaction name="actionCenterImage"/>
+    <addaction name="actionReset_zoom"/>
+    <addaction name="actionRubberBandZoom"/>
+   </widget>
+   <addaction name="menuView"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <action name="actionOpenFile">
    <property name="icon">
     <iconset>
@@ -210,13 +218,6 @@
    </property>
   </action>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>VolumeEditorWidget</class>
-   <extends>QWidget</extends>
-   <header>volumina.volumeEditorWidget</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>
