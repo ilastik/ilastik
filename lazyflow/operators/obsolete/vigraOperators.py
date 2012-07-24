@@ -1078,7 +1078,7 @@ class OpH5WriterBigDataset(Operator):
         hdf5Path = self.inputs["hdf5Path"].value
 
         hdf5GroupName, datasetName = os.path.split(hdf5Path)
-        if hdf5Path in self.f:
+        if hdf5GroupName in self.f:
             g = self.f[hdf5GroupName]
         else:
             g = self.f.create_group(hdf5GroupName)
