@@ -2,13 +2,22 @@ import h5py
 # Before doing anything else, monkey-patch ndarray to always init with nans.
 # (Hopefully this will help us track down a bug...)
 import numpy
+from abc import ABCMeta
+original_ndarray = numpy.ndarray
 class nan_ndarray(numpy.ndarray):
+    __metaclass__ = ABCMeta
+    
     def __init__(self, *args, **kwargs):
         super(nan_ndarray, self).__init__(*args, **kwargs)
         self[...] = numpy.nan
         self.monkeypatched = True
-numpy.original_ndarray = numpy.ndarray
+
+    @classmethod
+    def __subclasshook__(cls, C):
+        return C is nan_ndarray or C is original_ndarray
+
 numpy.ndarray = nan_ndarray
+assert isinstance(numpy.zeros((1,)), numpy.ndarray)
 
 #make the program quit on Ctrl+C
 import signal
