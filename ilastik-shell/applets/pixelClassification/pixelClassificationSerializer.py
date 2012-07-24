@@ -199,10 +199,10 @@ class PixelClassificationSerializer(AppletSerializer):
                         
                     # If we were cancelled, delete the predictions we just started
                     if not self.predictionStorageEnabled:
-                        self.deleteIfPresent('Predictions/' + datasetName)
+                        self.deleteIfPresent(predictionDir, datasetName)
                         startProgress = progress[0]
-                        
-                    self._dirtyFlags[Section.Predictions] = False
+                    else:
+                        self._dirtyFlags[Section.Predictions] = False
 
     def cancel(self):
         """Currently, this only cancels prediction storage."""
