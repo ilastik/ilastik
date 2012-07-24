@@ -62,6 +62,9 @@ from lazyflow import stype
 
 from lazyflow.tracer import Tracer
 
+# Get the original ndarray type (in case somebody monkeypatched it with a subclass for debug purposes)
+original_ndarray = type(numpy.zeros((1,)))
+
 class OrderedSignal(object):
     """
     A callback mechanism that ensures callbacks occur in the same order as subscription.
@@ -812,7 +815,8 @@ class Slot(object):
         else:
             # _value case
             return self._value
-        if isinstance(temp, numpy.ndarray) and temp.shape != (1,):
+        
+        if isinstance(temp, original_ndarray) and temp.shape != (1,):
             return temp
         else:
             return temp[0]

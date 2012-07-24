@@ -17,6 +17,8 @@ from lazyflow.roi import roiToSlice
 import logging
 logger = logging.getLogger(__name__)
 
+# Get the original ndarray type (in case somebody monkeypatched it with a subclass for debug purposes)
+original_ndarray = type(numpy.zeros((1,)))
 
 class OpXToMulti(Operator):
 
@@ -155,7 +157,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             self.scales = self.inputs["Scales"].value
             self.matrix = self.inputs["Matrix"].value
 
-            if type(self.matrix)!=numpy.ndarray:
+            if not isinstance(self.matrix, original_ndarray):
                 raise RuntimeError("OpPixelFeatures: Please input a numpy.ndarray as 'Matrix'")
 
             dimCol = len(self.scales)
