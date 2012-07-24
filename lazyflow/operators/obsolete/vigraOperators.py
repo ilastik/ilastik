@@ -155,7 +155,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             self.scales = self.inputs["Scales"].value
             self.matrix = self.inputs["Matrix"].value
 
-            if type(self.matrix)!=numpy.ndarray:
+            if not isinstance(self.matrix, numpy.ndarray):
                 raise RuntimeError("OpPixelFeatures: Please input a numpy.ndarray as 'Matrix'")
 
             dimCol = len(self.scales)
