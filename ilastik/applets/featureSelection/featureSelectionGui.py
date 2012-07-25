@@ -192,7 +192,10 @@ class FeatureSelectionGui(LayerViewerGui):
             # Give the new features to the pipeline (if there are any)
             featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
             if featureMatrix.any():
-                previousFeatureCount = numpy.count_nonzero(self.mainOperator.SelectionMatrix.value)
+                if self.mainOperator.SelectionMatrix.ready():
+                    previousFeatureCount = numpy.count_nonzero(self.mainOperator.SelectionMatrix.value)
+                else:
+                    previousFeatureCount = 0
                 newFeatureCount = numpy.count_nonzero(featureMatrix)
 
                 self.mainOperator.SelectionMatrix.setValue( featureMatrix )
