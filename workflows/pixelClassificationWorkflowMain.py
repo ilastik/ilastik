@@ -14,7 +14,7 @@ class nan_ndarray(numpy.ndarray):
 
     @classmethod
     def __subclasshook__(cls, C):
-        return C is nan_ndarray or C is original_ndarray
+        return C is nan_ndarray or issubclass(C, original_ndarray)
 
 numpy.ndarray = nan_ndarray
 assert isinstance(numpy.zeros((1,)), numpy.ndarray)
