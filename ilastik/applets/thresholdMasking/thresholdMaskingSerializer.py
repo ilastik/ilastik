@@ -1,4 +1,4 @@
-from ilastikshell.appletSerializer import AppletSerializer
+from ilastik.ilastikshell.appletSerializer import AppletSerializer
 
 class ThresholdMaskingSerializer(AppletSerializer):
     """

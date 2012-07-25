@@ -1,4 +1,4 @@
-from ilastikshell.applet import Applet
+from ilastik.ilastikshell.applet import Applet
 
 from opBatchIo import OpBatchIo
 

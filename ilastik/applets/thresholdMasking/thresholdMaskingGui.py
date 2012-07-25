@@ -3,7 +3,7 @@ from PyQt4 import uic
 
 import os
 
-from applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer import LayerViewerGui
 from volumina.widgets.thresholdingWidget import ThresholdingWidget
 
 import logging
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 from lazyflow.tracer import Tracer
 
-from utility import bind
+from ilastik.utility import bind
 
 class ThresholdMaskingGui(LayerViewerGui):
     """

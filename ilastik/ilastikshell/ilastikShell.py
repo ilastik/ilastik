@@ -14,7 +14,7 @@ import os
 from functools import partial
 
 from versionManager import VersionManager
-from utility import bind, ThunkEvent, ThunkEventHandler
+from ilastik.utility import bind, ThunkEvent, ThunkEventHandler
 from lazyflow.graph import MultiOutputSlot
 
 import sys
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 from lazyflow.tracer import Tracer
 
-import ilastik_logging
+import ilastik.ilastik_logging
 
 import applet
 import appletGuiInterface
@@ -644,7 +644,7 @@ class IlastikShell( QMainWindow ):
         self.currentProjectFile = None
 
         # Stop the thread that checks for log config changes.
-        ilastik_logging.stopUpdates()
+        ilastik.ilastik_logging.stopUpdates()
 
         qApp.quit()
 

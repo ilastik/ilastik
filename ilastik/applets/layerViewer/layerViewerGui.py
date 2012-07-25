@@ -9,7 +9,7 @@ from lazyflow.graph import OperatorWrapper
 from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
 
 import os
-from utility import bind
+from ilastik.utility import bind
 
 from volumina.adaptors import Op5ifyer
 

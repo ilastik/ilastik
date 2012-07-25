@@ -9,8 +9,8 @@ import os
 import copy
 import glob
 import h5py
-from utility import bind
-from utility.pathHelpers import getPathVariants
+from ilastik.utility import bind
+from ilastik.utility.pathHelpers import getPathVariants
 
 import vigra
 

@@ -1,4 +1,4 @@
-from ilastikshell.applet import Applet
+from ilastik.ilastikshell.applet import Applet
 from opPixelClassification import OpPixelClassification
 from pixelClassificationGui import PixelClassificationGui
 from pixelClassificationSerializer import PixelClassificationSerializer, Ilastik05ImportDeserializer

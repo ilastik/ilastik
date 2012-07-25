@@ -6,14 +6,14 @@ from igms.featureDlg import FeatureDlg
 
 import os
 import numpy
-from utility import bind
+from ilastik.utility import bind
 
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
 from lazyflow.tracer import Tracer
-from applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer import LayerViewerGui
 
 class FeatureSelectionGui(LayerViewerGui):
     """

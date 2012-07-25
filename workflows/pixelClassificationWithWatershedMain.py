@@ -5,22 +5,23 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 from PyQt4.QtCore import QTimer
 
-from ilastikshell.ilastikShell import IlastikShell, SideSplitterSizePolicy
+from ilastik.ilastikshell.ilastikShell import IlastikShell, SideSplitterSizePolicy
 
-from applets.pixelClassification import PixelClassificationApplet
-from applets.projectMetadata import ProjectMetadataApplet
-from applets.dataSelection import DataSelectionApplet
-from applets.featureSelection import FeatureSelectionApplet
-from applets.batchIo import BatchIoApplet
-from applets.vigraWatershedViewer import VigraWatershedViewerApplet
+from ilastik.applets.pixelClassification import PixelClassificationApplet
+from ilastik.applets.projectMetadata import ProjectMetadataApplet
+from ilastik.applets.dataSelection import DataSelectionApplet
+from ilastik.applets.featureSelection import FeatureSelectionApplet
+from ilastik.applets.batchIo import BatchIoApplet
+from ilastik.applets.vigraWatershedViewer import VigraWatershedViewerApplet
 
-from applets.featureSelection.opFeatureSelection import OpFeatureSelection
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector, OpMetadataInjector
 
-import ilastik_logging
-ilastik_logging.startUpdateInterval(10)
+import ilastik.ilastik_logging
+ilastik.ilastik_logging.default_config.init()
+ilastik.ilastik_logging.startUpdateInterval(10)
 
 def main():
     app = QApplication([])

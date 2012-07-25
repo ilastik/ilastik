@@ -2,11 +2,11 @@ from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 from PyQt4.QtCore import QTimer 
 
 import lazyflow
-from ilastikshell import IlastikShell, SideSplitterSizePolicy
-from applets.dataSelection import DataSelectionApplet
-from applets.vigraWatershedViewer import VigraWatershedViewerApplet
+from ilastik.ilastikshell import IlastikShell, SideSplitterSizePolicy
+from ilastik.applets.dataSelection import DataSelectionApplet
+from ilastik.applets.vigraWatershedViewer import VigraWatershedViewerApplet
 
-import ilastik_logging
+import ilastik.ilastik_logging
 
 def createShell():
     # This Graph is shared by all applets and operators
@@ -30,8 +30,8 @@ def createShell():
     return shell
 
 if __name__ == "__main__":
-        
-    ilastik_logging.startUpdateInterval(10)
+    ilastik.ilastik_logging.default_config.init()
+    ilastik.ilastik_logging.startUpdateInterval(10)
     app = QApplication([])
     
     # Splash Screen

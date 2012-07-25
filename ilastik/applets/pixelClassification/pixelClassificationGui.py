@@ -16,14 +16,14 @@ from volumina.adaptors import Op5ifyer
 from igms.labelListView import Label
 from igms.labelListModel import LabelListModel
 
-import ilastikshell
-from ilastikshell.applet import Applet, ShellRequest
+import ilastik.ilastikshell
+from ilastik.ilastikshell.applet import Applet, ShellRequest
 
 import vigra
 import threading
 
-from utility.simpleSignal import SimpleSignal
-from utility import bind, ThunkEvent, ThunkEventHandler
+from ilastik.utility.simpleSignal import SimpleSignal
+from ilastik.utility import bind, ThunkEvent, ThunkEventHandler
 
 import logging
 from lazyflow.tracer import Tracer
@@ -425,11 +425,11 @@ class PixelClassificationGui(QMainWindow):
             # If we're changing modes, enable/disable other applets accordingly
             if self.interactiveModeActive != checked:
                 if checked:
-                    self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.DisableUpstream )
-                    self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.DisableDownstream )
+                    self.guiControlSignal.emit( ilastik.ilastikshell.applet.ControlCommand.DisableUpstream )
+                    self.guiControlSignal.emit( ilastik.ilastikshell.applet.ControlCommand.DisableDownstream )
                 else:
-                    self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop )                
-                    self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop )
+                    self.guiControlSignal.emit( ilastik.ilastikshell.applet.ControlCommand.Pop )                
+                    self.guiControlSignal.emit( ilastik.ilastikshell.applet.ControlCommand.Pop )
             self.interactiveModeActive = checked
 
     def changeInteractionMode( self, toolId ):

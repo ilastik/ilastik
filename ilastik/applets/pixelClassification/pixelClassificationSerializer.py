@@ -2,8 +2,8 @@ import os
 import tempfile
 import vigra
 import h5py
-from ilastikshell.appletSerializer import AppletSerializer
-from utility import bind
+from ilastik.ilastikshell.appletSerializer import AppletSerializer
+from ilastik.utility import bind
 from lazyflow.operators import OpH5WriterBigDataset
 import threading
 

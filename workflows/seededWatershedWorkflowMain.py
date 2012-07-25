@@ -4,12 +4,12 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 
-from ilastikshell.ilastikShell import IlastikShell
+from ilastik.ilastikshell.ilastikShell import IlastikShell
 
-from applets.seededWatershed import SeededWatershedApplet
-from applets.projectMetadata import ProjectMetadataApplet
-from applets.dataSelection import DataSelectionApplet
-#from applets.featureSelection import FeatureSelectionApplet
+from ilastik.applets.seededWatershed import SeededWatershedApplet
+from ilastik.applets.projectMetadata import ProjectMetadataApplet
+from ilastik.applets.dataSelection import DataSelectionApplet
+#from ilastik.applets.featureSelection import FeatureSelectionApplet
 from lazyflow.graph import Graph
 
 app = QApplication([])

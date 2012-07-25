@@ -29,8 +29,8 @@ from ilastikshell.applet import Applet
 
 import vigra
 
-from utility.simpleSignal import SimpleSignal
-from utility import bind
+from ilastik.utility.simpleSignal import SimpleSignal
+from ilastik.utility import bind
 
 #force QT4 toolkit for the enthought traits UI
 os.environ['ETS_TOOLKIT'] = 'qt4'

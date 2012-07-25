@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
-from ilastikshell import VersionManager
-from utility.simpleSignal import SimpleSignal
+from ilastik.ilastikshell import VersionManager
+from ilastik.utility.simpleSignal import SimpleSignal
 
 class AppletSerializer(object):
     __metaclass__ = ABCMeta # Force subclasses to override abstract methods and properties

@@ -4,7 +4,7 @@ from PyQt4 import uic
 import random
 import os
 
-from applets.layerViewer import LayerViewerGui
+from ilastik.applets.layerViewer import LayerViewerGui
 
 import logging
 logger = logging.getLogger(__name__)

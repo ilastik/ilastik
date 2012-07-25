@@ -1,12 +1,13 @@
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 
 import lazyflow
-from ilastikshell import IlastikShell, SideSplitterSizePolicy
-from applets.dataSelection import DataSelectionApplet
-from applets.thresholdMasking import ThresholdMaskingApplet
+from ilastik.ilastikshell import IlastikShell, SideSplitterSizePolicy
+from ilastik.applets.dataSelection import DataSelectionApplet
+from ilastik.applets.thresholdMasking import ThresholdMaskingApplet
 
-import ilastik_logging
-ilastik_logging.startUpdateInterval(10)
+import ilastik.ilastik_logging
+ilastik.ilastik_logging.default_config.init()
+ilastik.ilastik_logging.startUpdateInterval(10)
 
 def createShell():
     # This Graph is shared by all applets and operators

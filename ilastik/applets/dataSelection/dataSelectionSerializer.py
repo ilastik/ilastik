@@ -3,9 +3,9 @@ from lazyflow.operators.ioOperators import OpStackToH5Writer
 
 import os
 import copy
-from utility import bind
+from ilastik.utility import bind
 
-from ilastikshell.appletSerializer import AppletSerializer
+from ilastik.ilastikshell.appletSerializer import AppletSerializer
 
 import logging
 logger = logging.getLogger(__name__)

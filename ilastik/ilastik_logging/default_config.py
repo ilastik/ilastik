@@ -20,7 +20,7 @@ default_log_config = {
         "console":{
             "level":"DEBUG",
             #"class":"logging.StreamHandler",
-            "class":"ilastik_logging.loggingHelpers.StdOutStreamHandler",
+            "class":"ilastik.ilastik_logging.loggingHelpers.StdOutStreamHandler",
             "formatter": "location"
         },
         "console_warn":{
@@ -31,7 +31,7 @@ default_log_config = {
         "console_trace":{
             "level":"DEBUG",
             #"class":"logging.StreamHandler",
-            "class":"ilastik_logging.loggingHelpers.StdOutStreamHandler",
+            "class":"ilastik.ilastik_logging.loggingHelpers.StdOutStreamHandler",
             "formatter": "verbose"
         },
     },

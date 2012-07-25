@@ -4,13 +4,13 @@ from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators import OpH5WriterBigDataset
 import copy
 
-from applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
 
 import numpy
 import uuid
 import h5py
 
-from utility.pathHelpers import PathComponents
+from ilastik.utility.pathHelpers import PathComponents
 
 class ExportFormat():
     H5 = 0

@@ -1,4 +1,4 @@
-import utility #<-- ilastik shell utility module
+import ilastik.utility
 
 class ProjectMetadata(object):
     """
@@ -7,7 +7,7 @@ class ProjectMetadata(object):
     """
     def __init__(self):
         # This signal notifies subscribers that an item of metadata was changed
-        self.changedSignal = utility.SimpleSignal()
+        self.changedSignal = ilastik.utility.SimpleSignal()
 
         self._projectName = ""
         self._labeler = ""

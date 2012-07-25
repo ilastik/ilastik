@@ -1,8 +1,8 @@
 import numpy
 
-from ilastikshell.appletSerializer import AppletSerializer
+from ilastik.ilastikshell.appletSerializer import AppletSerializer
 
-from utility import bind
+from ilastik.utility import bind
 
 import logging
 logger = logging.getLogger(__name__)

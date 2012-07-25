@@ -7,11 +7,11 @@ from functools import partial
 import os
 import sys
 import copy
-import utility # This is the ilastik shell utility module
-from utility import bind
-from utility import PathComponents
+import ilastik.utility # This is the ilastik shell utility module
+from ilastik.utility import bind
+from ilastik.utility import PathComponents
 
-import ilastikshell.applet
+import ilastik.ilastikshell.applet
 
 import logging
 logger = logging.getLogger(__name__)
