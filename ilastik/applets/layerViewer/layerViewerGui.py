@@ -40,7 +40,7 @@ class LayerViewerGui(QMainWindow):
         return self
 
     def appletDrawers(self):
-        return ['Viewer', QWidget()]
+        return [('Viewer', QWidget())]
 
     def menus( self ):
         return [self.menuView] # From the .ui file
