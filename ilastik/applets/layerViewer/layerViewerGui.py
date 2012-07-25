@@ -126,7 +126,7 @@ class LayerViewerGui(QMainWindow):
             for provider in self.dataProviderSlots:
                 provider.notifyRemove( bind( handleDatasetRemoval ) )
 
-    def setupLayers(self):
+    def setupLayers(self, imageIndex):
         # Users of this class have two choices:
         # 1) Provide a callback for setupLayers via the __init__ function argument
         # 2) Subclass this GUI class and override the setupLayers() function.
@@ -222,7 +222,11 @@ class LayerViewerGui(QMainWindow):
 
     def areProvidersInSync(self):
         with Tracer(traceLogger):
-            numImages = len(self.dataProviderSlots[0])
+            try:
+                numImages = len(self.dataProviderSlots[0])
+            except IndexError: # dataProviderSlots is empty
+                pass
+
             for slot in self.dataProviderSlots:
                 if len(slot) != numImages:
                     return False        
