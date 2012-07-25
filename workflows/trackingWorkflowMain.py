@@ -33,6 +33,7 @@ from ilastik.applets.pixelClassification import PixelClassificationApplet
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
+from ilastik.applets.connectedComponents.connectedComponentsApplet import ConnectedComponentsApplet
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 
@@ -63,6 +64,7 @@ projectMetadataApplet = ProjectMetadataApplet()
 dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
 featureSelectionApplet = FeatureSelectionApplet(graph, "Feature Selection", "FeatureSelections")
 pcApplet = PixelClassificationApplet(graph, "PixelClassification")
+ccApplet = ConnectedComponentsApplet( graph )
 
 ## Access applet operators
 opData = dataSelectionApplet.topLevelOperator
@@ -97,6 +99,7 @@ shell.addApplet(projectMetadataApplet)
 shell.addApplet(dataSelectionApplet)
 shell.addApplet(featureSelectionApplet)
 shell.addApplet(pcApplet)
+shell.addApplet(ccApplet)
 
 # The shell needs a slot from which he can read the list of image names to switch between.
 # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
