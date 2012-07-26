@@ -4,7 +4,6 @@ from opDataSelection import OpDataSelection
 
 from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 from dataSelectionPreferencesManager import DataSelectionPreferencesManager
-from dataSelectionGui import DataSelectionGui, GuiMode
 
 from lazyflow.graph import OperatorWrapper
 
@@ -25,13 +24,17 @@ class DataSelectionApplet( Applet ):
         if supportIlastik05Import:
             self._serializableItems.append(Ilastik05DataSelectionDeserializer(self._topLevelOperator))
 
-        guiMode = { True: GuiMode.Batch, False: GuiMode.Normal }[batchDataGui]
-        self._gui = DataSelectionGui( self._topLevelOperator, self._serializableItems[0], guiMode )
+        self._gui = None
+        self.batchDataGui = batchDataGui
         
         self._preferencesManager = DataSelectionPreferencesManager()
     
     @property
     def gui( self ):
+        if self._gui is None:
+            from dataSelectionGui import DataSelectionGui, GuiMode
+            guiMode = { True: GuiMode.Batch, False: GuiMode.Normal }[self.batchDataGui]
+            self._gui = DataSelectionGui( self._topLevelOperator, self._serializableItems[0], guiMode )
         return self._gui
 
     @property

@@ -1,6 +1,5 @@
 from ilastik.ilastikshell.applet import Applet
 from projectMetadataSerializer import ProjectMetadataSerializer, Ilastik05ProjectMetadataDeserializer
-from projectMetadataGui import ProjectMetadataGui
 from projectMetadata import ProjectMetadata
 
 class ProjectMetadataApplet( Applet ):
@@ -11,7 +10,9 @@ class ProjectMetadataApplet( Applet ):
         Applet.__init__( self, "Project Metadata" )
         
         self._projectMetadata = ProjectMetadata()
-        self._gui = ProjectMetadataGui(self._projectMetadata)
+
+        self._gui = None # Created on first acess
+
         self._serializableItems = [ ProjectMetadataSerializer(self._projectMetadata, "ProjectMetadata"),
                                     Ilastik05ProjectMetadataDeserializer(self._projectMetadata) ]
 
@@ -21,6 +22,9 @@ class ProjectMetadataApplet( Applet ):
 
     @property
     def gui(self):
+        if self._gui is None:
+            from projectMetadataGui import ProjectMetadataGui
+            self._gui = ProjectMetadataGui(self._projectMetadata)
         return self._gui
 
     @property

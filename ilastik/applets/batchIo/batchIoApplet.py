@@ -3,7 +3,6 @@ from ilastik.ilastikshell.applet import Applet
 from opBatchIo import OpBatchIo
 
 from batchIoSerializer import BatchIoSerializer
-from batchIoGui import BatchIoGui
 
 from lazyflow.graph import OperatorWrapper
 
@@ -23,7 +22,8 @@ class BatchIoApplet( Applet ):
 
         self._serializableItems = [ BatchIoSerializer(self._topLevelOperator, title) ]
 
-        self._gui = BatchIoGui( self._topLevelOperator, self.guiControlSignal, self.progressSignal, title )
+        self._gui = None
+        self._title = title
         
     @property
     def dataSerializers(self):
@@ -35,6 +35,9 @@ class BatchIoApplet( Applet ):
 
     @property
     def gui(self):
+        if self._gui is None:
+            from batchIoGui import BatchIoGui
+            self._gui = BatchIoGui( self._topLevelOperator, self.guiControlSignal, self.progressSignal, self._title )
         return self._gui
 
 

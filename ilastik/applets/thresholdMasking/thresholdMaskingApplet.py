@@ -1,7 +1,6 @@
 from ilastik.ilastikshell.applet import Applet
 
 from opThresholdMasking import OpThresholdMasking
-from thresholdMaskingGui import ThresholdMaskingGui
 from thresholdMaskingSerializer import ThresholdMaskingSerializer
 
 from lazyflow.graph import OperatorWrapper
@@ -16,7 +15,7 @@ class ThresholdMaskingApplet( Applet ):
         # Wrap the top-level operator, since the GUI supports multiple images
         self._topLevelOperator = OperatorWrapper( OpThresholdMasking(graph), promotedSlotNames=['InputImage'] )
 
-        self._gui = ThresholdMaskingGui(self._topLevelOperator)
+        self._gui = None
         
         self._serializableItems = [ ThresholdMaskingSerializer(self._topLevelOperator, projectFileGroupName) ]
         
@@ -34,4 +33,7 @@ class ThresholdMaskingApplet( Applet ):
 
     @property
     def gui(self):
+        if self._gui is None:
+            from thresholdMaskingGui import ThresholdMaskingGui
+            self._gui = ThresholdMaskingGui(self._topLevelOperator)
         return self._gui

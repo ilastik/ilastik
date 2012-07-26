@@ -1,7 +1,6 @@
 from ilastik.ilastikshell.applet import Applet
 
 from opVigraWatershedViewer import OpVigraWatershedViewer
-from vigraWatershedViewerGui import VigraWatershedViewerGui
 #from vigraWatershedSerializer import VigraWatershedSerializer
 
 from lazyflow.graph import OperatorWrapper
@@ -16,7 +15,7 @@ class VigraWatershedViewerApplet( Applet ):
         # Wrap the top-level operator, since the GUI supports multiple images
         self._topLevelOperator = OperatorWrapper( OpVigraWatershedViewer(graph), promotedSlotNames=['InputImage'] )
 
-        self._gui = VigraWatershedViewerGui(self._topLevelOperator)
+        self._gui = None # Created on first access
         
         self._serializableItems = []
         #self._serializableItems = [ VigraWatershedSerializer(self._topLevelOperator, projectFileGroupName) ]
@@ -35,4 +34,7 @@ class VigraWatershedViewerApplet( Applet ):
 
     @property
     def gui(self):
+        if self._gui is None:
+            from vigraWatershedViewerGui import VigraWatershedViewerGui
+            self._gui = VigraWatershedViewerGui(self._topLevelOperator)
         return self._gui
