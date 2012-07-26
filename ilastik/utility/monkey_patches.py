@@ -15,7 +15,8 @@ class nan_ndarray(numpy.ndarray):
     
     def __init__(self, *args, **kwargs):
         super(nan_ndarray, self).__init__(*args, **kwargs)
-        self[...] = numpy.nan
+        if self.dtype == numpy.dtype('float32') or self.dtype == numpy.dtype('float32'):
+            self[...] = numpy.nan
 
     @classmethod
     def __subclasshook__(cls, C):
