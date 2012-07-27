@@ -188,18 +188,59 @@ shell.addApplet(batchInputApplet)
 shell.addApplet(batchResultsApplet)
 
 import h5py
-shell.openProjectFile('/tmp/gigafly.ilp')
 
-# Enable prediction saving
-pcApplet.topLevelOperator.FreezePredictions.setValue(False)
-pcApplet.dataSerializers[0].predictionStorageEnabled = True
+projectFilePath = '/tmp/gigafly.ilp'
+print "Opening Project: " + projectFilePath
+shell.openProjectFile(projectFilePath)
 
-# Save the project (which will request all predictions)
-shell.saveProject()
+## Enable prediction saving
+#pcApplet.topLevelOperator.FreezePredictions.setValue(False)
+#pcApplet.dataSerializers[0].predictionStorageEnabled = True
+#
+## Save the project (which will request all predictions)
+#shell.saveProject()
+#
+#pcApplet.dataSerializers[0].predictionStorageEnabled = False
 
-pcApplet.dataSerializers[0].predictionStorageEnabled = False
+from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
+datasetInfo = DatasetInfo()
+datasetInfo.location = DatasetInfo.Location.FileSystem
+datasetInfo.filePath = "/home/bergs/synapse_small.npy"
+datasetInfo.allowLabels = False
+
+opBatchInputs.Dataset.setValues( [datasetInfo] )
+
+from ilastik.applets.batchIo.opBatchIo import ExportFormat
+opBatchResults.ExportDirectory.setValue('')
+opBatchResults.Format.setValue(ExportFormat.H5)
+opBatchResults.Suffix.setValue('_predictions')
+
+print "Exporting data to " + opBatchResults.OutputDataPath[0].value
+
+currentProgress = [None]
+def handleProgress(percentComplete):
+    if currentProgress[0] != percentComplete:
+        currentProgress[0] = percentComplete
+        print "{}% complete.".format(percentComplete)
+    
+progressSignal = opBatchResults.ProgressSignal[0].value
+progressSignal.subscribe( handleProgress )
+
+result = opBatchResults.ExportResult[0].value
+
+shell.closeCurrentProject()
+assert result
 
 print "FINISHED."
+
+
+
+
+
+
+
+
+
 
 
 
