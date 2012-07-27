@@ -11,6 +11,7 @@ import ilastik.utility # This is the ilastik shell utility module
 from ilastik.utility import bind
 from ilastik.utility import PathComponents
 
+from ilastik import ilastikshell
 import ilastik.ilastikshell.applet
 
 import logging
@@ -277,7 +278,7 @@ class BatchIoGui(QMainWindow):
                     
                     result = slot.value
                     if not result:
-                        logger.error("Failed to export an image.")            
+                        logger.error("Failed to export an image.")
     
                     # We're finished with this file. 
                     self.progressSignal.emit( 100*(i+1)/float(len(slotList)) )

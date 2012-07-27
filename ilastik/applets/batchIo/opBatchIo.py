@@ -40,8 +40,8 @@ class OpBatchIo(Operator):
     ImageToExport = InputSlot()             # The image that needs to be saved
 
     Dirty = OutputSlot(stype='bool')            # Whether or not the result currently matches what's on disk
-    OutputDataPath = OutputSlot(stype='string') # When requested, attempts to store the data to disk.  Returns the path that the data was saved to.
-    ExportResult = OutputSlot(stype='string')
+    OutputDataPath = OutputSlot(stype='string')
+    ExportResult = OutputSlot(stype='string')   # When requested, attempts to store the data to disk.  Returns the path that the data was saved to.
     
     ProgressSignal = OutputSlot(stype='object')
 
