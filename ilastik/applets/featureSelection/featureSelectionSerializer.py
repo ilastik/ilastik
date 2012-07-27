@@ -1,6 +1,6 @@
 import numpy
 
-from ilastik.ilastikshell.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import AppletSerializer
 
 from ilastik.utility import bind
 

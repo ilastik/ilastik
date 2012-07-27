@@ -1,4 +1,4 @@
-from ilastik.ilastikshell.applet import Applet
+from ilastik.applets.base.applet import Applet
 from projectMetadataSerializer import ProjectMetadataSerializer, Ilastik05ProjectMetadataDeserializer
 from projectMetadata import ProjectMetadata
 

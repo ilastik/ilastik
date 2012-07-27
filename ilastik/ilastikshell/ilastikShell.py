@@ -14,7 +14,8 @@ import os
 from functools import partial
 
 from ilastik.versionManager import VersionManager
-from ilastik.utility import bind, ThunkEvent, ThunkEventHandler
+from ilastik.utility import bind
+from ilastik.utility.gui import ThunkEvent, ThunkEventHandler
 from lazyflow.graph import MultiOutputSlot
 
 import sys
@@ -25,8 +26,8 @@ from lazyflow.tracer import Tracer
 
 import ilastik.ilastik_logging
 
-import applet
-import appletGuiInterface
+from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
+from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
 
 import platform
 import numpy
@@ -329,10 +330,10 @@ class IlastikShell( QMainWindow ):
             self.appletBar.setCurrentIndex( modelIndex.parent() )
 
     def addApplet( self, app ):
-        assert isinstance( app, applet.Applet ), "Applets must inherit from Applet base class."
+        assert isinstance( app, Applet ), "Applets must inherit from Applet base class."
         assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
 
-        assert issubclass( type(app.gui), appletGuiInterface.AppletGuiInterface ), "Applet GUIs must conform to the Applet GUI interface."
+        assert issubclass( type(app.gui), AppletGuiInterface ), "Applet GUIs must conform to the Applet GUI interface."
         
         self._applets.append(app)
         applet_index = len(self._applets) - 1
@@ -374,7 +375,7 @@ class IlastikShell( QMainWindow ):
                 
         return applet_index
 
-    def handleAppletGuiControlSignal(self, applet_index, command=applet.ControlCommand.DisableAll):
+    def handleAppletGuiControlSignal(self, applet_index, command=ControlCommand.DisableAll):
         """
         Applets fire a signal when they want other applet GUIs to be disabled.
         This function handles the signal.
@@ -382,7 +383,7 @@ class IlastikShell( QMainWindow ):
         A special command, Pop, undoes the applet's most recent command (i.e. re-enables the applets that were disabled).
         If an applet is disabled twice (e.g. by two different applets), then it won't become enabled again until both commands have been popped.
         """
-        if command == applet.ControlCommand.Pop:
+        if command == ControlCommand.Pop:
             command = self._controlCmds[applet_index].pop()
             step = -1 # Since we're popping this command, we'll subtract from the disable counts
         else:
@@ -391,10 +392,10 @@ class IlastikShell( QMainWindow ):
 
         # Increase the disable count for each applet that is affected by this command.
         for index, count in enumerate(self._disableCounts):
-            if (command == applet.ControlCommand.DisableAll) \
-            or (command == applet.ControlCommand.DisableDownstream and index > applet_index) \
-            or (command == applet.ControlCommand.DisableUpstream and index < applet_index) \
-            or (command == applet.ControlCommand.DisableSelf and index == applet_index):
+            if (command == ControlCommand.DisableAll) \
+            or (command == ControlCommand.DisableDownstream and index > applet_index) \
+            or (command == ControlCommand.DisableUpstream and index < applet_index) \
+            or (command == ControlCommand.DisableSelf and index == applet_index):
                 self._disableCounts[index] += step
 
         # Update the control states in the GUI thread
@@ -405,7 +406,7 @@ class IlastikShell( QMainWindow ):
         An applet is asking us to do something.  Handle the request.
         """
         with Tracer(traceLogger):
-            if requestAction == applet.ShellRequest.RequestSave:
+            if requestAction == ShellRequest.RequestSave:
                 # Call the handler directly to ensure this is a synchronous call (not queued to the GUI thread)
                 self.onSaveProjectActionTriggered()
 

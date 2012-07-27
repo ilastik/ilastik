@@ -17,13 +17,13 @@ from igms.labelListView import Label
 from igms.labelListModel import LabelListModel
 
 import ilastik.ilastikshell
-from ilastik.ilastikshell.applet import Applet, ShellRequest
+from ilastik.applets.base.applet import Applet, ShellRequest, ControlCommand
 
 import vigra
 import threading
 
-from ilastik.utility.simpleSignal import SimpleSignal
-from ilastik.utility import bind, ThunkEvent, ThunkEventHandler
+from ilastik.utility import bind, SimpleSignal
+from ilastik.utility.gui import ThunkEvent, ThunkEventHandler
 
 import logging
 from lazyflow.tracer import Tracer

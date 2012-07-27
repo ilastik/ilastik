@@ -12,7 +12,7 @@ from ilastik.utility import bind
 from ilastik.utility import PathComponents
 
 from ilastik import ilastikshell
-import ilastik.ilastikshell.applet
+import ilastik.applets.base.applet
 
 import logging
 logger = logging.getLogger(__name__)
@@ -258,10 +258,10 @@ class BatchIoGui(QMainWindow):
         with Tracer(traceLogger):
             try:
                 # Don't let anyone change the classifier while we're exporting...
-                self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.DisableUpstream )
+                self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.DisableUpstream )
                 
                 # Also disable this applet's controls
-                self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.DisableSelf )
+                self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.DisableSelf )
 
                 # Start with 1% so the progress bar shows up
                 self.progressSignal.emit(1)
@@ -291,8 +291,8 @@ class BatchIoGui(QMainWindow):
                 raise
             finally:            
                 # Now that we're finished, it's okay to use the other applets again.
-                self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop ) # Enable ourselves
-                self.guiControlSignal.emit( ilastikshell.applet.ControlCommand.Pop ) # Enable the others we disabled
+                self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.Pop ) # Enable ourselves
+                self.guiControlSignal.emit( ilastik.applets.base.applet.ControlCommand.Pop ) # Enable the others we disabled
 
     def exportResultsForSlot(self, slot, progressSlot):
         with Tracer(traceLogger):
