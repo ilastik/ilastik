@@ -33,13 +33,16 @@ def updateFromConfigFile():
 interval = 0
 current_tag = 0
 timer = None
+timer_cancelled = False
 
 def periodicUpdate( tag ):
     # Start a new timer if another one hasn't been started in the meantime
-    if tag == current_tag:
+    global timer_cancelled
+    if tag == current_tag and not timer_cancelled:
         global timer
         updateFromConfigFile()
         timer = threading.Timer( interval, partial(periodicUpdate, tag) )
+        timer.daemon = True # Don't let this thread prevent application shutdown
         timer.start()
 
 def startUpdateInterval(nseconds):
@@ -49,9 +52,12 @@ def startUpdateInterval(nseconds):
     interval = nseconds
     periodicUpdate(current_tag)
 
+@atexit.register
 def stopUpdates():
     global current_tag
     global timer
+    global timer_cancelled
     current_tag = -1
+    timer_cancelled = True
     if timer:
         timer.cancel()
