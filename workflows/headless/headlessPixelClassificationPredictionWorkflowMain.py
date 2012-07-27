@@ -4,8 +4,6 @@ import ilastik.utility.monkey_patches # Must be the first import
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-from ilastik.ilastikshell.ilastikShell import IlastikShell, SideSplitterSizePolicy
-
 from ilastik.applets.pixelClassification import PixelClassificationApplet
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
@@ -205,7 +203,7 @@ shell.openProjectFile(projectFilePath)
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 datasetInfo = DatasetInfo()
 datasetInfo.location = DatasetInfo.Location.FileSystem
-datasetInfo.filePath = "/home/bergs/synapse_small.npy"
+datasetInfo.filePath = "/home/bergs/synapse_small.h5/volume/data"
 datasetInfo.allowLabels = False
 
 opBatchInputs.Dataset.setValues( [datasetInfo] )
@@ -228,6 +226,7 @@ progressSignal.subscribe( handleProgress )
 
 result = opBatchResults.ExportResult[0].value
 
+print "Closing project..."
 shell.closeCurrentProject()
 assert result
 
