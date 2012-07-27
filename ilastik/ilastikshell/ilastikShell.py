@@ -13,7 +13,7 @@ import traceback
 import os
 from functools import partial
 
-from versionManager import VersionManager
+from ilastik.versionManager import VersionManager
 from ilastik.utility import bind, ThunkEvent, ThunkEventHandler
 from lazyflow.graph import MultiOutputSlot
 
