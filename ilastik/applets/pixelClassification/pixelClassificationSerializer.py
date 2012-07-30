@@ -53,6 +53,8 @@ class PixelClassificationSerializer(AppletSerializer):
     @predictionStorageEnabled.setter
     def predictionStorageEnabled(self, enabled):
         self._predictionStorageEnabled = enabled
+        if not self._predictionsPresent:
+            self._dirtyFlags[Section.Predictions] = True
         
     def _initDirtyFlags(self):
         self._dirtyFlags = { Section.Labels      : False,
@@ -151,9 +153,9 @@ class PixelClassificationSerializer(AppletSerializer):
             if self._dirtyFlags[Section.Predictions] or 'Predictions' not in topGroup.keys():
 
                 self.deleteIfPresent(topGroup, 'Predictions')
-                predictionDir = topGroup.create_group('Predictions')
 
                 if self.predictionStorageEnabled:
+                    predictionDir = topGroup.create_group('Predictions')
                     numImages = len(self.mainOperator.PredictionProbabilities)
     
                     if numImages > 0:
@@ -200,9 +202,11 @@ class PixelClassificationSerializer(AppletSerializer):
                     # If we were cancelled, delete the predictions we just started
                     if not self.predictionStorageEnabled:
                         self.deleteIfPresent(predictionDir, datasetName)
+                        self._predictionsPresent = False
                         startProgress = progress[0]
                     else:
                         self._dirtyFlags[Section.Predictions] = False
+                        self._predictionsPresent = True
 
     def cancel(self):
         """Currently, this only cancels prediction storage."""
@@ -219,6 +223,9 @@ class PixelClassificationSerializer(AppletSerializer):
             self._deserializeLabels( topGroup )
             self.progressSignal.emit(50)            
             self._deserializeClassifier( topGroup )
+            
+            self._predictionsPresent = 'Predictions' in topGroup.keys()
+            
             self.progressSignal.emit(100)
 
     def _deserializeLabels(self, topGroup):
