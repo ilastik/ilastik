@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
-from lazyflow.tracer import Tracer
+from lazyflow.tracer import Tracer, traceLogged
 
 class DataSelectionSerializer( AppletSerializer ):
     """
@@ -124,18 +124,19 @@ class DataSelectionSerializer( AppletSerializer ):
 
             return success
 
+    @traceLogged(traceLogger)
+    def initWithoutTopGroup(self, hdf5File, projectFilePath):
+        # The 'working directory' for the purpose of constructing absolute 
+        #  paths from relative paths is the project file's directory.
+        projectDir = os.path.split(projectFilePath)[0]
+        self.mainOperator.WorkingDirectory.setValue( projectDir )
+        self.mainOperator.ProjectDataGroup.setValue( self.topGroupName + '/local_data' )
+        self.mainOperator.ProjectFile.setValue( hdf5File )            
+
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         with Tracer(traceLogger):
-            # The 'working directory' for the purpose of constructing absolute 
-            #  paths from relative paths is the project file's directory.
-            projectDir = os.path.split(projectFilePath)[0]
-            self.mainOperator.WorkingDirectory.setValue( projectDir )
-            self.mainOperator.ProjectDataGroup.setValue( self.topGroupName + '/local_data' )
-            self.mainOperator.ProjectFile.setValue( hdf5File )
-    
-            if topGroup is None:
-                return
-    
+            self.initWithoutTopGroup(hdf5File, projectFilePath)
+
             infoDir = topGroup['infos']
             
             self.mainOperator.Dataset.resize( len(infoDir) )

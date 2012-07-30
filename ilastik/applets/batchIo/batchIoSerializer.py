@@ -62,9 +62,6 @@ class BatchIoSerializer(AppletSerializer):
         self._dirty = False
             
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
-        if topGroup is None:
-            return
-        
         try:
             exportDir = topGroup['ExportDirectory'][()]
             format = topGroup['Format'][()]
