@@ -1,23 +1,6 @@
 import h5py
-# Before doing anything else, monkey-patch ndarray to always init with nans.
-# (Hopefully this will help us track down a bug...)
 import numpy
 from abc import ABCMeta
-original_ndarray = numpy.ndarray
-class nan_ndarray(numpy.ndarray):
-    __metaclass__ = ABCMeta
-    
-    def __init__(self, *args, **kwargs):
-        super(nan_ndarray, self).__init__(*args, **kwargs)
-        self[...] = numpy.nan
-        self.monkeypatched = True
-
-    @classmethod
-    def __subclasshook__(cls, C):
-        return C is nan_ndarray or C is original_ndarray
-
-numpy.ndarray = nan_ndarray
-assert isinstance(numpy.zeros((1,)), numpy.ndarray)
 
 #make the program quit on Ctrl+C
 import signal
@@ -34,6 +17,7 @@ from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.connectedComponents.connectedComponentsApplet import ConnectedComponentsApplet
+from ilastik.applets.tracking.trackingApplet import TrackingApplet
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 
@@ -60,30 +44,32 @@ graph = Graph()
 ######################
 
 ## Create applets 
-projectMetadataApplet = ProjectMetadataApplet()
+# projectMetadataApplet = ProjectMetadataApplet()
 dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
-featureSelectionApplet = FeatureSelectionApplet(graph, "Feature Selection", "FeatureSelections")
-pcApplet = PixelClassificationApplet(graph, "PixelClassification")
-ccApplet = ConnectedComponentsApplet( graph )
+# featureSelectionApplet = FeatureSelectionApplet(graph, "Feature Selection", "FeatureSelections")
+# pcApplet = PixelClassificationApplet(graph, "PixelClassification")
+# ccApplet = ConnectedComponentsApplet( graph )
+trackingApplet = TrackingApplet( graph )
 
 ## Access applet operators
 opData = dataSelectionApplet.topLevelOperator
-opTrainingFeatures = featureSelectionApplet.topLevelOperator
-opClassify = pcApplet.topLevelOperator
+#opTrainingFeatures = featureSelectionApplet.topLevelOperator
+#opClassify = pcApplet.topLevelOperator
+
 
 ## Connect operators ##
 
 # Input Image -> Feature Op
 #         and -> Classification Op (for display)
-opTrainingFeatures.InputImage.connect( opData.Image )
-opClassify.InputImages.connect( opData.Image )
+#opTrainingFeatures.InputImage.connect( opData.Image )
+#opClassify.InputImages.connect( opData.Image )
 
 # Feature Images -> Classification Op (for training, prediction)
-opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
-opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
+#opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
+#opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
 
 # Training flags -> Classification Op (for GUI restrictions)
-opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
+#opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 
 
 
@@ -95,25 +81,24 @@ opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 shell = IlastikShell(sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
 
 # Add interactive workflow applets
-shell.addApplet(projectMetadataApplet)
-shell.addApplet(dataSelectionApplet)
-shell.addApplet(featureSelectionApplet)
-shell.addApplet(pcApplet)
-shell.addApplet(ccApplet)
+#shell.addApplet(projectMetadataApplet)
+#shell.addApplet(dataSelectionApplet)
+#shell.addApplet(featureSelectionApplet)
+#shell.addApplet(pcApplet)
+#shell.addApplet(ccApplet)
+shell.addApplet(trackingApplet)
 
 # The shell needs a slot from which he can read the list of image names to switch between.
 # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
-opSelectFilename = OperatorWrapper( OpAttributeSelector(graph=graph) )
-opSelectFilename.InputObject.connect( opData.Dataset )
-opSelectFilename.AttributeName.setValue( 'filePath' )
-shell.setImageNameListSlot( opSelectFilename.Result )
+#opSelectFilename = OperatorWrapper( OpAttributeSelector(graph=graph) )
+#opSelectFilename.InputObject.connect( opData.Dataset )
+#opSelectFilename.AttributeName.setValue( 'filePath' )
+#shell.setImageNameListSlot( opSelectFilename.Result )
 
 # Start the shell GUI.
 shell.show()
 
 # Hide the splash screen
 splashScreen.finish(shell)
-
-
 
 app.exec_()
