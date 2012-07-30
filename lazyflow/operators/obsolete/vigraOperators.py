@@ -1136,7 +1136,7 @@ class OpH5WriterBigDataset(Operator):
         activeRequests = deque()
         activeSlicings = deque()
         # Start by activating 10 requests 
-        for i in range(10):
+        for i in range( min(10, len(slicings)) ):
             s = slicings.pop()
             activeSlicings.append(s)
             activeRequests.append( self.inputs["Image"][s] )
