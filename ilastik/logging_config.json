@@ -12,7 +12,7 @@
         "ilastik":                                                      { "level":"INFO", "propagate": false },
         "ilastik.applets":                                              { "level":"INFO", "propagate": false },
         "ilastik.shell":                                                { "level":"INFO", "propagate": false },
-        "widgets":                                                      { "level":"DEBUG", "propagate": false },
+        "widgets":                                                      { "level":"INFO", "propagate": false },
         "volumina":                                                     { "level":"INFO", "propagate": false },
         "TRACE":                                                        { "level":"INFO", "propagate": false },
         "TRACE.lazyflow.graph.Slot":                                    { "level":"INFO", "propagate": false },
