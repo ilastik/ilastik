@@ -3,6 +3,7 @@ import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
+from PyQt4.QtCore import QTimer
 from ilastik.shell.gui.ilastikShell import IlastikShell, SideSplitterSizePolicy
 
 # Logging configuration
@@ -10,7 +11,7 @@ import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
 
-def startShellGui(workflowClass):
+def startShellGui(workflowClass, testFunc = None):
     """
     Start the ilastik shell GUI with the given workflow type.
     
@@ -34,8 +35,13 @@ def startShellGui(workflowClass):
     
     # Start the shell GUI.
     shell.show()
-    
+
     # Hide the splash screen
     splashScreen.finish(shell)
+
+    # Run a test (if given)
+    if testFunc:
+        import functools
+        QTimer.singleShot(1, functools.partial(testFunc, shell) )
 
     application.exec_()
