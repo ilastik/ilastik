@@ -178,7 +178,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                 else:
                     self.newScales.append(self.scales[j])
 
-                logger.info("Replacing scale %f with new scale %f" %(self.scales[j], self.newScales[j]))
+                logger.debug("Replacing scale %f with new scale %f" %(self.scales[j], self.newScales[j]))
 
             for i, featureId in enumerate(self.inputs["FeatureIds"].value):
                 if featureId == 'GaussianSmoothing':
