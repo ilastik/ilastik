@@ -35,6 +35,8 @@ class OpBatchIo(Operator):
     ExportDirectory = InputSlot(stype='filestring') # A separate directory to export to.  If '', then exports to the input data's directory
     Format = InputSlot(stype='int')                 # The export format
     Suffix = InputSlot(stype='string')              # Appended to the file name (before the extension)
+    
+    InternalPath = InputSlot(stype='string', optional=True) # Hdf5 internal path
 
     DatasetPath = InputSlot(stype='string') # The path to the original the dataset we're saving
     ImageToExport = InputSlot()             # The image that needs to be saved
@@ -78,9 +80,14 @@ class OpBatchIo(Operator):
         outputPath += '/' + inputPathComponents.filenameBase + self.Suffix.value + ext 
         
         # Set up the path for H5 export
-        if formatId == ExportFormat.H5:                    
-            # Use the same internal path that the input data used (if any)
-            if inputPathComponents.internalPath is not None:
+        if formatId == ExportFormat.H5:
+            if self.InternalPath.ready() and self.InternalPath.value != '':
+                # User-specified internal path
+                self._internalPath = self.InternalPath.value
+                if self._internalPath[0] != ['/']:
+                    self._internalPath = "/" + self._internalPath
+            elif inputPathComponents.internalPath is not None:
+                # Mirror the input data internal path
                 self._internalPath = inputPathComponents.internalPath
             else:
                 self._internalPath = '/volume/data'
@@ -138,47 +145,6 @@ class OpBatchIo(Operator):
             result[0] = not self.Dirty.value
 
             
-
-if __name__ == "__main__":
-    import vigra
-    from lazyflow.graph import Graph
-    from lazyflow.operators import OpGaussianSmoothing
-    from lazyflow.operators.ioOperators import OpInputDataReader
-    
-    graph = Graph()
-    opBatchIo = OpBatchIo(graph=graph)
-    
-    info = DatasetInfo()
-    info.filePath = '/home/bergs/5d.npy'
-    
-    opInput = OpInputDataReader(graph=graph)
-    opInput.FilePath.setValue( info.filePath )
-
-    # Our test "processing pipeline" is just a smoothing operator.
-    opSmooth = OpGaussianSmoothing(graph=graph)
-    opSmooth.Input.connect( opInput.Output )
-    opSmooth.sigma.setValue(3.0)
-
-    opBatchIo.ExportDirectory.setValue( '' )
-    opBatchIo.Suffix.setValue( '_results' )
-    opBatchIo.Format.setValue( ExportFormat.H5 )
-    opBatchIo.DatasetPath.setValue( info.filePath )
-    #opBatchIo.OutputPath.setValue( '/home/bergs/Smoothed.h5/volume/data' )
-    opBatchIo.ImageToExport.connect( opSmooth.Output )
-
-    dirty = opBatchIo.Dirty.value
-    assert dirty == True
-    
-    outputPath = opBatchIo.OutputDataPath.value
-    assert outputPath == '/home/bergs/5d_results.h5/volume/data'
-    
-    result = opBatchIo.ExportResult.value
-
-    dirty = opBatchIo.Dirty.value
-    assert dirty == False
-
-
-
 
 
 
