@@ -187,7 +187,7 @@ shell.addApplet(batchResultsApplet)
 
 import h5py
 
-projectFilePath = '/tmp/gigafly.ilp'
+projectFilePath = '/home/bergs/gigacube.ilp'
 print "Opening Project: " + projectFilePath
 shell.openProjectFile(projectFilePath)
 
