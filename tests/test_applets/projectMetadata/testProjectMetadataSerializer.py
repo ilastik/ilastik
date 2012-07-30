@@ -2,8 +2,8 @@ import os
 import numpy
 import h5py
 from lazyflow.graph import Graph
-from applets.projectMetadata import ProjectMetadata
-from applets.projectMetadata.projectMetadataSerializer import ProjectMetadataSerializer
+from ilastik.applets.projectMetadata import ProjectMetadata
+from ilastik.applets.projectMetadata.projectMetadataSerializer import ProjectMetadataSerializer
 
 class TestProjectMetadataSerializer(object):
     

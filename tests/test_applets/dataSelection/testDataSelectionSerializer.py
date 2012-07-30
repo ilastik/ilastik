@@ -2,8 +2,8 @@ import os
 import h5py
 import vigra
 from lazyflow.graph import Graph, OperatorWrapper
-from applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
-from applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
+from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
+from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 
 import logging
 logger = logging.getLogger(__name__)

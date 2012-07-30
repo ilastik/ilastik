@@ -2,8 +2,8 @@ import os
 import numpy
 import h5py
 from lazyflow.graph import Graph
-from applets.featureSelection.opFeatureSelection import OpFeatureSelection
-from applets.featureSelection.featureSelectionSerializer import FeatureSelectionSerializer
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+from ilastik.applets.featureSelection.featureSelectionSerializer import FeatureSelectionSerializer
 
 class TestFeatureSelectionSerializer(object):
 
