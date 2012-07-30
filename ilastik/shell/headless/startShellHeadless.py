@@ -28,6 +28,6 @@ def startShellHeadless(workflowClass, projectFilePath):
     # For now, headless shell doesn't do anything that requires knowledge of image names.
     #shell.setImageNameListSlot( workflow.imageNameListSlot )
 
-    shell.openProjectFile(projectFilePath)
+    shell.projectManager.openProjectFile(projectFilePath)
     
     return (shell, workflow)

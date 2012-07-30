@@ -48,7 +48,7 @@ progressSignal.subscribe( handleProgress )
 result = opBatchResults.ExportResult[0].value
 
 print "Closing project..."
-shell.closeCurrentProject()
+shell.projectManager.closeCurrentProject()
 assert result
 
 print "FINISHED."
