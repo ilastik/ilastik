@@ -44,7 +44,7 @@ class OpInputDataReader(Operator):
 
         if useRelativePath:
             # If using a relative path, we need both inputs before proceeding
-            if not self.WorkingDirectory.connected():
+            if not self.WorkingDirectory.ready():
                 return
             else:
                 # Convert this relative path into an absolute path
