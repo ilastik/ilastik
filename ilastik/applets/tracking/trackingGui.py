@@ -33,7 +33,7 @@ class TrackingGui( QWidget ):
         return []
 
     def viewerControlWidget( self ):
-        return QWidget()
+        return self._viewerControlWidget
 
     def setImageIndex( self, imageIndex ):
         print "tracking.setImageIndex not implemented"
@@ -50,14 +50,25 @@ class TrackingGui( QWidget ):
         super(TrackingGui, self).__init__()
         self.mainOperator = mainOperator
         self.layerstack = LayerStackModel()
-        self.editor = None
-        self.initEditor()
 
-        src = LazyflowSource( self.mainOperator.Output )
-        layer = GrayscaleLayer( src )
+        self.src = LazyflowSource( self.mainOperator.Output )
+        layer = GrayscaleLayer( self.src )
         self.layerstack.append(layer)
 
-    def initEditor(self):
+        self._viewerControlWidget = None
+        self._initViewerControlUi()
+
+        self.editor = None
+        self._initEditor()
+
+        self.mainOperator.Output.notifyMetaChanged( self._onOutputMetaChanged)
+
+
+    def _onOutputMetaChanged( self, slot ):
+        print "trackingGui: onMetaChanged", slot
+        self.editor.dataShape = slot.meta.shape
+
+    def _initEditor(self):
         """
         Initialize the Volume Editor GUI.
         """
@@ -71,17 +82,15 @@ class TrackingGui( QWidget ):
 
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
+        model.canMoveSelectedUp.connect(self._viewerControlWidget.UpButton.setEnabled)
+        model.canMoveSelectedDown.connect(self._viewerControlWidget.DownButton.setEnabled)
+        model.canDeleteSelected.connect(self._viewerControlWidget.DeleteButton.setEnabled)     
 
-        # if self.__viewerControlWidget is not None:
-        #     model.canMoveSelectedUp.connect(self.__viewerControlWidget.UpButton.setEnabled)
-        #     model.canMoveSelectedDown.connect(self.__viewerControlWidget.DownButton.setEnabled)
-        #     model.canDeleteSelected.connect(self.__viewerControlWidget.DeleteButton.setEnabled)     
-
-        #     # Connect our layer movement buttons to the appropriate layerstack actions
-        #     self.__viewerControlWidget.layerWidget.init(model)
-        #     self.__viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
-        #     self.__viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
-        #     self.__viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
+        # Connect our layer movement buttons to the appropriate layerstack actions
+        self._viewerControlWidget.layerWidget.init(model)
+        self._viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
+        self._viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
+        self._viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
 
         self.editor._lastImageViewFocus = 0
 
@@ -112,6 +121,12 @@ class TrackingGui( QWidget ):
                 
             # self.mainOperator.MinValue.notifyDirty( bind(updateDrawerFromOperator) )
             # self.mainOperator.MaxValue.notifyDirty( bind(updateDrawerFromOperator) )
+
+    def _initViewerControlUi( self ):
+        p = os.path.split(__file__)[0]+'/'
+        if p == "/": p = "."+p
+        self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
+
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):

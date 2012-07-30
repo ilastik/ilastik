@@ -18,7 +18,6 @@ class TrackingApplet( Applet ):
 
         self._gui = TrackingGui(self._topLevelOperator)
         
-        #self._serializableItems = [ ThresholdMaskingSerializer(self._topLevelOperator, projectFileGroupName) ]
         self._serializableItems = [ TrackingSerializer(self._topLevelOperator, projectFileGroupName) ]
 
     @property
