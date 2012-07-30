@@ -47,9 +47,11 @@ default_log_config = {
         "lazyflow.operators":                   {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.operators.obsolete.vigraOperators":         { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.operators.obsolete.classifierOperators":    { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
+        "ilastik":                              {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
+        "ilastik.applets":                      {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
+        "ilastik.shell":                        {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
+        "widgets":                              {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "volumina":                             {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "applets":                              {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "ilastikshell":                         {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         # Python doesn't provide a trace log level, so we use a workaround.
         # By convention, trace loggers have the same hierarchy as the regular loggers, but are prefixed with 'TRACE' and always emite DEBUG messages
         # To enable trace messages, change one or more of these to use level DEBUG
