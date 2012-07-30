@@ -131,7 +131,9 @@ class DataSelectionSerializer( AppletSerializer ):
         projectDir = os.path.split(projectFilePath)[0]
         self.mainOperator.WorkingDirectory.setValue( projectDir )
         self.mainOperator.ProjectDataGroup.setValue( self.topGroupName + '/local_data' )
-        self.mainOperator.ProjectFile.setValue( hdf5File )            
+        self.mainOperator.ProjectFile.setValue( hdf5File )
+        
+        self._dirty = False
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         with Tracer(traceLogger):
