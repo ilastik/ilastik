@@ -1,7 +1,7 @@
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 
 import lazyflow
-from ilastik.ilastikshell import IlastikShell, SideSplitterSizePolicy
+from ilastik.shell.gui import IlastikShell, SideSplitterSizePolicy
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.thresholdMasking import ThresholdMaskingApplet
 

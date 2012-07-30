@@ -25,7 +25,7 @@ from volumina.adaptors import Op5ifyer
 from labelListView import Label
 from labelListModel import LabelListModel
 
-from ilastikshell.applet import Applet
+from ilastik.base.applet import Applet
 
 import vigra
 

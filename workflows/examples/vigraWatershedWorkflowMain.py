@@ -2,7 +2,7 @@ from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 from PyQt4.QtCore import QTimer 
 
 import lazyflow
-from ilastik.ilastikshell import IlastikShell, SideSplitterSizePolicy
+from ilastik.shell.gui import IlastikShell, SideSplitterSizePolicy
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.vigraWatershedViewer import VigraWatershedViewerApplet
 

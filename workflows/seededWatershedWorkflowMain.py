@@ -4,7 +4,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 
-from ilastik.ilastikshell.ilastikShell import IlastikShell
+from ilastik.shell.gui.ilastikShell import IlastikShell
 
 from ilastik.applets.seededWatershed import SeededWatershedApplet
 from ilastik.applets.projectMetadata import ProjectMetadataApplet

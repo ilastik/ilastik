@@ -11,7 +11,6 @@ import ilastik.utility # This is the ilastik shell utility module
 from ilastik.utility import bind
 from ilastik.utility import PathComponents
 
-from ilastik import ilastikshell
 import ilastik.applets.base.applet
 
 import logging
