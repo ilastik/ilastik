@@ -1,6 +1,9 @@
 from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen
 from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal
 
+import logging
+logger = logging.getLogger(__name__)
+
 class Label(QObject):
     changed      = pyqtSignal()
     colorChanged = pyqtSignal(QColor)
@@ -17,7 +20,7 @@ class Label(QObject):
     @color.setter
     def color(self, c):
         if self._color != c:
-            print "Label '%s' has new color %r" % (self._name, c)
+            logger.debug("Label '%s' has new color %r" % (self._name, c))
             self._color = c
             self.colorChanged.emit(c)
     
@@ -27,7 +30,7 @@ class Label(QObject):
     @name.setter
     def name(self, n):
         if self._name != n:
-            print "Label '%s' has new name '%s'" % (self._name, n)
+            logger.debug("Label '%s' has new name '%s'" % (self._name, n))
             self._name = n
             self.nameChanged.emit(n)
     
@@ -157,7 +160,7 @@ class LabelListModel(QAbstractTableModel):
     def removeRow(self, position, parent = QModelIndex()):
         self.beginRemoveRows(parent, position, position)
         value = self._labels[position]
-        print "removing row: ", value
+        logger.debug("removing row: ", value)
         self._labels.remove(value)     
         self.endRemoveRows()
         return True
