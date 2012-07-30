@@ -45,6 +45,7 @@ class PixelClassificationSerializer(AppletSerializer):
 
             self._predictionStorageEnabled = False
             self._predictionStorageRequest = None
+            self._predictionsPresent = False
                 
     @property
     def predictionStorageEnabled(self):
