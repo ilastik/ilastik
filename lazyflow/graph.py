@@ -817,18 +817,23 @@ class Slot(object):
         else:
             return temp[0]
 
-    def setValue(self, value, notify = True):
+    def setValue(self, value, notify = True, check_changed=True):
         """
         This method can be used to directly assign a value to an InputSlot or MultiInputSlot.
 
         Usually a slot is either connected to another slot from which it retrieves
         the content when it is queried, or it directly holds a value itself.
         This method can be used to set such a value.
+
+        If check_changed is True, the new value is compared to the current one and updates are
+        onyl triggerd if they differ. This check can take several seconds (for instance for
+        large array-like values). In that case you should turn off the check.
+
         """
         with Tracer(self.traceLogger):
             changed = True
             try:
-                if value == self._value:
+                if check_changed and value == self._value:
                     changed = False
             except:
                 pass
