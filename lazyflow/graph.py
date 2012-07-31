@@ -817,7 +817,7 @@ class Slot(object):
         else:
             return temp[0]
 
-    def setValue(self, value, notify = True, check_changed=True):
+    def setValue(self, value, notify = True, check_changed = True):
         """
         This method can be used to directly assign a value to an InputSlot or MultiInputSlot.
 
