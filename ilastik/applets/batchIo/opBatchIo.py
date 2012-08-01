@@ -10,6 +10,10 @@ import numpy
 import uuid
 import h5py
 
+import traceback
+import logging
+logger = logging.getLogger(__name__)
+
 from ilastik.utility.pathHelpers import PathComponents
 
 class ExportFormat():
@@ -84,7 +88,7 @@ class OpBatchIo(Operator):
             if self.InternalPath.ready() and self.InternalPath.value != '':
                 # User-specified internal path
                 self._internalPath = self.InternalPath.value
-                if self._internalPath[0] != ['/']:
+                if self._internalPath[0] != '/':
                     self._internalPath = "/" + self._internalPath
             elif inputPathComponents.internalPath is not None:
                 # Mirror the input data internal path
@@ -122,7 +126,13 @@ class OpBatchIo(Operator):
                 pathComp = PathComponents(self.OutputDataPath.value)
 
                 # Open the file
-                hdf5File = h5py.File(pathComp.externalPath)
+                try:
+                    hdf5File = h5py.File(pathComp.externalPath)
+                except:
+                    logger.error("Unable to open hdf5File: " + pathComp.externalPath)
+                    logger.error( traceback.format_exc() )
+                    result[0] = False
+                    return
                 
                 # Set up the write operator
                 opH5Writer = OpH5WriterBigDataset(graph=self.graph)
