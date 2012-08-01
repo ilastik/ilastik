@@ -2,7 +2,10 @@ import os
 import numpy
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.ioOperators import OpInputDataReader
-from applets.featureSelection.opFeatureSelection import OpFeatureSelection
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+
+import ilastik.ilastik_logging
+ilastik.ilastik_logging.default_config.init()
 
 class TestOpFeatureSelection(object):
     def setUp(self):
@@ -19,8 +22,8 @@ class TestOpFeatureSelection(object):
         reader = OpInputDataReader(graph=graph)
         
         # Set input data
-        # Note: Assumes that a samplef file called 5d.npy exists three directories up
-        filePath = os.getcwd() + '/../../../5d.npy'
+        # Note: Assumes that a sample file called 5d.npy exists in your home directory for testing
+        filePath = os.path.expanduser('~') + '/5d.npy'
         assert os.path.exists(filePath)
         
         reader.FilePath.setValue( filePath )
@@ -71,4 +74,4 @@ class TestOpFeatureSelection(object):
 
 if __name__ == "__main__":
     import nose
-    nose.main(defaultTest=__file__)
+    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})

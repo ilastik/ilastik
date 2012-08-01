@@ -4,8 +4,11 @@ import h5py
 import vigra
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
 from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache
-from applets.pixelClassification.opPixelClassification import OpPixelClassification
-from applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
+from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
+from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
+
+import ilastik.ilastik_logging
+ilastik.ilastik_logging.default_config.init()
 
 class OpMockPixelClassifier(Operator):
     """

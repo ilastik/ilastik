@@ -48,8 +48,6 @@ class FeatureSelectionSerializer(AppletSerializer):
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         with Tracer(traceLogger):
-            if topGroup is None:
-                return
             try:
                 scales = topGroup['Scales'].value
                 featureIds = topGroup['FeatureIds'].value

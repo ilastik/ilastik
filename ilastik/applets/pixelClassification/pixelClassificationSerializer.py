@@ -216,9 +216,6 @@ class PixelClassificationSerializer(AppletSerializer):
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         with Tracer(traceLogger):
-            if topGroup is None:
-                return
-
             self.progressSignal.emit(0)            
             self._deserializeLabels( topGroup )
             self.progressSignal.emit(50)            

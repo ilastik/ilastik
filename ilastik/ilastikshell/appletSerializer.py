@@ -56,6 +56,18 @@ class AppletSerializer(object):
         raise NotImplementedError
 
     #######################
+    # Optional methods    #
+    #######################
+
+    def initWithoutTopGroup(self, hdf5File, projectFilePath):
+        """
+        Optional override for subclasses.
+        Called when there is no top group to deserialize
+        Gives the applet a chance to inspect the hdf5File or project path, even though no top group is present in the file.
+        """
+        pass
+
+    #######################
     # Convenience methods #
     #######################
 
@@ -138,17 +150,20 @@ class AppletSerializer(object):
 
         self.progressSignal.emit(0)
 
-        # If the top group isn't there, call the deserializer with 'None'
+        # If the top group isn't there, call initWithoutTopGroup
         try:
             topGroup = hdf5File[self.topGroupName]
             groupVersion = topGroup['StorageVersion'][()]
         except KeyError:
             topGroup = None
             groupVersion = None
-        
+
         try:
-            # Call the subclass to do the actual work
-            self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath)
+            if topGroup is not None:
+                # Call the subclass to do the actual work
+                self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath)
+            else:
+                self.initWithoutTopGroup(hdf5File, projectFilePath)
         finally:
             self.progressSignal.emit(100)
 

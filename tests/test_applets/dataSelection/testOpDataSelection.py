@@ -4,7 +4,7 @@ import vigra
 import lazyflow
 import h5py
 from lazyflow.graph import Graph, OperatorWrapper
-from applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
+from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
 
 class TestOpDataSelection_Basic():
     
