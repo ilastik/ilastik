@@ -15,6 +15,7 @@ class OpTracking(Operator):
     #MaxValue = InputSlot(stype='int')
     
     Output = OutputSlot()
+    RawData = OutputSlot()
     #InvertedOutput = OutputSlot()
     
     def setupOutputs(self):

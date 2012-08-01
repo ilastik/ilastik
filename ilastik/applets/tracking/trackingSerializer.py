@@ -1,4 +1,5 @@
 from ilastik.ilastikshell.appletSerializer import AppletSerializer
+import vigra
 
 class TrackingSerializer(AppletSerializer):
     """
@@ -36,11 +37,33 @@ class TrackingSerializer(AppletSerializer):
 
         import h5py
 
-        with h5py.File('/home/bkausler/src/ilastik/tracking/relabeled-stack/labeledtracking.h5', 'r') as f:
-            tracked = f['labeledtracking'][0:1,...]
-        print tracked.shape
-        self.mainOperator.Output.setValue( tracked )
+        with h5py.File('/home/bkausler/src/ilastik/tracking/relabeled-stack/raw.h5', 'r') as f:
+            raw = f['raw.h5'][0:3,...]
 
+        with h5py.File('/home/bkausler/src/ilastik/tracking/relabeled-stack/labeledtracking.h5', 'r') as f:
+            tracked = f['labeledtracking'][0:3,...]
+        print tracked.shape, tracked.dtype
+
+        tracked = tracked.view(vigra.VigraArray)
+        tracked.axistags=vigra.AxisTags(
+                vigra.AxisInfo('t', vigra.AxisType.Time),
+                vigra.AxisInfo('x', vigra.AxisType.Space),
+                vigra.AxisInfo('y', vigra.AxisType.Space),
+                vigra.AxisInfo('z', vigra.AxisType.Space),
+                vigra.AxisInfo('c', vigra.AxisType.Channels))
+
+        raw = raw.view(vigra.VigraArray)
+        raw.axistags=vigra.AxisTags(
+                vigra.AxisInfo('t', vigra.AxisType.Time),
+                vigra.AxisInfo('x', vigra.AxisType.Space),
+                vigra.AxisInfo('y', vigra.AxisType.Space),
+                vigra.AxisInfo('z', vigra.AxisType.Space),
+                vigra.AxisInfo('c', vigra.AxisType.Channels))
+
+
+        print "vigraarray" ,tracked.dtype
+        self.mainOperator.RawData.setValue( raw, check_changed=False )
+        self.mainOperator.Output.setValue( tracked, check_changed=False )
         # minValue = topGroup['MinValue'][()]
         # maxValue = topGroup['MaxValue'][()]
         
