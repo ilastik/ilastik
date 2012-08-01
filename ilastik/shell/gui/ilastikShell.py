@@ -514,6 +514,9 @@ class IlastikShell( QMainWindow ):
             newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
             self.projectManager.importProject(importedFilePath, newProjectFile, newProjectFilePath)
 
+        # Now that a project is loaded, the user is allowed to save
+        self._shellActions.saveProjectAction.setEnabled(True)
+
         # Enable all the applet controls
         self.enableWorkflow = True
         self.updateAppletControlStates()
