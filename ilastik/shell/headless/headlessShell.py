@@ -37,5 +37,6 @@ class HeadlessShell(object):
             projectFilePath = name + "_imported" + ext
     
             logger.info("Importing project as '" + projectFilePath + "'")
-            self.projectManager.importProject(oldProjectFilePath, projectFilePath)
+            projectFile = self.projectManager.createBlankProjectFile(projectFilePath)
+            self.projectManager.importProject(oldProjectFilePath, projectFile, projectFilePath)
 
