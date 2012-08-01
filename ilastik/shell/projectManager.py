@@ -1,3 +1,4 @@
+import os
 import h5py
 import logging
 logger = logging.getLogger(__name__)
@@ -118,6 +119,8 @@ class ProjectManager(object):
         newProjectFile - An hdf5 handle to a new .ilp to load data into (must be open already)
         newProjectFilePath - The path to the new .ilp we're loading.
         """
+        importedFilePath = os.path.abspath(importedFilePath)
+        
         # Open and load the original project file
         importedFile = h5py.File(importedFilePath)
         self.loadProject(importedFile, importedFilePath)
