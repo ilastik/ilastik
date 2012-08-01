@@ -39,6 +39,8 @@ def getArgParser():
     parser = argparse.ArgumentParser(description="Pixel Classification Prediction Workflow")
     parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
     parser.add_argument('--generate_project_predictions', action='store_true', help="Compute full volume predictions for project data and save to project (otherwise, just export predictions for batch inputs).")
+    parser.add_argument('--batch_export_dir', default='', help='A directory to save batch outputs. (Default saves with input files)')
+    parser.add_argument('--batch_output_suffix', default='_predictions', help='Suffix for batch output filenames (before extension).')
     parser.add_argument('batch_inputs', nargs='*', help='List of input files to process. Supported filenames: .h5, .npy, or globstring for stacks (e.g. *.png)')
     return parser
 
@@ -76,7 +78,7 @@ def runWorkflow(parsed_args):
     # Predictions for other datasets ('batch datasets')
     result = True
     if len(args.batch_inputs) > 0:
-        result = generateBatchPredictions(workflow, args.batch_inputs)
+        result = generateBatchPredictions(workflow, args.batch_inputs, args.batch_export_dir, args.batch_output_suffix)
 
     logger.info("Closing project...")
     shell.projectManager.closeCurrentProject()
@@ -106,7 +108,7 @@ def generateProjectPredictions(shell, workflow):
     
     workflow.pcApplet.dataSerializers[0].predictionStorageEnabled = False
 
-def generateBatchPredictions(workflow, batchInputPaths):
+def generateBatchPredictions(workflow, batchInputPaths, batchExportDir, batchOutputSuffix):
     """
     Compute the predictions for each of the specified batch input files,
     and export them to corresponding h5 files.
@@ -126,9 +128,9 @@ def generateBatchPredictions(workflow, batchInputPaths):
     
     # Configure batch export operator
     opBatchResults = workflow.batchResultsApplet.topLevelOperator
-    opBatchResults.ExportDirectory.setValue('')
+    opBatchResults.ExportDirectory.setValue(batchExportDir)
     opBatchResults.Format.setValue(ExportFormat.H5)
-    opBatchResults.Suffix.setValue('_predictions')
+    opBatchResults.Suffix.setValue(batchOutputSuffix)
     
     logger.info( "Exporting data to " + opBatchResults.OutputDataPath[0].value )
 
@@ -180,7 +182,7 @@ def convertStacksToH5(filePaths):
     return filePaths
 
 if __name__ == "__main__":
-    if True:
+    if False:
         # DEBUG ARGS
         args = "--project=/home/bergs/synapse_small.ilp --generate_project_predictions /home/bergs/synapse_small.npy"
         sys.argv += args.split()
