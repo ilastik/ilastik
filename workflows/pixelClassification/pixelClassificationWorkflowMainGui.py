@@ -4,13 +4,16 @@ from ilastik.shell.gui.startShellGui import startShellGui
 from pixelClassificationWorkflow import PixelClassificationWorkflow
 
 
-debug_testing = False
+debug_testing = True
 if debug_testing:
     def test(shell):
         import h5py
-        projFilePath = '/home/bergs/gigacube.ilp'
-        projFile = h5py.File(projFilePath)
-        shell.loadProject(projFile, projFilePath)
+
+        projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
+        #projFilePath = '/home/bergs/gigacube.ilp'        
+
+        shell.openProjectFile(projFilePath)
+        
     
     startShellGui( PixelClassificationWorkflow, test )
 

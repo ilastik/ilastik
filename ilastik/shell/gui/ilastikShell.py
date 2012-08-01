@@ -453,10 +453,13 @@ class IlastikShell( QMainWindow ):
         if not self.ensureNoCurrentProject():
             return
         
-        h5File, projectFilePath = self.attemptCreateBlankProjectFile()
+        newProjectFilePath = self.getProjectPathToCreate()
+
+        if newProjectFilePath is not None:
+            newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
         
-        if h5File is not None:
-            self.loadProject(h5File, projectFilePath)
+        if newProjectFile is not None:
+            self.loadProject(newProjectFile, newProjectFilePath)
 
     def getProjectPathToCreate(self):
         """
@@ -537,17 +540,18 @@ class IlastikShell( QMainWindow ):
 
         projectFilePath = self.getProjectPathToOpen()
         if projectFilePath is not None:
-            try:
-                hdf5File = h5py.File(projectFilePath)
-            except:
-                QMessageBox.error(self, "Unable to open project file: " + projectFilePath)
-                return
-            
-            try:
-                self.loadProject(hdf5File, projectFilePath)
-            except ProjectManager.ProjectVersionError,e:
-                QMessageBox.error(self, "Could not open old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
-                return
+            self.openProjectFile(projectFilePath)
+    
+    def openProjectFile(self, projectFilePath):
+        try:
+            hdf5File = self.projectManager.openProjectFile(projectFilePath)
+        except ProjectManager.ProjectVersionError,e:
+            QMessageBox.warning(self, "Old Project", "Could not load old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
+        except:
+            logger.error( traceback.format_exc() )
+            QMessageBox.warning(self, "Corrupted Project", "Unable to open project file: " + projectFilePath)
+        else:
+            self.loadProject(hdf5File, projectFilePath)
     
     def loadProject(self, hdf5File, projectFilePath):
         """

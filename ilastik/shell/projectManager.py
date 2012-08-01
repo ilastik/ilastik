@@ -10,7 +10,7 @@ class ProjectManager(object):
     
     class ProjectVersionError(RuntimeError):
         def __init__(self, projectVersion, expectedVersion):
-            RuntimeError.__init__()
+            RuntimeError.__init__(self, "Incompatible project version: {} (Expected: {})".format(projectVersion, expectedVersion) )
             self.projectVersion = projectVersion
             self.expectedVersion = expectedVersion
     
@@ -40,13 +40,13 @@ class ProjectManager(object):
 
         projectVersion = 0.5
         if "ilastikVersion" in hdf5File.keys():
-            projectVersion = hdf5File["ilastikVersion"]
+            projectVersion = hdf5File["ilastikVersion"].value
 
         if projectVersion < VersionManager.CurrentIlastikVersion:
             # Must use importProject() for old project files.
-            raise ProjectManager.ProjectVersionError(projectVersion)
+            raise ProjectManager.ProjectVersionError(projectVersion, VersionManager.CurrentIlastikVersion)
         
-        self.loadProject(hdf5File, projectFilePath)
+        return hdf5File
 
     def loadProject(self, hdf5File, projectFilePath):
         """
