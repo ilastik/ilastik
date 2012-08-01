@@ -4,7 +4,16 @@ logger = logging.getLogger(__name__)
 
 import traceback
 
+from ilastik.versionManager import VersionManager
+
 class ProjectManager(object):
+    
+    class ProjectVersionError(RuntimeError):
+        def __init__(self, projectVersion, expectedVersion):
+            RuntimeError.__init__()
+            self.projectVersion = projectVersion
+            self.expectedVersion = expectedVersion
+    
     def __init__(self):
         self.currentProjectFile = None
         self.currentProjectPath = None
@@ -13,11 +22,30 @@ class ProjectManager(object):
     def addApplet(self, app):
         self._applets.append(app)
 
+    def createBlankProjectFile(self, projectFilePath):
+        """
+        Create a new ilp file at the given path and initialize it with a project version.
+        """
+        # Create the blank project file
+        h5File = h5py.File(projectFilePath, "w")
+        h5File.create_dataset("ilastikVersion", data=VersionManager.CurrentIlastikVersion)
+        
+        return h5File        
+
     def openProjectFile(self, projectFilePath):
         logger.info("Opening Project: " + projectFilePath)
 
         # Open the file as an HDF5 file
         hdf5File = h5py.File(projectFilePath)
+
+        projectVersion = 0.5
+        if "ilastikVersion" in hdf5File.keys():
+            projectVersion = hdf5File["ilastikVersion"]
+
+        if projectVersion < VersionManager.CurrentIlastikVersion:
+            # Must use importProject() for old project files.
+            raise ProjectManager.ProjectVersionError(projectVersion)
+        
         self.loadProject(hdf5File, projectFilePath)
 
     def loadProject(self, hdf5File, projectFilePath):

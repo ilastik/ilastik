@@ -1,3 +1,7 @@
+import os
+import logging
+logger = logging.getLogger(__name__)
+
 from ilastik.shell.projectManager import ProjectManager
 
 class HeadlessShell(object):
@@ -21,4 +25,16 @@ class HeadlessShell(object):
                 self._applets[i].gui.setImageIndex(newImageIndex)
                 
             self.currentImageIndex = newImageIndex
+
+    def openProjectPath(self, projectFilePath):
+        try:
+            self.projectManager.openProjectFile(projectFilePath)
+        except ProjectManager.ProjectVersionError:
+            # Couldn't open project.  Try importing it.
+            oldProjectFilePath = projectFilePath
+            name, ext = os.path.splitext(oldProjectFilePath)
+            projectFilePath = name + "_imported" + ext
+    
+            logger.info("Importing project as '" + projectFilePath + "'")
+            self.projectManager.importProject(oldProjectFilePath, projectFilePath)
 

@@ -9,7 +9,7 @@ ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
 
 from ilastik.shell.headless.headlessShell import HeadlessShell
 
-def startShellHeadless(workflowClass, projectFilePath):
+def startShellHeadless(workflowClass):
     """
     Start the ilastik shell in "headless" mode with the given workflow type.
     
@@ -28,6 +28,4 @@ def startShellHeadless(workflowClass, projectFilePath):
     # For now, headless shell doesn't do anything that requires knowledge of image names.
     #shell.setImageNameListSlot( workflow.imageNameListSlot )
 
-    shell.projectManager.openProjectFile(projectFilePath)
-    
     return (shell, workflow)

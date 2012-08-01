@@ -458,10 +458,9 @@ class IlastikShell( QMainWindow ):
         if h5File is not None:
             self.loadProject(h5File, projectFilePath)
 
-    def attemptCreateBlankProjectFile(self):
+    def getProjectPathToCreate(self):
         """
         Ask the user where he would like to create a project file.
-        Return (file, path) or (None,None) if he cancels.
         """
         logger.debug("Creating blank project file")
         
@@ -472,7 +471,7 @@ class IlastikShell( QMainWindow ):
             
             # If the user cancelled, stop now
             if projectFilePath.isNull():
-                return None, None
+                return None
     
             projectFilePath = str(projectFilePath)
             fileSelected = True
@@ -491,18 +490,8 @@ class IlastikShell( QMainWindow ):
                         # Try again...
                         fileSelected = False
 
-        return self.createBlankProjectFile(projectFilePath)
+        return projectFilePath
     
-    def createBlankProjectFile(self, projectFilePath):
-        """
-        Create a new ilp file at the given path and initialize it with a project version.
-        """
-        # Create the blank project file
-        h5File = h5py.File(projectFilePath, "w")
-        h5File.create_dataset("ilastikVersion", data=VersionManager.CurrentIlastikVersion)
-        
-        return h5File, projectFilePath        
-
     def onImportProjectActionTriggered(self):
         """
         Import an existing project into a new file.
@@ -513,14 +502,13 @@ class IlastikShell( QMainWindow ):
         if not self.ensureNoCurrentProject():
             return
 
-        # Select the original project (don't load it yet)
+        # Select the paths to the ilp to import and the name of the new one we'll create
         importedFilePath = self.getProjectPathToOpen()
-
-        # Select and create the new (blank) project file
-        newProjectFile, newProjectFilePath = self.attemptCreateBlankProjectFile()
+        newProjectFilePath = self.getProjectPathToCreate()
 
         # If the user didn't cancel
-        if importedFilePath is not None and newProjectFile is not None:
+        if importedFilePath is not None and newProjectFilePath is not None:
+            newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
             self.projectManager.importProject(importedFilePath, newProjectFile, newProjectFilePath)
 
         # Enable all the applet controls
@@ -549,8 +537,17 @@ class IlastikShell( QMainWindow ):
 
         projectFilePath = self.getProjectPathToOpen()
         if projectFilePath is not None:
-            hdf5File = h5py.File(projectFilePath)
-            self.loadProject(hdf5File, projectFilePath)
+            try:
+                hdf5File = h5py.File(projectFilePath)
+            except:
+                QMessageBox.error(self, "Unable to open project file: " + projectFilePath)
+                return
+            
+            try:
+                self.loadProject(hdf5File, projectFilePath)
+            except ProjectManager.ProjectVersionError,e:
+                QMessageBox.error(self, "Could not open old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
+                return
     
     def loadProject(self, hdf5File, projectFilePath):
         """
