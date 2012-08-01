@@ -1434,7 +1434,7 @@ class Operator(object):
             for name, islot in self.inputs.items():
                 islot.notifyUnready( self.handleInputBecameUnready )
     
-            if len(self.inputs.keys()) == 0:
+            if self.configured():
                 self._setupOutputs()
     
             self._initialized = True
