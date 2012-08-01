@@ -1434,11 +1434,10 @@ class Operator(object):
             for name, islot in self.inputs.items():
                 islot.notifyUnready( self.handleInputBecameUnready )
     
-            if len(self.inputs.keys()) == 0:
-                self._setupOutputs()
     
             self._initialized = True
-
+            if self.configured():
+                self._setupOutputs()
 
     def _instantiate_slots(self):
         with Tracer(self.traceLogger, msg=self.name):
