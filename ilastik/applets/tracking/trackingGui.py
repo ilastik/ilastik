@@ -54,12 +54,14 @@ class TrackingGui( QWidget ):
 
         self.rawsrc = LazyflowSource( self.mainOperator.RawData )
         layerraw = GrayscaleLayer( self.rawsrc )
+        layerraw.name = "Raw"
         self.layerstack.append( layerraw )
                                
         self.src = LazyflowSource( self.mainOperator.Output )
         ct = colortables.create_default_8bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         layer = ColortableLayer( self.src, ct )
+        layer.name = "Tracking"
         self.layerstack.append(layer)
 
         self._viewerControlWidget = None
@@ -68,6 +70,7 @@ class TrackingGui( QWidget ):
         self.editor = None
         self._initEditor()
 
+        self.editor.dataShape = self.mainOperator.RawData.meta.shape
         self.mainOperator.Output.notifyMetaChanged( self._onOutputMetaChanged)
 
 

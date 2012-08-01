@@ -1,4 +1,5 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
 
 import numpy
 
@@ -17,12 +18,27 @@ class OpTracking(Operator):
     Output = OutputSlot()
     RawData = OutputSlot()
     #InvertedOutput = OutputSlot()
+
+    def __init__( self, parent = None, graph = None, register = True ):
+        super(OpTracking, self).__init__(parent=parent,graph=graph,register=register)
+        self._rawReader = OpInputDataReader( graph )
+        self._rawReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/raw.h5/raw')
+        self.RawData.connect( self._rawReader.Output )
+
+        self._reader = OpInputDataReader( graph )
+        self._reader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/labeledtracking.h5/labeledtracking')
+        self.Output.connect( self._reader.Output )
+        
+        #self.Output.connect( self._reader.Output )
+
     
     def setupOutputs(self):
         print "tracking: setupOutputs"
         # Copy the input metadata to both outputs
         #self.Output.meta.assignFrom( self.InputImage.meta )
         #self.InvertedOutput.meta.assignFrom( self.InputImage.meta )
+        #self.RawData.meta.assignFrom(self._reader.Output.meta )
+        #self.Output.meta.assignFrom(self._reader.Output.meta )
     
     def execute(self, slot, roi, result):
         print "tracking: execute"
