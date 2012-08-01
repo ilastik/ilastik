@@ -27,7 +27,6 @@ def getArgParser():
     parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
     parser.add_argument('--generate_project_predictions', action='store_true', help="Compute full volume predictions for project data and save to project (otherwise, just export predictions for batch inputs).")
     parser.add_argument('batch_inputs', nargs='*', help='List of input files to process. Supported filenames: .h5, .npy, or globstring for stacks (e.g. *.png)')
-    parser.parse_args(sys.argv)   
     return parser
 
 def runWorkflow(parsed_args):
@@ -58,7 +57,7 @@ def runWorkflow(parsed_args):
 
     result = True
     if len(args.batch_inputs) > 0:
-        result = generateBatchPredictions(workflow)
+        result = generateBatchPredictions(workflow, args.batch_inputs)
 
     if not args.generate_project_predictions and len(args.batch_inputs) == 0:
         logger.error("Arguments didn't specify a workload.")
@@ -74,12 +73,20 @@ def generateProjectPredictions(shell, workflow):
     """
     Compute predictions for all project inputs (not batch inputs), and save them to the project file.
     """
+    # Set up progress display handling (just logging for now)        
+    currentProgress = [None]
+    def handleProgress(percentComplete):
+        if currentProgress[0] != percentComplete:
+            currentProgress[0] = percentComplete
+            logger.info("Project Predictions: {}% complete.".format(percentComplete))
+    workflow.pcApplet.progressSignal.connect( handleProgress )
+    
     # Enable prediction saving
     workflow.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
-    workflow.dataSerializers[0].predictionStorageEnabled = True
+    workflow.pcApplet.dataSerializers[0].predictionStorageEnabled = True
 
     # Save the project (which will request all predictions)
-    shell.saveProject()
+    shell.projectManager.saveProject()
     
     workflow.pcApplet.dataSerializers[0].predictionStorageEnabled = False
 
@@ -114,7 +121,7 @@ def generateBatchPredictions(workflow, batchInputPaths):
     def handleProgress(percentComplete):
         if currentProgress[0] != percentComplete:
             currentProgress[0] = percentComplete
-            logger.info("{}% complete.".format(percentComplete))
+            logger.info("Batch job: {}% complete.".format(percentComplete))
         
     progressSignal = opBatchResults.ProgressSignal[0].value
     progressSignal.subscribe( handleProgress )
@@ -158,7 +165,7 @@ def convertStacksToH5(filePaths):
 
 def main():
     parser = getArgParser()
-    args = parser.parse_args(sys.argv)
+    args = parser.parse_args()
 
     try:
         runWorkflow(args)
@@ -170,6 +177,12 @@ def main():
     return 0
     
 if __name__ == "__main__":
+    if False:
+        # DEBUG ARGS
+        args = "--project=/home/bergs/synapse_small.ilp --generate_project_predictions /home/bergs/synapse_small.npy"
+        sys.argv += args.split()
+
+    # MAIN
     sys.exit( main() )
 
 
