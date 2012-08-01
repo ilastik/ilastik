@@ -7,6 +7,7 @@
         "lazyflow.graph":                                               { "level":"INFO", "propagate": false },
         "lazyflow.graph.Slot":                                          { "level":"INFO", "propagate": false },
         "lazyflow.operators":                                           { "level":"INFO", "propagate": false },
+        "lazyflow.operators.ioOperators":                               { "level":"INFO", "propagate": false },
         "lazyflow.operators.obsolete.vigraOperators":                   { "level":"INFO", "propagate": false },
         "lazyflow.operators.obsolete.classifierOperators":              { "level":"INFO", "propagate": false },
         "ilastik":                                                      { "level":"INFO", "propagate": false },
