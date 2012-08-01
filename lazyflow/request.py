@@ -69,7 +69,7 @@ class Worker(Thread):
 
 
     def stop(self):
-        self.logger.info("stopping worker %r of machine %r" % (self, self.machine))
+        self.logger.debug("stopping worker %r of machine %r" % (self, self.machine))
         self.flush()
 
         self.running = False

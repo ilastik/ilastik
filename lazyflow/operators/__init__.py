@@ -1,4 +1,6 @@
 import traceback, os,  sys
+import logging
+logger = logging.getLogger(__name__)
 
 import lazyflow
 
@@ -20,12 +22,13 @@ except:
     from opColorizeLabels import OpColorizeLabels
 
     ops = itersubclasses(Operator)
-    print "Loading default Operators..."
+    logger.debug("Loading default Operators...")
+    loaded = ""
     for i, o in enumerate(ops):
-        sys.stdout.write(o.__name__)
-        sys.stdout.write(" ")
+        loaded += o.__name__ + ' '
         globals()[o.__name__] = o
-    sys.stdout.write(os.linesep+os.linesep)
+    loaded += os.linesep
+    logger.debug(loaded)
 
     ops = list(itersubclasses(Operator))
     '''
