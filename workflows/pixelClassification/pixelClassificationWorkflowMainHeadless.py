@@ -22,6 +22,19 @@ from ilastik.applets.batchIo.opBatchIo import ExportFormat
 
 logger = logging.getLogger(__name__)
 
+def main():
+    parser = getArgParser()
+    args = parser.parse_args()
+
+    try:
+        runWorkflow(args)
+    except:
+        tb = traceback.format_exc()
+        logger.error(tb)
+        return 1
+    
+    return 0
+
 def getArgParser():
     parser = argparse.ArgumentParser(description="Pixel Classification Prediction Workflow")
     parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
@@ -44,23 +57,26 @@ def runWorkflow(parsed_args):
             error = True
         if error:
             raise RuntimeError("Could not find one or more batch inputs.  See logged errors.")
-    
+
+    if not args.generate_project_predictions and len(args.batch_inputs) == 0:
+        logger.error("Command-line arguments didn't specify a workload.")
+        return
+
     # Instantiate 'shell'
     shell, workflow = startShellHeadless( PixelClassificationWorkflow )
     
-    # Load project (imports it if necessary)
+    # Load project (auto-import it if necessary)
     logger.info("Opening project: '" + args.project + "'")
     shell.openProjectPath(args.project)
 
+    # Predictions for project input datasets
     if args.generate_project_predictions:
         generateProjectPredictions(shell, workflow)
 
+    # Predictions for other datasets ('batch datasets')
     result = True
     if len(args.batch_inputs) > 0:
         result = generateBatchPredictions(workflow, args.batch_inputs)
-
-    if not args.generate_project_predictions and len(args.batch_inputs) == 0:
-        logger.error("Arguments didn't specify a workload.")
 
     logger.info("Closing project...")
     shell.projectManager.closeCurrentProject()
@@ -163,21 +179,8 @@ def convertStacksToH5(filePaths):
         
     return filePaths
 
-def main():
-    parser = getArgParser()
-    args = parser.parse_args()
-
-    try:
-        runWorkflow(args)
-    except:
-        tb = traceback.format_exc()
-        logger.error(tb)
-        return 1
-    
-    return 0
-    
 if __name__ == "__main__":
-    if False:
+    if True:
         # DEBUG ARGS
         args = "--project=/home/bergs/synapse_small.ilp --generate_project_predictions /home/bergs/synapse_small.npy"
         sys.argv += args.split()
