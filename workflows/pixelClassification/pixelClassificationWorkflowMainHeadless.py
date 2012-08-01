@@ -1,3 +1,4 @@
+#!/usr/bin/env python2.7
 import ilastik.utility.monkey_patches # Must be the first import
 
 # Standard libs
@@ -19,6 +20,7 @@ from ilastik.shell.headless.startShellHeadless import startShellHeadless
 from pixelClassificationWorkflow import PixelClassificationWorkflow
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.applets.batchIo.opBatchIo import ExportFormat
+from ilastik.utility import PathComponents
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,7 @@ def getArgParser():
     parser.add_argument('--generate_project_predictions', action='store_true', help="Compute full volume predictions for project data and save to project (otherwise, just export predictions for batch inputs).")
     parser.add_argument('--batch_export_dir', default='', help='A directory to save batch outputs. (Default saves with input files)')
     parser.add_argument('--batch_output_suffix', default='_predictions', help='Suffix for batch output filenames (before extension).')
+    parser.add_argument('--batch_output_dataset_name', default='/volume/predictions', help='HDF5 internal dataset path')
     parser.add_argument('batch_inputs', nargs='*', help='List of input files to process. Supported filenames: .h5, .npy, or globstring for stacks (e.g. *.png)')
     return parser
 
@@ -54,6 +57,7 @@ def runWorkflow(parsed_args):
     # Make sure batch inputs exist.
     for p in args.batch_inputs:
         error = False
+        p = PathComponents(p).externalPath
         if not os.path.exists(p):
             logger.error("Batch input file does not exist: " + p)
             error = True
@@ -78,7 +82,11 @@ def runWorkflow(parsed_args):
     # Predictions for other datasets ('batch datasets')
     result = True
     if len(args.batch_inputs) > 0:
-        result = generateBatchPredictions(workflow, args.batch_inputs, args.batch_export_dir, args.batch_output_suffix)
+        result = generateBatchPredictions(workflow,
+                                          args.batch_inputs,
+                                          args.batch_export_dir,
+                                          args.batch_output_suffix,
+                                          args.batch_output_dataset_name)
 
     logger.info("Closing project...")
     shell.projectManager.closeCurrentProject()
@@ -108,7 +116,7 @@ def generateProjectPredictions(shell, workflow):
     
     workflow.pcApplet.dataSerializers[0].predictionStorageEnabled = False
 
-def generateBatchPredictions(workflow, batchInputPaths, batchExportDir, batchOutputSuffix):
+def generateBatchPredictions(workflow, batchInputPaths, batchExportDir, batchOutputSuffix, exportedDatasetName):
     """
     Compute the predictions for each of the specified batch input files,
     and export them to corresponding h5 files.
@@ -119,7 +127,13 @@ def generateBatchPredictions(workflow, batchInputPaths, batchExportDir, batchOut
     for p in batchInputPaths:
         info = DatasetInfo()
         info.location = DatasetInfo.Location.FileSystem
-        info.filePath = p
+
+        # Convert all paths to absolute 
+        # (otherwise they are relative to the project file, which probably isn't what the user meant)        
+        comp = PathComponents(p)
+        comp.externalPath = os.path.abspath(comp.externalPath)
+        
+        info.filePath = comp.totalPath()        
         batchInputInfos.append(info)
 
     # Configure batch input operator
@@ -131,6 +145,7 @@ def generateBatchPredictions(workflow, batchInputPaths, batchExportDir, batchOut
     opBatchResults.ExportDirectory.setValue(batchExportDir)
     opBatchResults.Format.setValue(ExportFormat.H5)
     opBatchResults.Suffix.setValue(batchOutputSuffix)
+    opBatchResults.InternalPath.setValue(exportedDatasetName)
     
     logger.info( "Exporting data to " + opBatchResults.OutputDataPath[0].value )
 
@@ -182,9 +197,18 @@ def convertStacksToH5(filePaths):
     return filePaths
 
 if __name__ == "__main__":
-    if False:
-        # DEBUG ARGS
-        args = "--project=/home/bergs/synapse_small.ilp --generate_project_predictions /home/bergs/synapse_small.npy"
+    # DEBUG ARGS
+    if True:
+        args = ""
+        args += " --project=/home/bergs/tinyfib/boundary_training/pred.ilp"
+        args += " /home/bergs/tinyfib/initial_segmentation/version1.h5/volume/data"
+        args += " --batch_output_dataset_name=/volume/pred_volume"
+
+        #args += " --project=/home/bergs/Downloads/synapse_detection_training1.ilp"
+        #args = " --project=/home/bergs/synapse_small.ilp"
+        #args += " --generate_project_predictions"
+        #args += " /home/bergs/synapse_small.npy"
+
         sys.argv += args.split()
 
     # MAIN
