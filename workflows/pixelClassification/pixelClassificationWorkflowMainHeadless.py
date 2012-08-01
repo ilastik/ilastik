@@ -198,7 +198,7 @@ def convertStacksToH5(filePaths):
 
 if __name__ == "__main__":
     # DEBUG ARGS
-    if True:
+    if False:
         args = ""
         args += " --project=/home/bergs/tinyfib/boundary_training/pred.ilp"
         args += " /home/bergs/tinyfib/initial_segmentation/version1.h5/volume/data"
