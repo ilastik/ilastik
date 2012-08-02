@@ -40,9 +40,21 @@ class TestOpTrainRandomForest(object):
         assert labels.shape[-1] == 1
         assert len(data.shape) == 5
         f.close()
-        selections = numpy.array( [[True, True, True, True, True, False, False]] * 6 )
         scales = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
         featureIds = OpPixelFeaturesPresmoothed.DefaultFeatureIds
+
+        # The following conditions cause this test to *usually* fail, but *sometimes* pass:
+        # When using Structure Tensor EVs at sigma >= 3.5 (NaNs in feature matrix)
+        # When using Gaussian Gradient Mag at sigma >= 3.5 (inf in feature matrix)
+        # When using *any feature* at sigma == 10.0 (NaNs in feature matrix)
+        
+        #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
+        selections = numpy.array( [[False, False, False, False, False, False, False],
+                                   [False, False, False, False, False, False, False],
+                                   [False, False, False, False,  True, False, False], # ST EVs
+                                   [False, False, False, False, False, False, False],
+                                   [False, False, False, False, False, False, False],  # GGM
+                                   [False, False, False, False, False, False, False]] )
         
         opFeatures = OpPixelFeaturesPresmoothed(graph=graph)
         opFeatures.Input.setValue(data)
@@ -57,7 +69,9 @@ class TestOpTrainRandomForest(object):
         opTrain.Labels.resize(1)
         opTrain.nonzeroLabelBlocks.resize(1)
 
+        # This test only fails when this flag is True.
         use_sparse_label_storage = True
+        
         if use_sparse_label_storage:
             opLabelArray = OpBlockedSparseLabelArray(graph=graph)
             opLabelArray.inputs["shape"].setValue(labels.shape)
@@ -86,5 +100,6 @@ class TestOpTrainRandomForest(object):
 if __name__ == "__main__":
     import nose
     nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
-        
-        
+
+
+
