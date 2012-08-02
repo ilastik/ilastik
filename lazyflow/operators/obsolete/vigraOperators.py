@@ -288,85 +288,79 @@ class OpPixelFeaturesPresmoothed(Operator):
             key = rroi.toSlice()
             cnt = 0
             written = 0
-            start = rroi.start
-            stop = rroi.stop
-            assert (stop<=self.outputs["Output"].shape).all()
+            assert (rroi.stop<=self.outputs["Output"].shape).all()
             flag = 'c'
-            __channelAxis=self.inputs["Input"].axistags.index('c')
-            axisindex = __channelAxis
+            channelAxis=self.inputs["Input"].axistags.index('c')
+            axisindex = channelAxis
             oldkey = list(key)
             oldkey.pop(axisindex)
 
 
+            inShape  = self.inputs["Input"].shape
 
+            shape = self.outputs["Output"].shape
 
-
-
-            __inShape  = self.inputs["Input"].shape
-
-            __shape = self.outputs["Output"].shape
-
-            __axistags = self.inputs["Input"].axistags
+            axistags = self.inputs["Input"].axistags
 
             result = result.view(vigra.VigraArray)
-            result.axistags = copy.copy(__axistags)
+            result.axistags = copy.copy(axistags)
 
 
-            __hasTimeAxis = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Time)
-            __timeAxis=self.inputs["Input"].axistags.index('t')
+            hasTimeAxis = self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Time)
+            timeAxis=self.inputs["Input"].axistags.index('t')
 
-            __subkey = popFlagsFromTheKey(key,__axistags,'c')
-            __subshape=popFlagsFromTheKey(__shape,__axistags,'c')
-            __at2 = copy.copy(__axistags)
-            __at2.dropChannelAxis()
-            __subshape=popFlagsFromTheKey(__subshape,__at2,'t')
-            __subkey = popFlagsFromTheKey(__subkey,__at2,'t')
+            subkey = popFlagsFromTheKey(key,axistags,'c')
+            subshape=popFlagsFromTheKey(shape,axistags,'c')
+            at2 = copy.copy(axistags)
+            at2.dropChannelAxis()
+            subshape=popFlagsFromTheKey(subshape,at2,'t')
+            subkey = popFlagsFromTheKey(subkey,at2,'t')
 
-            __oldstart, __oldstop = roi.sliceToRoi(key, __shape)
+            oldstart, oldstop = roi.sliceToRoi(key, shape)
 
-            __start, __stop = roi.sliceToRoi(__subkey,__subkey)
-            __maxSigma = max(0.7,self.maxSigma)
+            start, stop = roi.sliceToRoi(subkey,subkey)
+            maxSigma = max(0.7,self.maxSigma)
 
-            __newStart, __newStop = roi.extendSlice(__start, __stop, __subshape, __maxSigma, window = 3.5)
+            newStart, newStop = roi.extendSlice(start, stop, subshape, maxSigma, window = 3.5)
 
-            __vigOpSourceStart, __vigOpSourceStop = roi.extendSlice(__start, __stop, __subshape, 0.7, window = 2)
+            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, window = 2)
 
-            __vigOpSourceStart = roi.TinyVector(__vigOpSourceStart - __newStart)
-            __vigOpSourceStop = roi.TinyVector(__vigOpSourceStop - __newStart)
+            vigOpSourceStart = roi.TinyVector(vigOpSourceStart - newStart)
+            vigOpSourceStop = roi.TinyVector(vigOpSourceStop - newStart)
 
-            __readKey = roi.roiToSlice(__newStart, __newStop)
-
-
-            __writeNewStart = __start - __newStart
-            __writeNewStop = __writeNewStart +  __stop - __start
+            readKey = roi.roiToSlice(newStart, newStop)
 
 
-            treadKey=list(__readKey)
+            writeNewStart = start - newStart
+            writeNewStop = writeNewStart +  stop - start
 
-            if __hasTimeAxis:
-                if __timeAxis < __channelAxis:
-                    treadKey.insert(__timeAxis, key[__timeAxis])
+
+            treadKey=list(readKey)
+
+            if hasTimeAxis:
+                if timeAxis < channelAxis:
+                    treadKey.insert(timeAxis, key[timeAxis])
                 else:
-                    treadKey.insert(__timeAxis-1, key[__timeAxis])
+                    treadKey.insert(timeAxis-1, key[timeAxis])
             if  self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-                treadKey =  popFlagsFromTheKey(treadKey,__axistags,'c')
+                treadKey =  popFlagsFromTheKey(treadKey,axistags,'c')
             else:
-                treadKey.insert(__channelAxis, slice(None,None,None))
+                treadKey.insert(channelAxis, slice(None,None,None))
 
             treadKey=tuple(treadKey)
 
             req = self.inputs["Input"][treadKey].allocate()
 
-            __sourceArray = req.wait()
+            sourceArray = req.wait()
             req.result = None
             req.destination = None
-            if __sourceArray.dtype != numpy.float32:
-                __sourceArrayF = __sourceArray.astype(numpy.float32)
-                __sourceArray.resize((1,), refcheck = False)
-                del __sourceArray
-                __sourceArray = __sourceArrayF
-            __sourceArrayV = __sourceArray.view(vigra.VigraArray)
-            __sourceArrayV.axistags =  copy.copy(__axistags)
+            if sourceArray.dtype != numpy.float32:
+                sourceArrayF = sourceArray.astype(numpy.float32)
+                sourceArray.resize((1,), refcheck = False)
+                del sourceArray
+                sourceArray = sourceArrayF
+            sourceArrayV = sourceArray.view(vigra.VigraArray)
+            sourceArrayV.axistags =  copy.copy(axistags)
 
 
 
@@ -392,29 +386,29 @@ class OpPixelFeaturesPresmoothed(Operator):
                 else:
                     destSigma = 0.0
                     tempSigma = self.scales[j]
-                __vigOpSourceShape = list(__vigOpSourceStop - __vigOpSourceStart)
-                if __hasTimeAxis:
+                vigOpSourceShape = list(vigOpSourceStop - vigOpSourceStart)
+                if hasTimeAxis:
 
-                    if __timeAxis < __channelAxis:
-                        __vigOpSourceShape.insert(__timeAxis, ( __oldstop - __oldstart)[__timeAxis])
+                    if timeAxis < channelAxis:
+                        vigOpSourceShape.insert(timeAxis, ( oldstop - oldstart)[timeAxis])
                     else:
-                        __vigOpSourceShape.insert(__timeAxis-1, ( __oldstop - __oldstart)[__timeAxis])
-                    __vigOpSourceShape.insert(__channelAxis, __inShape[__channelAxis])
+                        vigOpSourceShape.insert(timeAxis-1, ( oldstop - oldstart)[timeAxis])
+                    vigOpSourceShape.insert(channelAxis, inShape[channelAxis])
 
-                    sourceArraysForSigmas[j] = numpy.ndarray(tuple(__vigOpSourceShape),numpy.float32)
-                    for i,vsa in enumerate(__sourceArrayV.timeIter()):
-                        droi = (tuple(__vigOpSourceStart._asint()), tuple(__vigOpSourceStop._asint()))
-                        tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),__timeAxis, i)
+                    sourceArraysForSigmas[j] = numpy.ndarray(tuple(vigOpSourceShape),numpy.float32)
+                    for i,vsa in enumerate(sourceArrayV.timeIter()):
+                        droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
+                        tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),timeAxis, i)
                         sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
                 else:
-                    droi = (tuple(__vigOpSourceStart._asint()), tuple(__vigOpSourceStop._asint()))
-                    #print droi, __sourceArray.shape, tempSigma,self.scales[j]
-                    sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(__sourceArrayV, sigma = tempSigma, roi = droi, window_size = 3.5)
-                    #__sourceArrayForSigma = __sourceArrayForSigma.view(numpy.ndarray)
+                    droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
+                    #print droi, sourceArray.shape, tempSigma,self.scales[j]
+                    sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayV, sigma = tempSigma, roi = droi, window_size = 3.5)
+                    #sourceArrayForSigma = sourceArrayForSigma.view(numpy.ndarray)
 
-            del __sourceArrayV
-            __sourceArray.resize((1,), refcheck = False)
-            del __sourceArray
+            del sourceArrayV
+            sourceArray.resize((1,), refcheck = False)
+            del sourceArray
 
             #connect individual operators
             for i in range(dimRow):
@@ -427,13 +421,13 @@ class OpPixelFeaturesPresmoothed(Operator):
                         inTagKeys = [ax.key for ax in oslot._axistags]
                         if flag in inTagKeys:
                             slices = oslot._shape[axisindex]
-                            if cnt + slices >= start[axisindex] and start[axisindex]-cnt<slices and start[axisindex]+written<stop[axisindex]:
+                            if cnt + slices >= rroi.start[axisindex] and rroi.start[axisindex]-cnt<slices and rroi.start[axisindex]+written<rroi.stop[axisindex]:
                                 begin = 0
-                                if cnt < start[axisindex]:
-                                    begin = start[axisindex] - cnt
+                                if cnt < rroi.start[axisindex]:
+                                    begin = rroi.start[axisindex] - cnt
                                 end = slices
-                                if cnt + end > stop[axisindex]:
-                                    end -= cnt + end - stop[axisindex]
+                                if cnt + end > rroi.stop[axisindex]:
+                                    end -= cnt + end - rroi.stop[axisindex]
                                 key_ = copy.copy(oldkey)
                                 key_.insert(axisindex, slice(begin, end, None))
                                 reskey = [slice(None, None, None) for x in range(len(result.shape))]
@@ -444,7 +438,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 written += end - begin
                             cnt += slices
                         else:
-                            if cnt>=start[axisindex] and start[axisindex] + written < stop[axisindex]:
+                            if cnt>=rroi.start[axisindex] and rroi.start[axisindex] + written < rroi.stop[axisindex]:
                                 reskey = copy.copy(oldkey)
                                 reskey.insert(axisindex, written)
                                 #print "key: ", key, "reskey: ", reskey, "oldkey: ", oldkey
@@ -463,8 +457,6 @@ class OpPixelFeaturesPresmoothed(Operator):
                         sourceArraysForSigmas[i].resize((1,))
                     except:
                         sourceArraysForSigmas[i] = None
-
-
 
 
 def getAllExceptAxis(ndim,index,slicer):
