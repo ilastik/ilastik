@@ -37,7 +37,7 @@ class TestOpStreamingHdf5Reader(object):
         self.h5File['volume'].create_dataset('data', data=self.data)
 
         # Read the data with an operator
-        self.op.ProjectFile.setValue(self.h5File)
+        self.op.Hdf5File.setValue(self.h5File)
         self.op.InternalPath.setValue('volume/data')
 
         assert self.op.OutputImage.meta.shape == self.data.shape
@@ -59,7 +59,7 @@ class TestOpStreamingHdf5Reader(object):
         self.h5File['volume/tagged_data'].attrs['axistags'] = axistags.toJSON()
 
         # Read the data with an operator
-        self.op.ProjectFile.setValue(self.h5File)
+        self.op.Hdf5File.setValue(self.h5File)
         self.op.InternalPath.setValue('volume/tagged_data')
 
         assert self.op.OutputImage.meta.shape == self.data.shape
