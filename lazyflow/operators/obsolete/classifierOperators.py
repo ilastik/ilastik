@@ -181,8 +181,7 @@ class OpTrainRandomForestBlocked(Operator):
                 labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
 
                 if numpy.isnan(featMatrix).any():
-                    channelAxis = self.Images[0].meta.axistags.index('c')
-                    corruptChannels = numpy.where( numpy.isnan(featMatrix) )[channelAxis]
+\                    corruptChannels = numpy.where( numpy.isnan(featMatrix) )[1]
                     assert False, "Random Forest Feature Matrix has NaNs in channels: {}".format(corruptChannels)
                 
                 assert not numpy.isnan(labelsMatrix).any(), "Random Forest Label Matrix has NaNs!"
