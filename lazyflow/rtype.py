@@ -40,7 +40,7 @@ class SubRegion(Roi):
         """
         self.start.pop(dim)
         self.stop.pop(dim)
-        return retRoi
+        return self
 
     def setDim(self, dim , start, stop):
         """
@@ -67,41 +67,37 @@ class SubRegion(Roi):
         extend a roi by a given in shape
         """
         #TODO: Warn if bounds are exceeded
-        retRoi = copy.copy(self)
         if type(shape == int):
             tmp = shape
             shape = numpy.zeros(self.dim).astype(int)
             shape[:] = tmp
         tmpStart = [x-s for x,s in zip(self.start,shape)]
         tmpStop = [x+s for x,s in zip(self.stop,shape)]
-        retRoi.start = TinyVector([max(t,i) for t,i in zip(tmpStart,numpy.zeros_like(self.inputShape))])
-        retRoi.stop = TinyVector([min(t,i) for t,i in zip(tmpStop,self.inputShape)])
-        return retRoi
+        self.start = TinyVector([max(t,i) for t,i in zip(tmpStart,numpy.zeros_like(self.inputShape))])
+        self.stop = TinyVector([min(t,i) for t,i in zip(tmpStop,self.inputShape)])
+        return self
 
         
     def centerIn(self,shape):
-        retRoi = copy.copy(self)
         difference = [int(((shape-(stop-start))/2.0)) for (shape,start),stop in zip(zip(shape,self.start),self.stop)]  
         dimension = [int(stop-start) for start,stop in zip(self.start,self.stop)]
-        retRoi.start = TinyVector(difference)
-        retRoi.stop = TinyVector([diff+dim for diff,dim in zip(difference,dimension)])
-        return retRoi
+        self.start = TinyVector(difference)
+        self.stop = TinyVector([diff+dim for diff,dim in zip(difference,dimension)])
+        return self
     
     def setStartToZero(self):
-        retRoi = copy.copy(self)
         start = [0]*len(self.start)
         stop = [end-begin for begin,end in zip(self.start,self.stop)]
-        retRoi.start = TinyVector(start)
-        retRoi.stop = TinyVector(stop)
-        return retRoi
+        self.start = TinyVector(start)
+        self.stop = TinyVector(stop)
+        return self
     
     def maskWithShape(self,shape):
-        retRoi = copy.copy(self)
-        start = [a for a,b in zip(retRoi.start,list(shape))]
-        stop = [b for a,b in zip(retRoi.stop,list(shape))]
-        retRoi.start = start
-        retRoi.stop = stop
-        return retRoi
+        start = [a for a,b in zip(self.start,list(shape))]
+        stop = [b for a,b in zip(self.stop,list(shape))]
+        self.start = start
+        self.stop = stop
+        return self
 
     def toSlice(self, hardBind = False):
         return roiToSlice(self.start,self.stop, hardBind)
