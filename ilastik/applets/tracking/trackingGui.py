@@ -5,7 +5,7 @@ import os
 
 from ilastik.applets.layerViewer import LayerViewerGui
 from volumina.widgets.thresholdingWidget import ThresholdingWidget
-from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, \
+from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
                          AlphaModulatedLayer, LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
 import volumina.colortables as colortables
 
@@ -57,6 +57,7 @@ class TrackingGui( QWidget ):
         layerraw.name = "Raw"
         self.layerstack.append( layerraw )
 
+
         self.objectssrc = LazyflowSource( self.mainOperator.Objects )
         ct = colortables.create_default_8bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
@@ -68,6 +69,11 @@ class TrackingGui( QWidget ):
         layer = ColortableLayer( self.trackingsrc, ct )
         layer.name = "Tracking"
         self.layerstack.append(layer)
+
+        self.locpicsrc = LazyflowSource( self.mainOperator.Locpic )
+        layerlocpic = RGBALayer( red=ConstantSource(255), alpha=self.locpicsrc )
+        layerlocpic.name = "Locpic"
+        self.layerstack.append( layerlocpic )
                                
         # self.src = LazyflowSource( self.mainOperator.Output )
         # ct = colortables.create_default_8bit()
