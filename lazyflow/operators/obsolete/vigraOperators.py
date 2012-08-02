@@ -407,7 +407,11 @@ class OpPixelFeaturesPresmoothed(Operator):
                     #sourceArrayForSigma = sourceArrayForSigma.view(numpy.ndarray)
 
             del sourceArrayV
-            sourceArray.resize((1,), refcheck = False)
+            try:
+                sourceArray.resize((1,), refcheck = False)
+            except ValueError:
+                # Sometimes this fails, but that's okay.
+                logger.debug("Failed to free array memory.")                
             del sourceArray
 
             #connect individual operators
@@ -449,7 +453,6 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 oslot.operator.getOutSlot(oslot,tuple(oldkey),destArea, sourceArray = sourceArraysForSigmas[j])
                                 written += 1
                             cnt += 1
-
 
             for i in range(len(sourceArraysForSigmas)):
                 if sourceArraysForSigmas[i] is not None:
