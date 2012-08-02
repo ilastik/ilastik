@@ -42,7 +42,6 @@ class OpBaseVigraFilter(Operator):
         axistags = self.inputs["Input"].axistags
         inputShape  = self.inputs["Input"].shape
         #Set up roi 
-        roi.setAxistags(axistags)
         roi.setInputShape(inputShape)
         #setup filter ONLY WHEN SIGMAS ARE SET and get MaxSigma for 
         sigma = self.setupFilter()
@@ -327,7 +326,6 @@ class OpPixelFeaturesPresmoothed(Operator):
         resultCIndex = self.outputs["Output"].axistags.channelIndex
         
         #Set up roi 
-        roi.setAxistags(axistags)
         roi.setInputShape(inputShape)
 
         #Request Required Region
