@@ -1,3 +1,4 @@
+import os
 import h5py
 import numpy
 import vigra
@@ -19,8 +20,17 @@ class TestOpTrainRandomForest(object):
     
     def test(self):
         graph = Graph()
+
+        testVolumePath = 'tinyfib_volume.h5'
+
+        # Unzip the data if necessary
+        if not os.path.exists(testVolumePath):
+            zippedTestVolumePath = testVolumePath + ".gz"
+            assert os.path.exists(zippedTestVolumePath)
+            os.system("gzip -d " + zippedTestVolumePath)
+            assert os.path.exists(testVolumePath)
         
-        f = h5py.File('tinyfib_volume.h5', 'r')
+        f = h5py.File(testVolumePath, 'r')
         data = f['data'][...]
         data = data.view(vigra.VigraArray)
         data.axistags = vigra.defaultAxistags('txyzc')
