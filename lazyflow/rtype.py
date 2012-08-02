@@ -34,7 +34,41 @@ class SubRegion(Roi):
     def setInputShape(self,inputShape):
         assert type(inputShape) == tuple
         self.inputShape = inputShape
+
+    def copy(self):
+        return copy.copy(self)
+
+    def popDim(self, dim):
+        """
+        remove the i'th dimension from the SubRegion
+        works inplace !
+        """
+        self.axistags.__delitem__(dim)
+        self.start.pop(dim)
+        self.stop.pop(dim)
+        return retRoi
+
+    def setDim(self, dim , start, stop)
+        """
+        change the subarray at dim, to begin at start
+        and to end at stop
+        """
+        self.start[dim] = start
+        self.stop[dim] = stop
+        return self
+
+    def insertDim(self, dim, start, stop, at)
+        """
+        insert a new dimension before dim.
+        set start to start, stop to stop
+        and the axistags to at
+        """
+        self.start.insert(0,start)
+        self.stop.insert(0,stop)
+        self.axistags.insert(dim,at)
+        return self
         
+
     def expandByShape(self,shape):
         """
         extend a roi by a given in shape
