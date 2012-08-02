@@ -1096,17 +1096,20 @@ class OpH5WriterBigDataset(Operator):
 
         numChannels = dataShape[ axistags.index('c') ]
 
-        # Set up our chunk shape
-        # (Guess that x-y slices are more common)
-        # We are aiming for a chunk shape that is around 300k in size
+        # Set up our chunk shape: Aim for a cube that's roughly 300k in size
+        dtypeBytes = dtype().nbytes
+        cubeDim = math.pow( 300000 / (numChannels * dtypeBytes), (1/3.0) )
+        cubeDim = int(cubeDim)
+
         chunkDims = {}
         chunkDims['t'] = 1
-        chunkDims['x'] = 128
-        chunkDims['y'] = 128
+        chunkDims['x'] = cubeDim
+        chunkDims['y'] = cubeDim
+        chunkDims['z'] = cubeDim
         chunkDims['c'] = numChannels
-        chunkDims['z'] = 300000 / (chunkDims['x'] * chunkDims['y'] * numChannels * dtype().nbytes)
-
-        assert chunkDims['z'] > 0, "Apparently you have a lot of channels and/or a huge dtype.  Fix the chunk shape formula above."
+        
+        # h5py guide to chunking says chunks of 300k or less "work best"
+        assert chunkDims['x'] * chunkDims['y'] * chunkDims['z'] * numChannels * dtypeBytes  <= 300000
 
         chunkShape = ()
         for i in range( len(dataShape) ):
