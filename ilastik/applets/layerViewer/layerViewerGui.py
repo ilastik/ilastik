@@ -286,7 +286,8 @@ class LayerViewerGui(QMainWindow):
             newNames = [l.name for l in newGuiLayers]
             for index, layer in enumerate(self.layerstack):
                 if layer.name not in newNames:
-                    self.layerstack.removeRow(index)
+                    self.layerstack.selectRow(index)
+                    self.layerstack.deleteSelected()
 
     def initViewerControlUi(self):
         """
