@@ -856,7 +856,7 @@ if has_blist:
                 if self.inputs["deleteLabel"].ready():
                     for l in self._labelers.values():
                         l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
-    
+
         def execute(self, slot, roi, result):
             with Tracer(self.traceLogger):
                 key = roi.toSlice()
@@ -950,6 +950,16 @@ if has_blist:
                             self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
                             self._labelers[b_ind].inputs["eraser"].connect(self.inputs["eraser"])
                             self._labelers[b_ind].inputs["deleteLabel"].connect(self.inputs["deleteLabel"])
+                            
+                            def updateMaxLabel(*args):
+                                maxLabel = 0
+                                for labeler in self._labelers.values():
+                                    if labeler.maxLabel.ready():
+                                        maxLabel = max(maxLabel, labeler.maxLabel.value)
+                                self._maxLabel = maxLabel
+                                self.outputs["maxLabel"].setValue( self._maxLabel )
+                            
+                            self._labelers[b_ind].outputs["maxLabel"].notifyDirty( updateMaxLabel )
     
                         self._labelers[b_ind].inputs["Input"][smallkey] = smallvalues.squeeze()
     
