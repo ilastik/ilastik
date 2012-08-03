@@ -76,7 +76,7 @@ class OpInputDataReader(Operator):
                 h5File = h5py.File(externalPath, 'r')
 
                 h5Reader = OpStreamingHdf5Reader(graph=self.graph)
-                h5Reader.ProjectFile.setValue(h5File)
+                h5Reader.Hdf5File.setValue(h5File)
 
                 # Can't set the internal path yet if we don't have one
                 if internalPath != '':

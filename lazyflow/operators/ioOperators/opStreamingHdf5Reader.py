@@ -9,7 +9,7 @@ class OpStreamingHdf5Reader(Operator):
     category = "Reader"
 
     # The project hdf5 File object (already opened)
-    ProjectFile = InputSlot(stype='hdf5File')
+    Hdf5File = InputSlot(stype='hdf5File')
 
     # The internal path for project-local datasets
     InternalPath = InputSlot(stype='string')
@@ -22,7 +22,7 @@ class OpStreamingHdf5Reader(Operator):
 
     def setupOutputs(self):
         # Read the dataset meta-info from the HDF5 dataset
-        hdf5File = self.ProjectFile.value
+        hdf5File = self.Hdf5File.value
         internalPath = self.InternalPath.value
 
         dataset = hdf5File[internalPath]
@@ -64,7 +64,7 @@ class OpStreamingHdf5Reader(Operator):
     def execute(self, slot, roi, result):
         # Read the desired data directly from the hdf5File
         key = roi.toSlice()
-        hdf5File = self.ProjectFile.value
+        hdf5File = self.Hdf5File.value
         internalPath = self.InternalPath.value
 
         # Access the data

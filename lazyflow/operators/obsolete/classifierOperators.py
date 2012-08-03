@@ -88,6 +88,8 @@ class OpTrainRandomForestBlocked(Operator):
                   MultiInputSlot("nonzeroLabelBlocks")]
     outputSlots = [OutputSlot("Classifier")]
 
+    WarningEmitted = False
+
     def __init__(self, *args, **kwargs):
         super(OpTrainRandomForestBlocked, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
@@ -180,9 +182,12 @@ class OpTrainRandomForestBlocked(Operator):
                 featMatrix=numpy.concatenate(featMatrix,axis=0)
                 labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
 
+                if not OpTrainRandomForestBlocked.WarningEmitted:
+                    logger.warn("FIXME: Eliminate this redundant check when the NaN bug has been fixed!")
+                    OpTrainRandomForestBlocked.WarningEmitted = True
+                    
                 if numpy.isnan(featMatrix).any():
-                    channelAxis = self.Images[0].meta.axistags.index('c')
-                    corruptChannels = numpy.where( numpy.isnan(featMatrix) )[channelAxis]
+                    corruptChannels = numpy.where( numpy.isnan(featMatrix) )[1]
                     assert False, "Random Forest Feature Matrix has NaNs in channels: {}".format(corruptChannels)
                 
                 assert not numpy.isnan(labelsMatrix).any(), "Random Forest Label Matrix has NaNs!"
