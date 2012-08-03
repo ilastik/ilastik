@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QWidget, QColor
+from PyQt4.QtGui import QWidget, QColor, QVBoxLayout
 from PyQt4 import uic
 
 import os
@@ -28,7 +28,7 @@ class TrackingGui( QWidget ):
         return self.volumeEditorWidget
 
     def appletDrawers( self ):
-        return [ ("Tracking", QWidget() ) ]
+        return [ ("Tracking", self._drawer ) ]
 
     def menus( self ):
         return []
@@ -88,6 +88,8 @@ class TrackingGui( QWidget ):
         self.editor = None
         self._initEditor()
 
+        self._initAppletDrawerUi()
+
         self.editor.dataShape = self.mainOperator.RawData.meta.shape
         #self.mainOperator.Output.notifyMetaChanged( self._onOutputMetaChanged)
 
@@ -123,19 +125,15 @@ class TrackingGui( QWidget ):
         self.editor._lastImageViewFocus = 0
 
             
-    def initAppletDrawerUi(self):
-        with Tracer(traceLogger):
-            # Load the ui file (find it in our own directory)
-            localDir = os.path.split(__file__)[0]
-            self._drawer = uic.loadUi(localDir+"/drawer.ui")
-            
-            layout = QVBoxLayout( self )
-            layout.setSpacing(0)
-            self._drawer.setLayout( layout )
-    
-            thresholdWidget = ThresholdingWidget(self)
+    def _initAppletDrawerUi(self):
+        # Load the ui file (find it in our own directory)
+        localDir = os.path.split(__file__)[0]
+        self._drawer = uic.loadUi(localDir+"/drawer.ui")
+
+        self._drawer.TrackButton.pressed.connect(self._onTrackButtonPressed)
+        #     thresholdWidget = ThresholdingWidget(self)
             #thresholdWidget.valueChanged.connect( self.handleThresholdGuiValuesChanged )
-            layout.addWidget( thresholdWidget )
+        #      layout.addWidget( thresholdWidget )
             
             # def updateDrawerFromOperator():
             #     minValue, maxValue = (0,255)
@@ -155,14 +153,14 @@ class TrackingGui( QWidget ):
         if p == "/": p = "."+p
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
+    def _onTrackButtonPressed( self ):
+        print "Track button pressed!"
+
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):
             self.mainOperator.MinValue.setValue(minVal)
             self.mainOperator.MaxValue.setValue(maxVal)
-    
-    def getAppletDrawerUi(self):
-        return self._drawer
     
     def setupLayers(self, currentImageIndex):
         print "tracking: setupLayers"
