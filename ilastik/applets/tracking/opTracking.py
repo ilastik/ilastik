@@ -4,7 +4,22 @@ from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
 
 import h5py
 import numpy
+import numpy as np
 import ctracking
+
+def relabel( volume, replace ):
+    mp = np.arange(0,np.amax(volume)+1, dtype=volume.dtype)
+    mp[1:] = 255
+    labels = np.unique(volume)
+    for label in labels:
+        if label > 0:
+            try:
+                r = replace[label]
+                mp[label] = r
+            except:
+                pass
+    #mp[replace.keys()] = replace.values()
+    return mp[volume]
 
 def cTraxels_from_objects_group( objects_g, timestep=0):
     features_g = objects_g["features"]
@@ -89,13 +104,43 @@ class OpTracking(Operator):
                                         ep_gap)
                                         
         events = tracker(self.ts)
-        # print events, len(events)
-        # for i in events:
-        #     print i, len(i)
-        #     for j in i:
-        #         print j
+        label2color = []
+        label2color.append({})
 
+        for i, events_at in enumerate(events):
+            dis = []
+            app = []
+            div = []
+            mov = []
+            for event in events_at:
+                if event.type == ctracking.EventType.Appearance:
+                    app.append((event.traxel_ids[0], event.energy))
+                if event.type == ctracking.EventType.Disappearance:
+                    dis.append((event.traxel_ids[0], event.energy))
+                if event.type == ctracking.EventType.Division:
+                    div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
+                if event.type == ctracking.EventType.Move:
+                    mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
 
+            label2color.append({})
+            #for e in dis:
+            #    label2color[-2][e[0]] = 255 # mark disapps
+
+            for e in app:
+                label2color[-1][e[0]] = np.random.randint(1,255)
+            
+            for e in mov:
+                if not label2color[-2].has_key(e[0]):
+                    label2color[-2][e[0]] = np.random.randint(1,255)
+                label2color[-1][e[1]] = label2color[-2][e[0]]
+
+            for e in div:
+                if not label2color[-2].has_key(e[0]):
+                    label2color[-2][e[0]] = np.random.randint(1,255)
+                ancestor_color = label2color[-2][e[0]]
+                label2color[-1][e[1]] = ancestor_color
+                label2color[-1][e[2]] = ancestor_color
+        self.label2color = label2color
         
 
         self._rawReader = OpInputDataReader( graph )
@@ -138,6 +183,11 @@ class OpTracking(Operator):
     def execute(self, slot, roi, result):
         if slot is self.Output:
             self.Objects.get(roi, destination=result).wait()
+            t = roi.start[0]
+            if t < len(self.label2color):
+                result[0,...,0] = relabel( result[0,...,0], self.label2color[t] )
+            else:
+                result[...] = 0
             #al = self.Objects.get( SubRegion( self.Objects ) ).wait()
             #print type(al), al.shape
 
