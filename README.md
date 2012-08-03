@@ -62,15 +62,12 @@ class SumOperator(Operator):
     # operator for the specififed region of interest
 
     a = self.inputA.get(roi).wait()
-    b = self.inputA.get(roi).wait()
+    b = self.inputB.get(roi).wait()
 
     # the result of the computation is written into the 
     # pre-allocated result array
 
-    result[roi.toSlice()] = a+b
-    
-    #  the toSlice() method of the roi object converts
-    #  region of interest into a standard python slicing
+    result[...] = a+b
 ```
 
 Connecting operators and providing input
@@ -89,7 +86,7 @@ the input can be specified directly via the **setValue** method of an input slot
 
 ``` python
 op1.inputA.setValue(numpy.zeros((10,20)))
-op1.inputb.setValue(numpy.ones((10,20)))
+op1.inputB.setValue(numpy.ones((10,20)))
 ```
 
 
