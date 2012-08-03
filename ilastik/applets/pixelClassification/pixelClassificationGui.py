@@ -780,7 +780,8 @@ class PixelClassificationGui(QMainWindow):
             for il, layer in enumerate(self.layerstack):
                 if layer.ref_object==ref_label:
                     self.predictionLayers.remove(layer)
-                    self.layerstack.removeRows(il, 1)
+                    self.layerstack.selectRow(il)
+                    self.layerstack.deleteSelected()
                     break
     
     def handleGraphInputChanged(self):
@@ -872,7 +873,8 @@ class PixelClassificationGui(QMainWindow):
             # Delete in reverse order so we can remove rows as we go
             for i in reversed(range(0, len(self.layerstack))):
                 if self.layerstack[i].name == layerName:
-                    self.layerstack.removeRows(i, 1)
+                    self.layerstack.selectRow(i)
+                    self.layerstack.deleteSelected()
 
     def initLabelLayer(self, *args):
         """
@@ -933,7 +935,9 @@ class PixelClassificationGui(QMainWindow):
             
             # Remove all layers from the editor.  We have new data.
             self.removeAllPredictionLayers()
-            self.layerstack.removeRows( 0, len(self.layerstack) )
+            while len(self.layerstack) > 0:
+                self.layerstack.selectRow(0)
+                self.layerstack.deleteSelected()
     
             # Give the editor the appropriate shape (transposed via an Op5ifyer adapter).
             op5 = Op5ifyer( graph=self.pipeline.graph )
