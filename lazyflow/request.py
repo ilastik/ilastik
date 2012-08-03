@@ -284,7 +284,7 @@ class inThread(object):
 
 class CustomGreenlet(greenlet.greenlet):
     """
-    small heler class that wraps a greenlet and provides
+    small helper class that wraps a greenlet and provides
     additional attributes.
     """
     __slots__ = ("thread", "request")
