@@ -690,7 +690,7 @@ class Slot(object):
             
             # legacy operators may return None and only
             # write into destination; fix that case
-            result_op = result_op if result_op else destination
+            result_op = result_op if not(result_op is None) else destination
 
             # Decrement the execution count
             self._decrementOperatorExecutionCount()
