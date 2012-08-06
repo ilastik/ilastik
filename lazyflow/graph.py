@@ -686,11 +686,15 @@ class Slot(object):
             self._incrementOperatorExecutionCount()
             
             # Execute the workload, which might not ever return (if we get cancelled).
-            self.operator.execute(self.slot, roi, destination)
+            result_op = self.operator.execute(self.slot, roi, destination)
             
+            # legacy operators may return None and only
+            # write into destination; fix that case
+            result_op = result_op if result_op else destination
+
             # Decrement the execution count
             self._decrementOperatorExecutionCount()
-            return destination
+            return result_op
 
         def _incrementOperatorExecutionCount(self):
             self.started = True
