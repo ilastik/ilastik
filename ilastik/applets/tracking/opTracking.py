@@ -7,6 +7,8 @@ import numpy
 import numpy as np
 import ctracking
 
+from opObjectFeatures import OpRegionCenters
+
 def relabel( volume, replace ):
     mp = np.arange(0,np.amax(volume)+1, dtype=volume.dtype)
     mp[1:] = 255
@@ -106,8 +108,8 @@ class OpTracking(Operator):
         print self.Objects.meta
         print self.Output.meta
         
-        #self.Output.connect( self._reader.Output )
-
+        self._opRegionCenters = OpRegionCenters( graph=graph )
+        self._opRegionCenters.LabelImage.connect( self.Objects )
     
     def setupOutputs(self):
         print "tracking: setupOutputs"
@@ -120,6 +122,7 @@ class OpTracking(Operator):
     def execute(self, slot, roi, result):
         if slot is self.Output:
             self.Objects.get(roi, destination=result).wait()
+
             t = roi.start[0]
             if t < len(self.label2color):
                 result[0,...,0] = relabel( result[0,...,0], self.label2color[t] )

@@ -2,6 +2,7 @@ from PyQt4.QtGui import QWidget, QColor, QVBoxLayout
 from PyQt4 import uic
 
 import os
+import math
 
 from ilastik.applets.layerViewer import LayerViewerGui
 from volumina.widgets.thresholdingWidget import ThresholdingWidget
@@ -154,8 +155,21 @@ class TrackingGui( QWidget ):
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
     def _onTrackButtonPressed( self ):
-        print "Track button pressed!"
+        app = self._drawer.appSpinBox.value()
+        dis = self._drawer.disSpinBox.value()
+        opp = self._drawer.oppSpinBox.value()
+        noiserate = self._drawer.noiseRateSpinBox.value()
+        noiseweight = self._drawer.noiseWeightSpinBox.value()
+        epGap = self._drawer.epGapSpinBox.value()
 
+        det = noiseweight*(-1)*math.log(1-noiserate)
+        mdet = noiseweight*(-1)*math.log(noiserate)
+        self.mainOperator.track(app=app,
+                                dis=dis,
+                                opp=opp,
+                                det=det,
+                                mdet=mdet,
+                                ep_gap=epGap)
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):
