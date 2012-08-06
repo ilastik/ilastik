@@ -35,6 +35,7 @@ class OpRegionCenters( Operator ):
                 return centers
                 
             print "opRegCent: loading"
+            reqs = []
             for t in range(roi.start[0], roi.stop[0]):
                 troi = copy.copy(roi)
                 troi.start[0] = t
@@ -42,10 +43,9 @@ class OpRegionCenters( Operator ):
                 a = self.LabelImage.get(troi).wait()
                 a = a[0,...,0]
 
-                req = Request( extract, a=a)
-                req.submit_cloud()
                 
-                centers_at = req.wait()
-                print "Got centers at ", t, centers_at
+                print "requested at ", t
+                res = extract(a)
+
 
             return None

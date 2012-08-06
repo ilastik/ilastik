@@ -1,5 +1,6 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
+from lazyflow.stype import Opaque
 from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
 
 import h5py
@@ -48,6 +49,46 @@ def cTraxels_from_objects_group( objects_g, timestep=0):
         ts.add_traxel(tr)
     return ts
 
+
+class OpTrackingDataProvider( Operator ):
+    Raw = OutputSlot()
+    LabelImage = OutputSlot()
+    Traxels = OutputSlot( stype=Opaque )
+
+    def __init__( self, parent = None, graph = None, register = True ):
+        super(OpTrackingDataProvider, self).__init__(parent=parent, graph=graph,register=register)
+        self._traxel_cache = None
+
+        self._rawReader = OpInputDataReader( graph )
+        self._rawReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5/raw')
+        self.Raw.connect( self._rawReader.Output )
+
+        self._labelImageReader = OpInputDataReader( graph )
+        self._labelImageReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5/objects')
+        self.LabelImage.connect( self._labelImageReader.Output )
+
+    def setupOutputs( self ):
+        self.Traxels.meta.shape = self.LabelImage.meta.shape
+
+    def execute( self, slot, roi, result ):
+        if slot is self.Traxels:
+            if self._traxel_cache:
+                return self._traxel_cache
+            else:
+                print "extract traxels"
+                self._traxel_cache = ctracking.TraxelStore()
+                f = h5py.File("/home/bkausler/src/ilastik/tracking/relabeled-stack/regioncenter.h5", 'r')
+                for t in range(15):
+                    og = f['samples/'+str(t)+'/objects']
+                    traxels = cTraxels_from_objects_group( og, t)
+                    self._traxel_cache.add_from_Traxels(traxels)
+                    print "-- extracted %d traxels at t %d" % (len(traxels), t)
+                f.close()
+                return self._traxel_cache
+
+
+
+    
 class OpTracking(Operator):
     """
     Given an input image and max/min bounds,
@@ -55,10 +96,6 @@ class OpTracking(Operator):
     """
     name = "OpTracking"
     category = "other"
-    
-    #InputImage = InputSlot()
-    #MinValue = InputSlot(stype='int')
-    #MaxValue = InputSlot(stype='int')
     
     Output = OutputSlot()
     RawData = OutputSlot()
@@ -69,78 +106,37 @@ class OpTracking(Operator):
         super(OpTracking, self).__init__(parent=parent,graph=graph,register=register)
 
         self.label2color = []
-        
-        print "extract traxels"
-        self.ts = ctracking.TraxelStore()
-        f = h5py.File("/home/bkausler/src/ilastik/tracking/relabeled-stack/regioncenter.h5", 'r')
-        for t in range(15):
-            og = f['samples/'+str(t)+'/objects']
-            traxels = cTraxels_from_objects_group( og, t)
-            self.ts.add_from_Traxels(traxels)
-            print "-- extracted %d traxels at t %d" % (len(traxels), t)
-        f.close()
 
-        
-
-        self._rawReader = OpInputDataReader( graph )
-        self._rawReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5/raw')
-        self.RawData.connect( self._rawReader.Output )
-
-        #self._trackingReader = OpInputDataReader( graph )
-        #self._trackingReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/labeledtracking.h5/labeledtracking')
-        #self.Output.connect( self._trackingReader.Output )
+        self._dataProvider = OpTrackingDataProvider( graph=graph )
+        self.RawData.connect( self._dataProvider.Raw )
 
         self._locpicReader = OpInputDataReader( graph )
         self._locpicReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/locpic.h5/locpic')
         self.Locpic.connect( self._locpicReader.Output )
 
-        self._objectsReader = OpInputDataReader( graph )
-        self._objectsReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5/objects')
-
-        print self.Objects.meta
-        assert( self._objectsReader.Output.ready() )
-
-        self.Objects.connect( self._objectsReader.Output )
-        assert( self.Objects.ready() )
-        assert( self.Objects.configured() )
-        self._initialized = True
-        assert(self.configured() )
-        print self.Objects.meta
-        print self.Output.meta
+        self.Objects.connect( self._dataProvider.LabelImage )
         
-        self._opRegionCenters = OpRegionCenters( graph=graph )
-        self._opRegionCenters.LabelImage.connect( self.Objects )
+        
+        #self._opRegionCenters = OpRegionCenters( graph=graph )
+        #self._opRegionCenters.LabelImage.connect( self.Objects )
     
     def setupOutputs(self):
-        print "tracking: setupOutputs"
-        # Copy the input metadata to both outputs
-        #self.Output.meta.assignFrom( self.InputImage.meta )
-        #self.InvertedOutput.meta.assignFrom( self.InputImage.meta )
-        #self.RawData.meta.assignFrom(self._reader.Output.meta )
-        self.Output.meta.assignFrom(self.Objects.meta )
+        self.Output.meta.assignFrom(self._dataProvider.LabelImage.meta )
     
     def execute(self, slot, roi, result):
         if slot is self.Output:
-            self.Objects.get(roi, destination=result).wait()
+            self._dataProvider.LabelImage.get(roi, destination=result).wait()
 
             t = roi.start[0]
             if t < len(self.label2color):
                 result[0,...,0] = relabel( result[0,...,0], self.label2color[t] )
             else:
                 result[...] = 0
-            #al = self.Objects.get( SubRegion( self.Objects ) ).wait()
-            #print type(al), al.shape
 
     def propagateDirty(self, inputSlot, roi):
         print "tracking: propagateDirty"
-        if inputSlot is self.Objects:
+        if inputSlot is self._dataProvider.LabelImage:
             self.Output.setDirty(roi)
-        # if inputSlot.name == "InputImage":
-        #     self.Output.setDirty(roi)
-        #     self.InvertedOutput.setDirty(roi)
-        # if inputSlot.name == "MinValue" or inputSlot.name == "MaxValue":
-        #     self.Output.setDirty( slice(None) )
-        #     self.InvertedOutput.setDirty( slice(None) )
 
     def track( self,
             rf_fn = "none",
@@ -157,10 +153,10 @@ class OpTracking(Operator):
             min_angle = 0,
             ep_gap = 0.2):
 
-        print "track: extracting region centers"
-        centersr = self._opRegionCenters.Output.get( SubRegion(self._opRegionCenters.Output) )
-        centers = centersr.wait()
-        print centers
+        #print "track: extracting region centers"
+        #centersr = self._opRegionCenters.Output.get( SubRegion(self._opRegionCenters.Output) )
+        #centers = centersr.wait()
+        #print centers
 
         tracker = ctracking.MrfTracking(rf_fn,
                                         app,
@@ -176,7 +172,9 @@ class OpTracking(Operator):
                                         min_angle,
                                         ep_gap)
 
-        events = tracker(self.ts)
+        ts = self._dataProvider.Traxels.get( SubRegion(self._dataProvider.Traxels)).wait()
+
+        events = tracker(ts)
         label2color = []
         label2color.append({})
 
