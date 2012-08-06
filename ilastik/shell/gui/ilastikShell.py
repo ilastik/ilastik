@@ -13,8 +13,9 @@ import traceback
 import os
 from functools import partial
 
-from versionManager import VersionManager
-from ilastik.utility import bind, ThunkEvent, ThunkEventHandler
+from ilastik.versionManager import VersionManager
+from ilastik.utility import bind
+from ilastik.utility.gui import ThunkEvent, ThunkEventHandler
 from lazyflow.graph import MultiOutputSlot
 
 import sys
@@ -25,8 +26,10 @@ from lazyflow.tracer import Tracer
 
 import ilastik.ilastik_logging
 
-import applet
-import appletGuiInterface
+from ilastik.applets.base.applet import Applet, ControlCommand, ShellRequest
+from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
+
+from ilastik.shell.projectManager import ProjectManager
 
 import platform
 import numpy
@@ -70,7 +73,7 @@ class ProgressDisplayManager(QObject):
 
         # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread        
         self.dispatchSignal.connect(self.handleAppletProgressImpl)
-    
+        
     def addApplet(self, index, app):
         # Subscribe to progress updates from this applet,
         # and include the applet index in the signal parameters.
@@ -80,6 +83,8 @@ class ProgressDisplayManager(QObject):
         # (Progress will always come from either the serializer or the applet itself; not both at once.)
         for serializer in app.dataSerializers:
             serializer.progressSignal.connect( bind( self.handleAppletProgress, index ) )
+        
+        
 
     def handleAppletProgress(self, index, percentage, cancelled=False):
         # Forward the signal to the handler via our qt signal, which provides a queued connection.
@@ -92,10 +97,13 @@ class ProgressDisplayManager(QObject):
                 if index in self.appletPercentages.keys():
                     del self.appletPercentages[index]
             else:
-                # If this appears to be the first progress signal for the applet and it's already 100,
-                #  it is really a duplicate 100% update.  Ignore it.
-                # (100% progress is not a valid starting value.)
-                if not (index not in self.appletPercentages and percentage == 100):
+                # Take max (never go back down)
+                if index in self.appletPercentages:
+                    oldPercentage = self.appletPercentages[index]
+                    self.appletPercentages[index] = max(percentage, oldPercentage)
+                # First percentage we get MUST be zero.
+                # Other notifications are ignored.
+                if index in self.appletPercentages or percentage == 0:
                     self.appletPercentages[index] = percentage
     
             numActive = len(self.appletPercentages)
@@ -153,8 +161,8 @@ class IlastikShell( QMainWindow ):
         self.mainSplitter.setSizes([300,1])
         
         self.currentAppletIndex = 0
-        self.currentProjectFile = None
-        
+
+        self.projectManager = ProjectManager()
         self.currentImageIndex = -1
         self.populatingImageSelectionCombo = False
         self.imageSelectionCombo.currentIndexChanged.connect( self.changeCurrentInputImageIndex )
@@ -201,7 +209,7 @@ class IlastikShell( QMainWindow ):
         Show the window, and enable/disable controls depending on whether or not a project file present.
         """
         super(IlastikShell, self).show()
-        self.enableWorkflow = (self.currentProjectFile != None)
+        self.enableWorkflow = (self.projectManager.currentProjectFile is not None)
         self.updateAppletControlStates()
         if self._sideSplitterSizePolicy == SideSplitterSizePolicy.Manual:
             self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoLargestDrawer )
@@ -329,10 +337,10 @@ class IlastikShell( QMainWindow ):
             self.appletBar.setCurrentIndex( modelIndex.parent() )
 
     def addApplet( self, app ):
-        assert isinstance( app, applet.Applet ), "Applets must inherit from Applet base class."
+        assert isinstance( app, Applet ), "Applets must inherit from Applet base class."
         assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
 
-        assert issubclass( type(app.gui), appletGuiInterface.AppletGuiInterface ), "Applet GUIs must conform to the Applet GUI interface."
+        assert issubclass( type(app.gui), AppletGuiInterface ), "Applet GUIs must conform to the Applet GUI interface."
         
         self._applets.append(app)
         applet_index = len(self._applets) - 1
@@ -371,10 +379,12 @@ class IlastikShell( QMainWindow ):
         
         # Set up handling of shell requests from this applet
         app.shellRequestSignal.connect( partial(self.handleShellRequest, applet_index) )
+
+        self.projectManager.addApplet(app)
                 
         return applet_index
 
-    def handleAppletGuiControlSignal(self, applet_index, command=applet.ControlCommand.DisableAll):
+    def handleAppletGuiControlSignal(self, applet_index, command=ControlCommand.DisableAll):
         """
         Applets fire a signal when they want other applet GUIs to be disabled.
         This function handles the signal.
@@ -382,7 +392,7 @@ class IlastikShell( QMainWindow ):
         A special command, Pop, undoes the applet's most recent command (i.e. re-enables the applets that were disabled).
         If an applet is disabled twice (e.g. by two different applets), then it won't become enabled again until both commands have been popped.
         """
-        if command == applet.ControlCommand.Pop:
+        if command == ControlCommand.Pop:
             command = self._controlCmds[applet_index].pop()
             step = -1 # Since we're popping this command, we'll subtract from the disable counts
         else:
@@ -391,10 +401,10 @@ class IlastikShell( QMainWindow ):
 
         # Increase the disable count for each applet that is affected by this command.
         for index, count in enumerate(self._disableCounts):
-            if (command == applet.ControlCommand.DisableAll) \
-            or (command == applet.ControlCommand.DisableDownstream and index > applet_index) \
-            or (command == applet.ControlCommand.DisableUpstream and index < applet_index) \
-            or (command == applet.ControlCommand.DisableSelf and index == applet_index):
+            if (command == ControlCommand.DisableAll) \
+            or (command == ControlCommand.DisableDownstream and index > applet_index) \
+            or (command == ControlCommand.DisableUpstream and index < applet_index) \
+            or (command == ControlCommand.DisableSelf and index == applet_index):
                 self._disableCounts[index] += step
 
         # Update the control states in the GUI thread
@@ -405,7 +415,7 @@ class IlastikShell( QMainWindow ):
         An applet is asking us to do something.  Handle the request.
         """
         with Tracer(traceLogger):
-            if requestAction == applet.ShellRequest.RequestSave:
+            if requestAction == ShellRequest.RequestSave:
                 # Call the handler directly to ensure this is a synchronous call (not queued to the GUI thread)
                 self.onSaveProjectActionTriggered()
 
@@ -416,23 +426,23 @@ class IlastikShell( QMainWindow ):
         return self._applets[index]
     
     def ensureNoCurrentProject(self):
-        projectClosed = True
-        if self.currentProjectFile is not None:
-            if self.isProjectDataDirty():
-                message = "Your current project is about to be closed, but it has unsaved changes which will be lost.\n"
-                message += "Are you sure you want to proceed?"
-                buttons = QMessageBox.Yes | QMessageBox.Cancel
-                response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
-                projectClosed = (response == QMessageBox.Yes)
+        closeProject = True
+        if self.projectManager.isProjectDataDirty():
+            message = "Your current project is about to be closed, but it has unsaved changes which will be lost.\n"
+            message += "Are you sure you want to proceed?"
+            buttons = QMessageBox.Yes | QMessageBox.Cancel
+            response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
+            closeProject = (response == QMessageBox.Yes)
 
-            if projectClosed:
-                self.closeCurrentProject()
-        return projectClosed
+        if closeProject:
+            self.closeCurrentProject()
+
+        return closeProject
 
     def closeCurrentProject(self):
-        self.unloadAllApplets()
-        self.currentProjectFile.close()
-        self.currentProjectFile = None
+        for applet in self._applets:
+            applet.gui.reset()
+        self.projectManager.closeCurrentProject()
         self.enableWorkflow = False
         self.updateAppletControlStates()
     
@@ -443,12 +453,18 @@ class IlastikShell( QMainWindow ):
         if not self.ensureNoCurrentProject():
             return
         
-        h5File, projectFilePath = self.createBlankProjectFile()
-        
-        if h5File is not None:
-            self.loadProject(h5File, projectFilePath)
+        newProjectFilePath = self.getProjectPathToCreate()
 
-    def createBlankProjectFile(self):
+        if newProjectFilePath is not None:
+            newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
+        
+        if newProjectFile is not None:
+            self.loadProject(newProjectFile, newProjectFilePath)
+
+    def getProjectPathToCreate(self):
+        """
+        Ask the user where he would like to create a project file.
+        """
         logger.debug("Creating blank project file")
         
         fileSelected = False
@@ -458,7 +474,7 @@ class IlastikShell( QMainWindow ):
             
             # If the user cancelled, stop now
             if projectFilePath.isNull():
-                return None, None
+                return None
     
             projectFilePath = str(projectFilePath)
             fileSelected = True
@@ -477,12 +493,8 @@ class IlastikShell( QMainWindow ):
                         # Try again...
                         fileSelected = False
 
-        # Create the blank project file
-        h5File = h5py.File(projectFilePath, "w")
-        h5File.create_dataset("ilastikVersion", data=VersionManager.CurrentIlastikVersion)
-        
-        return h5File, projectFilePath
-
+        return projectFilePath
+    
     def onImportProjectActionTriggered(self):
         """
         Import an existing project into a new file.
@@ -493,137 +505,73 @@ class IlastikShell( QMainWindow ):
         if not self.ensureNoCurrentProject():
             return
 
-        # Select the ordiginal project and load it into the workflow.
-        self.onOpenProjectActionTriggered()
+        # Select the paths to the ilp to import and the name of the new one we'll create
+        importedFilePath = self.getProjectPathToOpen()
+        newProjectFilePath = self.getProjectPathToCreate()
 
-        # Select and create the new (blank) project file
-        h5File, projectFilePath = self.createBlankProjectFile()
+        # If the user didn't cancel
+        if importedFilePath is not None and newProjectFilePath is not None:
+            newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
+            self.projectManager.importProject(importedFilePath, newProjectFile, newProjectFilePath)
 
-        if h5File is None:
-            # The user cancelled.
-            self.closeCurrentProject()
-        else:
-            # Export the current workflow state to the new file.
-            # (Somewhat hacky: We temporarily swap the new file object as our current one during the save.)
-            origProjectFile = self.currentProjectFile
-            self.currentProjectFile = h5File
-            self.currentProjectPath = projectFilePath
-            self.onSaveProjectActionTriggered()
-            self.currentProjectFile = origProjectFile
-    
-            # Close the original project
-            self.closeCurrentProject()
-    
-            # Reload the workflow from the new file
-            self.loadProject(h5File, projectFilePath)
+        # Now that a project is loaded, the user is allowed to save
+        self._shellActions.saveProjectAction.setEnabled(True)
+
+        # Enable all the applet controls
+        self.enableWorkflow = True
+        self.updateAppletControlStates()
         
-    def onOpenProjectActionTriggered(self):
-        logger.debug("Open Project action triggered")
-
-        # Make sure the user is finished with the currently open project
-        if not self.ensureNoCurrentProject():
-            return
-
+    def getProjectPathToOpen(self):
+        """
+        Return the path of the project the user wants to open (or None if he cancels).
+        """
         projectFilePath = QFileDialog.getOpenFileName(
            self, "Open Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*.ilp)")
 
         # If the user canceled, stop now        
         if projectFilePath.isNull():
+            return None
+
+        return str(projectFilePath)
+
+    def onOpenProjectActionTriggered(self):
+        logger.debug("Open Project action triggered")
+        
+        # Make sure the user is finished with the currently open project
+        if not self.ensureNoCurrentProject():
             return
 
-        projectFilePath = str(projectFilePath)
-        
-        self.openProjectFile(projectFilePath)
+        projectFilePath = self.getProjectPathToOpen()
+        if projectFilePath is not None:
+            self.openProjectFile(projectFilePath)
     
     def openProjectFile(self, projectFilePath):
-        logger.info("Opening Project: " + projectFilePath)
-
-        # Open the file as an HDF5 file
-        hdf5File = h5py.File(projectFilePath)
-        self.loadProject(hdf5File, projectFilePath)
+        try:
+            hdf5File = self.projectManager.openProjectFile(projectFilePath)
+        except ProjectManager.ProjectVersionError,e:
+            QMessageBox.warning(self, "Old Project", "Could not load old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
+        except:
+            logger.error( traceback.format_exc() )
+            QMessageBox.warning(self, "Corrupted Project", "Unable to open project file: " + projectFilePath)
+        else:
+            self.loadProject(hdf5File, projectFilePath)
     
     def loadProject(self, hdf5File, projectFilePath):
         """
         Load the data from the given hdf5File (which should already be open).
         """
-        assert self.currentProjectFile is None
+        self.projectManager.loadProject(hdf5File, projectFilePath)
 
-        # Minor GUI nicety: Pre-activate the progress signals for all applets so
-        #  the progress manager treats these tasks as a group instead of several sequential jobs.
-        for applet in self._applets:
-            applet.progressSignal.emit(0)
+        # Now that a project is loaded, the user is allowed to save
+        self._shellActions.saveProjectAction.setEnabled(True)
 
-        # Save this as the current project
-        self.currentProjectFile = hdf5File
-        self.currentProjectPath = projectFilePath
-        try:            
-            # Applet serializable items are given the whole file (root group)
-            for applet in self._applets:
-                for item in applet.dataSerializers:
-                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
-
-            # Now that a project is loaded, the user is allowed to save
-            self._shellActions.saveProjectAction.setEnabled(True)
-    
-            # Enable all the applet controls
-            self.enableWorkflow = True
-            self.updateAppletControlStates()
-
-            # Reset the GUI (which may enable/disable specific controls)
-            applet.gui.reset()
-
-        except:
-            logger.error("Project Open Action failed due to the following exception:")
-            traceback.print_exc()
-            
-            logger.error("Aborting Project Open Action")
-            self.unloadAllApplets()
-
-        for applet in self._applets:
-            applet.progressSignal.emit(100)
-
-    def unloadAllApplets(self):
-        """
-        Unload all applets into a blank state.
-        """
-        for applet in self._applets:
-            # Reset the GUI
-            applet.gui.reset()
-
-            # Unload the project data
-            for item in applet.dataSerializers:
-                item.unload()
+        # Enable all the applet controls
+        self.enableWorkflow = True
+        self.updateAppletControlStates()
     
     def onSaveProjectActionTriggered(self):
         logger.debug("Save Project action triggered")
-
-        assert self.currentProjectFile != None
-        assert self.currentProjectPath != None
-
-        # Minor GUI nicety: Pre-activate the progress signals for dirty applets so
-        #  the progress manager treats these tasks as a group instead of several sequential jobs.
-        for applet in self._applets:
-            for ser in applet.dataSerializers:
-                if ser.isDirty():
-                    applet.progressSignal.emit(0)
-
-        try:        
-            # Applet serializable items are given the whole file (root group) for now
-            for applet in self._applets:
-                for item in applet.dataSerializers:
-                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    if item.isDirty():
-                        item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
-        except:
-            logger.error("Project Save Action failed due to the following exception:")
-            traceback.print_exc()            
-
-        # Flush any changes we made to disk, but don't close the file.
-        self.currentProjectFile.flush()
-
-        for applet in self._applets:
-            applet.progressSignal.emit(100)
+        self.projectManager.saveProject()
             
     def onQuitActionTriggered(self, force=False):
         """
@@ -632,37 +580,20 @@ class IlastikShell( QMainWindow ):
         """
         logger.info("Quit Action Triggered")
         
-        if not force and self.isProjectDataDirty():
+        if not force and self.projectManager.isProjectDataDirty():
             message = "Your project has unsaved data.  Are you sure you want to discard your changes and quit?"
             buttons = QMessageBox.Discard | QMessageBox.Cancel
             response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
             if response == QMessageBox.Cancel:
                 return
 
-        if self.currentProjectFile is not None:
-            self.currentProjectFile.close()
-        self.currentProjectFile = None
+        self.projectManager.closeCurrentProject()
 
         # Stop the thread that checks for log config changes.
         ilastik.ilastik_logging.stopUpdates()
 
         qApp.quit()
 
-    def isProjectDataDirty(self):
-        """
-        Check all serializable items in our workflow if they have any unsaved data.
-        """
-        if self.currentProjectFile is None:
-            return False
-
-        unSavedDataExists = False
-        for applet in self._applets:
-            for item in applet.dataSerializers:
-                if unSavedDataExists:
-                    break
-                else:
-                    unSavedDataExists = item.isDirty()
-        return unSavedDataExists
     
     def updateAppletControlStates(self):
         """

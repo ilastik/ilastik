@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from ilastik.ilastikshell import VersionManager
+from ilastik import VersionManager
 from ilastik.utility.simpleSignal import SimpleSignal
 
 class AppletSerializer(object):

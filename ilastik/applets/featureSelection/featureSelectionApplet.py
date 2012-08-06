@@ -1,9 +1,8 @@
-from ilastik.ilastikshell.applet import Applet
+from ilastik.applets.base.applet import Applet
 
 from opFeatureSelection import OpFeatureSelection
 
 from featureSelectionSerializer import FeatureSelectionSerializer, Ilastik05FeatureSelectionDeserializer
-from featureSelectionGui import FeatureSelectionGui
 
 from lazyflow.graph import OperatorWrapper
 
@@ -22,7 +21,7 @@ class FeatureSelectionApplet( Applet ):
         self._serializableItems = [ FeatureSelectionSerializer(self._topLevelOperator, projectFileGroupName),
                                     Ilastik05FeatureSelectionDeserializer(self._topLevelOperator) ]
 
-        self._gui = FeatureSelectionGui(self._topLevelOperator)
+        self._gui = None
             
     @property
     def dataSerializers(self):
@@ -34,6 +33,9 @@ class FeatureSelectionApplet( Applet ):
 
     @property    
     def gui(self):
+        if self._gui is None:
+            from featureSelectionGui import FeatureSelectionGui
+            self._gui = FeatureSelectionGui(self._topLevelOperator)
         return self._gui
 
 

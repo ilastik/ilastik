@@ -34,7 +34,7 @@ class ThresholdMaskingGui(LayerViewerGui):
         """
         with Tracer(traceLogger):
             self.mainOperator = mainOperator
-            super(ThresholdMaskingGui, self).__init__([mainOperator.Output, mainOperator.InvertedOutput])
+            super(ThresholdMaskingGui, self).__init__([mainOperator.InputImage, mainOperator.Output, mainOperator.InvertedOutput])
             self.handleThresholdGuiValuesChanged(0, 255)
             
     def initAppletDrawerUi(self):

@@ -1,5 +1,3 @@
-from PyQt4.QtGui import QWidget, QApplication
-
 from ilastik.utility.simpleSignal import SimpleSignal
 
 from abc import ABCMeta, abstractproperty

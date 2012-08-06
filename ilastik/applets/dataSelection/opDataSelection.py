@@ -67,7 +67,7 @@ class OpDataSelection(Operator):
         # If we should find the data in the project file, use a dataset reader
         if datasetInProject:
             reader = OpStreamingHdf5Reader(graph=self.graph)
-            reader.ProjectFile.setValue(self.ProjectFile.value)
+            reader.Hdf5File.setValue(self.ProjectFile.value)
             reader.InternalPath.setValue(internalPath)
             providerSlot = reader.OutputImage
         else:

@@ -5,7 +5,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 from PyQt4.QtCore import QTimer
 
-from ilastik.ilastikshell.ilastikShell import IlastikShell, SideSplitterSizePolicy
+from ilastik.shell.gui.ilastikShell import IlastikShell, SideSplitterSizePolicy
 
 from ilastik.applets.pixelClassification import PixelClassificationApplet
 from ilastik.applets.projectMetadata import ProjectMetadataApplet

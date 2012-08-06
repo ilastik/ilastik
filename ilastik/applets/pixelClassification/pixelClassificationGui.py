@@ -16,14 +16,13 @@ from volumina.adaptors import Op5ifyer
 from igms.labelListView import Label
 from igms.labelListModel import LabelListModel
 
-import ilastik.ilastikshell
-from ilastik.ilastikshell.applet import Applet, ShellRequest
+from ilastik.applets.base.applet import Applet, ShellRequest, ControlCommand
 
 import vigra
 import threading
 
-from ilastik.utility.simpleSignal import SimpleSignal
-from ilastik.utility import bind, ThunkEvent, ThunkEventHandler
+from ilastik.utility import bind, SimpleSignal
+from ilastik.utility.gui import ThunkEvent, ThunkEventHandler
 
 import logging
 from lazyflow.tracer import Tracer
@@ -425,11 +424,11 @@ class PixelClassificationGui(QMainWindow):
             # If we're changing modes, enable/disable other applets accordingly
             if self.interactiveModeActive != checked:
                 if checked:
-                    self.guiControlSignal.emit( ilastik.ilastikshell.applet.ControlCommand.DisableUpstream )
-                    self.guiControlSignal.emit( ilastik.ilastikshell.applet.ControlCommand.DisableDownstream )
+                    self.guiControlSignal.emit( ControlCommand.DisableUpstream )
+                    self.guiControlSignal.emit( ControlCommand.DisableDownstream )
                 else:
-                    self.guiControlSignal.emit( ilastik.ilastikshell.applet.ControlCommand.Pop )                
-                    self.guiControlSignal.emit( ilastik.ilastikshell.applet.ControlCommand.Pop )
+                    self.guiControlSignal.emit( ControlCommand.Pop )                
+                    self.guiControlSignal.emit( ControlCommand.Pop )
             self.interactiveModeActive = checked
 
     def changeInteractionMode( self, toolId ):
@@ -781,7 +780,8 @@ class PixelClassificationGui(QMainWindow):
             for il, layer in enumerate(self.layerstack):
                 if layer.ref_object==ref_label:
                     self.predictionLayers.remove(layer)
-                    self.layerstack.removeRows(il, 1)
+                    self.layerstack.selectRow(il)
+                    self.layerstack.deleteSelected()
                     break
     
     def handleGraphInputChanged(self):
@@ -873,7 +873,8 @@ class PixelClassificationGui(QMainWindow):
             # Delete in reverse order so we can remove rows as we go
             for i in reversed(range(0, len(self.layerstack))):
                 if self.layerstack[i].name == layerName:
-                    self.layerstack.removeRows(i, 1)
+                    self.layerstack.selectRow(i)
+                    self.layerstack.deleteSelected()
 
     def initLabelLayer(self, *args):
         """
@@ -934,7 +935,9 @@ class PixelClassificationGui(QMainWindow):
             
             # Remove all layers from the editor.  We have new data.
             self.removeAllPredictionLayers()
-            self.layerstack.removeRows( 0, len(self.layerstack) )
+            while len(self.layerstack) > 0:
+                self.layerstack.selectRow(0)
+                self.layerstack.deleteSelected()
     
             # Give the editor the appropriate shape (transposed via an Op5ifyer adapter).
             op5 = Op5ifyer( graph=self.pipeline.graph )

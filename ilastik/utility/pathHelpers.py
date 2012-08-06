@@ -6,24 +6,33 @@ class PathComponents(object):
     """
     def __init__(self, totalPath):
         # For hdf5 paths, split into external, extension, and internal paths
-        h5Exts = ['.h5', '.hdf5', '.ilp']
+        h5Exts = ['.ilp', '.h5', '.hdf5']
         ext = None
+        extIndex = -1
         for x in h5Exts:
-            if x in totalPath:
+            if totalPath.find(x) > extIndex:
+                extIndex = totalPath.find(x)
                 ext = x
 
         # Comments below refer to this example path:
         # /some/path/to/file.h5/with/internal/dataset
         if ext is not None:
-            self.extension = ext                              # .h5            
-            self.externalPath = totalPath.split(ext)[0] + ext # /some/path/to/file.h5
-            self.internalPath = totalPath.split(ext)[1]       # /with/internal/dataset
+            self.extension = ext                              # .h5
+            parts = totalPath.split(ext)
+            
+            # Must deal with pathological filenames such as /path/to/file.h5_with_duplicate_ext.h5
+            while len(parts) > 2:
+                parts[0] = parts[0] + ext + parts[1]
+                del parts[1]
+            self.externalPath = parts[0] + ext # /some/path/to/file.h5
+            self.internalPath = parts[1]       # /with/internal/dataset
 
             self.internalDirectory = os.path.split( self.internalPath )[0]   # /with/internal
             self.internalDatasetName = os.path.split( self.internalPath )[1] # dataset
         else:
             # For non-hdf5 files, use normal path/extension (no internal path)
             (self.externalPath, self.extension) = os.path.splitext(totalPath)
+            self.externalPath += self.extension
             self.internalPath = None
             self.internalDatasetName = None
             self.internalDirectory = None
@@ -33,7 +42,10 @@ class PathComponents(object):
         self.filenameBase = self.filename.split(ext)[0]                  # file
 
     def totalPath(self):
-        return self.externalPath + self.extension + self.internalPath
+        total = self.externalPath 
+        if self.internalPath:
+            total += self.internalPath
+        return total
 
 def getPathVariants(originalPath, workingDirectory):
     """
@@ -74,4 +86,8 @@ if __name__ == "__main__":
     assert components.extension == '.h5'
     assert components.internalPath == '/with/internal/path/to/data'
 
+    components = PathComponents('/some/external/path/to/file.h5_crazy_ext.h5/with/internal/path/to/data')
+    assert components.externalPath == '/some/external/path/to/file.h5_crazy_ext.h5'
+    assert components.extension == '.h5'
+    assert components.internalPath == '/with/internal/path/to/data'
 

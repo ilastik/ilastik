@@ -1,6 +1,6 @@
 from lazyflow import graph
 from lazyflow.graph import OperatorWrapper
-from ilastik.ilastikshell.applet import Applet
+from ilastik.applets.base.applet import Applet
 from opSeededWatershed import OpSegmentor
 from seededWatershedGui import SeededWatershedGui
 from seededWatershedSerializer import SeededWatershedSerializer

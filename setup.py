@@ -13,7 +13,9 @@ packages=['ilastik',
           'ilastik.applets.thresholdMasking',
           'ilastik.applets.tracking',
           'ilastik.applets.vigraWatershedViewer',
-          'ilastik.ilastikshell',
+          'ilastik.shell',
+          'ilastik.shell.gui',
+          'ilastik.shell.headless',
           'ilastik.ilastik_logging',
           'ilastik.utility']
 
@@ -31,7 +33,7 @@ package_data={'ilastik': ['ilastik-splash.png',
           'ilastik.applets.thresholdMasking': ['*.ui'],
           'ilastik.applets.tracking': ['*.ui'],          
           'ilastik.applets.vigraWatershedViewer': ['*.ui'],
-          'ilastik.ilastikshell': ['ui/*.ui']
+          'ilastik.shell.gui': ['ui/*.ui']
               }
 
 setup(name='ilastik',

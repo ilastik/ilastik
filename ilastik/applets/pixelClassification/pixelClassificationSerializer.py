@@ -2,7 +2,7 @@ import os
 import tempfile
 import vigra
 import h5py
-from ilastik.ilastikshell.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import AppletSerializer
 from ilastik.utility import bind
 from lazyflow.operators import OpH5WriterBigDataset
 import threading
@@ -45,6 +45,7 @@ class PixelClassificationSerializer(AppletSerializer):
 
             self._predictionStorageEnabled = False
             self._predictionStorageRequest = None
+            self._predictionsPresent = False
                 
     @property
     def predictionStorageEnabled(self):
@@ -308,7 +309,12 @@ class PixelClassificationSerializer(AppletSerializer):
         Return true if the current state of this item 
         (in memory) does not match the state of the HDF5 group on disk.
         """
-        return any(self._dirtyFlags.values())
+        flags = dict(self._dirtyFlags)
+        flags[Section.Predictions] = False
+        dirty = any(flags.values())
+        dirty |= self._dirtyFlags[Section.Predictions] and self.predictionStorageEnabled
+        
+        return dirty
 
     def unload(self):
         """
