@@ -1,4 +1,4 @@
-from ilastik.ilastikshell.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import AppletSerializer
 import vigra
 
 class TrackingSerializer(AppletSerializer):

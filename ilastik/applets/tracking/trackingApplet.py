@@ -1,4 +1,4 @@
-from ilastik.ilastikshell.applet import Applet
+from ilastik.applets.base.applet import Applet
 
 from opTracking import OpTracking
 from trackingGui import TrackingGui

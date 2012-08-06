@@ -10,13 +10,12 @@ from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap
 from PyQt4.QtCore import QTimer
 
 import ilastik
-from ilastik.ilastikshell.ilastikShell import IlastikShell, SideSplitterSizePolicy
+from ilastik.shell.gui.ilastikShell import IlastikShell, SideSplitterSizePolicy
 
 from ilastik.applets.pixelClassification import PixelClassificationApplet
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
-from ilastik.applets.connectedComponents.connectedComponentsApplet import ConnectedComponentsApplet
 from ilastik.applets.tracking.trackingApplet import TrackingApplet
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
