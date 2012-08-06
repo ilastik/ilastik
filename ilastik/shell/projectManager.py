@@ -122,7 +122,7 @@ class ProjectManager(object):
         importedFilePath = os.path.abspath(importedFilePath)
         
         # Open and load the original project file
-        importedFile = h5py.File(importedFilePath)
+        importedFile = h5py.File(importedFilePath, 'r')
         self.loadProject(importedFile, importedFilePath)
         
         # Export the current workflow state to the new file.
