@@ -461,16 +461,19 @@ class IlastikShell( QMainWindow ):
         if newProjectFile is not None:
             self.loadProject(newProjectFile, newProjectFilePath)
 
-    def getProjectPathToCreate(self):
+    def getProjectPathToCreate(self, defaultPath=None):
         """
         Ask the user where he would like to create a project file.
         """
         logger.debug("Creating blank project file")
         
+        if defaultPath is None:
+            defaultPath = os.path.expanduser("~")
+        
         fileSelected = False
         while not fileSelected:
             projectFilePath = QFileDialog.getSaveFileName(
-               self, "Create Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*.ilp)")
+               self, "Create Ilastik Project", defaultPath, "Ilastik project files (*.ilp)")
             
             # If the user cancelled, stop now
             if projectFilePath.isNull():
@@ -507,15 +510,19 @@ class IlastikShell( QMainWindow ):
 
         # Select the paths to the ilp to import and the name of the new one we'll create
         importedFilePath = self.getProjectPathToOpen()
-        newProjectFilePath = self.getProjectPathToCreate()
+        if importedFilePath is not None:
+            defaultFile, ext = os.path.splitext(importedFilePath)
+            defaultFile += "_imported"
+            defaultFile += ext
+            newProjectFilePath = self.getProjectPathToCreate(defaultFile)
 
         # If the user didn't cancel
         if importedFilePath is not None and newProjectFilePath is not None:
             newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
             self.projectManager.importProject(importedFilePath, newProjectFile, newProjectFilePath)
 
-        # Now that a project is loaded, the user is allowed to save
-        self._shellActions.saveProjectAction.setEnabled(True)
+            # Now that a project is loaded, the user is allowed to save
+            self._shellActions.saveProjectAction.setEnabled(True)
 
         # Enable all the applet controls
         self.enableWorkflow = True
@@ -525,8 +532,11 @@ class IlastikShell( QMainWindow ):
         """
         Return the path of the project the user wants to open (or None if he cancels).
         """
+
+        defaultPath = os.path.expanduser("~")
+
         projectFilePath = QFileDialog.getOpenFileName(
-           self, "Open Ilastik Project", os.path.abspath(__file__), "Ilastik project files (*.ilp)")
+           self, "Open Ilastik Project", defaultPath, "Ilastik project files (*.ilp)")
 
         # If the user canceled, stop now        
         if projectFilePath.isNull():
