@@ -2,6 +2,7 @@ from setuptools import setup
 
 packages=['ilastik',
           'ilastik.applets',
+          'ilastik.applets.base',
           'ilastik.applets.batchIo',
           'ilastik.applets.connectedComponents',
           'ilastik.applets.dataSelection',          
@@ -16,7 +17,8 @@ packages=['ilastik',
           'ilastik.shell.gui',
           'ilastik.shell.headless',
           'ilastik.ilastik_logging',
-          'ilastik.utility']
+          'ilastik.utility',
+          'ilastik.utility.gui']
 
 package_data={'ilastik': ['ilastik-splash.png',
                           'ilastik-splash.xcf',
