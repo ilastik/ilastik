@@ -65,82 +65,19 @@ class OpTracking(Operator):
 
     def __init__( self, parent = None, graph = None, register = True ):
         super(OpTracking, self).__init__(parent=parent,graph=graph,register=register)
+
+        self.label2color = []
         
         print "extract traxels"
         self.ts = ctracking.TraxelStore()
         f = h5py.File("/home/bkausler/src/ilastik/tracking/relabeled-stack/regioncenter.h5", 'r')
-        for t in range(10):
+        for t in range(15):
             og = f['samples/'+str(t)+'/objects']
             traxels = cTraxels_from_objects_group( og, t)
             self.ts.add_from_Traxels(traxels)
             print "-- extracted %d traxels at t %d" % (len(traxels), t)
         f.close()
-        rf_fn = "none"
-        app = 500
-        dis = 500
-        det = 10
-        mdet = 200
-        use_rf = False
-        opp = 100
-        forb = 0
-        with_constr = True
-        fixed_detections = False
-        mdd = 0
-        min_angle = 0
-        ep_gap = 0.2
 
-        tracker = ctracking.MrfTracking(rf_fn,
-                                        app,
-                                        dis,
-                                        det,
-                                        mdet,
-                                        use_rf,
-                                        opp,
-                                        forb,
-                                        with_constr,
-                                        fixed_detections,
-                                        mdd,
-                                        min_angle,
-                                        ep_gap)
-                                        
-        events = tracker(self.ts)
-        label2color = []
-        label2color.append({})
-
-        for i, events_at in enumerate(events):
-            dis = []
-            app = []
-            div = []
-            mov = []
-            for event in events_at:
-                if event.type == ctracking.EventType.Appearance:
-                    app.append((event.traxel_ids[0], event.energy))
-                if event.type == ctracking.EventType.Disappearance:
-                    dis.append((event.traxel_ids[0], event.energy))
-                if event.type == ctracking.EventType.Division:
-                    div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
-                if event.type == ctracking.EventType.Move:
-                    mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
-
-            label2color.append({})
-            #for e in dis:
-            #    label2color[-2][e[0]] = 255 # mark disapps
-
-            for e in app:
-                label2color[-1][e[0]] = np.random.randint(1,255)
-            
-            for e in mov:
-                if not label2color[-2].has_key(e[0]):
-                    label2color[-2][e[0]] = np.random.randint(1,255)
-                label2color[-1][e[1]] = label2color[-2][e[0]]
-
-            for e in div:
-                if not label2color[-2].has_key(e[0]):
-                    label2color[-2][e[0]] = np.random.randint(1,255)
-                ancestor_color = label2color[-2][e[0]]
-                label2color[-1][e[1]] = ancestor_color
-                label2color[-1][e[2]] = ancestor_color
-        self.label2color = label2color
         
 
         self._rawReader = OpInputDataReader( graph )
@@ -201,3 +138,78 @@ class OpTracking(Operator):
         # if inputSlot.name == "MinValue" or inputSlot.name == "MaxValue":
         #     self.Output.setDirty( slice(None) )
         #     self.InvertedOutput.setDirty( slice(None) )
+
+    def track( self,
+            rf_fn = "none",
+            app = 500,
+            dis = 500,
+            det = 10,
+            mdet = 200,
+            use_rf = False,
+            opp = 100,
+            forb = 0,
+            with_constr = True,
+            fixed_detections = False,
+            mdd = 0,
+            min_angle = 0,
+            ep_gap = 0.2):
+
+        print "track: extracting region centers"
+        centersr = self._opRegionCenters.Output.get( SubRegion(self._opRegionCenters.Output) )
+        centers = centersr.wait()
+        print centers
+
+        tracker = ctracking.MrfTracking(rf_fn,
+                                        app,
+                                        dis,
+                                        det,
+                                        mdet,
+                                        use_rf,
+                                        opp,
+                                        forb,
+                                        with_constr,
+                                        fixed_detections,
+                                        mdd,
+                                        min_angle,
+                                        ep_gap)
+
+        events = tracker(self.ts)
+        label2color = []
+        label2color.append({})
+
+        for i, events_at in enumerate(events):
+            dis = []
+            app = []
+            div = []
+            mov = []
+            for event in events_at:
+                if event.type == ctracking.EventType.Appearance:
+                    app.append((event.traxel_ids[0], event.energy))
+                if event.type == ctracking.EventType.Disappearance:
+                    dis.append((event.traxel_ids[0], event.energy))
+                if event.type == ctracking.EventType.Division:
+                    div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
+                if event.type == ctracking.EventType.Move:
+                    mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+
+            label2color.append({})
+            #for e in dis:
+            #    label2color[-2][e[0]] = 255 # mark disapps
+
+            for e in app:
+                label2color[-1][e[0]] = np.random.randint(1,255)
+
+            for e in mov:
+                if not label2color[-2].has_key(e[0]):
+                    label2color[-2][e[0]] = np.random.randint(1,255)
+                label2color[-1][e[1]] = label2color[-2][e[0]]
+
+            for e in div:
+                if not label2color[-2].has_key(e[0]):
+                    label2color[-2][e[0]] = np.random.randint(1,255)
+                ancestor_color = label2color[-2][e[0]]
+                label2color[-1][e[1]] = ancestor_color
+                label2color[-1][e[2]] = ancestor_color
+
+        self.label2color = label2color
+        self.Output.setDirty(SubRegion(self.Output))
