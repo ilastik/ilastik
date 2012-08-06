@@ -321,10 +321,13 @@ class OpPixelFeaturesPresmoothed(Operator):
             start, stop = roi.sliceToRoi(subkey,subkey)
             maxSigma = max(0.7,self.maxSigma)
 
-            newStart, newStop = roi.extendSlice(start, stop, subshape, maxSigma, window = 3.5)
-
+            # The region of the smoothed image we need to give to the feature filter (in terms of INPUT coordinates)
             vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, window = 2)
+            
+            # The region of the input that we need to give to the smoothing operator (in terms of INPUT coordinates)
+            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, window = 3.5)
 
+            # Translate coordinates (now in terms of smoothed image coordinates)
             vigOpSourceStart = roi.TinyVector(vigOpSourceStart - newStart)
             vigOpSourceStop = roi.TinyVector(vigOpSourceStop - newStart)
 
@@ -453,7 +456,6 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 oslot.operator.getOutSlot(oslot,tuple(oldkey),destArea, sourceArray = sourceArraysForSigmas[j])
                                 written += 1
                             cnt += 1
-
             for i in range(len(sourceArraysForSigmas)):
                 if sourceArraysForSigmas[i] is not None:
                     try:
