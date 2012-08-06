@@ -8,8 +8,6 @@ import numpy
 import numpy as np
 import ctracking
 
-from opObjectFeatures import OpRegionCenters
-
 def relabel( volume, replace ):
     mp = np.arange(0,np.amax(volume)+1, dtype=volume.dtype)
     mp[1:] = 255
@@ -90,11 +88,7 @@ class OpTrackingDataProvider( Operator ):
 
     
 class OpTracking(Operator):
-    """
-    Given an input image and max/min bounds,
-    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
-    """
-    name = "OpTracking"
+    name = "Tracking"
     category = "other"
     
     Output = OutputSlot()
@@ -108,17 +102,13 @@ class OpTracking(Operator):
         self.label2color = []
 
         self._dataProvider = OpTrackingDataProvider( graph=graph )
-        self.RawData.connect( self._dataProvider.Raw )
 
         self._locpicReader = OpInputDataReader( graph )
         self._locpicReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/locpic.h5/locpic')
         self.Locpic.connect( self._locpicReader.Output )
 
-        self.Objects.connect( self._dataProvider.LabelImage )
-        
-        
-        #self._opRegionCenters = OpRegionCenters( graph=graph )
-        #self._opRegionCenters.LabelImage.connect( self.Objects )
+        self.Objects.connect( self._dataProvider.LabelImage ) 
+        self.RawData.connect( self._dataProvider.Raw )
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self._dataProvider.LabelImage.meta )
@@ -134,7 +124,6 @@ class OpTracking(Operator):
                 result[...] = 0
 
     def propagateDirty(self, inputSlot, roi):
-        print "tracking: propagateDirty"
         if inputSlot is self._dataProvider.LabelImage:
             self.Output.setDirty(roi)
 
@@ -152,11 +141,6 @@ class OpTracking(Operator):
             mdd = 0,
             min_angle = 0,
             ep_gap = 0.2):
-
-        #print "track: extracting region centers"
-        #centersr = self._opRegionCenters.Output.get( SubRegion(self._opRegionCenters.Output) )
-        #centers = centersr.wait()
-        #print centers
 
         tracker = ctracking.MrfTracking(rf_fn,
                                         app,
