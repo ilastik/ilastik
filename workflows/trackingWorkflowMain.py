@@ -17,6 +17,7 @@ from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.tracking.trackingApplet import TrackingApplet
+from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 
