@@ -15,6 +15,9 @@ class ProjectManager(object):
             self.projectVersion = projectVersion
             self.expectedVersion = expectedVersion
     
+    class FileMissingError(RuntimeError):
+        pass
+    
     def __init__(self):
         self.currentProjectFile = None
         self.currentProjectPath = None
@@ -35,6 +38,9 @@ class ProjectManager(object):
 
     def openProjectFile(self, projectFilePath):
         logger.info("Opening Project: " + projectFilePath)
+
+        if not os.path.exists(projectFilePath):
+            raise ProjectManager.FileMissingError()
 
         # Open the file as an HDF5 file
         hdf5File = h5py.File(projectFilePath)

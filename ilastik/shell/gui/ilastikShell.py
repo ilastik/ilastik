@@ -560,6 +560,8 @@ class IlastikShell( QMainWindow ):
             hdf5File = self.projectManager.openProjectFile(projectFilePath)
         except ProjectManager.ProjectVersionError,e:
             QMessageBox.warning(self, "Old Project", "Could not load old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
+        except ProjectManager.FileMissingError:
+            QMessageBox.warning(self, "Missing File", "Could not find project file: " + projectFilePath)
         except:
             logger.error( traceback.format_exc() )
             QMessageBox.warning(self, "Corrupted Project", "Unable to open project file: " + projectFilePath)
