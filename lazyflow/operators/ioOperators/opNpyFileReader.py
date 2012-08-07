@@ -58,6 +58,8 @@ class OpNpyFileReader(Operator):
                 vigra.AxisInfo('y',vigra.AxisType.Space),
                 vigra.AxisInfo('z',vigra.AxisType.Space),
                 vigra.AxisInfo('c',vigra.AxisType.Channels))
+        
+        assert numDimensions <= 5, "OpNpyFileReader: No support for data with more than 5 dimensions."
 
         # Our output slot should match the shape of the array on disk
         self.Output.meta.dtype = self.rawVigraArray.dtype
