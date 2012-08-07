@@ -170,7 +170,14 @@ class DataSelectionSerializer( AppletSerializer ):
                 # If the data is supposed to be in the project,
                 #  check for it now.
                 if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
-                    assert datasetInfo.datasetId in topGroup['local_data'].keys()
+                    if not datasetInfo.datasetId in topGroup['local_data'].keys():
+                        raise RuntimeError("Corrupt project file.  Could not find data for " + infoGroupName)
+    
+                # If the data is supposed to exist outside the project, make sure it really does.
+                if datasetInfo.location == DatasetInfo.Location.FileSystem:
+                    filePath = PathComponents(datasetInfo.filePath).externalPath
+                    if not os.path.exists(filePath):
+                        raise RuntimeError("Could not find external data: " + filePath)
     
                 # Give the new info to the operator
                 self.mainOperator.Dataset[index].setValue(datasetInfo)
