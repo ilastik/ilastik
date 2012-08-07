@@ -1,6 +1,8 @@
 import os
 import h5py
 import vigra
+import numpy
+import tempfile
 from lazyflow.graph import Graph, OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
@@ -10,22 +12,36 @@ logger = logging.getLogger(__name__)
 
 class TestDataSelectionSerializer(object):
     
-    def test06(self):
-        """
-        Test the basic functionality of the v0.6 project format serializer.
-        """
-        # Define the files we'll be making    
-        testProjectName = 'test_project.ilp'
-        testProjectName = os.path.split(__file__)[0] + '/' + testProjectName
-        # Clean up: Remove the test data files we created last time (just in case)
-        for f in [testProjectName]:
+    def setUp(self):
+        self.tmpDir = tempfile.mkdtemp()
+        self.tmpFilePath = self.tmpDir + "/testDataSelection.npy"
+    
+        self.testProjectName = 'test_project.ilp'
+        self.testProjectName = os.path.split(__file__)[0] + '/' + self.testProjectName
+        
+        self.cleanupFiles = [self.tmpFilePath, self.testProjectName]
+
+        data = numpy.indices((1,10,10,10,2)).sum(0)
+        numpy.save(self.tmpFilePath, data)
+        
+    def tearDown(self):
+        for f in self.cleanupFiles:
             try:
                 os.remove(f)
             except:
                 pass
+
+        try:
+            os.removedirs(self.tmpDir)
+        except:
+            pass
     
+    def test06(self):
+        """
+        Test the basic functionality of the v0.6 project format serializer.
+        """
         # Create an empty project
-        testProject = h5py.File(testProjectName)
+        testProject = h5py.File(self.testProjectName)
         testProject.create_dataset("ilastikVersion", data=0.6)
         
         ##
@@ -43,14 +59,14 @@ class TestDataSelectionSerializer(object):
         operatorToSave.ProjectDataGroup.setValue( serializer.topGroupName + '/local_data' )
         
         info = DatasetInfo()
-        info.filePath = '/home/bergs/5d.npy'
+        info.filePath = self.tmpFilePath
         info.location = DatasetInfo.Location.ProjectInternal
         
         operatorToSave.Dataset.resize(1)
         operatorToSave.Dataset[0].setValue(info)
         
         # Now serialize!
-        serializer.serializeToHdf5(testProject, testProjectName)
+        serializer.serializeToHdf5(testProject, self.testProjectName)
         
         # Check for dataset existence
         datasetInternalPath = serializer.topGroupName + '/local_data/' + info.datasetId
@@ -85,7 +101,7 @@ class TestDataSelectionSerializer(object):
         
         deserializer = DataSelectionSerializer(operatorToLoad, serializer.topGroupName) # Copy the group name from the serializer we used.
         assert deserializer._base_initialized
-        deserializer.deserializeFromHdf5(testProject, testProjectName)
+        deserializer.deserializeFromHdf5(testProject, self.testProjectName)
         
         assert len(operatorToLoad.Dataset) == len(operatorToSave.Dataset)
         assert len(operatorToLoad.Image) == len(operatorToSave.Image)
@@ -93,44 +109,11 @@ class TestDataSelectionSerializer(object):
         assert operatorToLoad.Image[0].meta.shape == operatorToSave.Image[0].meta.shape
         assert operatorToLoad.Image[0].meta.axistags == operatorToSave.Image[0].meta.axistags
 
-        os.remove(testProjectName)
+        os.remove(self.testProjectName)
     
 if __name__ == "__main__":
+    import sys
     import nose
-    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
-    
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    sys.argv.append("--nocapture")
+    sys.argv.append("--nologcapture")
+    nose.run(defaultTest=__file__)

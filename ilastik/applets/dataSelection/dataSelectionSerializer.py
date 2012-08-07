@@ -1,9 +1,10 @@
 from opDataSelection import OpDataSelection, DatasetInfo
 from lazyflow.operators.ioOperators import OpStackToH5Writer
+from lazyflow.operators import OpH5WriterBigDataset
 
 import os
 import copy
-from ilastik.utility import bind
+from ilastik.utility import bind, PathComponents
 
 from ilastik.applets.base.appletSerializer import AppletSerializer
 
@@ -41,6 +42,51 @@ class DataSelectionSerializer( AppletSerializer ):
         
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         with Tracer(traceLogger):
+            # Write any missing local datasets to the local_data group
+            localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
+            wroteInternalData = False
+            for index, slot in enumerate(self.mainOperator.Dataset):
+                info = slot.value
+                # If this dataset should be stored in the project, but it isn't there yet
+                if  info.location == DatasetInfo.Location.ProjectInternal \
+                and info.datasetId not in localDataGroup.keys():
+                    # Obtain the data from the corresponding output and store it to the project.
+                    dataSlot = self.mainOperator.Image[index]
+
+                    opWriter = OpH5WriterBigDataset(graph=self.mainOperator.graph)
+                    opWriter.hdf5File.setValue( localDataGroup )
+                    opWriter.hdf5Path.setValue( info.datasetId )
+                    opWriter.Image.connect(dataSlot)
+
+                    # Trigger the copy
+                    success = opWriter.WriteImage.value
+                    assert success
+
+                    # Add the axistags attribute to the dataset we just created
+                    localDataGroup[info.datasetId].attrs['axistags'] = dataSlot.meta.axistags.toJSON()
+
+                    # Update the dataset info with no path, just filename base to remind us what this data is
+                    # (operator will react to the change when we call setValue(), below)
+                    # Directly set the private member to avoid getting a new datasetid
+                    info._filePath = PathComponents(info.filePath).filenameBase
+                    wroteInternalData = True
+    
+            # Construct a list of all the local dataset ids we want to keep
+            localDatasetIds = [ slot.value.datasetId
+                                 for index, slot 
+                                 in enumerate(self.mainOperator.Dataset)
+                                 if slot.value.location == DatasetInfo.Location.ProjectInternal ]
+    
+            # Delete any datasets in the project that aren't needed any more
+            for datasetName in localDataGroup.keys():
+                if datasetName not in localDatasetIds:
+                    del localDataGroup[datasetName]
+    
+            if wroteInternalData:
+                # Force the operator to setupOutputs() again so it gets data from the project, not external files
+                firstInfo = self.mainOperator.Dataset[0].value
+                self.mainOperator.Dataset[0].setValue(firstInfo, False)
+
             # Access the info group
             infoDir = self.getOrCreateGroup(topGroup, 'infos')
             
@@ -57,44 +103,6 @@ class DataSelectionSerializer( AppletSerializer ):
                 infoGroup.create_dataset('filePath', data=datasetInfo.filePath)
                 infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
                 infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
-            
-            # Write any missing local datasets to the local_data group
-            localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
-            wroteInternalData = False
-            for index, slot in enumerate(self.mainOperator.Dataset):
-                info = slot.value
-                # If this dataset should be stored in the project, but it isn't there yet
-                if  info.location == DatasetInfo.Location.ProjectInternal \
-                and info.datasetId not in localDataGroup.keys():
-                    # Obtain the data from the corresponding output and store it to the project.
-                    # TODO: Optimize this for large datasets by streaming it chunk-by-chunk using an OpH5WriterBigDataset!
-                    dataSlot = self.mainOperator.Image[index]
-                    data = dataSlot[...].wait()
-    
-                    # Vigra thinks its okay to reorder the data if it has axistags,
-                    #  but we don't want that. To avoid reordering, we write the data
-                    #  ourselves and attach the axistags afterwards.
-                    dataset = localDataGroup.create_dataset(info.datasetId, data=data)
-                    dataset.attrs['axistags'] = dataSlot.meta.axistags.toJSON()
-                    wroteInternalData = True
-    
-            # Construct a list of all the local dataset ids we want to keep
-            localDatasetIds = [ slot.value.datasetId
-                                 for index, slot 
-                                 in enumerate(self.mainOperator.Dataset)
-                                 if slot.value.location == DatasetInfo.Location.ProjectInternal ]
-    
-            # Delete any datasets in the project that aren't needed any more
-            for datasetName in localDataGroup.keys():
-                if datasetName not in localDatasetIds:
-                    del localDataGroup[datasetName]
-    
-            if wroteInternalData:
-                # Force the operator to setupOutputs() again so it gets data from the project, not external files
-                # TODO: This will cause a slew of 'dirty' operators for any inputs we saved.
-                #       Is that a problem?
-                infoCopy = copy.copy(self.mainOperator.Dataset[0].value)
-                self.mainOperator.Dataset[0].setValue(infoCopy)
             
             self._dirty = False
 
