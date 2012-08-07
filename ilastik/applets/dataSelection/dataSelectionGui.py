@@ -325,7 +325,7 @@ class DataSelectionGui(QMainWindow):
                 comboData = LocationOptions.Project
             elif location == DatasetInfo.Location.FileSystem:
                 # Determine if the path is relative or absolute
-                if self.mainOperator.Dataset[row].value.filePath[0] == '/':
+                if os.path.isabs(self.mainOperator.Dataset[row].value.filePath[0]):
                     comboData = LocationOptions.AbsolutePath
                 else:
                     comboData = LocationOptions.RelativePath
