@@ -458,8 +458,8 @@ class IlastikShell( QMainWindow ):
         if newProjectFilePath is not None:
             newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
         
-        if newProjectFile is not None:
-            self.loadProject(newProjectFile, newProjectFilePath)
+            if newProjectFile is not None:
+                self.loadProject(newProjectFile, newProjectFilePath)
 
     def getProjectPathToCreate(self, defaultPath=None):
         """
