@@ -40,7 +40,7 @@ class OpInputDataReader(Operator):
         assert type(filePath) == str
 
         # Does this look like a relative path?
-        useRelativePath = (filePath[0] != '/')
+        useRelativePath = not os.path.isabs(filePath)
 
         if useRelativePath:
             # If using a relative path, we need both inputs before proceeding
@@ -48,7 +48,7 @@ class OpInputDataReader(Operator):
                 return
             else:
                 # Convert this relative path into an absolute path
-                filePath = self.WorkingDirectory.value + '/' + filePath
+                filePath = os.path.normpath(os.path.join(self.WorkingDirectory.value, filePath))
 
         self.internalOperator = None
 
@@ -71,6 +71,9 @@ class OpInputDataReader(Operator):
             if ext is not None:
                 externalPath = filePath.split(ext)[0] + ext
                 internalPath = filePath.split(ext)[1]
+
+                if not os.path.exists(externalPath):
+                    raise RuntimeError("Input file does not exist: " + externalPath)
 
                 # Open the h5 file in read-only mode
                 h5File = h5py.File(externalPath, 'r')
