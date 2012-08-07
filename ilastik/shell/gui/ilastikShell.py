@@ -572,14 +572,17 @@ class IlastikShell( QMainWindow ):
         """
         Load the data from the given hdf5File (which should already be open).
         """
-        self.projectManager.loadProject(hdf5File, projectFilePath)
-
-        # Now that a project is loaded, the user is allowed to save
-        self._shellActions.saveProjectAction.setEnabled(True)
-
-        # Enable all the applet controls
-        self.enableWorkflow = True
-        self.updateAppletControlStates()
+        try:
+            self.projectManager.loadProject(hdf5File, projectFilePath)
+        except Exception, e:
+            QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
+        else:
+            # Now that a project is loaded, the user is allowed to save
+            self._shellActions.saveProjectAction.setEnabled(True)
+    
+            # Enable all the applet controls
+            self.enableWorkflow = True
+            self.updateAppletControlStates()
     
     def onSaveProjectActionTriggered(self):
         logger.debug("Save Project action triggered")

@@ -77,13 +77,14 @@ class ProjectManager(object):
                 for item in aplt.dataSerializers:
                     assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
                     item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
-        except:
+        except Exception, e:
             logger.error("Project Open Action failed due to the following exception:")
             traceback.print_exc()
             
             logger.error("Aborting Project Open Action")
             self.closeCurrentProject()
 
+            raise e
         finally:
             for aplt in self._applets:
                 aplt.progressSignal.emit(100)
