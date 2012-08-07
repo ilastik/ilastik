@@ -44,6 +44,7 @@ class ShellActions(object):
     def __init__(self):
         self.openProjectAction = None
         self.saveProjectAction = None
+        self.saveProjectSnapshotAction = None
         self.importProjectAction = None
         self.QuitAction = None
 
@@ -192,6 +193,12 @@ class IlastikShell( QMainWindow ):
         shellActions.saveProjectAction.triggered.connect(self.onSaveProjectActionTriggered)
         # Can't save until a project is loaded for the first time
         shellActions.saveProjectAction.setEnabled(False)
+
+        # Menu item: Save Project Snapshot
+        shellActions.saveProjectSnapshotAction = menu.addAction("&Save Project Snapshot...")
+        shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
+        # Can't save until a project is loaded for the first time
+        shellActions.saveProjectSnapshotAction.setEnabled(False)
 
         # Menu item: Import Project
         shellActions.importProjectAction = menu.addAction("&Import Project...")
@@ -461,19 +468,17 @@ class IlastikShell( QMainWindow ):
             if newProjectFile is not None:
                 self.loadProject(newProjectFile, newProjectFilePath)
 
-    def getProjectPathToCreate(self, defaultPath=None):
+    def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
         Ask the user where he would like to create a project file.
         """
-        logger.debug("Creating blank project file")
-        
         if defaultPath is None:
             defaultPath = os.path.expanduser("~/MyProject.ilp")
         
         fileSelected = False
         while not fileSelected:
             projectFilePath = QFileDialog.getSaveFileName(
-               self, "Create Ilastik Project", defaultPath, "Ilastik project files (*.ilp)")
+               self, caption, defaultPath, "Ilastik project files (*.ilp)")
             
             # If the user cancelled, stop now
             if projectFilePath.isNull():
@@ -489,7 +494,7 @@ class IlastikShell( QMainWindow ):
                 if os.path.exists(projectFilePath):
                     # Since we changed the file path, we need to re-check if we're overwriting an existing file.
                     message = "A file named '" + projectFilePath + "' already exists in this location.\n"
-                    message += "Are you sure you want to overwrite it with a blank project?"
+                    message += "Are you sure you want to overwrite it?"
                     buttons = QMessageBox.Yes | QMessageBox.Cancel
                     response = QMessageBox.warning(self, "Overwrite existing project?", message, buttons, defaultButton=QMessageBox.Cancel)
                     if response == QMessageBox.Cancel:
@@ -523,10 +528,11 @@ class IlastikShell( QMainWindow ):
 
             # Now that a project is loaded, the user is allowed to save
             self._shellActions.saveProjectAction.setEnabled(True)
+            self._shellActions.saveProjectSnapshotAction.setEnabled(True)
 
-        # Enable all the applet controls
-        self.enableWorkflow = True
-        self.updateAppletControlStates()
+            # Enable all the applet controls
+            self.enableWorkflow = True
+            self.updateAppletControlStates()
         
     def getProjectPathToOpen(self):
         """
@@ -579,6 +585,7 @@ class IlastikShell( QMainWindow ):
         else:
             # Now that a project is loaded, the user is allowed to save
             self._shellActions.saveProjectAction.setEnabled(True)
+            self._shellActions.saveProjectSnapshotAction.setEnabled(True)
     
             # Enable all the applet controls
             self.enableWorkflow = True
@@ -587,7 +594,16 @@ class IlastikShell( QMainWindow ):
     def onSaveProjectActionTriggered(self):
         logger.debug("Save Project action triggered")
         self.projectManager.saveProject()
-            
+
+    def onSaveProjectSnapshotActionTriggered(self):
+        logger.debug("Saving Snapshot")
+        currentPath, ext = os.path.splitext(self.projectManager.currentProjectPath)
+        defaultSnapshot = currentPath + "_snapshot" + ext
+        
+        snapshotPath = self.getProjectPathToCreate(defaultSnapshot, caption="Create Project Snapshot")
+        if snapshotPath is not None:
+            self.projectManager.saveProjectSnapshot(snapshotPath)
+
     def onQuitActionTriggered(self, force=False):
         """
         The user wants to quit the application.

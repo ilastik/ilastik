@@ -118,6 +118,17 @@ class ProjectManager(object):
             for applet in self._applets:
                 applet.progressSignal.emit(100)
 
+    def saveProjectSnapshot(self, snapshotPath):
+        """
+        Save a copy of the current project to a different file.
+        The current project REMAINS OPEN.
+        """
+        f = h5py.File(snapshotPath, 'w')
+        # Copy the entire contents of the file
+        for key in self.currentProjectFile.keys():
+            f.copy(self.currentProjectFile[key], key)
+        f.close()
+
     def importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
         """
         Load the data from a project and save it to a different project file.
