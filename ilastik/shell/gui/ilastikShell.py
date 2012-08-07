@@ -468,7 +468,7 @@ class IlastikShell( QMainWindow ):
         logger.debug("Creating blank project file")
         
         if defaultPath is None:
-            defaultPath = os.path.expanduser("~")
+            defaultPath = os.path.expanduser("~/MyProject.ilp")
         
         fileSelected = False
         while not fileSelected:
