@@ -1,5 +1,3 @@
-import ilastik.utility.monkey_patches # Must be the first import
-
 from ilastik.shell.gui.startShellGui import startShellGui
 from thresholdMaskingWorkflow import ThresholdMaskingWorkflow
 

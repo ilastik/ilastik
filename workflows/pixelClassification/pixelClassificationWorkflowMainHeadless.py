@@ -1,5 +1,4 @@
 #!/usr/bin/env python2.7
-import ilastik.utility.monkey_patches # Must be the first import
 
 # Standard libs
 import os
