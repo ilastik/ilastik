@@ -744,7 +744,7 @@ class PixelClassificationGui(QMainWindow):
         """
         with Tracer(traceLogger):
             selector=OpSingleChannelSelector(self.pipeline.graph)
-            selector.inputs["Input"].connect(self.pipeline.PredictionProbabilities[self.imageIndex])
+            selector.inputs["Input"].connect(self.pipeline.CachedPredictionProbabilities[self.imageIndex])
             selector.inputs["Index"].setValue(icl)
             
     ##      self.pipeline.prediction_cache.inputs["fixAtCurrent"].setValue(not self._labelControlUi.checkInteractive.isChecked())
