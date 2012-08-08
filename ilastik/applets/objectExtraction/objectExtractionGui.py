@@ -49,10 +49,10 @@ class ObjectExtractionGui( QWidget ):
         self.mainOperator = mainOperator
         self.layerstack = LayerStackModel()
 
-        self.rawsrc = LazyflowSource( self.mainOperator.RawData )
-        layerraw = GrayscaleLayer( self.rawsrc )
-        layerraw.name = "Raw"
-        self.layerstack.append( layerraw )
+        #self.rawsrc = LazyflowSource( self.mainOperator.RawData )
+        #layerraw = GrayscaleLayer( self.rawsrc )
+        #layerraw.name = "Raw"
+        #self.layerstack.append( layerraw )
 
 
         self.objectssrc = LazyflowSource( self.mainOperator.LabelImage )

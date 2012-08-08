@@ -15,9 +15,8 @@ class ObjectExtractionSerializer(AppletSerializer):
         self._dirty = False
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
-        print "tracking: deserializeFromHdf5", topGroup, groupVersion, hdf5File, projectFilePath
-        if topGroup is None: # new project
-             return
+        print "objectExtraction: deserializeFromHdf5", topGroup, groupVersion, hdf5File, projectFilePath
+
         self._dirty = False
 
     def isDirty(self):

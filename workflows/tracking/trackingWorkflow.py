@@ -3,10 +3,10 @@ from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
 
 from ilastik.workflow import Workflow
 
-from ilastik.applets.pixelClassification import PixelClassificationApplet
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
+from ilastik.applets.pixelClassification import PixelClassificationApplet
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 from ilastik.applets.tracking import TrackingApplet
 
@@ -20,7 +20,6 @@ from ilastik.applets.tracking.opTracking import *
 import ctracking
 class OpTrackingDataProvider( Operator ):
     Raw = OutputSlot()
-    LabelImage = OutputSlot()
     Traxels = OutputSlot( stype=Opaque )
 
     def __init__( self, parent = None, graph = None, register = True ):
@@ -31,13 +30,9 @@ class OpTrackingDataProvider( Operator ):
         self._rawReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5/raw')
         self.Raw.connect( self._rawReader.Output )
 
-        self._labelImageReader = OpInputDataReader( graph )
-        self._labelImageReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5/objects')
-        self.LabelImage.connect( self._labelImageReader.Output )
-
     def setupOutputs( self ):
-        self.Traxels.meta.shape = self.LabelImage.meta.shape
-        self.Traxels.meta.dtype = self.LabelImage.meta.dtype
+        self.Traxels.meta.shape = self.Raw.meta.shape
+        self.Traxels.meta.dtype = self.Raw.meta.dtype
 
     def execute( self, slot, roi, result ):
         if slot is self.Traxels:
@@ -83,6 +78,7 @@ class TrackingWorkflow( Workflow ):
         opData = self.dataSelectionApplet.topLevelOperator
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator
         opClassify = self.pcApplet.topLevelOperator
+        opObjExtraction = self.objectExtractionApplet.topLevelOperator
         opTracking = self.trackingApplet.topLevelOperator
         
         ## Connect operators ##
@@ -97,7 +93,7 @@ class TrackingWorkflow( Workflow ):
         opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
 
         dataProv = OpTrackingDataProvider( graph=graph )
-        opTracking.LabelImage.connect( dataProv.LabelImage )
+        opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.RawData.connect( dataProv.Raw )
         opTracking.Traxels.connect( dataProv.Traxels )
         
