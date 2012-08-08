@@ -19,6 +19,7 @@ class PixelClassificationWorkflow(Workflow):
 
         # Create a graph to be shared by all operators
         graph = Graph()
+        self._graph = graph
 
         ######################
         # Interactive workflow
@@ -116,4 +117,7 @@ class PixelClassificationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self._imageNameListSlot
     
-    
+    @property
+    def graph( self ):
+        '''the lazyflow graph shared by the applets'''
+        return self._graph
