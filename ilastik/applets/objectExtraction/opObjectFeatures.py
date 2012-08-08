@@ -6,18 +6,19 @@ import copy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
+from lazyflow.rtype import SubRegion
 from lazyflow.request import Request
 
 class OpRegionCenters( Operator ):
     LabelImage = InputSlot()
-    Output = OutputSlot( stype=Opaque )
+    Output = OutputSlot( stype=Opaque, rtype=list )
 
     
     def __init__( self, parent=None, graph=None, register=True ):
         super(OpRegionCenters, self).__init__(parent=parent,
                                               graph=graph,
                                               register=register)
-        pass
+        self._cache = {}
 
     def setupOutputs( self ):
         self.Output.meta.shape = self.LabelImage.meta.shape
@@ -28,25 +29,22 @@ class OpRegionCenters( Operator ):
             def extract( a ):
                 labels = numpy.asarray(a, dtype=numpy.uint32)
                 data = numpy.asarray(a, dtype=numpy.float32)
-                print "opRegCent: extracting", t
                 feats = vigra.analysis.extractRegionFeatures(data, labels, features=['RegionCenter'], ignoreLabel=0)
-                print "opRegCents: done"
                 centers = numpy.asarray(feats['RegionCenter'], dtype=numpy.uint16)
                 centers = centers[1:,:]
                 return centers
                 
-            print "opRegCent: loading"
-            reqs = []
-            for t in range(roi.start[0], roi.stop[0]):
-                troi = copy.copy(roi)
-                troi.start[0] = t
-                troi.stop[0] = t + 1
-                a = self.LabelImage.get(troi).wait()
-                a = a[0,...,0]
+            centers = {}
+            for t in roi:
+                if t in self._cache:
+                    print "Cached!"
+                    centers_at = self._cache[t]
+                else:
+                    troi = SubRegion( self.LabelImage, start = [t,] + (len(self.LabelImage.meta.shape) - 1) * [0,], stop = [t+1,] + list(self.LabelImage.meta.shape[1:]))
+                    a = self.LabelImage.get(troi).wait()
+                    a = a[0,...,0] # assumes t,x,y,z,c
+                    centers_at = extract(a)
+                    self._cache[t] = centers_at
+                centers[t] = centers_at
 
-                
-                print "requested at ", t
-                res = extract(a)
-
-
-            return None
+            return centers

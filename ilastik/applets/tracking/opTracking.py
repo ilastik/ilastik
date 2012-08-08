@@ -54,6 +54,7 @@ class OpTracking(Operator):
 
     LabelImage = InputSlot()
     Traxels = InputSlot()
+    ObjectCenters = InputSlot( stype=Opaque, optional=True )
 
     Output = OutputSlot()
     RawData = OutputSlot()
@@ -75,7 +76,7 @@ class OpTracking(Operator):
     def execute(self, slot, roi, result):
         if slot is self.Output:
             result = self.LabelImage.get(roi).wait()
-
+            
             t = roi.start[0]
             if t < len(self.label2color):
                 result[0,...,0] = relabel( result[0,...,0], self.label2color[t] )
