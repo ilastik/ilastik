@@ -178,7 +178,7 @@ class OpMaxValue(Operator):
         maxValue = None
         for i, inputSubSlot in enumerate(self.Inputs):
             # Only use inputs that are actually configured
-            if inputSubSlot.configured():
+            if inputSubSlot.ready():
                 if maxValue is None:
                     maxValue = inputSubSlot.value
                 else:

@@ -177,7 +177,7 @@ class FeatureSelectionGui(LayerViewerGui):
         with Tracer(traceLogger):
             # Refresh the feature matrix in case it has changed since the last time we were opened
             # (e.g. if the user loaded a project from disk)
-            if self.mainOperator.SelectionMatrix.configured():
+            if self.mainOperator.SelectionMatrix.ready():
                 self.featureDlg.selectedFeatureBoolMatrix = self.mainOperator.SelectionMatrix.value
             
             # Now open the feature selection dialog
@@ -216,7 +216,7 @@ class FeatureSelectionGui(LayerViewerGui):
         """
         with Tracer(traceLogger):
             # Update the drawer caption
-            if not self.mainOperator.SelectionMatrix.configured():
+            if not self.mainOperator.SelectionMatrix.ready():
                 self.drawer.caption.setText( "(No features selected)" )
                 self.layerstack.clear()
             else:
