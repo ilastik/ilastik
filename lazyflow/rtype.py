@@ -8,6 +8,14 @@ class Roi(object):
         pass
     pass
 
+
+
+class Everything(Roi):
+    '''Fallback Roi for Slots that can't operate on subsets of their input data.'''
+    pass
+
+
+
 class SubRegion(Roi):
     def __init__(self, slot, start = None, stop = None, pslice = None):
         super(SubRegion,self).__init__(slot)
