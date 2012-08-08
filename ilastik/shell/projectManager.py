@@ -15,6 +15,9 @@ class ProjectManager(object):
             self.projectVersion = projectVersion
             self.expectedVersion = expectedVersion
     
+    class FileMissingError(RuntimeError):
+        pass
+    
     def __init__(self):
         self.currentProjectFile = None
         self.currentProjectPath = None
@@ -35,6 +38,9 @@ class ProjectManager(object):
 
     def openProjectFile(self, projectFilePath):
         logger.info("Opening Project: " + projectFilePath)
+
+        if not os.path.exists(projectFilePath):
+            raise ProjectManager.FileMissingError()
 
         # Open the file as an HDF5 file
         hdf5File = h5py.File(projectFilePath)
@@ -71,13 +77,14 @@ class ProjectManager(object):
                 for item in aplt.dataSerializers:
                     assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
                     item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
-        except:
+        except Exception, e:
             logger.error("Project Open Action failed due to the following exception:")
             traceback.print_exc()
             
             logger.error("Aborting Project Open Action")
             self.closeCurrentProject()
 
+            raise e
         finally:
             for aplt in self._applets:
                 aplt.progressSignal.emit(100)
@@ -110,6 +117,17 @@ class ProjectManager(object):
             
             for applet in self._applets:
                 applet.progressSignal.emit(100)
+
+    def saveProjectSnapshot(self, snapshotPath):
+        """
+        Save a copy of the current project to a different file.
+        The current project REMAINS OPEN.
+        """
+        f = h5py.File(snapshotPath, 'w')
+        # Copy the entire contents of the file
+        for key in self.currentProjectFile.keys():
+            f.copy(self.currentProjectFile[key], key)
+        f.close()
 
     def importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
         """

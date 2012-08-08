@@ -58,7 +58,7 @@ def getPathVariants(originalPath, workingDirectory):
 
     relPath = originalPath
     
-    if originalPath[0] == '/':
+    if os.path.isabs(originalPath):
         absPath = originalPath
         relPath = os.path.relpath(absPath, workingDirectory)
     else:
