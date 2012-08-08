@@ -47,75 +47,34 @@ def cTraxels_from_objects_group( objects_g, timestep=0):
         ts.add_traxel(tr)
     return ts
 
-
-class OpTrackingDataProvider( Operator ):
-    Raw = OutputSlot()
-    LabelImage = OutputSlot()
-    Traxels = OutputSlot( stype=Opaque )
-
-    def __init__( self, parent = None, graph = None, register = True ):
-        super(OpTrackingDataProvider, self).__init__(parent=parent, graph=graph,register=register)
-        self._traxel_cache = None
-
-        self._rawReader = OpInputDataReader( graph )
-        self._rawReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5/raw')
-        self.Raw.connect( self._rawReader.Output )
-
-        self._labelImageReader = OpInputDataReader( graph )
-        self._labelImageReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5/objects')
-        self.LabelImage.connect( self._labelImageReader.Output )
-
-    def setupOutputs( self ):
-        self.Traxels.meta.shape = self.LabelImage.meta.shape
-
-    def execute( self, slot, roi, result ):
-        if slot is self.Traxels:
-            if self._traxel_cache:
-                return self._traxel_cache
-            else:
-                print "extract traxels"
-                self._traxel_cache = ctracking.TraxelStore()
-                f = h5py.File("/home/bkausler/src/ilastik/tracking/relabeled-stack/regioncenter.h5", 'r')
-                for t in range(15):
-                    og = f['samples/'+str(t)+'/objects']
-                    traxels = cTraxels_from_objects_group( og, t)
-                    self._traxel_cache.add_from_Traxels(traxels)
-                    print "-- extracted %d traxels at t %d" % (len(traxels), t)
-                f.close()
-                return self._traxel_cache
-
-
-
-    
 class OpTracking(Operator):
     name = "Tracking"
     category = "other"
     
+
+    LabelImage = InputSlot()
+    Traxels = InputSlot()
+
     Output = OutputSlot()
     RawData = OutputSlot()
     Locpic = OutputSlot()
-    Objects = InputSlot()
+
 
     def __init__( self, parent = None, graph = None, register = True ):
         super(OpTracking, self).__init__(parent=parent,graph=graph,register=register)
 
         self.label2color = []
 
-        self._dataProvider = OpTrackingDataProvider( graph=graph )
-
         self._locpicReader = OpInputDataReader( graph )
         self._locpicReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/locpic.h5/locpic')
         self.Locpic.connect( self._locpicReader.Output )
-
-        self.Objects.connect( self._dataProvider.LabelImage ) 
-        self.RawData.connect( self._dataProvider.Raw )
     
     def setupOutputs(self):
-        self.Output.meta.assignFrom(self._dataProvider.LabelImage.meta )
+        self.Output.meta.assignFrom(self.LabelImage.meta )
     
     def execute(self, slot, roi, result):
         if slot is self.Output:
-            self._dataProvider.LabelImage.get(roi, destination=result).wait()
+            self.LabelImage.get(roi, destination=result).wait()
 
             t = roi.start[0]
             if t < len(self.label2color):
@@ -124,7 +83,7 @@ class OpTracking(Operator):
                 result[...] = 0
 
     def propagateDirty(self, inputSlot, roi):
-        if inputSlot is self._dataProvider.LabelImage:
+        if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
 
     def track( self,
@@ -156,7 +115,7 @@ class OpTracking(Operator):
                                         min_angle,
                                         ep_gap)
 
-        ts = self._dataProvider.Traxels.get( SubRegion(self._dataProvider.Traxels)).wait()
+        ts = self.Traxels.get( SubRegion(self.Traxels)).wait()
 
         events = tracker(ts)
         label2color = []

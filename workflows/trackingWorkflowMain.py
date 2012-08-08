@@ -29,6 +29,52 @@ ilastik.ilastik_logging.default_config.init()
 ilastik.ilastik_logging.startUpdateInterval(10)
 
 
+
+from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.stype import Opaque
+from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
+from ilastik.applets.tracking.opTracking import *
+import ctracking
+class OpTrackingDataProvider( Operator ):
+    Raw = OutputSlot()
+    LabelImage = OutputSlot()
+    Traxels = OutputSlot( stype=Opaque )
+
+    def __init__( self, parent = None, graph = None, register = True ):
+        super(OpTrackingDataProvider, self).__init__(parent=parent, graph=graph,register=register)
+        self._traxel_cache = None
+
+        self._rawReader = OpInputDataReader( graph )
+        self._rawReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5/raw')
+        self.Raw.connect( self._rawReader.Output )
+
+        self._labelImageReader = OpInputDataReader( graph )
+        self._labelImageReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5/objects')
+        self.LabelImage.connect( self._labelImageReader.Output )
+
+    def setupOutputs( self ):
+        self.Traxels.meta.shape = self.LabelImage.meta.shape
+        self.Traxels.meta.dtype = self.LabelImage.meta.dtype
+
+    def execute( self, slot, roi, result ):
+        if slot is self.Traxels:
+            if self._traxel_cache:
+                return self._traxel_cache
+            else:
+                print "extract traxels"
+                self._traxel_cache = ctracking.TraxelStore()
+                f = h5py.File("/home/bkausler/src/ilastik/tracking/relabeled-stack/regioncenter.h5", 'r')
+                for t in range(15):
+                    og = f['samples/'+str(t)+'/objects']
+                    traxels = cTraxels_from_objects_group( og, t)
+                    self._traxel_cache.add_from_Traxels(traxels)
+                    print "-- extracted %d traxels at t %d" % (len(traxels), t)
+                f.close()
+                return self._traxel_cache
+
+
+
+
 app = QApplication([])
 
 # Splash Screen
@@ -48,16 +94,21 @@ graph = Graph()
 dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
 # featureSelectionApplet = FeatureSelectionApplet(graph, "Feature Selection", "FeatureSelections")
 # pcApplet = PixelClassificationApplet(graph, "PixelClassification")
-# ccApplet = ConnectedComponentsApplet( graph )
+objectExtractionApplet = ObjectExtractionApplet( graph )
 trackingApplet = TrackingApplet( graph )
 
 ## Access applet operators
-opData = dataSelectionApplet.topLevelOperator
+#opData = dataSelectionApplet.topLevelOperator
 #opTrainingFeatures = featureSelectionApplet.topLevelOperator
 #opClassify = pcApplet.topLevelOperator
-
+opTracking = trackingApplet.topLevelOperator
 
 ## Connect operators ##
+dataProv = OpTrackingDataProvider( graph=graph )
+opTracking.LabelImage.connect( dataProv.LabelImage )
+opTracking.RawData.connect( dataProv.Raw )
+opTracking.Traxels.connect( dataProv.Traxels )
+
 
 # Input Image -> Feature Op
 #         and -> Classification Op (for display)
@@ -85,7 +136,7 @@ shell = IlastikShell(sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
 #shell.addApplet(dataSelectionApplet)
 #shell.addApplet(featureSelectionApplet)
 #shell.addApplet(pcApplet)
-#shell.addApplet(ccApplet)
+shell.addApplet(objectExtractionApplet)
 shell.addApplet(trackingApplet)
 
 # The shell needs a slot from which he can read the list of image names to switch between.

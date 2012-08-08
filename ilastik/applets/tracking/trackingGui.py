@@ -59,7 +59,7 @@ class TrackingGui( QWidget ):
         self.layerstack.append( layerraw )
 
 
-        self.objectssrc = LazyflowSource( self.mainOperator.Objects )
+        self.objectssrc = LazyflowSource( self.mainOperator.LabelImage )
         ct = colortables.create_default_8bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         layer = ColortableLayer( self.objectssrc, ct )
@@ -90,14 +90,17 @@ class TrackingGui( QWidget ):
         self._initEditor()
 
         self._initAppletDrawerUi()
+        
+        if self.mainOperator.LabelImage.meta.shape:
+            self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
+        self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
 
-        self.editor.dataShape = self.mainOperator.RawData.meta.shape
-        #self.mainOperator.Output.notifyMetaChanged( self._onOutputMetaChanged)
 
-
-    #def _onOutputMetaChanged( self, slot ):
-    #    print "trackingGui: onMetaChanged", slot
-    #    self.editor.dataShape = slot.meta.shape
+    def _onMetaChanged( self, slot ):
+        if slot is self.mainOperator.LabelImage:
+            if slot.meta.shape:
+                print slot.meta.shape
+                self.editor.dataShape = slot.meta.shape
 
     def _initEditor(self):
         """

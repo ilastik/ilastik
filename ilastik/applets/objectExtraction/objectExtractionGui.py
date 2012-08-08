@@ -45,7 +45,7 @@ class ObjectExtractionGui( QWidget ):
     def __init__(self, mainOperator):
         """
         """
-        super(TrackingGui, self).__init__()
+        super(ObjectExtractionGui, self).__init__()
         self.mainOperator = mainOperator
         self.layerstack = LayerStackModel()
 
@@ -55,7 +55,7 @@ class ObjectExtractionGui( QWidget ):
         self.layerstack.append( layerraw )
 
 
-        self.objectssrc = LazyflowSource( self.mainOperator.Objects )
+        self.objectssrc = LazyflowSource( self.mainOperator.LabelImage )
         ct = colortables.create_default_8bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         layer = ColortableLayer( self.objectssrc, ct )
@@ -70,7 +70,7 @@ class ObjectExtractionGui( QWidget ):
 
         self._initAppletDrawerUi()
 
-        self.editor.dataShape = self.mainOperator.RawData.meta.shape
+        #self.editor.dataShape = self.mainOperator.RawData.meta.shape
 
     def _initEditor(self):
         """

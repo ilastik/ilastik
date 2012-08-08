@@ -21,6 +21,7 @@ class OpRegionCenters( Operator ):
 
     def setupOutputs( self ):
         self.Output.meta.shape = self.LabelImage.meta.shape
+        self.Output.meta.dtyp = self.LabelImage.meta.dtype
     
     def execute( self, slot, roi, result ):
         if slot is self.Output:
