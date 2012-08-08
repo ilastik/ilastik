@@ -182,16 +182,6 @@ class OpTrainRandomForestBlocked(Operator):
                 featMatrix=numpy.concatenate(featMatrix,axis=0)
                 labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
 
-                if not OpTrainRandomForestBlocked.WarningEmitted:
-                    logger.warn("FIXME: Eliminate this redundant check when the NaN bug has been fixed!")
-                    OpTrainRandomForestBlocked.WarningEmitted = True
-                    
-                if numpy.isnan(featMatrix).any():
-                    corruptChannels = numpy.where( numpy.isnan(featMatrix) )[1]
-                    assert False, "Random Forest Feature Matrix has NaNs in channels: {}".format(corruptChannels)
-                
-                assert not numpy.isnan(labelsMatrix).any(), "Random Forest Label Matrix has NaNs!"
-
                 RF=vigra.learning.RandomForest(100)
                 try:
                     logger.debug("Learning with Vigra...")
@@ -206,6 +196,8 @@ class OpTrainRandomForestBlocked(Operator):
                     self.progressSignal(100)
                 assert RF is not None, "RF = %r" % RF
                 result[0]=RF
+            
+            return result
 
     def setInSlot(self, slot, key, value):
         if self.inputs["fixClassifier"].value == False:
