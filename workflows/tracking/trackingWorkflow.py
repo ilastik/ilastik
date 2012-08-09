@@ -96,6 +96,7 @@ class TrackingWorkflow( Workflow ):
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.RawData.connect( dataProv.Raw )
         opTracking.Traxels.connect( dataProv.Traxels )
+        opTracking.ObjectCenters.connect( opObjExtraction.RegionCenters )
         
         # Training flags -> Classification Op (for GUI restrictions)
         opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )

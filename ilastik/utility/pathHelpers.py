@@ -39,7 +39,7 @@ class PathComponents(object):
 
         self.externalDirectory = os.path.split( self.externalPath )[0] # /some/path/to
         self.filename = os.path.split( self.externalPath )[1]          # file.h5
-        self.filenameBase = self.filename.split(ext)[0]                  # file
+        self.filenameBase = os.path.splitext(self.filename)[0]         # file
 
     def totalPath(self):
         total = self.externalPath 
