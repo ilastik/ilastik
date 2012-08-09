@@ -43,8 +43,6 @@ def getPathToLocalDirectory():
 
 class PixelClassificationGui(QMainWindow):
 
-    ResetLabelSelectionEvent = QEvent.Type(QEvent.registerEventType())
-
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
@@ -538,20 +536,14 @@ class PixelClassificationGui(QMainWindow):
             #FIXME: shouldn't be just row+1 here
             self.editor.brushingModel.setDrawnNumber(row+1)
             self.editor.brushingModel.setBrushColor(self._labelControlUi.labelListModel[row].color)
-    
-    def event(self, event):
-        """
-        Hook in to the Qt event mechanism to handle custom events.
-        """
-        if event.type() == self.ResetLabelSelectionEvent:
-            logger.debug("Resetting label selection")
-            if len(self._labelControlUi.labelListModel) > 0:
-                self._labelControlUi.labelListView.selectRow(0)
-            else:
-                self.changeInteractionMode(Tool.Navigation)
-            return True
+
+    def resetLabelSelection(self):
+        logger.debug("Resetting label selection")
+        if len(self._labelControlUi.labelListModel) > 0:
+            self._labelControlUi.labelListView.selectRow(0)
         else:
-            return super( PixelClassificationGui, self ).event(event)
+            self.changeInteractionMode(Tool.Navigation)
+        return True
     
     def updateForNewClasses(self):
         with Tracer(traceLogger):
@@ -667,9 +659,7 @@ class PixelClassificationGui(QMainWindow):
             currentSelection = self._labelControlUi.labelListModel.selectedRow()
             if currentSelection == -1:
                 # If we're deleting the currently selected row, then switch to a different row
-                logger.debug("Posting reset label selection event...")
-                e = QEvent( self.ResetLabelSelectionEvent )
-                QApplication.postEvent(self, e)
+                self.thunkEventHandler.post( self.resetLabelSelection )
             
     def setupPredictionLayers(self):
         """
