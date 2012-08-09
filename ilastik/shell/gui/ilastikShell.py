@@ -195,7 +195,7 @@ class IlastikShell( QMainWindow ):
         shellActions.saveProjectAction.setEnabled(False)
 
         # Menu item: Save Project Snapshot
-        shellActions.saveProjectSnapshotAction = menu.addAction("&Save Project Snapshot...")
+        shellActions.saveProjectSnapshotAction = menu.addAction("&Save and Take Snapshot...")
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
         # Can't save until a project is loaded for the first time
         shellActions.saveProjectSnapshotAction.setEnabled(False)
