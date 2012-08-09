@@ -42,6 +42,6 @@ def startShellGui(workflowClass, testFunc = None):
     # Run a test (if given)
     if testFunc:
         import functools
-        QTimer.singleShot(1, functools.partial(testFunc, shell) )
+        QTimer.singleShot(1, functools.partial(testFunc, shell, workflow) )
 
     application.exec_()

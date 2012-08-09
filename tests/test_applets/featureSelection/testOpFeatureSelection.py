@@ -24,7 +24,7 @@ class TestOpFeatureSelection(object):
         # Set input data
         # Note: Assumes that a sample file called 5d.npy exists in your home directory for testing
         filePath = os.path.expanduser('~') + '/5d.npy'
-        assert os.path.exists(filePath)
+        assert os.path.exists(filePath), "This test assumes you have the 5d.npy dataset in your home directory!"
         
         reader.FilePath.setValue( filePath )
         
@@ -73,5 +73,8 @@ class TestOpFeatureSelection(object):
                 vigra.impex.writeImage(result[featureSlice], "test_feature" + str(featureIndex) + ".bmp")
 
 if __name__ == "__main__":
+    import sys
     import nose
-    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)

@@ -463,11 +463,12 @@ class IlastikShell( QMainWindow ):
         newProjectFilePath = self.getProjectPathToCreate()
 
         if newProjectFilePath is not None:
-            newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
-        
-            if newProjectFile is not None:
-                self.loadProject(newProjectFile, newProjectFilePath)
+            self.createAndLoadNewProject(newProjectFilePath)
 
+    def createAndLoadNewProject(self, newProjectFilePath):
+        newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
+        self.loadProject(newProjectFile, newProjectFilePath)
+    
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
         Ask the user where he would like to create a project file.
