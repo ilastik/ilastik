@@ -46,8 +46,10 @@ class ShellGuiTestCaseBase(object):
         Block until the function completes.
         """
         e = threading.Event()
-        cls.shell.thunkEventHandler.post(func)
-        cls.shell.thunkEventHandler.post(e.set)
+        def impl():
+            func()
+            e.set()            
+        cls.shell.thunkEventHandler.post(impl)
         e.wait()
 
     @classmethod
