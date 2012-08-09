@@ -59,7 +59,7 @@ class ObjectExtractionGui( QWidget ):
         ct = colortables.create_default_8bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         layer = ColortableLayer( self.objectssrc, ct )
-        layer.name = "Objects"
+        layer.name = "Label Image"
         self.layerstack.append(layer)
 
         self._viewerControlWidget = None
@@ -70,7 +70,15 @@ class ObjectExtractionGui( QWidget ):
 
         self._initAppletDrawerUi()
 
-        #self.editor.dataShape = self.mainOperator.RawData.meta.shape
+        if self.mainOperator.LabelImage.meta.shape:
+            self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
+        self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
+
+    def _onMetaChanged( self, slot ):
+        if slot is self.mainOperator.LabelImage:
+            if slot.meta.shape:
+                print slot.meta.shape
+                self.editor.dataShape = slot.meta.shape
 
     def _initEditor(self):
         """
@@ -104,15 +112,12 @@ class ObjectExtractionGui( QWidget ):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
 
+        self._drawer.labelImageButton.pressed.connect(self._onLabelImageButtonPressed)
+
     def _initViewerControlUi( self ):
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
-
-
-
-
-
-
-
+    def _onLabelImageButtonPressed( self ):
+        self.mainOperator.updateLabelImage()
