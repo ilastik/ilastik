@@ -160,7 +160,7 @@ class LabelListModel(QAbstractTableModel):
     def removeRow(self, position, parent = QModelIndex()):
         self.beginRemoveRows(parent, position, position)
         value = self._labels[position]
-        logger.debug("removing row: ", value)
+        logger.debug("removing row: " + str(value))
         self._labels.remove(value)     
         self.endRemoveRows()
         return True
