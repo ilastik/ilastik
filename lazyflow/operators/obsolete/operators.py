@@ -949,7 +949,8 @@ if has_blist:
                             self._labelers[b_ind]=OpSparseLabelArray(self)
                             self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
                             self._labelers[b_ind].inputs["eraser"].connect(self.inputs["eraser"])
-                            self._labelers[b_ind].inputs["deleteLabel"].connect(self.inputs["deleteLabel"])
+                            # Don't connect deletelabel; it is set manually (here and also above)
+                            self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"].value)
                             
                             def updateMaxLabel(*args):
                                 maxLabel = 0
