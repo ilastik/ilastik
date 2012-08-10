@@ -660,6 +660,9 @@ class PixelClassificationGui(QMainWindow):
                 
                 # Recycle the deleted color back into the table (for the next label to be added)
                 self._colorTable16.insert(ncount-end+start, oldColor)
+                
+                # Update the labellayer colortable with the new color mapping
+                self.labellayer.colorTable = self._colorTable16
             
             currentSelection = self._labelControlUi.labelListModel.selectedRow()
             if currentSelection == -1:
