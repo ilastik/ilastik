@@ -169,11 +169,21 @@ class OpMaxValue(Operator):
         super(OpMaxValue, self).__init__(*args, **kwargs)
         self.Output.meta.shape = (1,)
         self.Output.meta.dtype = object
+        self._output = 0
         
     def setupOutputs(self):
-        pass # Output meta information is already set
+        self.updateOutput()
+        self.Output.setValue(self._output)
 
     def execute(self, slot, roi, result):
+        result[0] = self._output
+        return result
+
+    def notifySubSlotDirty(self, slots, indexes, roi):
+        self.updateOutput()
+        self.Output.setValue(self._output)
+
+    def updateOutput(self):
         # Return the max value of all our inputs
         maxValue = None
         for i, inputSubSlot in enumerate(self.Inputs):
@@ -183,24 +193,7 @@ class OpMaxValue(Operator):
                     maxValue = inputSubSlot.value
                 else:
                     maxValue = max(maxValue, inputSubSlot.value)
-        result[0] = maxValue
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        self._output = maxValue
 
 
