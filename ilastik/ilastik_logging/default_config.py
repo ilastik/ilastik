@@ -83,8 +83,8 @@ default_log_config = {
         "TRACE.lazyflow.operators.obsolete.classifierOperators":        { "level":"INFO", "handlers":["console_trace","console_warn"], "propagate": False },
         "TRACE.lazyflow.operators.obsolete.operators.OpArrayCache":     { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
         "TRACE.lazyflow.operators.obsolete.valueProviders.OpValueCache":{ "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.applets":                                                { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.ilastikshell":                                           { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.ilastik.applets":                                        { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.ilastik.shell":                                          { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
         "TRACE.volumina":                                               { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
         "TRACE.volumina.imageScene2D":                                  { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False }
     }
