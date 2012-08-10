@@ -19,7 +19,7 @@ class StdOutStreamHandler(logging.StreamHandler):
 
 def updateFromConfigFile():
     # Import changes from a file    
-    configFilePath = os.path.split(__file__)[0]+"/../logging_config.json"
+    configFilePath = os.path.split(__file__)[0]+"/logging_config.json"
     f = open(configFilePath)
     try:
         updates = json.load(f)
