@@ -5,6 +5,12 @@ from PyQt4.QtCore import Qt, QEvent, QPoint
 from PyQt4.QtGui import QMouseEvent, QApplication
 
 class TestPixelClassificationGui(ShellGuiTestCaseBase):
+    """
+    Run a set of GUI-based tests on the pixel classification workflow.
+    
+    Note: These tests are named in order so that simple cases are tried before complex ones.
+          Additionally, later tests may depend on earlier ones to run properly.
+    """
     
     @classmethod
     def workflowClass(cls):
@@ -13,8 +19,14 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     SAMPLE_DATA = '/magnetic/gigacube.h5'
     PROJECT_FILE = '/magnetic/test_project.ilp'
 
-    # These tests are named in order so that simple cases are tried before complex ones.
-    
+    @classmethod
+    def teardownClass(cls):
+        """
+        Call our base class to quit the app during teardown.
+        (Comment this out if you want the app to stay open for further debugging.)
+        """
+        super(TestPixelClassificationGui, cls).teardownClass()
+
     def test_1_NewProject(self):
         """
         Create a blank project and manipulate a couple settings.
@@ -55,7 +67,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Save the project
             shell.onSaveProjectActionTriggered()
 
-        # Run the test from within the shell event loop
+        # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
     def test_2_AddLabels(self):
@@ -66,6 +78,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.shell.openProjectFile(projFilePath)
             pixClassApplet = self.workflow.pcApplet
             gui = pixClassApplet.gui
+            opPix = pixClassApplet.topLevelOperator
 
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(3)
@@ -103,29 +116,61 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 release = QMouseEvent( QEvent.MouseButtonRelease, QPoint(100,100), Qt.LeftButton, Qt.NoButton, Qt.NoModifier )
                 QApplication.postEvent(imgView, release )
 
-                # Process all events before proceeding
-                QApplication.sendPostedEvents(None, 0)
+                # Let the GUI catch up: Process all events
+                QApplication.processEvents()
+
+            # Make sure the labels were added to the label array operator
+            assert opPix.MaxLabelValue.value == 3
 
             # Save the project
             self.shell.onSaveProjectActionTriggered()
 
-        # Run the test from within the shell event loop
+        # Run this test from within the shell event loop
         self.exec_in_shell(impl)
         
-
-    def test_3_InteractiveMode(self):
+    def test_3_DeleteLabel(self):
         """
-        Click the "interactive mode" checkbox.
-        Prerequisites: Test 2 must be run immediately before this one.
+        Relies on test 2.
         """
         def impl():
             pixClassApplet = self.workflow.pcApplet
             gui = pixClassApplet.gui
-            #opPixClass = pixClassApplet.topLevelOperator
+            opPix = pixClassApplet.topLevelOperator
+
+            # We assume that there are three labels to start with (see previous test)
+            assert opPix.MaxLabelValue.value == 3
+
+            # Make sure that it's okay to delete a row even if the deleted label is selected.
+            gui._labelControlUi.labelListModel.select(1)
+            gui._labelControlUi.labelListModel.removeRow(1)
+
+            # Let the GUI catch up: Process all events
+            QApplication.processEvents()
+            
+            # Selection should auto-reset back to the first row.
+            assert gui._labelControlUi.labelListModel.selectedRow() == 0
+            
+            # Did the label get removed from the label array?
+            assert opPix.MaxLabelValue.value == 2
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_4_InteractiveMode(self):
+        """
+        Click the "interactive mode" checkbox.
+        Prerequisites: Relies on test 2.
+        """
+        def impl():
+            pixClassApplet = self.workflow.pcApplet
+            gui = pixClassApplet.gui
 
             # Enable interactive mode            
             assert not gui._labelControlUi.checkInteractive.isChecked()
             gui._labelControlUi.checkInteractive.click()
+
+            # Let the GUI catch up: Process all events
+            QApplication.processEvents()
 
             # Wait for the rendering to finish
             for view in gui.editor.imageViews:
@@ -134,7 +179,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Disable iteractive mode.            
             gui._labelControlUi.checkInteractive.click()
             
-        # Run the test from within the shell event loop
+        # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
 if __name__ == "__main__":
