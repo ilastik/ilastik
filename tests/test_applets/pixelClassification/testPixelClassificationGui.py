@@ -1,8 +1,8 @@
 from tests.helpers import ShellGuiTestCaseBase
 from workflows.pixelClassification import PixelClassificationWorkflow
 
-from PyQt4.QtCore import Qt, QEvent, QPoint
-from PyQt4.QtGui import QMouseEvent, QApplication
+from PyQt4.QtCore import Qt, QEvent, QPoint, QPointF, QRect, QRectF
+from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, QImage, QPainter, QPaintEvent
 
 class TestPixelClassificationGui(ShellGuiTestCaseBase):
     """
@@ -70,6 +70,15 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
+    def waitForViews(self, views):
+        for imgView in views:
+            # Wait for the image to be rendered into the view.
+            imgView.scene().joinRendering()
+            imgView.viewport().repaint()
+
+        # Let the GUI catch up: Process all events
+        QApplication.processEvents()
+
     def test_2_AddLabels(self):
         def impl():
             # Re-use the test file we made before
@@ -97,6 +106,9 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Set the brush size
             gui._labelControlUi.brushSizeComboBox.setCurrentIndex(1)
 
+            # Let the GUI catch up: Process all events
+            QApplication.processEvents()
+
             # Draw some arbitrary labels in each view using mouse events.
             for i in range(3):
                 # Post this as an event to ensure sequential execution.
@@ -119,15 +131,26 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 # Let the GUI catch up: Process all events
                 QApplication.processEvents()
 
-            # Make sure the labels were added to the label array operator
-            assert opPix.MaxLabelValue.value == 3
+                # Make sure the labels were added to the label array operator
+                assert opPix.MaxLabelValue.value == i+1
+
+            self.waitForViews(gui.editor.imageViews)
+
+            # Verify the actual rendering of each view
+            for i in range(3):
+                imgView = gui.editor.imageViews[i]
+                img = QPixmap.grabWidget(imgView).toImage()
+                #img.save('export' + str(i) + '.png') # Save to file for debug...
+                observedColor = img.pixel(QPoint(50, 50))
+                expectedColor = gui._colorTable16[i+1]
+                assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 
             # Save the project
             self.shell.onSaveProjectActionTriggered()
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
-        
+
     def test_3_DeleteLabel(self):
         """
         Relies on test 2.
@@ -136,6 +159,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             pixClassApplet = self.workflow.pcApplet
             gui = pixClassApplet.gui
             opPix = pixClassApplet.topLevelOperator
+
+            originalLabelColors = gui._colorTable16[1:4]
 
             # We assume that there are three labels to start with (see previous test)
             assert opPix.MaxLabelValue.value == 3
@@ -152,6 +177,17 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             
             # Did the label get removed from the label array?
             assert opPix.MaxLabelValue.value == 2
+
+            self.waitForViews(gui.editor.imageViews)
+
+            # Check the actual rendering of the two views with remaining labels
+            for i in [0,2]:
+                imgView = gui.editor.imageViews[i]
+                img = QPixmap.grabWidget(imgView).toImage()
+                #img.save('export' + str(i) + '.png') # Save to file for debug...
+                observedColor = img.pixel(QPoint(50, 50))
+                expectedColor = originalLabelColors[i]
+                assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
@@ -178,6 +214,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # Disable iteractive mode.            
             gui._labelControlUi.checkInteractive.click()
+
+            self.waitForViews(gui.editor.imageViews)
             
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
