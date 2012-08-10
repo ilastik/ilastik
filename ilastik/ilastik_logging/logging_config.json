@@ -11,7 +11,7 @@
         "lazyflow.operators.obsolete.vigraOperators":                   { "level":"INFO", "propagate": false },
         "lazyflow.operators.obsolete.classifierOperators":              { "level":"INFO", "propagate": false },
         "ilastik":                                                      { "level":"INFO", "propagate": false },
-        "ilastik.applets":                                              { "level":"DEBUG", "propagate": false },
+        "ilastik.applets":                                              { "level":"INFO", "propagate": false },
         "ilastik.shell":                                                { "level":"INFO", "propagate": false },
         "widgets":                                                      { "level":"INFO", "propagate": false },
         "volumina":                                                     { "level":"INFO", "propagate": false },
@@ -25,7 +25,7 @@
         "TRACE.lazyflow.operators.obsolete.classifierOperators":        { "level":"INFO", "propagate": false },
         "TRACE.lazyflow.operators.obsolete.operators.OpArrayCache":     { "level":"INFO", "propagate": false },
         "TRACE.lazyflow.operators.obsolete.valueProviders.OpValueCache":{ "level":"INFO", "propagate": false },
-        "TRACE.ilastik.applets":                                        { "level":"DEBUG", "propagate": false },
+        "TRACE.ilastik.applets":                                        { "level":"INFO", "propagate": false },
         "TRACE.ilastik.shell":                                          { "level":"INFO", "propagate": false },
         "TRACE.volumina":                                               { "level":"INFO", "propagate": false },
         "TRACE.volumina.imageScene2D":                                  { "level":"INFO", "propagate": false }
