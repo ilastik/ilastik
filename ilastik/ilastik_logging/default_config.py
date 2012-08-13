@@ -16,12 +16,18 @@ default_log_config = {
             "format": "%(levelname)s %(message)s"
         },
     },
+    "filters" : {
+        "no_warn" : {
+            "()":"ilastik.ilastik_logging.loggingHelpers.NoWarnFilter"
+        }
+    },
     "handlers": {
         "console":{
             "level":"DEBUG",
             #"class":"logging.StreamHandler",
             "class":"ilastik.ilastik_logging.loggingHelpers.StdOutStreamHandler",
-            "formatter": "location"
+            "formatter": "location",
+            "filters":["no_warn"]
         },
         "console_warn":{
             "level":"WARN",
