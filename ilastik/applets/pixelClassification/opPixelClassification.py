@@ -1,7 +1,7 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
 
-from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, \
-                               OpTrainRandomForestBlocked, OpPredictRandomForest, OpSlicedBlockedArrayCache
+from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
+                               OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 
 class OpPixelClassification( Operator ):
     """
@@ -24,6 +24,8 @@ class OpPixelClassification( Operator ):
 
     PredictionProbabilities = MultiOutputSlot() # Classification predictions
     CachedPredictionProbabilities = MultiOutputSlot() # Classification predictions (via a cache)
+
+    PredictionProbabilityChannels = MultiOutputSlot(level=2) # Classification predictions, enumerated by channel
     
     MaxLabelValue = OutputSlot()
     LabelImages = MultiOutputSlot() # Labels from the user
@@ -114,6 +116,12 @@ class OpPixelClassification( Operator ):
         # Check to make sure the non-wrapped operators stayed that way.
         assert self.opMaxLabel.Inputs.operator == self.opMaxLabel
         assert self.opTrain.Images.operator == self.opTrain
+        
+        # Also provide each prediction channel as a separate layer (for the GUI)
+        self.opPredictionSlicer = OperatorWrapper( OpMultiArraySlicer2(parent=self) )
+        self.opPredictionSlicer.Input.connect( self.prediction_cache.Output )
+        self.opPredictionSlicer.AxisFlag.setValue('c')
+        self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
         
     def setupOutputs(self):
         numImages = len(self.InputImages)
