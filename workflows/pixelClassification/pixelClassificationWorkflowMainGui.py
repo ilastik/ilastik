@@ -31,6 +31,7 @@ def test_new(shell, workflow):
     
     # Set some features
     import numpy
+    featureGui = workflow.featureSelectionApplet.gui
     opFeatures = workflow.featureSelectionApplet.topLevelOperator
     #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
     selections = numpy.array( [[False, False, False, False, False, False, False],
@@ -40,14 +41,19 @@ def test_new(shell, workflow):
                                [False, False, False, False, False, False, False],  # GGM
                                [False, False, False, False, False, False, False]] )
     opFeatures.SelectionMatrix.setValue(selections)
+    opFeatures.Scales.setValue( featureGui.ScalesList )
+    opFeatures.FeatureIds.setValue( featureGui.FeatureIds )
+
+    # Select the labeling drawer
+    shell.setSelectedAppletDrawer(3)
 
     # Save the project
     shell.onSaveProjectActionTriggered()
 
 
 # Start the GUI
-startShellGui( PixelClassificationWorkflow )
+#startShellGui( PixelClassificationWorkflow )
 
 #startShellGui( PixelClassificationWorkflow, test_existing )    
-#startShellGui( PixelClassificationWorkflow, test_new )
+startShellGui( PixelClassificationWorkflow, test_new )
 
