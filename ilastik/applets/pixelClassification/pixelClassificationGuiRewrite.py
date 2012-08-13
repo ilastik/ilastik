@@ -1,23 +1,19 @@
 # Built-in
 import os
-import copy
-import threading
 import logging
+import threading
 
 # Third-party
-import numpy
 from PyQt4 import uic
-from PyQt4.QtCore import QRectF, Qt
-from PyQt4.QtGui import *
+from PyQt4.QtGui import QMessageBox
 
 # HCI
 from lazyflow.tracer import Tracer, traceLogged
-from lazyflow.operators import OpSingleChannelSelector, OpMultiArraySlicer2
-from volumina.api import LazyflowSource, AlphaModulatedLayer, LayerStackModel
+from volumina.api import LazyflowSource, AlphaModulatedLayer
 
 # ilastik
-from ilastik.applets.base.applet import ShellRequest, ControlCommand
 from ilastik.applets.labeling import LabelingGui
+from ilastik.applets.base.applet import ShellRequest, ControlCommand
 
 # Loggers
 logger = logging.getLogger(__name__)
@@ -103,7 +99,7 @@ class PixelClassificationGui(LabelingGui):
 
                 predictLayer = AlphaModulatedLayer(predictsrc, tintColor=tintColor, normalize = None )
                 predictLayer.opacity = 0.25
-                predictLayer.visible = self._labelControlUi.checkInteractive.isChecked()
+                #predictLayer.visible = self._labelControlUi.checkInteractive.isChecked()
                 
                 logger.warn("FIX ME: Prediction layer names should follow label names.")
                 predictLayer.name = "Prediction Channel #{}".format(channel)
@@ -146,7 +142,7 @@ class PixelClassificationGui(LabelingGui):
             nLabelsLayers = self._labelControlUi.labelListModel.rowCount()
             
             if nPaintedLabels!=nLabelsLayers:
-                self._labelControlUi.checkInteractive.setCheckState(0)
+                #self._labelControlUi.checkInteractive.setCheckState(0)
                 mexBox=QMessageBox()
                 mexBox.setText("Did you forget to paint some labels?")
                 mexBox.setInformativeText("Painted Labels %d \nNumber Active Labels Layers %d"%(nPaintedLabels,self._labelControlUi.labelListModel.rowCount()))
@@ -154,7 +150,7 @@ class PixelClassificationGui(LabelingGui):
                 return
             if len(self.pipeline.FeatureImages) == 0 \
             or self.pipeline.FeatureImages[self.imageIndex].meta.shape==None:
-                self._labelControlUi.checkInteractive.setCheckState(0)
+                #self._labelControlUi.checkInteractive.setCheckState(0)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
                 mexBox.exec_()
