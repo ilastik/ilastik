@@ -15,19 +15,19 @@ class Tracer(object):
         Function f is running...
         DEBUG TRACE.mymodule:__exit__: f
     """
-    def __init__(self, logger, level=logging.DEBUG, msg='', print_caller=True):
+    def __init__(self, logger, level=logging.DEBUG, msg='', determine_caller=True, caller_name=''):
         if type(logger) == str:
             self._logger = logging.getLogger(logger)
         else:
             self._logger = logger
         self._level = level
-        self._caller = ''
-        self._print_caller = print_caller
+        self._determine_caller = determine_caller
         self._msg = msg
+        self._caller = caller_name
 
     def __enter__(self):
         if self._logger.isEnabledFor( self._level ):
-            if self._print_caller:
+            if self._determine_caller and self._caller == '':
                 stack = inspect.stack()
                 self._caller = stack[1][3] + ' '
             self._logger.log(self._level, "(enter) " + self._caller + self._msg)
@@ -49,7 +49,7 @@ def traceLogged(logger, suffix=''):
             
         @wraps(func)
         def wrapper(*args, **kwargs):
-            with Tracer(logger, msg=name, print_caller=False):
+            with Tracer(logger, determine_caller=False, caller_name=name):
                 return func(*args, **kwargs)
         return wrapper
     return decorator
