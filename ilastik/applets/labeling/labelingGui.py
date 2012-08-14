@@ -6,7 +6,7 @@ import itertools
 # Third-party
 import numpy
 from PyQt4 import uic
-from PyQt4.QtCore import QRect
+from PyQt4.QtCore import QRectF, Qt
 from PyQt4.QtGui import *
 
 # HCI
@@ -51,7 +51,7 @@ class LabelingGui(LayerViewerGui):
         return self
 
     def appletDrawers(self):
-        return [ ("Label Marking", self._drawerUi) ]
+        return [ ("Label Marking", self._labelControlUi) ]
 
     def reset(self):
         # Clear the label list GUI
@@ -107,27 +107,15 @@ class LabelingGui(LayerViewerGui):
 
         self._colorTable16 = self._createDefault16ColorColorTable()        
         self._programmaticallyRemovingLabels = False
-        self.initLabelControls()
-        self.initBrushControls()
-        self.initAppletDrawer()
+        self.initLabelUic()
 
     @traceLogged(traceLogger)
-    def initAppletDrawer(self):
-        self._drawerUi = QWidget(parent=self)
-        geo = QRect(self._drawerUi.geometry())
-        geo.setHeight(self._labelControlUi.height() + self._brushControlUi.height())
-        self._drawerUi.setGeometry(geo) 
-
-        layout = QVBoxLayout()
-        layout.setSpacing(0)
-        layout.addWidget(self._labelControlUi)
-        layout.addWidget(self._brushControlUi)
-        self._drawerUi.setLayout(layout)
-
-    @traceLogged(traceLogger)
-    def initLabelControls(self):
-        # Don't pass self: applet ui is separate from the main ui
-        _labelControlUi = uic.loadUi(getPathToLocalDirectory() + "/labelControls.ui")
+    def initLabelUic(self):
+        # We don't know where the user is running this script from,
+        #  so locate the .ui file relative to this .py file's path
+        p = os.path.split(__file__)[0]+'/'
+        if p == "/": p = "."+p
+        _labelControlUi = uic.loadUi(p+"/labelingDrawer.ui") # Don't pass self: applet ui is separate from the main ui
 
         # We own the applet bar ui
         self._labelControlUi = _labelControlUi
@@ -166,40 +154,35 @@ class LabelingGui(LayerViewerGui):
 
         # Connect Applet GUI to our event handlers
         _labelControlUi.AddLabelButton.clicked.connect( bind(self.handleAddLabelButtonClicked) )
-#        _labelControlUi.checkInteractive.setEnabled(False)
-#        _labelControlUi.checkInteractive.toggled.connect(self.toggleInteractive)
+        _labelControlUi.checkInteractive.setEnabled(False)
+        _labelControlUi.checkInteractive.toggled.connect(self.toggleInteractive)
         _labelControlUi.labelListModel.dataChanged.connect(onDataChanged)
         
-    @traceLogged(traceLogger)
-    def initBrushControls(self):
-        _brushControlUi = uic.loadUi(getPathToLocalDirectory() + "/brushingControls.ui")
-        self._brushControlUi = _brushControlUi
-
         # Initialize the arrow tool button with an icon and handler
         iconPath = getPathToLocalDirectory() + "/icons/arrow.jpg"
         arrowIcon = QIcon(iconPath)
-        _brushControlUi.arrowToolButton.setIcon(arrowIcon)
-        _brushControlUi.arrowToolButton.setCheckable(True)
-        _brushControlUi.arrowToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Navigation) )
+        _labelControlUi.arrowToolButton.setIcon(arrowIcon)
+        _labelControlUi.arrowToolButton.setCheckable(True)
+        _labelControlUi.arrowToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Navigation) )
 
         # Initialize the paint tool button with an icon and handler
         paintBrushIconPath = getPathToLocalDirectory() + "/icons/paintbrush.png"
         paintBrushIcon = QIcon(paintBrushIconPath)
-        _brushControlUi.paintToolButton.setIcon(paintBrushIcon)
-        _brushControlUi.paintToolButton.setCheckable(True)
-        _brushControlUi.paintToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Paint) )
+        _labelControlUi.paintToolButton.setIcon(paintBrushIcon)
+        _labelControlUi.paintToolButton.setCheckable(True)
+        _labelControlUi.paintToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Paint) )
 
         # Initialize the erase tool button with an icon and handler
         eraserIconPath = getPathToLocalDirectory() + "/icons/eraser.png"
         eraserIcon = QIcon(eraserIconPath)
-        _brushControlUi.eraserToolButton.setIcon(eraserIcon)
-        _brushControlUi.eraserToolButton.setCheckable(True)
-        _brushControlUi.eraserToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Erase) )
+        _labelControlUi.eraserToolButton.setIcon(eraserIcon)
+        _labelControlUi.eraserToolButton.setCheckable(True)
+        _labelControlUi.eraserToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Erase) )
         
         # This maps tool types to the buttons that enable them
-        self.toolButtons = { Tool.Navigation : _brushControlUi.arrowToolButton,
-                             Tool.Paint      : _brushControlUi.paintToolButton,
-                             Tool.Erase      : _brushControlUi.eraserToolButton }
+        self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
+                             Tool.Paint      : _labelControlUi.paintToolButton,
+                             Tool.Erase      : _labelControlUi.eraserToolButton }
         
         self.brushSizes = [ (1,  ""),
                             (3,  "Tiny"),
@@ -211,13 +194,13 @@ class LabelingGui(LayerViewerGui):
                             (61, "Gigahuge") ]
 
         for size, name in self.brushSizes:
-            _brushControlUi.brushSizeComboBox.addItem( str(size) + " " + name )
+            _labelControlUi.brushSizeComboBox.addItem( str(size) + " " + name )
         
-        _brushControlUi.brushSizeComboBox.currentIndexChanged.connect(self.onBrushSizeChange)
+        _labelControlUi.brushSizeComboBox.currentIndexChanged.connect(self.onBrushSizeChange)
         self.paintBrushSizeIndex = 0
         self.eraserSizeIndex = 4
         
-#        self._labelControlUi.checkInteractive.setEnabled(True)
+        self._labelControlUi.checkInteractive.setEnabled(True)
         
     @traceLogged(traceLogger)
     def handleToolButtonClicked(self, checked, toolId):
@@ -252,11 +235,11 @@ class LabelingGui(LayerViewerGui):
                       Tool.Erase        : "brushing" }
 
         # Hide everything by default
-        self._brushControlUi.arrowToolButton.hide()
-        self._brushControlUi.paintToolButton.hide()
-        self._brushControlUi.eraserToolButton.hide()
-        self._brushControlUi.brushSizeComboBox.hide()
-        self._brushControlUi.brushSizeCaption.hide()
+        self._labelControlUi.arrowToolButton.hide()
+        self._labelControlUi.paintToolButton.hide()
+        self._labelControlUi.eraserToolButton.hide()
+        self._labelControlUi.brushSizeComboBox.hide()
+        self._labelControlUi.brushSizeCaption.hide()
 
         # If the user can't label this image, disable the button and say why its disabled
         labelsAllowed = self.imageIndex >= 0 and self._labelingGuiSlots.labelsAllowed[self.imageIndex].value
@@ -268,23 +251,23 @@ class LabelingGui(LayerViewerGui):
             self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
 
         if self.imageIndex != -1 and labelsAllowed:
-            self._brushControlUi.arrowToolButton.show()
-            self._brushControlUi.paintToolButton.show()
-            self._brushControlUi.eraserToolButton.show()
+            self._labelControlUi.arrowToolButton.show()
+            self._labelControlUi.paintToolButton.show()
+            self._labelControlUi.eraserToolButton.show()
             # Update the applet bar caption
             if toolId == Tool.Navigation:
                 # Make sure the arrow button is pressed
-                self._brushControlUi.arrowToolButton.setChecked(True)
+                self._labelControlUi.arrowToolButton.setChecked(True)
                 # Hide the brush size control
-                self._brushControlUi.brushSizeCaption.hide()
-                self._brushControlUi.brushSizeComboBox.hide()
+                self._labelControlUi.brushSizeCaption.hide()
+                self._labelControlUi.brushSizeComboBox.hide()
             elif toolId == Tool.Paint:
                 # Make sure the paint button is pressed
-                self._brushControlUi.paintToolButton.setChecked(True)
+                self._labelControlUi.paintToolButton.setChecked(True)
                 # Show the brush size control and set its caption
-                self._brushControlUi.brushSizeCaption.show()
-                self._brushControlUi.brushSizeComboBox.show()
-                self._brushControlUi.brushSizeCaption.setText("Brush Size:")
+                self._labelControlUi.brushSizeCaption.show()
+                self._labelControlUi.brushSizeComboBox.show()
+                self._labelControlUi.brushSizeCaption.setText("Brush Size:")
                 
                 # If necessary, tell the brushing model to stop erasing
                 if self.editor.brushingModel.erasing:
@@ -294,15 +277,15 @@ class LabelingGui(LayerViewerGui):
                 self.editor.brushingModel.setBrushSize(brushSize)
     
                 # Make sure the GUI reflects the correct size
-                self._brushControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
+                self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
                 
             elif toolId == Tool.Erase:
                 # Make sure the erase button is pressed
-                self._brushControlUi.eraserToolButton.setChecked(True)
+                self._labelControlUi.eraserToolButton.setChecked(True)
                 # Show the brush size control and set its caption
-                self._brushControlUi.brushSizeCaption.show()
-                self._brushControlUi.brushSizeComboBox.show()
-                self._brushControlUi.brushSizeCaption.setText("Eraser Size:")
+                self._labelControlUi.brushSizeCaption.show()
+                self._labelControlUi.brushSizeComboBox.show()
+                self._labelControlUi.brushSizeCaption.setText("Eraser Size:")
                 
                 # If necessary, tell the brushing model to start erasing
                 if not self.editor.brushingModel.erasing:
@@ -312,7 +295,7 @@ class LabelingGui(LayerViewerGui):
                 self.editor.brushingModel.setBrushSize(eraserSize)
                 
                 # Make sure the GUI reflects the correct size
-                self._brushControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
+                self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
 
         self.editor.setInteractionMode( modeNames[toolId] )
 
