@@ -1,4 +1,6 @@
+import os
 import logging.config
+import warnings
 import loggingHelpers
 
 default_log_config = {
@@ -34,6 +36,11 @@ default_log_config = {
             "class":"logging.StreamHandler", # Defaults to sys.stderr
             "formatter":"verbose"
         },
+        "console_warning_module":{
+            "level":"WARN",
+            "class":"logging.StreamHandler", # Defaults to sys.stderr
+            "formatter":"simple"
+        },
         "console_trace":{
             "level":"DEBUG",
             #"class":"logging.StreamHandler",
@@ -46,6 +53,9 @@ default_log_config = {
         "level": "INFO",
     },
     "loggers": {
+        # This logger captures warnings module warnings
+        "py.warnings":                             {  "level":"WARN", "handlers":["console_warning_module"], "propagate": False },
+
         # When copying to a json file, remember to remove comments and change True/False to true/false
         "lazyflow":                             {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.graph":                       {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
@@ -86,4 +96,20 @@ def init():
     
     # Update from the user's customizations
     loggingHelpers.updateFromConfigFile()
+    
+    # Capture warnings from the warnings module
+    logging.captureWarnings(True)
+    
+    # Warnings module warnings are shown only once
+    warnings.filterwarnings("once")
+
+    # Don't warn about pending deprecations (PyQt generates some of these)
+    warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
+    
+    # Custom format for warnings
+    def simple_warning_format(message, category, filename, lineno, line=None):
+        filename = os.path.split(filename)[1]
+        return filename + "(" + str(lineno) + "): " + category.__name__ + ": " + message[0]
+
+    warnings.formatwarning = simple_warning_format
     
