@@ -961,6 +961,11 @@ if has_blist:
                                 self.outputs["maxLabel"].setValue( self._maxLabel )
                             
                             self._labelers[b_ind].outputs["maxLabel"].notifyDirty( updateMaxLabel )
+
+                            def handleDirtyLabelerOutput(slot, smallroi):
+                                bigroi = SubRegion(slot, start=offset + smallroi.start, stop=offset + smallroi.stop)
+                                self.Output.setDirty( bigroi )
+                            self._labelers[b_ind].outputs["Output"].notifyDirty( handleDirtyLabelerOutput )
     
                         self._labelers[b_ind].inputs["Input"][smallkey] = smallvalues.squeeze()
     
@@ -969,7 +974,6 @@ if has_blist:
     
                 # Set our max label output dirty
                 self.outputs["maxLabel"].setValue( self._maxLabel )
-                self.outputs["Output"].setDirty(key)
 
         def notifyDirty(self, slot, key):
             with Tracer(self.traceLogger):
