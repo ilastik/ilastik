@@ -266,10 +266,12 @@ class OpPredictRandomForest(Operator):
     def notifyDirty(self, slot, key):
         if slot == self.inputs["Classifier"]:
             logger.debug("OpPredictRandomForest: Classifier changed, setting dirty")
-            self.outputs["PMaps"].setDirty(slice(None,None,None))
+            if self.LabelsCount.ready() and self.LabelsCount.value > 0:
+                self.outputs["PMaps"].setDirty(slice(None,None,None))
         elif slot == self.inputs["Image"]:
             nlabels=self.inputs["LabelsCount"].value
-            self.outputs["PMaps"].setDirty(key[:-1] + (slice(0,nlabels,None),))
+            if nlabels > 0:
+                self.outputs["PMaps"].setDirty(key[:-1] + (slice(0,nlabels,None),))
         elif slot == self.inputs["LabelsCount"]:
             # When the labels count changes, we must resize the output
             if self.configured():
