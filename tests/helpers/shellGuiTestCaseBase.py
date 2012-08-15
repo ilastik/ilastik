@@ -4,6 +4,33 @@ import platform
 from functools import partial
 from ilastik.shell.gui.startShellGui import startShellGui
 
+from PyQt4.QtCore import Qt, QEvent, QPoint
+from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap
+
+def run_shell_nosetest(filename):
+    """
+    Special helper function for starting shell GUI tests from main (NOT from nosetests).
+    On linux, simply runs the test like any other nose test.
+    On Mac, starts nose in a separate thread and executes the GUI in the main thread.
+    """
+    def run_nose():
+        import sys
+        sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+        sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+        nose.run(defaultTest=filename)
+
+    # On darwin, we must run nose in a separate thread and let the gui run in the main thread.
+    # (This means we can't run this test using the nose command line tool.)
+    if "Darwin" in platform.platform():
+        noseThread = threading.Thread(target=run_nose)
+        noseThread.start()
+
+        from tests.helpers.mainThreadHelpers import wait_for_main_func
+        wait_for_main_func()
+        noseThread.join()
+    else:
+        # Linux: Run this test like usual (as if we're running from the command line)
+        run_nose()
 
 class ShellGuiTestCaseBase(object):
     """
@@ -82,27 +109,70 @@ class ShellGuiTestCaseBase(object):
         """
         Override this to specify which workflow to start the shell with (e.g. PixelClassificationWorkflow)
         """
-        raise NotImplementedError    
+        raise NotImplementedError
 
-def run_shell_nosetest(filename):
-    def run_nose():
-        import sys
-        import nose
-        sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-        sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-        nose.run(defaultTest=filename)
 
-    import platform
-    # On darwin, we must run nose in a separate thread and let the gui run in the main thread.
-    # (This means we can't run this test using the nose command line tool.)
-    if "Darwin" in platform.platform():
-        import threading
-        noseThread = threading.Thread(target=run_nose)
-        noseThread.start()
+    
+    ###
+    ### Convenience functions for subclasses to use during testing.
+    ###
 
-        from tests.helpers.mainThreadHelpers import wait_for_main_func
-        wait_for_main_func()
-        noseThread.join()
-    else:
-        # Linux: Run this test like usual (as if we're running from the command line)
-        run_nose()
+    def waitForViews(self, views):
+        """
+        Wait for the given image views to complete their rendering and repainting.
+        """
+        for imgView in views:
+            # Wait for the image to be rendered into the view.
+            imgView.scene().joinRendering()
+            imgView.viewport().repaint()
+
+        # Let the GUI catch up: Process all events
+        QApplication.processEvents()
+
+    def getPixelColor(self, imgView, coordinates, debugFileName=None):
+        """
+        Sample the color of the pixel at the given coordinates.
+        If debugFileName is provided, export the view for debugging purposes.
+        
+        Example:
+            self.getPixelColor(myview, (10,10), 'myview.png')
+        """
+        img = QPixmap.grabWidget(imgView).toImage()
+        
+        if debugFileName is not None:
+            img.save(debugFileName)
+        
+        return img.pixel(QPoint(*coordinates))
+
+    def strokeMouse(self, imgView, start, end):
+        """
+        Drag the mouse between two coordinates.
+        """
+        startPoint = QPoint(*start)
+        endPoint = QPoint(*end)
+
+        # Move to start        
+        move = QMouseEvent( QEvent.MouseMove, startPoint, Qt.NoButton, Qt.NoButton, Qt.NoModifier )
+        QApplication.postEvent(imgView, move )
+
+        # Press left button
+        press = QMouseEvent( QEvent.MouseButtonPress, startPoint, Qt.LeftButton, Qt.NoButton, Qt.NoModifier )
+        QApplication.postEvent(imgView, press )
+
+        # Move to end in several steps
+        numSteps = 10
+        for i in range(numSteps):
+            nextPoint = startPoint + (endPoint - startPoint) * ( float(i) / numSteps )
+            move = QMouseEvent( QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, Qt.NoModifier )
+            QApplication.postEvent(imgView, move )
+
+        # Move to end
+        move = QMouseEvent( QEvent.MouseMove, endPoint, Qt.NoButton, Qt.NoButton, Qt.NoModifier )
+        QApplication.postEvent(imgView, move )
+
+        # Release left button
+        release = QMouseEvent( QEvent.MouseButtonRelease, endPoint, Qt.LeftButton, Qt.NoButton, Qt.NoModifier )
+        QApplication.postEvent(imgView, release )
+
+        # Let the GUI catch up: Process all events
+        QApplication.processEvents()
