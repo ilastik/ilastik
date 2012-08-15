@@ -147,6 +147,10 @@ class OpMultiArraySlicer2(Operator):
     name = "Multi Array Slicer"
     category = "Misc"
 
+    def __init__(self, *args, **kwargs):
+        super(OpMultiArraySlicer2, self).__init__(*args, **kwargs)
+        self.inputShape = None
+
     def setupOutputs(self):
         dtype=self.inputs["Input"].meta.dtype
         flag=self.inputs["AxisFlag"].value
@@ -171,14 +175,11 @@ class OpMultiArraySlicer2(Operator):
             o.meta.axistags = outaxistags
             o.meta.shape = outshape
 
-        # If our input slot changes shape, we need to set up again        
-        self.Input.notifyMetaChanged(self.handleInputMetaChanged)
-        
-    def handleInputMetaChanged(self, *args):
-        # Note that we're calling the underscore version here so that changes are propagated to our partners
-        # FIXME: There should be a more straightforward way of doing this...
-        if self.configured():
-            self._setupOutputs()
+        inputShape = self.Input.meta.shape
+        if self.inputShape != inputShape:
+            self.inputShape = inputShape
+            for i in range(n):
+                self.Slices[i].setDirty(slice(None))
 
     def getSubOutSlot(self, slots, indexes, key, result):
 
@@ -205,6 +206,22 @@ class OpMultiArraySlicer2(Operator):
 
         ttt = self.inputs["Input"][newKey].allocate().wait()
         result[:]=ttt[:]
+
+    def propagateDirty(self, inputSlot, roi):
+        if inputSlot == self.AxisFlag:
+            # AxisFlag changed.  Everything is dirty
+            for i, slot in self.Slices:
+                slot.setDirty(slice(None))
+        elif inputSlot == self.Input:
+            # Mark each of the intersected slices as dirty
+            channelAxis = self.Input.meta.axistags.index('c')
+            channels = zip(roi.start, roi.stop)[channelAxis]
+            for i in range(*channels):
+                slot = self.Slices[i]
+                sliceRoi = copy.copy(roi)
+                sliceRoi.start[channelAxis] = 0
+                sliceRoi.stop[channelAxis] = 1
+                slot.setDirty(sliceRoi)
 
 class OpMultiArrayStacker(Operator):
     inputSlots = [MultiInputSlot("Images"), InputSlot("AxisFlag"), InputSlot("AxisIndex")]
