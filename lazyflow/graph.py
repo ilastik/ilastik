@@ -783,6 +783,9 @@ class Slot(object):
             for p in self.partners:
                 p[key] = value
 
+    def index(self, slot):
+        return self._subSlots.index(slot)
+
     def setInSlot(self, slot, key, value):
         """
         For now, Slots of level > 0 pretend to be operators (as far as their subslots are concerned).
