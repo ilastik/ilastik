@@ -12,7 +12,8 @@ default_log_config = {
             "format": "%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s"
         },
         "location": {
-            "format": "%(levelname)s %(thread)d %(name)s:%(funcName)s:%(lineno)d %(message)s"
+            #"format": "%(levelname)s %(thread)d %(name)s:%(funcName)s:%(lineno)d %(message)s"
+            "format": "%(levelname)s %(name)s: %(message)s"
         },
         "simple": {
             "format": "%(levelname)s %(message)s"
@@ -62,7 +63,7 @@ default_log_config = {
         "lazyflow.graph.Slot":                  {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.operators":                   {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.operators.ioOperators":       {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "lazyflow.operators.obsolete.vigraOperators":         { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
+        "lazyflow.operators.obsolete.vigraOperators":         { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.operators.obsolete.classifierOperators":    { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "ilastik":                              {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "ilastik.applets":                      {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
