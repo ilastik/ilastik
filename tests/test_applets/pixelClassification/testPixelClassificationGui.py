@@ -1,7 +1,7 @@
-from tests.helpers import ShellGuiTestCaseBase
-from workflows.pixelClassification import PixelClassificationWorkflow
-
 from PyQt4.QtGui import QApplication
+from volumina.layer import AlphaModulatedLayer
+from workflows.pixelClassification import PixelClassificationWorkflow
+from tests.helpers import ShellGuiTestCaseBase
 
 class TestPixelClassificationGui(ShellGuiTestCaseBase):
     """
@@ -28,8 +28,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
     def test_1_NewProject(self):
         """
-        Create a blank project and manipulate a couple settings.
-        Then save it.
+        Create a blank project, manipulate few couple settings, and save it.
         """
         def impl():
             projFilePath = self.PROJECT_FILE
@@ -70,6 +69,9 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
     def test_2_AddLabels(self):
+        """
+        Add labels and draw them in the volume editor.
+        """
         def impl():
             pixClassApplet = self.workflow.pcApplet
             gui = pixClassApplet.gui
@@ -123,7 +125,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
     def test_3_DeleteLabel(self):
         """
-        Relies on test 2.
+        Delete a label from the label list.
         """
         def impl():
             pixClassApplet = self.workflow.pcApplet
@@ -131,6 +133,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             opPix = pixClassApplet.topLevelOperator
 
             originalLabelColors = gui._colorTable16[1:4]
+            originalLabelNames = [label.name for label in gui.labelListData]
 
             # We assume that there are three labels to start with (see previous test)
             assert opPix.MaxLabelValue.value == 3
@@ -163,11 +166,31 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 observedColor = self.getPixelColor(imgView, (50,50))
                 oldColor = originalLabelColors[i]
                 assert observedColor != oldColor, "Label was not deleted."
+            
+            # Original layer should not be anywhere in the layerstack.
+            for layer in gui.layerstack:
+                assert layer.name is not originalLabelNames[1]
+            
+            # All the other layers should be in the layerstack.
+            for i in [0,2]:
+                labelName = originalLabelNames[i]
+                try:
+                    index = gui.layerstack.findMatchingIndex(lambda layer: labelName in layer.name)
+                    layer = gui.layerstack[index]
+                    
+                    # Check the color
+                    assert isinstance(layer, AlphaModulatedLayer)
+                    assert layer.tintColor.rgba() == originalLabelColors[i]
+                except ValueError:
+                    assert False, "Could not find layer for label with name: {}".format(labelName)
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
     def test_4_EraseSome(self):
+        """
+        Erase a few of the previously drawn labels from the volume editor using the eraser.
+        """
         def impl():
             pixClassApplet = self.workflow.pcApplet
             gui = pixClassApplet.gui
@@ -213,8 +236,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
     def test_5_EraseCompleteLabel(self):
         """
-        Erase all of the labels of a particular color.
-        Verify that nothing screwy happens.
+        Erase all of the labels of a particular color using the eraser.
         """
         def impl():
             pixClassApplet = self.workflow.pcApplet
@@ -275,8 +297,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
     def test_6_InteractiveMode(self):
         """
-        Click the "interactive mode" checkbox.
-        Prerequisites: Relies on test 2.
+        Click the "interactive mode" checkbox and see if any errors occur.
         """
         def impl():
             pixClassApplet = self.workflow.pcApplet
