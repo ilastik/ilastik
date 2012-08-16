@@ -997,8 +997,6 @@ class OpBlockedArrayCache(Operator):
             self._configured = False
             self.source = OpArrayPiper(self)
             self.source.inputs["Input"].connect(self.inputs["Input"])
-            self.fixerSource = OpArrayPiper(self)
-            self.fixerSource.inputs["Input"].connect(self.inputs["fixAtCurrent"])
 
     def setupOutputs(self):
         with Tracer(self.traceLogger):
@@ -1107,7 +1105,6 @@ class OpBlockedArrayCache(Operator):
     
                         self._cache_list[b_ind] = OpArrayCache(self)
                         self._cache_list[b_ind].inputs["Input"].connect(self._opSub_list[b_ind].outputs["Output"])
-                        #self._cache_list[b_ind].inputs["fixAtCurrent"].connect(self.fixerSource.outputs["Output"])
                         self._cache_list[b_ind].inputs["fixAtCurrent"].setValue(False)
                         self._cache_list[b_ind].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
                 self._lock.release()
