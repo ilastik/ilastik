@@ -5,7 +5,7 @@ import warnings
 import threading
 
 # Third-party
-from PyQt4.QtCore import pyqtSlot
+from PyQt4.QtCore import Qt, pyqtSlot
 from PyQt4.QtGui import QMessageBox
 
 # HCI
@@ -74,6 +74,14 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkInteractive.toggled.connect(self.toggleInteractive)
         self.labelingDrawerUi.savePredictionsButton.clicked.connect(self.onSavePredictionsButtonClicked)
 
+        self.labelingDrawerUi.checkShowPredictions.clicked.connect(self.handleShowPredictionsClicked)
+        def nextCheckState():
+            if not self.labelingDrawerUi.checkShowPredictions.isChecked():
+                self.labelingDrawerUi.checkShowPredictions.setChecked(True)
+            else:
+                self.labelingDrawerUi.checkShowPredictions.setChecked(False)
+        self.labelingDrawerUi.checkShowPredictions.nextCheckState = nextCheckState
+
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
         """
@@ -95,6 +103,7 @@ class PixelClassificationGui(LabelingGui):
                                                     normalize = None )
                 predictLayer.opacity = 0.25
                 predictLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+                predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
                 def setLayerColor(c):
                     predictLayer.tintColor = c
@@ -125,7 +134,7 @@ class PixelClassificationGui(LabelingGui):
         if checked==True:
             if len(self.pipeline.FeatureImages) == 0 \
             or self.pipeline.FeatureImages[self.imageIndex].meta.shape==None:
-                self.labelingDrawerUi.checkInteractive.setCheckState(0)
+                self.labelingDrawerUi.checkInteractive.setChecked(False)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
                 mexBox.exec_()
@@ -134,10 +143,9 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.savePredictionsButton.setEnabled(not checked)
         self.pipeline.FreezePredictions.setValue( not checked )
 
-        # Prediction layers should be switched on/off when the interactive checkbox is toggled
-        for layer in self.layerstack:
-            if "Prediction" in layer.name:
-                layer.visible = checked
+        # Auto-set the "show predictions" state according to what the user just clicked.
+        self.labelingDrawerUi.checkShowPredictions.setChecked( checked )
+        self.handleShowPredictionsClicked()
 
         # If we're changing modes, enable/disable other applets accordingly
         if self.interactiveModeActive != checked:
@@ -148,6 +156,36 @@ class PixelClassificationGui(LabelingGui):
                 self.guiControlSignal.emit( ControlCommand.Pop )                
                 self.guiControlSignal.emit( ControlCommand.Pop )
         self.interactiveModeActive = checked    
+
+    @pyqtSlot()
+    @traceLogged(traceLogger)
+    def handleShowPredictionsClicked(self):
+        checked = self.labelingDrawerUi.checkShowPredictions.isChecked()
+        for layer in self.layerstack:
+            if "Prediction" in layer.name:
+                layer.visible = checked
+        
+        # If we're being turned off, turn off live prediction mode, too.
+        if not checked and self.labelingDrawerUi.checkInteractive.isChecked():
+            self.labelingDrawerUi.checkInteractive.setChecked(False)
+
+    @pyqtSlot()
+    @traceLogged(traceLogger)
+    def updateShowPredictionCheckbox(self):
+        predictLayerCount = 0
+        visibleCount = 0
+        for layer in self.layerstack:
+            if "Prediction" in layer.name:
+                predictLayerCount += 1
+                if layer.visible:
+                    visibleCount += 1
+
+        if visibleCount == 0:
+            self.labelingDrawerUi.checkShowPredictions.setCheckState(Qt.Unchecked)
+        elif predictLayerCount == visibleCount:
+            self.labelingDrawerUi.checkShowPredictions.setCheckState(Qt.Checked)
+        else:
+            self.labelingDrawerUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
     @pyqtSlot()
     @traceLogged(traceLogger)

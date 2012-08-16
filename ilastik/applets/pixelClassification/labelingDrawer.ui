@@ -37,7 +37,7 @@
      <x>0</x>
      <y>0</y>
      <width>258</width>
-     <height>403</height>
+     <height>435</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -80,7 +80,17 @@
        <bool>true</bool>
       </property>
       <property name="text">
-       <string>Interactive updating</string>
+       <string>Live Updating</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="checkShowPredictions">
+      <property name="text">
+       <string>Show Predictions</string>
+      </property>
+      <property name="tristate">
+       <bool>false</bool>
       </property>
      </widget>
     </item>
