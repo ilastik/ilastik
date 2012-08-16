@@ -265,9 +265,17 @@ class LayerViewerGui(QMainWindow):
         if newDataShape is not None and self.editor.dataShape != newDataShape:
             self.editor.dataShape = newDataShape
 
-        # Remove any old layers that aren't in the new stack
-        for index, layer in reversed(list(enumerate(self.layerstack))):
-            if layer.name not in newNames:
+        # Old layers are deleted if
+        # (1) They are not in the new set or
+        # (2) They're data has changed
+        for index, oldLayer in reversed(list(enumerate(self.layerstack))):
+            if oldLayer.name not in newNames:
+                needDelete = True
+            else:
+                newLayer = filter(lambda l: l.name == oldLayer.name, newGuiLayers)[0]
+                needDelete = (newLayer.datasources != oldLayer.datasources)
+                                
+            if needDelete:
                 self.layerstack.selectRow(index)
                 self.layerstack.deleteSelected()
 
