@@ -1,5 +1,6 @@
 # Built-in
 import os
+import re
 import logging
 import itertools
 
@@ -63,6 +64,14 @@ class LabelingGui(LayerViewerGui):
     ###########################################
     ###########################################
 
+    @property
+    def labelingDrawerUi(self):
+        return self._labelControlUi
+    
+    @property
+    def labelListData(self):
+        return self._labelControlUi.labelListModel
+    
     class LabelingGuiSlots(object):
         def __init__(self):
             # Label slots are multi (level=1) and accessed as shown.
@@ -86,7 +95,7 @@ class LabelingGui(LayerViewerGui):
             self.displaySlots = []
     
     @traceLogged(traceLogger)
-    def __init__(self, labelingGuiSlots ):
+    def __init__(self, labelingGuiSlots, drawerUiPath=None ):
         """
         See LabelingGuiSlots class (above) for expected type of labelingGuiSlots parameter.
         """
@@ -107,15 +116,15 @@ class LabelingGui(LayerViewerGui):
 
         self._colorTable16 = self._createDefault16ColorColorTable()        
         self._programmaticallyRemovingLabels = False
-        self.initLabelUic()
+        
+        if drawerUiPath is None:
+            # Default ui file
+            drawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
+        self.initLabelUic(drawerUiPath)
 
     @traceLogged(traceLogger)
-    def initLabelUic(self):
-        # We don't know where the user is running this script from,
-        #  so locate the .ui file relative to this .py file's path
-        p = os.path.split(__file__)[0]+'/'
-        if p == "/": p = "."+p
-        _labelControlUi = uic.loadUi(p+"/labelingDrawer.ui") # Don't pass self: applet ui is separate from the main ui
+    def initLabelUic(self, drawerUiPath):
+        _labelControlUi = uic.loadUi(drawerUiPath)
 
         # We own the applet bar ui
         self._labelControlUi = _labelControlUi
@@ -124,7 +133,7 @@ class LabelingGui(LayerViewerGui):
         model = LabelListModel()
         _labelControlUi.labelListView.setModel(model)
         _labelControlUi.labelListModel=model
-        _labelControlUi.labelListModel.rowsAboutToBeRemoved.connect(self.onLabelAboutToBeRemoved)
+        _labelControlUi.labelListModel.rowsRemoved.connect(self.onLabelRemoved)
         _labelControlUi.labelListModel.labelSelected.connect(self.switchLabel)
         
         @traceLogged(traceLogger)
@@ -153,9 +162,7 @@ class LabelingGui(LayerViewerGui):
                 pass
 
         # Connect Applet GUI to our event handlers
-        _labelControlUi.AddLabelButton.clicked.connect( bind(self.handleAddLabelButtonClicked) )
-        _labelControlUi.checkInteractive.setEnabled(False)
-        _labelControlUi.checkInteractive.toggled.connect(self.toggleInteractive)
+        _labelControlUi.AddLabelButton.clicked.connect( bind(self.addNewLabel) )
         _labelControlUi.labelListModel.dataChanged.connect(onDataChanged)
         
         # Initialize the arrow tool button with an icon and handler
@@ -199,8 +206,6 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.brushSizeComboBox.currentIndexChanged.connect(self.onBrushSizeChange)
         self.paintBrushSizeIndex = 0
         self.eraserSizeIndex = 4
-        
-        self._labelControlUi.checkInteractive.setEnabled(True)
         
     @traceLogged(traceLogger)
     def handleToolButtonClicked(self, checked, toolId):
@@ -319,6 +324,10 @@ class LabelingGui(LayerViewerGui):
     @traceLogged(traceLogger)
     def switchLabel(self, row):
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
+
+        # If the user is selecting a label, he probably wants to be in paint mode
+        self.changeInteractionMode(Tool.Paint)
+
         #+1 because first is transparent
         #FIXME: shouldn't be just row+1 here
         self.editor.brushingModel.setDrawnNumber(row+1)
@@ -332,13 +341,6 @@ class LabelingGui(LayerViewerGui):
         else:
             self.changeInteractionMode(Tool.Navigation)
         return True
-    
-    @traceLogged(traceLogger)
-    def handleAddLabelButtonClicked(self):
-        """
-        The user clicked the "Add Label" button.  Update the GUI and pipeline.
-        """
-        self.addNewLabel()
     
     @traceLogged(traceLogger)
     def updateLabelList(self):
@@ -356,13 +358,6 @@ class LabelingGui(LayerViewerGui):
         while self._labelControlUi.labelListModel.rowCount() < numLabels:
             self.addNewLabel()
         
-        # Select a label by default so the brushing controller doesn't get confused.
-        if numLabels > 0:
-            selectedRow = self._labelControlUi.labelListModel.selectedRow()
-            if selectedRow == -1:
-                selectedRow = 0
-            self.switchLabel(selectedRow)
-
     @traceLogged(traceLogger)
     def addNewLabel(self):
         """
@@ -378,13 +373,23 @@ class LabelingGui(LayerViewerGui):
 
         color = QColor()
         color.setRgba(self._colorTable16[numLabels+1]) # First entry is transparent (for zero label)
-        self._labelControlUi.labelListModel.insertRow(self._labelControlUi.labelListModel.rowCount(), Label("Label %d" % (self._labelControlUi.labelListModel.rowCount() + 1), color))
+
+        self._labelControlUi.labelListModel.insertRow(self._labelControlUi.labelListModel.rowCount(),
+                                                      Label(self.getNextLabelName(), color))
         nlabels = self._labelControlUi.labelListModel.rowCount()
 
-        #make the new label selected
-        self._labelControlUi.labelListView.selectRow(nlabels-1)
-        
-        return nlabels
+        # Make the new label selected
+        selectedRow = nlabels-1
+        self._labelControlUi.labelListView.selectRow(selectedRow)
+        self.switchLabel(selectedRow)
+
+    def getNextLabelName(self):
+        maxNum = 0
+        for index, label in enumerate(self._labelControlUi.labelListModel):
+            nums = re.findall("\d+", label.name)
+            for n in nums:
+                maxNum = max(maxNum, int(n))
+        return "Label {}".format(maxNum+1)
     
     @traceLogged(traceLogger)
     def removeLastLabel(self):
@@ -393,7 +398,7 @@ class LabelingGui(LayerViewerGui):
         """
         self._programmaticallyRemovingLabels = True
         numRows = self._labelControlUi.labelListModel.rowCount()
-        # This will trigger the signal that calls onLabelAboutToBeRemoved()
+        # This will trigger the signal that calls onLabelRemoved()
         self._labelControlUi.labelListModel.removeRow(numRows-1)
     
         self._programmaticallyRemovingLabels = False
@@ -405,39 +410,41 @@ class LabelingGui(LayerViewerGui):
             self.removeLastLabel()
 
     @traceLogged(traceLogger)
-    def onLabelAboutToBeRemoved(self, parent, start, end):
+    def onLabelRemoved(self, parent, start, end):
         # Don't respond unless this actually came from the GUI
         if self._programmaticallyRemovingLabels:
             return
+
+        assert start == end
+        row = start
+
+        oldcount = self._labelControlUi.labelListModel.rowCount() + 1
+        logger.debug("removing label {} out of {}".format( row, oldcount ))
+
+        # Remove the deleted label's color from the color table so that renumbered labels keep their colors.                
+        oldColor = self._colorTable16.pop(row+1)
         
-        for il in reversed(range(start, end+1)):
-            ncount = self._labelControlUi.labelListModel.rowCount()
-            logger.debug("removing label {} out of {}".format( il, ncount ))
+        # Recycle the deleted color back into the table (for the next label to be added)
+        self._colorTable16.insert(oldcount, oldColor)
 
-            # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
-            #  to search through the entire list of labels and delete the entries for the matching label.
-            self._labelingGuiSlots.labelDelete.setValue(il+1)
-            
-            # We need to "reset" the deleteLabel input to -1 when we're finished.
-            #  Otherwise, you can never delete the same label twice in a row.
-            #  (Only *changes* to the input are acted upon.)
-            self._labelingGuiSlots.labelDelete.setValue(-1)
+        # Update the labellayer colortable with the new color mapping
+        labellayer = self.getLabelLayer()
+        labellayer.colorTable = self._colorTable16
 
-            # Remove the deleted label's color from the color table so that renumbered labels keep their colors.                
-            oldColor = self._colorTable16.pop(il+1)
-            
-            # Recycle the deleted color back into the table (for the next label to be added)
-            self._colorTable16.insert(ncount-end+start, oldColor)
-
-            # Update the labellayer colortable with the new color mapping
-            labellayer = self.getLabelLayer()
-            labellayer.colorTable = self._colorTable16
-        
         currentSelection = self._labelControlUi.labelListModel.selectedRow()
         if currentSelection == -1:
             # If we're deleting the currently selected row, then switch to a different row
             self.thunkEventHandler.post( self.resetLabelSelection )
 
+        # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
+        #  to search through the entire list of labels and delete the entries for the matching label.
+        self._labelingGuiSlots.labelDelete.setValue(row+1)
+        
+        # We need to "reset" the deleteLabel input to -1 when we're finished.
+        #  Otherwise, you can never delete the same label twice in a row.
+        #  (Only *changes* to the input are acted upon.)
+        self._labelingGuiSlots.labelDelete.setValue(-1)
+        
     def getLabelLayer(self):
         # Find the labellayer in the viewer stack
         try:

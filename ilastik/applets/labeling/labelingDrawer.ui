@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>256</width>
-    <height>287</height>
+    <width>258</width>
+    <height>321</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -36,8 +36,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>251</width>
-     <height>281</height>
+     <width>258</width>
+     <height>321</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -71,16 +71,6 @@
       </property>
       <property name="text">
        <string>Add labels</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QCheckBox" name="checkInteractive">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-      <property name="text">
-       <string>Interactive updating</string>
       </property>
      </widget>
     </item>
