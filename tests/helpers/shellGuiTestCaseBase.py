@@ -114,6 +114,7 @@ class ShellGuiTestCaseBase(object):
             testFinished.set()
         
         cls.shell.thunkEventHandler.post(impl)
+        QApplication.processEvents()
         testFinished.wait()
 
         if len(errors) > 0:
