@@ -5,8 +5,8 @@ import warnings
 import threading
 
 # Third-party
-from PyQt4 import uic
-from PyQt4.QtGui import QMessageBox, QColor
+from PyQt4.QtCore import pyqtSlot
+from PyQt4.QtGui import QMessageBox
 
 # HCI
 from lazyflow.tracer import Tracer, traceLogged
@@ -29,9 +29,9 @@ class PixelClassificationGui(LabelingGui):
         return self
 
     def appletDrawers(self):
+        # Get the labeling drawer from the base class
         labelingDrawer = super(PixelClassificationGui, self).appletDrawers()[0][1]
-        return [ ("Label Marking", labelingDrawer),
-                 ("Prediction", self._predictionControlUi) ]
+        return [ ("Label Marking", labelingDrawer) ]
 
     def reset(self):
         # Base class first
@@ -70,10 +70,9 @@ class PixelClassificationGui(LabelingGui):
         self.interactiveModeActive = False
         self._currentlySavingPredictions = False
 
-        self.initPredictionControlsUic()
-        
         self.labelingDrawerUi.checkInteractive.setEnabled(True)
         self.labelingDrawerUi.checkInteractive.toggled.connect(self.toggleInteractive)
+        self.labelingDrawerUi.savePredictionsButton.clicked.connect(self.onSavePredictionsButtonClicked)
 
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
@@ -120,24 +119,10 @@ class PixelClassificationGui(LabelingGui):
         return layers            
 
     @traceLogged(traceLogger)
-    def initPredictionControlsUic(self):
-        # We don't know where the user is running this script from,
-        #  so locate the .ui file relative to this .py file's path
-        p = os.path.split(__file__)[0]+'/'
-        if p == "/": p = "."+p
-        self._predictionControlUi = uic.loadUi(p+"/predictionDrawer.ui") # Don't pass self: applet ui is separate from the main ui
-        self._predictionControlUi.trainAndPredictButton.clicked.connect(self.onTrainAndPredictButtonClicked)
-
-    @traceLogged(traceLogger)
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
         
-        #Check if the number of labels in the layer stack is equals to the number of Painted labels
         if checked==True:
-            nPaintedLabels = self.pipeline.MaxLabelValue.value
-            if nPaintedLabels is None:
-                nPaintedLabels = 0
-
             if len(self.pipeline.FeatureImages) == 0 \
             or self.pipeline.FeatureImages[self.imageIndex].meta.shape==None:
                 self.labelingDrawerUi.checkInteractive.setCheckState(0)
@@ -146,7 +131,7 @@ class PixelClassificationGui(LabelingGui):
                 mexBox.exec_()
                 return
 
-        self._predictionControlUi.trainAndPredictButton.setEnabled(not checked)
+        self.labelingDrawerUi.savePredictionsButton.setEnabled(not checked)
         self.pipeline.FreezePredictions.setValue( not checked )
 
         # Prediction layers should be switched on/off when the interactive checkbox is toggled
@@ -163,9 +148,10 @@ class PixelClassificationGui(LabelingGui):
                 self.guiControlSignal.emit( ControlCommand.Pop )                
                 self.guiControlSignal.emit( ControlCommand.Pop )
         self.interactiveModeActive = checked    
-    
+
+    @pyqtSlot()
     @traceLogged(traceLogger)
-    def onTrainAndPredictButtonClicked(self):
+    def onSavePredictionsButtonClicked(self):
         """
         The user clicked "Train and Predict".
         Handle this event by asking the pipeline for a prediction over the entire output region.
@@ -180,7 +166,7 @@ class PixelClassificationGui(LabelingGui):
             self._currentlySavingPredictions = True
             
             originalButtonText = "Save Predictions"
-            self._predictionControlUi.trainAndPredictButton.setText("Cancel Save")
+            self.labelingDrawerUi.savePredictionsButton.setText("Cancel Save")
 
             def saveThreadFunc():
                 with Tracer(traceLogger):
@@ -196,7 +182,7 @@ class PixelClassificationGui(LabelingGui):
                     self.predictionSerializer.predictionStorageEnabled = False
     
                     # Restore original states (must use events for UI calls)
-                    self.thunkEventHandler.post(self._predictionControlUi.trainAndPredictButton.setText, originalButtonText)
+                    self.thunkEventHandler.post(self.labelingDrawerUi.savePredictionsButton.setText, originalButtonText)
                     self.pipeline.FreezePredictions.setValue(predictionsFrozen)
                     self._currentlySavingPredictions = False
 
