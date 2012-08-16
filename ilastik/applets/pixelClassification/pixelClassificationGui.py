@@ -5,6 +5,7 @@ import warnings
 import threading
 
 # Third-party
+import numpy
 from PyQt4.QtCore import Qt, pyqtSlot
 from PyQt4.QtGui import QMessageBox
 
@@ -13,6 +14,7 @@ from lazyflow.tracer import Tracer, traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 
 # ilastik
+from ilastik.utility import bind
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 
@@ -81,6 +83,8 @@ class PixelClassificationGui(LabelingGui):
             else:
                 self.labelingDrawerUi.checkShowPredictions.setChecked(False)
         self.labelingDrawerUi.checkShowPredictions.nextCheckState = nextCheckState
+        
+        self.pipeline.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
 
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
@@ -125,7 +129,7 @@ class PixelClassificationGui(LabelingGui):
             inputLayer.opacity = 1.0
             layers.append(inputLayer)
         
-        return layers            
+        return layers
 
     @traceLogged(traceLogger)
     def toggleInteractive(self, checked):
@@ -187,6 +191,17 @@ class PixelClassificationGui(LabelingGui):
         else:
             self.labelingDrawerUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
+    def handleLabelSelectionChange(self):
+        enabled = False
+        if self.pipeline.MaxLabelValue.ready():
+            enabled = True
+            enabled &= self.pipeline.MaxLabelValue.value >= 2
+            enabled &= numpy.prod(self.pipeline.CachedFeatureImages[self.imageIndex].meta.shape) > 0
+        
+        self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
+        self.labelingDrawerUi.checkInteractive.setEnabled(enabled)
+        self.labelingDrawerUi.checkShowPredictions.setEnabled(enabled)
+    
     @pyqtSlot()
     @traceLogged(traceLogger)
     def onSavePredictionsButtonClicked(self):
