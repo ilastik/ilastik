@@ -31,7 +31,7 @@ class PixelClassificationGui(LabelingGui):
     def appletDrawers(self):
         # Get the labeling drawer from the base class
         labelingDrawer = super(PixelClassificationGui, self).appletDrawers()[0][1]
-        return [ ("Label Marking", labelingDrawer) ]
+        return [ ("Training", labelingDrawer) ]
 
     def reset(self):
         # Base class first
@@ -203,7 +203,7 @@ class PixelClassificationGui(LabelingGui):
             self.pipeline.FreezePredictions.setValue(False)
             self._currentlySavingPredictions = True
             
-            originalButtonText = "Save Predictions"
+            originalButtonText = "Save Predictions Now"
             self.labelingDrawerUi.savePredictionsButton.setText("Cancel Save")
 
             def saveThreadFunc():

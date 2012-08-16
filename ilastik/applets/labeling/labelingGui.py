@@ -53,6 +53,12 @@ class LabelingGui(LayerViewerGui):
         # Start in navigation mode (not painting)
         self.changeInteractionMode(Tool.Navigation)
 
+    def setImageIndex(self, index):
+        super(LabelingGui, self).setImageIndex(index)
+        
+        # Reset the GUI for "labels allowed" status
+        self.changeInteractionMode(self._toolId)
+
     ###########################################
     ###########################################
 
@@ -113,6 +119,8 @@ class LabelingGui(LayerViewerGui):
             # Default ui file
             drawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
         self.initLabelUic(drawerUiPath)
+        
+        self.changeInteractionMode(Tool.Navigation)
 
     @traceLogged(traceLogger)
     def initLabelUic(self, drawerUiPath):
@@ -216,7 +224,7 @@ class LabelingGui(LayerViewerGui):
     def changeInteractionMode( self, toolId ):
         """
         Implement the GUI's response to the user selecting a new tool.
-        """        
+        """
         # Uncheck all the other buttons
         for tool, button in self.toolButtons.items():
             if tool != toolId:
@@ -239,13 +247,17 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.brushSizeCaption.hide()
 
         # If the user can't label this image, disable the button and say why its disabled
-        labelsAllowed = self.imageIndex >= 0 and self._labelingGuiSlots.labelsAllowed[self.imageIndex].value
-
-        self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed)
-        if labelsAllowed:
-            self._labelControlUi.AddLabelButton.setText("Add Label")
-        else:
-            self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
+        labelsAllowed = False
+        if self.imageIndex != -1:
+            labelsAllowedSlot = self._labelingGuiSlots.labelsAllowed[self.imageIndex]
+            if labelsAllowedSlot.ready():
+                labelsAllowed = labelsAllowedSlot.value
+    
+                self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed)
+                if labelsAllowed:
+                    self._labelControlUi.AddLabelButton.setText("Add Label")
+                else:
+                    self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
 
         if self.imageIndex != -1 and labelsAllowed:
             self._labelControlUi.arrowToolButton.show()
@@ -264,7 +276,7 @@ class LabelingGui(LayerViewerGui):
                 # Show the brush size control and set its caption
                 self._labelControlUi.brushSizeCaption.show()
                 self._labelControlUi.brushSizeComboBox.show()
-                self._labelControlUi.brushSizeCaption.setText("Brush Size:")
+                self._labelControlUi.brushSizeCaption.setText("Size:")
                 
                 # If necessary, tell the brushing model to stop erasing
                 if self.editor.brushingModel.erasing:
@@ -282,7 +294,7 @@ class LabelingGui(LayerViewerGui):
                 # Show the brush size control and set its caption
                 self._labelControlUi.brushSizeCaption.show()
                 self._labelControlUi.brushSizeComboBox.show()
-                self._labelControlUi.brushSizeCaption.setText("Eraser Size:")
+                self._labelControlUi.brushSizeCaption.setText("Size:")
                 
                 # If necessary, tell the brushing model to start erasing
                 if not self.editor.brushingModel.erasing:
@@ -295,6 +307,7 @@ class LabelingGui(LayerViewerGui):
                 self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
 
         self.editor.setInteractionMode( modeNames[toolId] )
+        self._toolId = toolId
 
     @traceLogged(traceLogger)
     def onBrushSizeChange(self, index):

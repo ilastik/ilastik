@@ -16,7 +16,7 @@ def test_new(shell, workflow):
     """
     (Function for debug and testing.)
     """
-    projFilePath = "/magnetic/test_project.ilp"        
+    projFilePath = "/magnetic/test_project.ilp"
 
     # New project
     shell.createAndLoadNewProject(projFilePath)
@@ -24,7 +24,8 @@ def test_new(shell, workflow):
     # Add a file
     from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
     info = DatasetInfo()
-    info.filePath = '/magnetic/gigacube.h5'
+    #info.filePath = '/magnetic/gigacube.h5'
+    info.filePath = '/magnetic/synapse_small.npy'
     opDataSelection = workflow.dataSelectionApplet.topLevelOperator
     opDataSelection.Dataset.resize(1)
     opDataSelection.Dataset[0].setValue(info)
@@ -34,9 +35,9 @@ def test_new(shell, workflow):
     featureGui = workflow.featureSelectionApplet.gui
     opFeatures = workflow.featureSelectionApplet.topLevelOperator
     #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
-    selections = numpy.array( [[False, False, False, False, False, False, False],
+    selections = numpy.array( [[False, False, False,  True, False, False, False],
                                [False, False, False, False, False, False, False],
-                               [False, False, False, False,  True, False, False], # ST EVs
+                               [False, False, False, False, False, False, False], # ST EVs
                                [False, False, False, False, False, False, False],
                                [False, False, False, False, False, False, False],  # GGM
                                [False, False, False, False, False, False, False]] )
