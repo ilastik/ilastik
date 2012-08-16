@@ -317,6 +317,13 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             pixClassApplet = self.workflow.pcApplet
             gui = pixClassApplet.gui
 
+            # Clear all the labels
+            while len(gui._labelControlUi.labelListModel) > 0:
+                gui._labelControlUi.labelListModel.removeRow(0)
+                
+            # Re-add all labels
+            self.test_2_AddLabels()
+
             # Enable interactive mode            
             assert not gui._labelControlUi.checkInteractive.isChecked()
             gui._labelControlUi.checkInteractive.click()
@@ -327,7 +334,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             gui._labelControlUi.checkInteractive.click()
 
             self.waitForViews(gui.editor.imageViews)
-            
+
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
