@@ -29,8 +29,8 @@ class Tracer(object):
         if self._logger.isEnabledFor( self._level ):
             if self._determine_caller and self._caller == '':
                 stack = inspect.stack()
-                self._caller = stack[1][3] + ' '
-            self._logger.log(self._level, "(enter) " + self._caller + self._msg)
+                self._caller = stack[1][3]
+            self._logger.log(self._level, "(enter) " + self._caller + ' ' + self._msg)
 
     def __exit__(self, *args):
         if self._logger.isEnabledFor( self._level ):
@@ -38,18 +38,21 @@ class Tracer(object):
 
 from functools import wraps
 
-def traceLogged(logger, suffix=''):
+def traceLogged(logger, level=logging.DEBUG, msg='', caller_name=''):
     """Returns a decorator that logs the entry and exit of its target function."""
     def decorator(func):
         """A closure that logs the entry and exit of func using the logger."""
-        if hasattr(func, 'im_func'):
+
+        if caller_name != '':
+            name = caller_name
+        elif hasattr(func, 'im_func'):
             name = func.im_func.func_name
         else:
             name = func.func_name
             
         @wraps(func)
         def wrapper(*args, **kwargs):
-            with Tracer(logger, determine_caller=False, caller_name=name):
+            with Tracer(logger, level=level, msg=msg, determine_caller=False, caller_name=name):
                 return func(*args, **kwargs)
         return wrapper
     return decorator

@@ -8,7 +8,7 @@ import copy
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
-from lazyflow.tracer import Tracer
+from lazyflow.tracer import traceLogged
 
 class OpTrainRandomForest(Operator):
     name = "TrainRandomForest"
@@ -26,41 +26,41 @@ class OpTrainRandomForest(Operator):
             self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
 
+    @traceLogged(logger, level=logging.INFO, msg="OpTrainRandomForest: Training Classifier")
     def getOutSlot(self, slot, key, result):
-        with Tracer(logger, level=logging.INFO, msg="OpTrainRandomForest: Training Classifier"):
-            featMatrix=[]
-            labelsMatrix=[]
-            for i,labels in enumerate(self.inputs["Labels"]):
-                if labels.shape is not None:
-                    labels=labels[:].allocate().wait()
-    
-                    indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
-                    #Maybe later request only part of the region?
-    
-                    image=self.inputs["Images"][i][:].allocate().wait()
-    
-                    features=image[indexes]
-                    labels=labels[indexes]
-    
-                    featMatrix.append(features)
-                    labelsMatrix.append(labels)
-    
-    
-            featMatrix=numpy.concatenate(featMatrix,axis=0)
-            labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
-    
-            # TODO: Make treecount configurable via an InputSlot
-            RF=vigra.learning.RandomForest(100)
-            try:
-                RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
-            except:
-                logger.error( "ERROR: could not learn classifier" )
-                logger.error( "featMatrix={}, labelsMatrix={}".format(featMatrix, labelsMatrix) )
-                logger.error( "featMatrix shape={}, dtype={}".format(featMatrix.shape, featMatrix.dtype) )
-                logger.error( "labelsMatrix shape={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.dtype ) )
-                raise
-    
-            result[0]=RF
+        featMatrix=[]
+        labelsMatrix=[]
+        for i,labels in enumerate(self.inputs["Labels"]):
+            if labels.shape is not None:
+                labels=labels[:].allocate().wait()
+
+                indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
+                #Maybe later request only part of the region?
+
+                image=self.inputs["Images"][i][:].allocate().wait()
+
+                features=image[indexes]
+                labels=labels[indexes]
+
+                featMatrix.append(features)
+                labelsMatrix.append(labels)
+
+
+        featMatrix=numpy.concatenate(featMatrix,axis=0)
+        labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
+
+        # TODO: Make treecount configurable via an InputSlot
+        RF=vigra.learning.RandomForest(100)
+        try:
+            RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
+        except:
+            logger.error( "ERROR: could not learn classifier" )
+            logger.error( "featMatrix={}, labelsMatrix={}".format(featMatrix, labelsMatrix) )
+            logger.error( "featMatrix shape={}, dtype={}".format(featMatrix.shape, featMatrix.dtype) )
+            logger.error( "labelsMatrix shape={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.dtype ) )
+            raise
+
+        result[0]=RF
 
     def setInSlot(self, slot, key, value):
         if self.inputs["fixClassifier"].value == False:
@@ -103,101 +103,100 @@ class OpTrainRandomForestBlocked(Operator):
             # No need to set dirty here: notifyDirty handles it.
             #self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
+    @traceLogged(logger, level=logging.INFO, msg="OpTrainRandomForestBlocked: Training Classifier")
     def execute(self, slot, roi, result):
-        with Tracer(logger, level=logging.INFO, msg="OpTrainRandomForestBlocked: Training Classifier"):
-            
-            progress = 0
-            self.progressSignal(progress)
-            numImages = len(self.Images)
+        progress = 0
+        self.progressSignal(progress)
+        numImages = len(self.Images)
 
-            key = roi.toSlice()
-            featMatrix=[]
-            labelsMatrix=[]
-            for i,labels in enumerate(self.inputs["Labels"]):
-                if labels.shape is not None:
-                    #labels=labels[:].allocate().wait()
-                    blocks = self.inputs["nonzeroLabelBlocks"][i][0].allocate().wait()
+        key = roi.toSlice()
+        featMatrix=[]
+        labelsMatrix=[]
+        for i,labels in enumerate(self.inputs["Labels"]):
+            if labels.shape is not None:
+                #labels=labels[:].allocate().wait()
+                blocks = self.inputs["nonzeroLabelBlocks"][i][0].allocate().wait()
 
-                    progress += 10/numImages
-                    self.progressSignal(progress)
+                progress += 10/numImages
+                self.progressSignal(progress)
 
-                    reqlistlabels = []
-                    reqlistfeat = []
-                    traceLogger.debug("Sending requests for {} non-zero blocks (labels and data)".format( len(blocks[0])) )
-                    for b in blocks[0]:
-    
-                        request = labels[b].allocate()
-                        featurekey = list(b)
-                        featurekey[-1] = slice(None, None, None)
-                        request2 = self.inputs["Images"][i][featurekey].allocate()
-    
-                        reqlistlabels.append(request)
-                        reqlistfeat.append(request2)
+                reqlistlabels = []
+                reqlistfeat = []
+                traceLogger.debug("Sending requests for {} non-zero blocks (labels and data)".format( len(blocks[0])) )
+                for b in blocks[0]:
 
-                    traceLogger.debug("Requests prepared")
-    
-                    numLabelBlocks = len(reqlistlabels)
-                    progress = [progress] # Store in list for closure access
-                    if numLabelBlocks > 0:
-                        progressInc = (80-10)/numLabelBlocks/numImages
+                    request = labels[b].allocate()
+                    featurekey = list(b)
+                    featurekey[-1] = slice(None, None, None)
+                    request2 = self.inputs["Images"][i][featurekey].allocate()
 
-                    def progressNotify(req):
-                        # Note: If we wanted perfect progress reporting, we could use lock here 
-                        #       to protect the progress from being incremented simultaneously.
-                        #       But that would slow things down and imperfect reporting is okay for our purposes.
-                        progress[0] += progressInc/2
-                        self.progressSignal(progress[0])
-    
-                    for ir, req in enumerate(reqlistfeat):
-                        image = req.notify(progressNotify)
-    
-                    for ir, req in enumerate(reqlistlabels):
-                        labblock = req.notify(progressNotify)
+                    reqlistlabels.append(request)
+                    reqlistfeat.append(request2)
 
-                    traceLogger.debug("Requests fired")
-    
-                    for ir, req in enumerate(reqlistlabels):
-                        traceLogger.debug("Waiting for a label block...")
-                        labblock = req.wait()
+                traceLogger.debug("Requests prepared")
 
-                        traceLogger.debug("Waiting for an image block...")
-                        image = reqlistfeat[ir].wait()
+                numLabelBlocks = len(reqlistlabels)
+                progress = [progress] # Store in list for closure access
+                if numLabelBlocks > 0:
+                    progressInc = (80-10)/numLabelBlocks/numImages
 
-                        indexes=numpy.nonzero(labblock[...,0].view(numpy.ndarray))
-                        features=image[indexes]
-                        labbla=labblock[indexes]
-    
-                        featMatrix.append(features)
-                        labelsMatrix.append(labbla)
+                def progressNotify(req):
+                    # Note: If we wanted perfect progress reporting, we could use lock here 
+                    #       to protect the progress from being incremented simultaneously.
+                    #       But that would slow things down and imperfect reporting is okay for our purposes.
+                    progress[0] += progressInc/2
+                    self.progressSignal(progress[0])
 
-                    progress = progress[0]
+                for ir, req in enumerate(reqlistfeat):
+                    image = req.notify(progressNotify)
 
-                    traceLogger.debug("Requests processed")    
-                    self.progressSignal(80/numImages)
+                for ir, req in enumerate(reqlistlabels):
+                    labblock = req.notify(progressNotify)
 
-            if len(featMatrix) == 0 or len(labelsMatrix) == 0:
-                # If there was no actual data for the random forest to train with, we return None
-                result[0] = None
-            else:
-                featMatrix=numpy.concatenate(featMatrix,axis=0)
-                labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
+                traceLogger.debug("Requests fired")
 
-                RF=vigra.learning.RandomForest(100)
-                try:
-                    logger.debug("Learning with Vigra...")
-                    RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
-                    logger.debug("Vigra finished")
-                except:
-                    logger.error( "ERROR: could not learn classifier" )
-                    logger.error( "featMatrix shape={}, max={}, dtype={}".format(featMatrix.shape, featMatrix.max(), featMatrix.dtype) )
-                    logger.error( "labelsMatrix shape={}, max={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.max(), labelsMatrix.dtype ) )
-                    raise
-                finally:
-                    self.progressSignal(100)
-                assert RF is not None, "RF = %r" % RF
-                result[0]=RF
-            
-            return result
+                for ir, req in enumerate(reqlistlabels):
+                    traceLogger.debug("Waiting for a label block...")
+                    labblock = req.wait()
+
+                    traceLogger.debug("Waiting for an image block...")
+                    image = reqlistfeat[ir].wait()
+
+                    indexes=numpy.nonzero(labblock[...,0].view(numpy.ndarray))
+                    features=image[indexes]
+                    labbla=labblock[indexes]
+
+                    featMatrix.append(features)
+                    labelsMatrix.append(labbla)
+
+                progress = progress[0]
+
+                traceLogger.debug("Requests processed")    
+                self.progressSignal(80/numImages)
+
+        if len(featMatrix) == 0 or len(labelsMatrix) == 0:
+            # If there was no actual data for the random forest to train with, we return None
+            result[0] = None
+        else:
+            featMatrix=numpy.concatenate(featMatrix,axis=0)
+            labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
+
+            RF=vigra.learning.RandomForest(100)
+            try:
+                logger.debug("Learning with Vigra...")
+                RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
+                logger.debug("Vigra finished")
+            except:
+                logger.error( "ERROR: could not learn classifier" )
+                logger.error( "featMatrix shape={}, max={}, dtype={}".format(featMatrix.shape, featMatrix.max(), featMatrix.dtype) )
+                logger.error( "labelsMatrix shape={}, max={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.max(), labelsMatrix.dtype ) )
+                raise
+            finally:
+                self.progressSignal(100)
+            assert RF is not None, "RF = %r" % RF
+            result[0]=RF
+        
+        return result
 
     def setInSlot(self, slot, key, value):
         if self.inputs["fixClassifier"].value == False:
