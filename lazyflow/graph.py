@@ -442,6 +442,7 @@ class Slot(object):
                 self.disconnect()
     
             if partner is not None:
+                self._value = None
                 if partner.level == self.level:
                     self.partner = partner
                     notifyReady = self.partner.meta._ready and not self.meta._ready
@@ -1499,7 +1500,7 @@ class Operator(object):
 
     def _setDefaultInputValues(self):
         for i in self.inputs.values():
-            if i._value is None and i._defaultValue is not None:
+            if i.partner is None and i._value is None and i._defaultValue is not None:
                 i.setValue(i._defaultValue)
 
     def _getOriginalOperator(self):
