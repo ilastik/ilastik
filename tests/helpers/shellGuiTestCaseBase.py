@@ -1,6 +1,7 @@
 import nose
 import threading
 import platform
+import traceback
 from functools import partial
 from ilastik.shell.gui.startShellGui import startShellGui
 
@@ -96,13 +97,30 @@ class ShellGuiTestCaseBase(object):
         """
         Execute the given function within the shell event loop.
         Block until the function completes.
+        If there were exceptions, assert so that nose marks this test as failed.
         """
-        e = threading.Event()
+        testFinished = threading.Event()
+        errors = []
+        
         def impl():
-            func()
-            e.set()            
+            try:
+                func()
+            except AssertionError, e:
+                traceback.print_exc()
+                errors.append(e)
+            except Exception, e:
+                traceback.print_exc()
+                errors.append(e)
+            testFinished.set()
+        
         cls.shell.thunkEventHandler.post(impl)
-        e.wait()
+        testFinished.wait()
+
+        if len(errors) > 0:
+            if isinstance(errors[0], AssertionError):
+                raise AssertionError("Failed a GUI test.  See output above.")
+            else:
+                raise RuntimeError("Errors during a GUI test.  See output above.")
 
     @classmethod
     def workflowClass(cls):
