@@ -147,7 +147,7 @@ class ShellGuiTestCaseBase(object):
         # Let the GUI catch up: Process all events
         QApplication.processEvents()
 
-    def getPixelColor(self, imgView, coordinates, debugFileName=None):
+    def getPixelColor(self, imgView, coordinates, debugFileName=None, relativeToCenter=True):
         """
         Sample the color of the pixel at the given coordinates.
         If debugFileName is provided, export the view for debugging purposes.
@@ -159,17 +159,31 @@ class ShellGuiTestCaseBase(object):
         
         if debugFileName is not None:
             img.save(debugFileName)
-        
-        return img.pixel(QPoint(*coordinates))
 
-    def strokeMouse(self, imgView, start, end):
+        point = QPoint(*coordinates)
+        if relativeToCenter:
+            centerPoint = imgView.rect().bottomRight() / 2
+            point += centerPoint
+        
+        return img.pixel(point)
+
+    def moveMouseFromCenter(self, imgView, coords):
+        centerPoint = imgView.rect().bottomRight() / 2
+        point = QPoint(*coords) + centerPoint
+        move = QMouseEvent( QEvent.MouseMove, point, Qt.NoButton, Qt.NoButton, Qt.NoModifier )
+        QApplication.postEvent(imgView, move )
+        QApplication.processEvents()
+
+    def strokeMouseFromCenter(self, imgView, start, end):
         """
         Drag the mouse between two coordinates.
         """
-        startPoint = QPoint(*start)
-        endPoint = QPoint(*end)
+        centerPoint = imgView.rect().bottomRight() / 2
 
-        # Move to start        
+        startPoint = QPoint(*start) + centerPoint
+        endPoint = QPoint(*end) + centerPoint
+
+        # Move to start
         move = QMouseEvent( QEvent.MouseMove, startPoint, Qt.NoButton, Qt.NoButton, Qt.NoModifier )
         QApplication.postEvent(imgView, move )
 
@@ -192,5 +206,6 @@ class ShellGuiTestCaseBase(object):
         release = QMouseEvent( QEvent.MouseButtonRelease, endPoint, Qt.LeftButton, Qt.NoButton, Qt.NoModifier )
         QApplication.postEvent(imgView, release )
 
-        # Let the GUI catch up: Process all events
+        # Wait for the gui to catch up
         QApplication.processEvents()
+        self.waitForViews([imgView])

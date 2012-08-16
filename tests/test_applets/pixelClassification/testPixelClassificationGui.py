@@ -15,7 +15,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     def workflowClass(cls):
         return PixelClassificationWorkflow
 
-    SAMPLE_DATA = '/magnetic/gigacube.h5'
+    SAMPLE_DATA = '/magnetic/synapse_small.npy'
     PROJECT_FILE = '/magnetic/test_project.ilp'
 
     @classmethod
@@ -68,6 +68,13 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
+    # These points are relative to the CENTER of the view
+    LABEL_START = (-20,-20)
+    LABEL_STOP = (20,20)
+    LABEL_SAMPLE = (0,0)
+    LABEL_ERASE_START = (-5,-5)
+    LABEL_ERASE_STOP = (5,5)
+
     def test_2_AddLabels(self):
         """
         Add labels and draw them in the volume editor.
@@ -79,6 +86,9 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(3)
+            
+            # Turn of the huds so we can capture the raw image
+            gui.menuGui.actionToggleAllHuds.trigger()
 
             assert not gui._labelControlUi.checkInteractive.isChecked()
             assert gui._labelControlUi.labelListModel.rowCount() == 0
@@ -103,7 +113,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 gui._labelControlUi.labelListModel.select(i)
                 
                 imgView = gui.editor.imageViews[i]
-                self.strokeMouse( imgView, (0,0), (100,100) )
+                self.strokeMouseFromCenter( imgView, self.LABEL_START, self.LABEL_STOP )
 
                 # Make sure the labels were added to the label array operator
                 assert opPix.MaxLabelValue.value == i+1
@@ -113,7 +123,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Verify the actual rendering of each view
             for i in range(3):
                 imgView = gui.editor.imageViews[i]
-                observedColor = self.getPixelColor(imgView, (50,50))
+                observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 expectedColor = gui._colorTable16[i+1]
                 assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 
@@ -156,14 +166,14 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Check the actual rendering of the two views with remaining labels
             for i in [0,2]:
                 imgView = gui.editor.imageViews[i]
-                observedColor = self.getPixelColor(imgView, (50,50))
+                observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 expectedColor = originalLabelColors[i]
                 assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 
             # Make sure we actually deleted the middle label (it should no longer be visible)
             for i in [1]:
                 imgView = gui.editor.imageViews[i]
-                observedColor = self.getPixelColor(imgView, (50,50))
+                observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 oldColor = originalLabelColors[i]
                 assert observedColor != oldColor, "Label was not deleted."
             
@@ -206,7 +216,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # Sanity check: There should be labels in the view that we can erase
             self.waitForViews([imgView])
-            observedColor = self.getPixelColor(imgView, (50,50))
+            observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             labelColor = gui._colorTable16[1]
             assert observedColor == labelColor, "Can't run erase test.  Missing the expected label.  Expected {}, got {}".format( hex(labelColor), hex(observedColor) )
 
@@ -215,7 +225,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             assert labelLayer.name == "Labels"
             labelLayer.visible = False            
             self.waitForViews([imgView])
-            rawDataColor = self.getPixelColor(imgView, (50,50))
+            rawDataColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             assert rawDataColor != labelColor
             
             # Show labels
@@ -226,9 +236,9 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.waitForViews([imgView])
             
             # Erase and verify
-            self.strokeMouse( imgView, (45,45), (55,55) )
+            self.strokeMouseFromCenter( imgView, self.LABEL_ERASE_START, self.LABEL_ERASE_STOP )
             self.waitForViews([imgView])
-            erasedColor = self.getPixelColor(imgView, (50,50))
+            erasedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             assert erasedColor == rawDataColor
         
         # Run this test from within the shell event loop
@@ -256,7 +266,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # Sanity check: There should be labels in the view that we can erase
             self.waitForViews([imgView])
-            observedColor = self.getPixelColor(imgView, (50,50))
+            observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             labelColor = gui._colorTable16[2]
             assert observedColor == labelColor, "Can't run erase test.  Missing the expected label.  Expected {}, got {}".format( hex(labelColor), hex(observedColor) )
 
@@ -265,7 +275,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             assert labelLayer.name == "Labels"
             labelLayer.visible = False            
             self.waitForViews([imgView])
-            rawDataColor = self.getPixelColor(imgView, (50,50))
+            rawDataColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             assert rawDataColor != labelColor
             
             # Show labels
@@ -276,9 +286,9 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.waitForViews([imgView])
             
             # Erase and verify
-            self.strokeMouse( imgView, (0,0), (100,100) )
+            self.strokeMouseFromCenter( imgView, self.LABEL_START, self.LABEL_STOP )
             self.waitForViews([imgView])
-            erasedColor = self.getPixelColor(imgView, (50,50))
+            erasedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             assert erasedColor == rawDataColor, "Eraser did not remove labels!"
 
             # We just erased all the labels of value 2, so the max label value should be reduced.
@@ -286,10 +296,14 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # Now stroke the eraser once more.
             # The new stroke should make NO DIFFERENCE to the image.
-            rawDataColor = self.getPixelColor(imgView, (25,75))
-            self.strokeMouse( imgView, (100,0), (0,100) )
+            rawDataColor = self.getPixelColor(imgView, (5,-5))
+            self.strokeMouseFromCenter( imgView, (10,-10), (0,0) )
+            
+            # Move the cursor out of the way so we can sample the image
+            self.moveMouseFromCenter(imgView, (20,20))
+
             self.waitForViews([imgView])
-            erasedColor = self.getPixelColor(imgView, (25,75))
+            erasedColor = self.getPixelColor(imgView, (5,-5))
             assert erasedColor == rawDataColor, "Erasing blank pixels generated non-zero labels."
 
         # Run this test from within the shell event loop
