@@ -136,7 +136,7 @@ class OpTrainRandomForestBlocked(Operator):
                 traceLogger.debug("Requests prepared")
 
                 numLabelBlocks = len(reqlistlabels)
-                progress = [progress] # Store in list for closure access
+                progress_outer = [progress] # Store in list for closure access
                 if numLabelBlocks > 0:
                     progressInc = (80-10)/numLabelBlocks/numImages
 
@@ -144,8 +144,8 @@ class OpTrainRandomForestBlocked(Operator):
                     # Note: If we wanted perfect progress reporting, we could use lock here 
                     #       to protect the progress from being incremented simultaneously.
                     #       But that would slow things down and imperfect reporting is okay for our purposes.
-                    progress[0] += progressInc/2
-                    self.progressSignal(progress[0])
+                    progress_outer[0] += progressInc/2
+                    self.progressSignal(progress_outer[0])
 
                 for ir, req in enumerate(reqlistfeat):
                     image = req.notify(progressNotify)
@@ -169,10 +169,11 @@ class OpTrainRandomForestBlocked(Operator):
                     featMatrix.append(features)
                     labelsMatrix.append(labbla)
 
-                progress = progress[0]
+                progress = progress_outer[0]
 
-                traceLogger.debug("Requests processed")    
-                self.progressSignal(80/numImages)
+                traceLogger.debug("Requests processed")
+        
+        self.progressSignal(80/numImages)
 
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             # If there was no actual data for the random forest to train with, we return None
