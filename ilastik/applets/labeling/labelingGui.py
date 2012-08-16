@@ -25,14 +25,6 @@ from ilastik.applets.layerViewer import LayerViewerGui
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
-# FIXME: This should be eliminated or moved to utility.
-def getPathToLocalDirectory():
-    # Determines the path of this python file so we can refer to other files relative to it.
-    p = os.path.split(__file__)[0]+'/'
-    if p == "/":
-        p = "."+p
-    return p
-
 class Tool():
     """Enumerate the types of toolbar buttons."""
     Navigation = 0 # Arrow
@@ -166,21 +158,21 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.labelListModel.dataChanged.connect(onDataChanged)
         
         # Initialize the arrow tool button with an icon and handler
-        iconPath = getPathToLocalDirectory() + "/icons/arrow.jpg"
+        iconPath = os.path.split(__file__)[0] + "/icons/arrow.jpg"
         arrowIcon = QIcon(iconPath)
         _labelControlUi.arrowToolButton.setIcon(arrowIcon)
         _labelControlUi.arrowToolButton.setCheckable(True)
         _labelControlUi.arrowToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Navigation) )
 
         # Initialize the paint tool button with an icon and handler
-        paintBrushIconPath = getPathToLocalDirectory() + "/icons/paintbrush.png"
+        paintBrushIconPath = os.path.split(__file__)[0] + "/icons/paintbrush.png"
         paintBrushIcon = QIcon(paintBrushIconPath)
         _labelControlUi.paintToolButton.setIcon(paintBrushIcon)
         _labelControlUi.paintToolButton.setCheckable(True)
         _labelControlUi.paintToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Paint) )
 
         # Initialize the erase tool button with an icon and handler
-        eraserIconPath = getPathToLocalDirectory() + "/icons/eraser.png"
+        eraserIconPath = os.path.split(__file__)[0] + "/icons/eraser.png"
         eraserIcon = QIcon(eraserIconPath)
         _labelControlUi.eraserToolButton.setIcon(eraserIcon)
         _labelControlUi.eraserToolButton.setCheckable(True)

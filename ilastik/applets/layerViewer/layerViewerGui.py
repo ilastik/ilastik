@@ -318,9 +318,8 @@ class LayerViewerGui(QMainWindow):
         Load the viewer controls GUI, which appears below the applet bar.
         In our case, the viewer control GUI consists mainly of a layer list.
         """
-        p = os.path.split(__file__)[0]+'/'
-        if p == "/": p = "."+p
-        self.__viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
+        localDir = os.path.split(__file__)[0]
+        self.__viewerControlWidget = uic.loadUi(localDir + "/viewerControls.ui")
 
     @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
