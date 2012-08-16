@@ -1,11 +1,12 @@
 # Built-in
 import os
 import logging
+import warnings
 import threading
 
 # Third-party
 from PyQt4 import uic
-from PyQt4.QtGui import QMessageBox
+from PyQt4.QtGui import QMessageBox, QColor
 
 # HCI
 from lazyflow.tracer import Tracer, traceLogged
@@ -37,8 +38,7 @@ class PixelClassificationGui(LabelingGui):
         super(PixelClassificationGui, self).reset()
 
         # Ensure that we are NOT in interactive mode
-        logger.warn("FIX ME: Manipulate interactive checkbox correctly")
-        #self._labelControlUi.checkInteractive.setChecked(False)
+        self.labelingDrawerUi.checkInteractive.setChecked(False)
 
     ###########################################
     ###########################################
@@ -56,18 +56,24 @@ class PixelClassificationGui(LabelingGui):
         slots.displaySlots = [ pipeline.InputImages,
                                pipeline.PredictionProbabilityChannels ]
 
+        # We provide our own UI file (which adds an extra control for interactive mode)
+        labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
+        
         # Base class init
-        super(PixelClassificationGui, self).__init__( slots )
+        super(PixelClassificationGui, self).__init__( slots, labelingDrawerUiPath )
         
         self.pipeline = pipeline
         self.guiControlSignal = guiControlSignal
         self.shellRequestSignal = shellRequestSignal
         self.predictionSerializer = predictionSerializer
-
+        
         self.interactiveModeActive = False
         self._currentlySavingPredictions = False
 
         self.initPredictionControlsUic()
+        
+        self.labelingDrawerUi.checkInteractive.setEnabled(True)
+        self.labelingDrawerUi.checkInteractive.toggled.connect(self.toggleInteractive)
 
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
@@ -78,7 +84,31 @@ class PixelClassificationGui(LabelingGui):
         # Base class provides the label layer.
         layers = super(PixelClassificationGui, self).setupLayers(currentImageIndex)
 
-        # Add the raw data
+        labels = self.labelListData
+
+        # Add each of the predictions
+        for channel, predictionSlot in enumerate(self.pipeline.PredictionProbabilityChannels[currentImageIndex]):
+            ref_label = labels[channel]
+            if predictionSlot.ready():
+                predictsrc = LazyflowSource(predictionSlot)
+                predictLayer = AlphaModulatedLayer( predictsrc,
+                                                    tintColor=ref_label.color,
+                                                    normalize = None )
+                predictLayer.opacity = 0.25
+                predictLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+
+                def setLayerColor(c):
+                    predictLayer.tintColor = c
+                def setLayerName(n):
+                    newName = "Prediction for %s" % ref_label.name
+                    predictLayer.name = newName
+                setLayerName(ref_label.name)
+
+                ref_label.colorChanged.connect(setLayerColor)
+                ref_label.nameChanged.connect(setLayerName)
+                layers.append(predictLayer)
+
+        # Add the raw data last (on the bottom)
         inputDataSlot = self.pipeline.InputImages[currentImageIndex]
         if inputDataSlot.ready():
             inputLayer = self.createStandardLayerFromSlot( inputDataSlot )
@@ -86,38 +116,6 @@ class PixelClassificationGui(LabelingGui):
             inputLayer.visible = True
             inputLayer.opacity = 1.0
             layers.append(inputLayer)
-
-        # Add each of the predictions
-        for channel, predictionSlot in enumerate(self.pipeline.PredictionProbabilityChannels[currentImageIndex]):
-            if predictionSlot.ready():
-                predictsrc = LazyflowSource(predictionSlot)
-                logger.debug("FIX ME: Prediction colors should dynamically match label colors.")
-                tintColor = self._colorTable16[channel+1]
-                def setLayerColor(c):
-                    predictLayer.tintColor = c
-                #ref_label.colorChanged.connect(setLayerColor)
-
-                predictLayer = AlphaModulatedLayer(predictsrc, tintColor=tintColor, normalize = None )
-                predictLayer.opacity = 0.25
-                #predictLayer.visible = self._labelControlUi.checkInteractive.isChecked()
-                
-                logger.warn("FIX ME: Prediction layer names should follow label names.")
-                predictLayer.name = "Prediction Channel #{}".format(channel)
-                #predictLayer.nameChanged.connect(srcName)
-                
-#                def setLayerName(n):
-#                    newName = "Prediction for %s" % ref_label.name
-#                    predictLayer.name = newName
-#                setLayerName(ref_label.name)
-#                ref_label.nameChanged.connect(setLayerName)
-                
-                # Attach a new field to identify this layer so we can find it later
-                #predictLayer.ref_object = ref_label
-        
-                #make sure that labels (index = 0) stay on top!
-                #self.layerstack.insert(1, predictLayer )
-                logger.warn("FIX ME: Make sure prediction layers are ABOVE input but BELOW labels.")
-                layers.append(predictLayer)
         
         return layers            
 
@@ -139,27 +137,15 @@ class PixelClassificationGui(LabelingGui):
             nPaintedLabels = self.pipeline.MaxLabelValue.value
             if nPaintedLabels is None:
                 nPaintedLabels = 0
-            nLabelsLayers = self._labelControlUi.labelListModel.rowCount()
-            
-            if nPaintedLabels!=nLabelsLayers:
-                #self._labelControlUi.checkInteractive.setCheckState(0)
-                mexBox=QMessageBox()
-                mexBox.setText("Did you forget to paint some labels?")
-                mexBox.setInformativeText("Painted Labels %d \nNumber Active Labels Layers %d"%(nPaintedLabels,self._labelControlUi.labelListModel.rowCount()))
-                mexBox.exec_()
-                return
+
             if len(self.pipeline.FeatureImages) == 0 \
             or self.pipeline.FeatureImages[self.imageIndex].meta.shape==None:
-                #self._labelControlUi.checkInteractive.setCheckState(0)
+                self.labelingDrawerUi.checkInteractive.setCheckState(0)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
                 mexBox.exec_()
                 return
 
-        logger.warn("FIX ME: Can the user add/remove labels during train-and-predict?  Why not?")    
-        #self._labelControlUi.AddLabelButton.setEnabled(not checked)
-        #self._labelControlUi.labelListModel.allowRemove(not checked)
-        
         self._predictionControlUi.trainAndPredictButton.setEnabled(not checked)
         self.pipeline.FreezePredictions.setValue( not checked )
 
