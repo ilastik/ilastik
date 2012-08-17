@@ -250,6 +250,7 @@ class OpArrayCache(OpArrayPiper):
     IN_PROCESS = 0
     DIRTY = 1
     CLEAN = 2
+    FIXED_DIRTY = 3
 
     def __init__(self, *args, **kwargs):
         with Tracer(self.traceLogger):
@@ -377,20 +378,45 @@ class OpArrayCache(OpArrayPiper):
         if slot == self.inputs["Input"]:
             start, stop = sliceToRoi(key, self.shape)
 
-            self._lock.acquire()
-            if self._cache is not None:
-                blockStart = numpy.floor(1.0 * start / self._blockShape)
-                blockStop = numpy.ceil(1.0 * stop / self._blockShape)
-                blockKey = roiToSlice(blockStart,blockStop)
-                self._blockState[blockKey] = OpArrayCache.DIRTY
-                #FIXME: we should recalculate results for which others are waiting and notify them...
-            self._lock.release()
+            with self._lock:
+                if self._cache is not None:
+                    blockStart = numpy.floor(1.0 * start / self._blockShape)
+                    blockStop = numpy.ceil(1.0 * stop / self._blockShape)
+                    blockKey = roiToSlice(blockStart,blockStop)
+                    if self._fixed:
+                        self._blockState[blockKey] = OpArrayCache.FIXED_DIRTY
+                    else:
+                        self._blockState[blockKey] = OpArrayCache.DIRTY
 
             if not self._fixed:
                 self.outputs["Output"].setDirty(key)
         if slot == self.inputs["fixAtCurrent"]:
-            if  self.inputs["fixAtCurrent"].ready():
-                self._fixed =  self.inputs["fixAtCurrent"].value
+            if self.inputs["fixAtCurrent"].ready():
+                self._fixed = self.inputs["fixAtCurrent"].value
+                if not self._fixed and self._cache is not None:
+                    # We've become unfixed, so we need to notify downstream 
+                    #  operators of every block that became dirty while we were fixed.
+                    # Convert all FIXED_DIRTY states into DIRTY states
+                    with self._lock:
+                        cond = (self._blockState[...] == OpArrayCache.FIXED_DIRTY)
+                        self._blockState[...]  = fastWhere(cond, OpArrayCache.DIRTY, self._blockState, numpy.uint8)
+                    newDirtyBlocks = numpy.transpose(numpy.nonzero(cond))
+                    
+                    if len(newDirtyBlocks) > 0:
+                        # To avoid lots of setDirty notifications, we simply merge all the dirtyblocks into one single superblock.
+                        # This should be the best option in most cases, but could be bad in some cases.
+                        # TODO: Optimize this by merging the dirty blocks via connected components or something.
+                        cacheShape = numpy.array(self._cache.shape)
+                        dirtyStart = cacheShape
+                        dirtyStop = [0] * len(cacheShape)
+                        for index in newDirtyBlocks:
+                            blockStart = index * self._blockShape
+                            blockStop = numpy.minimum(blockStart + self._blockShape, cacheShape)
+                            
+                            dirtyStart = numpy.minimum(dirtyStart, blockStart)
+                            dirtyStop = numpy.maximum(dirtyStop, blockStop)
+
+                        self.Output.setDirty( dirtyStart, dirtyStop )
 
     def execute(self,slot,roi,result):
         #return
@@ -420,7 +446,7 @@ class OpArrayCache(OpArrayPiper):
         # this is a little optimization to shortcut
         # many lines of python code when all data is
         # is already in the cache:
-        if (blockSet == OpArrayCache.CLEAN).all():
+        if numpy.logical_or(blockSet == OpArrayCache.CLEAN, blockSet == OpArrayCache.FIXED_DIRTY).all():
             self._lock.release()
             result[:] = self._cache[roiToSlice(start, stop)]
             return
