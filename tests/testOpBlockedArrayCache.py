@@ -166,7 +166,7 @@ class TestOpBlockedArrayCache(object):
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
-        assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
+        assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
 
         # Freeze it again
         opCache.fixAtCurrent.setValue(True)
@@ -189,7 +189,7 @@ class TestOpBlockedArrayCache(object):
         data2 = opCache.Output( slicing ).wait()
         data2 = data2.view(vigra.VigraArray)
         data2.axistags = opCache.Output.meta.axistags
-        assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
+        assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
         assert (data2 == data).all()
 
         # Unfreeze.
@@ -206,7 +206,7 @@ class TestOpBlockedArrayCache(object):
 
         # Dirty data did not intersect with this request.
         # Data should still be cached (no extra accesses)
-        assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
+        assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
 
         ###########################3
         # Freeze it again
@@ -230,7 +230,7 @@ class TestOpBlockedArrayCache(object):
         data2 = opCache.Output( slicing ).wait()
         data2 = data2.view(vigra.VigraArray)
         data2.axistags = opCache.Output.meta.axistags
-        assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
+        assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
         assert (data2 == data).all()
 
         # Unfreeze. Previous dirty notifications should now be seen.
