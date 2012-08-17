@@ -155,7 +155,7 @@ class TestOpArrayCache(object):
         opCache.Output.notifyDirty(handleDirty)
         
         # Change some of the input data and mark it dirty
-        dirtykey = make_key[0:1, 10:20, 20:30, 0:3, 0:1]
+        dirtykey = make_key[0:1, 15:25, 20:30, 0:3, 0:1]
         self.data[dirtykey] = 0.12345
         opProvider.Input.setDirty(dirtykey)
 
