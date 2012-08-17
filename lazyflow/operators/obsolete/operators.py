@@ -525,10 +525,9 @@ class OpArrayCache(OpArrayPiper):
 
         # indicate the finished inprocess state (i.e. CLEAN)
         if not self._fixed and temp.next() == 0:
-            self._lock.acquire()
-            blockSet[:] = fastWhere(cond, OpArrayCache.CLEAN, blockSet, numpy.uint8)
-            self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)
-            self._lock.release()
+            with self._lock:
+                blockSet[:] = fastWhere(cond, OpArrayCache.CLEAN, blockSet, numpy.uint8)
+                self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)
 
 
         #wait for all in process queries
@@ -1027,6 +1026,8 @@ class OpBlockedArrayCache(Operator):
             self.source = OpArrayPiper(self)
             self.source.inputs["Input"].connect(self.inputs["Input"])
             self._fixed = False
+            self._fixed_dirty_blocks = set()
+            self._lock = Lock()
 
     def setupOutputs(self):
         with Tracer(self.traceLogger):
@@ -1054,34 +1055,32 @@ class OpBlockedArrayCache(Operator):
                 self.outputs["Output"].meta.shape = inputSlot.meta.shape
                 self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
     
-                if not self._fixed:
-                    self._blockShape = self.inputs["outerBlockShape"].value
-                    self.shape = self.Input.meta.shape
-                    self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
-                    assert numpy.array(self._blockShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid blockShape = {blockShape}".format(blockShape=self._blockShape)
-                    self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
-                    assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = {dirtyShape}".format(dirtyShape=self._dirtyShape)
-    
-                    self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
-    
-                    _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
-                    _blockNumbers.shape = self._dirtyShape
-    
-                    _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
-                    _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
-    
-                    self._blockNumbers = _blockNumbers
-    
-                    # allocate queryArray object
-                    self._flatBlockIndices =  _blockIndices[:]
-                    self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
-    
-                    self._opSub_list = {}
-                    self._cache_list = {}
-    
-                    self._lock = Lock()
-    
-                    self._configured = True
+            if not self._fixed or not self._configured:
+                self.shape = self.Input.meta.shape
+                self._blockShape = self.inputs["outerBlockShape"].value
+                self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
+                assert numpy.array(self._blockShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid blockShape = {blockShape}".format(blockShape=self._blockShape)
+                self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+                assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = {dirtyShape}".format(dirtyShape=self._dirtyShape)
+
+                self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+
+                _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
+                _blockNumbers.shape = self._dirtyShape
+
+                _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
+                _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
+
+                self._blockNumbers = _blockNumbers
+
+                # allocate queryArray object
+                self._flatBlockIndices =  _blockIndices[:]
+                self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+
+                self._opSub_list = {}
+                self._cache_list = {}
+
+                self._configured = True
 
     def execute(self, slot, roi, result):
         with Tracer(self.traceLogger, msg='roi={}'.format(roi)):
@@ -1119,25 +1118,32 @@ class OpBlockedArrayCache(Operator):
                 smallkey = roiToSlice(smallstart, smallstop)
     
                 bigkey = roiToSlice(bigstart-start, bigstop-start)
-    
-                self._lock.acquire()
-    
-                if not self._fixed:
-                    if not self._cache_list.has_key(b_ind):
-                        self._opSub_list[b_ind] = generic.OpSubRegion(self)
-                        self._opSub_list[b_ind].inputs["Input"].connect(self.inputs["Input"])#source.outputs["Output"])
-    
-                        tstart = self._blockShape*self._flatBlockIndices[b_ind]
-                        tstop = numpy.minimum((self._flatBlockIndices[b_ind]+numpy.ones(self._flatBlockIndices[b_ind].shape, numpy.uint8))*self._blockShape, self.shape)
-    
-                        self._opSub_list[b_ind].inputs["Start"].setValue(tuple(tstart))
-                        self._opSub_list[b_ind].inputs["Stop"].setValue(tuple(tstop))
-    
-                        self._cache_list[b_ind] = OpArrayCache(self)
-                        self._cache_list[b_ind].inputs["Input"].connect(self._opSub_list[b_ind].outputs["Output"])
-                        self._cache_list[b_ind].inputs["fixAtCurrent"].setValue(False)
-                        self._cache_list[b_ind].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
-                self._lock.release()
+
+                with self._lock:    
+                    if not self._fixed:
+                        if not self._cache_list.has_key(b_ind):
+                            self._opSub_list[b_ind] = generic.OpSubRegion(self)
+                            self._opSub_list[b_ind].inputs["Input"].connect(self.inputs["Input"])#source.outputs["Output"])
+        
+                            tstart = self._blockShape*self._flatBlockIndices[b_ind]
+                            tstop = numpy.minimum((self._flatBlockIndices[b_ind]+numpy.ones(self._flatBlockIndices[b_ind].shape, numpy.uint8))*self._blockShape, self.shape)
+        
+                            self._opSub_list[b_ind].inputs["Start"].setValue(tuple(tstart))
+                            self._opSub_list[b_ind].inputs["Stop"].setValue(tuple(tstop))
+        
+                            self._cache_list[b_ind] = OpArrayCache(self)
+                            self._cache_list[b_ind].inputs["Input"].connect(self._opSub_list[b_ind].outputs["Output"])
+                            self._cache_list[b_ind].inputs["fixAtCurrent"].connect( self.fixAtCurrent )
+                            self._cache_list[b_ind].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
+                            
+                            # Forward dirtyness from inner caches to our output slot
+                            def handleDirtyBlock( slot, smallroi ):
+                                # Translate the block roi to a roi for our output
+                                bigroi = smallroi
+                                bigroi.start += offset
+                                bigroi.stop += offset
+                                self.Output.setDirty(bigroi.start, bigroi.stop)
+                            self._cache_list[b_ind].Output.notifyDirty( handleDirtyBlock )
     
                 if self._cache_list.has_key(b_ind):
                     op = self._cache_list[b_ind]
@@ -1160,8 +1166,47 @@ class OpBlockedArrayCache(Operator):
 
     def notifyDirty(self, slot, key):
         with Tracer(self.traceLogger):
-            if slot == self.inputs["Input"] and not self._fixed:
-                self.outputs["Output"].setDirty(key)
+            if slot == self.inputs["Input"]:
+                if not self._fixed:
+                    self.outputs["Output"].setDirty(key)                    
+                elif self._blockShape is not None:
+                    # Find the block key
+                    roi = SubRegion(slot, pslice=key)
+                    start, stop = roi.start, roi.stop
+            
+                    blockStart = (start / self._blockShape)
+                    blockStop = (stop * 1.0 / self._blockShape).ceil()
+                    blockKey = roiToSlice(blockStart,blockStop)
+                    innerBlocks = self._blockNumbers[blockKey]
+                    for b_ind in innerBlocks.flat:
+                        with self._lock:
+                            # Only need to remember this dirty block if we don't have a cache for it already
+                            # (Existing OpArrayCaches will propagate dirty keys on their own.)
+                            if not self._cache_list.has_key(b_ind):
+                                self._fixed_dirty_blocks.add(b_ind)
+            
+            if slot == self.fixAtCurrent:
+                self._fixed = self.fixAtCurrent.value
+                if not self._fixed:
+                    # We've become unfixed.
+                    # Take the superset of all the blocks that became dirty in the meantime and notify our output
+                    dirtystart, dirtystop = (None,None)
+                    with self._lock:
+                        if len(self._fixed_dirty_blocks) > 0:
+                            dirtystart = self.Output.meta.shape
+                            dirtystop = [0] * len(self.Output.meta.shape)
+                            for b_ind in self._fixed_dirty_blocks:
+                                offset = self._blockShape*self._flatBlockIndices[b_ind]
+                                bigstart = offset
+                                bigstop = numpy.minimum(offset + self._blockShape, self.Output.meta.shape)
+                                
+                                dirtystart = numpy.minimum(bigstart, dirtystart)
+                                dirtystop = numpy.maximum(bigstop, dirtystop)
+                            
+                            self._fixed_dirty_blocks = set()
+
+                    if dirtystart is not None:
+                        self.Output.setDirty(dirtystart, dirtystop)
 
     def setInSlot(self,slot,key):
         pass
