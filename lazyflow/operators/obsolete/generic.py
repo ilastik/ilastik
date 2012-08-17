@@ -423,8 +423,20 @@ class OpSubRegion(Operator):
             res = self.inputs["Input"][newKey].allocate().wait()
             resultArea[:] = res[resultKey]
 
+    def propagateDirty(self, dirtySlot, roi):
+        if dirtySlot == self.Input:
+            # Translate the input key to a small subregion key
+            smallstart = roi.start - self.Start.value
+            smallstop = roi.stop - self.Start.value
+            
+            # Clip to our output shape
+            smallstart = numpy.maximum(smallstart, 0)
+            smallstop = numpy.minimum(smallstop, self.Output.meta.shape)
 
-
+            # If there's an intersection with our output,
+            #  propagate dirty region to output
+            if ((smallstop - smallstart ) > 0).all():
+                self.Output.setDirty( smallstart, smallstop )
 
 class OpMultiArrayMerger(Operator):
     inputSlots = [MultiInputSlot("Inputs"),InputSlot('MergingFunction')]
