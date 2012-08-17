@@ -997,6 +997,7 @@ class OpBlockedArrayCache(Operator):
             self._configured = False
             self.source = OpArrayPiper(self)
             self.source.inputs["Input"].connect(self.inputs["Input"])
+            self._fixed = False
 
     def setupOutputs(self):
         with Tracer(self.traceLogger):
@@ -1224,3 +1225,26 @@ class OpSlicedBlockedArrayCache(Operator):
 
     def setInSlot(self,slot,key):
         pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
