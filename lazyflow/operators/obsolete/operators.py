@@ -246,6 +246,11 @@ class OpArrayCache(OpArrayPiper):
     logger = logging.getLogger(loggingName)
     traceLogger = logging.getLogger("TRACE." + loggingName)
 
+    # Block states
+    IN_PROCESS = 0
+    DIRTY = 1
+    CLEAN = 2
+
     def __init__(self, *args, **kwargs):
         with Tracer(self.traceLogger):
             super( OpArrayPiper, self ).__init__(*args, **kwargs)
@@ -285,7 +290,7 @@ class OpArrayCache(OpArrayPiper):
                         self.logger.debug("OpArrayCache: freed cache of shape:{}".format(fshape))
     
                     self._lock.acquire()
-                    self._blockState[:] = 1
+                    self._blockState[:] = OpArrayCache.DIRTY
                     del self._cache
                     self._cache = None
                     self._lock.release()
@@ -309,7 +314,7 @@ class OpArrayCache(OpArrayPiper):
             # if the entry in _dirtyArray differs from _dirtyState
             # the entry is considered dirty
             self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
-            self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+            self._blockState = OpArrayCache.DIRTY * numpy.ones(self._dirtyShape, numpy.uint8)
     
             _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
             _blockNumbers.shape = self._dirtyShape
@@ -321,10 +326,8 @@ class OpArrayCache(OpArrayPiper):
     #        self._blockNumbers = _blockNumbers
     #        self._blockIndices = _blockIndices
     #
-                                #TODO: introduce constants for readability
-                                #0 is "in process"
-            self._blockState[:]= 1 #this is the dirty state
-            self._dirtyState = 2 #this is the clean state
+            self._blockState[:]= OpArrayCache.DIRTY
+            self._dirtyState = OpArrayCache.CLEAN
     
             # allocate queryArray object
             self._flatBlockIndices =  _blockIndices[:]
@@ -379,7 +382,7 @@ class OpArrayCache(OpArrayPiper):
                 blockStart = numpy.floor(1.0 * start / self._blockShape)
                 blockStop = numpy.ceil(1.0 * stop / self._blockShape)
                 blockKey = roiToSlice(blockStart,blockStop)
-                self._blockState[blockKey] = 1
+                self._blockState[blockKey] = OpArrayCache.DIRTY
                 #FIXME: we should recalculate results for which others are waiting and notify them...
             self._lock.release()
 
@@ -417,14 +420,14 @@ class OpArrayCache(OpArrayPiper):
         # this is a little optimization to shortcut
         # many lines of python code when all data is
         # is already in the cache:
-        if (blockSet == 2).all():
+        if (blockSet == OpArrayCache.CLEAN).all():
             self._lock.release()
             result[:] = self._cache[roiToSlice(start, stop)]
             return
 
-        inProcessQueries = numpy.unique(numpy.extract( blockSet == 0, self._blockQuery[blockKey]))
+        inProcessQueries = numpy.unique(numpy.extract( blockSet == OpArrayCache.IN_PROCESS, self._blockQuery[blockKey]))
 
-        cond = (blockSet == 1)
+        cond = (blockSet == OpArrayCache.DIRTY)
         tileWeights = fastWhere(cond, 1, 128**3, numpy.uint32)
         trueDirtyIndices = numpy.nonzero(cond)
 
@@ -467,11 +470,11 @@ class OpArrayCache(OpArrayPiper):
                 self._blockQuery[key2] = req
 
                 #sanity check:
-                if (self._blockState[key2] != 1).any():
+                if (self._blockState[key2] != OpArrayCache.DIRTY).any():
                     print "original condition", cond
                     print "original tilearray", tileArray, tileArray.shape
                     print "original tileWeights", tileWeights, tileWeights.shape
-                    print "sub condition", self._blockState[key2] == 1
+                    print "sub condition", self._blockState[key2] == OpArrayCache.DIRTY
                     print "START, STOP", drStart2, drStop2
                     import h5py
                     f = h5py.File("test.h5", "w")
@@ -480,9 +483,9 @@ class OpArrayCache(OpArrayPiper):
                     assert 1 == 2
             else:
                 self._cache[key] = 0
-#        # indicate the inprocessing state, by setting array to 0
+        # indicate the inprocessing state, by setting array to 0 (i.e. IN_PROCESS)
         if not self._fixed:
-            blockSet[:]  = fastWhere(cond, 0, blockSet, numpy.uint8)
+            blockSet[:]  = fastWhere(cond, OpArrayCache.IN_PROCESS, blockSet, numpy.uint8)
 
         self._lock.release()
 
@@ -494,10 +497,10 @@ class OpArrayCache(OpArrayPiper):
             res = req.wait()
         self.traceLogger.debug( "All cache input requests received." )
 
-        # indicate the finished inprocess state
+        # indicate the finished inprocess state (i.e. CLEAN)
         if not self._fixed and temp.next() == 0:
             self._lock.acquire()
-            blockSet[:] = fastWhere(cond, 2, blockSet, numpy.uint8)
+            blockSet[:] = fastWhere(cond, OpArrayCache.CLEAN, blockSet, numpy.uint8)
             self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)
             self._lock.release()
 
@@ -527,7 +530,7 @@ class OpArrayCache(OpArrayPiper):
             blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
             blockKey = roiToSlice(blockStart,blockStop)
 
-            if (self._blockState[blockKey] != 2).any():
+            if (self._blockState[blockKey] != OpArrayCache.CLEAN).any():
                 start2 = blockStart * self._blockShape
                 stop2 = blockStop * self._blockShape
                 stop2 = numpy.minimum(stop2, self.shape)
