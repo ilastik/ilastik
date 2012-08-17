@@ -1230,76 +1230,60 @@ class OpSlicedBlockedArrayCache(Operator):
     def __init__(self, *args, **kwargs):
         with Tracer(self.traceLogger):
             super(OpSlicedBlockedArrayCache, self).__init__(*args, **kwargs)
-            self._lock = Lock()
             self._innerOps = []
 
     def setupOutputs(self):
-        with Tracer(self.traceLogger):
-            self.shape = self.inputs["Input"].shape
-            self._fixed = self.inputs["fixAtCurrent"].value
-            self._outerShapes = self.inputs["outerBlockShape"].value
-            self._innerShapes = self.inputs["innerBlockShape"].value
-    
-            if len(self._innerShapes) != len(self._innerOps):
-                for o in self._innerOps:
-                    o.disconnect()
-    
-                self._innerOps = []
-    
-                for i,innershape in enumerate(self._innerShapes):
-                    op = OpBlockedArrayCache(self)
-                    op.inputs["fixAtCurrent"].connect(self.inputs["fixAtCurrent"])
-                    op.inputs["Input"].connect(self.inputs["Input"])
-                    self._innerOps.append(op)
-    
+        self.shape = self.inputs["Input"].shape
+        self._fixed = self.inputs["fixAtCurrent"].value
+        self._outerShapes = self.inputs["outerBlockShape"].value
+        self._innerShapes = self.inputs["innerBlockShape"].value
+
+        if len(self._innerShapes) != len(self._innerOps):
+            for o in self._innerOps:
+                o.disconnect()
+
+            self._innerOps = []
+
             for i,innershape in enumerate(self._innerShapes):
-                op = self._innerOps[i]
-                op.inputs["innerBlockShape"].setValue(innershape)
-                op.inputs["outerBlockShape"].setValue(self._outerShapes[i])
-    
-            self.outputs["Output"].meta.dtype = self.inputs["Input"].meta.dtype
-            self.outputs["Output"].meta.axistags = copy.copy(self.inputs["Input"].meta.axistags)
-            self.outputs["Output"].meta.shape = self.inputs["Input"].meta.shape
+                op = OpBlockedArrayCache(self)
+                op.inputs["fixAtCurrent"].connect(self.inputs["fixAtCurrent"])
+                op.inputs["Input"].connect(self.inputs["Input"])
+                self._innerOps.append(op)
+
+        for i,innershape in enumerate(self._innerShapes):
+            op = self._innerOps[i]
+            op.inputs["innerBlockShape"].setValue(innershape)
+            op.inputs["outerBlockShape"].setValue(self._outerShapes[i])
+
+        self.outputs["Output"].meta.dtype = self.inputs["Input"].meta.dtype
+        self.outputs["Output"].meta.axistags = copy.copy(self.inputs["Input"].meta.axistags)
+        self.outputs["Output"].meta.shape = self.inputs["Input"].meta.shape
 
 
     def execute(self, slot, roi, result):
-        with Tracer(self.traceLogger):
-            key = roi.toSlice()
-            start,stop=sliceToRoi(key,self.shape)
-            diff=numpy.array(stop)-numpy.array(start)
-    
-            maxError=sys.maxint
-            index=0
-    
-            self._lock.acquire()
-            for i,shape in enumerate(self._innerShapes):
-                cs = numpy.array(shape)
-    
-                error = numpy.sum(numpy.abs(diff -cs))
-                if error<maxError:
-                    index = i
-                    maxError = error
-            op = self._innerOps[index]
-            #print "Selected index %d with shape=%r for diff=%r, key=%r" %(index, self._innerShapes[index], diff, key)
-            self._lock.release()
-    
-            op.outputs["Output"][key].writeInto(result).wait()
+        key = roi.toSlice()
+        start,stop=sliceToRoi(key,self.shape)
+        diff=numpy.array(stop)-numpy.array(start)
+
+        maxError=sys.maxint
+        index=0
+
+        for i,shape in enumerate(self._innerShapes):
+            cs = numpy.array(shape)
+
+            error = numpy.sum(numpy.abs(diff -cs))
+            if error<maxError:
+                index = i
+                maxError = error
+        op = self._innerOps[index]
+        op.outputs["Output"][key].writeInto(result).wait()
 
     def notifyDirty(self, slot, key):
-        with Tracer(self.traceLogger):
-            if slot == self.inputs["Input"] and not self._fixed:
-                self.outputs["Output"].setDirty(key)
-            if slot == self.inputs["fixAtCurrent"]:
-                if self.inputs["fixAtCurrent"].ready():
-                    self._fixed =  self.inputs["fixAtCurrent"].value
-                else:
-                    # Should always be ready, no?
-                    assert False
-
-
-    def setInSlot(self,slot,key):
-        pass
-
+        if slot == self.inputs["Input"] and not self._fixed:
+            self.outputs["Output"].setDirty(key)
+        if slot == self.inputs["fixAtCurrent"]:
+            if self.inputs["fixAtCurrent"].ready():
+                self._fixed = self.inputs["fixAtCurrent"].value
 
 
 
