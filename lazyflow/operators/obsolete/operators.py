@@ -267,6 +267,7 @@ class OpArrayCache(OpArrayPiper):
             self._lazyAlloc = True
             self._cacheHits = 0
             self.graph._registerCache(self)
+            self._has_fixed_dirty_blocks = False
 
     def _memorySize(self):
         if self._cache is not None:
@@ -385,6 +386,7 @@ class OpArrayCache(OpArrayPiper):
                     blockKey = roiToSlice(blockStart,blockStop)
                     if self._fixed:
                         self._blockState[blockKey] = OpArrayCache.FIXED_DIRTY
+                        self._has_fixed_dirty_blocks = True
                     else:
                         self._blockState[blockKey] = OpArrayCache.DIRTY
 
@@ -393,30 +395,32 @@ class OpArrayCache(OpArrayPiper):
         if slot == self.inputs["fixAtCurrent"]:
             if self.inputs["fixAtCurrent"].ready():
                 self._fixed = self.inputs["fixAtCurrent"].value
-                if not self._fixed and self._cache is not None:
+                if not self._fixed and self._cache is not None and self._has_fixed_dirty_blocks:
                     # We've become unfixed, so we need to notify downstream 
                     #  operators of every block that became dirty while we were fixed.
                     # Convert all FIXED_DIRTY states into DIRTY states
                     with self._lock:
                         cond = (self._blockState[...] == OpArrayCache.FIXED_DIRTY)
                         self._blockState[...]  = fastWhere(cond, OpArrayCache.DIRTY, self._blockState, numpy.uint8)
+                        self._has_fixed_dirty_blocks = False
                     newDirtyBlocks = numpy.transpose(numpy.nonzero(cond))
                     
-                    if len(newDirtyBlocks) > 0:
-                        # To avoid lots of setDirty notifications, we simply merge all the dirtyblocks into one single superblock.
-                        # This should be the best option in most cases, but could be bad in some cases.
-                        # TODO: Optimize this by merging the dirty blocks via connected components or something.
-                        cacheShape = numpy.array(self._cache.shape)
-                        dirtyStart = cacheShape
-                        dirtyStop = [0] * len(cacheShape)
-                        for index in newDirtyBlocks:
-                            blockStart = index * self._blockShape
-                            blockStop = numpy.minimum(blockStart + self._blockShape, cacheShape)
-                            
-                            dirtyStart = numpy.minimum(dirtyStart, blockStart)
-                            dirtyStop = numpy.maximum(dirtyStop, blockStop)
+                    assert len(newDirtyBlocks) > 0
+                    
+                    # To avoid lots of setDirty notifications, we simply merge all the dirtyblocks into one single superblock.
+                    # This should be the best option in most cases, but could be bad in some cases.
+                    # TODO: Optimize this by merging the dirty blocks via connected components or something.
+                    cacheShape = numpy.array(self._cache.shape)
+                    dirtyStart = cacheShape
+                    dirtyStop = [0] * len(cacheShape)
+                    for index in newDirtyBlocks:
+                        blockStart = index * self._blockShape
+                        blockStop = numpy.minimum(blockStart + self._blockShape, cacheShape)
+                        
+                        dirtyStart = numpy.minimum(dirtyStart, blockStart)
+                        dirtyStop = numpy.maximum(dirtyStop, blockStop)
 
-                        self.Output.setDirty( dirtyStart, dirtyStop )
+                    self.Output.setDirty( dirtyStart, dirtyStop )
 
     def execute(self,slot,roi,result):
         #return
@@ -1284,6 +1288,7 @@ class OpSlicedBlockedArrayCache(Operator):
         if slot == self.inputs["fixAtCurrent"]:
             if self.inputs["fixAtCurrent"].ready():
                 self._fixed = self.inputs["fixAtCurrent"].value
+
 
 
 
