@@ -3,6 +3,7 @@ python:
    - "2.7"
 install:
    - sudo apt-get install -y libboost-python-dev
+   - sudo apt-get install -y libjpeg-dev
    - sudo apt-get install -y libtiff4-dev
    - sudo apt-get install -y libpng12-dev
    - sudo apt-get install -y libfftw3-dev
