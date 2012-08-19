@@ -840,6 +840,9 @@ class Slot(object):
 
         """
         with Tracer(self.traceLogger):
+            assert isinstance( notify, bool )
+            assert isinstance( check_changed, bool )
+
             changed = True
             try:
                 if check_changed and value == self._value:
