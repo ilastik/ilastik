@@ -1237,7 +1237,6 @@ class OpSlicedBlockedArrayCache(Operator):
 
     def setupOutputs(self):
         self.shape = self.inputs["Input"].shape
-        self._fixed = self.inputs["fixAtCurrent"].value
         self._outerShapes = self.inputs["outerBlockShape"].value
         self._innerShapes = self.inputs["innerBlockShape"].value
 
@@ -1252,6 +1251,11 @@ class OpSlicedBlockedArrayCache(Operator):
                 op.inputs["fixAtCurrent"].connect(self.inputs["fixAtCurrent"])
                 op.inputs["Input"].connect(self.inputs["Input"])
                 self._innerOps.append(op)
+
+                # Forward dirty propagations from all three inputs to our output.
+                def handleDirty( slot, roi ):
+                    self.Output.setDirty( roi.start, roi.stop )
+                op.Output.notifyDirty( handleDirty )
 
         for i,innershape in enumerate(self._innerShapes):
             op = self._innerOps[i]
@@ -1282,11 +1286,25 @@ class OpSlicedBlockedArrayCache(Operator):
         op.outputs["Output"][key].writeInto(result).wait()
 
     def notifyDirty(self, slot, key):
-        if slot == self.inputs["Input"] and not self._fixed:
-            self.outputs["Output"].setDirty(key)
-        if slot == self.inputs["fixAtCurrent"]:
-            if self.inputs["fixAtCurrent"].ready():
-                self._fixed = self.inputs["fixAtCurrent"].value
+        # Dirtiness is automatically forwarded from our inner operators to our output.
+        # FIXME: This means that every dirty roi gets propagated three times.
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
