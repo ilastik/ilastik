@@ -1059,7 +1059,6 @@ class OpBlockedArrayCache(Operator):
                 self.outputs["Output"].meta.shape = inputSlot.meta.shape
                 self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
     
-            if not self._fixed or not self._configured:
                 self.shape = self.Input.meta.shape
                 self._blockShape = self.inputs["outerBlockShape"].value
                 self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
