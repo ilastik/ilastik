@@ -1266,22 +1266,24 @@ class OpSlicedBlockedArrayCache(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(self.inputs["Input"].meta.axistags)
         self.outputs["Output"].meta.shape = self.inputs["Input"].meta.shape
 
-
     def execute(self, slot, roi, result):
         key = roi.toSlice()
         start,stop=sliceToRoi(key,self.shape)
-        diff=numpy.array(stop)-numpy.array(start)
+        roishape=numpy.array(stop)-numpy.array(start)
 
-        maxError=sys.maxint
+        max_dist_squared=sys.maxint
         index=0
 
-        for i,shape in enumerate(self._innerShapes):
-            cs = numpy.array(shape)
+        for i,blockshape in enumerate(self._innerShapes):
+            blockshape = numpy.array(blockshape)
 
-            error = numpy.sum(numpy.abs(diff -cs))
-            if error<maxError:
+            diff = roishape - blockshape
+            diffsquared = diff * diff
+            distance_squared = numpy.sum(diffsquared)
+            if distance_squared < max_dist_squared:
                 index = i
-                maxError = error
+                max_dist_squared = distance_squared
+
         op = self._innerOps[index]
         op.outputs["Output"][key].writeInto(result).wait()
 
