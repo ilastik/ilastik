@@ -1162,6 +1162,11 @@ class OpBlockedArrayCache(Operator):
                     #value is fixed (fixAtCurrent=True), return 0  values
                     #This prevents random noise appearing in such cases.
                     result[bigkey] = 0
+                    with self._lock:
+                        # Since a downstream operator has expressed an interest in this block,
+                        #  mark it to be signaled as dirty when we become unfixed.
+                        # Otherwise, downstream operators won't know when there's valid data in this block.
+                        self._fixed_dirty_blocks.add(b_ind)
     
             for r in requests:
                 r.wait()
