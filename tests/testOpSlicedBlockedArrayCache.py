@@ -142,6 +142,12 @@ class TestOpBlockedArrayCache(object):
         opCache = self.opCache
         opProvider = self.opProvider        
 
+        # Track dirty notifications
+        gotDirtyKeys = []
+        def handleDirty(slot, roi):
+            gotDirtyKeys.append( list(roiToSlice(roi.start, roi.stop)) )
+        opCache.Output.notifyDirty(handleDirty)
+        
         opCache.fixAtCurrent.setValue(True)
 
         oldAccessCount = 0
@@ -183,12 +189,9 @@ class TestOpBlockedArrayCache(object):
         # Freeze it again
         opCache.fixAtCurrent.setValue(True)
 
-        # Track dirty notifications
+        # Clear previous
         gotDirtyKeys = []
-        def handleDirty(slot, roi):
-            gotDirtyKeys.append( list(roiToSlice(roi.start, roi.stop)) )
-        opCache.Output.notifyDirty(handleDirty)
-        
+
         # Change some of the input data that ISN'T cached yet and mark it dirty
         dirtykey = make_key[0:1, 90:100, 90:100, 0:1, 0:1]
         self.data[dirtykey] = 0.12345
@@ -224,11 +227,8 @@ class TestOpBlockedArrayCache(object):
         # Freeze it again
         opCache.fixAtCurrent.setValue(True)
 
-        # Reset tracked notifications
+        # Clear previous
         gotDirtyKeys = []
-        def handleDirty2(slot, roi):
-            gotDirtyKeys.append( list(roiToSlice(roi.start, roi.stop)) )
-        opCache.Output.notifyDirty(handleDirty2)
         
         # Change some of the input data that IS cached and mark it dirty
         dirtykey = make_key[:, 0:25, 20:40, 0:1, :]
