@@ -1,3 +1,5 @@
+import os
+import numpy
 from PyQt4.QtGui import QApplication
 from volumina.layer import AlphaModulatedLayer
 from workflows.pixelClassification import PixelClassificationWorkflow
@@ -15,16 +17,28 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     def workflowClass(cls):
         return PixelClassificationWorkflow
 
-    SAMPLE_DATA = '/magnetic/synapse_small.npy'
-    PROJECT_FILE = '/magnetic/test_project.ilp'
+    #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
+    PROJECT_FILE = os.path.split(__file__)[0] + '/test_project.ilp'
+
+    @classmethod
+    def setupClass(cls):
+        # Base class first
+        super(TestPixelClassificationGui, cls).setupClass()
+        
+        cls.SAMPLE_DATA = 'random_data.npy'
+        data = numpy.random.random((1,400,400,50,1))
+        data *= 256
+        numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
 
     @classmethod
     def teardownClass(cls):
-        """
-        Call our base class to quit the app during teardown.
-        (Comment this out if you want the app to stay open for further debugging.)
-        """
+        # Call our base class so the app quits!
         super(TestPixelClassificationGui, cls).teardownClass()
+        
+        try:
+            os.remove(TestPixelClassificationGui.PROJECT_FILE)
+        except:
+            pass
 
     def test_1_NewProject(self):
         """
