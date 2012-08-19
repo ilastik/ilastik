@@ -1,3 +1,7 @@
+Lazyflow
+========
+[![Build Status](https://secure.travis-ci.org/Ilastik/lazyflow.png)](http://travis-ci.org/Ilastik/lazyflow)
+
 Lazyflow is a python library for multithreaded computations.
 Data dependencies are expressed as a data flow graph which is evaluated
 in a lazy manner.
