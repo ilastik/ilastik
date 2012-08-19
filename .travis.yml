@@ -13,6 +13,9 @@ install:
    - sudo apt-get install -y mercurial
    - sudo sh requirements/install_h5py.sh
    - sudo sh requirements/install_vigra.sh
+   - python -c "import vigra"
+   - python -c "import vigra.impex"
+   - sudo sh requirements/build_drtile.sh
 script:
    - python setup.py nosetests
 notifications:
