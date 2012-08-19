@@ -9,10 +9,16 @@ ilastik.ilastik_logging.default_config.init()
 
 class TestOpFeatureSelection(object):
     def setUp(self):
-        pass
+        data = numpy.random.random((5,200,200,200,3))
+
+        self.filePath = os.path.expanduser('~') + '/featureSelectionTestData.npy'
+        numpy.save(self.filePath, data)
     
     def tearDown(self):
-        pass
+        try:
+            os.remove(self.filePath)
+        except:
+            pass
     
     def test_basicFunctionality(self):
         graph = Graph()
@@ -22,11 +28,7 @@ class TestOpFeatureSelection(object):
         reader = OpInputDataReader(graph=graph)
         
         # Set input data
-        # Note: Assumes that a sample file called 5d.npy exists in your home directory for testing
-        filePath = os.path.expanduser('~') + '/5d.npy'
-        assert os.path.exists(filePath), "This test assumes you have the 5d.npy dataset in your home directory!"
-        
-        reader.FilePath.setValue( filePath )
+        reader.FilePath.setValue( self.filePath )
         
         # Connect input
         featureSelector.InputImage.resize(1)
