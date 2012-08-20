@@ -147,6 +147,11 @@ class OpPixelClassification( Operator ):
         #  internal operators that handle their own dirty propagation.
         pass
 
+    def notifySubSlotDirty(self, slots, indexes, key):
+        # Nothing to do here: All outputs are directly connected to 
+        #  internal operators that handle their own dirty propagation.
+        pass
+
 class OpShapeReader(Operator):
     """
     This operator outputs the shape of its input image, except the number of channels is set to 1.
@@ -154,17 +159,26 @@ class OpShapeReader(Operator):
     Input = InputSlot()
     OutputShape = OutputSlot(stype='shapetuple')
     
+    def __init__(self, *args, **kwargs):
+        super(OpShapeReader, self).__init__(*args, **kwargs)
+    
     def setupOutputs(self):
         self.OutputShape.meta.shape = (1,)
         self.OutputShape.meta.axistags = 'shapetuple'
         self.OutputShape.meta.dtype = tuple
-    
-    def execute(self, slot, roi, result):
-        # Our 'result' is simply the shape of our input, but with only one channel
+        
+        # Our output is simply the shape of our input, but with only one channel
         channelIndex = self.Input.meta.axistags.index('c')
         shapeList = list(self.Input.meta.shape)
         shapeList[channelIndex] = 1
-        result[0] = tuple(shapeList)
+        self.OutputShape.setValue( tuple(shapeList) )
+    
+    def execute(self, slot, roi, result):
+        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
+
+    def propagateDirty(self, inputSlot, roi):
+        # Our output changes when the input changed shape, not when it becomes dirty.
+        pass
 
 class OpMaxValue(Operator):
     """
@@ -203,5 +217,4 @@ class OpMaxValue(Operator):
                     maxValue = max(maxValue, inputSubSlot.value)
 
         self._output = maxValue
-
 
