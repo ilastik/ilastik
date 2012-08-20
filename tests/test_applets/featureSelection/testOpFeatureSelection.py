@@ -9,7 +9,7 @@ ilastik.ilastik_logging.default_config.init()
 
 class TestOpFeatureSelection(object):
     def setUp(self):
-        data = numpy.random.random((5,200,200,200,3))
+        data = numpy.random.random((2,100,100,100,3))
 
         self.filePath = os.path.expanduser('~') + '/featureSelectionTestData.npy'
         numpy.save(self.filePath, data)
@@ -48,21 +48,25 @@ class TestOpFeatureSelection(object):
         featureSelector.FeatureIds.setValue(featureIds)
         
         # Configure matrix
-        featureSelectionMatrix = numpy.array(numpy.zeros((len(featureIds),len(scales))), dtype=bool)
-        featureSelectionMatrix[0,0] = True
-        featureSelectionMatrix[1,1] = True
-        featureSelectionMatrix[2,2] = True
-        featureSelectionMatrix[2,3] = True
-        featureSelector.SelectionMatrix.setValue(featureSelectionMatrix)
+        #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
+        selections = numpy.array( [[True,  False, False, False, False, False, False],   # Gaussian
+                                   [False,  True, False, False, False, False, False],   # L of G
+                                   [False, False,  True, False, False, False, False],   # ST EVs
+                                   [False, False, False, False, False, False, False],   # H of G EVs
+                                   [False, False, False, False, False, False, False],   # GGM
+                                   [False, False, False, False, False, False, False]] ) # Diff of G
+        featureSelector.SelectionMatrix.setValue(selections)
         
         # Compute results for the top slice only
         topSlice = [0, slice(None), slice(None), 0, slice(None)]
         result = featureSelector.OutputImage[0][topSlice].allocate().wait()
         
-        numFeatures = numpy.sum(featureSelectionMatrix)
+        numFeatures = numpy.sum(selections)
         inputChannels = reader.Output.meta.shape[-1]
         outputChannels = result.shape[-1]
-        assert outputChannels == inputChannels*numFeatures
+
+        # Input has 3 channels, and one of our features outputs a 3D vector
+        assert outputChannels == 15 # (3 + 3 + 9)
         
         # Debug only -- Inspect the resulting images
         if False:
