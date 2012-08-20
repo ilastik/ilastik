@@ -11,13 +11,14 @@ General Dependencies
 * libpng
 * fftw3
 * hdf5
-* Python 2.7
 * Qt4
-* PyQt4
 * Vigra
+* VTK
 
 Python Dependencies
 ===================
+* Python 2.7
+* PyQt4
 * argparse
 * numpy
 * h5py
@@ -37,9 +38,9 @@ Ilastik Sub-project Dependencies
 Development Dependencies
 ========================
 * CMake
-* mercurial
-* cython
 * python-distribute
+* mercurial (for building h5py from source
+* cython (for building h5py from source)
 
 Testing Dependencies
 ====================
