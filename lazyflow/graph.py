@@ -1562,6 +1562,7 @@ class Operator(object):
     def notifySubSlotDirty(self, slots, indexes, key):
         # simple default implementation
         # -> set all outputs dirty
+        warnings.warn( "Operator '{}' does not implement notifySubSlotDirty.".format(self.name) )
         for os in self.outputs.values():
             os.setDirty(slice(None,None,None))
 
