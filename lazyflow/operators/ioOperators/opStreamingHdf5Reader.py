@@ -69,3 +69,7 @@ class OpStreamingHdf5Reader(Operator):
 
         # Access the data
         result[...] = hdf5File[internalPath][key]
+
+    def propagateDirty(self, slot, roi):
+        if slot == self.Hdf5File or slot == self.InternalPath:
+            self.OutputImage.setDirty( slice(None) )

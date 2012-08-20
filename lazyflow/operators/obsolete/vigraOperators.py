@@ -114,7 +114,6 @@ class Op50ToMulti(OpXToMulti):
 
 class OpPixelFeaturesPresmoothed(Operator):
     name="OpPixelFeaturesPresmoothed"
-    name="OpPixelFeatures"
     category = "Vigra filter"
 
     inputSlots = [InputSlot("Input"),
@@ -282,6 +281,40 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             # Set the feature names output
             self.outputs["FeatureNames"].setValue(featureNames)
+
+    def propagateDirty(self, inputSlot, roi):
+        if inputSlot == self.Input:
+            channelAxis = self.Input.meta.axistags.index('c')
+            numChannels = self.Input.meta.shape[channelAxis]
+            dirtyChannels = roi.stop[channelAxis] - roi.start[channelAxis]
+            
+            # If all the input channels were dirty, the dirty output region is a contiguous block
+            if dirtyChannels == numChannels:
+                dirtyKey = roiToSlice(roi.start, roi.stop)
+                dirtyKey[channelAxis] = slice(None)
+                dirtyRoi = sliceToRoi(dirtyKey, self.Output.meta.shape)
+                self.Output.setDirty(dirtyRoi)
+            else:
+                # Only some input channels were dirty, 
+                #  so we must mark each dirty output region separately.
+                numFeatures = self.Output.meta.shape[channelAxis] / numChannels
+                for featureIndex in range(numFeatures):
+                    startChannel = numChannels*featureIndex + roi.start[channelAxis]
+                    stopChannel = startChannel + roi.stop[channelAxis]
+                    dirtyRoi = copy.copy(roi)
+                    dirtyRoi.start[channelAxis] = startChannel
+                    dirtyRoi.stop[channelAxis] = stopChannel
+                    self.Output.setDirty(dirtyRoi)
+
+        elif (inputSlot == self.Matrix
+              or inputSlot == self.Scales 
+              or inputSlot == self.FeatureIds):
+            self.Output.setDirty(slice(None))
+            self.ArrayOfOperators.setDirty(slice(None))
+            self.FeatureNames.setDirty(slice(None))
+        else:
+            assert False, "Unknown dirty input slot."
+            
 
     def execute(self, slot, rroi, result):
         if slot == self.outputs["Output"]:
@@ -929,6 +962,12 @@ class OpImageReader(Operator):
         result[:] = temp[key]
         #self.outputs["Image"][:]=temp[:]
 
+    def propagateDirty(self, slot, roi):
+        if slot == self.Filename:
+            self.Image.setDirty(slice(None))
+        else:
+            assert False, "Unknown dirty input slot."
+
 import glob
 class OpFileGlobList(Operator):
     name = "Glob filenames to 1D-String Array"
@@ -1196,6 +1235,11 @@ class OpH5WriterBigDataset(Operator):
             reqList.append(roiToSlice(start,stop))
         return reqList
 
+    def propagateDirty(self, slot, roi):
+        # The output from this operator isn't generally connected to other operators.
+        # If someone is using it that way, we'll assume that the user wants to know that 
+        #  the input image has become dirty and may need to be written to disk again.
+        self.WriteImage.setDirty(slice(None))
 
 class OpH5ReaderBigDataset(Operator):
 

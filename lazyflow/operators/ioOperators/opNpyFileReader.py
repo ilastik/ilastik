@@ -70,3 +70,7 @@ class OpNpyFileReader(Operator):
         # Simply copy the appropriate slice of array data into the result
         key = roi.toSlice()
         result[:] = self.rawVigraArray[key]
+
+    def propagateDirty(self, inputSlot, roi):
+        if inputSlot == self.FileName:
+            self.Output.setDirty( roi )

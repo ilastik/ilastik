@@ -114,3 +114,7 @@ class OpInputDataReader(Operator):
 
     def execute(self, slot, roi, result):
         assert False, "Shouldn't get here because our output is directly connected..."
+
+    def propagateDirty(self, inputSlot, roi):
+        # Output slots are directly conncted to internal operators
+        pass

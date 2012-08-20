@@ -775,6 +775,16 @@ if has_blist:
             # Set our max label dirty if necessary
             self.outputs["maxLabel"].setValue(self._maxLabel)
             self.outputs["Output"].setDirty(key)
+        
+        def propagateDirty(self, inputSlot, roi):
+            if inputSlot == self.Input:
+                self.Output.setDirty(roi)
+            else:
+                # All other inputs are single-value inputs that will trigger
+                #  a new call to setupOutputs, which already sets the outputs dirty.
+                # (See above.) 
+                pass
+
 
     class OpBlockedSparseLabelArray(Operator):
         name = "Blocked Sparse Label Array"

@@ -326,6 +326,11 @@ class OpMultiArrayStacker(Operator):
         for r in requests:
             r.wait()
 
+    def propagateDirty(self, inputSlot, roi):
+        if inputSlot == self.AxisFlag or inputSlot == self.AxisIndex:
+            self.Output.setDirty( slice(None) )
+        else:
+            assert False, "Unknown input slot."
 
 
 class OpSingleChannelSelector(Operator):
