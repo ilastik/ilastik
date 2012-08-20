@@ -85,7 +85,7 @@ class OpMultiArrayPiper(Operator):
     inputSlots = [MultiInputSlot("MultiInput")]
     outputSlots = [MultiOutputSlot("MultiOutput")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         inputSlot = self.inputs["MultiInput"]
 
         self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
@@ -129,7 +129,7 @@ class OpMultiMultiArrayPiper(Operator):
     inputSlots = [MultiInputSlot("MultiInput", level = 2)]
     outputSlots = [MultiOutputSlot("MultiOutput", level = 2)]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         inputSlot = self.inputs["MultiInput"]
 
         self.outputs["MultiOutput"].resize(len(inputSlot)) #clearAllSlots()
@@ -648,7 +648,7 @@ if has_blist:
             self._oldShape = (0,)
             self._maxLabel = 0            
 
-        def notifyConnectAll(self):
+        def setupOutputs(self):
             if (self._oldShape != self.inputs["shape"].value).all():
                 shape = self.inputs["shape"].value
                 self._oldShape = shape

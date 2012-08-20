@@ -83,7 +83,7 @@ class OpMultiArraySlicer(Operator):
     name = "Multi Array Slicer"
     category = "Misc"
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
 
         dtype=self.inputs["Input"].dtype
         flag=self.inputs["AxisFlag"].value
@@ -231,7 +231,7 @@ class OpMultiArrayStacker(Operator):
     description = "Stack inputs on any axis, including the ones which are not there yet"
     category = "Misc"
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         #This function is needed so that we don't depend on the order of connections.
         #If axis flag or axis index is connected after the input images, the shape is calculated
         #here
@@ -340,7 +340,7 @@ class OpSingleChannelSelector(Operator):
     inputSlots = [InputSlot("Input"),InputSlot("Index",stype='integer')]
     outputSlots = [OutputSlot("Output")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         self.outputs["Output"]._dtype =self.inputs["Input"].dtype
         self.outputs["Output"]._shape = self.inputs["Input"].shape[:-1]+(1,)
         self.outputs["Output"]._axistags = self.inputs["Input"].axistags
@@ -375,7 +375,7 @@ class OpSubRegion(Operator):
     inputSlots = [InputSlot("Input"), InputSlot("Start"), InputSlot("Stop")]
     outputSlots = [OutputSlot("Output")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         with Tracer(traceLogger):
             start = self.inputs["Start"].value
             stop = self.inputs["Stop"].value
@@ -450,7 +450,7 @@ class OpMultiArrayMerger(Operator):
     name = "Merge Multi Arrays based on a variadic merging function"
     category = "Misc"
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
 
         shape=self.inputs["Inputs"][0].shape
         axistags=copy.copy(self.inputs["Inputs"][0].axistags)
@@ -491,7 +491,7 @@ class OpPixelOperator(Operator):
     inputSlots = [InputSlot("Input"), InputSlot("Function")]
     outputSlots = [OutputSlot("Output")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
 
         inputSlot = self.inputs["Input"]
 

@@ -35,7 +35,7 @@ class OpArrayShifter1(Operator):
 
     #this method is called when all InputSlot, in this example only one,
     #are connected with an OutputSlot or a value is set.
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         #new name for the InputSlot("Input")
         inputSlot = self.inputs["Input"]
         #define the type, shape and axistags of the Output-Slot

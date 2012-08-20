@@ -33,7 +33,7 @@ class OpArrayShifter2(Operator):
     inputSlots = [InputSlot("Input")]
     outputSlots = [OutputSlot("Output")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         #new name for the InputSlot("Input")
         inputSlot = self.inputs["Input"]
         #define the type, shape and axistags of the Output-Slot

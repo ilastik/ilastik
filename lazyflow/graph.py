@@ -1653,24 +1653,7 @@ class Operator(object):
 
         The default implementation emulates the old api behaviour.
         """
-        with Tracer(self.traceLogger):
-            # emulate old behaviour
-            self.notifyConnectAll()
-
-
-
-    """
-    OBSOLETE API
-    This method is called opon connection of all inputslots of
-    an operator.
-
-    The operator should setup the output all outputslots accordingly.
-    this includes setting their shape and axistags properties.
-    """
-    def notifyConnectAll(self):
         pass
-
-
 
     """
     This method of the operator is called when a connected operator

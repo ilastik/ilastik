@@ -22,7 +22,7 @@ class OpFlipArrayShifter(Operator):
     inputSlots = [InputSlot("Input"), InputSlot("Shift")]
     outputSlots = [OutputSlot("Output")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         #new name for the InputSlot("Input")
         inputSlot = self.inputs["Input"]
         #the value of inputs["Shift"].value, (the value of InputSlot("Shift))

@@ -35,7 +35,7 @@ class OpImageResizer(Operator):
 
     #this method is called when all InputSlots,
     #are set or connected with an OutputSlot or a value is set.
-    def notifyConnectAll(self):
+    def setupOutputs(self):
 
         inputSlot = self.inputs["Input"]
         self.scaleFactor = self.inputs["ScaleFactor"].value

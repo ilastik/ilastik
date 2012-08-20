@@ -696,7 +696,7 @@ class OpBaseVigraFilter(OpArrayPiper):
 
 
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         numChannels  = 1
         inputSlot = self.inputs["Input"]
         if inputSlot.axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
@@ -809,7 +809,7 @@ class OpGaussianSmoothing(OpBaseVigraFilter):
         return 1
 
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         OpBaseVigraFilter.notifyConnectAll(self)
 
 
@@ -939,7 +939,7 @@ class OpImageReader(Operator):
     inputSlots = [InputSlot("Filename", stype = "filestring")]
     outputSlots = [OutputSlot("Image")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         filename = self.inputs["Filename"].value
 
         if filename is not None:
@@ -976,7 +976,7 @@ class OpFileGlobList(Operator):
     inputSlots = [InputSlot("Globstring", stype = "string")]
     outputSlots = [MultiOutputSlot("Filenames", stype = "filestring")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         globstring = self.inputs["Globstring"].value
 
         self.filenames = glob.glob(globstring)
@@ -999,7 +999,7 @@ class OpImageWriter(Operator):
 
     inputSlots = [InputSlot("Filename", stype = "filestring" ), InputSlot("Image")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         filename = self.inputs["Filename"].value
 
         imSlot = self.inputs["Image"]
@@ -1026,7 +1026,7 @@ class OpH5Reader(Operator):
     outputSlots = [OutputSlot("Image")]
 
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         filename = self.inputs["Filename"].value
         hdf5Path = self.inputs["hdf5Path"].value
 
@@ -1106,7 +1106,7 @@ class OpH5WriterBigDataset(Operator):
         super(OpH5WriterBigDataset, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         self.outputs["WriteImage"].meta.shape = (1,)
         self.outputs["WriteImage"].meta.dtype = object
 
@@ -1254,7 +1254,7 @@ class OpH5ReaderBigDataset(Operator):
 
         self._lock = Lock()
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         filename = str(self.inputs["Filenames"].value[0])
         hdf5Path = self.inputs["hdf5Path"].value
 
@@ -1336,7 +1336,7 @@ class OpH5ReaderSmoothedDataset(Operator):
     outputSlots = [MultiOutputSlot("Outputs"),MultiOutputSlot("Sigmas")]
 
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
 
         #get the shape and other stuff from the first dataset
         self.sigmas=[]
@@ -1429,7 +1429,7 @@ class OpGrayscaleInverter(Operator):
     inputSlots = [InputSlot("input", stype = "array")]
     outputSlots = [OutputSlot("output")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
 
         inputSlot = self.inputs["input"]
 
@@ -1451,7 +1451,7 @@ class OpToUint8(Operator):
     outputSlots = [OutputSlot("output")]
 
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
 
         inputSlot = self.inputs["input"]
 

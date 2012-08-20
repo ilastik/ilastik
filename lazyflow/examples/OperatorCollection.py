@@ -24,7 +24,7 @@ class OpArrayShifter1(Operator):
 
     #this method is called when all InputSlot, in this example only one,
     #are connected with an OutputSlot or a value is set.
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         #new name for the InputSlot("Input")
         inputSlot = self.inputs["Input"]
         #define the type, shape and axistags of the Output-Slot
@@ -101,7 +101,7 @@ class OpArrayShifter2(Operator):
     inputSlots = [InputSlot("Input")]
     outputSlots = [OutputSlot("Output")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         #new name for the InputSlot("Input")
         inputSlot = self.inputs["Input"]
         #define the type, shape and axistags of the Output-Slot
@@ -183,7 +183,7 @@ class OpArrayShifter3(Operator):
     inputSlots = [InputSlot("Input"), InputSlot("Shift")]
     outputSlots = [OutputSlot("Output")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         #new name for the InputSlot("Input")
         inputSlot = self.inputs["Input"]
         #the value of inputs["Shift"].value, (the value of InputSlot("Shift))
@@ -260,7 +260,7 @@ class OpImageResizer(Operator):
 
     #this method is called when all InputSlots,
     #are set or connected with an OutputSlot or a value is set.
-    def notifyConnectAll(self):
+    def setupOutputs(self):
 
         inputSlot = self.inputs["Input"]
         self.scaleFactor = self.inputs["ScaleFactor"].value
@@ -339,7 +339,7 @@ class OpSwapAxes(Operator):
 
     #this method is called when all InputSlot, in this example three,
     #are connected with an OutputSlot or a value is set.
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         #new name for the InputSlot("Input")
         inputSlot = self.inputs["Input"]
 
@@ -409,7 +409,7 @@ class OpSubregion(Operator):
 
     #this method is called when all InputSlot, in this example three,
     #are connected with an OutputSlot or a value is set.
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         #new name for the InputSlot("Input")
         inputSlot = self.inputs["Input"]
 

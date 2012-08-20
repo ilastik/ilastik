@@ -18,7 +18,7 @@ class OpTrainRandomForest(Operator):
     inputSlots = [MultiInputSlot("Images"),MultiInputSlot("Labels"), InputSlot("fixClassifier", stype="bool")]
     outputSlots = [OutputSlot("Classifier")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"]._dtype = object
             self.outputs["Classifier"]._shape = (1,)
@@ -289,7 +289,7 @@ class OpSegmentation(Operator):
     inputSlots = [InputSlot("Input")]
     outputSlots = [OutputSlot("Output")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
 
         inputSlot = self.inputs["Input"]
 
@@ -349,7 +349,7 @@ class OpAreas(Operator):
     inputSlots = [InputSlot("Input"), InputSlot("NumberOfChannels")]
     outputSlots = [OutputSlot("Areas")]
 
-    def notifyConnectAll(self):
+    def setupOutputs(self):
 
         self.outputs["Areas"]._shape = (self.inputs["NumberOfChannels"].value,)
 

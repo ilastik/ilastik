@@ -34,7 +34,7 @@ class OpSwapAxes(Operator):
 
     #this method is called when all InputSlot, in this example three,
     #are connected with an OutputSlot or a value is set.
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         #new name for the InputSlot("Input")
         inputSlot = self.inputs["Input"]
 
