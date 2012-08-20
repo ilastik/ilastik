@@ -7,13 +7,28 @@ import h5py
 
 class TestOpH5Writer(unittest.TestCase):
 
-    def setUp(self,dimension = (5,20,20,20,5),testdirectory = './opWriterTest',filename = '/writeTestFile.h5',hdf5path = 'volume/data'):
+    @classmethod
+    def setUpClass(cls):
+        cls.testdir = './opWriterTest'
+        cls.filename = '/writeTestFile.h5'
+        cls.dim = (5,20,20,20,5)
+        cls.hdf5path = 'volume/data'
 
-        self.dim = dimension
-        self.testdir = testdirectory
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            os.remove(cls.testdir+cls.filename)
+        except:
+            pass
+
+        try:
+            os.removedirs(cls.testdir)
+        except:
+            pass
+
+    def setUp(self):
+
         self.createTestVolume()
-        self.filename = filename
-        self.hdf5path = hdf5path
 
         if not os.path.exists(self.testdir):
             print "creating directory '%s'" % (self.testdir)
@@ -27,6 +42,7 @@ class TestOpH5Writer(unittest.TestCase):
         self.writer.inputs["dataType"].setValue('uint8')
         self.writer.inputs["blockShape"].setValue(5)
         self.writer.inputs["normalize"].setValue([-5,-17])
+
 
     def roiToShape(self,myRoi):
         return tuple([a-b for a,b in zip(myRoi[1],myRoi[0])])
@@ -71,3 +87,6 @@ class TestOpH5Writer(unittest.TestCase):
             f = h5py.File(self.testdir+self.filename,'r')
             assert(self.roiToShape(testRoi)==f[self.hdf5path].shape)
             f.close()
+
+if __name__=="__main__":
+    unittest.main()

@@ -1,4 +1,5 @@
 from lazyflow.request import Request, global_thread_pool
+import os
 import time
 import random
 import numpy
@@ -53,7 +54,8 @@ class TestRequest(object):
         maxDepth = 5
         maxBreadth = 10
 
-        h5File = h5py.File( 'requestTest.h5', 'w' )
+        filename = 'requestTest.h5'
+        h5File = h5py.File( filename, 'w' )
         dataset = h5File.create_dataset( 'test/data', data=numpy.zeros( (maxDepth, maxBreadth), dtype=int ))
 
         def writeToH5Py(result, index, req):
@@ -77,6 +79,7 @@ class TestRequest(object):
         h5File.close()
 
         print "finished testWithH5Py"
+        os.remove(filename)
 
     def test_callWaitDuringCallback(self):
         """
