@@ -17,28 +17,38 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     def workflowClass(cls):
         return PixelClassificationWorkflow
 
-    #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
     PROJECT_FILE = os.path.split(__file__)[0] + '/test_project.ilp'
+    #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod
     def setupClass(cls):
         # Base class first
         super(TestPixelClassificationGui, cls).setupClass()
         
-        cls.SAMPLE_DATA = os.path.split(__file__)[0] + 'random_data.npy'
-        data = numpy.random.random((1,400,400,50,1))
-        data *= 256
-        numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
+        if hasattr(cls, 'SAMPLE_DATA'):
+            cls.using_random_data = False
+        else:
+            cls.using_random_data = True
+            cls.SAMPLE_DATA = os.path.split(__file__)[0] + '/random_data.npy'
+            data = numpy.random.random((1,400,400,50,1))
+            data *= 256
+            numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
 
     @classmethod
     def teardownClass(cls):
         # Call our base class so the app quits!
         super(TestPixelClassificationGui, cls).teardownClass()
-        
-        try:
-            os.remove(TestPixelClassificationGui.PROJECT_FILE)
-        except:
-            pass
+
+        # Clean up: Delete any test files we generated
+        removeFiles = [ TestPixelClassificationGui.PROJECT_FILE ]
+        if cls.using_random_data:
+            removeFiles += [ TestPixelClassificationGui.SAMPLE_DATA ]
+
+        for f in removeFiles:        
+            try:
+                os.remove(f)
+            except:
+                pass
 
     def test_1_NewProject(self):
         """
