@@ -116,7 +116,8 @@ class FeatureSelectionGui(LayerViewerGui):
             layers = []
 
             outputSlot = self.mainOperator.FeatureLayers[currentImageIndex]
-            if outputSlot.ready():
+            layerNameSlot = self.mainOperator.FeatureNames[currentImageIndex]
+            if outputSlot.ready() and layerNameSlot.ready() and len(outputSlot) == len(layerNameSlot.value):
                 # Now add a layer for each feature
                 numFeatureChannels = len(outputSlot)
                 for featureChannelIndex in range(0, numFeatureChannels):
