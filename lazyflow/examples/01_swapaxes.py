@@ -4,7 +4,7 @@ To make this operator work one has to connect the InputSlot("Input") with an
 OutputSlot of another operator, e.g. vimageReader and set values for the
 InputSlots("Axis1") and ("Axis2"), defining the two axes to swap.
 When all the InputSlots of the operator are connected or set, the
-"notifyConnectAll" method is called implicit. Here one can do different checkings
+"setupOutputs" method is called implicit. Here one can do different checkings
 and define the type, shape and axistags of the Output Slot of the operator.
 """
 
@@ -104,7 +104,7 @@ if __name__=="__main__":
 
     #connect SwapAxes-Input with Image Reader Output
     swapaxes.inputs["Input"].connect(vimageReader.outputs["Image"])
-    #set values for the InputSlots, after this, the "notifyConnectAll" method is executed
+    #set values for the InputSlots, after this, the "setupOutputs" method is executed
     #because now all the InputSlot are set or connected
     swapaxes.inputs["Axis1"].setValue(0)
     swapaxes.inputs["Axis2"].setValue(1)

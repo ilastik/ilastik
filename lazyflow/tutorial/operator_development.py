@@ -74,20 +74,6 @@ if 1==2:
         def notifySubSlotDirty(self, slots, indexes, key):
             pass
 
-
-        """
-        This method is called opon connection of an inputslot.
-        The slot is specified in the inputSlot argument.
-
-        The operator should setup the output slots that depend on this
-        inputslot accordingly.
-
-        reimplementation of this method is optional, a full setup
-        may also be done only in the .notifyConnectAll method.
-        """
-        def notifyConnect(self, inputSlot):
-            pass
-
         """
         This method is called opon connection of all inputslots of
         an operator.
@@ -300,7 +286,7 @@ shifter = OpArrayShifter1(g)
 
 # connect Shifter-Input with Image Reader Output
 # because the Operator has only one Input Slot in this example,
-# the "notifyConnectAll" method is executed
+# the "setupOutputs" method is executed
 shifter.inputs["Input"].connect(reader.outputs["Image"])
 
 # shifter.outputs["Output"][:]returns an "GetItemWriterObject" object.

@@ -1572,9 +1572,6 @@ class Operator(object):
     def _notifyConnect(self, inputSlot):
         pass#self.notifyConnect(inputSlot)
 
-    def _notifyConnectAll(self):
-        pass
-
     def _setupOutputs(self):
         with Tracer(self.traceLogger, msg=self.name):
             # Changing the graph causes a chain of recursive calls to setupOutputs.

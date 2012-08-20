@@ -3,7 +3,7 @@ This operator shifts the data(e.g an image) of an Input Slot in all dimensions,
 but his time, an additional InputSlot for the shifting is used.
 To make this operator work all InputSlots ahve to be connected with an OutputSlot
 of another operator, e.g. vimageReader or a value has to be set. When all InputSlots
-are connected or set to a value the notifyConnectAll method is called implicit.
+are connected or set to a value the setupOutputs method is called implicit.
 Here one can do different checkings and define the type, shape and axistags of
 the Output Slot of the operator. The calculation, here the shifting, is done in
 the getOutSlot method of the operator. This method again is called in an
@@ -115,7 +115,7 @@ if __name__=="__main__":
 
     #connect Shifter-Input with Image Reader Output
     #because the Operator has only one Input Slot in this example,
-    #the "notifyConnectAll" method is executed
+    #the "setupOutputs" method is executed
     shifter.inputs["Input"].connect(vimageReader.outputs["Image"])
 
     #shifter.outputs["Output"][:]returns an "GetItemWriterObject" object.

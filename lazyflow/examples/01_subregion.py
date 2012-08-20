@@ -3,7 +3,7 @@ This operator returns a subregion of the Input Slot.
 To make this operator work one has to connect the InputSlot("Input") with an
 OutputSlot of another operator, e.g. vimageReader and set values for the
 InputSlots("region_start") and ("region_stop"). When all InputSlots of an
-operator are connected or set, the "notifyConnectAll" method is called implicit.
+operator are connected or set, the "setupOutputs" method is called implicit.
 Here one can do different checkings (e.g. verfying that the element-wise values of
 region_stop are greater than region_start) and define the type, shape and axistags
 of the Output Slot of the operator.
@@ -102,7 +102,7 @@ if __name__=="__main__":
 
     #connect Subregion-Input with Image Reader Output
     subregion.inputs["Input"].connect(vimageReader.outputs["Image"])
-    #set values for the InputSlots, after this, the "notifyConnectAll" method is executed
+    #set values for the InputSlots, after this, the "setupOutputs" method is executed
     #because now all the InputSlot are set or connected
     subregion.inputs["region_start"].setValue((100,100,0))
     subregion.inputs["region_stop"].setValue((300,300,3))

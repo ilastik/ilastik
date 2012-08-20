@@ -809,10 +809,6 @@ class OpGaussianSmoothing(OpBaseVigraFilter):
         return 1
 
 
-    def setupOutputs(self):
-        OpBaseVigraFilter.notifyConnectAll(self)
-
-
 class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
     name = "HessianOfGaussianEigenvalues"
     vigraFilter = staticmethod(vigra.filters.hessianOfGaussianEigenvalues)
