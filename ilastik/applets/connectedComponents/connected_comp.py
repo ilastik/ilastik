@@ -15,7 +15,7 @@ class OpThreshold(Operator):
     inputSlots = [InputSlot("Input"),InputSlot("Channel",stype='integer'),InputSlot("Threshold")]
     outputSlots = [OutputSlot("Output")]
     
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         inputSlot = self.inputs["Input"]
         
         self.outputs["Output"]._shape = inputSlot.shape[:-1]+(1,)
@@ -60,7 +60,7 @@ class OpConnectedComponents(Operator):
             if not self.inputs["Background"].connected():
                 self.inputs["Background"].setValue(0)
     
-    def notifyConnectAll(self):
+    def setupOutputs(self):
         print "in notify connect all"
         inputSlot = self.inputs["Input"]
         if inputSlot.axistags is None:
