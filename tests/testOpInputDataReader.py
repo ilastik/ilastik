@@ -9,9 +9,10 @@ class TestOpInputDataReader(object):
     @classmethod
     def setupClass(cls):
         cls.graph = lazyflow.graph.Graph()
-        cls.testNpyDataFileName = 'test.npy'
-        cls.testImageFileName = 'test.png'
-        cls.testH5FileName = 'test.h5'
+        localdir = os.path.split(__file__)[0]
+        cls.testNpyDataFileName = localdir + '/test.npy'
+        cls.testImageFileName = localdir + '/test.png'
+        cls.testH5FileName = localdir + '/test.h5'
 
     @classmethod
     def teardownClass(cls):
