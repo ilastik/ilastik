@@ -26,6 +26,8 @@ class OpOuter(graph.Operator):
         result[0] = self.Input[:].allocate().wait()[0]
         return result
 
+    def propagateDirty(self, inputSlot, roi):
+        self.Output.setDirty(roi)
 
 class OpInner(graph.Operator):
 
@@ -40,9 +42,8 @@ class OpInner(graph.Operator):
         result[0] = self.Input[:].allocate().wait()[0]
         return result
 
-
-
-
+    def propagateDirty(self, inputSlot, roi):
+        self.Output.setDirty(roi)
 
 class TestOutputOutputConnection(object):
 
@@ -76,3 +77,10 @@ class TestOutputOutputConnection(object):
         self.op._was_executed = False
         result = self.op.Output[:].allocate().wait()[0]
         assert self.op._was_executed is False
+
+if __name__ == "__main__":
+    import sys
+    import nose
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)

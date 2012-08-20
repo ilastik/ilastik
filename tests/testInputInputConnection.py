@@ -17,6 +17,8 @@ class OpB(graph.Operator):
         result[0] = self.Input[:].allocate().wait()[0]
         return result
 
+    def propagateDirty(self, inputSlot, roi):
+        self.Output.setDirty(roi)
 
 class OpA(graph.Operator):
 
@@ -39,8 +41,8 @@ class OpA(graph.Operator):
         result[0] = self.internalOp.Output[:].allocate().wait()[0]
         return result
 
-
-
+    def propagateDirty(self, inputSlot, roi):
+        self.Output.setDirty(roi)
 
 
 class TestInputInputConnection(object):

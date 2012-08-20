@@ -30,7 +30,7 @@ class OpA(graph.Operator):
         self.Output2.meta.dtype = self.Input1.meta.dtype
         self.Output3.meta.shape = self.Input1.meta.shape
         self.Output3.meta.dtype = self.Input1.meta.dtype
-        print "OpInternal shape=%r, dtype=%r" % (self.Input1.meta.shape, self.Input1.meta.dtype)
+        #print "OpInternal shape=%r, dtype=%r" % (self.Input1.meta.shape, self.Input1.meta.dtype)
 
     def execute(self, slot, roi, result):
         if slot == self.Output1:
@@ -41,8 +41,16 @@ class OpA(graph.Operator):
             result[0] = self.Input3[:].allocate().wait()[0]
         return result
 
-
-
+    def propagateDirty(self, inputSlot, roi):
+        if inputSlot == self.Input1:
+            self.Output1.setDirty(roi)
+        if inputSlot == self.Input1:
+            self.Output2.setDirty(roi)
+        if inputSlot == self.Input3:
+            self.Output3.setDirty(roi)
+            
+    def notifySubSlotDirty(self, slots, indexes, key):
+        pass
 
 class TestOperator_setupOutputs(object):
 
@@ -223,6 +231,9 @@ class TestMultiSlotResize(object):
 class OpDirectConnection(graph.Operator):
     Input = graph.InputSlot()
     Output = graph.OutputSlot()
+    
+    def propagateDirty(self, inputSlot, roi):
+        pass
     
     def setupOutputs(self):
         self.Output.connect( self.Input )

@@ -1,6 +1,7 @@
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
 from lazyflow.operators import Op5ToMulti, OpArrayPiper
 import numpy
+import copy
 
 class OpSimple(Operator):
     InputA = InputSlot()
@@ -16,6 +17,18 @@ class OpSimple(Operator):
 
         result[...] = self.InputA(roi.start, roi.stop).wait() * self.InputB[0:1].wait()
 
+    def propagateDirty(self, inputSlot, roi):
+        if inputSlot == self.InputA:
+            self.Output.setDirty(roi)
+        elif (inputSlot == self.InputB 
+              and roi.start[0] == 0 
+              and roi.stop[0] >= 1):
+            dirtyRoi = copy.copy(roi)
+            dirtyRoi.stop[0] = 1
+            self.Output.setDirty(dirtyRoi)
+        else:
+            assert False
+
 class OpExplicitMulti(Operator):
     Output = MultiOutputSlot()
 
@@ -26,7 +39,8 @@ class OpCopyInput(Operator):
     def setupOutputs(self):
         self.Output.setValue(self.Input.value)
 
-
+    def propagateDirty(self, inputSlot, roi):
+        self.Output.setDirty(roi)
 
 class TestBasic(object):
 

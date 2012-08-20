@@ -59,7 +59,8 @@ class OpA(graph.Operator):
     def execute(self, slot, roi, result):
         pass
 
-
+    def propagateDirty(self, inputSlot, roi):
+        pass
 
 class TestSlot_notifyConnect(object):
 

@@ -609,6 +609,10 @@ class OpMultiInputConcatenater(Operator):
         # Should never be called.  All output slots are directly connected to an input slot.
         assert False
 
+    def notifySubSlotDirty(self, slots, indexes, key):
+        # Nothing to do here.
+        # All outputs are directly connected to an input slot.
+        pass
 
 class OpTransposeSlots(Operator):
     """
@@ -636,6 +640,11 @@ class OpTransposeSlots(Operator):
         # Should never be called.  All output slots are directly connected to an input slot.
         assert False
 
+    def notifySubSlotDirty(self, slots, indexes, key):
+        # Nothing to do here.
+        # All outputs are directly connected to an input slot.
+        pass
+        
 
 
 

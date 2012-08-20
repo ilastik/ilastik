@@ -114,6 +114,12 @@ class OpH5Writer(Operator):
         f.close()
 
         result[0] = True
+        
+    def propagateDirty(self, slot, roi):
+        # The output from this operator isn't generally connected to other operators.
+        # If someone is using it that way, we'll assume that the user wants to know that 
+        #  the input image has become dirty and may need to be written to disk again.
+        self.WriteImage.setDirty(slice(None))
 
 class OpStackLoader(Operator):
     name = "Image Stack Reader"
