@@ -25,7 +25,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         # Base class first
         super(TestPixelClassificationGui, cls).setupClass()
         
-        cls.SAMPLE_DATA = 'random_data.npy'
+        cls.SAMPLE_DATA = os.path.split(__file__)[0] + 'random_data.npy'
         data = numpy.random.random((1,400,400,50,1))
         data *= 256
         numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
