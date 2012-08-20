@@ -84,3 +84,6 @@ class OpDataSelection(Operator):
         self.AllowLabels.setValue( datasetInfo.allowLabels )
         self.ImageName.setValue(datasetInfo.filePath)
 
+    def propagateDirty(self, inputSlot, roi):
+        # Output slots are directly connected to internal operators
+        pass
