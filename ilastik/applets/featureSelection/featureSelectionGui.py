@@ -80,15 +80,18 @@ class FeatureSelectionGui(LayerViewerGui):
         """
         Load the viewer controls GUI, which appears below the applet bar.
         In our case, the viewer control GUI consists mainly of a layer list.
+        
+        TODO: Right now we manage adding/removing entries to a plain listview 
+              widget by monitoring the layerstack for changes.
+              Ideally, we should implement a custom widget that does this for us, 
+              which would be initialized with the layer list model (like volumina.layerwidget)
         """
-        p = os.path.split(__file__)[0]+'/'
-        if p == "/": p = "."+p
-        self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
+        self._viewerControlWidget = uic.loadUi(os.path.split(__file__)[0] + "/viewerControls.ui")
         
         layerListWidget = self._viewerControlWidget.listWidget
 
         # Need to handle data changes because the layerstack model hasn't 
-        # updated his data yet by the time he calls the rowsInserted signal            
+        # updated his data yet by the time he calls the rowsInserted signal
         def handleLayerStackDataChanged(startIndex, stopIndex):
             row = startIndex.row()
             layerListWidget.item(row).setText(self.layerstack[row].name)
@@ -97,19 +100,17 @@ class FeatureSelectionGui(LayerViewerGui):
         def handleInsertedLayers(parent, start, end):
             for i in range(start, end+1):
                 layerListWidget.insertItem(i, self.layerstack[i].name)
+        self.layerstack.rowsInserted.connect( handleInsertedLayers )
 
         def handleRemovedLayers(parent, start, end):
             for i in range(start, end+1):
                 layerListWidget.takeItem(i)
-            
-        self.layerstack.rowsInserted.connect( handleInsertedLayers )
         self.layerstack.rowsRemoved.connect( handleRemovedLayers )
         
         def handleSelectionChanged(row):
-            # Only the selected row is visible
+            # Only one layer is visible at a time
             for i, layer in enumerate(self.layerstack):
                 layer.visible = (i == row)
-        
         layerListWidget.currentRowChanged.connect( handleSelectionChanged )
     
     @traceLogged(traceLogger)
@@ -211,23 +212,11 @@ class FeatureSelectionGui(LayerViewerGui):
         # Give the new features to the pipeline (if there are any)
         featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
         if featureMatrix.any():
-            if self.mainOperator.SelectionMatrix.ready():
-                previousFeatureCount = numpy.count_nonzero(self.mainOperator.SelectionMatrix.value)
-            else:
-                previousFeatureCount = 0
-            newFeatureCount = numpy.count_nonzero(featureMatrix)
-
             self.mainOperator.SelectionMatrix.setValue( featureMatrix )
-            
-            # FIXME: If the features changed but the NUMBER of features didn't, then the 
-            #        LayerViewerGui.updateAllLayers function won't get called unless we call it explicitly here.
-            if previousFeatureCount == newFeatureCount:
-                self.updateAllLayers()
         else:
             # Not valid to give a matrix with no features selected.
             # Disconnect.
             self.mainOperator.SelectionMatrix.disconnect()
-                
     
     def onFeaturesSelectionsChanged(self):
         """
