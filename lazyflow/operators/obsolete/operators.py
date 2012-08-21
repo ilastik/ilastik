@@ -45,9 +45,7 @@ class OpArrayPiper(Operator):
 
     def setupOutputs(self):
         inputSlot = self.inputs["Input"]
-        self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
-        self.outputs["Output"].meta.shape = inputSlot.meta.shape
-        self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
+        self.outputs["Output"].meta.assignFrom(inputSlot.meta)
 
     def execute(self, slot, roi, result):
         key = roi.toSlice()
