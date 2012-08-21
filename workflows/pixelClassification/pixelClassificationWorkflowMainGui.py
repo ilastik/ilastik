@@ -54,9 +54,9 @@ def debug_with_new(shell, workflow):
 
 if __name__ == "__main__":
     # Start the GUI
-    startShellGui( PixelClassificationWorkflow )
+#    startShellGui( PixelClassificationWorkflow )
 
     # Start the GUI with a debug project    
     #startShellGui( PixelClassificationWorkflow, debug_with_existing )    
-    #startShellGui( PixelClassificationWorkflow, debug_with_new )
+    startShellGui( PixelClassificationWorkflow, debug_with_new )
 
