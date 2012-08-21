@@ -23,12 +23,12 @@ from ilastik.utility import PathComponents
 
 logger = logging.getLogger(__name__)
 
-def main():
+def main(argv):
     parser = getArgParser()
-    args = parser.parse_args()
+    parsed_args = parser.parse_args(argv[1:])
 
     try:
-        runWorkflow(args)
+        runWorkflow(parsed_args)
     except:
         tb = traceback.format_exc()
         logger.error(tb)
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         sys.argv += args.split()
 
     # MAIN
-    sys.exit( main() )
+    sys.exit( main(sys.argv) )
 
 
 
