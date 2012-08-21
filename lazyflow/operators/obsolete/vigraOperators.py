@@ -121,9 +121,8 @@ class OpPixelFeaturesPresmoothed(Operator):
                   InputSlot("Scales"),
                   InputSlot("FeatureIds")] # The selection of features to compute
 
-    outputSlots = [OutputSlot("Output"),
-                   OutputSlot("ArrayOfOperators"),
-                   OutputSlot("FeatureNames")]
+    outputSlots = [OutputSlot("Output"),        # The entire block of features as a single image (many channels)
+                   MultiOutputSlot("Features")] # Each feature image listed separately, with feature name provided in metadata
 
     # Specify a default set & order for the features we compute
     DefaultFeatureIds = [ 'GaussianSmoothing',
@@ -230,22 +229,20 @@ class OpPixelFeaturesPresmoothed(Operator):
                         oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
                         featureNameArray[i].append("Difference of Gaussians (s=" + str(self.scales[j]) + ")")
 
-            self.outputs["ArrayOfOperators"][0] = oparray
-
             #disconnecting all Operators
             for i in range(dimRow):
                 for j in range(dimCol):
                     self.multi.inputs["Input%02d" %(i*dimRow+j)].disconnect()
 
-            featureNames = []
             #connect individual operators
             for i in range(dimRow):
                 for j in range(dimCol):
-                    val=self.matrix[i,j]
-                    if val:
+                    if self.matrix[i,j]:
+                        # Feature names are provided via metadata
+                        oparray[i][j].outputs["Output"].meta.description = featureNameArray[i][j]
                         self.multi.inputs["Input%02d" %(i*dimRow+j)].connect(oparray[i][j].outputs["Output"])
                         logger.debug("connected  Input%02d of self.multi" %(i*dimRow+j))
-                        featureNames.append(featureNameArray[i][j])
+            self.Features.connect( self.multi.Outputs )
 
             #additional connection with FakeOperator
             if (self.matrix==0).all():
@@ -263,7 +260,6 @@ class OpPixelFeaturesPresmoothed(Operator):
             self.stacker.inputs["AxisIndex"].setValue(self.source.outputs["Output"]._axistags.index('c'))
             self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
 
-
             self.maxSigma = 0
             #determine maximum sigma
             for i in range(dimRow):
@@ -274,13 +270,9 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             self.featureOps = oparray
 
-
             self.outputs["Output"]._dtype = numpy.float32
             self.outputs["Output"]._axistags = self.stacker.outputs["Output"]._axistags
             self.outputs["Output"]._shape = self.stacker.outputs["Output"]._shape
-
-            # Set the feature names output
-            self.outputs["FeatureNames"].setValue(featureNames)
 
     def propagateDirty(self, inputSlot, roi):
         if inputSlot == self.Input:
@@ -310,8 +302,6 @@ class OpPixelFeaturesPresmoothed(Operator):
               or inputSlot == self.Scales 
               or inputSlot == self.FeatureIds):
             self.Output.setDirty(slice(None))
-            self.ArrayOfOperators.setDirty(slice(None))
-            self.FeatureNames.setDirty(slice(None))
         else:
             assert False, "Unknown dirty input slot."
             
