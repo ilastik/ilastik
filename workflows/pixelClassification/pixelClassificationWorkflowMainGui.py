@@ -2,7 +2,7 @@ from ilastik.shell.gui.startShellGui import startShellGui
 from pixelClassificationWorkflow import PixelClassificationWorkflow
 
 
-def test_existing(shell, workflow):
+def debug_with_existing(shell, workflow):
     """
     (Function for debug and testing.)
     """
@@ -12,7 +12,7 @@ def test_existing(shell, workflow):
     # Open a project
     shell.openProjectFile(projFilePath)
 
-def test_new(shell, workflow):
+def debug_with_new(shell, workflow):
     """
     (Function for debug and testing.)
     """
@@ -52,9 +52,11 @@ def test_new(shell, workflow):
     shell.onSaveProjectActionTriggered()
 
 
-# Start the GUI
-#startShellGui( PixelClassificationWorkflow )
+if __name__ == "__main__":
+    # Start the GUI
+    startShellGui( PixelClassificationWorkflow )
 
-#startShellGui( PixelClassificationWorkflow, test_existing )    
-startShellGui( PixelClassificationWorkflow, test_new )
+    # Start the GUI with a debug project    
+    #startShellGui( PixelClassificationWorkflow, debug_with_existing )    
+    #startShellGui( PixelClassificationWorkflow, debug_with_new )
 
