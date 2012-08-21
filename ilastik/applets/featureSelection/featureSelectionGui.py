@@ -7,6 +7,7 @@ from igms.featureDlg import FeatureDlg
 import os
 import numpy
 from ilastik.utility import bind
+from lazyflow.operators import OpSubRegion
 
 import logging
 logger = logging.getLogger(__name__)
@@ -115,40 +116,59 @@ class FeatureSelectionGui(LayerViewerGui):
         with Tracer(traceLogger):
             layers = []
 
-            outputSlot = self.mainOperator.FeatureLayers[currentImageIndex]
-            layerNameSlot = self.mainOperator.FeatureNames[currentImageIndex]
-            if outputSlot.ready() and layerNameSlot.ready() and len(outputSlot) == len(layerNameSlot.value):
-                # Now add a layer for each feature
-                numFeatureChannels = len(outputSlot)
-                for featureChannelIndex in range(0, numFeatureChannels):
-                    layer = self.getFeatureLayer(currentImageIndex, featureChannelIndex)
-                    layers.append( layer )                
+            inputSlot = self.mainOperator.InputImage[currentImageIndex]
+            featureMultiSlot = self.mainOperator.FeatureLayers[currentImageIndex]
+            if featureMultiSlot.ready():
+                for featureIndex, featureSlot in enumerate(featureMultiSlot):
+                    assert featureSlot.ready()
+                    layers += self.getFeatureLayers(inputSlot, featureSlot)
+                
+                layers[0].visible = True
             return layers
 
-    def getFeatureLayer(self, currentImageIndex, featureChannelIndex):
+    def getFeatureLayers(self, inputSlot, featureSlot):
         """
-        Display a feature in the layer editor.
+        Generate a list of layers for the feature image produced by the given slot.
         """
         with Tracer(traceLogger):
-            # Determine the name for this feature
-            channelAxis = self.mainOperator.InputImage[currentImageIndex].meta.axistags.channelIndex
-            numOriginalChannels = self.mainOperator.InputImage[currentImageIndex].meta.shape[channelAxis]
-            originalChannel = featureChannelIndex % numOriginalChannels
-            featureNameIndex = featureChannelIndex / numOriginalChannels
-            channelNames = ['R', 'G', 'B']
-            featureNames = self.mainOperator.FeatureNames[currentImageIndex].value
-            featureName = featureNames[ featureNameIndex ]
-            if numOriginalChannels > 1:
-                featureName += " (" + channelNames[originalChannel] + ")"
+            layers = []
+            
+            channelAxis = inputSlot.meta.axistags.channelIndex
+            assert channelAxis == featureSlot.meta.axistags.channelIndex
+            numInputChannels = inputSlot.shape[channelAxis]
+            numFeatureChannels = featureSlot.shape[channelAxis]
 
-            # Create a grayscale layer for it.            
-            featureLayer = self.createStandardLayerFromSlot( self.mainOperator.FeatureLayers[currentImageIndex][featureChannelIndex] )    
-            # By default, only the first feature is visible
-            featureLayer.visible = (featureChannelIndex == 0)
-            featureLayer.opacity = 1.0
-            featureLayer.name = featureName
+            # Determine how many channels this feature has (up to 3)
+            featureChannelsPerInputChannel = numFeatureChannels / numInputChannels
+            assert 0 < featureChannelsPerInputChannel <= 3, "The feature selection Gui does not yet support features with more than three channels per input channel." 
 
-            return featureLayer
+            for inputChannel in range(numInputChannels):
+                # Determine the name for this feature
+                featureName = featureSlot.meta.description
+                assert featureName is not None
+                if 2 <= numInputChannels <= 3:
+                    channelNames = ['R', 'G', 'B']
+                    featureName += " (" + channelNames[inputChannel] + ")"
+                if numInputChannels > 3:
+                    featureName += " (Ch. {})".format(inputChannel)
+
+                opSubRegion = OpSubRegion(graph=self.mainOperator.graph)
+                opSubRegion.Input.connect( featureSlot )
+                start = [0] * len(featureSlot.meta.shape)
+                start[channelAxis] = inputChannel * featureChannelsPerInputChannel
+                stop = list(featureSlot.meta.shape)
+                stop[channelAxis] = (inputChannel+1) * featureChannelsPerInputChannel
+                opSubRegion.Start.setValue( tuple(start) )
+                opSubRegion.Stop.setValue( tuple(stop) )
+                
+                featureLayer = self.createStandardLayerFromSlot( opSubRegion.Output )
+                featureLayer.visible = False
+                featureLayer.opacity = 1.0
+                featureLayer.name = featureName
+                
+                layers.append(featureLayer)
+
+            return layers
 
     def initFeatureDlg(self):
         """
