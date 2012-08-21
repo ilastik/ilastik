@@ -148,8 +148,9 @@ class PixelClassificationGui(LabelingGui):
         self.pipeline.FreezePredictions.setValue( not checked )
 
         # Auto-set the "show predictions" state according to what the user just clicked.
-        self.labelingDrawerUi.checkShowPredictions.setChecked( checked )
-        self.handleShowPredictionsClicked()
+        if checked:
+            self.labelingDrawerUi.checkShowPredictions.setChecked( True )
+            self.handleShowPredictionsClicked()
 
         # If we're changing modes, enable/disable other applets accordingly
         if self.interactiveModeActive != checked:
