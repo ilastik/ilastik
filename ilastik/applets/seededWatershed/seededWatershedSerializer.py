@@ -1,5 +1,4 @@
 import numpy
-from utility.dataImporter import DataImporter
 
 from opSeededWatershed import GCSegmentor, MSTSegmentorKruskal, MSTSegmentor, PerturbMSTSegmentor
 
