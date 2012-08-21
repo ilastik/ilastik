@@ -30,7 +30,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         else:
             cls.using_random_data = True
             cls.SAMPLE_DATA = os.path.split(__file__)[0] + '/random_data.npy'
-            data = numpy.random.random((1,400,400,50,1))
+            data = numpy.random.random((1,200,200,50,1))
             data *= 256
             numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
 
