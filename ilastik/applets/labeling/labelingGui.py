@@ -496,8 +496,13 @@ class LabelingGui(LayerViewerGui):
         
             # Tell the editor where to draw label data
             self.editor.setLabelSink(labelsrc)
+
+        # Side effect 1: We want to guarantee that the label list 
+        #  is up-to-date before our subclass adds his layers
+        self.updateLabelList()
         
-        # Side effect: Switch to navigation mode if labels aren't allowed on this image.
+        # Side effect 2: Switch to navigation mode if labels aren't 
+        #  allowed on this image.
         labelsAllowedSlot = self._labelingGuiSlots.labelsAllowed[self.imageIndex]
         if labelsAllowedSlot.ready() and not labelsAllowedSlot.value:
             self.changeInteractionMode(Tool.Navigation)
