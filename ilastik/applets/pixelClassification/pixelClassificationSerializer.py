@@ -231,26 +231,27 @@ class PixelClassificationSerializer(AppletSerializer):
 
     def _deserializeLabels(self, topGroup):
         with Tracer(traceLogger):
-            labelSetGroup = topGroup['LabelSets']
-            numImages = len(labelSetGroup)
-            self.mainOperator.LabelInputs.resize(numImages)
-    
-            # For each image in the file
-            for index, (groupName, labelGroup) in enumerate( sorted(labelSetGroup.items()) ):
-                # For each block of label data in the file
-                for blockData in labelGroup.values():
-                    # The location of this label data block within the image is stored as an hdf5 attribute
-                    slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
-                    # Slice in this data to the label input
-                    self.mainOperator.LabelInputs[index][slicing] = blockData[...]
-    
-            self._dirtyFlags[Section.Labels] = False
+            try:
+                labelSetGroup = topGroup['LabelSets']
+            except KeyError:
+                pass
+            else:
+                numImages = len(labelSetGroup)
+                self.mainOperator.LabelInputs.resize(numImages)
+        
+                # For each image in the file
+                for index, (groupName, labelGroup) in enumerate( sorted(labelSetGroup.items()) ):
+                    # For each block of label data in the file
+                    for blockData in labelGroup.values():
+                        # The location of this label data block within the image is stored as an hdf5 attribute
+                        slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
+                        # Slice in this data to the label input
+                        self.mainOperator.LabelInputs[index][slicing] = blockData[...]
+            finally:
+                self._dirtyFlags[Section.Labels] = False
 
     def _deserializeClassifier(self, topGroup):
         with Tracer(traceLogger):
-            if topGroup is None:
-                return
-            
             try:
                 classifierGroup = topGroup['Classifier']
             except KeyError:
@@ -274,7 +275,8 @@ class PixelClassificationSerializer(AppletSerializer):
                 # (This assumes that the classifier we are loading is consistent with the images and labels that we just loaded.
                 #  As soon as training input changes, it will be retrained.)
                 self.mainOperator.classifier_cache.forceValue( classifier )
-            self._dirtyFlags[Section.Classifier] = False
+            finally:
+                self._dirtyFlags[Section.Classifier] = False
 
     def slicingToString(self, slicing):
         """
