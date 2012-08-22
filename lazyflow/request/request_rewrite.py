@@ -2,6 +2,7 @@ import greenlet
 from collections import deque
 import multiprocessing
 import threading
+import atexit
 from functools import partial
 
 import sys
@@ -209,7 +210,10 @@ class ThreadPool(object):
                 worker.job_queue_condition.notify()
 
 global_thread_pool = ThreadPool()
-            
+
+@atexit.register
+def stop_thread_pool():
+    global_thread_pool.stop()
 
 class Request( object ):
     
