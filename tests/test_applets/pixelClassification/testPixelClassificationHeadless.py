@@ -9,8 +9,11 @@ from ilastik.shell.headless.startShellHeadless import startShellHeadless
 
 import workflows.pixelClassification.pixelClassificationWorkflowMainHeadless as pcMainHeadless
 
+from ilastik.utility.tempHelpers import mktempdir
+
 class TestPixelClassificationHeadless(unittest.TestCase):
-    PROJECT_FILE = os.path.split(__file__)[0] + '/test_project.ilp'
+    dir = mktempdir('/tmp')
+    PROJECT_FILE = os.path.join(dir, 'test_project.ilp')
     #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod
@@ -38,7 +41,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
 
     @classmethod
     def create_random_tst_data(cls):
-        cls.SAMPLE_DATA = os.path.split(__file__)[0] + '/random_data.npy'
+        cls.SAMPLE_DATA = os.path.join(cls.dir, 'random_data.npy')
         cls.data = numpy.random.random((1,200,200,50,1))
         cls.data *= 256
         numpy.save(cls.SAMPLE_DATA, cls.data.astype(numpy.uint8))
