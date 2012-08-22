@@ -1,11 +1,13 @@
 import os
-import tempfile
+#import tempfile
 import vigra
 import h5py
 from ilastik.applets.base.appletSerializer import AppletSerializer
 from ilastik.utility import bind
 from lazyflow.operators import OpH5WriterBigDataset
 import threading
+
+from ilastik.utility.tempHelpers import mktempdir
 
 import logging
 logger = logging.getLogger(__name__)
@@ -130,7 +132,8 @@ class PixelClassificationSerializer(AppletSerializer):
 
             # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
             # Instead, we'll use vigra to write the classifier to a temporary file.
-            tmpDir = tempfile.mkdtemp()
+            #tmpDir = tempfile.mkdtemp()
+            tmpDir = mktempdir('/tmp')
             cachePath = tmpDir + '/classifier_cache.h5'
             classifier.writeHDF5(cachePath, 'Classifier')
             
@@ -255,7 +258,8 @@ class PixelClassificationSerializer(AppletSerializer):
             else:
                 # Due to non-shared hdf5 dlls, vigra can't read directly from our open hdf5 group.
                 # Instead, we'll copy the classfier data to a temporary file and give it to vigra.
-                tmpDir = tempfile.mkdtemp()
+                #tmpDir = tempfile.mkdtemp()
+                tmpDir = mktempdir('/tmp')
                 cachePath = tmpDir + '/classifier_cache.h5'
                 cacheFile = h5py.File(cachePath, 'w')
                 cacheFile.copy(classifierGroup, 'Classifier')

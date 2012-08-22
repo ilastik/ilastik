@@ -1,6 +1,7 @@
 import os
 import numpy
 import h5py
+import unittest
 
 from ilastik.utility.slicingtools import sl, slicing2shape
 from workflows.pixelClassification import PixelClassificationWorkflow
@@ -8,7 +9,7 @@ from ilastik.shell.headless.startShellHeadless import startShellHeadless
 
 import workflows.pixelClassification.pixelClassificationWorkflowMainHeadless as pcMainHeadless
 
-class TestPixelClassificationHeadless(object):
+class TestPixelClassificationHeadless(unittest.TestCase):
     PROJECT_FILE = os.path.split(__file__)[0] + '/test_project.ilp'
     #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
@@ -23,7 +24,7 @@ class TestPixelClassificationHeadless(object):
         cls.create_new_tst_project()
 
     @classmethod
-    def teardownClass(cls):
+    def tearDownClass(cls):
         # Clean up: Delete any test files we generated
         removeFiles = [ TestPixelClassificationHeadless.PROJECT_FILE ]
         if cls.using_random_data:
@@ -114,8 +115,11 @@ class TestPixelClassificationHeadless(object):
         assert f["/volume/pred_volume"].shape[-1] == 2
         
 if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)
+    unittest.main()
+
+#if __name__ == "__main__":
+#    import sys
+#    import nose
+#    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+#    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+#    nose.run(defaultTest=__file__)
