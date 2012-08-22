@@ -41,6 +41,7 @@ class Worker(threading.Thread):
     def __init__(self, thread_pool, index ):
         name = "Worker #{}".format(index)
         super(Worker, self).__init__( name=name )
+        self.daemon = True # kill automatically on application exit!
         self.thread_pool = thread_pool
         self.stopped = False
         self.job_queue_condition = threading.Condition()
