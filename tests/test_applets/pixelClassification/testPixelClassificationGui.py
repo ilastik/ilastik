@@ -72,7 +72,6 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             opDataSelection.Dataset[0].setValue(info)
             
             # Set some features
-            import numpy
             featureGui = workflow.featureSelectionApplet.gui
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
             opFeatures.Scales.setValue( featureGui.ScalesList )
@@ -86,12 +85,36 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                                        [False, False, False, False, False, False, False]] )
             opFeatures.SelectionMatrix.setValue(selections)
         
-            # Save the project
+            # Save and close
             shell.onSaveProjectActionTriggered()
+            shell.ensureNoCurrentProject(assertClean=True)
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
+    def test_2_ClosedState(self):
+        """
+        Check the state of various shell and gui members when no project is currently loaded.
+        """
+        def impl():
+            pixClassApplet = self.workflow.pcApplet
+            gui = pixClassApplet.gui
+
+            assert gui.labelingDrawerUi.checkInteractive.isChecked() == False
+            assert gui.labelingDrawerUi.labelListModel.rowCount() == 0
+            assert self.shell.projectManager.currentProjectFile is None
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_3_OpenProject(self):
+        def impl():
+            self.shell.openProjectFile(self.PROJECT_FILE)
+            assert self.shell.projectManager.currentProjectFile is not None
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+    
     # These points are relative to the CENTER of the view
     LABEL_START = (-20,-20)
     LABEL_STOP = (20,20)
@@ -99,7 +122,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     LABEL_ERASE_START = (-5,-5)
     LABEL_ERASE_STOP = (5,5)
 
-    def test_2_AddLabels(self):
+    def test_4_AddLabels(self):
         """
         Add labels and draw them in the volume editor.
         """
@@ -157,7 +180,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_3_DeleteLabel(self):
+    def test_5_DeleteLabel(self):
         """
         Delete a label from the label list.
         """
@@ -221,7 +244,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_4_EraseSome(self):
+    def test_6_EraseSome(self):
         """
         Erase a few of the previously drawn labels from the volume editor using the eraser.
         """
@@ -268,7 +291,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_5_EraseCompleteLabel(self):
+    def test_7_EraseCompleteLabel(self):
         """
         Erase all of the labels of a particular color using the eraser.
         """
@@ -333,7 +356,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_6_InteractiveMode(self):
+    def test_8_InteractiveMode(self):
         """
         Click the "interactive mode" checkbox and see if any errors occur.
         """
@@ -346,7 +369,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 gui._labelControlUi.labelListModel.removeRow(0)
                 
             # Re-add all labels
-            self.test_2_AddLabels()
+            self.test_4_AddLabels()
 
             # Enable interactive mode            
             assert not gui._labelControlUi.checkInteractive.isChecked()
