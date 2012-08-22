@@ -1164,6 +1164,7 @@ class OpH5WriterBigDataset(Operator):
         for i in range( min(10, len(slicings)) ):
             s = slicings.pop()
             activeSlicings.append(s)
+            logger.debug( "Creating request for slicing {}".format(s) )
             activeRequests.append( self.inputs["Image"][s] )
         
         counter = 0
