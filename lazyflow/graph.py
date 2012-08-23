@@ -824,7 +824,12 @@ class Slot(object):
         if isinstance(temp, numpy.ndarray) and temp.shape != (1,):
             return temp
         else:
-            return temp[0]
+            try:
+                return temp[0]
+            except IndexError:
+                w = "FIXME: Slot.value for slot {} is {}, which should be wrapped in an ndarray.".format(self.name, temp)
+                self.logger.warn(w)
+                return temp
 
     def setValue(self, value, notify = True, check_changed = True):
         """
