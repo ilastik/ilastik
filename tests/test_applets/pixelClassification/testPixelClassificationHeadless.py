@@ -108,7 +108,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         args += " --project=" + self.PROJECT_FILE
         args += " " + self.SAMPLE_DATA
         args += " --batch_output_dataset_name=/volume/pred_volume"
-        args += " --sys_tmp_dir=/magnetic"
+        args += " --sys_tmp_dir=/tmp"
 
         argv = args.split()
         pcMainHeadless.main(argv)
