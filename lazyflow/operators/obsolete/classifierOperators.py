@@ -226,7 +226,7 @@ class OpPredictRandomForest(Operator):
 
     def setupOutputs(self):
         nlabels=self.inputs["LabelsCount"].value
-        self.PMaps.meta.dtype = numpy.uint8
+        self.PMaps.meta.dtype = numpy.float32
         self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
         self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,) # FIXME: This assumes that channel is the last axis
 
@@ -259,7 +259,7 @@ class OpPredictRandomForest(Operator):
         # then our results aren't really valid.
         # Duplicate the last label's predictions
         chanslice = slice(min(key[-1].start, RF.labelCount()-1), min(key[-1].stop, RF.labelCount()))
-        result[...]=prediction[...,chanslice]*255 # FIXME: This assumes that channel is the last axis
+        result[...]=prediction[...,chanslice] # FIXME: This assumes that channel is the last axis
 
 
 
