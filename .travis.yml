@@ -14,8 +14,6 @@ install:
    - sudo sh requirements/install_h5py.sh
    - sudo sh requirements/install_vigra.sh
    - export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-   - python -c "import vigra"
-   - python -c "import vigra.impex"
    - sudo sh requirements/build_drtile.sh $VIRTUAL_ENV
 script:
    - python setup.py nosetests
