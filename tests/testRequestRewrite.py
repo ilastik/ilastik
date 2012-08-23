@@ -1,4 +1,4 @@
-from lazyflow.request.request_rewrite import Request, global_thread_pool
+from lazyflow.request.request_rewrite import Request
 import time
 import random
 import numpy
@@ -16,15 +16,7 @@ logger = logging.getLogger(__name__)
 #logger.addHandler(handler)
 
 class TestRequest(object):
-    
-    @classmethod
-    def setupClass(cls):
-        pass
 
-    @classmethod
-    def teardownClass(cls):
-        global_thread_pool.stop()
-    
     def test_basic(self):
         """
         Fire a couple requests and check the answer they give.
@@ -305,6 +297,8 @@ class TestRequest(object):
         t.start()
         result = req.wait()
         assert result == 10
+        
+        t.join()
     
     def test_old_api_support(self):
         """
