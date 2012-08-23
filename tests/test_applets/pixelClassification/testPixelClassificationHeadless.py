@@ -2,6 +2,7 @@ import os
 import numpy
 import h5py
 import unittest
+import tempfile
 
 from ilastik.utility.slicingtools import sl, slicing2shape
 from workflows.pixelClassification import PixelClassificationWorkflow
@@ -12,7 +13,8 @@ import workflows.pixelClassification.pixelClassificationWorkflowMainHeadless as 
 from ilastik.utility.tempHelpers import mktempdir
 
 class TestPixelClassificationHeadless(unittest.TestCase):
-    dir = mktempdir('/tmp')
+    #dir = mktempdir('/tmp')
+    dir = tempfile.mkdtemp()
     PROJECT_FILE = os.path.join(dir, 'test_project.ilp')
     #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
@@ -106,6 +108,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         args += " --project=" + self.PROJECT_FILE
         args += " " + self.SAMPLE_DATA
         args += " --batch_output_dataset_name=/volume/pred_volume"
+        args += " --sys_tmp_dir=/magnetic"
 
         argv = args.split()
         pcMainHeadless.main(argv)

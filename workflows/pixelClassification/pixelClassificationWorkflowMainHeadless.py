@@ -15,6 +15,7 @@ from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackToH5Writer
 
 # ilastik
+import ilastik.utility.monkey_patches
 from ilastik.shell.headless.startShellHeadless import startShellHeadless
 from pixelClassificationWorkflow import PixelClassificationWorkflow
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
@@ -26,6 +27,8 @@ logger = logging.getLogger(__name__)
 def main(argv):
     parser = getArgParser()
     parsed_args = parser.parse_args(argv[1:])
+
+    ilastik.utility.monkey_patches.init_with_args(parsed_args)
 
     try:
         runWorkflow(parsed_args)
@@ -43,6 +46,7 @@ def getArgParser():
     parser.add_argument('--batch_export_dir', default='', help='A directory to save batch outputs. (Default saves with input files)')
     parser.add_argument('--batch_output_suffix', default='_predictions', help='Suffix for batch output filenames (before extension).')
     parser.add_argument('--batch_output_dataset_name', default='/volume/predictions', help='HDF5 internal dataset path')
+    parser.add_argument('--sys_tmp_dir', help='Override the default directory for temporary file storage.')
     parser.add_argument('batch_inputs', nargs='*', help='List of input files to process. Supported filenames: .h5, .npy, or globstring for stacks (e.g. *.png)')
     return parser
 
@@ -198,10 +202,15 @@ def convertStacksToH5(filePaths):
 if __name__ == "__main__":
     # DEBUG ARGS
     if False:
-        args = ""
-        args += " --project=/home/bergs/tinyfib/boundary_training/pred.ilp"
-        args += " /home/bergs/tinyfib/initial_segmentation/version1.h5/volume/data"
-        args += " --batch_output_dataset_name=/volume/pred_volume"
+#        args = ""
+#        args += " --project=/home/bergs/tinyfib/boundary_training/pred.ilp"
+#        args += " --batch_output_dataset_name=/volume/pred_volume"
+#        args += " --batch_export_dir=/home/bergs/tmp"
+#        args += " /home/bergs/tinyfib/initial_segmentation/version1.h5/volume/data"
+
+        args = "--project=/groups/flyem/proj/cluster/tbar_detect_files/best.ilp --batch_export_dir=/home/bergs/tmp /groups/flyem/proj/cluster/tbar_detect_files/grayscale.h5"
+
+        print args
 
         #args += " --project=/home/bergs/Downloads/synapse_detection_training1.ilp"
         #args = " --project=/home/bergs/synapse_small.ilp"
