@@ -116,10 +116,10 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         
         # Examine the output for basic attributes
         outputFilePath = self.SAMPLE_DATA[:-4] + "_prediction.h5"
-        f = h5py.File(outputFilePath, 'r')
-        assert "/volume/pred_volume" in f
-        assert f["/volume/pred_volume"].shape[:-1] == self.data.shape[:-1] # Assume channel is last axis
-        assert f["/volume/pred_volume"].shape[-1] == 2
+        with h5py.File(outputFilePath, 'r') as f:
+            assert "/volume/pred_volume" in f
+            assert f["/volume/pred_volume"].shape[:-1] == self.data.shape[:-1] # Assume channel is last axis
+            assert f["/volume/pred_volume"].shape[-1] == 2
         
 if __name__ == "__main__":
     unittest.main()

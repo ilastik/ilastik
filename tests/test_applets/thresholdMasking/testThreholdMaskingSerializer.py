@@ -21,30 +21,30 @@ class TestThresholdMaskingSerializer(object):
                 pass
     
         # Create an empty project
-        testProject = h5py.File(testProjectName)
-        testProject.create_dataset("ilastikVersion", data=0.6)
+        with h5py.File(testProjectName) as testProject:
+            testProject.create_dataset("ilastikVersion", data=0.6)
+            
+            # Create an operator to work with and give it some input
+            graph = Graph()
+            operatorToSave = OpThresholdMasking(graph=graph)
         
-        # Create an operator to work with and give it some input
-        graph = Graph()
-        operatorToSave = OpThresholdMasking(graph=graph)
+            operatorToSave.MinValue.setValue( 10 )
+            operatorToSave.MaxValue.setValue( 20 )
     
-        operatorToSave.MinValue.setValue( 10 )
-        operatorToSave.MaxValue.setValue( 20 )
-
-        # Serialize!
-        serializer = ThresholdMaskingSerializer(operatorToSave, 'ThresholdMasking')
-        serializer.serializeToHdf5(testProject, testProjectName)
+            # Serialize!
+            serializer = ThresholdMaskingSerializer(operatorToSave, 'ThresholdMasking')
+            serializer.serializeToHdf5(testProject, testProjectName)
+            
+            assert testProject['ThresholdMasking/MinValue'][()] == 10
+            assert testProject['ThresholdMasking/MaxValue'][()] == 20
         
-        assert testProject['ThresholdMasking/MinValue'][()] == 10
-        assert testProject['ThresholdMasking/MaxValue'][()] == 20
+            # Deserialize into a fresh operator
+            operatorToLoad = OpThresholdMasking(graph=graph)
+            deserializer = ThresholdMaskingSerializer(operatorToLoad, 'ThresholdMasking')
+            deserializer.deserializeFromHdf5(testProject, testProjectName)
     
-        # Deserialize into a fresh operator
-        operatorToLoad = OpThresholdMasking(graph=graph)
-        deserializer = ThresholdMaskingSerializer(operatorToLoad, 'ThresholdMasking')
-        deserializer.deserializeFromHdf5(testProject, testProjectName)
-
-        assert operatorToLoad.MinValue.value == 10
-        assert operatorToLoad.MaxValue.value == 20
+            assert operatorToLoad.MinValue.value == 10
+            assert operatorToLoad.MaxValue.value == 20
 
         os.remove(testProjectName)
 

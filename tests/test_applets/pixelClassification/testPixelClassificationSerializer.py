@@ -138,47 +138,47 @@ class TestPixelClassificationSerializer(object):
                 pass
     
         # Create an empty project
-        testProject = h5py.File(testProjectName)
-        testProject.create_dataset("ilastikVersion", data=0.6)
-        
-        # Create an operator to work with and give it some input
-        g = Graph()
-        op = OpMockPixelClassifier(graph=g)
-        operatorToSave = op
-        serializer = PixelClassificationSerializer(operatorToSave, 'PixelClassificationTest')
-        
-        op.LabelInputs.resize( 1 )
-
-        # Create some labels
-        labeldata = numpy.zeros(op.shape)
-        labeldata[:,:,0:5,:,:] = 1
-        labeldata[:,:,50:60,:] = 2
-
-        # Slice them into our operator
-        op.LabelInputs[0][:,:,0:5,:,:] = labeldata[:,:,0:5,:,:]
-        op.LabelInputs[0][:,:,50:60,:,:] = labeldata[:,:,50:60,:,:]
-        
-        # Simulate the predictions changing by setting the prediction output dirty
-        op.PredictionProbabilities[0].setDirty(slice(None))
-
-        # Enable prediction storage
-        serializer.predictionStorageEnabled = True
+        with h5py.File(testProjectName) as testProject:
+            testProject.create_dataset("ilastikVersion", data=0.6)
             
-        # Serialize!
-        serializer.serializeToHdf5(testProject, testProjectName)
-
-        # Check that the prediction data was written to the file
-        assert (testProject['PixelClassificationTest/Predictions/predictions0000'][...] == op.PredictionProbabilities[0][...].wait()).all()
-        
-        # Deserialize into a fresh operator
-        operatorToLoad = OpMockPixelClassifier(graph=g)
-        deserializer = PixelClassificationSerializer(operatorToLoad, 'PixelClassificationTest')
-        deserializer.deserializeFromHdf5(testProject, testProjectName)
-
-        # Did the data go in and out of the file without problems?
-        assert len(operatorToLoad.LabelImages) == 1
-        assert (operatorToSave.LabelImages[0][...].wait() == operatorToLoad.LabelImages[0][...].wait()).all()
-        assert (operatorToSave.LabelImages[0][...].wait() == labeldata[...]).all()
+            # Create an operator to work with and give it some input
+            g = Graph()
+            op = OpMockPixelClassifier(graph=g)
+            operatorToSave = op
+            serializer = PixelClassificationSerializer(operatorToSave, 'PixelClassificationTest')
+            
+            op.LabelInputs.resize( 1 )
+    
+            # Create some labels
+            labeldata = numpy.zeros(op.shape)
+            labeldata[:,:,0:5,:,:] = 1
+            labeldata[:,:,50:60,:] = 2
+    
+            # Slice them into our operator
+            op.LabelInputs[0][:,:,0:5,:,:] = labeldata[:,:,0:5,:,:]
+            op.LabelInputs[0][:,:,50:60,:,:] = labeldata[:,:,50:60,:,:]
+            
+            # Simulate the predictions changing by setting the prediction output dirty
+            op.PredictionProbabilities[0].setDirty(slice(None))
+    
+            # Enable prediction storage
+            serializer.predictionStorageEnabled = True
+                
+            # Serialize!
+            serializer.serializeToHdf5(testProject, testProjectName)
+    
+            # Check that the prediction data was written to the file
+            assert (testProject['PixelClassificationTest/Predictions/predictions0000'][...] == op.PredictionProbabilities[0][...].wait()).all()
+            
+            # Deserialize into a fresh operator
+            operatorToLoad = OpMockPixelClassifier(graph=g)
+            deserializer = PixelClassificationSerializer(operatorToLoad, 'PixelClassificationTest')
+            deserializer.deserializeFromHdf5(testProject, testProjectName)
+    
+            # Did the data go in and out of the file without problems?
+            assert len(operatorToLoad.LabelImages) == 1
+            assert (operatorToSave.LabelImages[0][...].wait() == operatorToLoad.LabelImages[0][...].wait()).all()
+            assert (operatorToSave.LabelImages[0][...].wait() == labeldata[...]).all()
         
         os.remove(testProjectName)
 
