@@ -44,8 +44,8 @@ def getArgParser():
     parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
     parser.add_argument('--generate_project_predictions', action='store_true', help="Compute full volume predictions for project data and save to project (otherwise, just export predictions for batch inputs).")
     parser.add_argument('--batch_export_dir', default='', help='A directory to save batch outputs. (Default saves with input files)')
-    parser.add_argument('--batch_output_suffix', default='_predictions', help='Suffix for batch output filenames (before extension).')
-    parser.add_argument('--batch_output_dataset_name', default='/volume/predictions', help='HDF5 internal dataset path')
+    parser.add_argument('--batch_output_suffix', default='_prediction', help='Suffix for batch output filenames (before extension).')
+    parser.add_argument('--batch_output_dataset_name', default='/volume/prediction', help='HDF5 internal dataset path')
     parser.add_argument('--sys_tmp_dir', help='Override the default directory for temporary file storage.')
     parser.add_argument('batch_inputs', nargs='*', help='List of input files to process. Supported filenames: .h5, .npy, or globstring for stacks (e.g. *.png)')
     return parser
