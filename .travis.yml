@@ -1,0 +1,24 @@
+language: python
+python:
+   - "2.7"
+install:
+   - sudo apt-get install -y libboost-python-dev
+   - sudo apt-get install -y libjpeg-dev
+   - sudo apt-get install -y libtiff4-dev
+   - sudo apt-get install -y libpng12-dev
+   - sudo apt-get install -y libfftw3-dev
+   - sudo apt-get install -y libhdf5-serial-dev
+   - sudo apt-get install -y cmake
+   - pip install -r requirements/development-stage1.txt --use-mirrors
+   - sudo apt-get install -y mercurial
+   - sudo sh requirements/install_h5py.sh
+   - sudo sh requirements/install_vigra.sh
+   - export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+   - python -c "import vigra"
+   - python -c "import vigra.impex"
+   - sudo sh requirements/build_drtile.sh $VIRTUAL_ENV
+script:
+   - python setup.py nosetests
+notifications:
+  email:
+    - bergs@janelia.hhmi.org
