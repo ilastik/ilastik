@@ -59,7 +59,6 @@ class OpPixelClassification( Operator ):
         # Set up other label cache inputs
         self.LabelInputs.connect( self.InputImages )
         self.opLabelArray.inputs["Input"].connect( self.LabelInputs )
-        self.opLabelArray.inputs["blockShape"].setValue((1, 32, 32, 32, 1))
         self.opLabelArray.inputs["eraser"].setValue(100)
                 
         # Initialize the delete input to -1, which means "no label".
@@ -93,8 +92,6 @@ class OpPixelClassification( Operator ):
         # 
         self.prediction_cache.name = "PredictionCache"
         self.prediction_cache.inputs["fixAtCurrent"].connect( self.FreezePredictions )
-        self.prediction_cache.inputs["innerBlockShape"].setValue(((1,128,128,1,2),(1,128,1,128,2),(1,1,128,128,2)))
-        self.prediction_cache.inputs["outerBlockShape"].setValue(((1,256,256,1,2),(1,256,1,256,2),(1,1,256,256,2)))
         self.prediction_cache.inputs["Input"].connect(self.predict.outputs["PMaps"])
 
         # Connect our internal outputs to our external outputs
@@ -122,25 +119,70 @@ class OpPixelClassification( Operator ):
         self.opPredictionSlicer.Input.connect( self.prediction_cache.Output )
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
-        
-    def setupOutputs(self):
+
+        def handleNewInputImage( multislot, index, *args ):
+            def handleInputReady(slot):
+                self.setupCaches( multislot.index(slot) )
+            multislot[index].notifyReady(handleInputReady)
+                
+        self.InputImages.notifyInserted( handleNewInputImage )
+
+    def setupCaches(self, imageIndex):
         numImages = len(self.InputImages)
-        
-        # Can't setup if all inputs haven't been set yet.
-        if numImages != len(self.FeatureImages) or \
-           numImages != len(self.CachedFeatureImages):
-            return
-        
-        self.LabelImages.resize(numImages)
+        inputSlot = self.InputImages[imageIndex]
+#        # Can't setup if all inputs haven't been set yet.
+#        if numImages != len(self.FeatureImages) or \
+#           numImages != len(self.CachedFeatureImages):
+#            return
+#        
+#        self.LabelImages.resize(numImages)
         self.LabelInputs.resize(numImages)
 
-        for i in range( 0, numImages ):
-            # Special case: We have to set up the shape of our label *input* according to our image input shape
-            channelIndex = self.InputImages[i].meta.axistags.index('c')
-            shapeList = list(self.InputImages[i].meta.shape)
-            shapeList[channelIndex] = 1
-            self.LabelInputs[i].meta.shape = tuple(shapeList)
-            self.LabelInputs[i].meta.axistags = self.InputImages[i].meta.axistags
+        # Special case: We have to set up the shape of our label *input* according to our image input shape
+        channelIndex = self.InputImages[imageIndex].meta.axistags.index('c')
+        shapeList = list(self.InputImages[imageIndex].meta.shape)
+        shapeList[channelIndex] = 1
+        self.LabelInputs[imageIndex].meta.shape = tuple(shapeList)
+        self.LabelInputs[imageIndex].meta.axistags = inputSlot.meta.axistags
+
+        # Set the blockshapes for each input image separately, depending on which axistags it has.
+        axisOrder = [ tag.key for tag in inputSlot.meta.axistags ]
+        
+        ## Label Array blocks
+        blockDims = { 't' : 1, 'x' : 32, 'y' : 32, 'z' : 32, 'c' : 1 }
+        blockShape = tuple( blockDims[k] for k in axisOrder )
+        self.opLabelArray.blockShape.setValue( blockShape )
+
+        ## Pixel Cache blocks
+        blockDimsX = { 't' : (1,1),
+                       'z' : (128,256),
+                       'y' : (128,256),
+                       'x' : (1,1),
+                       'c' : (2,2) }
+
+        blockDimsY = { 't' : (1,1),
+                       'z' : (128,256),
+                       'y' : (1,1),
+                       'x' : (128,256),
+                       'c' : (2,2) }
+
+        blockDimsZ = { 't' : (1,1),
+                       'z' : (1,1),
+                       'y' : (128,256),
+                       'x' : (128,256),
+                       'c' : (2,2) }
+
+        innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
+        outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+
+        innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
+        outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
+
+        innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
+        outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
+
+        self.prediction_cache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+        self.prediction_cache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
     def notifyDirty(self, inputSlot, key):
         # Nothing to do here: All outputs are directly connected to 
