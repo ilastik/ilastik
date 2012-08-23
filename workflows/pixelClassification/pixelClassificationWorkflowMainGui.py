@@ -6,9 +6,9 @@ def debug_with_existing(shell, workflow):
     """
     (Function for debug and testing.)
     """
-    projFilePath = '/home/bergs/gigacube.ilp'        
+    #projFilePath = '/home/bergs/gigacube.ilp'
     #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
-
+    projFilePath = '/magnetic/250-2.ilp'
     # Open a project
     shell.openProjectFile(projFilePath)
 
@@ -54,9 +54,9 @@ def debug_with_new(shell, workflow):
 
 if __name__ == "__main__":
     # Start the GUI
-#    startShellGui( PixelClassificationWorkflow )
+    startShellGui( PixelClassificationWorkflow )
 
     # Start the GUI with a debug project    
     #startShellGui( PixelClassificationWorkflow, debug_with_existing )    
-    startShellGui( PixelClassificationWorkflow, debug_with_new )
+#    startShellGui( PixelClassificationWorkflow, debug_with_new )
 
