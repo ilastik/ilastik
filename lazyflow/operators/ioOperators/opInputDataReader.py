@@ -16,6 +16,11 @@ class OpInputDataReader(Operator):
     name = "OpInputDataReader"
     category = "Input"
 
+    h5Exts = ['.h5', '.hdf5']
+    npyExts = ['.npy']
+    imageExts = vigra.impex.listExtensions().split()
+    SupportedExtensions = h5Exts + npyExts + imageExts
+
     # FilePath is inspected to determine data type.
     # For hdf5 files, append the internal path to the filepath,
     #  e.g. /mydir/myfile.h5/internal/path/to/dataset
@@ -63,7 +68,8 @@ class OpInputDataReader(Operator):
         # If we still haven't found a matching file type
         if self.internalOperator is None:
             # Check for an hdf5 extension
-            h5Exts = ['.h5', '.hdf5', '.ilp']
+            h5Exts = self.h5Exts + ['ilp']
+            h5Exts = ['.' + ex for ex in h5Exts]
             ext = None
             for x in h5Exts:
                 if x in filePath:
