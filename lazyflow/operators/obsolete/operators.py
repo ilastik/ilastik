@@ -710,6 +710,8 @@ if has_blist:
             return result
 
         def setInSlot(self, slot, key, value):
+            assert value.dtype == self._denseArray.dtype, "Labels must be {}".format(self._denseArray.dtype)
+            
             shape = self.inputs["shape"].value
             eraseLabel = self.inputs["eraser"].value
             neutralElement = 0
@@ -720,7 +722,7 @@ if has_blist:
             start = start.floor()
             stop = stop.floor()
 
-            tempKey = roiToSlice(start-start, stop-start, hardBind = True)
+            tempKey = roiToSlice(start-start, stop-start) #, hardBind = True)
 
             stop += numpy.where(stop-start == 0,1,0)
 
@@ -766,7 +768,7 @@ if has_blist:
                     self._sparseNZ.pop(index)
 
             # Update our maxlabel
-            self._maxLabel = numpy.where(valuesNZ != eraseLabel, valuesNZ, 0).max()
+            self._maxLabel = self._denseArray.max()
 
             self.lock.release()
 
