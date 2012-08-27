@@ -711,6 +711,11 @@ if has_blist:
 
         def setInSlot(self, slot, key, value):
             assert value.dtype == self._denseArray.dtype, "Labels must be {}".format(self._denseArray.dtype)
+            assert isinstance(value, numpy.ndarray)            
+            if type(value) != numpy.ndarray:
+                # vigra.VigraArray doesn't handle advanced indexing correctly,
+                #   so convert to numpy.ndarray first
+                value = value.view(numpy.ndarray)
             
             shape = self.inputs["shape"].value
             eraseLabel = self.inputs["eraser"].value
