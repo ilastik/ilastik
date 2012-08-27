@@ -1010,7 +1010,7 @@ if has_blist:
                                 self.Output.setDirty( bigroi )
                             self._labelers[b_ind].outputs["Output"].notifyDirty( handleDirtyLabelerOutput )
     
-                        self._labelers[b_ind].inputs["Input"][smallkey] = smallvalues.squeeze()
+                        self._labelers[b_ind].inputs["Input"][smallkey] = smallvalues
     
                         # If necessary, update our max label using the labeler's max value
                         self._maxLabel = max( self._maxLabel, self._labelers[b_ind].outputs['maxLabel'].value )
