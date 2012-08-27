@@ -469,8 +469,7 @@ class LabelingGui(LayerViewerGui):
         else:
             traceLogger.debug("Setting up labels for image index={}".format(self.imageIndex) )
             # Add the layer to draw the labels, but don't add any labels
-            labelsrc = LazyflowSinkSource(self.pipeline,
-                                           self.pipeline.LabelImages[self.imageIndex],
+            labelsrc = LazyflowSinkSource( self.pipeline.LabelImages[self.imageIndex],
                                            self.pipeline.LabelInputs[self.imageIndex])
             #labelsrc.setObjectName("labels")
         

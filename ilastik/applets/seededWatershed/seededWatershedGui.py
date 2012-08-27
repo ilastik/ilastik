@@ -789,8 +789,7 @@ class SeededWatershedGui(QMainWindow):
         if len(self.pipeline.image) > 0 and self.editor is not None: #and len(self.pipeline.InputImages) > 0:
             print "  ============= init label drawing"
             # Add the layer to draw the labels, but don't add any labels
-            self.labelsrc = LazyflowSinkSource(self.pipeline,
-                                                self.pipeline.seeds[self.imageIndex],
+            self.labelsrc = LazyflowSinkSource(self.pipeline.seeds[self.imageIndex],
                                                self.pipeline.writeSeeds[self.imageIndex]
                                                )
             self.labelsrc.setObjectName("labels")
