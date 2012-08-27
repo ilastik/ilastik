@@ -816,6 +816,7 @@ if has_blist:
                 self._cacheShape = None
                 self._cacheEraser = None
                 self._maxLabel = 0
+                self.deleteLabel.setValue(-1)
     
         def setupOutputs(self):
             with Tracer(self.traceLogger):
