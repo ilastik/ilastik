@@ -16,8 +16,8 @@ class OpInputDataReader(Operator):
     name = "OpInputDataReader"
     category = "Input"
 
-    h5Exts = ['.h5', '.hdf5']
-    npyExts = ['.npy']
+    h5Exts = ['h5', 'hdf5']
+    npyExts = ['npy']
     imageExts = vigra.impex.listExtensions().split()
     SupportedExtensions = h5Exts + npyExts + imageExts
 
@@ -100,7 +100,7 @@ class OpInputDataReader(Operator):
             fileExtension = fileExtension.lstrip('.') # Remove leading dot
 
             # Check for numpy extension
-            if fileExtension == 'npy':
+            if fileExtension in self.npyExts:
                 # Create an internal operator
                 npyReader = OpNpyFileReader(graph=self.graph)
                 npyReader.FileName.setValue(filePath)
