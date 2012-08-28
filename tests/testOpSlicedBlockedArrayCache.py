@@ -30,7 +30,7 @@ class OpArrayPiperWithAccessCount(OpArrayPiper):
         super(OpArrayPiperWithAccessCount, self).execute(slot, roi, result)
         
 
-class TestOpBlockedArrayCache(object):
+class TestOpSlicedBlockedArrayCache(object):
 
     def setUp(self):
         self.dataShape = (1,100,100,10,1)
