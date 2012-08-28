@@ -131,7 +131,7 @@ class PixelClassificationSerializer(AppletSerializer):
             # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
             # Instead, we'll use vigra to write the classifier to a temporary file.
             tmpDir = tempfile.mkdtemp()
-            cachePath = tmpDir + '/classifier_cache.h5'
+            cachePath = os.path.join(tmpDir, 'classifier_cache.h5')
             classifier.writeHDF5(cachePath, 'Classifier')
             
             # Open the temp file and copy to our project group
@@ -256,7 +256,7 @@ class PixelClassificationSerializer(AppletSerializer):
                 # Due to non-shared hdf5 dlls, vigra can't read directly from our open hdf5 group.
                 # Instead, we'll copy the classfier data to a temporary file and give it to vigra.
                 tmpDir = tempfile.mkdtemp()
-                cachePath = tmpDir + '/classifier_cache.h5'
+                cachePath = os.path.join(tmpDir, 'classifier_cache.h5')
                 cacheFile = h5py.File(cachePath, 'w')
                 cacheFile.copy(classifierGroup, 'Classifier')
                 cacheFile.close()

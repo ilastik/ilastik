@@ -10,10 +10,7 @@ from ilastik.shell.headless.startShellHeadless import startShellHeadless
 
 import workflows.pixelClassification.pixelClassificationWorkflowMainHeadless as pcMainHeadless
 
-from ilastik.utility.tempHelpers import mktempdir
-
 class TestPixelClassificationHeadless(unittest.TestCase):
-    #dir = mktempdir('/tmp')
     dir = tempfile.mkdtemp()
     PROJECT_FILE = os.path.join(dir, 'test_project.ilp')
     #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'

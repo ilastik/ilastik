@@ -25,7 +25,7 @@ class TestOpBatchIo(object):
     def testBasic(self):
         cwd = os.getcwd()
         info = DatasetInfo()
-        info.filePath = cwd + '/NpyTestData.npy'
+        info.filePath = os.path.join(cwd, 'NpyTestData.npy')
         
         graph = Graph()
         opBatchIo = OpBatchIo(graph=graph)
@@ -51,7 +51,7 @@ class TestOpBatchIo(object):
         assert dirty == True
         
         outputPath = opBatchIo.OutputDataPath.value
-        assert outputPath == cwd + '/NpyTestData_smoothed.h5/' + internalPath
+        assert outputPath == os.path.join(cwd, 'NpyTestData_smoothed.h5/' + internalPath)
         
         result = opBatchIo.ExportResult.value
         assert result
@@ -60,7 +60,7 @@ class TestOpBatchIo(object):
         assert dirty == False
         
         # Check the file
-        smoothedPath = cwd + '/NpyTestData_smoothed.h5'
+        smoothedPath = os.path.join(cwd, 'NpyTestData_smoothed.h5')
         with h5py.File(smoothedPath, 'r') as f:
             assert internalPath in f
             assert f[internalPath].shape == self.testData.shape
