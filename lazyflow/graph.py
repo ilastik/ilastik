@@ -847,6 +847,10 @@ class Slot(object):
         with Tracer(self.traceLogger):
             assert isinstance( notify, bool )
             assert isinstance( check_changed, bool )
+            
+            # This assertion is here to prevent accidental use of setValue when connect should be used.
+            # If your use case requires passing slots as values, then this assertion can be refined.
+            assert not isinstance(value, Slot), "When using setValue, value cannot be a slot.  Use connect instead."
 
             changed = True
             try:
