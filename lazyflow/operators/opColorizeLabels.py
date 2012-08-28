@@ -35,12 +35,22 @@ class OpColorizeLabels(Operator):
     
     @classmethod
     def choose_color(cls, x, channel):
-        if x == 0:
-            # Label 0 is always black
-            return 0
+        # Alpha
+        if channel == 3:
+            if x == 0:
+                # Label 0 is transparent
+                return 0
+            else:
+                # All nonzero labels are not transparent
+                return 255
+        # RGB
         else:
-            # Use crc32 as a deterministic pseudo-random number generator
-            return (zlib.crc32(str(x)) >> (8*channel)) & 0xFF
+            if x == 0:
+                # Label 0 is always black
+                return 0
+            else:
+                # Use crc32 as a deterministic pseudo-random number generator
+                return (zlib.crc32(str(x)) >> (8*channel)) & 0xFF
 
     def __init__(self, *args, **kwargs):
         super(OpColorizeLabels, self).__init__(*args, **kwargs)
@@ -55,7 +65,7 @@ class OpColorizeLabels(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
 
         applyToChannel = partial(applyToElement, inputTags, 'c')
-        self.Output.meta.shape = applyToChannel(inputShape, 3)
+        self.Output.meta.shape = applyToChannel(inputShape, 4) # RGBA
     
     def execute(self, slot, roi, result):
         fullKey = roi.toSlice()
