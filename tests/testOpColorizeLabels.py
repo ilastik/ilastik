@@ -4,7 +4,8 @@ from lazyflow.graph import Graph
 from lazyflow.operators.opColorizeLabels import OpColorizeLabels
 
 class TestOpColorizeLabels(object):
-    def test(self):
+    
+    def setUp(self):
         # Create a label array that's symmetric about the x-y axes
         data = numpy.indices((10,10), dtype=int).sum(0)
     
@@ -19,11 +20,15 @@ class TestOpColorizeLabels(object):
         graph = Graph()
         op = OpColorizeLabels(graph=graph)
         op.Input.setValue(data)
+        self.op = op
+
+    def testBasic(self):
+        op = self.op
     
         colorizedData = op.Output[...].wait()
         
         # Output is colorized (3 channels)
-        assert colorizedData.shape == (1,10,10,1,3)
+        assert colorizedData.shape == (1,10,10,1,4)
 
         # If we transpose x-y, then the data should still be the same,
         # which implies that identical labels got identical colors
@@ -34,6 +39,30 @@ class TestOpColorizeLabels(object):
         assert ( colorizedData[0,1,1,0,0] != colorizedData[0,2,2,0,0]
               or colorizedData[0,1,1,0,1] != colorizedData[0,2,2,0,1]
               or colorizedData[0,1,1,0,2] != colorizedData[0,2,2,0,2] )
+        
+        # Label 0 is black and transparent by default
+        assert (colorizedData[0,0,0,0,:] == 0).all()
+
+    def testOverrideColors(self):
+        op = self.op
+        
+        overrides = {}
+        overrides[1] = (1,2,3,4)
+        overrides[2] = (5,6,7,8)
+        op.OverrideColors.setValue( overrides )
+        
+        colorizedData = op.Output[...].wait()
+
+        # Check for non-random colors on the labels we want to override        
+        assert (colorizedData[0,1,0,0,:] == overrides[1]).all()
+        assert (colorizedData[0,0,1,0,:] == overrides[1]).all()
+        assert (colorizedData[0,1,1,0,:] == overrides[2]).all()
+        assert (colorizedData[0,2,0,0,:] == overrides[2]).all()
+        assert (colorizedData[0,0,2,0,:] == overrides[2]).all()
+
+        # Other labels should be random
+        assert not (colorizedData[0,0,3,0,:] == overrides[2]).all()
+        
         
 if __name__ == "__main__":
     import sys

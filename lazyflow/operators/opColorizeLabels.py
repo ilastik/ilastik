@@ -1,9 +1,8 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-
+import zlib
 import numpy
 from functools import partial
-import random
-import zlib
+
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 def applyToElement(axistags, tagkey, tup, f):
     """
@@ -29,28 +28,18 @@ class OpColorizeLabels(Operator):
     category = "display adaptor"
     
     Input = InputSlot()
-    Output = OutputSlot()
+    OverrideColors = InputSlot(stype='object', value={0 : (0,0,0,0)} )  # dict of { label : (R,G,B,A) }
+                                                                        # By default, label 0 is black and transparent
 
-    generator = random.Random()
-    
+    Output = OutputSlot() # 4 channels: RGBA
+
     @classmethod
-    def choose_color(cls, x, channel):
-        # Alpha
-        if channel == 3:
-            if x == 0:
-                # Label 0 is transparent
-                return 0
-            else:
-                # All nonzero labels are not transparent
-                return 255
-        # RGB
+    def choose_color(cls, x, channel, overrideColors):
+        if x in overrideColors.keys():
+            return overrideColors[x][channel]
         else:
-            if x == 0:
-                # Label 0 is always black
-                return 0
-            else:
-                # Use crc32 as a deterministic pseudo-random number generator
-                return (zlib.crc32(str(x)) >> (8*channel)) & 0xFF
+            # Use crc32 as a deterministic pseudo-random number generator
+            return (zlib.crc32(str(x)) >> (8*channel)) & 0xFF
 
     def __init__(self, *args, **kwargs):
         super(OpColorizeLabels, self).__init__(*args, **kwargs)
@@ -78,7 +67,7 @@ class OpColorizeLabels(Operator):
         results = ()
         channelSlice = getElement(self.Input.meta.axistags, 'c', fullKey)
         for ch in range(channelSlice.start, channelSlice.stop):
-            results += (self.vec_choose(inputData, ch),)
+            results += (self.vec_choose(inputData, ch, self.OverrideColors.value),)
 
         # Stack the channels together
         output = numpy.concatenate( results, self.channelIndex )
@@ -86,5 +75,10 @@ class OpColorizeLabels(Operator):
         result[...] = output[...]
 
     def propagateDirty(self, inputSlot, roi):
-        assert inputSlot == self.Input, "Unknown input slot"
-        self.Output.setDirty(roi)
+        if inputSlot == self.Input:
+            self.Output.setDirty(roi)
+        elif inputSlot == self.OverrideColors:
+            self.Output.setDirty(slice(None))
+        else:
+            assert False, "Unknown input slot"
+            
