@@ -1,5 +1,5 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpImageReader
+from lazyflow.operators import OpImageReader, OpArrayCache
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import OpStackLoader
@@ -110,8 +110,15 @@ class OpInputDataReader(Operator):
             elif fileExtension in vigra.impex.listExtensions().split():
                 vigraReader = OpImageReader(graph=self.graph)
                 vigraReader.Filename.setValue(filePath)
-                self.internalOperator = vigraReader
-                self.internalOutput = vigraReader.Image
+
+                # Cache the image instead of reading the hard disk for every access.
+                imageCache = OpArrayCache( graph=self.graph )
+                imageCache.Input.connect(vigraReader.Image)
+                imageCache.blockShape.setValue( vigraReader.Image.meta.shape ) # Just one block for the whole image
+                assert imageCache.Output.ready()
+                
+                self.internalOperator = imageCache
+                self.internalOutput = imageCache.Output
 
         assert self.internalOutput is not None, "Can't read " + filePath + " because it has an unrecognized format."
 
