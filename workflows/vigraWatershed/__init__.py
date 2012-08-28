@@ -1,0 +1,2 @@
+from vigraWatershedViewer import VigraWatershedViewerApplet
+
