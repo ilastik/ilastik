@@ -66,6 +66,9 @@ class OpStreamingHdf5Reader(Operator):
         key = roi.toSlice()
         hdf5File = self.Hdf5File.value
         internalPath = self.InternalPath.value
+        
+        # On windows, internalPath may have backslashes, so replace them with forward slashes.
+        internalPath = internalPath.replace('\\', '/')
 
         # Access the data
         result[...] = hdf5File[internalPath][key]

@@ -272,6 +272,7 @@ class OpStackToH5Writer(Operator):
 
         # Create the dataset
         internalPath = self.hdf5Path.value
+        internalPath = internalPath.replace('\\', '/') # Windows fix 
         group = self.hdf5Group.value
         if internalPath in group:
             del group[internalPath]

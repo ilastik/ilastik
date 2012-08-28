@@ -1098,6 +1098,9 @@ class OpH5WriterBigDataset(Operator):
 
         self.f = self.inputs["hdf5File"].value
         hdf5Path = self.inputs["hdf5Path"].value
+        
+        # On windows, there may be backslashes.
+        hdf5Path = hdf5Path.replace('\\', '/')
 
         hdf5GroupName, datasetName = os.path.split(hdf5Path)
         if hdf5GroupName == "":
@@ -1244,6 +1247,8 @@ class OpH5ReaderBigDataset(Operator):
     def setupOutputs(self):
         filename = str(self.inputs["Filenames"].value[0])
         hdf5Path = self.inputs["hdf5Path"].value
+        # On windows, there may be backslashes.
+        hdf5Path = hdf5Path.replace('\\', '/')
 
         f = h5py.File(filename, 'r')
 
@@ -1282,6 +1287,9 @@ class OpH5ReaderBigDataset(Operator):
         filenames = self.inputs["Filenames"].value
 
         hdf5Path = self.inputs["hdf5Path"].value
+        # On windows, there may be backslashes.
+        hdf5Path = hdf5Path.replace('\\', '/')
+
         F=[]
         D=[]
         ChunkList=[]
@@ -1355,6 +1363,8 @@ class OpH5ReaderSmoothedDataset(Operator):
         logger.debug("GUAGA",firstfile)
 
         hdf5Path = self.inputs["hdf5Path"].value
+        # On windows, there may be backslashes.
+        hdf5Path = hdf5Path.replace('\\', '/')
 
         f = h5py.File(firstfile, 'r')
         g = f[hdf5Path]
@@ -1379,6 +1389,8 @@ class OpH5ReaderSmoothedDataset(Operator):
 
     def _setChunksAndDatasets(self):
         hdf5Path = self.inputs["hdf5Path"].value
+        # On windows, there may be backslashes.
+        hdf5Path = hdf5Path.replace('\\', '/')
         for filename in self.inputs["Filenames"].value:
             f=h5py.File(filename, 'r')
             self.F.append(f)
