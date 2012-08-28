@@ -23,30 +23,37 @@ class OpVigraWatershed(Operator):
         self.Output.meta.assignFrom( self.InputImage.meta )
         self.Output.meta.dtype = numpy.uint32
     
-    def execute(self, slot, roi, result):
-        key = roi.toSlice()
+    def getSlicings(self, roi):
+        """
+        Pad the given roi to obtain a new slicing to use for obtaining input data.
+        Return the padded slicing and the slicing that returns the original roi within the padded data.
+        """
+        tags = self.InputImage.meta.axistags
+        pairs = zip([tag.key for tag in tags], zip(roi.start, roi.stop) )
+        slices = [(k, slice(start, stop)) for (k,(start, stop)) in pairs]
+
+        # Compute the watershed over a larger area than requested (padded area)
+        padding = self.PaddingWidth.value
+        paddedSlices = [] # The requested slicing + padding
+        outputSlices = [] # The slicing to get the requested slicing from the padded data
+        for i,(key,s) in enumerate(slices):
+            p = s
+            if key in 'xyz':
+                p_start = max(s.start - padding, 0)
+                p_stop = min(s.stop + padding, self.InputImage.shape[i])
+                p = slice(p_start, p_stop)
+
+            paddedSlices += [p]
+            o = slice( s.start - p.start, s.stop - p.start )
+            outputSlices += [o]
         
+        return paddedSlices, outputSlices
+    
+    def execute(self, slot, roi, result):
         if slot.name == 'Output':
             # Every request is computed on-the-fly.
             # (No caching)
-            tags = self.InputImage.meta.axistags
-            pairs = zip([tag.key for tag in tags], zip(roi.start, roi.stop) )
-            slices = [(k, slice(start, stop)) for (k,(start, stop)) in pairs]
-
-            # Compute the watershed over a larger area than requested (padded area)
-            padding = self.PaddingWidth.value
-            paddedSlices = [] # The requested slicing + padding
-            outputSlices = [] # The slicing to get the requested slicing from the padded data
-            for i,(key,s) in enumerate(slices):
-                p = s
-                if key in 'xyz':
-                    p_start = max(s.start - padding, 0)
-                    p_stop = min(s.stop + padding, self.InputImage.shape[i])
-                    p = slice(p_start, p_stop)
-
-                paddedSlices += [p]
-                o = slice( s.start - p.start, s.stop - p.start )
-                outputSlices += [o] 
+            paddedSlices, outputSlices = self.getSlicings(roi)
             
             # Get input data
             inputRegion = self.InputImage[paddedSlices].wait()
@@ -60,6 +67,7 @@ class OpVigraWatershed(Operator):
             inputRegion.axistags = self.InputImage.meta.axistags
 
             # Reduce to 3-D (keep order of xyz axes)
+            tags = self.InputImage.meta.axistags
             inputRegion = inputRegion.withAxes( *[tag.key for tag in tags if tag.key in 'xyz'] )
             logger.debug( 'inputRegion 3D shape:{}'.format(inputRegion.shape) )
             
@@ -85,26 +93,13 @@ class OpVigraWatershed(Operator):
             result[...] = watershed[outputSlices]
 
     def propagateDirty(self, inputSlot, roi):
-        if inputSlot.name == "InputImage":
-            # TODO: Incorporate padding into dirtyness propagation
-            self.Output.setDirty(roi)
-        if inputSlot.name == "PaddingWidth":
+        if not self.configured():
             self.Output.setDirty(slice(None))
+        elif inputSlot.name == "InputImage":
+            paddedSlicing, outputSlicing = self.getSlicings(roi)
+            self.Output.setDirty(paddedSlicing)
+        elif inputSlot.name == "PaddingWidth":
+            self.Output.setDirty(slice(None))
+        else:
+            assert False, "Unknown input slot."
 
-if __name__ == "__main__":
-    import lazyflow
-    graph = lazyflow.graph.Graph()
-    
-    inputData = numpy.random.random( (1,10,100,100,1) )
-    inputData *= 256
-    inputData = inputData.astype('float32')
-    inputData = inputData.view(vigra.VigraArray)
-    inputData.axistags = vigra.defaultAxistags('txyzc')
-
-    # Does this crash?
-    op = OpVigraWatershed(graph=graph)
-    op.InputImage.setValue( inputData )
-    op.PaddingWidth.setValue(10)
-    
-    result = op.Output[:, 0:5, 6:20, 30:40,...].wait()
-    
