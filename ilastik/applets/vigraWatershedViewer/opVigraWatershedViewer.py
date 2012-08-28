@@ -1,4 +1,4 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiOutputSlot
 
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 
@@ -18,6 +18,8 @@ class OpVigraWatershedViewer(Operator):
     FreezeCache = InputSlot()
     Output = OutputSlot()
     
+    InputChannels = MultiOutputSlot(level=1)
+    
     def __init__(self, *args, **kwargs):
         super(OpVigraWatershedViewer, self).__init__(*args, **kwargs)
         self.opChannelSelector = OpMultiArraySlicer2(graph=self.graph, parent=self)
@@ -31,19 +33,24 @@ class OpVigraWatershedViewer(Operator):
         # Inner and outer block shapes are the same.
         # We're using this cache for the "sliced" property, not the "blocked" property.
         self.opWatershedCache.fixAtCurrent.connect( self.FreezeCache )
-        self.opWatershedCache.innerBlockShape.setValue( ((1,256,256,1,1),(1,256,1,256,1),(1,1,256,256,1)) )
-        self.opWatershedCache.outerBlockShape.setValue( ((1,256,256,1,1),(1,256,1,256,1),(1,1,256,256,1)) )
+        self.opWatershedCache.innerBlockShape.setValue( ((1,256,256,10,1),(1,256,10,256,1),(1,10,256,256,1)) )
+        self.opWatershedCache.outerBlockShape.setValue( ((1,256,256,10,1),(1,256,10,256,1),(1,10,256,256,1)) )
         self.opWatershedCache.Input.connect(self.opWatershed.Output)
         
         self.opColorizer.Input.connect(self.opWatershedCache.Output)
-        self.Output.connect(self.opColorizer.Output)
         self.opWatershed.PaddingWidth.setValue(10)
         
+        self.Output.connect(self.opColorizer.Output)
+        self.InputChannels.connect(self.opChannelSelector.Slices)
+                
     def setupOutputs(self):
         # Can't make this last connection in __init__ because 
         #  opChannelSelector.Slices won't have any data until its input is ready 
         if len(self.opChannelSelector.Slices) > 0:
             self.opWatershed.InputImage.connect(self.opChannelSelector.Slices[0])
+
+    def propagateDirty(self, inputSlot, roi):
+        pass # Output is connected directly to an internal operator
 
 if __name__ == "__main__":
     import lazyflow
@@ -58,6 +65,7 @@ if __name__ == "__main__":
     # Does this crash?
     opViewer = OpVigraWatershedViewer(graph=graph)
     opViewer.InputImage.setValue( inputData )
+    opViewer.FreezeCache.setValue(False)
     result = opViewer.Output[:, 0:5, 6:20, 30:40,...].wait()
     
     

@@ -1,15 +1,16 @@
-from PyQt4.QtGui import *
 from PyQt4 import uic
+from PyQt4.QtCore import pyqtSlot
 
-import random
 import os
+import time
+import threading
 
 from ilastik.applets.layerViewer import LayerViewerGui
 
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.tracer import Tracer
+from lazyflow.tracer import traceLogged
 
 class VigraWatershedViewerGui(LayerViewerGui):
     """
@@ -27,71 +28,73 @@ class VigraWatershedViewerGui(LayerViewerGui):
     ###########################################
     ###########################################
     
+    @traceLogged(traceLogger)
     def __init__(self, mainOperator):
         """
         """
-        with Tracer(traceLogger):
-            super(VigraWatershedViewerGui, self).__init__([mainOperator.InputImage, mainOperator.Output])
-            self.mainOperator = mainOperator
-            self.mainOperator.FreezeCache.setValue(True)
-        
-            self._colortable = []
+        super(VigraWatershedViewerGui, self).__init__([mainOperator.InputChannels, mainOperator.Output])
+        self.mainOperator = mainOperator
+        self.mainOperator.FreezeCache.setValue(True)
     
+        self._colortable = []
+    
+    @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
-        with Tracer(traceLogger):
-            # Load the ui file (find it in our own directory)
-            localDir = os.path.split(__file__)[0]
-            self._drawer = uic.loadUi(localDir+"/drawer.ui")
+        # Load the ui file (find it in our own directory)
+        localDir = os.path.split(__file__)[0]
+        self._drawer = uic.loadUi(localDir+"/drawer.ui")
+        self._drawer.updateWatershedsButton.clicked.connect( self.onUpdateWatershedsButton )
                 
     def getAppletDrawerUi(self):
         return self._drawer
     
+    @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
-        with Tracer(traceLogger):
-            layers = []
-    
-            # Show the watershed data
-            outputImageSlot = self.mainOperator.Output[ currentImageIndex ]
-            if outputImageSlot.ready():
-                outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
-                outputLayer.name = "watershed"
-                outputLayer.visible = True
-                outputLayer.opacity = 0.5
-                layers.append(outputLayer)
-            
-            # Show the raw input data
-            inputImageSlot = self.mainOperator.InputImage[ currentImageIndex ]
-            if inputImageSlot.ready():
-                inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
-                inputLayer.name = "Raw Input"
+        layers = []
+
+        # Show the watershed data
+        outputImageSlot = self.mainOperator.Output[ currentImageIndex ]
+        if outputImageSlot.ready():
+            outputLayer = self.createStandardLayerFromSlot( outputImageSlot, lastChannelIsAlpha=True )
+            outputLayer.name = "Watershed (channel 0)"
+            outputLayer.visible = True
+            outputLayer.opacity = 0.5
+            layers.append(outputLayer)
+        
+        # Show the raw input data
+        inputImageSlot = self.mainOperator.InputChannels[ currentImageIndex ]
+        if inputImageSlot.ready():
+            for channel, slot in enumerate(inputImageSlot):
+                inputLayer = self.createStandardLayerFromSlot( slot )
+                inputLayer.name = "Raw Input (Ch.{})".format(channel)
                 inputLayer.visible = True
                 inputLayer.opacity = 1.0
                 layers.append(inputLayer)
-    
-            return layers
 
-    def getColortable(self, minLength):
-        with Tracer(traceLogger):
-            def randChannel():
-                return int(random.random() * 256)
-            while len(self._colortable) < minLength:
-                self._colortable += [ QColor(randChannel(), randChannel(), randChannel()).rgba() ]
-            return self._colortable
+        return layers
 
-    def showEvent(self, e):
-        # Update while we're visible
-        self.mainOperator.FreezeCache.setValue(False)
+    @pyqtSlot()
+    @traceLogged(traceLogger)
+    def onUpdateWatershedsButton(self):        
+        @traceLogged(traceLogger)
+        def updateThread():
+            """
+            Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
+            """
+            self.mainOperator.FreezeCache.setValue(False)
 
-    def hideEvent(self, e):
-        # Don't update while we're not visible
-        self.mainOperator.FreezeCache.setValue(True)
+            # Force the cache to update.
+            self.mainOperator.InputImage[self.imageIndex].setDirty( slice(None) )
+            
+            # Wait for the image to be rendered into all three image views
+            time.sleep(1)
+            for imgView in self.editor.imageViews:
+                imgView.scene().joinRendering()
+            self.mainOperator.FreezeCache.setValue(True)
 
-
-
-
-
-
-
+        if self.imageIndex >= 0:
+            th = threading.Thread(target=updateThread)
+            th.start()
 
 
 

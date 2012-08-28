@@ -7,12 +7,21 @@
     <x>0</x>
     <y>0</y>
     <width>264</width>
-    <height>16</height>
+    <height>49</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QPushButton" name="updateWatershedsButton">
+     <property name="text">
+      <string>Update Watersheds</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections/>
