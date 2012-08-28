@@ -180,7 +180,7 @@ class LayerViewerGui(QMainWindow):
         assert False
 
     @traceLogged(traceLogger)
-    def createStandardLayerFromSlot(self, slot):
+    def createStandardLayerFromSlot(self, slot, lastChannelIsAlpha=False):
         """
         Generate a volumina layer using the given slot.
         Choose between grayscale or RGB depending on the number of channels.
@@ -190,32 +190,42 @@ class LayerViewerGui(QMainWindow):
         channelAxisIndex = slot.meta.axistags.index('c')
         numChannels = shape[channelAxisIndex]
         
-        assert numChannels <= 3, "Can't display a standard layer with more than three channels."
+        if lastChannelIsAlpha:
+            assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha)."
+        else:
+            assert numChannels <= 3, "Can't display a standard layer with more than three channels (no alpha)."
         
         if numChannels == 1:
+            assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
             source = LazyflowSource(slot)
-            layer = GrayscaleLayer(source)
+            return GrayscaleLayer(source)
 
-        if numChannels >= 2:
-            redProvider = OpSingleChannelSelector(graph=slot.graph)
-            redProvider.Input.connect(slot)
-            redProvider.Index.setValue( 0 )
-            redSource = LazyflowSource( redProvider.Output )
+        assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha)
+        redProvider = OpSingleChannelSelector(graph=slot.graph)
+        redProvider.Input.connect(slot)
+        redProvider.Index.setValue( 0 )
+        redSource = LazyflowSource( redProvider.Output )
 
-            greenProvider = OpSingleChannelSelector(graph=slot.graph)
-            greenProvider.Input.connect(slot)
-            greenProvider.Index.setValue( 1 )
-            greenSource = LazyflowSource( greenProvider.Output )
+        greenProvider = OpSingleChannelSelector(graph=slot.graph)
+        greenProvider.Input.connect(slot)
+        greenProvider.Index.setValue( 1 )
+        greenSource = LazyflowSource( greenProvider.Output )
                         
-            if numChannels == 3:
-                blueProvider = OpSingleChannelSelector(graph=slot.graph)
-                blueProvider.Input.connect(slot)
-                blueProvider.Index.setValue( 2 )
-                blueSource = LazyflowSource( blueProvider.Output )
-            else:
-                blueSource = None
+        blueSource = None
+        if numChannels > 3 or (numChannels == 3 and not lastChannelIsAlpha):
+            blueProvider = OpSingleChannelSelector(graph=slot.graph)
+            blueProvider.Input.connect(slot)
+            blueProvider.Index.setValue( 2 )
+            blueSource = LazyflowSource( blueProvider.Output )
 
-            layer = RGBALayer(red = redSource, green = greenSource, blue = blueSource)
+        alphaSource = None
+        if lastChannelIsAlpha:
+            alphaProvider = OpSingleChannelSelector(graph=slot.graph)
+            alphaProvider.Input.connect(slot)
+            alphaProvider.Index.setValue( numChannels-1 )
+            alphaSource = LazyflowSource( alphaProvider.Output )
+
+        layer = RGBALayer(red = redSource, green = greenSource, blue = blueSource, alpha=alphaSource)
 
         return layer
 
