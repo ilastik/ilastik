@@ -3,6 +3,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 import numpy
 from functools import partial
 import random
+import zlib
 
 def applyToElement(axistags, tagkey, tup, f):
     """
@@ -34,13 +35,12 @@ class OpColorizeLabels(Operator):
     
     @classmethod
     def choose_color(cls, x, channel):
-        # Seed a random number generator with the value.
-        # This will produce a deterministic sequence of random-looking colors
-        
-        # TODO: This assumes that seeding the generator is cheap.  Is that true?
-        # If not, replace with a faster hash algorithm of some sort (e.g. something like a prbs or pyfasthash)
-        cls.generator.seed(x)
-        return (cls.generator.randint(0, 1 << 24) >> (8*channel)) & 0xFF
+        if x == 0:
+            # Label 0 is always black
+            return 0
+        else:
+            # Use crc32 as a deterministic pseudo-random number generator
+            return (zlib.crc32(str(x)) >> (8*channel)) & 0xFF
 
     def __init__(self, *args, **kwargs):
         super(OpColorizeLabels, self).__init__(*args, **kwargs)
