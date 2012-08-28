@@ -54,7 +54,7 @@ class OpColorizeLabels(Operator):
                 
         self.Output.meta.assignFrom(self.Input.meta)
 
-        applyToChannel = partial(applyToElement, inputTags, 'c')        
+        applyToChannel = partial(applyToElement, inputTags, 'c')
         self.Output.meta.shape = applyToChannel(inputShape, 3)
     
     def execute(self, slot, roi, result):
@@ -63,42 +63,18 @@ class OpColorizeLabels(Operator):
         # Input has only one channel
         thinKey = applyToElement(self.Input.meta.axistags, 'c', fullKey, slice(0,1))
         
-        input = self.Input[thinKey].wait()
+        inputData = self.Input[thinKey].wait()
 
         results = ()
         channelSlice = getElement(self.Input.meta.axistags, 'c', fullKey)
         for ch in range(channelSlice.start, channelSlice.stop):
-            results += (self.vec_choose(input, ch),)
+            results += (self.vec_choose(inputData, ch),)
 
         # Stack the channels together
         output = numpy.concatenate( results, self.channelIndex )
         
         result[...] = output[...]
 
-if __name__ == "__main__":
-    from lazyflow.graph import Graph
-    import numpy
-    import vigra
-    
-    # Create a label array that's symmetric about the x-y axes
-    data = numpy.indices((10,10), dtype=int).sum(0)
-
-    assert (data == data.transpose()).all()
-
-    data = data.view(vigra.VigraArray)
-    data.axistags = vigra.defaultAxistags('xy')
-    data = data.withAxes(*'txyzc')
-
-    assert data.shape == (1,10,10,1,1)
-
-    graph = Graph()
-    op = OpColorizeLabels(graph=graph)
-    op.Input.setValue(data)
-
-    # If we transpose x-y, then the data should still be the same,
-    # which implies that identical labels got identical colors
-    # (i.e. we chose deterministic colors)
-    colorizedData = op.Output[...].wait()
-    assert colorizedData.shape == (1,10,10,1,3)
-    assert (colorizedData == colorizedData.transpose(0,2,1,3,4)).all()
-    
+    def propagateDirty(self, inputSlot, roi):
+        assert inputSlot == self.Input, "Unknown input slot"
+        self.Output.setDirty(roi)
