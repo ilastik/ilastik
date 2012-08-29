@@ -13,6 +13,8 @@ from ilastik.utility import bind
 
 from volumina.adaptors import Op5ifyer
 
+from volumina.clickReportingInterpreter import ClickReportingInterpreter
+
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -420,6 +422,12 @@ class LayerViewerGui(QMainWindow):
         """
         self.editor = VolumeEditor(self.layerstack)
 
+        # Replace the editor's navigation interpreter with one that has extra functionality
+        self.clickReporter = ClickReportingInterpreter( self.editor.navInterpret, self.editor.posModel )
+        self.editor.setNavigationInterpreter( self.clickReporter )
+        self.clickReporter.rightClickReceived.connect( self._handleEditorRightClick )
+        self.clickReporter.leftClickReceived.connect( self._handleEditorLeftClick )
+
         self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
         self.editor.setInteractionMode( 'navigation' )
         self.volumeEditorWidget.init(self.editor)
@@ -448,12 +456,21 @@ class LayerViewerGui(QMainWindow):
         """
         self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
 
+    def _handleEditorRightClick(self, position5d):
+        # TODO: Convert position ordering according to data axistags
+        self.handleEditorRightClick(self.imageIndex, position5d)
 
+    def _handleEditorLeftClick(self, position5d):
+        # TODO: Convert position ordering according to data axistags
+        self.handleEditorLeftClick(self.imageIndex, position5d)
 
+    def handleEditorRightClick(self, currentImageIndex, position5d):
+        # Override me
+        pass
 
-
-
-
+    def handleEditorLeftClick(self, currentImageIndex, position5d):
+        # Override me
+        pass
 
 
 
