@@ -456,13 +456,32 @@ class LayerViewerGui(QMainWindow):
         """
         self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
 
+    def _convertPositionToDataSpace(self, voluminaPosition):
+        taggedPosition = {k:p for k,p in zip('txyzc', voluminaPosition)}
+        
+        # Find the first lazyflow layer in the stack
+        # We assume that all lazyflow layers have the same axistags
+        dataTags = None
+        for layer in self.layerstack:
+            for datasource in layer.datasources:
+                if isinstance(datasource, LazyflowSource):
+                    dataTags = datasource.dataSlot.meta.axistags
+                    break
+
+        assert dataTags is not None, "Could not find a lazyflow data source in any layer."
+        position = ()
+        for tag in dataTags:
+            position += (taggedPosition[tag.key],)
+            
+        return position
+    
     def _handleEditorRightClick(self, position5d):
-        # TODO: Convert position ordering according to data axistags
-        self.handleEditorRightClick(self.imageIndex, position5d)
+        dataPosition = self._convertPositionToDataSpace(position5d)
+        self.handleEditorRightClick(self.imageIndex, dataPosition)
 
     def _handleEditorLeftClick(self, position5d):
-        # TODO: Convert position ordering according to data axistags
-        self.handleEditorLeftClick(self.imageIndex, position5d)
+        dataPosition = self._convertPositionToDataSpace(position5d)
+        self.handleEditorLeftClick(self.imageIndex, dataPosition)
 
     def handleEditorRightClick(self, currentImageIndex, position5d):
         # Override me
