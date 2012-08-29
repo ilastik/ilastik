@@ -40,7 +40,7 @@ class OpColorizeLabels(Operator):
         self.overrideColors = {}        
 
         # Pre-generate the table of data
-        self.colortable = self.generateColortable(2**16)
+        self.colortable = self.generateColortable(2**17)
         
     def setupOutputs(self):
         inputTags = self.Input.meta.axistags
@@ -78,14 +78,14 @@ class OpColorizeLabels(Operator):
         channellessInput = inputData[dropChannelKey]
 
         # Advanced indexing with colortable applies the relabeling from labels to colors.
-        # If we get an error here, we may need to expand the colortable (currently supports only 2**16 labels.)
+        # If we get an error here, we may need to expand the colortable (currently supports only 2**17 labels.)
         channelSlice = getElement(self.Input.meta.axistags, 'c', fullKey)
         result[resultKey] = self.colortable[:, channelSlice][channellessInput]
         return result
 
     def generateColortable(self, size):
         table = numpy.zeros((size,4), dtype=numpy.uint8)
-        for index in range( len(table) ):
+        for index in range( size ):
             table[index] = self.getRandomColor(index)
         return table
 
