@@ -238,7 +238,7 @@ class OpPredictRandomForest(Operator):
         RF=self.inputs["Classifier"].value
         if RF is None:
             # Training operator may return 'None' if there was no data to train with
-            result[...] = numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.uint8)[...]
+            result[...] = numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.float32)[...]
             return
         traceLogger.debug("OpPredictRandomForest: Got classifier")        
         #assert RF.labelCount() == nlabels, "ERROR: OpPredictRandomForest, labelCount differs from true labelCount! %r vs. %r" % (RF.labelCount(), nlabels)
