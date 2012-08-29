@@ -14,7 +14,8 @@ def debug_with_new(shell, workflow):
     from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
     info = DatasetInfo()
     #info.filePath = '/magnetic/gigacube.h5'
-    info.filePath = '/magnetic/synapse_small.npy'
+    #info.filePath = '/magnetic/synapse_small.npy'
+    info.filePath = '/magnetic/synapse_small.npy_results.h5'
     #info.filePath = '/magnetic/singleslice.h5'
     opDataSelection = workflow.dataSelectionApplet.topLevelOperator
     opDataSelection.Dataset.resize(1)
