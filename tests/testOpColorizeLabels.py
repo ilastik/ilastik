@@ -25,10 +25,11 @@ class TestOpColorizeLabels(object):
     def testBasic(self):
         op = self.op
     
-        colorizedData = op.Output[:,5:,5:,:,:].wait()
+        # Don't get RGBA, just get GBA.
+        colorizedData = op.Output[:,5:,5:,:,1:4].wait()
         
         # Output is colorized (3 channels)
-        assert colorizedData.shape == (1,5,5,1,4)
+        assert colorizedData.shape == (1,5,5,1,3)
 
         # If we transpose x-y, then the data should still be the same,
         # which implies that identical labels got identical colors

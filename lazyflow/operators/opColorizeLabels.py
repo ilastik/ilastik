@@ -33,9 +33,14 @@ class OpColorizeLabels(Operator):
                                                                         # By default, label 0 is black and transparent
 
     Output = OutputSlot() # 4 channels: RGBA
-
+    
     def __init__(self, *args, **kwargs):
         super(OpColorizeLabels, self).__init__(*args, **kwargs)
+
+        self.overrideColors = {}        
+
+        # Pre-generate the table of data
+        self.colortable = self.generateColortable(2**16)
         
     def setupOutputs(self):
         inputTags = self.Input.meta.axistags
@@ -49,33 +54,48 @@ class OpColorizeLabels(Operator):
         self.Output.meta.shape = applyToChannel(inputShape, 4) # RGBA
         self.Output.meta.dtype = numpy.uint8
 
-        self.overrideColors = self.OverrideColors.value
+        newOverrideColors = self.OverrideColors.value
+        if newOverrideColors != self.overrideColors:
+            # Add new overrides
+            for label, color in newOverrideColors.items():
+                if label not in self.overrideColors:
+                    self.colortable[label] = color
+            # Replace removed overrides with their original random values
+            for label, color in self.overrideColors.items():
+                if label not in newOverrideColors:
+                    self.colortable[label] = self.getRandomColor(label)
+
+        self.overrideColors = newOverrideColors
     
     def execute(self, slot, roi, result):
         fullKey = roi.toSlice()
-        resultKey = copy.copy(roi).setStartToZero()
+        resultKey = copy.copy(roi).setStartToZero().toSlice()
         
         # Input has only one channel
         thinKey = applyToElement(self.Input.meta.axistags, 'c', fullKey, slice(0,1))
         inputData = self.Input[thinKey].wait()
-        flatIn = inputData.flat
+        dropChannelKey = applyToElement(self.Input.meta.axistags, 'c', resultKey, 0)
+        channellessInput = inputData[dropChannelKey]
 
+        # Advanced indexing with colortable applies the relabeling from labels to colors.
+        # If we get an error here, we may need to expand the colortable (currently supports only 2**16 labels.)
         channelSlice = getElement(self.Input.meta.axistags, 'c', fullKey)
-        for channel in range(channelSlice.start, channelSlice.stop):
-            resultChannel = channel - channelSlice.start
-            resultChannelKey = applyToElement(self.Input.meta.axistags, 'c', resultKey.toSlice(), slice(resultChannel, resultChannel+1))
-            flatOut = result[resultChannelKey].flat
-            for i in xrange( len(flatIn) ):
-                label = flatIn[i]
-                if label in self.overrideColors.keys():
-                    flatOut[i] = self.overrideColors[label][channel]
-                else:
-                    if flatOut[i] == 3: # Alpha
-                        flatOut[i] = 255
-                    else:
-                        # Use crc32 as a deterministic pseudo-random number generator
-                        flatOut[i] = (zlib.crc32(str(label)) >> (8*channel)) & 0xFF
+        result[resultKey] = self.colortable[:, channelSlice][channellessInput]
         return result
+
+    def generateColortable(self, size):
+        table = numpy.zeros((size,4), dtype=numpy.uint8)
+        for index in range( len(table) ):
+            table[index] = self.getRandomColor(index)
+        return table
+
+    def getRandomColor(self, label):
+        color = numpy.zeros(4, dtype=numpy.uint8)
+        # RGB
+        for channel in range(3):
+            color[channel] = (zlib.crc32(str(label)) >> (8*channel)) & 0xFF
+        color[3] = 255 # Alpha            
+        return color
 
     def propagateDirty(self, inputSlot, roi):
         if inputSlot == self.Input:
