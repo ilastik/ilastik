@@ -36,7 +36,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
     def __init__(self, mainOperator):
         """
         """
-        super(VigraWatershedViewerGui, self).__init__([mainOperator.InputChannels, mainOperator.Output])
+        super(VigraWatershedViewerGui, self).__init__([mainOperator.InputChannels, mainOperator.ColoredPixels])
         self.mainOperator = mainOperator
         self.mainOperator.FreezeCache.setValue(True)
         self.mainOperator.OverrideLabels.setValue( { 0: (0,0,0,0) } )
@@ -48,7 +48,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
         For left clicks, we highlight the clicked label.
         """
         logger.debug( "LEFT CLICK: {}".format(position5d) )
-        labelSlot = self.mainOperator.Output[currentImageIndex]
+        labelSlot = self.mainOperator.WatershedLabels[currentImageIndex]
         if labelSlot.ready():
             labelData = labelSlot[ index2slice(position5d) ].wait()
             label = labelData.squeeze()[()]
@@ -67,7 +67,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
         For right clicks, we un-highlight the clicked label.
         """
         logger.debug( "RIGHT CLICK: {}".format(position5d) )
-        labelSlot = self.mainOperator.Output[currentImageIndex]
+        labelSlot = self.mainOperator.WatershedLabels[currentImageIndex]
         if labelSlot.ready():
             labelData = labelSlot[ index2slice(position5d) ].wait()
             label = labelData.squeeze()[()]
@@ -94,7 +94,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
         layers = []
 
         # Show the watershed data
-        outputImageSlot = self.mainOperator.Output[ currentImageIndex ]
+        outputImageSlot = self.mainOperator.ColoredPixels[ currentImageIndex ]
         if outputImageSlot.ready():
             outputLayer = self.createStandardLayerFromSlot( outputImageSlot, lastChannelIsAlpha=True )
             outputLayer.name = "Watershed (channel 0)"

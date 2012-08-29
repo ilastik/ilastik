@@ -17,7 +17,8 @@ class OpVigraWatershedViewer(Operator):
     InputImage = InputSlot()
     FreezeCache = InputSlot()
     OverrideLabels = InputSlot(stype='object')
-    Output = OutputSlot()
+    ColoredPixels = OutputSlot()
+    WatershedLabels = OutputSlot()
     
     InputChannels = MultiOutputSlot(level=1)
     
@@ -42,9 +43,10 @@ class OpVigraWatershedViewer(Operator):
         self.opColorizer.OverrideColors.connect(self.OverrideLabels)
         self.opWatershed.PaddingWidth.setValue(10)
         
-        self.Output.connect(self.opColorizer.Output)
+        self.ColoredPixels.connect(self.opColorizer.Output)
         self.InputChannels.connect(self.opChannelSelector.Slices)
-                
+        self.WatershedLabels.connect(self.opWatershedCache.Output)                
+
     def setupOutputs(self):
         # Can't make this last connection in __init__ because 
         #  opChannelSelector.Slices won't have any data until its input is ready 
