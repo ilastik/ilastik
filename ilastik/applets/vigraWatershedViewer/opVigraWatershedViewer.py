@@ -17,6 +17,8 @@ class OpVigraWatershedViewer(Operator):
     InputImage = InputSlot()
     FreezeCache = InputSlot()
     OverrideLabels = InputSlot(stype='object')
+    WatershedPadding = InputSlot()
+    
     ColoredPixels = OutputSlot()
     WatershedLabels = OutputSlot()
     
@@ -35,13 +37,13 @@ class OpVigraWatershedViewer(Operator):
         # Inner and outer block shapes are the same.
         # We're using this cache for the "sliced" property, not the "blocked" property.
         self.opWatershedCache.fixAtCurrent.connect( self.FreezeCache )
-        self.opWatershedCache.innerBlockShape.setValue( ((1,256,256,10,1),(1,256,10,256,1),(1,10,256,256,1)) )
-        self.opWatershedCache.outerBlockShape.setValue( ((1,256,256,10,1),(1,256,10,256,1),(1,10,256,256,1)) )
+        self.opWatershedCache.innerBlockShape.setValue( ((1,256,256,20,1),(1,256,20,256,1),(1,20,256,256,1)) )
+        self.opWatershedCache.outerBlockShape.setValue( ((1,256,256,20,1),(1,256,20,256,1),(1,20,256,256,1)) )
         self.opWatershedCache.Input.connect(self.opWatershed.Output)
         
         self.opColorizer.Input.connect(self.opWatershedCache.Output)
         self.opColorizer.OverrideColors.connect(self.OverrideLabels)
-        self.opWatershed.PaddingWidth.setValue(10)
+        self.opWatershed.PaddingWidth.connect(self.WatershedPadding)
         
         self.ColoredPixels.connect(self.opColorizer.Output)
         self.InputChannels.connect(self.opChannelSelector.Slices)

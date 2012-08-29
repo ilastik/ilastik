@@ -40,44 +40,10 @@ class VigraWatershedViewerGui(LayerViewerGui):
         self.mainOperator = mainOperator
         self.mainOperator.FreezeCache.setValue(True)
         self.mainOperator.OverrideLabels.setValue( { 0: (0,0,0,0) } )
-
-    def handleEditorLeftClick(self, currentImageIndex, position5d):
-        """
-        This is an override from the base class.  Called when the user clicks in the volume.
         
-        For left clicks, we highlight the clicked label.
-        """
-        logger.debug( "LEFT CLICK: {}".format(position5d) )
-        labelSlot = self.mainOperator.WatershedLabels[currentImageIndex]
-        if labelSlot.ready():
-            labelData = labelSlot[ index2slice(position5d) ].wait()
-            label = labelData.squeeze()[()]
-            logger.debug( "Label={}".format(label) )
-            if label != 0:
-                overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
-                overrides = copy.copy(overrideSlot.value)
-                overrides[label] = (255, 255, 255, 255)
-                logger.debug( "Overrides={}".format(overrides) )
-                overrideSlot.setValue(overrides)
-            
-    def handleEditorRightClick(self, currentImageIndex, position5d):
-        """
-        This is an override from the base class.  Called when the user clicks in the volume.
-        
-        For right clicks, we un-highlight the clicked label.
-        """
-        logger.debug( "RIGHT CLICK: {}".format(position5d) )
-        labelSlot = self.mainOperator.WatershedLabels[currentImageIndex]
-        if labelSlot.ready():
-            labelData = labelSlot[ index2slice(position5d) ].wait()
-            label = labelData.squeeze()[()]
-            logger.debug( "Label={}".format(label) )
-            overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
-            overrides = copy.copy(overrideSlot.value)
-            if label != 0 and label in overrides:
-                del overrides[label]
-                logger.debug( "Overrides={}".format(overrides) )
-                overrideSlot.setValue(overrides)
+        self.mainOperator.WatershedPadding.notifyDirty( self.updatePaddingGui )
+        self.mainOperator.WatershedPadding.setValue(10)
+        self.updatePaddingGui(self.mainOperator.WatershedPadding)
     
     @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
@@ -85,6 +51,8 @@ class VigraWatershedViewerGui(LayerViewerGui):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         self._drawer.updateWatershedsButton.clicked.connect( self.onUpdateWatershedsButton )
+        self._drawer.paddingSlider.valueChanged.connect( self.onPaddingChanged )
+        self._drawer.paddingSpinBox.valueChanged.connect( self.onPaddingChanged )
                 
     def getAppletDrawerUi(self):
         return self._drawer
@@ -128,7 +96,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
             self.mainOperator.InputImage[self.imageIndex].setDirty( slice(None) )
             
             # Wait for the image to be rendered into all three image views
-            time.sleep(30)
+            time.sleep(2)
             for imgView in self.editor.imageViews:
                 imgView.scene().joinRendering()
             self.mainOperator.FreezeCache.setValue(True)
@@ -137,6 +105,50 @@ class VigraWatershedViewerGui(LayerViewerGui):
             th = threading.Thread(target=updateThread)
             th.start()
 
-
+    def handleEditorLeftClick(self, currentImageIndex, position5d):
+        """
+        This is an override from the base class.  Called when the user clicks in the volume.
+        
+        For left clicks, we highlight the clicked label.
+        """
+        logger.debug( "LEFT CLICK: {}".format(position5d) )
+        labelSlot = self.mainOperator.WatershedLabels[currentImageIndex]
+        if labelSlot.ready():
+            labelData = labelSlot[ index2slice(position5d) ].wait()
+            label = labelData.squeeze()[()]
+            logger.debug( "Label={}".format(label) )
+            if label != 0:
+                overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
+                overrides = copy.copy(overrideSlot.value)
+                overrides[label] = (255, 255, 255, 255)
+                logger.debug( "Overrides={}".format(overrides) )
+                overrideSlot.setValue(overrides)
+            
+    def handleEditorRightClick(self, currentImageIndex, position5d):
+        """
+        This is an override from the base class.  Called when the user clicks in the volume.
+        
+        For right clicks, we un-highlight the clicked label.
+        """
+        logger.debug( "RIGHT CLICK: {}".format(position5d) )
+        labelSlot = self.mainOperator.WatershedLabels[currentImageIndex]
+        if labelSlot.ready():
+            labelData = labelSlot[ index2slice(position5d) ].wait()
+            label = labelData.squeeze()[()]
+            logger.debug( "Label={}".format(label) )
+            overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
+            overrides = copy.copy(overrideSlot.value)
+            if label != 0 and label in overrides:
+                del overrides[label]
+                logger.debug( "Overrides={}".format(overrides) )
+                overrideSlot.setValue(overrides)
+    
+    def onPaddingChanged(self, value):
+        self.mainOperator.WatershedPadding.setValue(value)
+    
+    def updatePaddingGui(self, slot, *args):
+        value = slot.value
+        self._drawer.paddingSlider.setValue( value )
+        self._drawer.paddingSpinBox.setValue( value )
 
 
