@@ -47,6 +47,19 @@ class TestOpMultiArraySlicer2(object):
         assert dirtyRois[2].start == [4,3,2,0]
         assert dirtyRois[2].stop == [6,5,4,1]
 
+        # Reset
+        dirtyRois = {}
+        opSlicer.AxisFlag.setValue('x')
+        print len(dirtyRois)
+        assert len(dirtyRois) == 3
+        assert dirtyRois[0].start == [0,0,0,0]
+        assert dirtyRois[0].stop == [10,10,10,3]
+        assert dirtyRois[1].start == [0,0,0,0]
+        assert dirtyRois[1].stop == [10,10,10,3]
+        assert dirtyRois[2].start == [0,0,0,0]
+        assert dirtyRois[2].stop == [10,10,10,3]
+        
+
     def testReshape(self):
         opProvider = self.opProvider        
         opSlicer = self.opSlicer

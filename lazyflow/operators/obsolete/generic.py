@@ -210,7 +210,7 @@ class OpMultiArraySlicer2(Operator):
     def propagateDirty(self, inputSlot, roi):
         if inputSlot == self.AxisFlag:
             # AxisFlag changed.  Everything is dirty
-            for i, slot in self.Slices:
+            for i, slot in enumerate(self.Slices):
                 slot.setDirty(slice(None))
         elif inputSlot == self.Input:
             # Mark each of the intersected slices as dirty
