@@ -104,7 +104,8 @@ class PixelClassificationGui(LabelingGui):
                 predictsrc = LazyflowSource(predictionSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
                                                     tintColor=ref_label.color,
-                                                    normalize = (0.0, 1.0 ) )
+                                                    range=(0.0, 1.0),
+                                                    normalize=(0.0, 1.0) )
                 predictLayer.opacity = 0.25
                 predictLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
                 predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
