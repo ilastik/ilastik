@@ -3,9 +3,13 @@ from PyQt4.QtCore import pyqtSlot
 
 import os
 import time
+import copy
 import threading
+from functools import partial
 
 from ilastik.applets.layerViewer import LayerViewerGui
+
+from volumina.slicingtools import index2slice
 
 import logging
 logger = logging.getLogger(__name__)
@@ -35,8 +39,45 @@ class VigraWatershedViewerGui(LayerViewerGui):
         super(VigraWatershedViewerGui, self).__init__([mainOperator.InputChannels, mainOperator.Output])
         self.mainOperator = mainOperator
         self.mainOperator.FreezeCache.setValue(True)
-    
-        self._colortable = []
+        self.mainOperator.OverrideLabels.setValue( { 0: (0,0,0,0) } )
+
+    def handleEditorLeftClick(self, currentImageIndex, position5d):
+        """
+        This is an override from the base class.  Called when the user clicks in the volume.
+        
+        For left clicks, we highlight the clicked label.
+        """
+        logger.debug( "LEFT CLICK: {}".format(position5d) )
+        labelSlot = self.mainOperator.Output[currentImageIndex]
+        if labelSlot.ready():
+            labelData = labelSlot[ index2slice(position5d) ].wait()
+            label = labelData.squeeze()[()]
+            logger.debug( "Label={}".format(label) )
+            if label != 0:
+                overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
+                overrides = copy.copy(overrideSlot.value)
+                overrides[label] = (255, 255, 255, 255)
+                logger.debug( "Overrides={}".format(overrides) )
+                overrideSlot.setValue(overrides)
+            
+    def handleEditorRightClick(self, currentImageIndex, position5d):
+        """
+        This is an override from the base class.  Called when the user clicks in the volume.
+        
+        For right clicks, we un-highlight the clicked label.
+        """
+        logger.debug( "RIGHT CLICK: {}".format(position5d) )
+        labelSlot = self.mainOperator.Output[currentImageIndex]
+        if labelSlot.ready():
+            labelData = labelSlot[ index2slice(position5d) ].wait()
+            label = labelData.squeeze()[()]
+            logger.debug( "Label={}".format(label) )
+            overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
+            overrides = copy.copy(overrideSlot.value)
+            if label != 0 and label in overrides:
+                del overrides[label]
+                logger.debug( "Overrides={}".format(overrides) )
+                overrideSlot.setValue(overrides)
     
     @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
@@ -87,7 +128,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
             self.mainOperator.InputImage[self.imageIndex].setDirty( slice(None) )
             
             # Wait for the image to be rendered into all three image views
-            time.sleep(1)
+            time.sleep(30)
             for imgView in self.editor.imageViews:
                 imgView.scene().joinRendering()
             self.mainOperator.FreezeCache.setValue(True)

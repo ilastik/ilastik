@@ -16,6 +16,7 @@ class OpVigraWatershedViewer(Operator):
     
     InputImage = InputSlot()
     FreezeCache = InputSlot()
+    OverrideLabels = InputSlot(stype='object')
     Output = OutputSlot()
     
     InputChannels = MultiOutputSlot(level=1)
@@ -38,6 +39,7 @@ class OpVigraWatershedViewer(Operator):
         self.opWatershedCache.Input.connect(self.opWatershed.Output)
         
         self.opColorizer.Input.connect(self.opWatershedCache.Output)
+        self.opColorizer.OverrideColors.connect(self.OverrideLabels)
         self.opWatershed.PaddingWidth.setValue(10)
         
         self.Output.connect(self.opColorizer.Output)
