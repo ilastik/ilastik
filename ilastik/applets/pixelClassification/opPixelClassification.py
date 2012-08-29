@@ -23,7 +23,6 @@ class OpPixelClassification( Operator ):
     FreezePredictions = InputSlot(stype='bool')
 
     PredictionProbabilities = MultiOutputSlot() # Classification predictions
-    CachedPredictionProbabilities = MultiOutputSlot() # Classification predictions (via a cache)
 
     PredictionProbabilityChannels = MultiOutputSlot(level=2) # Classification predictions, enumerated by channel
     
@@ -31,6 +30,8 @@ class OpPixelClassification( Operator ):
     LabelImages = MultiOutputSlot() # Labels from the user
     NonzeroLabelBlocks = MultiOutputSlot() # A list if slices that contain non-zero label values
     Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
+
+    CachedPredictionProbabilities = MultiOutputSlot() # Classification predictions (via a cache)
 
     def __init__( self, graph ):
         """
@@ -47,6 +48,8 @@ class OpPixelClassification( Operator ):
         self.predict = OperatorWrapper( OpPredictRandomForest( graph=self.graph ) )
         self.prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
         self.prediction_cache.Input.resize(0)
+        self.prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
+        self.prediction_cache_gui.Input.resize(0)
 
         # NOT wrapped
         self.opMaxLabel = OpMaxValue(graph=self.graph)
@@ -83,16 +86,21 @@ class OpPixelClassification( Operator ):
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
         ##
-        # prediction
+        # 
         ##
         self.predict.inputs['Classifier'].connect(self.classifier_cache.outputs['Output']) 
         self.predict.inputs['Image'].connect(self.FeatureImages)
         self.predict.inputs['LabelsCount'].connect(self.opMaxLabel.Output)
         
-        # 
+        # prediction cache for downstream operators (if they want it)
         self.prediction_cache.name = "PredictionCache"
-        self.prediction_cache.inputs["fixAtCurrent"].connect( self.FreezePredictions )
+        self.prediction_cache.inputs["fixAtCurrent"].setValue(False)
         self.prediction_cache.inputs["Input"].connect(self.predict.outputs["PMaps"])
+
+        # Prediction cache for the GUI
+        self.prediction_cache_gui.name = "PredictionCache"
+        self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
+        self.prediction_cache_gui.inputs["Input"].connect(self.predict.outputs["PMaps"])
 
         # Connect our internal outputs to our external outputs
         self.LabelImages.connect(self.opLabelArray.Output)
@@ -116,7 +124,7 @@ class OpPixelClassification( Operator ):
         
         # Also provide each prediction channel as a separate layer (for the GUI)
         self.opPredictionSlicer = OperatorWrapper( OpMultiArraySlicer2(parent=self) )
-        self.opPredictionSlicer.Input.connect( self.prediction_cache.Output )
+        self.opPredictionSlicer.Input.connect( self.prediction_cache_gui.Output )
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
 
@@ -183,6 +191,9 @@ class OpPixelClassification( Operator ):
 
         self.prediction_cache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.prediction_cache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+
+        self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+        self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
     def notifyDirty(self, inputSlot, key):
         # Nothing to do here: All outputs are directly connected to 
