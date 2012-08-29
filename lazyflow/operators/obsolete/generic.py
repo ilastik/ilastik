@@ -217,11 +217,14 @@ class OpMultiArraySlicer2(Operator):
             channelAxis = self.Input.meta.axistags.index('c')
             channels = zip(roi.start, roi.stop)[channelAxis]
             for i in range(*channels):
-                slot = self.Slices[i]
-                sliceRoi = copy.copy(roi)
-                sliceRoi.start[channelAxis] = 0
-                sliceRoi.stop[channelAxis] = 1
-                slot.setDirty(sliceRoi)
+                if i < len(self.Slices):
+                    slot = self.Slices[i]
+                    sliceRoi = copy.copy(roi)
+                    sliceRoi.start[channelAxis] = 0
+                    sliceRoi.stop[channelAxis] = 1
+                    slot.setDirty(sliceRoi)
+        else:
+            assert False, "Unknown dirty input slot."
 
 class OpMultiArrayStacker(Operator):
     inputSlots = [MultiInputSlot("Images"), InputSlot("AxisFlag"), InputSlot("AxisIndex")]
