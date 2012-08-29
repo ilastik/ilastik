@@ -25,10 +25,10 @@ class TestOpColorizeLabels(object):
     def testBasic(self):
         op = self.op
     
-        colorizedData = op.Output[...].wait()
+        colorizedData = op.Output[:,5:,5:,:,:].wait()
         
         # Output is colorized (3 channels)
-        assert colorizedData.shape == (1,10,10,1,4)
+        assert colorizedData.shape == (1,5,5,1,4)
 
         # If we transpose x-y, then the data should still be the same,
         # which implies that identical labels got identical colors
@@ -39,18 +39,20 @@ class TestOpColorizeLabels(object):
         assert ( colorizedData[0,1,1,0,0] != colorizedData[0,2,2,0,0]
               or colorizedData[0,1,1,0,1] != colorizedData[0,2,2,0,1]
               or colorizedData[0,1,1,0,2] != colorizedData[0,2,2,0,2] )
-        
-        # Label 0 is black and transparent by default
-        assert (colorizedData[0,0,0,0,:] == 0).all()
-
+            
     def testOverrideColors(self):
         op = self.op
         
         overrides = {}
         overrides[1] = (1,2,3,4)
         overrides[2] = (5,6,7,8)
-        op.OverrideColors.setValue( overrides )
-        
+
+        # Label 0 override is black and transparent by default
+        colorizedData = op.Output[...].wait()
+        assert (colorizedData[0,0,0,0,:] == 0).all()
+
+        # Apply custom overrides
+        op.OverrideColors.setValue( overrides )        
         colorizedData = op.Output[...].wait()
 
         # Check for non-random colors on the labels we want to override        

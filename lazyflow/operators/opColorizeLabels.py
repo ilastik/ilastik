@@ -1,4 +1,5 @@
 import zlib
+import copy
 import numpy
 from functools import partial
 
@@ -33,17 +34,8 @@ class OpColorizeLabels(Operator):
 
     Output = OutputSlot() # 4 channels: RGBA
 
-    @classmethod
-    def choose_color(cls, x, channel, overrideColors):
-        if x in overrideColors.keys():
-            return overrideColors[x][channel]
-        else:
-            # Use crc32 as a deterministic pseudo-random number generator
-            return (zlib.crc32(str(x)) >> (8*channel)) & 0xFF
-
     def __init__(self, *args, **kwargs):
         super(OpColorizeLabels, self).__init__(*args, **kwargs)
-        self.vec_choose = numpy.vectorize(OpColorizeLabels.choose_color, otypes=[numpy.uint8])
         
     def setupOutputs(self):
         inputTags = self.Input.meta.axistags
@@ -55,24 +47,35 @@ class OpColorizeLabels(Operator):
 
         applyToChannel = partial(applyToElement, inputTags, 'c')
         self.Output.meta.shape = applyToChannel(inputShape, 4) # RGBA
+        self.Output.meta.dtype = numpy.uint8
+
+        self.overrideColors = self.OverrideColors.value
     
     def execute(self, slot, roi, result):
         fullKey = roi.toSlice()
+        resultKey = copy.copy(roi).setStartToZero()
         
         # Input has only one channel
         thinKey = applyToElement(self.Input.meta.axistags, 'c', fullKey, slice(0,1))
-        
         inputData = self.Input[thinKey].wait()
+        flatIn = inputData.flat
 
-        results = ()
         channelSlice = getElement(self.Input.meta.axistags, 'c', fullKey)
-        for ch in range(channelSlice.start, channelSlice.stop):
-            results += (self.vec_choose(inputData, ch, self.OverrideColors.value),)
-
-        # Stack the channels together
-        output = numpy.concatenate( results, self.channelIndex )
-        
-        result[...] = output[...]
+        for channel in range(channelSlice.start, channelSlice.stop):
+            resultChannel = channel - channelSlice.start
+            resultChannelKey = applyToElement(self.Input.meta.axistags, 'c', resultKey.toSlice(), slice(resultChannel, resultChannel+1))
+            flatOut = result[resultChannelKey].flat
+            for i in xrange( len(flatIn) ):
+                label = flatIn[i]
+                if label in self.overrideColors.keys():
+                    flatOut[i] = self.overrideColors[label][channel]
+                else:
+                    if flatOut[i] == 3: # Alpha
+                        flatOut[i] = 255
+                    else:
+                        # Use crc32 as a deterministic pseudo-random number generator
+                        flatOut[i] = (zlib.crc32(str(label)) >> (8*channel)) & 0xFF
+        return result
 
     def propagateDirty(self, inputSlot, roi):
         if inputSlot == self.Input:
