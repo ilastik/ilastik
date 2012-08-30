@@ -22,6 +22,7 @@ class OpVigraWatershed(Operator):
     def setupOutputs(self):
         self.Output.meta.assignFrom( self.InputImage.meta )
         self.Output.meta.dtype = numpy.uint32
+        self.Output.meta.drange = (0,255)
     
     def getSlicings(self, roi):
         """
@@ -50,47 +51,56 @@ class OpVigraWatershed(Operator):
         return paddedSlices, outputSlices
     
     def execute(self, slot, roi, result):
-        if slot.name == 'Output':
-            # Every request is computed on-the-fly.
-            # (No caching)
-            paddedSlices, outputSlices = self.getSlicings(roi)
-            
-            # Get input data
-            inputRegion = self.InputImage[paddedSlices].wait()
-            
-            # Makes sure vigra will understand this type
-            if inputRegion.dtype != numpy.uint8 and inputRegion.dtype != numpy.float32:
-                inputRegion = inputRegion.astype('float32')
-            
-            # Convert to vigra array
-            inputRegion = inputRegion.view(vigra.VigraArray)
-            inputRegion.axistags = self.InputImage.meta.axistags
+        assert slot == self.Output
 
-            # Reduce to 3-D (keep order of xyz axes)
-            tags = self.InputImage.meta.axistags
-            inputRegion = inputRegion.withAxes( *[tag.key for tag in tags if tag.key in 'xyz'] )
-            logger.debug( 'inputRegion 3D shape:{}'.format(inputRegion.shape) )
-            
-            logger.debug( "roi={}".format(roi) )
-            logger.debug( "paddedSlices={}".format(paddedSlices) )
-            logger.debug( "outputSlices={}".format(outputSlices) )
-            
-            # This is where the magic happens
-            logger.info( "Computing Watershed of block {}, dtype={}".format(paddedSlices, inputRegion.dtype) )
-            watershed, maxLabel = vigra.analysis.watersheds(inputRegion)
-            logger.info( "Finished Watershed" )
-            
-            logger.debug( "watershed 3D output shape={}".format(watershed.shape) )
-            logger.debug( "maxLabel={}".format(maxLabel) )
+        # Every request is computed on-the-fly.
+        # (No caching)
+        paddedSlices, outputSlices = self.getSlicings(roi)
+        
+        # Get input data
+        inputRegion = self.InputImage[paddedSlices].wait()
+        
+        # Makes sure vigra will understand this type
+        if inputRegion.dtype != numpy.uint8 and inputRegion.dtype != numpy.float32:
+            inputRegion = inputRegion.astype('float32')
+        
+        # Convert to vigra array
+        inputRegion = inputRegion.view(vigra.VigraArray)
+        inputRegion.axistags = self.InputImage.meta.axistags
 
-            # Promote back to 5-D
-            watershed = watershed.withAxes( *[tag.key for tag in tags] )
-            logger.debug( "watershed 5D shape: {}".format(watershed.shape) )
-            logger.debug( "watershed axistags: {}".format(watershed.axistags) )
-            
-            #print numpy.unique(watershed[outputSlices]).shape
-            # Return only the region the user requested
-            result[...] = watershed[outputSlices]
+        # Reduce to 3-D (keep order of xyz axes)
+        tags = self.InputImage.meta.axistags
+        inputRegion = inputRegion.withAxes( *[tag.key for tag in tags if tag.key in 'xyz'] )
+        logger.debug( 'inputRegion 3D shape:{}'.format(inputRegion.shape) )
+        
+        logger.debug( "roi={}".format(roi) )
+        logger.debug( "paddedSlices={}".format(paddedSlices) )
+        logger.debug( "outputSlices={}".format(outputSlices) )
+        
+        # If we know the range of the data, then convert to uint8
+        # so we can automatically benefit from vigra's "turbo" mode
+        if 'drange' in self.InputImage.meta:
+            drange = self.InputImage.meta.drange
+            inputRegion = inputRegion.astype(numpy.float32)
+            inputRegion -= drange[0]
+            inputRegion /= (drange[1] - drange[0])
+            inputRegion *= 256.0
+            inputRegion = inputRegion.astype(numpy.uint8)
+        # This is where the magic happens
+        watershed, maxLabel = vigra.analysis.watersheds(inputRegion)
+        logger.info( "Finished Watershed" )
+        
+        logger.debug( "watershed 3D output shape={}".format(watershed.shape) )
+        logger.debug( "maxLabel={}".format(maxLabel) )
+
+        # Promote back to 5-D
+        watershed = watershed.withAxes( *[tag.key for tag in tags] )
+        logger.debug( "watershed 5D shape: {}".format(watershed.shape) )
+        logger.debug( "watershed axistags: {}".format(watershed.axistags) )
+        
+        #print numpy.unique(watershed[outputSlices]).shape
+        # Return only the region the user requested
+        result[...] = watershed[outputSlices]
 
     def propagateDirty(self, inputSlot, roi):
         if not self.configured():
