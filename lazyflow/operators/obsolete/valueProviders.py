@@ -266,7 +266,7 @@ class OpPrecomputedInput(Operator):
         self._lock = threading.Lock()
     
     def setupOutputs(self):
-        if self.PrecomputedInput.ready() and self.PrecomputedInput.meta == self.SlowInput.meta:
+        if self.PrecomputedInput.ready():
             self.reset()
         else:
             self.Output.connect(self.SlowInput)
