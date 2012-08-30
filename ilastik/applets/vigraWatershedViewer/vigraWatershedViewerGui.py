@@ -105,24 +105,26 @@ class VigraWatershedViewerGui(LayerViewerGui):
             th = threading.Thread(target=updateThread)
             th.start()
 
+    def getLabelAt(self, currentImageIndex, position5d):
+        labelSlot = self.mainOperator.WatershedLabels[currentImageIndex]
+        if labelSlot.ready():
+            labelData = labelSlot[ index2slice(position5d) ].wait()
+            return labelData.squeeze()[()]
+        else:
+            return None
+
     def handleEditorLeftClick(self, currentImageIndex, position5d):
         """
         This is an override from the base class.  Called when the user clicks in the volume.
         
         For left clicks, we highlight the clicked label.
         """
-        logger.debug( "LEFT CLICK: {}".format(position5d) )
-        labelSlot = self.mainOperator.WatershedLabels[currentImageIndex]
-        if labelSlot.ready():
-            labelData = labelSlot[ index2slice(position5d) ].wait()
-            label = labelData.squeeze()[()]
-            logger.debug( "Label={}".format(label) )
-            if label != 0:
-                overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
-                overrides = copy.copy(overrideSlot.value)
-                overrides[label] = (255, 255, 255, 255)
-                logger.debug( "Overrides={}".format(overrides) )
-                overrideSlot.setValue(overrides)
+        label = self.getLabelAt(currentImageIndex, position5d)
+        if label != 0 and label is not None:
+            overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
+            overrides = copy.copy(overrideSlot.value)
+            overrides[label] = (255, 255, 255, 255)
+            overrideSlot.setValue(overrides)
             
     def handleEditorRightClick(self, currentImageIndex, position5d):
         """
@@ -130,18 +132,12 @@ class VigraWatershedViewerGui(LayerViewerGui):
         
         For right clicks, we un-highlight the clicked label.
         """
-        logger.debug( "RIGHT CLICK: {}".format(position5d) )
-        labelSlot = self.mainOperator.WatershedLabels[currentImageIndex]
-        if labelSlot.ready():
-            labelData = labelSlot[ index2slice(position5d) ].wait()
-            label = labelData.squeeze()[()]
-            logger.debug( "Label={}".format(label) )
-            overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
-            overrides = copy.copy(overrideSlot.value)
-            if label != 0 and label in overrides:
-                del overrides[label]
-                logger.debug( "Overrides={}".format(overrides) )
-                overrideSlot.setValue(overrides)
+        label = self.getLabelAt(currentImageIndex, position5d)
+        overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
+        overrides = copy.copy(overrideSlot.value)
+        if label != 0 and label in overrides:
+            del overrides[label]
+            overrideSlot.setValue(overrides)
     
     def onPaddingChanged(self, value):
         self.mainOperator.WatershedPadding.setValue(value)
