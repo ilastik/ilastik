@@ -685,7 +685,8 @@ class OpBaseVigraFilter(OpArrayPiper):
                         print "EXCEPT3", resultArea.shape,  tresKey, twriteKey
                         print "EXCEPT3", step, t.shape, timeAxis
                         raise
-
+                
+                #print "(in.min=",image.min(),",in.max=",image.max(),") (vres.min=",vres.min(),",vres.max=",vres.max(),")"
 
 
     def setupOutputs(self):
@@ -720,6 +721,9 @@ class OpBaseVigraFilter(OpArrayPiper):
         if self.outputs["Output"]._axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
             self.outputs["Output"]._axistags.insertChannelAxis()
 
+        # The output data range is not necessarily the same as the input data range.
+        if 'drange' in self.Output.meta:
+            del self.Output.meta['drange']
 
     def resultingChannels(self):
         raise RuntimeError('resultingChannels() not implemented')
@@ -803,7 +807,6 @@ class OpGaussianSmoothing(OpBaseVigraFilter):
 
     def resultingChannels(self):
         return 1
-
 
 class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
     name = "HessianOfGaussianEigenvalues"
