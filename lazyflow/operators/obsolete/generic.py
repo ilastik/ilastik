@@ -495,7 +495,6 @@ class OpPixelOperator(Operator):
     outputSlots = [OutputSlot("Output")]
 
     def setupOutputs(self):
-
         inputSlot = self.inputs["Input"]
 
         self.function = self.inputs["Function"].value
@@ -504,18 +503,13 @@ class OpPixelOperator(Operator):
         self.outputs["Output"]._dtype = inputSlot.dtype
         self.outputs["Output"]._axistags = inputSlot.axistags
 
-
-
     def getOutSlot(self, slot, key, result):
-
-
         matrix = self.inputs["Input"][key].allocate().wait()
         matrix = self.function(matrix)
 
         result[:] = matrix[:]
 
-
-    def notifyDirty(selfut,slot,key):
+    def notifyDirty(self,slot,key):
         self.outputs["Output"].setDirty(key)
 
     @property
