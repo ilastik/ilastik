@@ -344,14 +344,15 @@ class OpSingleChannelSelector(Operator):
     outputSlots = [OutputSlot("Output")]
 
     def setupOutputs(self):
-        self.outputs["Output"]._dtype =self.inputs["Input"].dtype
-        self.outputs["Output"]._shape = self.inputs["Input"].shape[:-1]+(1,)
-        self.outputs["Output"]._axistags = self.inputs["Input"].axistags
+        inputtags = self.Input.meta.axistags
+        assert inputtags.channelIndex == len(inputtags)-1, "FIXME: OpSingleChannelSelector assumes the channel axis is last."
+
+        self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.shape = self.Input.meta.shape[:-1]+(1,)
 
     def getOutSlot(self, slot, key, result):
 
         index=self.inputs["Index"].value
-        #FIXME: check the axistags for a multichannel image
         assert self.inputs["Input"].shape[-1] > index, ("Requested channel, %d, is out of Range" % index)
 
         # Only ask for the channel we need
@@ -394,10 +395,9 @@ class OpSubRegion(Operator):
             for e in temp:
                 if e > 0:
                     outShape = outShape + (e,)
-        
-            self.outputs["Output"]._shape = outShape
-            self.outputs["Output"]._axistags = self.inputs["Input"].axistags
-            self.outputs["Output"]._dtype = self.inputs["Input"].dtype
+
+            self.Output.meta.assignFrom(self.Input.meta)
+            self.Output.meta.shape = outShape        
 
     def getOutSlot(self, slot, key, resultArea):
         with Tracer(traceLogger):

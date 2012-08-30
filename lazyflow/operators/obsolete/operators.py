@@ -1071,9 +1071,7 @@ class OpBlockedArrayCache(Operator):
                     self.Output.disconnect()
     
             if not self._configured:
-                self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
-                self.outputs["Output"].meta.shape = inputSlot.meta.shape
-                self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
+                self.Output.meta.assignFrom(inputSlot.meta)
     
                 self.shape = self.Input.meta.shape
                 self._blockShape = self.inputs["outerBlockShape"].value
@@ -1283,9 +1281,7 @@ class OpSlicedBlockedArrayCache(Operator):
             op.inputs["innerBlockShape"].setValue(innershape)
             op.inputs["outerBlockShape"].setValue(self._outerShapes[i])
 
-        self.outputs["Output"].meta.dtype = self.inputs["Input"].meta.dtype
-        self.outputs["Output"].meta.axistags = copy.copy(self.inputs["Input"].meta.axistags)
-        self.outputs["Output"].meta.shape = self.inputs["Input"].meta.shape
+        self.Output.meta.assignFrom(self.Input.meta)
 
     def execute(self, slot, roi, result):
         key = roi.toSlice()

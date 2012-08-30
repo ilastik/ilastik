@@ -270,9 +270,11 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             self.featureOps = oparray
 
-            self.outputs["Output"]._dtype = numpy.float32
-            self.outputs["Output"]._axistags = self.stacker.outputs["Output"]._axistags
-            self.outputs["Output"]._shape = self.stacker.outputs["Output"]._shape
+            # Output meta is a modified copy of the input meta
+            self.Output.meta.assignFrom(self.Input.meta)
+            self.Output.meta.dtype = numpy.float32
+            self.Output.meta.axistags = self.stacker.Output.meta.axistags
+            self.Output.meta.shape = self.stacker.Output.shape
 
     def propagateDirty(self, inputSlot, roi):
         if inputSlot == self.Input:
@@ -687,6 +689,10 @@ class OpBaseVigraFilter(OpArrayPiper):
 
 
     def setupOutputs(self):
+        
+        # Output meta starts with a copy of the input meta, which is then modified
+        self.Output.meta.assignFrom(self.Input.meta)
+        
         numChannels  = 1
         inputSlot = self.inputs["Input"]
         if inputSlot.axistags.axisTypeCount(vigra.AxisType.Channels) > 0:
@@ -1451,14 +1457,10 @@ class OpToUint8(Operator):
 
 
     def setupOutputs(self):
-
         inputSlot = self.inputs["input"]
-
         oslot = self.outputs["output"]
-
-        oslot._shape = inputSlot.shape
-        oslot._dtype = numpy.uint8
-        oslot._axistags = copy.copy(inputSlot.axistags)
+        oslot.meta.assignFrom(inputSlot.meta)
+        oslot.meta.dtype = numpy.uint8
 
         def getOutSlot(self, slot, key, result):
 
@@ -1474,13 +1476,13 @@ class OpRgbToGrayscale(Operator):
     outputSlots = [OutputSlot("output")]
 
     def setupOutputs(self):
-
         inputSlot = self.inputs["input"]
-
         oslot = self.outputs["output"]
-        oslot._shape = inputSlot.shape[:-1] + (1,)
-        oslot._dtype = inputSlot.dtype
-        oslot._axistags = copy.copy(inputSlot.axistags)
+        oslot.meta.assignFrom(inputSlot.meta)
+        oslot.meta.shape = inputSlot.meta.shape[:-1] + (1,)
+        
+        inputtags = inputSlot.meta.axistags
+        assert inputtags.channelIndex == len(inputtags)-1, "FIXME: OpRgbToGrayscale assumes the channel index is last"
 
     def execute(self, slot, roi, result):
 
