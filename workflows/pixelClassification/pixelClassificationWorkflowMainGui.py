@@ -6,11 +6,15 @@ def debug_with_existing(shell, workflow):
     """
     (Function for debug and testing.)
     """
-    #projFilePath = '/home/bergs/gigacube.ilp'
+    projFilePath = "/magnetic/test_project.ilp"
+    #projFilePath = '/magnetic/gigacube.ilp'
     #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
-    projFilePath = '/magnetic/250-2.ilp'
+    #projFilePath = '/magnetic/250-2.ilp'
     # Open a project
     shell.openProjectFile(projFilePath)
+
+    # Select the labeling drawer
+    shell.setSelectedAppletDrawer(3)
 
 def debug_with_new(shell, workflow):
     """
@@ -26,6 +30,7 @@ def debug_with_new(shell, workflow):
     info = DatasetInfo()
     #info.filePath = '/magnetic/gigacube.h5'
     info.filePath = '/magnetic/synapse_small.npy'
+    #info.filePath = '/magnetic/singleslice.h5'
     opDataSelection = workflow.dataSelectionApplet.topLevelOperator
     opDataSelection.Dataset.resize(1)
     opDataSelection.Dataset[0].setValue(info)
@@ -35,7 +40,7 @@ def debug_with_new(shell, workflow):
     featureGui = workflow.featureSelectionApplet.gui
     opFeatures = workflow.featureSelectionApplet.topLevelOperator
     #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
-    selections = numpy.array( [[False, False, False,  True, False, False, False],
+    selections = numpy.array( [[True, False, False,  False, False, False, False],
                                [False, False, False, False, False, False, False],
                                [False, False, False, False, False, False, False], # ST EVs
                                [False, False, False, False, False, False, False],
@@ -45,8 +50,8 @@ def debug_with_new(shell, workflow):
     opFeatures.Scales.setValue( featureGui.ScalesList )
     opFeatures.FeatureIds.setValue( featureGui.FeatureIds )
 
-    # Select the labeling drawer
-    shell.setSelectedAppletDrawer(3)
+    # Select the feature drawer
+    shell.setSelectedAppletDrawer(2)
 
     # Save the project
     shell.onSaveProjectActionTriggered()
@@ -58,5 +63,5 @@ if __name__ == "__main__":
 
     # Start the GUI with a debug project    
     #startShellGui( PixelClassificationWorkflow, debug_with_existing )    
-#    startShellGui( PixelClassificationWorkflow, debug_with_new )
+    #startShellGui( PixelClassificationWorkflow, debug_with_new )
 
