@@ -248,16 +248,49 @@ class OpValueCache(Operator):
             self._dirty = False
             self.Output.setDirty(slice(None))
         
+class OpPrecomputedInput(Operator):
+    """
+    This operator uses its precomputed
+    """
+    name = "OpPrecomputedInput"
+    category = "Value provider"
+    
+    PrecomputedInput = InputSlot(optional=True) # Only used if it is clean
+    SlowInput = InputSlot() # Used if the precomputed slot is dirty
+    Reset = InputSlot(optional = True, value = False)
+    
+    Output = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super(OpPrecomputedInput, self).__init__(*args, **kwargs)
+        self._lock = threading.Lock()
+    
+    def setupOutputs(self):
+        if self.PrecomputedInput.ready() and self.PrecomputedInput.meta == self.SlowInput.meta:
+            self.reset()
 
+    def propagateDirty(self, slot, roi):
+        # If either input became dirty, the party is over.
+        # We can't use the pre-computed input anymore.
+        if slot == self.SlowInput:
+            with self._lock:
+                self.Output.connect(self.SlowInput)
+        elif slot == self.Reset:
+            pass
+        elif slot == self.PrecomputedInput:
+            pass
+        else:
+            assert False, "Unknown dirty input slot."
+    
+    def reset(self):
+        """
+        Called by the user when the precomputed input is valid again.
+        """
+        with self._lock:
+            self.Output.connect(self.PrecomputedInput)
 
-
-
-
-
-
-
-
-
+    def execute(self):
+        assert False, "Should not get here: Output is directly connected to the input."
 
 
 
