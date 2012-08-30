@@ -164,57 +164,63 @@ class PixelClassificationSerializer(AppletSerializer):
 
                 if self.predictionStorageEnabled:
                     predictionDir = topGroup.create_group('Predictions')
-                    numImages = len(self.mainOperator.PredictionProbabilities)
-    
-                    if numImages > 0:
-                        increment = (endProgress - startProgress) / float(numImages)
-    
-                    for imageIndex in range(numImages):
-                        # Have we been cancelled?
-                        if not self.predictionStorageEnabled:
-                            break
-    
-                        datasetName = 'predictions{:04d}'.format(imageIndex)
-    
-                        progress = [startProgress]
-    
-                        # Use a big dataset writer to do this in chunks
-                        opWriter = OpH5WriterBigDataset(self.mainOperator.graph)
-                        opWriter.hdf5File.setValue( predictionDir )
-                        opWriter.hdf5Path.setValue( datasetName )
-                        opWriter.Image.connect( self.mainOperator.PredictionProbabilities[imageIndex] )
-                        
-                        # Create the request
-                        self._predictionStorageRequest = opWriter.WriteImage[...]
-    
-                        def handleProgress(percent):
-                            # Stop sending progress if we were cancelled
-                            if self.predictionStorageEnabled:
-                                progress[0] = startProgress + percent * (increment / 100.0)
-                                self.progressSignal.emit( progress[0] )
-                        opWriter.progressSignal.subscribe( handleProgress )
-    
-                        finishedEvent = threading.Event()
-                        def handleFinish(request):
-                            finishedEvent.set()
-    
-                        def handleCancel(request):
-                            self._predictionStorageRequest = None
-                            finishedEvent.set()
-    
-                        # Trigger the write and wait for it to complete or cancel.
-                        self._predictionStorageRequest.notify(handleFinish)
-                        self._predictionStorageRequest.onCancel(handleCancel)
-                        finishedEvent.wait()
-                        
-                    # If we were cancelled, delete the predictions we just started
-                    if not self.predictionStorageEnabled:
-                        self.deleteIfPresent(predictionDir, datasetName)
-                        self._predictionsPresent = False
-                        startProgress = progress[0]
-                    else:
-                        self._dirtyFlags[Section.Predictions] = False
-                        self._predictionsPresent = True
+
+                    failedToSave = False
+                    try:                    
+                        numImages = len(self.mainOperator.PredictionProbabilities)
+        
+                        if numImages > 0:
+                            increment = (endProgress - startProgress) / float(numImages)
+        
+                        for imageIndex in range(numImages):
+                            # Have we been cancelled?
+                            if not self.predictionStorageEnabled:
+                                break
+        
+                            datasetName = 'predictions{:04d}'.format(imageIndex)
+        
+                            progress = [startProgress]
+        
+                            # Use a big dataset writer to do this in chunks
+                            opWriter = OpH5WriterBigDataset(self.mainOperator.graph)
+                            opWriter.hdf5File.setValue( predictionDir )
+                            opWriter.hdf5Path.setValue( datasetName )
+                            opWriter.Image.connect( self.mainOperator.PredictionProbabilities[imageIndex] )
+                            
+                            # Create the request
+                            self._predictionStorageRequest = opWriter.WriteImage[...]
+        
+                            def handleProgress(percent):
+                                # Stop sending progress if we were cancelled
+                                if self.predictionStorageEnabled:
+                                    progress[0] = startProgress + percent * (increment / 100.0)
+                                    self.progressSignal.emit( progress[0] )
+                            opWriter.progressSignal.subscribe( handleProgress )
+        
+                            finishedEvent = threading.Event()
+                            def handleFinish(request):
+                                finishedEvent.set()
+        
+                            def handleCancel(request):
+                                self._predictionStorageRequest = None
+                                finishedEvent.set()
+        
+                            # Trigger the write and wait for it to complete or cancel.
+                            self._predictionStorageRequest.notify(handleFinish)
+                            self._predictionStorageRequest.onCancel(handleCancel)
+                            finishedEvent.wait()
+                    except:
+                        failedToSave = True
+                        raise
+                    finally:
+                        # If we were cancelled, delete the predictions we just started
+                        if not self.predictionStorageEnabled or failedToSave:
+                            self.deleteIfPresent(predictionDir, datasetName)
+                            self._predictionsPresent = False
+                            startProgress = progress[0]
+                        else:
+                            # Re-load the operator with the prediction groups we just saved
+                            self._deserializePredictions(topGroup)
 
     def cancel(self):
         """Currently, this only cancels prediction storage."""
