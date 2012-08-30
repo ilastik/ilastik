@@ -229,6 +229,7 @@ class OpPredictRandomForest(Operator):
         self.PMaps.meta.dtype = numpy.float32
         self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
         self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,) # FIXME: This assumes that channel is the last axis
+        self.PMaps.meta.drange = (0.0, 1.0)
 
     def execute(self,slot, roi, result):
         key = roi.toSlice()
