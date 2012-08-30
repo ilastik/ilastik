@@ -189,17 +189,18 @@ class LayerViewerGui(QMainWindow):
         Generate a volumina layer using the given slot.
         Choose between grayscale or RGB depending on the number of channels.
         """
-        def getRange(dtype):
-            if numpy.issubdtype(dtype, numpy.integer):
+        def getRange(meta):
+            if 'drange' in meta:
+                return meta.drange
+            if numpy.issubdtype(meta.dtype, numpy.integer):
                 # We assume that ints range up to their max possible value,
-                return (0, numpy.iinfo( dtype ).max)
+                return (0, numpy.iinfo( meta.dtype ).max)
             else:
-                #  but floats are always in range 0 to 1
-                return (0.0, 1.0)
+                return 'auto' # Ask the image to be auto-normalized
 
         # Examine channel dimension to determine Grayscale vs. RGB
         shape = slot.meta.shape
-        normalize = getRange(slot.meta.dtype)
+        normalize = getRange(slot.meta)
         channelAxisIndex = slot.meta.axistags.index('c')
         numChannels = shape[channelAxisIndex]
         
@@ -218,28 +219,34 @@ class LayerViewerGui(QMainWindow):
         redProvider.Input.connect(slot)
         redProvider.Index.setValue( 0 )
         redSource = LazyflowSource( redProvider.Output )
+        normalizeR = normalize
         
         greenProvider = OpSingleChannelSelector(graph=slot.graph)
         greenProvider.Input.connect(slot)
         greenProvider.Index.setValue( 1 )
         greenSource = LazyflowSource( greenProvider.Output )
+        normalizeG = normalize
                         
         blueSource = None
+        normalizeB = None
         if numChannels > 3 or (numChannels == 3 and not lastChannelIsAlpha):
             blueProvider = OpSingleChannelSelector(graph=slot.graph)
             blueProvider.Input.connect(slot)
             blueProvider.Index.setValue( 2 )
             blueSource = LazyflowSource( blueProvider.Output )
+            normalizeB = normalize
 
         alphaSource = None
+        normalizeA = None
         if lastChannelIsAlpha:
             alphaProvider = OpSingleChannelSelector(graph=slot.graph)
             alphaProvider.Input.connect(slot)
             alphaProvider.Index.setValue( numChannels-1 )
             alphaSource = LazyflowSource( alphaProvider.Output )
+            normalizeA = normalize
         
         layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource,
-                           normalizeR=normalize, normalizeG=normalize, normalizeB=normalize, normalizeA=normalize )
+                           normalizeR=normalizeR, normalizeG=normalizeG, normalizeB=normalizeB, normalizeA=normalizeA )
         return layer
 
     @traceLogged(traceLogger)
