@@ -1242,7 +1242,7 @@ class OpSlicedBlockedArrayCache(Operator):
     Input = InputSlot()
 
     inputSlots = [InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent", value = False)]
-    outputSlots = [OutputSlot("Output")]
+    outputSlots = [OutputSlot("Output"), MultiOutputSlot("InnerOutputs")]
 
     loggerName = __name__ + ".OpSlicedBlockedArrayCache"
     logger = logging.getLogger(loggerName)
@@ -1282,7 +1282,14 @@ class OpSlicedBlockedArrayCache(Operator):
 
         self.Output.meta.assignFrom(self.Input.meta)
 
+        # We also provide direct access to each of our inner cache outputs.        
+        self.InnerOutputs.resize( len(self._innerOps) )
+        for i, slot in enumerate(self.InnerOutputs):
+            slot.connect(self._innerOps[i].Output)
+
     def execute(self, slot, roi, result):
+        assert slot == self.Output
+        
         key = roi.toSlice()
         start,stop=sliceToRoi(key,self.shape)
         roishape=numpy.array(stop)-numpy.array(start)
