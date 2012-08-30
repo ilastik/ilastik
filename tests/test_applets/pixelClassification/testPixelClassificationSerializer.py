@@ -20,6 +20,8 @@ class OpMockPixelClassifier(Operator):
 
     LabelInputs = MultiInputSlot(optional = True) # Input for providing label data from an external source
 
+    PredictionsFromDisk = MultiInputSlot( optional = True ) # TODO: Actually use this input for something
+
     NonzeroLabelBlocks = MultiOutputSlot(stype='object') # A list if slices that contain non-zero label values
     LabelImages = MultiOutputSlot() # Labels from the user
     
@@ -49,6 +51,7 @@ class OpMockPixelClassifier(Operator):
     def setupOutputs(self):
         numImages = len(self.LabelInputs)
 
+        self.PredictionsFromDisk.resize( numImages )
         self.NonzeroLabelBlocks.resize( numImages )
         self.LabelImages.resize( numImages )
         self.PredictionProbabilities.resize( numImages )
