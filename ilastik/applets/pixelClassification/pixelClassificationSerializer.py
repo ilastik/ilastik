@@ -5,6 +5,7 @@ import h5py
 from ilastik.applets.base.appletSerializer import AppletSerializer
 from ilastik.utility import bind
 from lazyflow.operators import OpH5WriterBigDataset
+from lazyflow.operators.ioOperators import OpStreamingHdf5Reader
 import threading
 
 import tempfile
@@ -156,6 +157,10 @@ class PixelClassificationSerializer(AppletSerializer):
             if self._dirtyFlags[Section.Predictions] or 'Predictions' not in topGroup.keys():
 
                 self.deleteIfPresent(topGroup, 'Predictions')
+                
+                # Disconnect the precomputed prediction inputs.
+                for i,slot in enumerate( self.mainOperator.PredictionsFromDisk ):
+                    slot.disconnect()
 
                 if self.predictionStorageEnabled:
                     predictionDir = topGroup.create_group('Predictions')
@@ -221,10 +226,9 @@ class PixelClassificationSerializer(AppletSerializer):
         with Tracer(traceLogger):
             self.progressSignal.emit(0)            
             self._deserializeLabels( topGroup )
-            self.progressSignal.emit(50)            
+            self.progressSignal.emit(50)
             self._deserializeClassifier( topGroup )
-            
-            self._predictionsPresent = 'Predictions' in topGroup.keys()
+            self._deserializePredictions( topGroup )
             
             self.progressSignal.emit(100)
 
@@ -275,6 +279,17 @@ class PixelClassificationSerializer(AppletSerializer):
                 self.mainOperator.classifier_cache.forceValue( classifier )
             finally:
                 self._dirtyFlags[Section.Classifier] = False
+
+    def _deserializePredictions(self, topGroup):
+        self._predictionsPresent = 'Predictions' in topGroup.keys()
+        if self._predictionsPresent:
+            predictionGroup = topGroup['Predictions']
+            for imageIndex, datasetName in enumerate( predictionGroup.keys() ):
+                opStreamer = OpStreamingHdf5Reader( graph=self.mainOperator.graph )
+                opStreamer.Hdf5File.setValue( predictionGroup )
+                opStreamer.InternalPath.setValue( datasetName )
+                self.mainOperator.PredictionsFromDisk[imageIndex].connect( opStreamer.OutputImage )
+        self._dirtyFlags[Section.Predictions] = False
 
     def slicingToString(self, slicing):
         """

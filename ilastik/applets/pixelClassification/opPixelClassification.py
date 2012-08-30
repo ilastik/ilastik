@@ -1,7 +1,7 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
 
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
-                               OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2
+                               OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpPrecomputedInput
 
 class OpPixelClassification( Operator ):
     """
@@ -21,6 +21,8 @@ class OpPixelClassification( Operator ):
     CachedFeatureImages = MultiInputSlot() # Cached feature data.
 
     FreezePredictions = InputSlot(stype='bool')
+
+    PredictionsFromDisk = MultiInputSlot(optional=True)
 
     PredictionProbabilities = MultiOutputSlot() # Classification predictions
 
@@ -50,6 +52,7 @@ class OpPixelClassification( Operator ):
         self.prediction_cache.Input.resize(0)
         self.prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
         self.prediction_cache_gui.Input.resize(0)
+        self.precomputed_predictions = OperatorWrapper( OpPrecomputedInput(graph=self.graph) )
 
         # NOT wrapped
         self.opMaxLabel = OpMaxValue(graph=self.graph)
@@ -91,16 +94,21 @@ class OpPixelClassification( Operator ):
         self.predict.inputs['Classifier'].connect(self.classifier_cache.outputs['Output']) 
         self.predict.inputs['Image'].connect(self.FeatureImages)
         self.predict.inputs['LabelsCount'].connect(self.opMaxLabel.Output)
+
+        # The serializer uses this operator to provide prediction data directly from the project file
+        # if the predictions haven't become dirty since the project file was opened.
+        self.precomputed_predictions.SlowInput.connect( self.predict.outputs["PMaps"] )
+        self.precomputed_predictions.PrecomputedInput.connect( self.PredictionsFromDisk )
         
         # prediction cache for downstream operators (if they want it)
         self.prediction_cache.name = "PredictionCache"
         self.prediction_cache.inputs["fixAtCurrent"].setValue(False)
-        self.prediction_cache.inputs["Input"].connect(self.predict.outputs["PMaps"])
+        self.prediction_cache.inputs["Input"].connect( self.precomputed_predictions.Output )
 
         # Prediction cache for the GUI
         self.prediction_cache_gui.name = "PredictionCache"
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
-        self.prediction_cache_gui.inputs["Input"].connect(self.predict.outputs["PMaps"])
+        self.prediction_cache_gui.inputs["Input"].connect( self.precomputed_predictions.Output )
 
         # Connect our internal outputs to our external outputs
         self.LabelImages.connect(self.opLabelArray.Output)
