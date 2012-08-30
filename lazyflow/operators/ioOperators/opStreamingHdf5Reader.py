@@ -61,6 +61,10 @@ class OpStreamingHdf5Reader(Operator):
         self.OutputImage.meta.shape = dataset.shape
         self.OutputImage.meta.axistags = axistags
 
+        # If the dataset specifies a datarange, add it to the slot metadata
+        if 'drange' in hdf5File[internalPath].attrs:
+            self.OutputImage.meta.drange = tuple( hdf5File[internalPath].attrs['drange'] )
+
     def execute(self, slot, roi, result):
         # Read the desired data directly from the hdf5File
         key = roi.toSlice()
