@@ -29,10 +29,18 @@ class TestOpPrecomputedInput(object):
         opFast.Input.setValue(precomputedData)
         
         op = OpPrecomputedInput(graph=graph)
-        op.PrecomputedInput.connect(opFast.Output)
         op.SlowInput.connect(opSlow.Output)
+
+        # Should use slow input if no fast input is provided.
+        result = op.Output[...].wait()
+        assert (result == precomputedData).all()
+        assert computeCount[0] == 1
+
+        # Provide a fast input, which it should immediately start using.        
+        op.PrecomputedInput.connect(opFast.Output)
         
         # When input is still clean, it should use the fast input
+        computeCount[0] = 0
         result = op.Output[...].wait()
         assert (result == precomputedData).all()
         assert computeCount[0] == 0

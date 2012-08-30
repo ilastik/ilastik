@@ -255,8 +255,8 @@ class OpPrecomputedInput(Operator):
     name = "OpPrecomputedInput"
     category = "Value provider"
     
-    PrecomputedInput = InputSlot(optional=True) # Only used if it is clean
     SlowInput = InputSlot() # Used if the precomputed slot is dirty
+    PrecomputedInput = InputSlot(optional=True) # Only used while the slow input stays clean.
     Reset = InputSlot(optional = True, value = False)
     
     Output = OutputSlot()
@@ -268,6 +268,8 @@ class OpPrecomputedInput(Operator):
     def setupOutputs(self):
         if self.PrecomputedInput.ready() and self.PrecomputedInput.meta == self.SlowInput.meta:
             self.reset()
+        else:
+            self.Output.connect(self.SlowInput)
 
     def propagateDirty(self, slot, roi):
         # If either input became dirty, the party is over.
