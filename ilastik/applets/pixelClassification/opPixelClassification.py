@@ -53,6 +53,7 @@ class OpPixelClassification( Operator ):
         self.prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
         self.prediction_cache_gui.Input.resize(0)
         self.precomputed_predictions = OperatorWrapper( OpPrecomputedInput(graph=self.graph) )
+        self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput(graph=self.graph) )
 
         # NOT wrapped
         self.opMaxLabel = OpMaxValue(graph=self.graph)
@@ -94,28 +95,31 @@ class OpPixelClassification( Operator ):
         self.predict.inputs['Classifier'].connect(self.classifier_cache.outputs['Output']) 
         self.predict.inputs['Image'].connect(self.FeatureImages)
         self.predict.inputs['LabelsCount'].connect(self.opMaxLabel.Output)
-
-        # The serializer uses this operator to provide prediction data directly from the project file
-        # if the predictions haven't become dirty since the project file was opened.
-        self.precomputed_predictions.SlowInput.connect( self.predict.outputs["PMaps"] )
-        self.precomputed_predictions.PrecomputedInput.connect( self.PredictionsFromDisk )
         
         # prediction cache for downstream operators (if they want it)
         self.prediction_cache.name = "PredictionCache"
         self.prediction_cache.inputs["fixAtCurrent"].setValue(False)
-        self.prediction_cache.inputs["Input"].connect( self.precomputed_predictions.Output )
+        self.prediction_cache.inputs["Input"].connect( self.predict.PMaps )
+
+        # The serializer uses these operators to provide prediction data directly from the project file
+        # if the predictions haven't become dirty since the project file was opened.
+        self.precomputed_predictions.SlowInput.connect( self.prediction_cache.Output )
+        self.precomputed_predictions.PrecomputedInput.connect( self.PredictionsFromDisk )
 
         # Prediction cache for the GUI
         self.prediction_cache_gui.name = "PredictionCache"
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
-        self.prediction_cache_gui.inputs["Input"].connect( self.precomputed_predictions.Output )
+        self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
+
+        self.precomputed_predictions_gui.SlowInput.connect( self.prediction_cache_gui.Output )
+        self.precomputed_predictions_gui.PrecomputedInput.connect( self.PredictionsFromDisk )
 
         # Connect our internal outputs to our external outputs
         self.LabelImages.connect(self.opLabelArray.Output)
         self.MaxLabelValue.connect( self.opMaxLabel.Output )
         self.NonzeroLabelBlocks.connect(self.opLabelArray.nonzeroBlocks)
         self.PredictionProbabilities.connect(self.predict.PMaps)
-        self.CachedPredictionProbabilities.connect(self.prediction_cache.Output)
+        self.CachedPredictionProbabilities.connect(self.precomputed_predictions.Output)
         self.Classifier.connect( self.classifier_cache.Output )
         
         def inputResizeHandler( slot, oldsize, newsize ):
@@ -132,7 +136,7 @@ class OpPixelClassification( Operator ):
         
         # Also provide each prediction channel as a separate layer (for the GUI)
         self.opPredictionSlicer = OperatorWrapper( OpMultiArraySlicer2(parent=self) )
-        self.opPredictionSlicer.Input.connect( self.prediction_cache_gui.Output )
+        self.opPredictionSlicer.Input.connect( self.precomputed_predictions_gui.Output )
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
 
