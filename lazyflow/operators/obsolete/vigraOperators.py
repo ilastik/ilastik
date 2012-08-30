@@ -1162,7 +1162,7 @@ class OpH5WriterBigDataset(Operator):
                                 compression_opts=4)
 
         if 'drange' in self.Image.meta:
-            d.attrs['drange'] = self.Image.mata.drange
+            self.d.attrs['drange'] = self.Image.meta.drange
 
     def getOutSlot(self, slot, key, result):
         self.progressSignal(0)
