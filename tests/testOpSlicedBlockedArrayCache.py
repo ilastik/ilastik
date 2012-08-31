@@ -210,10 +210,8 @@ class TestOpSlicedBlockedArrayCache(object):
         # Unfreeze.
         opCache.fixAtCurrent.setValue(False)
 
-        # Some data became dirty while we were fixed, 
-        #  but no one had ever asked for it.
-        # In such cases, the dirtiness is not propagated downstream.
-        assert len(gotDirtyKeys) == 0
+        # Dirty blocks are propagated after the cache is unfixed.
+        assert len(gotDirtyKeys) > 0
 
         # Same request.  Data should be updated now that we're unfrozen.
         data = opCache.Output( slicing ).wait()
