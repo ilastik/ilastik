@@ -29,11 +29,15 @@ class OpMockPixelClassifier(Operator):
     
     PredictionProbabilities = MultiOutputSlot()
     
+    FreezePredictions = InputSlot()
+    
     def __init__(self, *args, **kwargs):
         super(OpMockPixelClassifier, self).__init__(*args, **kwargs)
         self._data = []
         self.shape = (1,10,100,100,1)
         self.prediction_shape = self.shape[:-1] + (2,) # Hard-coded to provide 2 classes
+        
+        self.FreezePredictions.setValue(False)
         
         self.opClassifier = OpTrainRandomForestBlocked(graph=self.graph, parent=self)
         self.opClassifier.Labels.connect(self.LabelImages)
