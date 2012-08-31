@@ -44,9 +44,20 @@ class TestOpPrecomputedInput(object):
         result = op.Output[...].wait()
         assert (result == precomputedData).all()
         assert computeCount[0] == 0
+
+        # Subscribe to dirty output notifications
+        dirtyRois = []
+        def handleDirty(slot, roi):
+            dirtyRois.append(roi)
+        op.Output.notifyDirty(handleDirty)
         
-        # Mark input dirty.  Op should switch to the slow input.
+        # Mark the slow input dirty.  Did the output see it?
+        # (Output should see the dirty roi from the slow input even
+        #  though it was previously connected to the fast input).
         opSlow.Input.setDirty( slice(None) )
+        assert len(dirtyRois) == 1
+
+        # Op should switch to the slow input.
         result = op.Output[...].wait()
         assert (result == precomputedData).all()
         assert computeCount[0] == 1

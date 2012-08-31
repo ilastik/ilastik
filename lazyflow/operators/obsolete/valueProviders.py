@@ -276,7 +276,9 @@ class OpPrecomputedInput(Operator):
         # We can't use the pre-computed input anymore.
         if slot == self.SlowInput:
             with self._lock:
-                self.Output.connect(self.SlowInput)
+                if self.Output.partner != self.SlowInput:
+                    self.Output.connect(self.SlowInput)
+                    self.Output.setDirty(roi)
         elif slot == self.Reset:
             pass
         elif slot == self.PrecomputedInput:
