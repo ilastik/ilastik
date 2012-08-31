@@ -341,7 +341,7 @@ class OpArrayCache(OpArrayPiper):
             self._cacheLock.acquire()
     
             if self._cache is None or (self._cache.shape != self.shape):
-                mem = numpy.ndarray(self.shape, dtype = self.dtype)
+                mem = numpy.zeros(self.shape, dtype = self.dtype)
                 if lazyflow.verboseMemory:
                     self.logger.debug("OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes)
                 self.graph._notifyMemoryAllocation(self, mem.nbytes)
@@ -514,8 +514,6 @@ class OpArrayCache(OpArrayPiper):
                     f.create_dataset("data",data = tileWeights)
                     print "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights)
                     assert 1 == 2
-            else:
-                self._cache[key] = 0
         # indicate the inprocessing state, by setting array to 0 (i.e. IN_PROCESS)
         if not self._fixed:
             blockSet[:]  = fastWhere(cond, OpArrayCache.IN_PROCESS, blockSet, numpy.uint8)
