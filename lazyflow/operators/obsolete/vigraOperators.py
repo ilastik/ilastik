@@ -6,6 +6,7 @@ from lazyflow import roi
 import copy
 
 from operators import OpArrayPiper, OpMultiArrayPiper
+from lazyflow.rtype import SubRegion
 
 from generic import OpMultiArrayStacker, getSubKeyWithFlags, popFlagsFromTheKey
 
@@ -234,23 +235,35 @@ class OpPixelFeaturesPresmoothed(Operator):
                 for j in range(dimCol):
                     self.multi.inputs["Input%02d" %(i*dimRow+j)].disconnect()
 
+            channelCount = 0
+            featureCount = 0
+            self.featureOutputChannels = []
             #connect individual operators
             for i in range(dimRow):
                 for j in range(dimCol):
                     if self.matrix[i,j]:
                         # Feature names are provided via metadata
                         oparray[i][j].outputs["Output"].meta.description = featureNameArray[i][j]
-                        self.multi.inputs["Input%02d" %(i*dimRow+j)].connect(oparray[i][j].outputs["Output"])
-                        logger.debug("connected  Input%02d of self.multi" %(i*dimRow+j))
-            self.Features.connect( self.multi.Outputs )
+                        self.multi.inputs["Input%02d" %(i*dimCol+j)].connect(oparray[i][j].outputs["Output"])
+                        logger.debug("connected  Input%02d of self.multi" %(i*dimCol+j))
 
+                        # Prepare the individual features
+                        featureCount += 1
+                        self.Features.resize( featureCount )
+
+                        featureMeta = oparray[i][j].outputs["Output"].meta
+                        featureChannels = featureMeta.shape[ featureMeta.axistags.index('c') ]
+                        self.Features[featureCount-1].meta.assignFrom( featureMeta )
+                        self.featureOutputChannels.append( (channelCount, channelCount + featureChannels) )
+                        channelCount += featureChannels
+            
             #additional connection with FakeOperator
             if (self.matrix==0).all():
                 fakeOp = OpGaussianSmoothing(self)
                 fakeOp.inputs["Input"].connect(self.source.outputs["Output"])
                 fakeOp.inputs["sigma"].setValue(10)
-                self.multi.inputs["Input%02d" %(i*dimRow+j+1)].connect(fakeOp.outputs["Output"])
-                self.multi.inputs["Input%02d" %(i*dimRow+j+1)].disconnect()
+                self.multi.inputs["Input%02d" %(i*dimCol+j+1)].connect(fakeOp.outputs["Output"])
+                self.multi.inputs["Input%02d" %(i*dimCol+j+1)].disconnect()
                 self.stacker.outputs["Output"]._shape=()
                 return
 
@@ -307,6 +320,21 @@ class OpPixelFeaturesPresmoothed(Operator):
         else:
             assert False, "Unknown dirty input slot."
             
+
+    def getSubOutSlot(self, slots, indexes, key, result):
+        assert slots[0] == self.Features
+        index = indexes[0]
+        slot = self.Features[index]
+        key = list(key)
+        channelIndex = self.Input.meta.axistags.index('c')
+        
+        # Translate channel slice to the correct location for the output slot.
+        key[channelIndex] = slice(self.featureOutputChannels[index][0] + key[channelIndex].start,
+                                  self.featureOutputChannels[index][0] + key[channelIndex].stop)
+        roi = SubRegion(slot, pslice=key)
+
+        # Get output slot region for this channel
+        return self.execute(self.Output, roi, result)
 
     def execute(self, slot, rroi, result):
         if slot == self.outputs["Output"]:
