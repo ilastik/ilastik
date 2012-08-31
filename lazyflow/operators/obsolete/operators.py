@@ -519,6 +519,11 @@ class OpArrayCache(OpArrayPiper):
         # indicate the inprocessing state, by setting array to 0 (i.e. IN_PROCESS)
         if not self._fixed:
             blockSet[:]  = fastWhere(cond, OpArrayCache.IN_PROCESS, blockSet, numpy.uint8)
+        else:
+            # Someone asked for some dirty blocks while we were fixed.
+            # Mark these blocks to be signaled as dirty when we become unfixed
+            blockSet[:]  = fastWhere(cond, OpArrayCache.FIXED_DIRTY, blockSet, numpy.uint8)
+            self._has_fixed_dirty_blocks = True
         self._lock.release()
 
         temp = itertools.count(0)
