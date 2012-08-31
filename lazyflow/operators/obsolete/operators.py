@@ -519,7 +519,6 @@ class OpArrayCache(OpArrayPiper):
         # indicate the inprocessing state, by setting array to 0 (i.e. IN_PROCESS)
         if not self._fixed:
             blockSet[:]  = fastWhere(cond, OpArrayCache.IN_PROCESS, blockSet, numpy.uint8)
-
         self._lock.release()
 
         temp = itertools.count(0)
@@ -1205,7 +1204,12 @@ class OpBlockedArrayCache(Operator):
                     blockStop = (stop * 1.0 / self._blockShape).ceil()
                     blockKey = roiToSlice(blockStart,blockStop)
                     innerBlocks = self._blockNumbers[blockKey]
-            
+                    for b_ind in innerBlocks.flat:
+                        with self._lock:
+                            # Only need to remember this dirty block if we don't have a cache for it already
+                            # (Existing OpArrayCaches will propagate dirty keys on their own.)
+                            if not self._cache_list.has_key(b_ind):
+                                self._fixed_dirty_blocks.add(b_ind)            
             if slot == self.fixAtCurrent:
                 self._fixed = self.fixAtCurrent.value
                 if not self._fixed:
