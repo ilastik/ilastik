@@ -290,6 +290,12 @@ class PixelClassificationSerializer(AppletSerializer):
         self._predictionsPresent = 'Predictions' in topGroup.keys()
         if self._predictionsPresent:
             predictionGroup = topGroup['Predictions']
+
+            # Flush the GUI cache of any saved up dirty rois
+            if self.mainOperator.FreezePredictions.value == True:
+                self.mainOperator.FreezePredictions.setValue(False)
+                self.mainOperator.FreezePredictions.setValue(True)
+            
             for imageIndex, datasetName in enumerate( predictionGroup.keys() ):
                 opStreamer = OpStreamingHdf5Reader( graph=self.mainOperator.graph )
                 opStreamer.Hdf5File.setValue( predictionGroup )
