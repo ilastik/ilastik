@@ -38,6 +38,7 @@ class TestOpDataSelection_Basic():
     
     @classmethod
     def teardownClass(cls):
+        cls.projectFile.close()
         os.remove(cls.testNpyFileName)
         os.remove(cls.testPngFileName)
         os.remove(cls.projectFileName)

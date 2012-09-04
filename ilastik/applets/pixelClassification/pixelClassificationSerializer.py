@@ -1,11 +1,14 @@
 import os
-import tempfile
+#import tempfile
 import vigra
 import h5py
 from ilastik.applets.base.appletSerializer import AppletSerializer
 from ilastik.utility import bind
 from lazyflow.operators import OpH5WriterBigDataset
+from lazyflow.operators.ioOperators import OpStreamingHdf5Reader
 import threading
+
+import tempfile
 
 import logging
 logger = logging.getLogger(__name__)
@@ -131,7 +134,7 @@ class PixelClassificationSerializer(AppletSerializer):
             # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
             # Instead, we'll use vigra to write the classifier to a temporary file.
             tmpDir = tempfile.mkdtemp()
-            cachePath = tmpDir + '/classifier_cache.h5'
+            cachePath = os.path.join(tmpDir, 'classifier_cache.h5')
             classifier.writeHDF5(cachePath, 'Classifier')
             
             # Open the temp file and copy to our project group
@@ -154,60 +157,70 @@ class PixelClassificationSerializer(AppletSerializer):
             if self._dirtyFlags[Section.Predictions] or 'Predictions' not in topGroup.keys():
 
                 self.deleteIfPresent(topGroup, 'Predictions')
+                
+                # Disconnect the precomputed prediction inputs.
+                for i,slot in enumerate( self.mainOperator.PredictionsFromDisk ):
+                    slot.disconnect()
 
                 if self.predictionStorageEnabled:
                     predictionDir = topGroup.create_group('Predictions')
-                    numImages = len(self.mainOperator.PredictionProbabilities)
-    
-                    if numImages > 0:
-                        increment = (endProgress - startProgress) / float(numImages)
-    
-                    for imageIndex in range(numImages):
-                        # Have we been cancelled?
-                        if not self.predictionStorageEnabled:
-                            break
-    
-                        datasetName = 'predictions{:04d}'.format(imageIndex)
-    
-                        progress = [startProgress]
-    
-                        # Use a big dataset writer to do this in chunks
-                        opWriter = OpH5WriterBigDataset(self.mainOperator.graph)
-                        opWriter.hdf5File.setValue( predictionDir )
-                        opWriter.hdf5Path.setValue( datasetName )
-                        opWriter.Image.connect( self.mainOperator.PredictionProbabilities[imageIndex] )
-                        
-                        # Create the request
-                        self._predictionStorageRequest = opWriter.WriteImage[...]
-    
-                        def handleProgress(percent):
-                            # Stop sending progress if we were cancelled
-                            if self.predictionStorageEnabled:
-                                progress[0] = startProgress + percent * (increment / 100.0)
-                                self.progressSignal.emit( progress[0] )
-                        opWriter.progressSignal.subscribe( handleProgress )
-    
-                        finishedEvent = threading.Event()
-                        def handleFinish(request):
-                            finishedEvent.set()
-    
-                        def handleCancel(request):
-                            self._predictionStorageRequest = None
-                            finishedEvent.set()
-    
-                        # Trigger the write and wait for it to complete or cancel.
-                        self._predictionStorageRequest.notify(handleFinish)
-                        self._predictionStorageRequest.onCancel(handleCancel)
-                        finishedEvent.wait()
-                        
-                    # If we were cancelled, delete the predictions we just started
-                    if not self.predictionStorageEnabled:
-                        self.deleteIfPresent(predictionDir, datasetName)
-                        self._predictionsPresent = False
-                        startProgress = progress[0]
-                    else:
-                        self._dirtyFlags[Section.Predictions] = False
-                        self._predictionsPresent = True
+
+                    failedToSave = False
+                    try:                    
+                        numImages = len(self.mainOperator.PredictionProbabilities)
+        
+                        if numImages > 0:
+                            increment = (endProgress - startProgress) / float(numImages)
+        
+                        for imageIndex in range(numImages):
+                            # Have we been cancelled?
+                            if not self.predictionStorageEnabled:
+                                break
+        
+                            datasetName = 'predictions{:04d}'.format(imageIndex)
+        
+                            progress = [startProgress]
+        
+                            # Use a big dataset writer to do this in chunks
+                            opWriter = OpH5WriterBigDataset(self.mainOperator.graph)
+                            opWriter.hdf5File.setValue( predictionDir )
+                            opWriter.hdf5Path.setValue( datasetName )
+                            opWriter.Image.connect( self.mainOperator.PredictionProbabilities[imageIndex] )
+                            
+                            # Create the request
+                            self._predictionStorageRequest = opWriter.WriteImage[...]
+        
+                            def handleProgress(percent):
+                                # Stop sending progress if we were cancelled
+                                if self.predictionStorageEnabled:
+                                    progress[0] = startProgress + percent * (increment / 100.0)
+                                    self.progressSignal.emit( progress[0] )
+                            opWriter.progressSignal.subscribe( handleProgress )
+        
+                            finishedEvent = threading.Event()
+                            def handleFinish(request):
+                                finishedEvent.set()
+        
+                            def handleCancel(request):
+                                self._predictionStorageRequest = None
+                                finishedEvent.set()
+        
+                            # Trigger the write and wait for it to complete or cancel.
+                            self._predictionStorageRequest.notify(handleFinish)
+                            self._predictionStorageRequest.onCancel(handleCancel)
+                            finishedEvent.wait()
+                    except:
+                        failedToSave = True
+                        raise
+                    finally:
+                        # If we were cancelled, delete the predictions we just started
+                        if not self.predictionStorageEnabled or failedToSave:
+                            self.deleteIfPresent(predictionDir, datasetName)
+                            self._predictionsPresent = False
+                            startProgress = progress[0]
+                        else:
+                            # Re-load the operator with the prediction groups we just saved
+                            self._deserializePredictions(topGroup)
 
     def cancel(self):
         """Currently, this only cancels prediction storage."""
@@ -219,35 +232,35 @@ class PixelClassificationSerializer(AppletSerializer):
         with Tracer(traceLogger):
             self.progressSignal.emit(0)            
             self._deserializeLabels( topGroup )
-            self.progressSignal.emit(50)            
+            self.progressSignal.emit(50)
             self._deserializeClassifier( topGroup )
-            
-            self._predictionsPresent = 'Predictions' in topGroup.keys()
+            self._deserializePredictions( topGroup )
             
             self.progressSignal.emit(100)
 
     def _deserializeLabels(self, topGroup):
         with Tracer(traceLogger):
-            labelSetGroup = topGroup['LabelSets']
-            numImages = len(labelSetGroup)
-            self.mainOperator.LabelInputs.resize(numImages)
-    
-            # For each image in the file
-            for index, (groupName, labelGroup) in enumerate( sorted(labelSetGroup.items()) ):
-                # For each block of label data in the file
-                for blockData in labelGroup.values():
-                    # The location of this label data block within the image is stored as an hdf5 attribute
-                    slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
-                    # Slice in this data to the label input
-                    self.mainOperator.LabelInputs[index][slicing] = blockData[...]
-    
-            self._dirtyFlags[Section.Labels] = False
+            try:
+                labelSetGroup = topGroup['LabelSets']
+            except KeyError:
+                pass
+            else:
+                numImages = len(labelSetGroup)
+                self.mainOperator.LabelInputs.resize(numImages)
+        
+                # For each image in the file
+                for index, (groupName, labelGroup) in enumerate( sorted(labelSetGroup.items()) ):
+                    # For each block of label data in the file
+                    for blockData in labelGroup.values():
+                        # The location of this label data block within the image is stored as an hdf5 attribute
+                        slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
+                        # Slice in this data to the label input
+                        self.mainOperator.LabelInputs[index][slicing] = blockData[...]
+            finally:
+                self._dirtyFlags[Section.Labels] = False
 
     def _deserializeClassifier(self, topGroup):
         with Tracer(traceLogger):
-            if topGroup is None:
-                return
-            
             try:
                 classifierGroup = topGroup['Classifier']
             except KeyError:
@@ -256,7 +269,7 @@ class PixelClassificationSerializer(AppletSerializer):
                 # Due to non-shared hdf5 dlls, vigra can't read directly from our open hdf5 group.
                 # Instead, we'll copy the classfier data to a temporary file and give it to vigra.
                 tmpDir = tempfile.mkdtemp()
-                cachePath = tmpDir + '/classifier_cache.h5'
+                cachePath = os.path.join(tmpDir, 'classifier_cache.h5')
                 cacheFile = h5py.File(cachePath, 'w')
                 cacheFile.copy(classifierGroup, 'Classifier')
                 cacheFile.close()
@@ -270,7 +283,25 @@ class PixelClassificationSerializer(AppletSerializer):
                 # (This assumes that the classifier we are loading is consistent with the images and labels that we just loaded.
                 #  As soon as training input changes, it will be retrained.)
                 self.mainOperator.classifier_cache.forceValue( classifier )
-            self._dirtyFlags[Section.Classifier] = False
+            finally:
+                self._dirtyFlags[Section.Classifier] = False
+
+    def _deserializePredictions(self, topGroup):
+        self._predictionsPresent = 'Predictions' in topGroup.keys()
+        if self._predictionsPresent:
+            predictionGroup = topGroup['Predictions']
+
+            # Flush the GUI cache of any saved up dirty rois
+            if self.mainOperator.FreezePredictions.value == True:
+                self.mainOperator.FreezePredictions.setValue(False)
+                self.mainOperator.FreezePredictions.setValue(True)
+            
+            for imageIndex, datasetName in enumerate( predictionGroup.keys() ):
+                opStreamer = OpStreamingHdf5Reader( graph=self.mainOperator.graph )
+                opStreamer.Hdf5File.setValue( predictionGroup )
+                opStreamer.InternalPath.setValue( datasetName )
+                self.mainOperator.PredictionsFromDisk[imageIndex].connect( opStreamer.OutputImage )
+        self._dirtyFlags[Section.Predictions] = False
 
     def slicingToString(self, slicing):
         """

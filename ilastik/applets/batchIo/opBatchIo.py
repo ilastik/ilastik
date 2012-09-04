@@ -1,20 +1,14 @@
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OrderedSignal
-
-from lazyflow.operators.ioOperators import OpInputDataReader
-from lazyflow.operators import OpH5WriterBigDataset
-import copy
-
-from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
-
-import numpy
-import uuid
+import os
 import h5py
-
 import traceback
+import threading
 import logging
-logger = logging.getLogger(__name__)
 
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
+from lazyflow.operators import OpH5WriterBigDataset
 from ilastik.utility.pathHelpers import PathComponents
+
+logger = logging.getLogger(__name__)
 
 class ExportFormat():
     H5 = 0
@@ -69,6 +63,8 @@ class OpBatchIo(Operator):
         
         self.progressSignal = OrderedSignal()
         self.ProgressSignal.setValue( self.progressSignal )
+        
+        self._createDirLock = threading.Lock()
 
     def setupOutputs(self):        
         # Create the output data path
@@ -124,6 +120,13 @@ class OpBatchIo(Operator):
             # Export H5
             if exportFormat == ExportFormat.H5:
                 pathComp = PathComponents(self.OutputDataPath.value)
+
+                # Ensure the directory exists
+                if not os.path.exists(pathComp.externalDirectory):
+                    with self._createDirLock:
+                        # Check again now that we have the lock.
+                        if not os.path.exists(pathComp.externalDirectory):
+                            os.makedirs(pathComp.externalDirectory)
 
                 # Open the file
                 try:

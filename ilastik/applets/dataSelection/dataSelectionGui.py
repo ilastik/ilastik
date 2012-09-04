@@ -156,8 +156,9 @@ class DataSelectionGui(QMainWindow):
         """
         with Tracer(traceLogger):
             # Launch the "Open File" dialog
-            fileNames = QFileDialog.getOpenFileNames(
-                            self, "Select Image", os.path.abspath(__file__), "Numpy, h5, and image files (*.npy *.h5)")
+            extensions = OpDataSelection.SupportedExtensions
+            filter = "Image files " + ' '.join('*.' + x for x in extensions)
+            fileNames = QFileDialog.getOpenFileNames(self, "Select Image", os.path.abspath(__file__), filter)
             
             # Convert from QtString to python str
             fileNames = [str(s) for s in fileNames]

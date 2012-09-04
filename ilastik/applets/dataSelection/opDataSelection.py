@@ -42,6 +42,8 @@ class OpDataSelection(Operator):
     name = "OpDataSelection"
     category = "Top-level"
     
+    SupportedExtensions = OpInputDataReader.SupportedExtensions
+    
     ProjectFile = InputSlot(stype='object') # The project hdf5 File object (already opened)
     ProjectDataGroup = InputSlot(stype='string') # The internal path to the hdf5 group where project-local
                                                  #  datasets are stored within the project file
@@ -84,3 +86,6 @@ class OpDataSelection(Operator):
         self.AllowLabels.setValue( datasetInfo.allowLabels )
         self.ImageName.setValue(datasetInfo.filePath)
 
+    def propagateDirty(self, inputSlot, roi):
+        # Output slots are directly connected to internal operators
+        pass

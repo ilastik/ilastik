@@ -19,7 +19,7 @@ class StdOutStreamHandler(logging.StreamHandler):
 
 def updateFromConfigFile():
     # Import changes from a file    
-    configFilePath = os.path.split(__file__)[0]+"/../logging_config.json"
+    configFilePath = os.path.split(__file__)[0]+"/logging_config.json"
     f = open(configFilePath)
     try:
         updates = json.load(f)
@@ -27,7 +27,13 @@ def updateFromConfigFile():
     except:
         logging.error("Failed to load logging config file: " + configFilePath)
 
-
+class NoWarnFilter(logging.Filter):
+    """
+    Filter out any records that are warnings or errors.
+    (This is useful if your warnings and errors are sent to their own handler, e.g. stderr.)
+    """
+    def filter(self, record):
+        return not (record.levelno == logging.WARN or record.levelno == logging.ERROR)
 
 # Globals for the update timer thread
 interval = 0

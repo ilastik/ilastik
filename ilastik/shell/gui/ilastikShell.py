@@ -195,7 +195,7 @@ class IlastikShell( QMainWindow ):
         shellActions.saveProjectAction.setEnabled(False)
 
         # Menu item: Save Project Snapshot
-        shellActions.saveProjectSnapshotAction = menu.addAction("&Save Project Snapshot...")
+        shellActions.saveProjectSnapshotAction = menu.addAction("&Save and Take Snapshot...")
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
         # Can't save until a project is loaded for the first time
         shellActions.saveProjectSnapshotAction.setEnabled(False)
@@ -432,14 +432,23 @@ class IlastikShell( QMainWindow ):
     def __getitem__( self, index ):
         return self._applets[index]
     
-    def ensureNoCurrentProject(self):
+    def ensureNoCurrentProject(self, assertClean=False):
+        """
+        Close the current project.  If it's dirty, we ask the user for confirmation.
+        
+        The assertClean parameter is for tests.  Setting it to True will raise an assertion if the project was dirty.
+        """
         closeProject = True
         if self.projectManager.isProjectDataDirty():
+            # Testing assertion
+            assert not assertClean, "Expected a clean project but found it to be dirty!"
+
             message = "Your current project is about to be closed, but it has unsaved changes which will be lost.\n"
             message += "Are you sure you want to proceed?"
             buttons = QMessageBox.Yes | QMessageBox.Cancel
             response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
             closeProject = (response == QMessageBox.Yes)
+            
 
         if closeProject:
             self.closeCurrentProject()

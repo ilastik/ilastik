@@ -6,6 +6,7 @@ from lazyflow.operators import OpGaussianSmoothing
 from lazyflow.operators.ioOperators import OpInputDataReader
 from ilastik.applets.batchIo.opBatchIo import OpBatchIo, ExportFormat
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
+from ilastik.utility import PathComponents
 
 class TestOpBatchIo(object):
     def setUp(self):
@@ -24,7 +25,7 @@ class TestOpBatchIo(object):
     def testBasic(self):
         cwd = os.getcwd()
         info = DatasetInfo()
-        info.filePath = cwd + '/NpyTestData.npy'
+        info.filePath = os.path.join(cwd, 'NpyTestData.npy')
         
         graph = Graph()
         opBatchIo = OpBatchIo(graph=graph)
@@ -50,7 +51,7 @@ class TestOpBatchIo(object):
         assert dirty == True
         
         outputPath = opBatchIo.OutputDataPath.value
-        assert outputPath == cwd + '/NpyTestData_smoothed.h5/' + internalPath
+        assert outputPath == os.path.join(cwd, 'NpyTestData_smoothed.h5/' + internalPath)
         
         result = opBatchIo.ExportResult.value
         assert result
@@ -59,15 +60,66 @@ class TestOpBatchIo(object):
         assert dirty == False
         
         # Check the file
-        smoothedPath = cwd + '/NpyTestData_smoothed.h5'
-        f = h5py.File(smoothedPath, 'r')
-        assert internalPath in f
-        assert f[internalPath].shape == self.testData.shape
+        smoothedPath = os.path.join(cwd, 'NpyTestData_smoothed.h5')
+        with h5py.File(smoothedPath, 'r') as f:
+            assert internalPath in f
+            assert f[internalPath].shape == self.testData.shape
         try:
             os.remove(smoothedPath)
         except:
             pass
         
+    def testCreateExportDirectory(self):
+        """
+        Test that the batch operator can create the export directory if it doesn't exist yet.
+        """
+        cwd = os.getcwd()
+        info = DatasetInfo()
+        info.filePath = os.path.join(cwd, 'NpyTestData.npy')
+        
+        graph = Graph()
+        opBatchIo = OpBatchIo(graph=graph)
+        opInput = OpInputDataReader(graph=graph)
+        opInput.FilePath.setValue( info.filePath )
+        
+        # Our test "processing pipeline" is just a smoothing operator.
+        opSmooth = OpGaussianSmoothing(graph=graph)
+        opSmooth.Input.connect( opInput.Output )
+        opSmooth.sigma.setValue(3.0)
+        
+        exportDir = os.path.join(cwd, 'exported_data')
+        opBatchIo.ExportDirectory.setValue( exportDir )
+        opBatchIo.Suffix.setValue( '_smoothed' )
+        opBatchIo.Format.setValue( ExportFormat.H5 )
+        opBatchIo.DatasetPath.setValue( info.filePath )
+        
+        internalPath = 'path/to/data'
+        opBatchIo.InternalPath.setValue( internalPath )
+        
+        opBatchIo.ImageToExport.connect( opSmooth.Output )
+        
+        dirty = opBatchIo.Dirty.value
+        assert dirty == True
+        
+        outputPath = opBatchIo.OutputDataPath.value
+        assert outputPath == os.path.join(exportDir, 'NpyTestData_smoothed.h5', internalPath)
+        
+        result = opBatchIo.ExportResult.value
+        assert result
+        
+        dirty = opBatchIo.Dirty.value
+        assert dirty == False
+        
+        # Check the file
+        smoothedPath = PathComponents(outputPath).externalPath
+        with h5py.File(smoothedPath, 'r') as f:
+            assert internalPath in f
+            assert f[internalPath].shape == self.testData.shape
+        try:
+            os.remove(smoothedPath)
+            os.rmdir(exportDir)
+        except:
+            pass
         
 if __name__ == "__main__":
     import sys

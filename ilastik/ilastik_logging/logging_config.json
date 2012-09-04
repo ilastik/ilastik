@@ -25,8 +25,8 @@
         "TRACE.lazyflow.operators.obsolete.classifierOperators":        { "level":"INFO", "propagate": false },
         "TRACE.lazyflow.operators.obsolete.operators.OpArrayCache":     { "level":"INFO", "propagate": false },
         "TRACE.lazyflow.operators.obsolete.valueProviders.OpValueCache":{ "level":"INFO", "propagate": false },
-        "TRACE.applets":                                                { "level":"INFO", "propagate": false },
-        "TRACE.ilastikshell":                                           { "level":"INFO", "propagate": false },
+        "TRACE.ilastik.applets":                                        { "level":"INFO", "propagate": false },
+        "TRACE.ilastik.shell":                                          { "level":"INFO", "propagate": false },
         "TRACE.volumina":                                               { "level":"INFO", "propagate": false },
         "TRACE.volumina.imageScene2D":                                  { "level":"INFO", "propagate": false }
     }

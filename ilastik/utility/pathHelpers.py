@@ -25,7 +25,7 @@ class PathComponents(object):
                 parts[0] = parts[0] + ext + parts[1]
                 del parts[1]
             self.externalPath = parts[0] + ext # /some/path/to/file.h5
-            self.internalPath = parts[1]       # /with/internal/dataset
+            self.internalPath = parts[1].replace('\\', '/') # /with/internal/dataset
 
             self.internalDirectory = os.path.split( self.internalPath )[0]   # /with/internal
             self.internalDatasetName = os.path.split( self.internalPath )[1] # dataset

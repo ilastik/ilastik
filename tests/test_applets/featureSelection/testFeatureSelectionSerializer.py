@@ -18,48 +18,48 @@ class TestFeatureSelectionSerializer(object):
                 pass
     
         # Create an empty project
-        testProject = h5py.File(testProjectName)
-        testProject.create_dataset("ilastikVersion", data=0.6)
+        with h5py.File(testProjectName) as testProject:
+            testProject.create_dataset("ilastikVersion", data=0.6)
+            
+            # Create an operator to work with and give it some input
+            graph = Graph()
+            operatorToSave = OpFeatureSelection(graph=graph)
         
-        # Create an operator to work with and give it some input
-        graph = Graph()
-        operatorToSave = OpFeatureSelection(graph=graph)
-    
-        # Configure scales        
-        scales = [0.1, 0.2, 0.3, 0.4, 0.5]
-        operatorToSave.Scales.setValue(scales)
-    
-        # Configure feature types
-        featureIds = [ 'GaussianSmoothing',
-                       'LaplacianOfGaussian' ]
-        operatorToSave.FeatureIds.setValue(featureIds)
-    
-        # All False (no features selected)
-        selectionMatrix = numpy.zeros((2, 5), dtype=bool)
-    
-        # Change a few to True
-        selectionMatrix[0,0] = True
-        selectionMatrix[1,0] = True
-        selectionMatrix[0,2] = True
-        selectionMatrix[1,4] = True
-        operatorToSave.SelectionMatrix.setValue(selectionMatrix)
+            # Configure scales        
+            scales = [0.1, 0.2, 0.3, 0.4, 0.5]
+            operatorToSave.Scales.setValue(scales)
         
-        # Serialize!
-        serializer = FeatureSelectionSerializer(operatorToSave, 'FeatureSelections')
-        serializer.serializeToHdf5(testProject, testProjectName)
+            # Configure feature types
+            featureIds = [ 'GaussianSmoothing',
+                           'LaplacianOfGaussian' ]
+            operatorToSave.FeatureIds.setValue(featureIds)
         
-        assert (testProject['FeatureSelections/Scales'].value == scales).all()
-        assert (testProject['FeatureSelections/FeatureIds'].value == featureIds).all()
-        assert (testProject['FeatureSelections/SelectionMatrix'].value == selectionMatrix).all()
-    
-        # Deserialize into a fresh operator
-        operatorToLoad = OpFeatureSelection(graph=graph)
-        deserializer = FeatureSelectionSerializer(operatorToLoad, 'FeatureSelections')
-        deserializer.deserializeFromHdf5(testProject, testProjectName)
+            # All False (no features selected)
+            selectionMatrix = numpy.zeros((2, 5), dtype=bool)
         
-        assert (operatorToLoad.Scales.value == scales).all()
-        assert (operatorToLoad.FeatureIds.value == featureIds).all()
-        assert (operatorToLoad.SelectionMatrix.value == selectionMatrix).all()
+            # Change a few to True
+            selectionMatrix[0,0] = True
+            selectionMatrix[1,0] = True
+            selectionMatrix[0,2] = True
+            selectionMatrix[1,4] = True
+            operatorToSave.SelectionMatrix.setValue(selectionMatrix)
+            
+            # Serialize!
+            serializer = FeatureSelectionSerializer(operatorToSave, 'FeatureSelections')
+            serializer.serializeToHdf5(testProject, testProjectName)
+            
+            assert (testProject['FeatureSelections/Scales'].value == scales).all()
+            assert (testProject['FeatureSelections/FeatureIds'].value == featureIds).all()
+            assert (testProject['FeatureSelections/SelectionMatrix'].value == selectionMatrix).all()
+        
+            # Deserialize into a fresh operator
+            operatorToLoad = OpFeatureSelection(graph=graph)
+            deserializer = FeatureSelectionSerializer(operatorToLoad, 'FeatureSelections')
+            deserializer.deserializeFromHdf5(testProject, testProjectName)
+            
+            assert (operatorToLoad.Scales.value == scales).all()
+            assert (operatorToLoad.FeatureIds.value == featureIds).all()
+            assert (operatorToLoad.SelectionMatrix.value == selectionMatrix).all()
 
         os.remove(testProjectName)
 

@@ -1,4 +1,3 @@
-import functools
 import inspect
 
 class bind(object):
@@ -10,8 +9,9 @@ class bind(object):
     def __init__(self, f, *args):
         self.f = f
         self.bound_args = args
-        self.numUnboundArgs = len(inspect.getargspec(self.f).args) - len(self.bound_args)
-        if hasattr(f, 'im_self'):
+        expected_args = inspect.getargspec(self.f).args
+        self.numUnboundArgs = len(expected_args) - len(self.bound_args)
+        if len(expected_args) > 0 and expected_args[0] == 'self':
             self.numUnboundArgs -= 1
     def __call__(self, *args):
         self.f(*(self.bound_args + args[0:self.numUnboundArgs]))
