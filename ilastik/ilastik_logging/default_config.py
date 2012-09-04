@@ -1,4 +1,6 @@
+import os
 import logging.config
+import warnings
 import loggingHelpers
 
 default_log_config = {
@@ -10,23 +12,35 @@ default_log_config = {
             "format": "%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s"
         },
         "location": {
-            "format": "%(levelname)s %(thread)d %(name)s:%(funcName)s:%(lineno)d %(message)s"
+            #"format": "%(levelname)s %(thread)d %(name)s:%(funcName)s:%(lineno)d %(message)s"
+            "format": "%(levelname)s %(name)s: %(message)s"
         },
         "simple": {
             "format": "%(levelname)s %(message)s"
         },
+    },
+    "filters" : {
+        "no_warn" : {
+            "()":"ilastik.ilastik_logging.loggingHelpers.NoWarnFilter"
+        }
     },
     "handlers": {
         "console":{
             "level":"DEBUG",
             #"class":"logging.StreamHandler",
             "class":"ilastik.ilastik_logging.loggingHelpers.StdOutStreamHandler",
-            "formatter": "location"
+            "formatter": "location",
+            "filters":["no_warn"]
         },
         "console_warn":{
             "level":"WARN",
             "class":"logging.StreamHandler", # Defaults to sys.stderr
             "formatter":"verbose"
+        },
+        "console_warning_module":{
+            "level":"WARN",
+            "class":"logging.StreamHandler", # Defaults to sys.stderr
+            "formatter":"simple"
         },
         "console_trace":{
             "level":"DEBUG",
@@ -40,13 +54,16 @@ default_log_config = {
         "level": "INFO",
     },
     "loggers": {
+        # This logger captures warnings module warnings
+        "py.warnings":                             {  "level":"WARN", "handlers":["console_warning_module"], "propagate": False },
+
         # When copying to a json file, remember to remove comments and change True/False to true/false
         "lazyflow":                             {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.graph":                       {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.graph.Slot":                  {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.operators":                   {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.operators.ioOperators":       {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-        "lazyflow.operators.obsolete.vigraOperators":         { "level":"INFO",  "handlers":["console","console_warn"], "propagate": False },
+        "lazyflow.operators.obsolete.vigraOperators":         { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "lazyflow.operators.obsolete.classifierOperators":    { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "ilastik":                              {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "ilastik.applets":                      {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
@@ -67,8 +84,8 @@ default_log_config = {
         "TRACE.lazyflow.operators.obsolete.classifierOperators":        { "level":"INFO", "handlers":["console_trace","console_warn"], "propagate": False },
         "TRACE.lazyflow.operators.obsolete.operators.OpArrayCache":     { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
         "TRACE.lazyflow.operators.obsolete.valueProviders.OpValueCache":{ "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.applets":                                                { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
-        "TRACE.ilastikshell":                                           { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.ilastik.applets":                                        { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
+        "TRACE.ilastik.shell":                                          { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
         "TRACE.volumina":                                               { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False },
         "TRACE.volumina.imageScene2D":                                  { "level":"INFO",  "handlers":["console_trace","console_warn"], "propagate": False }
     }
@@ -80,4 +97,20 @@ def init():
     
     # Update from the user's customizations
     loggingHelpers.updateFromConfigFile()
+    
+    # Capture warnings from the warnings module
+    logging.captureWarnings(True)
+    
+    # Warnings module warnings are shown only once
+    warnings.filterwarnings("once")
+
+    # Don't warn about pending deprecations (PyQt generates some of these)
+    warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
+    
+    # Custom format for warnings
+    def simple_warning_format(message, category, filename, lineno, line=None):
+        filename = os.path.split(filename)[1]
+        return filename + "(" + str(lineno) + "): " + category.__name__ + ": " + message[0]
+
+    warnings.formatwarning = simple_warning_format
     

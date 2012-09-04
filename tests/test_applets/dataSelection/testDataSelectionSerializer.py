@@ -41,73 +41,73 @@ class TestDataSelectionSerializer(object):
         Test the basic functionality of the v0.6 project format serializer.
         """
         # Create an empty project
-        testProject = h5py.File(self.testProjectName)
-        testProject.create_dataset("ilastikVersion", data=0.6)
+        with h5py.File(self.testProjectName) as testProject:
+            testProject.create_dataset("ilastikVersion", data=0.6)
+            
+            ##
+            ## Serialization
+            ##
         
-        ##
-        ## Serialization
-        ##
-    
-        # Create an operator to work with and give it some input
-        graph = Graph()
-        operatorToSave = OperatorWrapper( OpDataSelection(graph=graph) )
-        serializer = DataSelectionSerializer(operatorToSave, 'DataSelectionTest')
-        assert serializer._base_initialized
-    
-        operatorToSave.ProjectFile.setValue(testProject)
-        operatorToSave.WorkingDirectory.setValue( os.path.split(__file__)[0] )
-        operatorToSave.ProjectDataGroup.setValue( serializer.topGroupName + '/local_data' )
+            # Create an operator to work with and give it some input
+            graph = Graph()
+            operatorToSave = OperatorWrapper( OpDataSelection(graph=graph) )
+            serializer = DataSelectionSerializer(operatorToSave, 'DataSelectionTest')
+            assert serializer._base_initialized
         
-        info = DatasetInfo()
-        info.filePath = self.tmpFilePath
-        info.location = DatasetInfo.Location.ProjectInternal
+            operatorToSave.ProjectFile.setValue(testProject)
+            operatorToSave.WorkingDirectory.setValue( os.path.split(__file__)[0] )
+            operatorToSave.ProjectDataGroup.setValue( serializer.topGroupName + '/local_data' )
+            
+            info = DatasetInfo()
+            info.filePath = self.tmpFilePath
+            info.location = DatasetInfo.Location.ProjectInternal
+            
+            operatorToSave.Dataset.resize(1)
+            operatorToSave.Dataset[0].setValue(info)
+            
+            # Now serialize!
+            serializer.serializeToHdf5(testProject, self.testProjectName)
+            
+            # Check for dataset existence
+            datasetInternalPath = serializer.topGroupName + '/local_data/' + info.datasetId
+            dataset = testProject[datasetInternalPath][...]
+            
+            # Check axistags attribute
+            axistags = vigra.AxisTags.fromJSON(testProject[datasetInternalPath].attrs['axistags'])
+            
+            # Debug info...
+            #logging.basicConfig(level=logging.DEBUG)
+            logger.debug('dataset.shape = ' + str(dataset.shape))
+            logger.debug('should be ' + str(operatorToSave.Image[0].meta.shape))
+            logger.debug('dataset axistags:')
+            logger.debug(axistags)
+            logger.debug('should be:')
+            logger.debug(operatorToSave.Image[0].meta.axistags)
         
-        operatorToSave.Dataset.resize(1)
-        operatorToSave.Dataset[0].setValue(info)
+            originalShape = operatorToSave.Image[0].meta.shape
+            originalAxisTags = operatorToSave.Image[0].meta.axistags
+            
+            # Now we can directly compare the shape and axis ordering
+            assert dataset.shape == originalShape
+            assert axistags == originalAxisTags
+            
+            ##
+            ## Deserialization
+            ##
         
-        # Now serialize!
-        serializer.serializeToHdf5(testProject, self.testProjectName)
-        
-        # Check for dataset existence
-        datasetInternalPath = serializer.topGroupName + '/local_data/' + info.datasetId
-        dataset = testProject[datasetInternalPath][...]
-        
-        # Check axistags attribute
-        axistags = vigra.AxisTags.fromJSON(testProject[datasetInternalPath].attrs['axistags'])
-        
-        # Debug info...
-        #logging.basicConfig(level=logging.DEBUG)
-        logger.debug('dataset.shape = ' + str(dataset.shape))
-        logger.debug('should be ' + str(operatorToSave.Image[0].meta.shape))
-        logger.debug('dataset axistags:')
-        logger.debug(axistags)
-        logger.debug('should be:')
-        logger.debug(operatorToSave.Image[0].meta.axistags)
-    
-        originalShape = operatorToSave.Image[0].meta.shape
-        originalAxisTags = operatorToSave.Image[0].meta.axistags
-        
-        # Now we can directly compare the shape and axis ordering
-        assert dataset.shape == originalShape
-        assert axistags == originalAxisTags
-        
-        ##
-        ## Deserialization
-        ##
-    
-        # Create an empty operator
-        graph = Graph()
-        operatorToLoad = OperatorWrapper( OpDataSelection(graph=graph) )
-        
-        deserializer = DataSelectionSerializer(operatorToLoad, serializer.topGroupName) # Copy the group name from the serializer we used.
-        assert deserializer._base_initialized
-        deserializer.deserializeFromHdf5(testProject, self.testProjectName)
-        
-        assert len(operatorToLoad.Dataset) == len(operatorToSave.Dataset)
-        assert len(operatorToLoad.Image) == len(operatorToSave.Image)
-        
-        assert operatorToLoad.Image[0].meta.shape == operatorToSave.Image[0].meta.shape
-        assert operatorToLoad.Image[0].meta.axistags == operatorToSave.Image[0].meta.axistags
+            # Create an empty operator
+            graph = Graph()
+            operatorToLoad = OperatorWrapper( OpDataSelection(graph=graph) )
+            
+            deserializer = DataSelectionSerializer(operatorToLoad, serializer.topGroupName) # Copy the group name from the serializer we used.
+            assert deserializer._base_initialized
+            deserializer.deserializeFromHdf5(testProject, self.testProjectName)
+            
+            assert len(operatorToLoad.Dataset) == len(operatorToSave.Dataset)
+            assert len(operatorToLoad.Image) == len(operatorToSave.Image)
+            
+            assert operatorToLoad.Image[0].meta.shape == operatorToSave.Image[0].meta.shape
+            assert operatorToLoad.Image[0].meta.axistags == operatorToSave.Image[0].meta.axistags
 
         os.remove(self.testProjectName)
     

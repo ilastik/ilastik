@@ -1,4 +1,4 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiOutputSlot
 
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 
@@ -16,7 +16,13 @@ class OpVigraWatershedViewer(Operator):
     
     InputImage = InputSlot()
     FreezeCache = InputSlot()
-    Output = OutputSlot()
+    OverrideLabels = InputSlot(stype='object')
+    WatershedPadding = InputSlot()
+    
+    ColoredPixels = OutputSlot()
+    WatershedLabels = OutputSlot()
+    
+    InputChannels = MultiOutputSlot(level=1)
     
     def __init__(self, *args, **kwargs):
         super(OpVigraWatershedViewer, self).__init__(*args, **kwargs)
@@ -28,22 +34,64 @@ class OpVigraWatershedViewer(Operator):
         self.opChannelSelector.Input.connect(self.InputImage)
         self.opChannelSelector.AxisFlag.setValue('c')
 
-        # Inner and outer block shapes are the same.
-        # We're using this cache for the "sliced" property, not the "blocked" property.
         self.opWatershedCache.fixAtCurrent.connect( self.FreezeCache )
-        self.opWatershedCache.innerBlockShape.setValue( ((1,256,256,1,1),(1,256,1,256,1),(1,1,256,256,1)) )
-        self.opWatershedCache.outerBlockShape.setValue( ((1,256,256,1,1),(1,256,1,256,1),(1,1,256,256,1)) )
         self.opWatershedCache.Input.connect(self.opWatershed.Output)
         
         self.opColorizer.Input.connect(self.opWatershedCache.Output)
-        self.Output.connect(self.opColorizer.Output)
-        self.opWatershed.PaddingWidth.setValue(10)
+        self.opColorizer.OverrideColors.connect(self.OverrideLabels)
+        self.opWatershed.PaddingWidth.connect(self.WatershedPadding)
+        
+        self.ColoredPixels.connect(self.opColorizer.Output)
+        self.InputChannels.connect(self.opChannelSelector.Slices)
         
     def setupOutputs(self):
         # Can't make this last connection in __init__ because 
         #  opChannelSelector.Slices won't have any data until its input is ready 
         if len(self.opChannelSelector.Slices) > 0:
             self.opWatershed.InputImage.connect(self.opChannelSelector.Slices[0])
+
+        ## Cache blocks
+        # Inner and outer block shapes are the same.
+        # We're using this cache for the "sliced" property, not the "blocked" property.
+        blockDimsX = { 't' : (1,1),
+                       'z' : (256,256),
+                       'y' : (256,256),
+                       'x' : (10,10),
+                       'c' : (1,1) }
+
+        blockDimsY = { 't' : (1,1),
+                       'z' : (256,256),
+                       'y' : (10,10),
+                       'x' : (256,256),
+                       'c' : (1,1) }
+
+        blockDimsZ = { 't' : (1,1),
+                       'z' : (10,10),
+                       'y' : (256,256),
+                       'x' : (256,256),
+                       'c' : (1,1) }
+
+        # Set the blockshapes for each input image separately, depending on which axistags it has.
+        axisOrder = [ tag.key for tag in self.InputImage.meta.axistags ]
+
+        innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
+        outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+
+        innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
+        outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
+
+        innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
+        outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
+
+        self.opWatershedCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+        self.opWatershedCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+
+        # For now watershed labels always come from the X-Y slicing view
+        if len(self.opWatershedCache.InnerOutputs) > 0:
+            self.WatershedLabels.connect( self.opWatershedCache.InnerOutputs[2] )
+
+    def propagateDirty(self, inputSlot, roi):
+        pass # Output is connected directly to an internal operator
 
 if __name__ == "__main__":
     import lazyflow
@@ -58,6 +106,7 @@ if __name__ == "__main__":
     # Does this crash?
     opViewer = OpVigraWatershedViewer(graph=graph)
     opViewer.InputImage.setValue( inputData )
+    opViewer.FreezeCache.setValue(False)
     result = opViewer.Output[:, 0:5, 6:20, 30:40,...].wait()
     
     

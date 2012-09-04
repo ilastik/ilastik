@@ -1,0 +1,36 @@
+language: python
+python:
+   - "2.7"
+install:
+   - sudo apt-get install -y libboost-python-dev
+   - sudo apt-get install -y libjpeg-dev
+   - sudo apt-get install -y libtiff4-dev
+   - sudo apt-get install -y libpng12-dev
+   - sudo apt-get install -y libfftw3-dev
+   - sudo apt-get install -y libhdf5-serial-dev
+   - sudo apt-get install -y cmake
+   - sudo apt-get install python-qt4 python-qt4-dev python-sip python-sip-dev
+   - ln -s /usr/lib/python2.7/dist-packages/PyQt4/ $VIRTUAL_ENV/lib/python2.7/site-packages/
+   - ln -s /usr/lib/python2.7/dist-packages/sip.so $VIRTUAL_ENV/lib/python2.7/site-packages/
+   - ln -s /usr/lib/python2.7/dist-packages/sipdistutils.py $VIRTUAL_ENV/lib/python2.7/site-packages/
+   - ln -s /usr/lib/python2.7/dist-packages/sipconfig.py $VIRTUAL_ENV/lib/python2.7/site-packages/
+   - ln -s /usr/lib/python2.7/dist-packages/sipconfig_nd.py $VIRTUAL_ENV/lib/python2.7/site-packages/
+   - pip install -r requirements/development-stage1.txt --use-mirrors
+   - pip install -r requirements/development-stage2.txt --use-mirrors
+   - sudo apt-get install -y mercurial
+   - sudo sh requirements/install_h5py.sh
+   - sudo sh requirements/install_vigra.sh
+   - git clone http://github.com/Ilastik/volumina /tmp/volumina
+   - git clone http://github.com/Ilastik/widgets /tmp/widgets
+   - git clone http://github.com/Ilastik/lazyflow /tmp/lazyflow
+   - sudo sh requirements/build_drtile.sh $VIRTUAL_ENV /tmp/lazyflow
+before_script:
+   - "export DISPLAY=:99.0"
+   - "sh -e /etc/init.d/xvfb start"
+   - "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH"
+   - "export PYTHONPATH=/tmp/volumina:/tmp/widgets:/tmp/lazyflow:$PYTHONPATH"
+script:
+   - python setup.py nosetests
+notifications:
+  email:
+    - bergs@janelia.hhmi.org
