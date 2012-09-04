@@ -3,6 +3,7 @@ import time
 from lazyflow.graph import *
 import gc
 import lazyflow.roi
+from lazyflow.roi import roiToSlice
 import threading
 
 from lazyflow.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
@@ -14,12 +15,14 @@ import sys
 
 
 class OpA(OpArrayPiper):
-    def getOutSlot(self,slot,key,result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start, roi.stop)
         v = self.inputs["Input"][key].writeInto(result)
         v.wait()
 
 class OpB(OpArrayPiper):
-    def getOutSlot(self,slot,key,result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start, roi.stop)
         t = numpy.ndarray(result.shape, result.dtype)
         v = self.inputs["Input"][key].writeInto(t)
         v.wait()
@@ -28,7 +31,8 @@ class OpB(OpArrayPiper):
 
 
 class OpC(OpArrayPiper):
-    def getOutSlot(self,slot,key,result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start, roi.stop)
         v = self.inputs["Input"][:].allocate()
         t = v.wait()
         result[:] = t[key]

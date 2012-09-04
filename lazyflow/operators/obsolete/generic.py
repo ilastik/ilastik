@@ -1,6 +1,6 @@
 from lazyflow.graph import *
 from lazyflow import roi
-
+from lazyflow.roi import roiToSlice
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -285,7 +285,9 @@ class OpMultiArrayStacker(Operator):
 
 
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
+
         cnt = 0
         written = 0
         start, stop = roi.sliceToRoi(key, self.outputs["Output"].meta.shape)
@@ -360,7 +362,8 @@ class OpSingleChannelSelector(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.shape = self.Input.meta.shape[:-1]+(1,)
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
 
         index=self.inputs["Index"].value
         assert self.inputs["Input"].meta.shape[-1] > index, ("Requested channel, %d, is out of Range" % index)
@@ -414,8 +417,10 @@ class OpSubRegion(Operator):
             self.Output.meta.assignFrom(self.Input.meta)
             self.Output.meta.shape = outShape        
 
-    def getOutSlot(self, slot, key, resultArea):
+    def execute(self, slot, roi, result):
         with Tracer(traceLogger):
+            key = roiToSlice(roi.start,roi.stop)
+
             start = self.inputs["Start"].value
             stop = self.inputs["Stop"].value
     
@@ -444,7 +449,7 @@ class OpSubRegion(Operator):
                 i2 += 1
     
             res = self.inputs["Input"][newKey].allocate().wait()
-            resultArea[:] = res[resultKey]
+            result[:] = res[resultKey]
 
     def propagateDirty(self, dirtySlot, roi):
         if self._propagate_dirty and dirtySlot == self.Input:
@@ -496,7 +501,8 @@ class OpMultiArrayMerger(Operator):
             outRange = fun(dranges)
             self.Output.meta.drange = tuple(outRange)
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
         requests=[]
         for input in self.inputs["Inputs"]:
             requests.append(input[key].allocate())
@@ -534,7 +540,9 @@ class OpPixelOperator(Operator):
         self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
         self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
+
         matrix = self.inputs["Input"][key].allocate().wait()
         matrix = self.function(matrix)
 

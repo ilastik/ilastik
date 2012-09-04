@@ -15,6 +15,7 @@ import threading
 from lazyflow.graph import *
 import copy
 
+from lazyflow.roi import roiToSlice
 from lazyflow.operators.operators import OpArrayPiper
 from lazyflow.operators.vigraOperators import *
 from lazyflow.operators.valueProviders import *
@@ -52,7 +53,8 @@ class OpSubregion(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method calculates the shifting
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
 
         #subregion start and stop
         start = self.inputs["region_start"].value
@@ -111,7 +113,7 @@ if __name__=="__main__":
     #its method "allocate" will be executed, this method call the "writeInto"
     #method which calls the "fireRequest" method of the, in this case,
     #"OutputSlot" object which calls another method in "OutputSlot and finally
-    #the "getOutSlot" method of our operator.
+    #the "execute" method of our operator.
     #The wait() function blocks other activities and waits till the results
     # of the requested Slot are calculated and stored in the result area.
     subregion.outputs["Output"][:].allocate().wait()

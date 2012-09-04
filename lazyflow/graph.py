@@ -1197,10 +1197,11 @@ class OutputSlot(Slot):
         super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
         self._type = "output"
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
         """
         For now, OutputSlots with level > 0 must pretend to be operators.  That's why this function is here.
         """
+        key = roi.toSlice()
         index = self._subSlots.index(slot)
         return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
 
@@ -1361,9 +1362,9 @@ class Operator(object):
         # wrap old api
         ##
         if hasattr(obj, "getOutSlot"):
+            warnings.warn( "Operator '{}' defines getOutSlot(), which is deprecated.  Should define execute() instead.".format(obj.name) )
             def getOutSlot_wrapper( self, slot, roi, result ):
                 pslice = roiToSlice(roi.start,roi.stop)
-                warn_deprecated( "getOutSlot() is superseded by execute()" )
                 return self.getOutSlot(slot,pslice,result)
             obj.execute = types.MethodType(getOutSlot_wrapper, obj)
         return obj
@@ -1657,7 +1658,7 @@ class Operator(object):
 
 
     """
-    This method corresponds to the getOutSlot method, but is used
+    This method corresponds to the execute method, but is used
     for multidimensional inputslots, which contain subslots.
 
     The slots argument is a list of slots in which the first
@@ -1976,17 +1977,13 @@ class OperatorWrapper(Operator):
                 oslot._changed()
 
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, key, result):
             #this should never be called !!!
         assert 1==2
 
     def getSubOutSlot(self, slots, indexes, key, result):
         # this should never be called
-        assert 1 == 2
-        if len(indexes) == 1:
-            return self.innerOperators[indexes[0]].getOutSlot(self.innerOperators[indexes[0]].outputs[slots[0].name], key, result)
-        else:
-            self.innerOperators[indexes[0]].getSubOutSlot(slots[1:], indexes[1:], key, result)
+        assert False
 
     def setInSlot(self, slot, key, value):
         with Tracer(self.traceLogger, msg=self.name):

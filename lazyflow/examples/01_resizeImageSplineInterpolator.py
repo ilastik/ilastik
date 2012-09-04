@@ -5,7 +5,7 @@ Output Slot of another operator, e.g. vimageReader and set a value for the
 InputSlot("ScaleFactor"). When all Input Slots of an operator are connected or set,
 the setupOutputs method is called implicit. Here one can do different
 checkings and define the type, shape and axistags of the Output Slot of the operator.
-The scaling is done in the getOutSlot method of the operator.
+The scaling is done in the execute method of the operator.
 This method again is called in an implicit way (see below)
 """
 
@@ -49,7 +49,8 @@ class OpImageResizer(Operator):
         assert self.scaleFactor > 0, "OpImageResizer: input'ScaleFactor' must be positive number !"
 
     #this method does the scaling
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
 
         #get start and stop coordinates of the requested OutputSlot area
         start, stop = sliceToRoi(key, slot.meta.shape)
@@ -125,7 +126,7 @@ if __name__=="__main__":
     #its method "allocate" will be executed, this method call the "writeInto"
     #method which calls the "fireRequest" method of the, in this case,
     #"OutputSlot" object which calls another method in "OutputSlot and finally
-    #the "getOutSlot" method of our operator.
+    #the "execute" method of our operator.
     #The wait() function blocks other activities and waits till the results
     # of the requested Slot are calculated and stored in the result area.
 

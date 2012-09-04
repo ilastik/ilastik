@@ -3,6 +3,7 @@ import traceback
 from lazyflow.graph import *
 import gc
 from lazyflow import roi
+from lazyflow.roi import sliceToRoi
 import copy
 from lazyflow.request import Pool, Request
 
@@ -500,8 +501,8 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 reskey[axisindex] = slice(written, written+end-begin, None)
 
                                 destArea = result[tuple(reskey)]
-                                
-                                closure = partial(oslot.operator.getOutSlot,oslot,tuple(key_),destArea, sourceArray = sourceArraysForSigmas[j])
+                                roi_ = SubRegion(self.Input, pslice=key_)                                
+                                closure = partial(oslot.operator.execute, oslot, roi_, destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
 
                                 written += end - begin
@@ -515,8 +516,8 @@ class OpPixelFeaturesPresmoothed(Operator):
 
                                 destArea = result[tuple(reskey)]
                                 logger.debug(oldkey, destArea.shape, sourceArraysForSigmas[j].shape)
-
-                                closure = partial(oslot.operator.getOutSlot, oslot,tuple(oldkey),destArea, sourceArray = sourceArraysForSigmas[j])
+                                oldroi = SubRegion(self.Input, pslice=oldkey)
+                                closure = partial(oslot.operator.execute, oslot, oldroi, destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
 
                                 written += 1
@@ -555,7 +556,9 @@ class OpBaseVigraFilter(OpArrayPiper):
     supportsRoi = False
     supportsWindow = False
 
-    def getOutSlot(self, slot, key, result, sourceArray = None):
+    def execute(self, slot, rroi, result, sourceArray=None):
+        key = roiToSlice(rroi.start, rroi.stop)
+
         kwparams = {}
         for islot in self.inputs.values():
             if islot.name != "Input":
@@ -989,7 +992,8 @@ class OpImageReader(Operator):
             oslot.meta.dtype = None
             oslot.meta.axistags = None
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, rroi, result):
+        key = roiToSlice(rroi.start, rroi.stop)
         filename = self.inputs["Filename"].value
         temp = vigra.impex.readImage(filename)
 
@@ -1102,7 +1106,8 @@ class OpH5Reader(Operator):
         #self.ff=open(logfile,'a')
 
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roi.toSlice()
         filename = self.inputs["Filename"].value
         hdf5Path = self.inputs["hdf5Path"].value
 
@@ -1202,7 +1207,8 @@ class OpH5WriterBigDataset(Operator):
         if 'drange' in self.Image.meta:
             self.d.attrs['drange'] = self.Image.meta.drange
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, rroi, result):
+        key = roiToSlice(rroi.start, rroi.stop)
         self.progressSignal(0)
         
         slicings=self.computeRequestSlicings()
@@ -1333,7 +1339,8 @@ class OpH5ReaderBigDataset(Operator):
             self.F.append(f)
             self.D.append(d)
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, rroi, result):
+        key = roiToSlice(rroi.start, rroi.stop)
         filenames = self.inputs["Filenames"].value
 
         hdf5Path = self.inputs["hdf5Path"].value
@@ -1488,7 +1495,8 @@ class OpGrayscaleInverter(Operator):
         oslot.meta.dtype = inputSlot.meta.dtype
         oslot.meta.axistags = copy.copy(inputSlot.meta.axistags)
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, rroi, result):
+        key = roiToSlice(rroi.start, rroi.stop)
         image = self.inputs["input"][key].allocate().wait()
         # Assumes max of 255...
         return 255-image[...]
@@ -1507,10 +1515,10 @@ class OpToUint8(Operator):
         oslot.meta.assignFrom(inputSlot.meta)
         oslot.meta.dtype = numpy.uint8
 
-        def getOutSlot(self, slot, key, result):
-
-            image = self.inputs["input"][:].allocate().wait()
-            return image.numpy.astype('uint8')
+    def execute(self, slot, rroi, result):
+        key = roiToSlice(rroi.start, rroi.stop)
+        image = self.inputs["input"][:].allocate().wait()
+        return image.numpy.astype('uint8')
 
 
 class OpRgbToGrayscale(Operator):
@@ -1529,9 +1537,8 @@ class OpRgbToGrayscale(Operator):
         inputtags = inputSlot.meta.axistags
         assert inputtags.channelIndex == len(inputtags)-1, "FIXME: OpRgbToGrayscale assumes the channel index is last"
 
-    def execute(self, slot, roi, result):
-
-        key = roi.toSlice()
+    def execute(self, slot, rroi, result):
+        key = roiToSlice(rroi.start, rroi.stop)
         image = self.inputs["input"][key].wait()
         channelKey = self.outputs["output"].meta.axistags.channelIndex
         numChannels = image.shape[channelKey]

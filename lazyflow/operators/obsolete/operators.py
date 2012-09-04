@@ -108,8 +108,8 @@ class OpMultiArrayPiper(Operator):
     def notifySubSlotResize(self,slots,indexes,size,event):
         self.outputs["MultiOutput"].resize(size,event = event)
 
-    def getOutSlot(self, slot, key, result):
-        raise RuntimeError("OpMultiPipler does not support getOutSlot")
+    def execute(self, slot, roi, result):
+        raise RuntimeError("OpMultiPipler does not support execute")
 
     def getSubOutSlot(self, slots, indexes, key, result):
         req = self.inputs["MultiInput"][indexes[0]][key].writeInto(result)
@@ -145,8 +145,8 @@ class OpMultiMultiArrayPiper(Operator):
                     oslot.meta.shape = islot.meta.shape
                     oslot.meta.axistags = islot.meta.axistags
 
-    def getOutSlot(self, slot, key, result):
-        raise RuntimeError("OpMultiMultiPipler does not support getOutSlot")
+    def execute(self, slot, roi, result):
+        raise RuntimeError("OpMultiMultiPipler does not support execute")
 
     def getSubOutSlot(self, slots, indexes, key, result):
         req = self.inputs["MultiInput"][indexes[0]][indexes[1]][key].writeInto(result)
@@ -194,7 +194,9 @@ class OpRequestSplitter(OpArrayPiper):
     description = "split requests into two parts along longest axis"
     category = "misc"
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
+
         start, stop = sliceToRoi(key, self.shape)
 
         diff = stop-start
@@ -828,7 +830,9 @@ if has_blist:
                 self.outputs["Output"].setDirty(slice(None))
                 self.outputs["maxLabel"].setValue(self._maxLabel)
 
-        def getOutSlot(self, slot, key, result):
+        def execute(self, slot, roi, result):
+            key = roiToSlice(roi.start,roi.stop)
+
             self.lock.acquire()
             assert(self.inputs["eraser"].ready() == True and self.inputs["shape"].ready() == True), "OpDenseSparseArray:  One of the neccessary input slots is not ready: shape: %r, eraser: %r" % (self.inputs["eraser"].ready(), self.inputs["shape"].ready())
             if slot.name == "Output":

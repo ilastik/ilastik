@@ -4,7 +4,7 @@ To make this operator work one has to connect the Input Slot with an Output Slot
 of another operator, e.g. vimageReader. When all Input Slots of an operator are
 connected, the setupOutputs method is called implicit. Here one can do different
 checkings and define the type, shape and axistags of the Output Slot of the operator.
-The calculation, here the shifting, is done in the getOutSlot method of the operator.
+The calculation, here the shifting, is done in the execute method of the operator.
 This method again is called in an implicit way (see below)
 """
 
@@ -14,6 +14,7 @@ import threading
 from lazyflow.graph import *
 import copy
 
+from lazyflow.roi import roiToSlice
 from lazyflow.operators.operators import OpArrayPiper
 from lazyflow.operators.vigraOperators import *
 from lazyflow.operators.valueProviders import *
@@ -44,7 +45,8 @@ class OpArrayShifter1(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method calculates the shifting
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
 
         #new name for the shape of the InputSlot
         shape =  self.inputs["Input"].meta.shape
@@ -120,7 +122,7 @@ if __name__=="__main__":
     #its method "allocate" will be executed, this method call the "writeInto"
     #method which calls the "fireRequest" method of the, in this case,
     #"OutputSlot" object which calls another method in "OutputSlot and finally
-    #the "getOutSlot" method of our operator.
+    #the "execute" method of our operator.
     #The wait() function blocks other activities and waits till the results
     # of the requested Slot are calculated and stored in the result area.
     shifter.outputs["Output"][:].allocate().wait()

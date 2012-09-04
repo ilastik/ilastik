@@ -35,7 +35,7 @@ class OpTrainRandomForest(Operator):
 
 
     @traceLogged(logger, level=logging.INFO, msg="OpTrainRandomForest: Training Classifier")
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
         featMatrix=[]
         labelsMatrix=[]
         for i,labels in enumerate(self.inputs["Labels"]):
@@ -342,7 +342,8 @@ class OpSegmentation(Operator):
         self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
 
 
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
 
         shape = self.inputs["Input"].meta.shape
         rstart, rstop = sliceToRoi(key, self.outputs["Output"].meta.shape)
@@ -397,8 +398,7 @@ class OpAreas(Operator):
 
         self.outputs["Areas"].meta.shape = (self.inputs["NumberOfChannels"].value,)
 
-    def getOutSlot(self, slot, key, result):
-
+    def execute(self, slot, roi, result):
         img = self.inputs["Input"][:].allocate().wait()
 
         numC = self.inputs["NumberOfChannels"].value

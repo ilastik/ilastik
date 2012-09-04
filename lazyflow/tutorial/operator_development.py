@@ -139,12 +139,12 @@ if 1==2:
         calculate the requested output area from its input slots,
         run the calculation and put the results into the provided result argument.
         """
-        def getOutSlot(self, slot, key, result):
+        def execute(self, slot, roi, result):
             pass
 
 
         """
-        This method corresponds to the getOutSlot method, but is used
+        This method corresponds to the execute method, but is used
         for multidimensional inputslots, which contain subslots.
 
         The slots argument is a list of slots in which the first
@@ -226,7 +226,8 @@ class OpArrayShifter1(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method calculates the shifting
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roi.toSlice()
 
         #new name for the shape of the InputSlot
         shape =  self.inputs["Input"].meta.shape
@@ -293,7 +294,7 @@ shifter.inputs["Input"].connect(reader.outputs["Image"])
 # its method "allocate" will be executed, this method call the "writeInto"
 # method which calls the "fireRequest" method of the, in this case,
 # "OutputSlot" object which calls another method in "OutputSlot and finally
-# the "getOutSlot" method of our operator.
+# the "execute" method of our operator.
 # The wait() function blocks other activities and waits till the results
 # of the requested Slot are calculated and stored in the result area.
 result=shifter.outputs["Output"][:].allocate().wait()

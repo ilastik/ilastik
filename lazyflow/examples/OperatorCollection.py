@@ -3,6 +3,7 @@ import threading
 from lazyflow.graph import *
 import copy
 
+from lazyflow.roi import roiToSlice
 from lazyflow.operators.operators import OpArrayPiper
 from lazyflow.operators.vigraOperators import *
 from lazyflow.operators.valueProviders import *
@@ -33,7 +34,8 @@ class OpArrayShifter1(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method calculates the shifting
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
 
         #new name for the shape of the InputSlot
         shape =  self.inputs["Input"].meta.shape
@@ -119,7 +121,8 @@ class OpArrayShifter2(Operator):
             self.shift = self.shift[0:numpy.array(self.shape).size]
 
     #this method calculates the shifting
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
 
         #make shape of the input known
         shape = self.inputs["Input"].meta.shape
@@ -201,7 +204,8 @@ class OpArrayShifter3(Operator):
 
 
     #this method calculates the shifting
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
 
         #make shape of the input known
         shape = self.inputs["Input"].meta.shape
@@ -274,7 +278,8 @@ class OpImageResizer(Operator):
         assert self.scaleFactor > 0, "OpImageResizer: input'ScaleFactor' must be positive number !"
 
     #this method does the scaling
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
 
         #get start and stop coordinates of the requested OutputSlot area
         start, stop = sliceToRoi(key, self.shape)
@@ -358,7 +363,8 @@ class OpSwapAxes(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method does the swapping
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
 
         axis1 = self.inputs["Axis1"].value
         axis2 = self.inputs["Axis2"].value
@@ -426,7 +432,8 @@ class OpSubregion(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method calculates the shifting
-    def getOutSlot(self, slot, key, result):
+    def execute(self, slot, roi, result):
+        key = roiToSlice(roi.start,roi.stop)
 
         #subregion start and stop
         start = self.inputs["region_start"].value
