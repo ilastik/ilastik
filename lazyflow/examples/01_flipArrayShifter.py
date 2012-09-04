@@ -29,13 +29,13 @@ class OpFlipArrayShifter(Operator):
         #which can be set freely, is saved in the property self.shift
         self.shift = self.inputs["Shift"].value
          #define the type, shape and axistags of the Output-Slot
-        self.outputs["Output"]._shape = inputSlot.shape
-        self.outputs["Output"]._dtype = inputSlot.dtype
-        self.outputs["Output"]._axistags = inputSlot.axistags
+        self.outputs["Output"].meta.shape = inputSlot.meta.shape
+        self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
+        self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
 
         #check if inputSlot("Shift") provides the appropriate type and dimension
         assert isinstance(self.shift, tuple), "OpFlipArrayShifter: input'Shift' must have type tuple !"
-        assert len(self.shift) == len(inputSlot.shape), "OpFlipArrayShifter: number of dimensions of 'Shift' and 'Input' differs ! Shift:%d, Input:%d" %(len(self.shift), len(inputSlot.shape))
+        assert len(self.shift) == len(inputSlot.meta.shape), "OpFlipArrayShifter: number of dimensions of 'Shift' and 'Input' differs ! Shift:%d, Input:%d" %(len(self.shift), len(inputSlot.shape))
         shifted_axes = 0
         for i in self.shift:
             if i != 0:
@@ -46,7 +46,7 @@ class OpFlipArrayShifter(Operator):
     #this method calculates the shifting
     def getOutSlot(self, slot, key, result):
 
-        shape = self.inputs["Input"].shape
+        shape = self.inputs["Input"].meta.shape
 
 
         shifted_axes = 0
@@ -154,11 +154,11 @@ class OpFlipArrayShifter(Operator):
 
     @property
     def shape(self):
-        return self.outputs["Output"]._shape
+        return self.outputs["Output"].meta.shape
 
     @property
     def dtype(self):
-        return self.outputs["Output"]._dtype
+        return self.outputs["Output"].meta.dtype
 
 if __name__ == "__main__":
     #create new Graphobject

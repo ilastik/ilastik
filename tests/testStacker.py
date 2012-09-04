@@ -51,7 +51,7 @@ def testFullAllocate():
     stackerX2.inputs["AxisFlag"].setValue('x')
     stackerX2.inputs["AxisIndex"].setValue(0)
 
-    #print "STACKER: ", stackerX2.outputs["Output"].shape
+    #print "STACKER: ", stackerX2.outputs["Output"].meta.shape
 
     newdata = stackerX2.outputs["Output"][:].allocate().wait()
     bothstacks = numpy.concatenate((stack, stack2), axis=0)
@@ -80,7 +80,7 @@ def testFullAllocate():
     assert_array_equal(newdata, stack)
 
     print "3rd part ok................."
-    #print "STACKER: ", stackerC.outputs["Output"].shape
+    #print "STACKER: ", stackerC.outputs["Output"].meta.shape
 
     #merge stuff that already has an x dimension
     stack3 = numpy.random.rand(nx, ny, nz, nc-1)

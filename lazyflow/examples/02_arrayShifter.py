@@ -37,9 +37,9 @@ class OpArrayShifter2(Operator):
         #new name for the InputSlot("Input")
         inputSlot = self.inputs["Input"]
         #define the type, shape and axistags of the Output-Slot
-        self.outputs["Output"]._dtype = inputSlot.dtype
-        self.outputs["Output"]._shape = inputSlot.shape
-        self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
+        self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
+        self.outputs["Output"].meta.shape = inputSlot.meta.shape
+        self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
         #calculating diffrence between input dimension and shift dimension
         diffShift = numpy.array(self.shift).size - numpy.array(self.shape).size
@@ -54,7 +54,7 @@ class OpArrayShifter2(Operator):
     def getOutSlot(self, slot, key, result):
 
         #make shape of the input known
-        shape = self.inputs["Input"].shape
+        shape = self.inputs["Input"].meta.shape
         #get N-D coordinate out of slice
         rstart, rstop = sliceToRoi(key, shape)
 
@@ -98,11 +98,11 @@ class OpArrayShifter2(Operator):
 
     @property
     def shape(self):
-        return self.outputs["Output"]._shape
+        return self.outputs["Output"].meta.shape
 
     @property
     def dtype(self):
-        return self.outputs["Output"]._dtype
+        return self.outputs["Output"].meta.dtype
 
 if __name__=="__main__":
     #create new Graphobject

@@ -80,7 +80,7 @@ features.inputs["Scales"].setValue((1.0,3.0))
 features.inputs["Input"].connect(cache.outputs["Output"])
 features.inputs["Matrix"].setValue(matrix)
 
-print features.Output.axistags
+print features.Output.meta.axistags
 
 t1 = time.time()
 for i in range(0,mcount):

@@ -28,9 +28,9 @@ class OpTrainRandomForest(Operator):
 
     def setupOutputs(self):
         if self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"]._dtype = object
-            self.outputs["Classifier"]._shape = (self._forest_count,)
-            self.outputs["Classifier"]._axistags  = "classifier"
+            self.outputs["Classifier"].meta.dtype = object
+            self.outputs["Classifier"].meta.shape = (self._forest_count,)
+            self.outputs["Classifier"].meta.axistags  = "classifier"
             self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
 
@@ -39,7 +39,7 @@ class OpTrainRandomForest(Operator):
         featMatrix=[]
         labelsMatrix=[]
         for i,labels in enumerate(self.inputs["Labels"]):
-            if labels.shape is not None:
+            if labels.meta.shape is not None:
                 labels=labels[:].allocate().wait()
 
                 indexes=numpy.nonzero(labels[...,0].view(numpy.ndarray))
@@ -106,9 +106,9 @@ class OpTrainRandomForestBlocked(Operator):
 
     def setupOutputs(self):
         if self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"]._dtype = object
-            self.outputs["Classifier"]._shape = (self._forest_count,)
-            self.outputs["Classifier"]._axistags  = "classifier"
+            self.outputs["Classifier"].meta.dtype = object
+            self.outputs["Classifier"].meta.shape = (self._forest_count,)
+            self.outputs["Classifier"].meta.axistags  = "classifier"
 
             # No need to set dirty here: notifyDirty handles it.
             #self.outputs["Classifier"].setDirty((slice(0,1,None),))
@@ -123,7 +123,7 @@ class OpTrainRandomForestBlocked(Operator):
         featMatrix=[]
         labelsMatrix=[]
         for i,labels in enumerate(self.inputs["Labels"]):
-            if labels.shape is not None:
+            if labels.meta.shape is not None:
                 #labels=labels[:].allocate().wait()
                 blocks = self.inputs["nonzeroLabelBlocks"][i][0].allocate().wait()
 
@@ -265,7 +265,7 @@ class OpPredictRandomForest(Operator):
         #assert RF.labelCount() == nlabels, "ERROR: OpPredictRandomForest, labelCount differs from true labelCount! %r vs. %r" % (RF.labelCount(), nlabels)
 
         newKey = key[:-1]
-        newKey += (slice(0,self.inputs["Image"].shape[-1],None),)
+        newKey += (slice(0,self.inputs["Image"].meta.shape[-1],None),)
 
         res = self.inputs["Image"][newKey].wait()
 
@@ -337,15 +337,15 @@ class OpSegmentation(Operator):
 
         inputSlot = self.inputs["Input"]
 
-        self.outputs["Output"]._shape = inputSlot.shape[:-1]
-        self.outputs["Output"]._dtype = inputSlot.dtype
-        self.outputs["Output"]._axistags = inputSlot.axistags
+        self.outputs["Output"].meta.shape = inputSlot.meta.shape[:-1]
+        self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
+        self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
 
 
     def getOutSlot(self, slot, key, result):
 
-        shape = self.inputs["Input"].shape
-        rstart, rstop = sliceToRoi(key, self.outputs["Output"]._shape)
+        shape = self.inputs["Input"].meta.shape
+        rstart, rstop = sliceToRoi(key, self.outputs["Output"].meta.shape)
         rstart.append(0)
         rstop.append(shape[-1])
         rkey = roiToSlice(rstart,rstop)
@@ -379,11 +379,11 @@ class OpSegmentation(Operator):
 
     @property
     def shape(self):
-        return self.outputs["Output"]._shape
+        return self.outputs["Output"].meta.shape
 
     @property
     def dtype(self):
-        return self.outputs["Output"]._dtype
+        return self.outputs["Output"].meta.dtype
 
 
 class OpAreas(Operator):
@@ -395,7 +395,7 @@ class OpAreas(Operator):
 
     def setupOutputs(self):
 
-        self.outputs["Areas"]._shape = (self.inputs["NumberOfChannels"].value,)
+        self.outputs["Areas"].meta.shape = (self.inputs["NumberOfChannels"].value,)
 
     def getOutSlot(self, slot, key, result):
 
@@ -419,8 +419,8 @@ class OpAreas(Operator):
 
     @property
     def shape(self):
-        return self.outputs["Output"]._shape
+        return self.outputs["Output"].meta.shape
 
     @property
     def dtype(self):
-        return self.outputs["Output"]._dtype
+        return self.outputs["Output"].meta.dtype

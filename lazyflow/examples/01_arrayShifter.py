@@ -39,15 +39,15 @@ class OpArrayShifter1(Operator):
         #new name for the InputSlot("Input")
         inputSlot = self.inputs["Input"]
         #define the type, shape and axistags of the Output-Slot
-        self.outputs["Output"]._dtype = inputSlot.dtype
-        self.outputs["Output"]._shape = inputSlot.shape
-        self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
+        self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
+        self.outputs["Output"].meta.shape = inputSlot.meta.shape
+        self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method calculates the shifting
     def getOutSlot(self, slot, key, result):
 
         #new name for the shape of the InputSlot
-        shape =  self.inputs["Input"].shape
+        shape =  self.inputs["Input"].meta.shape
 
         #get N-D coordinate out of slice
         rstart, rstop = sliceToRoi(key, shape)
@@ -93,11 +93,11 @@ class OpArrayShifter1(Operator):
 
     @property
     def shape(self):
-        return self.outputs["Output"]._shape
+        return self.outputs["Output"].meta.shape
 
     @property
     def dtype(self):
-        return self.outputs["Output"]._dtype
+        return self.outputs["Output"].meta.dtype
 
 if __name__=="__main__":
     #create new Graphobject

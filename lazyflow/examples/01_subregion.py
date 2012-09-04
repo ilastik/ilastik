@@ -43,13 +43,13 @@ class OpSubregion(Operator):
         stop = numpy.array(self.inputs["region_stop"].value)
 
         assert (stop>=start).all()
-        assert (stop <= numpy.array(self.inputs["Input"].shape )).all()
+        assert (stop <= numpy.array(self.inputs["Input"].meta.shape )).all()
         assert (start >= start - start).all()
 
         #define the type, shape and axistags of the Output-Slot
-        self.outputs["Output"]._dtype = inputSlot.dtype
-        self.outputs["Output"]._shape = tuple(stop - start)
-        self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
+        self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
+        self.outputs["Output"].meta.shape = tuple(stop - start)
+        self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method calculates the shifting
     def getOutSlot(self, slot, key, result):
@@ -59,7 +59,7 @@ class OpSubregion(Operator):
         stop = self.inputs["region_stop"].value
 
         #get start and stop coordinates
-        ostart, ostop = sliceToRoi(key, self.shape)
+        ostart, ostop = sliceToRoi(key, slot.meta.shape)
         #calculate the new reading start and stop coordinates
         rstart = start + ostart
         rstop  = start + ostop
@@ -82,11 +82,11 @@ class OpSubregion(Operator):
 
     @property
     def shape(self):
-        return self.outputs["Output"]._shape
+        return self.outputs["Output"].meta.shape
 
     @property
     def dtype(self):
-        return self.outputs["Output"]._dtype
+        return self.outputs["Output"].meta.dtype
 
 if __name__=="__main__":
     #create new Graphobject

@@ -39,8 +39,8 @@ class OpBaseVigraFilter(Operator):
         outputSlot.setShapeAtAxisTo('c', channelNum)
         
     def execute(self,slot,roi,result):
-        axistags = self.inputs["Input"].axistags
-        inputShape  = self.inputs["Input"].shape
+        axistags = self.inputs["Input"].meta.axistags
+        inputShape  = self.inputs["Input"].meta.shape
         #Set up roi 
         roi.setInputShape(inputShape)
         #setup filter ONLY WHEN SIGMAS ARE SET and get MaxSigma for 
@@ -110,10 +110,10 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
         return sigma
         
     def resultingChannels(self):
-        return self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
+        return self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
     
     def channelsPerChannel(self):
-        return self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
+        return self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
     
 class OpDifferenceOfGaussians(OpBaseVigraFilter):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float"), InputSlot("Sigma2", stype = "float")]
@@ -187,10 +187,10 @@ class OpStructureTensorEigenvalues(OpBaseVigraFilter):
         self.iterator = AxisIterator(source,'spatial',result,'spatial',[(),({'c':self.channelsPerChannel()})])   
         
     def resultingChannels(self):
-        return self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)*self.inputs["Input"].shape[self.inputs["Input"].axistags.channelIndex]
+        return self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)*self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.channelIndex]
     
     def channelsPerChannel(self):
-        return self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)
+        return self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
     
 class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float")]
@@ -215,10 +215,10 @@ class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
         self.iterator = AxisIterator(source,'spatial',result,'spatial',[(),({'c':self.channelsPerChannel()})])   
   
     def resultingChannels(self):
-        return self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)*self.inputs["Input"].shape[self.inputs["Input"].axistags.channelIndex]
+        return self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)*self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.channelIndex]
     
     def channelsPerChannel(self):
-        return self.inputs["Input"].axistags.axisTypeCount(vigra.AxisType.Space)
+        return self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
     
 class OpGaussianGradientMagnitude(OpBaseVigraFilter):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float")]
@@ -321,9 +321,9 @@ class OpPixelFeaturesPresmoothed(Operator):
     def execute(self,slot,roi,result):
         
         #Get axistags and inputShape
-        axistags = self.inputs["Input"].axistags
-        inputShape  = self.inputs["Input"].shape
-        resultCIndex = self.outputs["Output"].axistags.channelIndex
+        axistags = self.inputs["Input"].meta.axistags
+        inputShape  = self.inputs["Input"].meta.shape
+        resultCIndex = self.outputs["Output"].meta.axistags.channelIndex
         
         #Set up roi 
         roi.setInputShape(inputShape)
@@ -343,7 +343,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                 if opM[sig][op] is not None:
                     opM[sig][op].inputs["Input"].disconnect()
                     opM[sig][op].inputs["Input"].setValue(source)
-                    cIndex = opM[sig][op].outputs["Output"].axistags.channelIndex
+                    cIndex = opM[sig][op].outputs["Output"].meta.axistags.channelIndex
                     cSize  = opM[sig][op].outputs["Output"].shape[cIndex]
                     slicing = [slice(0,result.shape[i],None) if i != resultCIndex \
                                else slice(cIter,cIter+cSize,None) for i in \

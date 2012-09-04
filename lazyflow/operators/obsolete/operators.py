@@ -95,9 +95,9 @@ class OpMultiArrayPiper(Operator):
         for i,islot in enumerate(self.inputs["MultiInput"]):
             oslot = self.outputs["MultiOutput"][i]
             if islot.partner is not None:
-                oslot._dtype = islot.meta.dtype
-                oslot._shape = islot.meta.shape
-                oslot._axistags = islot.meta.axistags
+                oslot.meta.dtype = islot.meta.dtype
+                oslot.meta.shape = islot.meta.shape
+                oslot.meta.axistags = islot.meta.axistags
 
     def notifySubSlotInsert(self,slots,indexes):
         self.outputs["MultiOutput"]._insertNew(indexes[0])
@@ -1435,7 +1435,7 @@ class OpSlicedBlockedArrayCache(Operator):
             self._innerOps = []
 
     def setupOutputs(self):
-        self.shape = self.inputs["Input"].shape
+        self.shape = self.inputs["Input"].meta.shape
         self._outerShapes = self.inputs["outerBlockShape"].value
         self._innerShapes = self.inputs["innerBlockShape"].value
 

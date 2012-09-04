@@ -42,15 +42,15 @@ class OpSwapAxes(Operator):
         axis2 = self.inputs["Axis2"].value
 
         #calculate the output shape
-        output_shape = numpy.array(inputSlot.shape)
+        output_shape = numpy.array(inputSlot.meta.shape)
         a = output_shape[axis1]
         output_shape[axis1] = output_shape[axis2]
         output_shape[axis2] = a
 
         #define the type, shape and axistags of the Output-Slot
-        self.outputs["Output"]._dtype = inputSlot.dtype
-        self.outputs["Output"]._shape = output_shape
-        self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
+        self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
+        self.outputs["Output"].meta.shape = output_shape
+        self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method does the swapping
     def getOutSlot(self, slot, key, result):
@@ -59,7 +59,7 @@ class OpSwapAxes(Operator):
         axis2 = self.inputs["Axis2"].value
 
         #get start and stop coordinates
-        start, stop = sliceToRoi(key, self.shape)
+        start, stop = sliceToRoi(key, slot.meta.shape)
 
         #calculate new reading key
         a = start[axis1]
@@ -84,11 +84,11 @@ class OpSwapAxes(Operator):
 
     @property
     def shape(self):
-        return self.outputs["Output"]._shape
+        return self.outputs["Output"].meta.shape
 
     @property
     def dtype(self):
-        return self.outputs["Output"]._dtype
+        return self.outputs["Output"].meta.dtype
 
 if __name__=="__main__":
     #create new Graphobject

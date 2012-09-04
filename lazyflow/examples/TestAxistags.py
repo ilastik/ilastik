@@ -83,7 +83,7 @@ import pylab
 #        op = tempOp
 #
 #    #fragmented image
-#    img1 = numpy.zeros(op.outputs["Output"]._shape , numpy.float32)
+#    img1 = numpy.zeros(op.outputs["Output"].meta.shape , numpy.float32)
 #
 #    start = []
 #    stop = []
@@ -92,7 +92,7 @@ import pylab
 #        stop.append(numpy.array(img1.shape)[i])
 #
 #    requests = []
-#    imgP = numpy.zeros(op.outputs["Output"]._shape , numpy.float32)
+#    imgP = numpy.zeros(op.outputs["Output"].meta.shape , numpy.float32)
 #
 #    arraySplitter(op,img1,start[:],stop[:], requests, notify, sync = sync)
 #
@@ -190,9 +190,9 @@ if __name__=="__main__":
     source = OpArrayPiper(g)
     source.inputs["Input"].setValue(img)
 
-    s_dytpe = source.outputs["Output"]._dtype
-    s_shape = source.outputs["Output"]._shape
-    s_axistags = source.outputs["Output"]._axistags
+    s_dytpe = source.outputs["Output"].meta.dtype
+    s_shape = source.outputs["Output"].meta.shape
+    s_axistags = source.outputs["Output"].meta.axistags
 
     assert (s_shape == img.shape)
 
@@ -334,13 +334,13 @@ if __name__=="__main__":
 
 
         print "Op Number:", num
-        print Op[num].outputs["Output"]._shape
-        assert (Op[num].outputs["Output"]._shape == s_shape), "Output shape %s  expected shape %s "%( Op[num].outputs["Output"]._shape,s_shape)
-        assert (Op[num].outputs["Output"]._dtype == s_dytpe)
+        print Op[num].outputs["Output"].meta.shape
+        assert (Op[num].outputs["Output"].meta.shape == s_shape), "Output shape %s  expected shape %s "%( Op[num].outputs["Output"].meta.shape,s_shape)
+        assert (Op[num].outputs["Output"].meta.dtype == s_dytpe)
 
         for i in range (5):
-            assert (Op[num].outputs["Output"]._axistags[i].description == s_axistags[i].description)
-            assert (Op[num].outputs["Output"]._axistags[i].isType(s_axistags[i].typeFlags))
+            assert (Op[num].outputs["Output"].meta.axistags[i].description == s_axistags[i].description)
+            assert (Op[num].outputs["Output"].meta.axistags[i].isType(s_axistags[i].typeFlags))
 
         pre_num = num
         numList.remove(num)
@@ -354,9 +354,9 @@ if __name__=="__main__":
     print "_______________________"
     res = e.outputs["Output"][:].allocate().wait()
     print "Result-Shape", res.shape
-    print "_dtype", e.outputs["Output"]._dtype
-    print "_shape", e.outputs["Output"]._shape
-    print e.outputs["Output"]._axistags
+    print "_dtype", e.outputs["Output"].meta.dtype
+    print "_shape", e.outputs["Output"].meta.shape
+    print e.outputs["Output"].meta.axistags
 
 
 

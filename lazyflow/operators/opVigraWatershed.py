@@ -47,7 +47,7 @@ class OpVigraWatershed(Operator):
             p = s
             if key in 'xyz':
                 p_start = max(s.start - padding, 0)
-                p_stop = min(s.stop + padding, self.InputImage.shape[i])
+                p_stop = min(s.stop + padding, self.InputImage.meta.shape[i])
                 p = slice(p_start, p_stop)
 
             paddedSlices += [p]

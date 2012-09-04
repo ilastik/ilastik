@@ -103,8 +103,11 @@ class OpC(graph.Operator):
         self.inputBackup = self.Input
 
     def setupOutputs(self):
-        self.Output.meta.shape = self.Input.meta.shape
-        self.Output.meta.dtype = self.Input.meta.dtype
+        numSlots = len(self.Input)
+        self.Output.resize(numSlots)
+        for i, slot in enumerate(self.Output):
+            slot.meta.shape = self.Input[i].meta.shape
+            slot.meta.dtype = self.Input[i].meta.dtype
 
     def execute(self, slot, roi, result):
         result[0] = self.internalOp.Output[:].allocate().wait()[0]
@@ -126,5 +129,12 @@ class TestMultiInputInputConnection(object):
         self.op.Input.connect(opm.Outputs)
 
         assert len(self.op.internalOp.Output) == 1
-        assert self.op.internalOp.Output[0].shape is not None
+        assert self.op.internalOp.Output[0].meta.shape is not None
         assert self.op.internalOp.Output[0].value == 1
+
+if __name__ == "__main__":
+    import sys
+    import nose
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)

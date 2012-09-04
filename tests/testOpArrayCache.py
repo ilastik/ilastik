@@ -175,8 +175,8 @@ class TestOpArrayCache(object):
 
         # The dirty notification we got will not exactly match the dirty data (it will be block-aligned),
         # but it should be a superset of the real dirty data
-        expectedroi = sliceToRoi(dirtykey, opProvider.Output.shape)
-        receivedroi = sliceToRoi(gotDirtyKeys[0], opProvider.Output.shape)
+        expectedroi = sliceToRoi(dirtykey, opProvider.Output.meta.shape)
+        receivedroi = sliceToRoi(gotDirtyKeys[0], opProvider.Output.meta.shape)
         assert (receivedroi[0] <= expectedroi[0]).all()
         assert (receivedroi[1] >= expectedroi[1]).all()
         

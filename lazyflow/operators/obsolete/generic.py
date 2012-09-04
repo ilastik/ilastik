@@ -85,15 +85,15 @@ class OpMultiArraySlicer(Operator):
 
     def setupOutputs(self):
 
-        dtype=self.inputs["Input"].dtype
+        dtype=self.inputs["Input"].meta.dtype
         flag=self.inputs["AxisFlag"].value
 
-        indexAxis=self.inputs["Input"].axistags.index(flag)
-        outshape=list(self.inputs["Input"].shape)
+        indexAxis=self.inputs["Input"].meta.axistags.index(flag)
+        outshape=list(self.inputs["Input"].meta.shape)
         n=outshape.pop(indexAxis)
         outshape=tuple(outshape)
 
-        outaxistags=copy.copy(self.inputs["Input"].axistags)
+        outaxistags=copy.copy(self.inputs["Input"].meta.axistags)
 
         del outaxistags[flag]
 
@@ -109,7 +109,7 @@ class OpMultiArraySlicer(Operator):
 
         #print "SLICER: key", key, "indexes[0]", indexes[0], "result", result.shape
 
-        start,stop=roi.sliceToRoi(key,self.outputs["Slices"][indexes[0]].shape)
+        start,stop=roi.sliceToRoi(key,self.outputs["Slices"][indexes[0]].meta.shape)
 
         oldstart,oldstop=start,stop
 
@@ -117,7 +117,7 @@ class OpMultiArraySlicer(Operator):
         stop=list(stop)
 
         flag=self.inputs["AxisFlag"].value
-        indexAxis=self.inputs["Input"].axistags.index(flag)
+        indexAxis=self.inputs["Input"].meta.axistags.index(flag)
 
         start.insert(indexAxis,indexes[0])
         stop.insert(indexAxis,indexes[0])
@@ -196,7 +196,7 @@ class OpMultiArraySlicer2(Operator):
         # Index of the input slice this data will come from.
         sliceIndex = self.getSliceIndexes()[indexes[0]]
 
-        outshape = self.outputs["Slices"][indexes[0]].shape
+        outshape = self.outputs["Slices"][indexes[0]].meta.shape
         start,stop=roi.sliceToRoi(key,outshape)
         oldstart,oldstop=start,stop
 
@@ -204,7 +204,7 @@ class OpMultiArraySlicer2(Operator):
         stop=list(stop)
 
         flag=self.inputs["AxisFlag"].value
-        indexAxis=self.inputs["Input"].axistags.index(flag)
+        indexAxis=self.inputs["Input"].meta.axistags.index(flag)
 
         start.pop(indexAxis)
         stop.pop(indexAxis)
@@ -257,39 +257,39 @@ class OpMultiArrayStacker(Operator):
         axisindex = self.inputs["AxisIndex"].value
 
         for inSlot in self.inputs["Images"]:
-            inTagKeys = [ax.key for ax in inSlot.axistags]
+            inTagKeys = [ax.key for ax in inSlot.meta.axistags]
             if inSlot.partner is not None:
-                self.outputs["Output"]._dtype = inSlot.dtype
-                self.outputs["Output"]._axistags = copy.copy(inSlot.axistags)
-                #indexAxis=inSlot.axistags.index(flag)
+                self.outputs["Output"].meta.dtype = inSlot.meta.dtype
+                self.outputs["Output"].meta.axistags = copy.copy(inSlot.meta.axistags)
+                #indexAxis=inSlot.meta.axistags.index(flag)
 
-                outTagKeys = [ax.key for ax in self.outputs["Output"]._axistags]
+                outTagKeys = [ax.key for ax in self.outputs["Output"].meta.axistags]
 
                 if not flag in outTagKeys:
-                    self.outputs["Output"]._axistags.insert(axisindex, vigra.AxisInfo(flag, axisType(flag)))
+                    self.outputs["Output"].meta.axistags.insert(axisindex, vigra.AxisInfo(flag, axisType(flag)))
                 if flag in inTagKeys:
-                    c += inSlot.shape[inSlot.axistags.index(flag)]
+                    c += inSlot.meta.shape[inSlot.meta.axistags.index(flag)]
                 else:
                     c += 1
 
         if len(self.inputs["Images"]) > 0:
-            newshape = list(self.inputs["Images"][0].shape)
+            newshape = list(self.inputs["Images"][0].meta.shape)
             if flag in inTagKeys:
                 #here we assume that all axis are present
                 newshape[axisindex]=c
             else:
                 newshape.insert(axisindex, c)
-            self.outputs["Output"]._shape=tuple(newshape)
+            self.outputs["Output"].meta.shape=tuple(newshape)
         else:
-            self.outputs["Output"]._shape = None
+            self.outputs["Output"].meta.shape = None
 
 
 
     def getOutSlot(self, slot, key, result):
         cnt = 0
         written = 0
-        start, stop = roi.sliceToRoi(key, self.outputs["Output"].shape)
-        assert (stop<=self.outputs["Output"].shape).all()
+        start, stop = roi.sliceToRoi(key, self.outputs["Output"].meta.shape)
+        assert (stop<=self.outputs["Output"].meta.shape).all()
         axisindex = self.inputs["AxisIndex"].value
         flag = self.inputs["AxisFlag"].value
         #ugly-ugly-ugly
@@ -304,9 +304,9 @@ class OpMultiArrayStacker(Operator):
         for i, inSlot in enumerate(self.inputs['Images']):
             if inSlot.connected():
                 req = None
-                inTagKeys = [ax.key for ax in inSlot.axistags]
+                inTagKeys = [ax.key for ax in inSlot.meta.axistags]
                 if flag in inTagKeys:
-                    slices = inSlot.shape[axisindex]
+                    slices = inSlot.meta.shape[axisindex]
                     if cnt + slices >= start[axisindex] and start[axisindex]-cnt<slices and start[axisindex]+written<stop[axisindex]:
                         begin = 0
                         if cnt < start[axisindex]:
@@ -325,7 +325,7 @@ class OpMultiArrayStacker(Operator):
                 else:
                     if cnt>=start[axisindex] and start[axisindex] + written < stop[axisindex]:
                         #print "key: ", key, "reskey: ", reskey, "oldkey: ", oldkey
-                        #print "result: ", result.shape, "inslot:", inSlot.shape
+                        #print "result: ", result.shape, "inslot:", inSlot.meta.shape
                         reskey = [slice(None, None, None) for s in oldkey]
                         reskey.insert(axisindex, written)
                         destArea = result[tuple(reskey)]
@@ -363,7 +363,7 @@ class OpSingleChannelSelector(Operator):
     def getOutSlot(self, slot, key, result):
 
         index=self.inputs["Index"].value
-        assert self.inputs["Input"].shape[-1] > index, ("Requested channel, %d, is out of Range" % index)
+        assert self.inputs["Input"].meta.shape[-1] > index, ("Requested channel, %d, is out of Range" % index)
 
         # Only ask for the channel we need
         newKey = key[:-1] + (slice(index,index+1),)
@@ -400,7 +400,7 @@ class OpSubRegion(Operator):
             stop = self.inputs["Stop"].value
             assert isinstance(start, tuple)
             assert isinstance(stop, tuple)
-            assert len(start) == len(self.inputs["Input"].shape)
+            assert len(start) == len(self.inputs["Input"].meta.shape)
             assert len(start) == len(stop)
             assert (numpy.array(stop)>= numpy.array(start)).all()
         
@@ -469,16 +469,16 @@ class OpMultiArrayMerger(Operator):
     category = "Misc"
 
     def setupOutputs(self):
-        shape=self.inputs["Inputs"][0].shape
-        axistags=copy.copy(self.inputs["Inputs"][0].axistags)
+        shape=self.inputs["Inputs"][0].meta.shape
+        axistags=copy.copy(self.inputs["Inputs"][0].meta.axistags)
 
-        self.outputs["Output"]._shape = shape
-        self.outputs["Output"]._axistags = axistags
-        self.outputs["Output"]._dtype = self.inputs["Inputs"][0].dtype
+        self.outputs["Output"].meta.shape = shape
+        self.outputs["Output"].meta.axistags = axistags
+        self.outputs["Output"].meta.dtype = self.inputs["Inputs"][0].meta.dtype
 
         for input in self.inputs["Inputs"]:
-            assert input.shape==shape, "Only possible merging consistent shapes"
-            assert input.axistags==axistags, "Only possible merging same axistags"
+            assert input.meta.shape==shape, "Only possible merging consistent shapes"
+            assert input.meta.axistags==axistags, "Only possible merging same axistags"
 
         # If *all* inputs have a drange, then provide a drange for the output.
         # Note: This assumes the merging function is pixel-wise
@@ -530,9 +530,9 @@ class OpPixelOperator(Operator):
 
         self.function = self.inputs["Function"].value
 
-        self.outputs["Output"]._shape = inputSlot.shape
-        self.outputs["Output"]._dtype = inputSlot.dtype
-        self.outputs["Output"]._axistags = inputSlot.axistags
+        self.outputs["Output"].meta.shape = inputSlot.meta.shape
+        self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
+        self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
 
     def getOutSlot(self, slot, key, result):
         matrix = self.inputs["Input"][key].allocate().wait()
@@ -550,11 +550,11 @@ class OpPixelOperator(Operator):
 
     @property
     def shape(self):
-        return self.outputs["Output"]._shape
+        return self.outputs["Output"].meta.shape
 
     @property
     def dtype(self):
-        return self.outputs["Output"]._dtype
+        return self.outputs["Output"].meta.dtype
 
 
 class OpMultiInputConcatenater(Operator):

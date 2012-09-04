@@ -39,12 +39,12 @@ class OpImageResizer(Operator):
 
         inputSlot = self.inputs["Input"]
         self.scaleFactor = self.inputs["ScaleFactor"].value
-        shape =  self.inputs["Input"].shape
+        shape =  self.inputs["Input"].meta.shape
 
         #define the type, shape and axistags of the Output-Slot
-        self.outputs["Output"]._dtype = inputSlot.dtype
-        self.outputs["Output"]._shape = tuple(numpy.hstack(((numpy.array(shape))[:-1] * self.scaleFactor, (numpy.array(shape))[-1])))
-        self.outputs["Output"]._axistags = copy.copy(inputSlot.axistags)
+        self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
+        self.outputs["Output"].meta.shape = tuple(numpy.hstack(((numpy.array(shape))[:-1] * self.scaleFactor, (numpy.array(shape))[-1])))
+        self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
         assert self.scaleFactor > 0, "OpImageResizer: input'ScaleFactor' must be positive number !"
 
@@ -52,7 +52,7 @@ class OpImageResizer(Operator):
     def getOutSlot(self, slot, key, result):
 
         #get start and stop coordinates of the requested OutputSlot area
-        start, stop = sliceToRoi(key, self.shape)
+        start, stop = sliceToRoi(key, slot.meta.shape)
 
         #additional edge, necessary for the SplineInterpolation to work properly
         edge = 3
@@ -60,14 +60,14 @@ class OpImageResizer(Operator):
         #calculate reading start and stop coordinates(of InputSlot)
         rstart = numpy.maximum(start / self.scaleFactor - edge * self.scaleFactor, start-start )
         rstart[-1] = start[-1] # do not enlarge channel dimension
-        rstop = numpy.minimum(stop / self.scaleFactor + edge * self.scaleFactor, self.inputs["Input"].shape)
+        rstop = numpy.minimum(stop / self.scaleFactor + edge * self.scaleFactor, self.inputs["Input"].meta.shape)
         rstop[-1] = stop[-1]# do not enlarge channel dimension
         #create reading key
         rkey = roiToSlice(rstart,rstop)
 
         #get the data of the InputSlot
         img = numpy.ndarray(rstop-rstart,dtype=self.dtype)
-        img = self.inputs["Input"][rkey].allocate().wait()
+        img = self.inputs["Input"][rkey].allocate().meta.wait()
 
         #create result array
         tmp_result = numpy.ndarray(tuple(numpy.hstack(((rstop-rstart)[:-1] * self.scaleFactor, (rstop-rstart)[-1]))), dtype=numpy.float32)
@@ -95,11 +95,11 @@ class OpImageResizer(Operator):
 
     @property
     def shape(self):
-        return self.outputs["Output"]._shape
+        return self.outputs["Output"].meta.shape
 
     @property
     def dtype(self):
-        return self.outputs["Output"]._dtype
+        return self.outputs["Output"].meta.dtype
 
 if __name__=="__main__":
     #create new Graphobject

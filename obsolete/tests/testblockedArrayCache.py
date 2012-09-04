@@ -124,7 +124,7 @@ def operatorTest(blockShape, sync = False, cache = False):
         op = tempOp
 
     #fragmented image
-    img1 = numpy.zeros(op.outputs["Output"]._shape , numpy.float32)
+    img1 = numpy.zeros(op.outputs["Output"].meta.shape , numpy.float32)
 
     start = []
     stop = []
@@ -133,7 +133,7 @@ def operatorTest(blockShape, sync = False, cache = False):
         stop.append(numpy.array(img1.shape)[i])
 
     requests = []
-    imgP = numpy.zeros(op.outputs["Output"]._shape , numpy.float32)
+    imgP = numpy.zeros(op.outputs["Output"].meta.shape , numpy.float32)
 
     arraySplitter(op,img1,start[:],stop[:], requests, notify, sync = sync)
 

@@ -19,8 +19,8 @@ class OpH5Writer(Operator):
     outputSlots = [OutputSlot("WriteImage")]
 
     def setupOutputs(self):
-        self.outputs["WriteImage"]._shape = (1,)
-        self.outputs["WriteImage"]._dtype = object
+        self.outputs["WriteImage"].meta.shape = (1,)
+        self.outputs["WriteImage"].meta.dtype = object
 
 
     def execute(self, slot, roi, result):
@@ -30,7 +30,7 @@ class OpH5Writer(Operator):
         filename = self.inputs["filename"].value
         hdf5Path = self.inputs["hdf5Path"].value
         imSlot = self.inputs["input"]
-        image = numpy.ndarray(imSlot.shape, dtype=self.inputs["dataType"].value)[key]
+        image = numpy.ndarray(imSlot.meta.shape, dtype=self.inputs["dataType"].value)[key]
 
         try:
             #create H5File and DataSet
@@ -138,19 +138,19 @@ class OpStackLoader(Operator):
             oslot = self.outputs["stack"]
 
             #build 5D shape out of 2DShape and Filelist
-            oslot._shape = (1, self.info.getShape()[0],self.info.getShape()[1],len(self.fileNameList),self.info.getShape()[2])
-            oslot._dtype = self.info.getDtype()
+            oslot.meta.shape = (1, self.info.getShape()[0],self.info.getShape()[1],len(self.fileNameList),self.info.getShape()[2])
+            oslot.meta.dtype = self.info.getDtype()
             zAxisInfo = vigra.AxisInfo(key='z',typeFlags = vigra.AxisType.Space)
             tAxisInfo = vigra.AxisInfo(key='t',typeFlags = vigra.AxisType.Time)
-            oslot._axistags = self.info.getAxisTags()
-            oslot._axistags.insert(0,tAxisInfo)
-            oslot._axistags.insert(3,zAxisInfo)
+            oslot.meta.axistags = self.info.getAxisTags()
+            oslot.meta.axistags.insert(0,tAxisInfo)
+            oslot.meta.axistags.insert(3,zAxisInfo)
 
         else:
             oslot = self.outputs["stack"]
-            oslot._shape = None
-            oslot._dtype = None
-            oslot._axistags = None
+            oslot.meta.shape = None
+            oslot.meta.dtype = None
+            oslot.meta.axistags = None
 
     def execute(self, slot, roi, result):
         i=0
@@ -173,9 +173,9 @@ class OpStackWriter(Operator):
     outputSlots = [OutputSlot("WritePNGStack")]
 
     def setupOutputs(self):
-        assert self.inputs['input'].shape is not None
-        self.outputs["WritePNGStack"]._shape = self.inputs['input'].shape
-        self.outputs["WritePNGStack"]._dtype = object
+        assert self.inputs['input'].meta.shape is not None
+        self.outputs["WritePNGStack"].meta.shape = self.inputs['input'].meta.shape
+        self.outputs["WritePNGStack"].meta.dtype = object
 
     def execute(self,slot,roi,result):
         image = self.inputs["input"][roi.toSlice()].allocate().wait()
@@ -240,8 +240,8 @@ class OpStackToH5Writer(Operator):
         dataShape=self.opStackLoader.stack.meta.shape
         numImages = self.opStackLoader.stack.meta.shape[zAxis]
         
-        axistags = self.opStackLoader.stack.axistags
-        dtype = self.opStackLoader.stack.dtype
+        axistags = self.opStackLoader.stack.meta.axistags
+        dtype = self.opStackLoader.stack.meta.dtype
         if type(dtype) is numpy.dtype:
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype

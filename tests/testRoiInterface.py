@@ -13,9 +13,9 @@ class OpRoiTest(Operator):
 
     def setupOutputs(self):
 
-        self.outputs["output"]._dtype = self.inputs["input"]._dtype
-        self.outputs["output"]._shape = self.inputs["input"]._shape
-        self.outputs["output"]._axistags = self.inputs["input"]._axistags
+        self.outputs["output"].meta.dtype = self.inputs["input"].meta.dtype
+        self.outputs["output"].meta.shape = self.inputs["input"].meta.shape
+        self.outputs["output"].meta.axistags = self.inputs["input"].meta.axistags
 
     def execute(self,slot,roi,result):
 

@@ -163,7 +163,7 @@ if __name__=="__main__":
     slicer.inputs["AxisFlag"].setValue('c')
 
 
-    for index in range(stacker.outputs["Output"].shape[2]):
+    for index in range(stacker.outputs["Output"].meta.shape[2]):
         print "------------------------------------------------",index
 
         paa=slicer.outputs["Slices"][index][:].allocate().wait()
@@ -180,7 +180,7 @@ if __name__=="__main__":
 
 
 
-    #for index in range(stacker.outputs["Output"].shape[0]):
+    #for index in range(stacker.outputs["Output"].meta.shape[0]):
     for index in range(6):
         print "------------------------------------------------",index
         desired=stacker.outputs["Output"][index,:,:].allocate().wait()
@@ -195,7 +195,7 @@ if __name__=="__main__":
     slicer3.inputs["AxisFlag"].setValue('y')
 
 
-    #for index in range(stacker.outputs["Output"].shape[1]):
+    #for index in range(stacker.outputs["Output"].meta.shape[1]):
     for index in range(6):
         print "------------------------------------------------",index
 

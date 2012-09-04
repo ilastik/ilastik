@@ -83,7 +83,7 @@ import pylab
 #        op = tempOp
 #
 #    #fragmented image
-#    img1 = numpy.zeros(op.outputs["Output"]._shape , numpy.float32)
+#    img1 = numpy.zeros(op.outputs["Output"].meta.shape , numpy.float32)
 #
 #    start = []
 #    stop = []
@@ -92,7 +92,7 @@ import pylab
 #        stop.append(numpy.array(img1.shape)[i])
 #
 #    requests = []
-#    imgP = numpy.zeros(op.outputs["Output"]._shape , numpy.float32)
+#    imgP = numpy.zeros(op.outputs["Output"].meta.shape , numpy.float32)
 #
 #    arraySplitter(op,img1,start[:],stop[:], requests, notify, sync = sync)
 #
@@ -242,9 +242,9 @@ def connect_Multi20_Stacker(graph, source, Op):
     source - Source-Operator
     Op - Dictionnary of preset Operators
     """
-    s_dytpe = source.outputs["Output"]._dtype
-    s_shape = source.outputs["Output"]._shape
-    s_axistags = source.outputs["Output"]._axistags
+    s_dytpe = source.outputs["Output"].meta.dtype
+    s_shape = source.outputs["Output"].meta.shape
+    s_axistags = source.outputs["Output"].meta.axistags
 
     numList = []
     for i in Op:
@@ -282,16 +282,16 @@ def connect_Multi20_Stacker(graph, source, Op):
 
         print "_______________________"
         print "Stacker_Number:", j
-        print List_Stacker_20[j].outputs["Output"]._shape
+        print List_Stacker_20[j].outputs["Output"].meta.shape
         print "_______________________"
         temp_shape = list(s_shape)
         temp_shape[s_axistags.index('c')] = s_shape[s_axistags.index('c')]*sub_Max
-        assert (List_Stacker_20[j].outputs["Output"]._shape == tuple(temp_shape))
-        assert (List_Stacker_20[j].outputs["Output"]._dtype == s_dytpe)
+        assert (List_Stacker_20[j].outputs["Output"].meta.shape == tuple(temp_shape))
+        assert (List_Stacker_20[j].outputs["Output"].meta.dtype == s_dytpe)
 
         for i in range (5):
-            assert (List_Stacker_20[j].outputs["Output"]._axistags[i].description == s_axistags[i].description)
-            assert (List_Stacker_20[j].outputs["Output"]._axistags[i].isType(s_axistags[i].typeFlags))
+            assert (List_Stacker_20[j].outputs["Output"].meta.axistags[i].description == s_axistags[i].description)
+            assert (List_Stacker_20[j].outputs["Output"].meta.axistags[i].isType(s_axistags[i].typeFlags))
 
     Stacker_20.inputs["Images"].connect(Multi_20.outputs["Outputs"])
     Stacker_20.inputs["AxisFlag"].setValue('c')
@@ -300,17 +300,17 @@ def connect_Multi20_Stacker(graph, source, Op):
     print "_______________________"
     print "_______________________"
     print "Big Stacker"
-    print Stacker_20.outputs["Output"]._shape
+    print Stacker_20.outputs["Output"].meta.shape
     print "_______________________"
     print "_______________________"
     temp_shape = list(s_shape)
     temp_shape[s_axistags.index('c')] = s_shape[s_axistags.index('c')]*max_num
-    assert (Stacker_20.outputs["Output"]._shape == tuple(temp_shape)), "OutputShape: %s  expected Shape %s" %(Stacker_20.outputs["Output"]._shape, tuple(temp_shape) )
-    assert (Stacker_20.outputs["Output"]._dtype == s_dytpe)
+    assert (Stacker_20.outputs["Output"].meta.shape == tuple(temp_shape)), "OutputShape: %s  expected Shape %s" %(Stacker_20.outputs["Output"].meta.shape, tuple(temp_shape) )
+    assert (Stacker_20.outputs["Output"].meta.dtype == s_dytpe)
 
     for i in range (5):
-        assert (Stacker_20.outputs["Output"]._axistags[i].description == s_axistags[i].description)
-        assert (Stacker_20.outputs["Output"]._axistags[i].isType(s_axistags[i].typeFlags))
+        assert (Stacker_20.outputs["Output"].meta.axistags[i].description == s_axistags[i].description)
+        assert (Stacker_20.outputs["Output"].meta.axistags[i].isType(s_axistags[i].typeFlags))
 
     return Stacker_20
 
@@ -389,9 +389,9 @@ def connect_random(graph, source, Op):
     source - Source-Operator
     Op - Dictionnary of preset Operators
     """
-    s_dytpe = source.outputs["Output"]._dtype
-    s_shape = source.outputs["Output"]._shape
-    s_axistags = source.outputs["Output"]._axistags
+    s_dytpe = source.outputs["Output"].meta.dtype
+    s_shape = source.outputs["Output"].meta.shape
+    s_axistags = source.outputs["Output"].meta.axistags
 
     numList = []
     for i in Op:
@@ -414,13 +414,13 @@ def connect_random(graph, source, Op):
 
 
         print "Op Name:", Op[num].name
-        print Op[num].outputs["Output"]._shape
-        assert (Op[num].outputs["Output"]._shape == s_shape), "Output shape %s  expected shape %s "%( Op[num].outputs["Output"]._shape,s_shape)
-        assert (Op[num].outputs["Output"]._dtype == s_dytpe)
+        print Op[num].outputs["Output"].meta.shape
+        assert (Op[num].outputs["Output"].meta.shape == s_shape), "Output shape %s  expected shape %s "%( Op[num].outputs["Output"].meta.shape,s_shape)
+        assert (Op[num].outputs["Output"].meta.dtype == s_dytpe)
 
         for i in range (5):
-            assert (Op[num].outputs["Output"]._axistags[i].description == s_axistags[i].description)
-            assert (Op[num].outputs["Output"]._axistags[i].isType(s_axistags[i].typeFlags))
+            assert (Op[num].outputs["Output"].meta.axistags[i].description == s_axistags[i].description)
+            assert (Op[num].outputs["Output"].meta.axistags[i].isType(s_axistags[i].typeFlags))
 
         pre_num = num
         numList.remove(num)
@@ -451,9 +451,9 @@ if __name__=="__main__":
     source = OpArrayPiper(g)
     source.inputs["Input"].setValue(img)
 
-    s_dytpe = source.outputs["Output"]._dtype
-    s_shape = source.outputs["Output"]._shape
-    s_axistags = source.outputs["Output"]._axistags
+    s_dytpe = source.outputs["Output"].meta.dtype
+    s_shape = source.outputs["Output"].meta.shape
+    s_axistags = source.outputs["Output"].meta.axistags
 
     assert (s_shape == img.shape)
 
@@ -501,19 +501,19 @@ if __name__=="__main__":
     print "_______________________"
     print "_________end___________"
     print "_______________________"
-    print "_dtype", e.outputs["Output"]._dtype
-    print "_shape", e.outputs["Output"]._shape
-    print e.outputs["Output"]._axistags
+    print "_dtype", e.outputs["Output"].meta.dtype
+    print "_shape", e.outputs["Output"].meta.shape
+    print e.outputs["Output"].meta.axistags
     res = e.outputs["Output"][:].allocate().wait()
     print "Result-Shape", res.shape
 
 
-    #assert (e.outputs["Output"]._shape == s_shape), "Output shape %s  expected shape %s "%( e.outputs["Output"]._shape,s_shape)
-    assert (e.outputs["Output"]._dtype == s_dytpe)
+    #assert (e.outputs["Output"].meta.shape == s_shape), "Output shape %s  expected shape %s "%( e.outputs["Output"].meta.shape,s_shape)
+    assert (e.outputs["Output"].meta.dtype == s_dytpe)
 
     for i in range (5):
-        assert (e.outputs["Output"]._axistags[i].description == s_axistags[i].description)
-        assert (e.outputs["Output"]._axistags[i].isType(s_axistags[i].typeFlags))
+        assert (e.outputs["Output"].meta.axistags[i].description == s_axistags[i].description)
+        assert (e.outputs["Output"].meta.axistags[i].isType(s_axistags[i].typeFlags))
 
 
 

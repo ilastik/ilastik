@@ -169,13 +169,13 @@ imshow(result3)
 #    you can inspect the shape of an output slot by
 #    printing its shape property:
 
-print "reader.outputs[\"Image\"].shape :", reader.outputs["Image"].shape
-print "subwin.outputs[\"Output\"].shape :", subwin.outputs["Output"].shape
+print "reader.outputs[\"Image\"].meta.shape :", reader.outputs["Image"].meta.shape
+print "subwin.outputs[\"Output\"].meta.shape :", subwin.outputs["Output"].meta.shape
 
 
 #    in addition output slots have some other useful properties as
-#    .dtype and .axistags
+#    meta.dtype and meta.axistags
 
-print "reader.outputs[\"Image\"].shape :", reader.outputs["Image"].shape
-print "reader.outputs[\"Image\"].dtype :", reader.outputs["Image"].dtype
-print "reader.outputs[\"Image\"].axistags :", reader.outputs["Image"].axistags
+print "reader.outputs[\"Image\"].meta.shape :", reader.outputs["Image"].meta.shape
+print "reader.outputs[\"Image\"].meta.dtype :", reader.outputs["Image"].meta.dtype
+print "reader.outputs[\"Image\"].meta.axistags :", reader.outputs["Image"].meta.axistags

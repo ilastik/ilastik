@@ -9,15 +9,15 @@ from operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
 class ArrayProvider(OutputSlot):
     def __init__(self, name, shape, dtype, axistags="not none"):
         OutputSlot.__init__(self,name)
-        self._shape = shape
-        self._dtype = dtype
+        self.meta.shape = shape
+        self.meta.dtype = dtype
         self._data = None
-        self._axistags = axistags
+        self.meta.axistags = axistags
         self._lock = threading.Lock()
 
     def setData(self,d):
-        assert d.dtype == self._dtype
-        assert d.shape == self._shape
+        assert d.dtype == self.meta.dtype
+        assert d.shape == self.meta.shape
         self._lock.acquire()
         self._data = d
         self._lock.release()
@@ -43,8 +43,8 @@ class ListToMultiOperator(Operator):
         liste = self.inputs["List"].value
         self.outputs["Items"].resize(len(liste))
         for o in self.outputs["Items"]:
-            o._dtype = object
-            o._shape = (1,)
+            o.meta.dtype = object
+            o.meta.shape = (1,)
 
     def getSubOutSlot(self, slots, indexes, key, result):
         liste = self.inputs["List"].value
