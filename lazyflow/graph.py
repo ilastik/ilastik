@@ -103,13 +103,6 @@ class MetaDict(dict):
             self._ready = False  # flag that indicates wether all dependencies of the slot are ready
         self._dirty = True   # flag that indicates wether any piece of meta information changed
                              # since this flag was reset
-        #TODO: remove this, only for backwards compatability
-        if not self.has_key("shape"):
-            self.shape = None
-        if not self.has_key("dtype"):
-            self.dtype = None
-        if not self.has_key("axistags"):
-            self.axistags = None
 
     def __setattr__(self,name,value):
         """
@@ -132,6 +125,16 @@ class MetaDict(dict):
         Provide convenient acces to the metadict, allows using the . notation instead of [] access
         """
         return self[name]
+
+    def __getitem__(self, name):
+        """
+        Does not throw KeyErrors.
+        Non-existant items always return None.
+        """
+        if name in self.keys():
+            return dict.__getitem__(self, name)
+        else:
+            return None
 
     def copy(self):
         """
@@ -776,7 +779,7 @@ class Slot(object):
         if self.level > 0:
             return self._subSlots[key]
         else:
-            assert self.meta.shape is not None, "OutputSlot.__getitem__: self.shape is None !!! (operator %r [self=%r] slot: %s, key=%r" % (self.operator.name, self.operator, self.name, key)
+            assert self.meta.shape is not None, "OutputSlot.__getitem__: self.meta.shape is None !!! (operator %r [self=%r] slot: %s, key=%r" % (self.operator.name, self.operator, self.name, key)
             return self(pslice=key)
 
 
@@ -1130,52 +1133,6 @@ class Slot(object):
     @property
     def graph(self):
         return self.operator.graph
-
-
-    #
-    #
-    #  B a c k w a r d s   c o m p a t a b i l i t y
-    #
-
-    @property
-    def shape(self):
-        return self.meta.shape
-
-    @property
-    def dtype(self):
-        return self.meta.dtype
-
-    @property
-    def axistags(self):
-        return self.meta.axistags
-
-    @property
-    def _shape(self):
-        return self.meta.shape
-
-    @_shape.setter
-    def _shape(self,value):
-        old = self.meta.shape
-        self.meta.shape = value
-
-    @property
-    def _axistags(self):
-        return self.meta.axistags
-
-    @_axistags.setter
-    def _axistags(self, value):
-        old = self.meta.axistags
-        self.meta.axistags = value
-
-    @property
-    def _dtype(self):
-        return self.meta.dtype
-
-    @_dtype.setter
-    def _dtype(self, value):
-        old = self.meta.dtype
-        self.meta.dtype = value
-        
     
     # # # # #
     #
@@ -1183,28 +1140,27 @@ class Slot(object):
     #
     
     def setShapeAtAxisTo(self,axis,size):
-        tmpshape = list(self.shape)
+        tmpshape = list(self.meta.shape)
         tmpshape[self.axistags.index(axis)] = size
         self.meta.shape = tuple(tmpshape)
     
     def __str__(self):
-        if self.axistags is None:
+        if self.meta.axistags is None:
             axisStr = 'Axistags \tNone\n'
         else:
-            axisStr = str(self.axistags)
-        return 'Shape \t\t'+str(self.shape) +'\n'\
+            axisStr = str(self.meta.axistags)
+        return 'Shape \t\t'+str(self.meta.shape) +'\n'\
                 +axisStr +\
-               'Dtype \t\t' + str(self.dtype)
+               'Dtype \t\t' + str(self.meta.dtype)
 
     def __repr__(self):
-        if self.axistags is None:
+        if self.meta.axistags is None:
             axisStr = 'Axistags \tNone\n'
         else:
-            axisStr = str(self.axistags)
-        return 'Shape \t\t'+str(self.shape) +'\n'\
+            axisStr = str(self.meta.axistags)
+        return 'Shape \t\t'+str(self.meta.shape) +'\n'\
                 + axisStr +\
-               'Dtype \t\t' + str(self.dtype)
-
+               'Dtype \t\t' + str(self.meta.dtype)
 
 class InputSlot(Slot):
     """
