@@ -136,8 +136,8 @@ class FeatureSelectionGui(LayerViewerGui):
         
         channelAxis = inputSlot.meta.axistags.channelIndex
         assert channelAxis == featureSlot.meta.axistags.channelIndex
-        numInputChannels = inputSlot.shape[channelAxis]
-        numFeatureChannels = featureSlot.shape[channelAxis]
+        numInputChannels = inputSlot.meta.shape[channelAxis]
+        numFeatureChannels = featureSlot.meta.shape[channelAxis]
 
         # Determine how many channels this feature has (up to 3)
         featureChannelsPerInputChannel = numFeatureChannels / numInputChannels

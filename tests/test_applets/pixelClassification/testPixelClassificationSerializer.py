@@ -34,8 +34,8 @@ class OpMockPixelClassifier(Operator):
     def __init__(self, *args, **kwargs):
         super(OpMockPixelClassifier, self).__init__(*args, **kwargs)
         self._data = []
-        self.shape = (1,10,100,100,1)
-        self.prediction_shape = self.shape[:-1] + (2,) # Hard-coded to provide 2 classes
+        self.dataShape = (1,10,100,100,1)
+        self.prediction_shape = self.dataShape[:-1] + (2,) # Hard-coded to provide 2 classes
         
         self.FreezePredictions.setValue(False)
         
@@ -47,7 +47,7 @@ class OpMockPixelClassifier(Operator):
         self.classifier_cache = OpValueCache(graph=self.graph, parent=self)
         self.classifier_cache.Input.connect( self.opClassifier.Classifier )
         
-        p1 = numpy.indices(self.shape).sum(0) / 207.0
+        p1 = numpy.indices(self.dataShape).sum(0) / 207.0
         p2 = 1 - p1
 
         self.predictionData = numpy.concatenate((p1,p2), axis=4)
@@ -62,11 +62,11 @@ class OpMockPixelClassifier(Operator):
         self.opClassifier.Images.resize( numImages )
 
         for i in range(numImages):
-            self._data.append( numpy.zeros(self.shape) )
+            self._data.append( numpy.zeros(self.dataShape) )
             self.NonzeroLabelBlocks[i].meta.shape = (1,)
             self.NonzeroLabelBlocks[i].meta.dtype = object
 
-            self.LabelImages[i].meta.shape = self.shape
+            self.LabelImages[i].meta.shape = self.dataShape
             self.LabelImages[i].meta.dtype = numpy.float64
             
             # Hard-coded: Two prediction classes
@@ -75,7 +75,7 @@ class OpMockPixelClassifier(Operator):
             self.PredictionProbabilities[i].meta.axistags = vigra.defaultAxistags('txyzc')
             
             # Classify with random data
-            self.opClassifier.Images[i].setValue( numpy.random.random(self.shape) )
+            self.opClassifier.Images[i].setValue( numpy.random.random(self.dataShape) )
         
         self.Classifier.connect( self.opClassifier.Classifier )
         
@@ -90,7 +90,7 @@ class OpMockPixelClassifier(Operator):
         if slot.name == "NonzeroLabelBlocks":
             # Split into 10 chunks
             blocks = []
-            slicing = [slice(0,max) for max in self.shape]
+            slicing = [slice(0,max) for max in self.dataShape]
             chunks = numpy.split(self._data[index], 10, 2)
             for i in range(10):
                 slicing[2] = slice(i*10, (i+1)*10)
@@ -114,7 +114,7 @@ class TestOpMockPixelClassifier(object):
         op.LabelInputs.resize( 1 )
 
         # Create some labels
-        labeldata = numpy.zeros(op.shape)
+        labeldata = numpy.zeros(op.dataShape)
         labeldata[:,:,0:5,:,:] = 7
         labeldata[:,:,50:60,:] = 8
 
@@ -157,7 +157,7 @@ class TestPixelClassificationSerializer(object):
             op.LabelInputs.resize( 1 )
     
             # Create some labels
-            labeldata = numpy.zeros(op.shape)
+            labeldata = numpy.zeros(op.dataShape)
             labeldata[:,:,0:5,:,:] = 1
             labeldata[:,:,50:60,:] = 2
     
