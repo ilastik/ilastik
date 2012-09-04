@@ -20,6 +20,7 @@ from ilastik.applets.tracking.opTracking import *
 import ctracking
 class OpTrackingDataProvider( Operator ):
     Raw = OutputSlot()
+    LabelImage = OutputSlot()
     Traxels = OutputSlot( stype=Opaque )
 
     def __init__( self, parent = None, graph = None, register = True ):
@@ -29,6 +30,10 @@ class OpTrackingDataProvider( Operator ):
         self._rawReader = OpInputDataReader( graph )
         self._rawReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5/raw')
         self.Raw.connect( self._rawReader.Output )
+
+        self._labelImageReader = OpInputDataReader( graph )
+        self._labelImageReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5/objects')
+        self.LabelImage.connect( self._labelImageReader.Output )
 
     def setupOutputs( self ):
         self.Traxels.meta.shape = self.Raw.meta.shape
@@ -93,7 +98,8 @@ class TrackingWorkflow( Workflow ):
         opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
 
         dataProv = OpTrackingDataProvider( graph=graph )
-        opTracking.LabelImage.connect( opObjExtraction.LabelImage )
+        #opTracking.LabelImage.connect( opObjExtraction.LabelImage )
+        opTracking.LabelImage.connect( dataProv.LabelImage )        
         opTracking.RawData.connect( dataProv.Raw )
         opTracking.Traxels.connect( dataProv.Traxels )
         opTracking.ObjectCenters.connect( opObjExtraction.RegionCenters )
