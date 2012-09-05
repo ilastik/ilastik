@@ -9,6 +9,7 @@ class TestOpMultiArraySlicer2(object):
 
     def setUp(self):
         graph = Graph()
+        self.graph = graph
         # Data is tagged by channel
         data = numpy.indices((10,10,10,3))[3]
         data = data.view(vigra.VigraArray)
@@ -50,7 +51,6 @@ class TestOpMultiArraySlicer2(object):
         # Reset
         dirtyRois = {}
         opSlicer.AxisFlag.setValue('x')
-        print len(dirtyRois)
         assert len(dirtyRois) == 3
         assert dirtyRois[0].start == [0,0,0,0]
         assert dirtyRois[0].stop == [10,10,10,3]
@@ -61,7 +61,6 @@ class TestOpMultiArraySlicer2(object):
         
 
     def testReshape(self):
-        opProvider = self.opProvider        
         opSlicer = self.opSlicer
 
         dirtyRois = {}
@@ -94,6 +93,64 @@ class TestOpMultiArraySlicer2(object):
         assert dirtyRois[0].stop == [10,10,10,1]
         assert dirtyRois[1].start == [0,0,0,0]
         assert dirtyRois[1].stop == [10,10,10,1]
+
+    def testSelectedSlices(self):
+        """
+        Test the ability to select a specific set of slices from the input image (instead of selecting all of them).
+        """
+        opSlicer = self.opSlicer
+        assert len(opSlicer.Slices) == 3
+        
+        opSlicer.SliceIndexes.setValue([1,2])
+        assert len(opSlicer.Slices) == 2
+        
+        for i, slot in enumerate(opSlicer.Slices):
+            assert slot.meta.shape == (10,10,10,1)
+            assert (slot[...].wait() == i+1).all()
+
+    def testWrapped(self):
+        """
+        Make sure the MulitArraySlicer2 functions as expected, even when wrapped with an OperatorWrapper.
+        """
+        # Note: This test creates its own opSlicer and opProvider.
+        #       ( Doesn't use the ones created in self.setUp() )
+        # Data is tagged by channel
+        opProvider = OperatorWrapper( OpArrayPiper(graph=self.graph) )        
+        opSlicer = OperatorWrapper( OpMultiArraySlicer2(graph=self.graph) )
+
+        opSlicer.AxisFlag.setValue('c')
+        opSlicer.Input.connect(opProvider.Output)
+
+        data = numpy.indices((10,10,10,3))[3]
+        data = data.view(vigra.VigraArray)
+        data.axistags = vigra.defaultAxistags('xyzc')
+        opProvider.Input.resize(2)
+        opProvider.Input[0].setValue(data)
+        opProvider.Input[1].setValue(2*data)
+
+        assert len(opSlicer.Slices) == len(opProvider.Output)
+        assert len(opSlicer.Slices[0]) == 3
+        assert len(opSlicer.Slices[1]) == 3
+
+        for i, slot in enumerate(opSlicer.Slices[0]):
+            assert slot.meta.shape == (10,10,10,1)
+            assert (slot[...].wait() == i).all()
+
+        for i, slot in enumerate(opSlicer.Slices[1]):
+            assert slot.meta.shape == (10,10,10,1)
+            assert (slot[...].wait() == 2*i).all()
+        
+        opSlicer.SliceIndexes.setValue([1,2])
+        assert len(opSlicer.Slices[0]) == 2
+        assert len(opSlicer.Slices[1]) == 2
+        
+        for i, slot in enumerate(opSlicer.Slices[0]):
+            assert slot.meta.shape == (10,10,10,1)
+            assert (slot[...].wait() == i+1).all()
+
+        for i, slot in enumerate(opSlicer.Slices[1]):
+            assert slot.meta.shape == (10,10,10,1)
+            assert (slot[...].wait() == 2*(i+1)).all()
 
 if __name__ == "__main__":
     import sys
