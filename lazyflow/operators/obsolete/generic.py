@@ -504,6 +504,15 @@ class OpMultiArrayMerger(Operator):
 
         result[:]=fun(data)
 
+    def propagateDirty(self, dirtySlot, roi):
+        assert dirtySlot == self.MergingFunction
+        self.Output.setDirty( slice(None) )
+
+    def notifySubSlotDirty(self, slots, indexes, key):
+        assert slots[0] == self.Inputs
+        # Assumes a pixel-wise merge function.        
+        self.Output.setDirty( key )
+
 class OpPixelOperator(Operator):
     name = "OpPixelOperator"
     description = "simple pixel operations"
