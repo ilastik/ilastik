@@ -1516,19 +1516,7 @@ class Operator(object):
     outputslots.
     """
     def propagateDirty(self, inputSlot, roi):
-        # default implementation calls old api for backwardcompatability
-        if hasattr(roi,"toSlice"):
-            self.notifyDirty(inputSlot,roi.toSlice())
-        else:
-            self.logger.debug("propagateDirty: roi={}".format(roi))
-            raise TypeError(".propagatedirty of Operator %r is not implemented !" % (self))
-
-    def notifyDirty(self, inputSlot, key):
-        # simple default implementation
-        # -> set all outputs dirty
-        warnings.warn( "Operator '{}' implements neither notifyDirty nor propagateDirty.".format(self.name) )
-        for os in self.outputs.values():
-            os.setDirty(slice(None,None,None))
+        raise NotImplementedError(".propagatedirty of Operator %r is not implemented !" % (self))
 
     """
     This method corresponds to the notifyDirty method, but is used
