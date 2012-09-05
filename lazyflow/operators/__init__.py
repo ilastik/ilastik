@@ -19,6 +19,7 @@ except:
     from obsolete import operators
     
     from opVigraWatershed import OpVigraWatershed
+    from opVigraLabelVolume import OpVigraLabelVolume
     from opColorizeLabels import OpColorizeLabels
 
     ops = itersubclasses(Operator)
