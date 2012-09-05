@@ -475,6 +475,22 @@ class OpMultiArrayMerger(Operator):
             assert input.shape==shape, "Only possible merging consistent shapes"
             assert input.axistags==axistags, "Only possible merging same axistags"
 
+        # If *all* inputs have a drange, then provide a drange for the output.
+        # Note: This assumes the merging function is pixel-wise
+        dranges = []
+        for i,slot in enumerate(self.Inputs):
+            dr = slot.meta.drange
+            if dr is not None:
+                dranges.append(numpy.array(dr))
+            else:
+                dranges = []
+                break
+        
+        if len(dranges) > 0:
+            fun = self.MergingFunction.value
+            outRange = fun(dranges)
+            self.Output.meta.drange = tuple(outRange)
+
     def getOutSlot(self, slot, key, result):
         requests=[]
         for input in self.inputs["Inputs"]:
