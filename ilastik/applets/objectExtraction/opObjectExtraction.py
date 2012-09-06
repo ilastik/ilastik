@@ -77,15 +77,9 @@ class OpObjectExtraction( Operator ):
         super(OpObjectExtraction, self).__init__(parent=parent,graph=graph,register=register)
 
         self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
-        with h5py.File('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5', 'r') as f:
-            f.copy('/seg', self._mem_h5)
-
-        self._segReader = OpStreamingHdf5Reader( graph = graph )
-        self._segReader.Hdf5File.setValue(self._mem_h5)
-        self._segReader.InternalPath.setValue('/seg')
 
         self._opLabelImage = OpLabelImage( graph = graph )
-        self._opLabelImage.BinaryImage.connect( self._segReader.OutputImage )
+        self._opLabelImage.BinaryImage.connect( self.BinaryImage )
 
         self._opRegCent = OpRegionCenters( graph = graph )
 
@@ -95,8 +89,7 @@ class OpObjectExtraction( Operator ):
         self._mem_h5.close()
 
     def setupOutputs(self):
-        self.LabelImage.meta.assignFrom(self._segReader.OutputImage.meta)
-        #self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
+        self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
         m = self.LabelImage.meta
         self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=m.dtype, compression=1 )
     
@@ -117,7 +110,7 @@ class OpObjectExtraction( Operator ):
             print "Calculating LabelImage at", t
             start = [t,] + (len(m.shape) - 1) * [0,]
             stop = [t+1,] + list(m.shape[1:])
-            a = self._segReader.OutputImage.get(SubRegion(self._segReader.OutputImage, start=start, stop=stop)).wait()
+            a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()
             a = a[0,...,0]
             self._mem_h5['LabelImage'][0,...,0] = vigra.analysis.labelVolumeWithBackground( a )
         self.LabelImage.setDirty(SubRegion(self.LabelImage))
