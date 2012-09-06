@@ -3,14 +3,9 @@ from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
 
 from ilastik.workflow import Workflow
 
-from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.featureSelection import FeatureSelectionApplet
-from ilastik.applets.pixelClassification import PixelClassificationApplet
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 from ilastik.applets.tracking import TrackingApplet
-
-
 
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -72,45 +67,28 @@ class TrackingWorkflow( Workflow ):
         ######################
         
         ## Create applets 
-        self.projectMetadataApplet = ProjectMetadataApplet()
-        self.dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
-        self.featureSelectionApplet = FeatureSelectionApplet(graph, "Feature Selection", "FeatureSelections")
-        self.pcApplet = PixelClassificationApplet(graph, "PixelClassification")
+        self.dataSelectionApplet = DataSelectionApplet(graph, "Input Segmentation", "Input Segmentation", batchDataGui=False)
+
         self.objectExtractionApplet = ObjectExtractionApplet( graph )
         self.trackingApplet = TrackingApplet( graph )
 
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator
-        opTrainingFeatures = self.featureSelectionApplet.topLevelOperator
-        opClassify = self.pcApplet.topLevelOperator
         opObjExtraction = self.objectExtractionApplet.topLevelOperator
         opTracking = self.trackingApplet.topLevelOperator
         
         ## Connect operators ##
-        
-        # Input Image -> Feature Op
-        #         and -> Classification Op (for display)
-        opTrainingFeatures.InputImage.connect( opData.Image )
-        opClassify.InputImages.connect( opData.Image )
-        
-        # Feature Images -> Classification Op (for training, prediction)
-        opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
-        opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
 
         dataProv = OpTrackingDataProvider( graph=graph )
+
         #opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.LabelImage.connect( dataProv.LabelImage )        
+
         opTracking.RawData.connect( dataProv.Raw )
         opTracking.Traxels.connect( dataProv.Traxels )
         opTracking.ObjectCenters.connect( opObjExtraction.RegionCenters )
-        
-        # Training flags -> Classification Op (for GUI restrictions)
-        opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 
-        self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
-        self._applets.append(self.featureSelectionApplet)
-        self._applets.append(self.pcApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.trackingApplet)
 
