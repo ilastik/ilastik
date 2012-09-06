@@ -681,9 +681,9 @@ class SeededWatershedGui(QMainWindow):
         The raw input data to our top-level operator has changed.
         """
         if len(self.pipeline.image) > 0 \
-        and self.pipeline.image[self.imageIndex].shape is not None:
+        and self.pipeline.image[self.imageIndex].meta.shape is not None:
 
-            shape = self.pipeline.image[self.imageIndex].shape
+            shape = self.pipeline.image[self.imageIndex].meta.shape
             srcs    = []
             minMax = []
             
@@ -839,7 +839,7 @@ class SeededWatershedGui(QMainWindow):
             self.removeLayersFromEditorStack(self.labellayer.name)
 
         # Give the editor the appropriate shape
-        shape = self.pipeline.image[self.imageIndex].shape
+        shape = self.pipeline.image[self.imageIndex].meta.shape
         self.editor.dataShape = shape
 
     def _createDefault16ColorColorTable(self):
