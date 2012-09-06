@@ -34,3 +34,6 @@ script:
 notifications:
   email:
     - bergs@janelia.hhmi.org
+branches:
+    only:
+      - master
