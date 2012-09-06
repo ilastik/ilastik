@@ -34,7 +34,25 @@ class ObjectExtractionGui( QWidget ):
         return self._viewerControlWidget
 
     def setImageIndex( self, imageIndex ):
-        print "setImageIndex not implemented"
+        mainOperator = self.mainOperator.innerOperators[imageIndex]
+        self.curOp = mainOperator
+
+        ct = colortables.create_default_8bit()
+        self.binaryimagesrc = LazyflowSource( mainOperator.BinaryImage )
+        layer = GrayscaleLayer( self.binaryimagesrc, range=(0,1), normalize=(0,1) )
+        layer.name = "Binary Image"
+        self.layerstack.append(layer)
+
+        ct = colortables.create_default_8bit()
+        self.objectssrc = LazyflowSource( mainOperator.LabelImage )
+        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+        layer = ColortableLayer( self.objectssrc, ct )
+        layer.name = "Label Image"
+        self.layerstack.append(layer)
+
+        if mainOperator.BinaryImage.meta.shape:
+            self.editor.dataShape = mainOperator.LabelImage.meta.shape
+        mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged )            
 
     def reset( self ):
         print "reset(): not implemented"
@@ -47,20 +65,13 @@ class ObjectExtractionGui( QWidget ):
         """
         super(ObjectExtractionGui, self).__init__()
         self.mainOperator = mainOperator
+        self.curOp = None
         self.layerstack = LayerStackModel()
 
         #self.rawsrc = LazyflowSource( self.mainOperator.RawData )
         #layerraw = GrayscaleLayer( self.rawsrc )
         #layerraw.name = "Raw"
         #self.layerstack.append( layerraw )
-
-
-        self.objectssrc = LazyflowSource( self.mainOperator.LabelImage )
-        ct = colortables.create_default_8bit()
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        layer = ColortableLayer( self.objectssrc, ct )
-        layer.name = "Label Image"
-        self.layerstack.append(layer)
 
         self._viewerControlWidget = None
         self._initViewerControlUi()
@@ -70,16 +81,15 @@ class ObjectExtractionGui( QWidget ):
 
         self._initAppletDrawerUi()
 
-        if self.mainOperator.LabelImage.meta.shape:
-            self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
-        self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
+        #if self.mainOperator.LabelImage.meta.shape:
+        #    self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
+        #self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
 
     def _onMetaChanged( self, slot ):
-        if slot is self.mainOperator.LabelImage:
+        if slot is self.curOp.BinaryImage:
             if slot.meta.shape:
-                print slot.meta.shape
                 self.editor.dataShape = slot.meta.shape
-
+ 
     def _initEditor(self):
         """
         Initialize the Volume Editor GUI.
@@ -120,4 +130,4 @@ class ObjectExtractionGui( QWidget ):
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
     def _onLabelImageButtonPressed( self ):
-        self.mainOperator.updateLabelImage()
+        self.curOp.updateLabelImage()

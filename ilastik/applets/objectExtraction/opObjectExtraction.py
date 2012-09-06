@@ -3,7 +3,7 @@ import h5py
 import vigra
 import vigra.analysis
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import Everything, SubRegion
 from lazyflow.operators.ioOperators.opStreamingHdf5Reader import OpStreamingHdf5Reader
@@ -67,7 +67,7 @@ class OpObjectExtraction( Operator ):
     name = "Object Extraction"
 
     #RawData = InputSlot()
-    #Segmentation = InputSlot()
+    BinaryImage = InputSlot()
     #FeatureNames = InputSlot( stype=Opaque )
 
     LabelImage = OutputSlot()
@@ -76,7 +76,7 @@ class OpObjectExtraction( Operator ):
     def __init__( self, parent = None, graph = None, register = True ):
         super(OpObjectExtraction, self).__init__(parent=parent,graph=graph,register=register)
 
-        self._mem_h5 = h5py.File('mem.h5', driver='core', backing_store=False)
+        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
         with h5py.File('/home/bkausler/src/ilastik/tracking/relabeled-stack/objects.h5', 'r') as f:
             f.copy('/seg', self._mem_h5)
 
@@ -96,6 +96,7 @@ class OpObjectExtraction( Operator ):
 
     def setupOutputs(self):
         self.LabelImage.meta.assignFrom(self._segReader.OutputImage.meta)
+        #self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
         m = self.LabelImage.meta
         self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=m.dtype, compression=1 )
     
@@ -112,7 +113,7 @@ class OpObjectExtraction( Operator ):
 
     def updateLabelImage( self ):
         m = self.LabelImage.meta
-        for t in range(0, 2):#meta.shape[0]):
+        for t in range(0, 1):#meta.shape[0]):
             print "Calculating LabelImage at", t
             start = [t,] + (len(m.shape) - 1) * [0,]
             stop = [t+1,] + list(m.shape[1:])

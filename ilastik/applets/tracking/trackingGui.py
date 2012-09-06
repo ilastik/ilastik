@@ -38,7 +38,28 @@ class TrackingGui( QWidget ):
         return self._viewerControlWidget
 
     def setImageIndex( self, imageIndex ):
-        print "tracking.setImageIndex not implemented"
+        mainOperator = self.mainOperator.innerOperators[imageIndex]
+        self.rawsrc = LazyflowSource( mainOperator.RawData )
+        layerraw = GrayscaleLayer( self.rawsrc )
+        layerraw.name = "Raw"
+        self.layerstack.append( layerraw )
+
+        self.objectssrc = LazyflowSource( mainOperator.LabelImage )
+        ct = colortables.create_default_8bit()
+        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+        layer = ColortableLayer( self.objectssrc, ct )
+        layer.name = "Objects"
+        self.layerstack.append(layer)
+
+        self.trackingsrc = LazyflowSource( mainOperator.Output )
+        layer = ColortableLayer( self.trackingsrc, ct )
+        layer.name = "Tracking"
+        self.layerstack.append(layer)
+
+        self.locpicsrc = LazyflowSource( mainOperator.Locpic )
+        layerlocpic = RGBALayer( red=ConstantSource(255), alpha=self.locpicsrc )
+        layerlocpic.name = "Locpic"
+        self.layerstack.append( layerlocpic )
 
     def reset( self ):
         print "TrackinGui.reset(): not implemented"
@@ -53,28 +74,28 @@ class TrackingGui( QWidget ):
         self.mainOperator = mainOperator
         self.layerstack = LayerStackModel()
 
-        self.rawsrc = LazyflowSource( self.mainOperator.RawData )
-        layerraw = GrayscaleLayer( self.rawsrc )
-        layerraw.name = "Raw"
-        self.layerstack.append( layerraw )
+        # self.rawsrc = LazyflowSource( self.mainOperator.RawData )
+        # layerraw = GrayscaleLayer( self.rawsrc )
+        # layerraw.name = "Raw"
+        # self.layerstack.append( layerraw )
 
 
-        self.objectssrc = LazyflowSource( self.mainOperator.LabelImage )
-        ct = colortables.create_default_8bit()
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        layer = ColortableLayer( self.objectssrc, ct )
-        layer.name = "Objects"
-        self.layerstack.append(layer)
+        # self.objectssrc = LazyflowSource( self.mainOperator.LabelImage )
+        # ct = colortables.create_default_8bit()
+        # ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+        # layer = ColortableLayer( self.objectssrc, ct )
+        # layer.name = "Objects"
+        # self.layerstack.append(layer)
 
-        self.trackingsrc = LazyflowSource( self.mainOperator.Output )
-        layer = ColortableLayer( self.trackingsrc, ct )
-        layer.name = "Tracking"
-        self.layerstack.append(layer)
+        # self.trackingsrc = LazyflowSource( self.mainOperator.Output )
+        # layer = ColortableLayer( self.trackingsrc, ct )
+        # layer.name = "Tracking"
+        # self.layerstack.append(layer)
 
-        self.locpicsrc = LazyflowSource( self.mainOperator.Locpic )
-        layerlocpic = RGBALayer( red=ConstantSource(255), alpha=self.locpicsrc )
-        layerlocpic.name = "Locpic"
-        self.layerstack.append( layerlocpic )
+        # self.locpicsrc = LazyflowSource( self.mainOperator.Locpic )
+        # layerlocpic = RGBALayer( red=ConstantSource(255), alpha=self.locpicsrc )
+        # layerlocpic.name = "Locpic"
+        # self.layerstack.append( layerlocpic )
                                
         # self.src = LazyflowSource( self.mainOperator.Output )
         # ct = colortables.create_default_8bit()
