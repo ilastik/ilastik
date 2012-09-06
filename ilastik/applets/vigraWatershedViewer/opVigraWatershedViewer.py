@@ -2,7 +2,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiOutputSlot
 
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpMultiArrayMerger, OpPixelOperator
 
-from lazyflow.operators import OpVigraWatershed, OpColorizeLabels, OpVigraLabelVolume
+from lazyflow.operators import OpVigraWatershed, OpColorizeLabels, OpVigraLabelVolume, OpFilterLabels
 
 import numpy
 import vigra
@@ -15,17 +15,17 @@ class OpVigraWatershedViewer(Operator):
     category = "top-level"
     
     InputImage = InputSlot()
-    FreezeCache = InputSlot()
-    OverrideLabels = InputSlot(stype='object')
-    WatershedPadding = InputSlot()
-    InputChannelIndexes = InputSlot(stype='object')
+
+    InputChannelIndexes = InputSlot(stype='object') # opChannelSlicer
+    WatershedPadding = InputSlot() # opWatershed
+    FreezeCache = InputSlot() # opWatershed Cache
+    OverrideLabels = InputSlot(stype='object') # opColorizer
+    SeedThresholdValue = InputSlot(optional=True) # opThreshold
+    MinSeedSize = InputSlot() # opSeedLabeler
     
-    SeedThresholdValue = InputSlot(optional=True)
-    #MinSeedSize = InputSlot()
-    
-    SummedInput = OutputSlot()
-    WatershedLabels = OutputSlot()
-    ColoredPixels = OutputSlot()
+    WatershedLabels = OutputSlot()  # Watershed labeled output
+    SummedInput = OutputSlot()      # Watershed input (for gui display)
+    ColoredPixels = OutputSlot()    # Colored watershed labels (for gui display)
     
     SelectedInputChannels = MultiOutputSlot(level=1)
 
@@ -33,13 +33,19 @@ class OpVigraWatershedViewer(Operator):
         super(OpVigraWatershedViewer, self).__init__(*args, **kwargs)
         self._seedThreshold = None
         
-        # Overview (example shown uses input channels 0,1,5)
-        #
-        # [0,1,5]    --> opChannelSlicer
-        # InputImage --> opChannelSlicer .Slices[0] --> opAverage ---\
-        #                                .Slices[1] --> opAverage ------> opWatershed --> opWatershedCache --> opColorizer
-        #                                .Slices[5] --> opAverage ---/
-
+        # Overview Schematic
+        # Example here uses input channels 0,2,5
+        
+        # InputChannelIndexes=[0,2,5] ---
+        #                                \
+        # InputImage -------------------> opChannelSlicer .Slices[0] ---\
+        #                                                 .Slices[1] ----> opAverage --> opWatershed --> opWatershedCache --> opColorizer 
+        #                                                 .Slices[2] ---/               /
+        #                                                                              /
+        # SeedThresholdValue ---                   MinSeedSize ---                    /
+        #                       \                                 \                  /
+        # InputImage ----------> opThreshold --> opSeedLabeler --> opSeedFilter -----
+        
         # Create operators
         self.opChannelSlicer = OpMultiArraySlicer2(graph=self.graph, parent=self)
         self.opAverage = OpMultiArrayMerger(graph=self.graph, parent=self)
@@ -48,32 +54,43 @@ class OpVigraWatershedViewer(Operator):
         self.opColorizer = OpColorizeLabels(graph=self.graph, parent=self)
         self.opThreshold = OpPixelOperator(graph=self.graph, parent=self)
         self.opSeedLabeler = OpVigraLabelVolume(graph=self.graph, parent=self)
+        self.opSeedFilter = OpFilterLabels(graph=self.graph, parent=self)
 
+        # Select specific input channels
         self.opChannelSlicer.Input.connect( self.InputImage )
         self.opChannelSlicer.SliceIndexes.connect( self.InputChannelIndexes )
         self.opChannelSlicer.AxisFlag.setValue('c')
 
+        # Average selected channels
         def average(arrays):
             if len(arrays) == 0:
                 return 0
             else:
                 return sum(arrays) / float(len(arrays))
-
         self.opAverage.MergingFunction.setValue( average )
         self.opAverage.Inputs.connect( self.opChannelSlicer.Slices )
 
+        # Threshold for seeds
         self.opThreshold.Input.connect( self.opAverage.Output )
 
+        # Label seeds
         self.opSeedLabeler.Input.connect( self.opThreshold.Output )
 
-        self.opWatershedCache.fixAtCurrent.connect( self.FreezeCache )
-        self.opWatershedCache.Input.connect(self.opWatershed.Output)
-        
-        self.opColorizer.Input.connect( self.opWatershedCache.Output )
-        self.opColorizer.OverrideColors.connect( self.OverrideLabels )
+        # Filter seeds
+        self.opSeedFilter.MinLabelSize.connect( self.MinSeedSize )
+        self.opSeedFilter.Input.connect( self.opSeedLabeler.Output )
 
+        # Compute watershed labels (possibly with seeds, see setupOutputs)
         self.opWatershed.InputImage.connect( self.opAverage.Output )
         self.opWatershed.PaddingWidth.connect( self.WatershedPadding )
+
+        # Cache the watershed output
+        self.opWatershedCache.fixAtCurrent.connect( self.FreezeCache )
+        self.opWatershedCache.Input.connect(self.opWatershed.Output)
+
+        # Colorize the watershed labels for RGB display        
+        self.opColorizer.Input.connect( self.opWatershedCache.Output )
+        self.opColorizer.OverrideColors.connect( self.OverrideLabels )
 
         # Connnect external outputs the operators that provide them
         self.ColoredPixels.connect( self.opColorizer.Output )
@@ -126,8 +143,8 @@ class OpVigraWatershedViewer(Operator):
             if not self.opWatershed.SeedImage.connected() or seedThreshold != self._seedThreshold:
                 self._seedThreshold = seedThreshold
                 
-                self.opThreshold.Function.setValue( lambda a: (a <= seedThreshold).astype(numpy.uint8) )                
-                self.opWatershed.SeedImage.connect( self.opSeedLabeler.Output )
+                self.opThreshold.Function.setValue( lambda a: (a <= seedThreshold).astype(numpy.uint8) )
+                self.opWatershed.SeedImage.connect( self.opSeedFilter.Output )
         else:
             self.opWatershed.SeedImage.disconnect()
 
