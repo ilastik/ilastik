@@ -20,6 +20,7 @@ except:
     
     from opVigraWatershed import OpVigraWatershed
     from opVigraLabelVolume import OpVigraLabelVolume
+    from opFilterLabels import OpFilterLabels
     from opColorizeLabels import OpColorizeLabels
 
     ops = itersubclasses(Operator)

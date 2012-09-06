@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class OpVigraLabelVolume(Operator):
     """
-    Operator wrapper for vigra's labelVolume function.
+    Operator that simply wraps vigra's labelVolume function.
     """
     name = "OpVigraLabelVolume"
     category = "Vigra"
