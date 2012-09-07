@@ -49,6 +49,14 @@ class FeatureSelectionGui(LayerViewerGui):
     def viewerControlWidget(self):
         return self._viewerControlWidget
 
+    def reset(self):
+        super(FeatureSelectionGui, self).reset()
+        self.drawer.caption.setText( "(No features selected)" )
+
+        # Why is this necessary?
+        # Clearing the layerstack doesn't seem to call the rowsRemoved signal?
+        self._viewerControlWidget.listWidget.clear()
+
     # (Other methods already provided by our base class)
 
     ###########################################
