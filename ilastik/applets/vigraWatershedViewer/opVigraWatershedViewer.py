@@ -1,8 +1,8 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiOutputSlot
 
-from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
+from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpMultiArrayMerger, OpPixelOperator
 
-from lazyflow.operators import OpVigraWatershed, OpColorizeLabels
+from lazyflow.operators import OpVigraWatershed, OpColorizeLabels, OpVigraLabelVolume
 
 import numpy
 import vigra
@@ -18,38 +18,69 @@ class OpVigraWatershedViewer(Operator):
     FreezeCache = InputSlot()
     OverrideLabels = InputSlot(stype='object')
     WatershedPadding = InputSlot()
+    InputChannelIndexes = InputSlot(stype='object')
     
-    ColoredPixels = OutputSlot()
+    SeedThresholdValue = InputSlot(optional=True)
+    #MinSeedSize = InputSlot()
+    
+    SummedInput = OutputSlot()
     WatershedLabels = OutputSlot()
+    ColoredPixels = OutputSlot()
     
-    InputChannels = MultiOutputSlot(level=1)
-    
+    SelectedInputChannels = MultiOutputSlot(level=1)
+
     def __init__(self, *args, **kwargs):
         super(OpVigraWatershedViewer, self).__init__(*args, **kwargs)
-        self.opChannelSelector = OpMultiArraySlicer2(graph=self.graph, parent=self)
+        self._seedThreshold = None
+        
+        # Overview (example shown uses input channels 0,1,5)
+        #
+        # [0,1,5]    --> opChannelSlicer
+        # InputImage --> opChannelSlicer .Slices[0] --> opAverage ---\
+        #                                .Slices[1] --> opAverage ------> opWatershed --> opWatershedCache --> opColorizer
+        #                                .Slices[5] --> opAverage ---/
+
+        # Create operators
+        self.opChannelSlicer = OpMultiArraySlicer2(graph=self.graph, parent=self)
+        self.opAverage = OpMultiArrayMerger(graph=self.graph, parent=self)
         self.opWatershed = OpVigraWatershed(graph=self.graph, parent=self)
         self.opWatershedCache = OpSlicedBlockedArrayCache(graph=self.graph, parent=self)
         self.opColorizer = OpColorizeLabels(graph=self.graph, parent=self)
+        self.opThreshold = OpPixelOperator(graph=self.graph, parent=self)
+        self.opSeedLabeler = OpVigraLabelVolume(graph=self.graph, parent=self)
 
-        self.opChannelSelector.Input.connect(self.InputImage)
-        self.opChannelSelector.AxisFlag.setValue('c')
+        self.opChannelSlicer.Input.connect( self.InputImage )
+        self.opChannelSlicer.SliceIndexes.connect( self.InputChannelIndexes )
+        self.opChannelSlicer.AxisFlag.setValue('c')
+
+        def average(arrays):
+            if len(arrays) == 0:
+                return 0
+            else:
+                return sum(arrays) / float(len(arrays))
+
+        self.opAverage.MergingFunction.setValue( average )
+        self.opAverage.Inputs.connect( self.opChannelSlicer.Slices )
+
+        self.opThreshold.Input.connect( self.opAverage.Output )
+
+        self.opSeedLabeler.Input.connect( self.opThreshold.Output )
 
         self.opWatershedCache.fixAtCurrent.connect( self.FreezeCache )
         self.opWatershedCache.Input.connect(self.opWatershed.Output)
         
-        self.opColorizer.Input.connect(self.opWatershedCache.Output)
-        self.opColorizer.OverrideColors.connect(self.OverrideLabels)
-        self.opWatershed.PaddingWidth.connect(self.WatershedPadding)
-        
-        self.ColoredPixels.connect(self.opColorizer.Output)
-        self.InputChannels.connect(self.opChannelSelector.Slices)
+        self.opColorizer.Input.connect( self.opWatershedCache.Output )
+        self.opColorizer.OverrideColors.connect( self.OverrideLabels )
+
+        self.opWatershed.InputImage.connect( self.opAverage.Output )
+        self.opWatershed.PaddingWidth.connect( self.WatershedPadding )
+
+        # Connnect external outputs the operators that provide them
+        self.ColoredPixels.connect( self.opColorizer.Output )
+        self.SelectedInputChannels.connect( self.opChannelSlicer.Slices )
+        self.SummedInput.connect( self.opAverage.Output )
         
     def setupOutputs(self):
-        # Can't make this last connection in __init__ because 
-        #  opChannelSelector.Slices won't have any data until its input is ready 
-        if len(self.opChannelSelector.Slices) > 0:
-            self.opWatershed.InputImage.connect(self.opChannelSelector.Slices[0])
-
         ## Cache blocks
         # Inner and outer block shapes are the same.
         # We're using this cache for the "sliced" property, not the "blocked" property.
@@ -89,6 +120,16 @@ class OpVigraWatershedViewer(Operator):
         # For now watershed labels always come from the X-Y slicing view
         if len(self.opWatershedCache.InnerOutputs) > 0:
             self.WatershedLabels.connect( self.opWatershedCache.InnerOutputs[2] )
+        
+        if self.SeedThresholdValue.ready():
+            seedThreshold = self.SeedThresholdValue.value
+            if not self.opWatershed.SeedImage.connected() or seedThreshold != self._seedThreshold:
+                self._seedThreshold = seedThreshold
+                
+                self.opThreshold.Function.setValue( lambda a: (a <= seedThreshold).astype(numpy.uint8) )                
+                self.opWatershed.SeedImage.connect( self.opSeedLabeler.Output )
+        else:
+            self.opWatershed.SeedImage.disconnect()
 
     def propagateDirty(self, inputSlot, roi):
         pass # Output is connected directly to an internal operator
