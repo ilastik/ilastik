@@ -261,10 +261,12 @@ class LayerViewerGui(QMainWindow):
         except IndexError: # dataProviderSlots is empty
             pass
 
+        inSync = True
         for slot in self.dataProviderSlots:
-            if len(slot) != numImages:
-                return False        
-        return True
+            inSync &= (  len(slot) == numImages
+                      or ( slot._optional and slot.partner is None ) )
+
+        return inSync
 
     @traceLogged(traceLogger)
     @threadRouted
