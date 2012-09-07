@@ -536,7 +536,12 @@ class OpPixelOperator(Operator):
         result[:] = matrix[:]
 
     def notifyDirty(self,slot,key):
-        self.outputs["Output"].setDirty(key)
+        if slot == self.Input:
+            self.outputs["Output"].setDirty(key)
+        elif slot == self.Function:
+            self.Output.setDirty( slice(None) )
+        else:
+            assert False, "Unknown dirty input slot"
 
     @property
     def shape(self):
