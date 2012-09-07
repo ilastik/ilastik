@@ -112,10 +112,26 @@ class OpFeatureSelection(Operator):
     def propagateDirty(self, inputSlot, roi):
         # Output slots are directly connected to internal operators
         print "AAAAAAAAAAAAAAA in propagate dirty of the opFeatureSelection"
+        print "Are defaults ready?", self.FeatureIds.ready(), self.Scales.ready()
+        print "Is the selection matrix ready?", self.SelectionMatrix.ready()
+        
+        
+        
         if self.SelectionMatrix.ready():
-            someOtherMatrix = self.SelectionMatrix.value
-            self.opPixelFeatures.Matrix.setValue(someOtherMatrix)
-
+            pixelFeatureMatrix = []
+            autocontextFeatureMatrix = []
+            print "Our feature ids:", self.FeatureIds.value
+            '''
+            for i, fid in self.FeatureIds.value:
+                
+                if "Autocontext" not in fid:
+                    pixelFeatureMatrix.append(self.SelectionMatrix.value[i])
+                else:
+                    autocontextFeatureMatrix.append(self.SelectionMatrix.value[i])
+            
+            print "Shape of new pixel feature matrix:", pixelFeatureMatrix.shape
+            self.opPixelFeatures.Matrix.setValue(pixelFeatureMatrix)
+            '''
 
 
 

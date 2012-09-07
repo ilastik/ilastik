@@ -184,7 +184,7 @@ class FeatureSelectionGui(LayerViewerGui):
         self.featureDlg.setImageToPreView(None)
 
         # Create a matrix of False values
-        print self.mainOperator.FeatureNames.value
+        print self.mainOperator.FeatureIds.value
         defaultFeatures = numpy.zeros((len(self.mainOperator.FeatureNames.value),len(self.mainOperator.Scales.value)), dtype=bool)
 
         # Select some default features.
