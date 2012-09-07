@@ -1055,6 +1055,7 @@ class OpBlockedArrayCache(Operator):
             self._fixed = False
             self._fixed_dirty_blocks = set()
             self._lock = Lock()
+            self._innerBlockShape = None
 
     def setupOutputs(self):
         with Tracer(self.traceLogger):
@@ -1062,7 +1063,9 @@ class OpBlockedArrayCache(Operator):
     
             inputSlot = self.inputs["Input"]
             shape = inputSlot.meta.shape
-            if shape != self.Output.meta.shape:
+            if (    shape != self.Output.meta.shape
+                 or self._blockShape != self.outerBlockShape.value
+                 or self._innerBlockShape != self.innerBlockShape.value ):
                 self._configured = False
                 
             if min(shape) == 0:
@@ -1079,15 +1082,22 @@ class OpBlockedArrayCache(Operator):
     
             if not self._configured:
                 self.Output.meta.assignFrom(inputSlot.meta)
+                with self._lock:
+                    self._innerBlockShape = self.innerBlockShape.value
+                    if len(self._fixed_dirty_blocks) > 0:
+                        self._fixed_dirty_blocks = set()
+                        notifyOutputDirty = True # Notify dirty output after we're fully configured
+                    else:
+                        notifyOutputDirty = False
     
-                self.shape = self.Input.meta.shape
-                self._blockShape = self.inputs["outerBlockShape"].value
-                self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
-                assert numpy.array(self._blockShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid blockShape = {blockShape}".format(blockShape=self._blockShape)
-                self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
-                assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = {dirtyShape}".format(dirtyShape=self._dirtyShape)
+                    self.shape = self.Input.meta.shape
+                    self._blockShape = self.inputs["outerBlockShape"].value
+                    self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
+                    assert numpy.array(self._blockShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid blockShape = {blockShape}".format(blockShape=self._blockShape)
+                    self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
+                    assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = {dirtyShape}".format(dirtyShape=self._dirtyShape)
 
-                self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+                    self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
 
                 _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
                 _blockNumbers.shape = self._dirtyShape
@@ -1105,6 +1115,9 @@ class OpBlockedArrayCache(Operator):
                 self._cache_list = {}
 
                 self._configured = True
+
+                if notifyOutputDirty:
+                    self.Output.setDirty(slice(None))
 
     def execute(self, slot, roi, result):
         with Tracer(self.traceLogger, msg='roi={}'.format(roi)):
