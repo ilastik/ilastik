@@ -37,7 +37,8 @@ class VigraWatershedViewerGui(LayerViewerGui):
     def __init__(self, mainOperator):
         """
         """
-        super(VigraWatershedViewerGui, self).__init__( [ mainOperator.InputImage,
+        super(VigraWatershedViewerGui, self).__init__( [ mainOperator.RawImage,
+                                                         mainOperator.InputImage,
                                                          mainOperator.SelectedInputChannels,
                                                          mainOperator.ColoredPixels,
                                                          mainOperator.SummedInput,
@@ -156,10 +157,19 @@ class VigraWatershedViewerGui(LayerViewerGui):
             inputChannelIndexes = self.mainOperator.InputChannelIndexes.value
             for channel, slot in enumerate(selectedInputImageSlot):
                 inputLayer = self.createStandardLayerFromSlot( slot )
-                inputLayer.name = "Raw Input (Ch.{})".format(inputChannelIndexes[channel])
+                inputLayer.name = "Input (Ch.{})".format(inputChannelIndexes[channel])
                 inputLayer.visible = True
                 inputLayer.opacity = 1.0
                 layers.append(inputLayer)
+
+        # Show the raw input (if provided) 
+        rawImageSlot = self.mainOperator.RawImage[ currentImageIndex ]
+        if rawImageSlot.ready():
+            rawLayer = self.createStandardLayerFromSlot( rawImageSlot )
+            rawLayer.name = "Raw Image"
+            rawLayer.visible = True
+            rawLayer.opacity = 1.0
+            layers.append(rawLayer)
 
         return layers
 
@@ -287,7 +297,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
     def updateInputChannelGui(self, *args):
         # Show only checkboxes that can be used (limited by number of input channels)
         numChannels = 0
-        if self.imageIndex < len(self.mainOperator.InputImage):
+        if 0 <= self.imageIndex < len(self.mainOperator.InputImage):
             inputImageSlot = self.mainOperator.InputImage[self.imageIndex]
             if inputImageSlot.ready():
                 channelAxis = inputImageSlot.meta.axistags.channelIndex

@@ -14,7 +14,9 @@ class OpVigraWatershedViewer(Operator):
     name = "OpWatershedViewer"
     category = "top-level"
     
-    InputImage = InputSlot()
+    RawImage = InputSlot(optional=True) # Displayed in the GUI (not used in pipeline)
+    
+    InputImage = InputSlot() # The image to be sliced and watershedded
 
     InputChannelIndexes = InputSlot(stype='object') # opChannelSlicer
     WatershedPadding = InputSlot() # opWatershed

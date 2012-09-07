@@ -23,8 +23,8 @@ class PixelClassificationWithVigraWatershedWorkflow(Workflow):
 
         opWatershedViewer = self.watershedApplet.topLevelOperator
         opWatershedViewer.InputImage.connect( opPixelClassification.CachedPredictionProbabilities )
+        opWatershedViewer.RawImage.connect( opPixelClassification.InputImages )
 
-        
         self._applets = []
         self._applets += self._pixelClassificationWorkflow.applets[0:4]
         self._applets.append(self.watershedApplet)

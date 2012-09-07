@@ -13,7 +13,8 @@ class VigraWatershedViewerApplet( Applet ):
         super(VigraWatershedViewerApplet, self).__init__(guiName)
 
         # Wrap the top-level operator, since the GUI supports multiple images
-        self._topLevelOperator = OperatorWrapper( OpVigraWatershedViewer(graph), promotedSlotNames=['InputImage', 'OverrideLabels'] )
+        self._topLevelOperator = OperatorWrapper( OpVigraWatershedViewer(graph),
+                                                  promotedSlotNames=['RawImage', 'InputImage', 'OverrideLabels'] )
 
         self._gui = None # Created on first access
         
