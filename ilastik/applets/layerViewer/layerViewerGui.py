@@ -158,6 +158,7 @@ class LayerViewerGui(QMainWindow):
         for provider in self.dataProviderSlots:
             for slotIndex, slot in enumerate(provider):
                 slot.notifyReady( bind(self.updateAllLayers) )
+                slot.notifyUnready( bind(self.updateAllLayers) )
         
         # Make sure we're notified if a layer is inserted in the future so we can subscribe to its ready notifications
         for provider in self.dataProviderSlots:
@@ -171,6 +172,7 @@ class LayerViewerGui(QMainWindow):
         """
         # When the slot is ready, we'll replace the blank layer with real data
         slot[slotIndex].notifyReady( bind(self.updateAllLayers) )
+        slot[slotIndex].notifyUnready( bind(self.updateAllLayers) )
     
     def handleLayerRemoval(self, slot, slotIndex):
         """
