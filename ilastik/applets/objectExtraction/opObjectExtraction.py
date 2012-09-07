@@ -83,7 +83,8 @@ class OpObjectExtraction( Operator ):
 
         self._opRegCent = OpRegionCenters( graph = graph )
 
-        self._regCents_cache = {}
+        self._processed_timesteps = set()
+        self._processing_timesteps = set()
     
     def __del__( self ):
         self._mem_h5.close()
@@ -112,5 +113,16 @@ class OpObjectExtraction( Operator ):
             stop = [t+1,] + list(m.shape[1:])
             a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()
             a = a[0,...,0]
-            self._mem_h5['LabelImage'][0,...,0] = vigra.analysis.labelVolumeWithBackground( a )
+            self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a )
         self.LabelImage.setDirty(SubRegion(self.LabelImage))
+
+    def _labelImageAt( self, t ):
+        m = self.BinaryImage.meta
+        print "Calculating LabelImage at", t
+        start = [t,] + (len(m.shape) - 1) * [0,]
+        stop = [t+1,] + list(m.shape[1:])
+        a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()
+        a = a[0,...,0]
+        img3d = vigra.analysis.labelVolumeWithBackground( a )
+        return img3d
+        
