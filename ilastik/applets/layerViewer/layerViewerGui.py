@@ -304,6 +304,12 @@ class LayerViewerGui(QMainWindow):
         newDataShape = self.determineDatashape()
         if newDataShape is not None and self.editor.dataShape != newDataShape:
             self.editor.dataShape = newDataShape
+            # Find the xyz midpoint
+            midpos5d = [x/2 for x in newDataShape]
+            midpos3d = midpos5d[1:4]
+            
+            # Start in the center of the volume
+            self.editor.posModel.slicingPos = midpos3d
 
         # Old layers are deleted if
         # (1) They are not in the new set or
