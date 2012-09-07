@@ -102,7 +102,7 @@ class LabelingGui(LayerViewerGui):
         assert all( [v is not None for v in labelingGuiSlots.__dict__.values()] )
         
         # Init base class
-        allSlots = labelingGuiSlots.displaySlots + [ labelingGuiSlots.labelOutput ]
+        allSlots = labelingGuiSlots.displaySlots + [ labelingGuiSlots.labelOutput, labelingGuiSlots.labelsAllowed ]
         super(LabelingGui, self).__init__( allSlots )
 
         self._labelingGuiSlots = labelingGuiSlots
