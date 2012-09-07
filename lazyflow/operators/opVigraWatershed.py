@@ -102,7 +102,7 @@ class OpVigraWatershed(Operator):
             watershed, maxLabel = vigra.analysis.watersheds(inputRegion, seeds=seedImage)
         else:
             watershed, maxLabel = vigra.analysis.watersheds(inputRegion)
-        logger.info( "Finished Watershed" )
+        logger.debug( "Finished Watershed" )
         
         logger.debug( "watershed 3D output shape={}".format(watershed.shape) )
         logger.debug( "maxLabel={}".format(maxLabel) )
