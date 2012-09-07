@@ -15,7 +15,19 @@ class Everything(Roi):
     pass
 
 
+class List(Roi):
+    def __init__(self, slot, iterable=()):
+        super(List, self).__init__(slot)
+        self._l = list(iterable)
+    def __iter__( self ):
+        return iter(self._l)
+    def __len__( self ):
+        return len(self._l)
+    def __str__( self ):
+        return str(self._l)
 
+
+    
 class SubRegion(Roi):
     def __init__(self, slot, start = None, stop = None, pslice = None):
         super(SubRegion,self).__init__(slot)
