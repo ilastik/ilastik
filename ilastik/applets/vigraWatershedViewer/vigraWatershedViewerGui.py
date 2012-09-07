@@ -286,14 +286,16 @@ class VigraWatershedViewerGui(LayerViewerGui):
 
     def updateInputChannelGui(self, *args):
         # Show only checkboxes that can be used (limited by number of input channels)
-        inputImageSlot = self.mainOperator.InputImage[self.imageIndex]
-        if inputImageSlot.ready():
-            channelAxis = inputImageSlot.meta.axistags.channelIndex
-            numChannels = inputImageSlot.meta.shape[channelAxis]
-            for i, checkbox in enumerate(self._inputChannelCheckboxes):
-                if i >= numChannels:
-                    checkbox.setChecked(False)
-                checkbox.setVisible( i < numChannels )
+        numChannels = 0
+        if self.imageIndex < len(self.mainOperator.InputImage):
+            inputImageSlot = self.mainOperator.InputImage[self.imageIndex]
+            if inputImageSlot.ready():
+                channelAxis = inputImageSlot.meta.axistags.channelIndex
+                numChannels = inputImageSlot.meta.shape[channelAxis]
+        for i, checkbox in enumerate(self._inputChannelCheckboxes):
+            if i >= numChannels:
+                checkbox.setChecked(False)
+            checkbox.setVisible( i < numChannels )
 
         # Make sure the correct boxes are checked
         if self.mainOperator.InputChannelIndexes.ready():
