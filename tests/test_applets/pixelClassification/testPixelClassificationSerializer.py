@@ -102,7 +102,10 @@ class OpMockPixelClassifier(Operator):
             result[...] = self._data[index][key]
         if slot.name == "PredictionProbabilities":
             result[...] = self.predictionData[key]
-            
+    
+    def propagateDirty(self, inputSlot, roi):
+        pass
+    
 class TestOpMockPixelClassifier(object):
     """
     Quick test for the stand-in operator we're using for the serializer test.
