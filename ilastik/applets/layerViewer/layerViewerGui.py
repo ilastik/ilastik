@@ -273,9 +273,13 @@ class LayerViewerGui(QMainWindow):
         # (During image insertions, outputs are resized one at a time.)
         if not self.areProvidersInSync():
             return
-        
-        # Ask the subclass for the updated layer list
-        newGuiLayers = self.layerSetupCallback(self.imageIndex)
+
+        if self.imageIndex >= 0:        
+            # Ask the subclass for the updated layer list
+            newGuiLayers = self.layerSetupCallback(self.imageIndex)
+        else:
+            newGuiLayers = []
+            
         newNames = set(l.name for l in newGuiLayers)
         if len(newNames) != len(newGuiLayers):
             raise RuntimeError("All layers must have unique names.")
@@ -335,6 +339,9 @@ class LayerViewerGui(QMainWindow):
                 
     @traceLogged(traceLogger)
     def determineDatashape(self):
+        if self.imageIndex < 0:
+            return None
+
         newDataShape = None
         for provider in self.dataProviderSlots:
             for i, slot in enumerate(provider[self.imageIndex]):
