@@ -300,7 +300,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                 dirtyKey = roiToSlice(roi.start, roi.stop)
                 dirtyKey[channelAxis] = slice(None)
                 dirtyRoi = sliceToRoi(dirtyKey, self.Output.meta.shape)
-                self.Output.setDirty(dirtyRoi)
+                self.Output.setDirty(dirtyRoi[0], dirtyRoi[1])
             else:
                 # Only some input channels were dirty, 
                 #  so we must mark each dirty output region separately.

@@ -17,12 +17,18 @@ class OpVigraWatershed(Operator):
     PaddingWidth = InputSlot() # Specifies the extra pixels around the border of the image to use when computing the watershed.
                                # (Region is clipped to the size of the input image.)
     
+    SeedImage = InputSlot(optional=True)
+    
     Output = OutputSlot()
     
     def setupOutputs(self):
         self.Output.meta.assignFrom( self.InputImage.meta )
         self.Output.meta.dtype = numpy.uint32
         self.Output.meta.drange = (0,255)
+        
+        if self.SeedImage.ready():
+            assert numpy.issubdtype(self.SeedImage.meta.dtype, numpy.uint32)
+            assert self.SeedImage.meta.shape == self.InputImage.meta.shape
     
     def getSlicings(self, roi):
         """
@@ -86,8 +92,16 @@ class OpVigraWatershed(Operator):
             inputRegion /= (drange[1] - drange[0])
             inputRegion *= 256.0
             inputRegion = inputRegion.astype(numpy.uint8)
+
         # This is where the magic happens
-        watershed, maxLabel = vigra.analysis.watersheds(inputRegion)
+        if self.SeedImage.ready():
+            seedImage = self.SeedImage[paddedSlices].wait()
+            seedImage = seedImage.view(vigra.VigraArray)
+            seedImage.axistags = tags
+            seedImage = seedImage.withAxes( *[tag.key for tag in tags if tag.key in 'xyz'] )
+            watershed, maxLabel = vigra.analysis.watersheds(inputRegion, seeds=seedImage)
+        else:
+            watershed, maxLabel = vigra.analysis.watersheds(inputRegion)
         logger.info( "Finished Watershed" )
         
         logger.debug( "watershed 3D output shape={}".format(watershed.shape) )
@@ -105,7 +119,7 @@ class OpVigraWatershed(Operator):
     def propagateDirty(self, inputSlot, roi):
         if not self.configured():
             self.Output.setDirty(slice(None))
-        elif inputSlot.name == "InputImage":
+        elif inputSlot.name == "InputImage" or inputSlot.name == "SeedImage":
             paddedSlicing, outputSlicing = self.getSlicings(roi)
             self.Output.setDirty(paddedSlicing)
         elif inputSlot.name == "PaddingWidth":

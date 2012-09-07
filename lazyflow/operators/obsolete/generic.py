@@ -141,7 +141,7 @@ class OpMultiArraySlicer2(Operator):
     """
     #FIXME: This operator return a sigleton in the sliced direction
     #Should be integrated with the above one to have a more consistent notation
-    inputSlots = [InputSlot("Input"),InputSlot('AxisFlag')]
+    inputSlots = [InputSlot("Input"),InputSlot('AxisFlag'), InputSlot("SliceIndexes", optional=True)]
     outputSlots = [MultiOutputSlot("Slices",level=1)]
 
     name = "Multi Array Slicer"
@@ -156,9 +156,9 @@ class OpMultiArraySlicer2(Operator):
         flag=self.inputs["AxisFlag"].value
 
         indexAxis=self.inputs["Input"].meta.axistags.index(flag)
-        outshape=list(self.inputs["Input"].meta.shape)
-        n=outshape.pop(indexAxis)
-
+        inshape=list(self.inputs["Input"].meta.shape)
+        outshape = list(inshape)
+        outshape.pop(indexAxis)
         outshape.insert(indexAxis, 1)
         outshape=tuple(outshape)
 
@@ -166,26 +166,37 @@ class OpMultiArraySlicer2(Operator):
 
         #del outaxistags[flag]
 
-        self.outputs["Slices"].resize(n)
+        sliceIndexes = self.getSliceIndexes()
+        self.outputs["Slices"].resize( len(sliceIndexes) )
 
-        for i in range(n):
-            o = self.outputs["Slices"][i]
+        for i, oslot in enumerate(self.Slices):
             # Output metadata is a modified copy of the input's metadata
-            o.meta.assignFrom( self.Input.meta )
-            o.meta.axistags = outaxistags
-            o.meta.shape = outshape
+            oslot.meta.assignFrom( self.Input.meta )
+            oslot.meta.axistags = outaxistags
+            oslot.meta.shape = outshape
 
         inputShape = self.Input.meta.shape
         if self.inputShape != inputShape:
             self.inputShape = inputShape
-            for i in range(n):
-                self.Slices[i].setDirty(slice(None))
+            for i, oslot in enumerate(self.Slices):
+                oslot.setDirty(slice(None))
 
+    def getSliceIndexes(self):
+        if self.SliceIndexes.ready():
+            return self.SliceIndexes.value
+        else:
+            # Default is all indexes of the sliced axis
+            flag = self.inputs["AxisFlag"].value
+            axistags = self.inputs["Input"].meta.axistags
+            indexAxis = axistags.index(flag)
+            inshape = self.inputs["Input"].meta.shape
+            return list( range( inshape[indexAxis] ) )
+    
     def getSubOutSlot(self, slots, indexes, key, result):
+        # Index of the input slice this data will come from.
+        sliceIndex = self.getSliceIndexes()[indexes[0]]
 
         outshape = self.outputs["Slices"][indexes[0]].shape
-
-
         start,stop=roi.sliceToRoi(key,outshape)
         oldstart,oldstop=start,stop
 
@@ -198,9 +209,8 @@ class OpMultiArraySlicer2(Operator):
         start.pop(indexAxis)
         stop.pop(indexAxis)
 
-        start.insert(indexAxis,indexes[0])
-        stop.insert(indexAxis,indexes[0])
-
+        start.insert(indexAxis, sliceIndex)
+        stop.insert(indexAxis, sliceIndex)
 
         newKey=roi.roiToSlice(numpy.array(start),numpy.array(stop))
 
@@ -208,8 +218,8 @@ class OpMultiArraySlicer2(Operator):
         result[:]=ttt[:]
 
     def propagateDirty(self, inputSlot, roi):
-        if inputSlot == self.AxisFlag:
-            # AxisFlag changed.  Everything is dirty
+        if inputSlot == self.AxisFlag or inputSlot == self.SliceIndexes:
+            # AxisFlag or slice set changed.  Everything is dirty
             for i, slot in enumerate(self.Slices):
                 slot.setDirty(slice(None))
         elif inputSlot == self.Input:
@@ -454,25 +464,34 @@ class OpMultiArrayMerger(Operator):
     category = "Misc"
 
     def setupOutputs(self):
-
         shape=self.inputs["Inputs"][0].shape
         axistags=copy.copy(self.inputs["Inputs"][0].axistags)
-
 
         self.outputs["Output"]._shape = shape
         self.outputs["Output"]._axistags = axistags
         self.outputs["Output"]._dtype = self.inputs["Inputs"][0].dtype
 
-
-
         for input in self.inputs["Inputs"]:
             assert input.shape==shape, "Only possible merging consistent shapes"
             assert input.axistags==axistags, "Only possible merging same axistags"
 
-
+        # If *all* inputs have a drange, then provide a drange for the output.
+        # Note: This assumes the merging function is pixel-wise
+        dranges = []
+        for i,slot in enumerate(self.Inputs):
+            dr = slot.meta.drange
+            if dr is not None:
+                dranges.append(numpy.array(dr))
+            else:
+                dranges = []
+                break
+        
+        if len(dranges) > 0:
+            fun = self.MergingFunction.value
+            outRange = fun(dranges)
+            self.Output.meta.drange = tuple(outRange)
 
     def getOutSlot(self, slot, key, result):
-
         requests=[]
         for input in self.inputs["Inputs"]:
             requests.append(input[key].allocate())
@@ -480,12 +499,19 @@ class OpMultiArrayMerger(Operator):
         data=[]
         for req in requests:
             data.append(req.wait())
-
+        
         fun=self.inputs["MergingFunction"].value
 
         result[:]=fun(data)
 
+    def propagateDirty(self, dirtySlot, roi):
+        assert dirtySlot == self.MergingFunction
+        self.Output.setDirty( slice(None) )
 
+    def notifySubSlotDirty(self, slots, indexes, key):
+        assert slots[0] == self.Inputs
+        # Assumes a pixel-wise merge function.        
+        self.Output.setDirty( key )
 
 class OpPixelOperator(Operator):
     name = "OpPixelOperator"
