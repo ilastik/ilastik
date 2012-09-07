@@ -193,6 +193,8 @@ class PixelClassificationGui(LabelingGui):
         else:
             self.labelingDrawerUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
+    @pyqtSlot()
+    @traceLogged(traceLogger)
     def handleLabelSelectionChange(self):
         enabled = False
         if self.pipeline.MaxLabelValue.ready():

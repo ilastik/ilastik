@@ -40,33 +40,42 @@ class VigraWatershedViewerGui(LayerViewerGui):
         super(VigraWatershedViewerGui, self).__init__( [ mainOperator.InputImage,
                                                          mainOperator.SelectedInputChannels,
                                                          mainOperator.ColoredPixels,
-                                                         mainOperator.SummedInput ] )
+                                                         mainOperator.SummedInput,
+                                                         mainOperator.ColoredSeeds ] )
         self.mainOperator = mainOperator
+        
         self.mainOperator.FreezeCache.setValue(True)
         self.mainOperator.OverrideLabels.setValue( { 0: (0,0,0,0) } )
-        self.mainOperator.InputChannelIndexes.setValue( [0,2] )
+
+        # Default settings (will be overwritten by serializer)
+        self.mainOperator.InputChannelIndexes.setValue( [] )
         self.mainOperator.SeedThresholdValue.setValue( 0.0 )
+        self.mainOperator.MinSeedSize.setValue( 0 )
 
         # Init padding gui updates        
         self.mainOperator.WatershedPadding.notifyDirty( self.updatePaddingGui )
         self.mainOperator.WatershedPadding.setValue(10)
-        self.updatePaddingGui(self.mainOperator.WatershedPadding)
+        self.updatePaddingGui()
+        
+        # Init block shape gui updates
+        self.mainOperator.CacheBlockShape.notifyDirty( self.updateCacheBlockGui )
+        self.mainOperator.CacheBlockShape.setValue( (256, 10) )
+        self.updateCacheBlockGui()
 
         # Init seeds gui updates
         self.mainOperator.SeedThresholdValue.notifyDirty( self.updateSeedGui )
         self.mainOperator.SeedThresholdValue.notifyReady( self.updateSeedGui )
         self.mainOperator.SeedThresholdValue.notifyUnready( self.updateSeedGui )
-        self.updateSeedGui(self.mainOperator.SeedThresholdValue)
+        self.mainOperator.MinSeedSize.notifyDirty( self.updateSeedGui )
+        self.updateSeedGui()
         
         # Init input channel gui updates
         self.mainOperator.InputChannelIndexes.notifyDirty( self.updateInputChannelGui )
         self.mainOperator.InputChannelIndexes.setValue( [0] )
-
         def subscribeToInputMetaChanges(multislot, index):
             multislot[index].notifyMetaChanged( self.updateInputChannelGui )
         self.mainOperator.InputImage.notifyInserted( bind(subscribeToInputMetaChanges) )
-
-        self.updateInputChannelGui( self.mainOperator.InputChannelIndexes )
+        self.updateInputChannelGui()
     
     @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
@@ -92,12 +101,18 @@ class VigraWatershedViewerGui(LayerViewerGui):
         # Seed thresholds
         self._drawer.useSeedsCheckbox.toggled.connect( self.onUseSeedsToggled )
         self._drawer.seedThresholdSpinBox.valueChanged.connect( self.onSeedThresholdChanged )
+        
+        # Seed size
+        self._drawer.seedSizeSpinBox.valueChanged.connect( self.onSeedSizeChanged )
 
         # Padding
         self._drawer.updateWatershedsButton.clicked.connect( self.onUpdateWatershedsButton )
         self._drawer.paddingSlider.valueChanged.connect( self.onPaddingChanged )
         self._drawer.paddingSpinBox.valueChanged.connect( self.onPaddingChanged )
 
+        # Block shape
+        self._drawer.blockWidthSpinBox.valueChanged.connect( self.onBlockShapeChanged )
+        self._drawer.blockDepthSpinBox.valueChanged.connect( self.onBlockShapeChanged )
                 
     def getAppletDrawerUi(self):
         return self._drawer
@@ -116,6 +131,15 @@ class VigraWatershedViewerGui(LayerViewerGui):
             outputLayer.visible = True
             outputLayer.opacity = 0.5
             layers.append(outputLayer)
+        
+        # Show the watershed seeds
+        seedSlot = self.mainOperator.ColoredSeeds[ currentImageIndex ]
+        if seedSlot.ready():
+            seedLayer = self.createStandardLayerFromSlot( seedSlot, lastChannelIsAlpha=True )
+            seedLayer.name = "Watershed Seeds"
+            seedLayer.visible = True
+            seedLayer.opacity = 0.5
+            layers.append(seedLayer)
         
         # Show the summed input 
         summedSlot = self.mainOperator.SummedInput[ currentImageIndex ]
@@ -196,21 +220,69 @@ class VigraWatershedViewerGui(LayerViewerGui):
             del overrides[label]
             overrideSlot.setValue(overrides)
     
+    ##
+    ## GUI -> Operator
+    ##
     def onPaddingChanged(self, value):
         self.mainOperator.WatershedPadding.setValue(value)
-    
-    def updatePaddingGui(self, slot, *args):
-        value = slot.value
-        self._drawer.paddingSlider.setValue( value )
-        self._drawer.paddingSpinBox.setValue( value )
 
-    def updateSeedGui(self, slot, *args):
+    def onBlockShapeChanged(self, value):
+        width = self._drawer.blockWidthSpinBox.value()
+        depth = self._drawer.blockDepthSpinBox.value()
+        self.mainOperator.CacheBlockShape.setValue( (width, depth) )
+    
+    def onInputSelectionsChanged(self):
+        channels = []
+        for i, checkbox in enumerate( self._inputChannelCheckboxes ):
+            if checkbox.isChecked():
+                channels.append(i)
+        
+        self.mainOperator.InputChannelIndexes.setValue( channels )
+    
+    def onUseSeedsToggled(self):
+        self.updateSeeds()
+
+    def onSeedThresholdChanged(self):
+        self.updateSeeds()
+        
+    def onSeedSizeChanged(self):
+        self.updateSeeds()
+
+    def updateSeeds(self):
+        useSeeds = self._drawer.useSeedsCheckbox.isChecked()
+        self._drawer.seedThresholdSpinBox.setEnabled(useSeeds)
+        self._drawer.seedSizeSpinBox.setEnabled(useSeeds)
+        if useSeeds:
+            threshold = self._drawer.seedThresholdSpinBox.value()
+            minSize = self._drawer.seedSizeSpinBox.value()
+            self.mainOperator.SeedThresholdValue.setValue( threshold )
+            self.mainOperator.MinSeedSize.setValue( minSize )
+        else:
+            self.mainOperator.SeedThresholdValue.disconnect()
+
+    ##
+    ## Operator -> GUI
+    ##
+    def updatePaddingGui(self, *args):
+        padding = self.mainOperator.WatershedPadding.value
+        self._drawer.paddingSlider.setValue( padding )
+        self._drawer.paddingSpinBox.setValue( padding )
+
+    def updateCacheBlockGui(self, *args):
+        width, depth = self.mainOperator.CacheBlockShape.value
+        self._drawer.blockWidthSpinBox.setValue( width )
+        self._drawer.blockDepthSpinBox.setValue( depth )
+
+    def updateSeedGui(self, *args):
         useSeeds = self.mainOperator.SeedThresholdValue.ready()
         self._drawer.seedThresholdSpinBox.setEnabled(useSeeds)
+        self._drawer.seedSizeSpinBox.setEnabled(useSeeds)
         self._drawer.useSeedsCheckbox.setChecked(useSeeds)
         if useSeeds:
             threshold = self.mainOperator.SeedThresholdValue.value
+            minSize = self.mainOperator.MinSeedSize.value
             self._drawer.seedThresholdSpinBox.setValue( threshold )
+            self._drawer.seedSizeSpinBox.setValue( minSize )
 
     def updateInputChannelGui(self, *args):
         # Show only checkboxes that can be used (limited by number of input channels)
@@ -228,27 +300,4 @@ class VigraWatershedViewerGui(LayerViewerGui):
             inputChannels = self.mainOperator.InputChannelIndexes.value
             for i, checkbox in enumerate( self._inputChannelCheckboxes ):
                 checkbox.setChecked( i in inputChannels )
-
-    def onInputSelectionsChanged(self):
-        channels = []
-        for i, checkbox in enumerate( self._inputChannelCheckboxes ):
-            if checkbox.isChecked():
-                channels.append(i)
-        
-        self.mainOperator.InputChannelIndexes.setValue( channels )
-    
-    def onUseSeedsToggled(self):
-        self.updateSeeds()
-
-    def onSeedThresholdChanged(self):
-        self.updateSeeds()
-
-    def updateSeeds(self):
-        useSeeds = self._drawer.useSeedsCheckbox.isChecked()
-        self._drawer.seedThresholdSpinBox.setEnabled(useSeeds)
-        if useSeeds:
-            threshold = self._drawer.seedThresholdSpinBox.value()
-            self.mainOperator.SeedThresholdValue.setValue( threshold )
-        else:
-            self.mainOperator.SeedThresholdValue.disconnect()
 

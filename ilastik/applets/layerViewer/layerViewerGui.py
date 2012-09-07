@@ -12,6 +12,7 @@ from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
 
 import os
 from ilastik.utility import bind
+from ilastik.utility.gui import ThreadRouter, threadRouted
 
 from volumina.adaptors import Op5ifyer
 
@@ -20,7 +21,7 @@ from volumina.clickReportingInterpreter import ClickReportingInterpreter
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.tracer import traceLogged
+from lazyflow.tracer import traceLogged, Tracer
 
 class LayerViewerGui(QMainWindow):
     """
@@ -34,8 +35,6 @@ class LayerViewerGui(QMainWindow):
               
     Does NOT provide an applet drawer widget.
     """
-
-
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
@@ -56,8 +55,8 @@ class LayerViewerGui(QMainWindow):
         self._setImageIndex(index)
         
     def reset(self):
-        # Nothing to do (the central widget and layers will unload automatically, and we have no drawer...)
-        pass
+        # Remove all layers
+        self.layerstack.clear()
 
     ###########################################
     ###########################################
@@ -72,6 +71,8 @@ class LayerViewerGui(QMainWindow):
             layerSetupCallback: a function that produces all layers for the GUI.
         """
         super(LayerViewerGui, self).__init__()
+
+        self.threadRouter = ThreadRouter(self) # For using @threadRouted
 
         self.dataProviderSlots = []
 #            dataProviderSlots = []
@@ -158,6 +159,7 @@ class LayerViewerGui(QMainWindow):
         for provider in self.dataProviderSlots:
             for slotIndex, slot in enumerate(provider):
                 slot.notifyReady( bind(self.updateAllLayers) )
+                slot.notifyUnready( bind(self.updateAllLayers) )
         
         # Make sure we're notified if a layer is inserted in the future so we can subscribe to its ready notifications
         for provider in self.dataProviderSlots:
@@ -169,15 +171,18 @@ class LayerViewerGui(QMainWindow):
         The multislot providing our layers has a new item.
         Make room for it in the layer GUI and subscribe to updates.
         """
-        # When the slot is ready, we'll replace the blank layer with real data
-        slot[slotIndex].notifyReady( bind(self.updateAllLayers) )
+        with Tracer(traceLogger):
+            # When the slot is ready, we'll replace the blank layer with real data
+            slot[slotIndex].notifyReady( bind(self.updateAllLayers) )
+            slot[slotIndex].notifyUnready( bind(self.updateAllLayers) )
     
     def handleLayerRemoval(self, slot, slotIndex):
         """
         An item is about to be removed from the multislot that is providing our layers.
         Remove the layer from the GUI.
         """
-        self.updateAllLayers()
+        with Tracer(traceLogger):
+            self.updateAllLayers()
 
     def generateAlphaModulatedLayersFromChannels(self, slot):
         # TODO
@@ -262,6 +267,7 @@ class LayerViewerGui(QMainWindow):
         return True
 
     @traceLogged(traceLogger)
+    @threadRouted
     def updateAllLayers(self):
         # Check to make sure all layers are in sync
         # (During image insertions, outputs are resized one at a time.)
@@ -327,6 +333,7 @@ class LayerViewerGui(QMainWindow):
                     self.layerstack.moveSelectedDown()
                     stackIndex += 1
                 
+    @traceLogged(traceLogger)
     def determineDatashape(self):
         newDataShape = None
         for provider in self.dataProviderSlots:
@@ -474,6 +481,7 @@ class LayerViewerGui(QMainWindow):
         """
         self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
 
+    @traceLogged(traceLogger)
     def _convertPositionToDataSpace(self, voluminaPosition):
         taggedPosition = {k:p for k,p in zip('txyzc', voluminaPosition)}
         
