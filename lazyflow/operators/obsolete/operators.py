@@ -1056,6 +1056,8 @@ class OpBlockedArrayCache(Operator):
             self._fixed_dirty_blocks = set()
             self._lock = Lock()
             self._innerBlockShape = None
+            self._outerBlockShape = None
+            self._blockShape = None
 
     def setupOutputs(self):
         with Tracer(self.traceLogger):
@@ -1064,7 +1066,7 @@ class OpBlockedArrayCache(Operator):
             inputSlot = self.inputs["Input"]
             shape = inputSlot.meta.shape
             if (    shape != self.Output.meta.shape
-                 or self._blockShape != self.outerBlockShape.value
+                 or self._outerBlockShape != self.outerBlockShape.value
                  or self._innerBlockShape != self.innerBlockShape.value ):
                 self._configured = False
                 
@@ -1084,6 +1086,7 @@ class OpBlockedArrayCache(Operator):
                 self.Output.meta.assignFrom(inputSlot.meta)
                 with self._lock:
                     self._innerBlockShape = self.innerBlockShape.value
+                    self._outerBlockShape = self.outerBlockShape.value
                     if len(self._fixed_dirty_blocks) > 0:
                         self._fixed_dirty_blocks = set()
                         notifyOutputDirty = True # Notify dirty output after we're fully configured
