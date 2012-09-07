@@ -345,7 +345,7 @@ class LayerViewerGui(QMainWindow):
         newDataShape = None
         for provider in self.dataProviderSlots:
             for i, slot in enumerate(provider[self.imageIndex]):
-                if newDataShape is None and slot.ready():
+                if newDataShape is None and slot.ready() and slot.meta.axistags is not None:
                     # Use an Op5ifyer adapter to transpose the shape for us.
                     op5 = Op5ifyer( graph=slot.graph )
                     op5.input.connect( slot )
