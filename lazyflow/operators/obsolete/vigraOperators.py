@@ -616,14 +616,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                 req = self.inputs["Input"][treadKey].allocate()
                 t = req.wait()
             else:
-                #t = sourceArray[...,i:i+1]
                 t = sourceArray[getAllExceptAxis(len(treadKey),channelAxis,slice(i,i+1,None) )]
-                req = self.inputs["Input"][treadKey].allocate()
-                t2 = req.wait()
-
-                t3 = t.view(numpy.ndarray)
-                #assert (t3==t2).all()
-                #assert t.shape == t2.shape, "Vigra Filter %r: shape difference !! sigm = %f, window = %r, %r, %r" %( self.name, largestSigma, windowSize,  t.shape, t2.shape)
 
             t = numpy.require(t, dtype=self.inputDtype)
             t = t.view(vigra.VigraArray)
