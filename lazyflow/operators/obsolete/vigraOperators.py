@@ -469,6 +469,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                 logger.debug("Failed to free array memory.")                
             del sourceArray
 
+            
+            closures = []
+
             #connect individual operators
             for i in range(dimRow):
                 for j in range(dimCol):
@@ -493,7 +496,11 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 reskey[axisindex] = slice(written, written+end-begin, None)
 
                                 destArea = result[tuple(reskey)]
-                                oslot.operator.getOutSlot(oslot,tuple(key_),destArea, sourceArray = sourceArraysForSigmas[j])
+                                
+                                def closure():
+                                    oslot.operator.getOutSlot(oslot,tuple(key_),destArea, sourceArray = sourceArraysForSigmas[j])
+                                closures.append(closure)
+
                                 written += end - begin
                             cnt += slices
                         else:
@@ -505,9 +512,23 @@ class OpPixelFeaturesPresmoothed(Operator):
 
                                 destArea = result[tuple(reskey)]
                                 logger.debug(oldkey, destArea.shape, sourceArraysForSigmas[j].shape)
-                                oslot.operator.getOutSlot(oslot,tuple(oldkey),destArea, sourceArray = sourceArraysForSigmas[j])
+
+                                def closure():
+                                    oslot.operator.getOutSlot(oslot,tuple(oldkey),destArea, sourceArray = sourceArraysForSigmas[j])
+                                closures.append(closure)
+
                                 written += 1
                             cnt += 1
+            requests = []
+
+            for c in closures:
+                r = Request(c)
+                requests.append(r)
+                r.submit()
+
+            for r in requests[::-1]:
+                r.wait()
+
             for i in range(len(sourceArraysForSigmas)):
                 if sourceArraysForSigmas[i] is not None:
                     try:
