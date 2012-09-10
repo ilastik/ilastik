@@ -680,8 +680,12 @@ class Slot(object):
             self.lock = threading.Lock()
 
         def __call__(self, roi, destination):
+            # store wether the user wants the results in a given destination area
+            destination_given = False if (destination is None) else True
+
             if destination is None:
                 destination = self.slot.stype.allocateDestination(roi)
+
 
             # We are executing the operator.
             # Incremement the execution count to protect against simultaneous setupOutputs() calls.
@@ -690,13 +694,18 @@ class Slot(object):
             # Execute the workload, which might not ever return (if we get cancelled).
             result_op = self.operator.execute(self.slot, roi, destination)
             
-            # legacy operators may return None and only
-            # write into destination; fix that case
-            result_op = result_op if not(result_op is None) else destination
-
+            # copy data from result_op to destination, if destinatino was actually given by the user, and the returned result_op is different from destination. (but don't copy if result_op is None, this means legacy op which wrote into destination anyway)
+            if destination_given and result_op is not None and id(result_op) != id(destination):
+                self.slot.stype.copy_data(dst = destination, src = result_op)
+            elif result_op is not None:
+                # FIXME: this should be moved to a isCompatible check in stypes.py
+                if hasattr(result_op, "shape"):
+                    assert result_op.shape == destination.shape, " ERROR: Operator %r has failed to provide a result of correct shape. result shape is %r vs %r." % (self.operator,result_op.shape, destination.shape)
+                destination = result_op
+                
             # Decrement the execution count
             self._decrementOperatorExecutionCount()
-            return result_op
+            return destination
 
         def _incrementOperatorExecutionCount(self):
             self.started = True

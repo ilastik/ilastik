@@ -45,8 +45,7 @@ class OpXToMulti(Operator):
             slot = self.inputs[sname]
             if slot.connected():
                 if i == indexes[0]:
-                    result[:] = slot[key].allocate().wait()
-                    break
+                    return slot[key].allocate().wait()
                 i += 1
 
     def propagateDirty(self, islot, roi):
@@ -982,8 +981,7 @@ class OpImageReader(Operator):
         filename = self.inputs["Filename"].value
         temp = vigra.impex.readImage(filename)
 
-        result[:] = temp[key]
-        #self.outputs["Image"][:]=temp[:]
+        return temp[key]
 
     def propagateDirty(self, slot, roi):
         if slot == self.Filename:
@@ -1104,7 +1102,7 @@ class OpH5Reader(Operator):
 
 
 
-        result[:] = self.d[key]
+        return self.d[key]
         #f.close()
 
         #Debug DUMPING REQUEST TO FILE
@@ -1351,8 +1349,9 @@ class OpH5ReaderBigDataset(Operator):
                 index = i
                 maxError = error
 
-        result[:]=self.D[index][key]
+        res = self.D[index][key]
         self._lock.release()
+        return res
     """
     def notifyDisconnect(self, slot):
         for f in self.F:
@@ -1393,7 +1392,7 @@ class OpH5ReaderSmoothedDataset(Operator):
 
         if slot.name=='Outputs':
             indexFile=self._getFileIndex(key)
-            result[:]=self.D[indexFile][index][key]
+            return self.D[indexFile][index][key]
         elif slot.name=='Sigmas':
             result[:]=self.sigmas[index]
 
@@ -1480,7 +1479,7 @@ class OpGrayscaleInverter(Operator):
     def getOutSlot(self, slot, key, result):
         image = self.inputs["input"][key].allocate().wait()
         # Assumes max of 255...
-        result[...] = 255-image[...]
+        return 255-image[...]
 
 class OpToUint8(Operator):
     name = "UInt8 Conversion Operator"
@@ -1499,7 +1498,7 @@ class OpToUint8(Operator):
         def getOutSlot(self, slot, key, result):
 
             image = self.inputs["input"][:].allocate().wait()
-            result[:] = image.numpy.astype('uint8')
+            return image.numpy.astype('uint8')
 
 
 class OpRgbToGrayscale(Operator):
@@ -1526,7 +1525,7 @@ class OpRgbToGrayscale(Operator):
         numChannels = image.shape[channelKey]
 
         if numChannels == 1:
-            result[:] = image
+            return image
         else:
             # Construct the proper red, green and blue slicings based on the position of the channel axis
             dims = len(image.shape)

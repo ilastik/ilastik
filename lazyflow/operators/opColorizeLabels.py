@@ -80,8 +80,7 @@ class OpColorizeLabels(Operator):
         # Advanced indexing with colortable applies the relabeling from labels to colors.
         # If we get an error here, we may need to expand the colortable (currently supports only 2**18 labels.)
         channelSlice = getElement(self.Input.meta.axistags, 'c', fullKey)
-        result[resultKey] = self.colortable[:, channelSlice][channellessInput]
-        return result
+        return self.colortable[:, channelSlice][channellessInput]
 
     def generateColortable(self, size):
         table = numpy.zeros((size,4), dtype=numpy.uint8)

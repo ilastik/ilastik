@@ -68,7 +68,7 @@ p = operators.OpArrayPiper(g)
 arr = numpy.ndarray((100,100,100,1),numpy.uint8)
 
 cache.inputs["Input"].setValue(arr)
-p.connect(Input = cache.outputs["Output"])
+p.Input.connect(cache.outputs["Output"])
 
 features = operators.OpPixelFeaturesPresmoothed(g)
 matrix = numpy.ndarray((6,2), numpy.uint8)

@@ -114,7 +114,7 @@ class OpVigraWatershed(Operator):
         
         #print numpy.unique(watershed[outputSlices]).shape
         # Return only the region the user requested
-        result[...] = watershed[outputSlices]
+        return watershed[outputSlices].view(numpy.ndarray).reshape(result.shape)
 
     def propagateDirty(self, inputSlot, roi):
         if not self.configured():

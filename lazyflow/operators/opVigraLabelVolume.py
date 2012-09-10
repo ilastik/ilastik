@@ -33,7 +33,7 @@ class OpVigraLabelVolume(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = numpy.uint32
         
-    def execute(self, slot, roi, result):
+    def execute(self, slot, roi, destination):
         assert slot == self.Output
         
         inputData = self.Input(roi.start, roi.stop).wait()
@@ -49,11 +49,10 @@ class OpVigraLabelVolume(Operator):
 
         if self.BackgroundValue.ready():
             bg = self.BackgroundValue.value
-            result[...] = vigra.analysis.labelVolumeWithBackground(inputData, background_value=bg)
+            result =  vigra.analysis.labelVolumeWithBackground(inputData, background_value=bg).view(numpy.ndarray)
         else:
-            result[...] = vigra.analysis.labelVolumeWithBackground(inputData).view(numpy.ndarray)
-
-        return result
+            result =  vigra.analysis.labelVolumeWithBackground(inputData).view(numpy.ndarray)
+        return result.reshape(destination.shape)
 
     def propagateDirty(self, inputSlot, roi):
         if inputSlot == self.Input:

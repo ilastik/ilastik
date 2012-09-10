@@ -47,6 +47,21 @@ class SlotType( object ):
         pass
 
 
+    def copy_data(self, dst, src):
+        """
+        Slot types must implement this method
+
+        if should copy all the data from src to dst.
+        src and dst must be of the kind which is return by an operator with a slot
+        of this type.
+
+        usually dst, is the destination area specified by somebody, and src is the result
+        that an operator returns.
+
+        """
+        pass
+
+
 class ArrayLike( SlotType ):
     def allocateDestination( self, roi ):
         shape = roi.stop - roi.start if roi else self.slot.meta.shape
@@ -112,6 +127,10 @@ class ArrayLike( SlotType ):
             return False
 
 
+    def copy_data(self, dst, src):
+        dst[...] = src[...]
+
+
 class Struct( SlotType ):
 
     """
@@ -168,7 +187,8 @@ class Struct( SlotType ):
     def _notifyConnect(self,slot):
         pass
 
-
+    def copy_data(self, dst, src):
+        raise("Not Implemented")
 
 class Opaque( SlotType ):
     def allocateDestination( self, roi ):
@@ -189,3 +209,6 @@ class Opaque( SlotType ):
 
     def isConfigured(self):
         return True
+    
+    def copy_data(self, dst, src):
+        raise("Not Implemented")
