@@ -5,8 +5,10 @@ import vigra.analysis
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot
 from lazyflow.stype import Opaque
-from lazyflow.rtype import Everything, SubRegion
+from lazyflow.rtype import Everything, SubRegion, List
 from lazyflow.operators.ioOperators.opStreamingHdf5Reader import OpStreamingHdf5Reader
+
+import ctracking
 
 
 class OpLabelImage( Operator ):
@@ -26,7 +28,7 @@ class OpLabelImage( Operator ):
 
 class OpRegionCenters( Operator ):
     LabelImage = InputSlot()
-    Output = OutputSlot( stype=Opaque, rtype=list )
+    Output = OutputSlot( stype=Opaque, rtype=List )
 
     
     def __init__( self, parent=None, graph=None, register=True ):
@@ -51,6 +53,7 @@ class OpRegionCenters( Operator ):
                 
             centers = {}
             for t in roi:
+                print "RegionCenters at", t
                 if t in self._cache:
                     centers_at = self._cache[t]
                 else:
@@ -71,20 +74,21 @@ class OpObjectExtraction( Operator ):
     #FeatureNames = InputSlot( stype=Opaque )
 
     LabelImage = OutputSlot()
-    RegionCenters = OutputSlot( stype=Opaque, rtype=list )
+    RegionCenters = OutputSlot( stype=Opaque, rtype=List )
+    Traxels = OutputSlot( stype=Opaque, rtype=List )
 
     def __init__( self, parent = None, graph = None, register = True ):
         super(OpObjectExtraction, self).__init__(parent=parent,graph=graph,register=register)
 
         self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
+        self._reg_cents = {}
 
         self._opLabelImage = OpLabelImage( graph = graph )
         self._opLabelImage.BinaryImage.connect( self.BinaryImage )
 
         self._opRegCent = OpRegionCenters( graph = graph )
+        self._opRegCent.LabelImage.connect( self.LabelImage )
 
-        self._processed_timesteps = set()
-        self._processing_timesteps = set()
     
     def __del__( self ):
         self._mem_h5.close()
@@ -101,6 +105,31 @@ class OpObjectExtraction( Operator ):
         if slot is self.RegionCenters:
             res = self._opRegCent.Output.get( roi ).wait()
             return res
+        if slot is self.Traxels:
+            print "generating traxels"
+            print "fetching region centers"
+            rcs = self.RegionCenters.get( roi ).wait()
+            
+            print "filling traxelstore"
+            print "WARNING: USING Z SCALE OF 12.3"
+            ts = ctracking.Traxels()
+            for t in rcs.keys():
+                print "at timestep ", t
+                rc = rcs[t]
+                for idx in range(rc.shape[0]):
+                    tr = ctracking.Traxel()
+                    tr.set_x_scale(1.)
+                    tr.set_y_scale(1.)
+                    tr.set_z_scale(12.3) ##FIXME
+                    tr.Id = int(idx)
+                    tr.Timestep = 0
+                    tr.add_feature_array("com", len(rc[idx]))
+                    for i,v in enumerate(rc[idx]):
+                        tr.set_feature_value('com', i, float(v))
+                    ts.add_traxel(tr)
+                
+            print ts
+            return ts
 
     def propagateDirty(self, inputSlot, roi):
         raise NotImplementedError
@@ -115,6 +144,19 @@ class OpObjectExtraction( Operator ):
             a = a[0,...,0]
             self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a )
         self.LabelImage.setDirty(SubRegion(self.LabelImage))
+
+    def calcRegionCenters( self ):
+        print "calc region centers"
+        reqs = []
+        for t in range(self.LabelImage.meta.shape[0]):
+            reqs.append(self.RegionCenters([t]))
+            reqs[-1].submit()
+        for req in reqs:
+            req.wait()
+        print self.RegionCenters(range(self.LabelImage.meta.shape[0])).wait()            
+
+    def generateTraxels( self ):
+        self.Traxels(range(self.LabelImage.meta.shape[0])).wait()
 
     def _labelImageAt( self, t ):
         m = self.BinaryImage.meta
