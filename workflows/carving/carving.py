@@ -3,7 +3,7 @@ from ilastik.workflow import Workflow
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.layerViewer import LayerViewerApplet
-from ilastik.applets.labeling.labelingApplet import PixelClassificationApplet as LabelingApplet
+from ilastik.applets.labeling.labelingApplet import LabelingApplet
 
 from lazyflow.graph import Graph, Operator, OperatorWrapper
 from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
@@ -26,9 +26,12 @@ class CarvingWorkflow(Workflow):
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
         self.viewerApplet = LayerViewerApplet(graph)
-        #self.viewerApplet = LabelingApplet(graph, "xxx")
+        self.labelingApplet = LabelingApplet(graph, "xxx")
 
         self.viewerApplet.topLevelOperator.RawInput.connect( self.dataSelectionApplet.topLevelOperator.Image )
+        
+        self.labelingApplet.topLevelOperator.InputImages.connect( self.dataSelectionApplet.topLevelOperator.Image )
+        self.labelingApplet.topLevelOperator.LabelsAllowedFlags.connect( self.dataSelectionApplet.topLevelOperator.AllowLabels )
 
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator
@@ -38,6 +41,7 @@ class CarvingWorkflow(Workflow):
         self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.viewerApplet)
+        self._applets.append(self.labelingApplet)
 
         # The shell needs a slot from which he can read the list of image names to switch between.
         # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
@@ -70,12 +74,38 @@ def debug_with_existing(shell, workflow):
     # Select the labeling drawer
     shell.setSelectedAppletDrawer(2)
 
+def debug_with_new(shell, workflow):
+    """
+    (Function for debug and testing.)
+    """
+    projFilePath = "/magnetic/test_project.ilp"
+
+    # New project
+    shell.createAndLoadNewProject(projFilePath)
+
+    # Add a file
+    from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
+    info = DatasetInfo()
+    info.filePath = '/magnetic/gigacube.h5'
+    #info.filePath = '/magnetic/synapse_small.npy'
+    #info.filePath = '/magnetic/singleslice.h5'
+    opDataSelection = workflow.dataSelectionApplet.topLevelOperator
+    opDataSelection.Dataset.resize(1)
+    opDataSelection.Dataset[0].setValue(info)
+    
+    workflow.labelingApplet.gui.addNewLabel()
+    workflow.labelingApplet.gui.addNewLabel()
+    
+    # Save the project
+    shell.onSaveProjectActionTriggered()
+
 if __name__ == "__main__":
     from ilastik.shell.gui.startShellGui import startShellGui
     
     # Start the GUI
     
-    startShellGui( CarvingWorkflow )
+    #startShellGui( CarvingWorkflow )
 
     # Start the GUI with a debug project    
     #startShellGui( CarvingWorkflow, debug_with_existing )    
+    startShellGui( CarvingWorkflow, debug_with_new )    
