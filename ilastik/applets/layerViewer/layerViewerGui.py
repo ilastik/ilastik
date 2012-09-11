@@ -131,11 +131,16 @@ class LayerViewerGui(QMainWindow):
         for provider in self.dataProviderSlots:
             provider.notifyRemove( bind( handleDatasetRemoval ) )
 
-    def setupLayers(self, imageIndex):
-        # Users of this class have two choices:
-        # 1) Provide a callback for setupLayers via the __init__ function argument
-        # 2) Subclass this GUI class and override the setupLayers() function.
-        raise NotImplementedError("No setup layers function defined.  See comment above.")
+    def setupLayers( self, currentImageIndex ):
+        layers = []
+        for slotLevel2 in self.dataProviderSlots:
+            for i, slotLevel1 in enumerate(slotLevel2):
+                for i, slot in enumerate(slotLevel1):
+                    if slot.ready():
+                        layer = self.createStandardLayerFromSlot(slot)
+                        layers.append(layer)
+        
+        return layers
 
     @traceLogged(traceLogger)
     def _setImageIndex(self, imageIndex):

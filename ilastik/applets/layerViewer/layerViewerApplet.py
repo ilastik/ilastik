@@ -1,4 +1,6 @@
+from lazyflow.graph import OperatorWrapper
 from ilastik.applets.base.applet import Applet
+from opLayerViewer import OpLayerViewer
 
 class LayerViewerApplet( Applet ):
     """
@@ -7,30 +9,17 @@ class LayerViewerApplet( Applet ):
     def __init__( self, graph ):
         super(LayerViewerApplet, self).__init__("layer Viewer")
 
-        # NO TOP-LEVEL OPERATOR.  Subclasses must provide their own...
-        self._topLevelOperator = None
-
-        # Instantiate the main GUI, which creates the applet drawers (for now)
-        self._centralWidget = None
-        self._menuWidget = self._centralWidget.menuBar
-        
-        # The central widget owns the applet drawer gui
-        self._drawers = [ ("Results Viewer", self._centralWidget.getAppletDrawerUi() ) ]
-        
+        self._topLevelOperator = OperatorWrapper( OpLayerViewer(graph=graph), promotedSlotNames=set(['RawInput']) )
         self._preferencesManager = None
         self._serializableItems = []
+        self._gui = None
     
-    @property
-    def centralWidget( self ):
-        return self._centralWidget
-
-    @property
-    def appletDrawers(self):
-        return self._drawers
-    
-    @property
-    def menuWidget( self ):
-        return self._menuWidget
+    @property    
+    def gui(self):
+        if self._gui is None:
+            from layerViewerGui import LayerViewerGui            
+            self._gui = LayerViewerGui( [ self.topLevelOperator.RawInput ] )
+        return self._gui
 
     @property
     def dataSerializers(self):
@@ -43,14 +32,4 @@ class LayerViewerApplet( Applet ):
     @property
     def appletPreferencesManager(self):
          return self._preferencesManager
-
-    @property
-    def viewerControlWidget(self):
-        return self._centralWidget.viewerControlWidget
     
-    def setImageIndex(self, imageIndex):
-        """
-        Change the currently displayed image to the one specified by the given index.
-        """
-        self._centralWidget.setImageIndex( imageIndex )
-
