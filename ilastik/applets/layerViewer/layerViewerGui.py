@@ -135,9 +135,10 @@ class LayerViewerGui(QMainWindow):
         layers = []
         for slotLevel2 in self.dataProviderSlots:
             for i, slotLevel1 in enumerate(slotLevel2):
-                for i, slot in enumerate(slotLevel1):
+                for j, slot in enumerate(slotLevel1):
                     if slot.ready():
                         layer = self.createStandardLayerFromSlot(slot)
+                        layer.name = slotLevel2.name + " " + str(j)
                         layers.append(layer)
         
         return layers
