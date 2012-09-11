@@ -20,8 +20,7 @@ class FeatureSelectionGui(LayerViewerGui):
     """
     """
     
-    # Constants
-    '''    
+    # Constants    
     ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
     DefaultColorTable = None
 
@@ -30,7 +29,9 @@ class FeatureSelectionGui(LayerViewerGui):
                    'StructureTensorEigenvalues',
                    'HessianOfGaussianEigenvalues',
                    'GaussianGradientMagnitude',
-                   'DifferenceOfGaussians' ]
+                   'DifferenceOfGaussians',
+                   'AutocontextMeanVar',
+                   'AutocontextHist' ]
 
     # Note: The order of these feature names must match the order of the feature Ids above
     FeatureNames = [ "Gaussian Smoothing",
@@ -38,8 +39,10 @@ class FeatureSelectionGui(LayerViewerGui):
                      "Structure Tensor Eigenvalues",
                      "Hessian of Gaussian Eigenvalues",
                      "Gaussian Gradient Magnitude",
-                     "Difference of Gaussians" ]
-    '''
+                     "Difference of Gaussians",
+                     "Autocontext by Mean and Var",
+                     "Autocontext by Histogram" ]
+
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
@@ -50,6 +53,14 @@ class FeatureSelectionGui(LayerViewerGui):
     def viewerControlWidget(self):
         return self._viewerControlWidget
 
+    def reset(self):
+        super(FeatureSelectionGui, self).reset()
+        self.drawer.caption.setText( "(No features selected)" )
+
+        # Why is this necessary?
+        # Clearing the layerstack doesn't seem to call the rowsRemoved signal?
+        self._viewerControlWidget.listWidget.clear()
+
     # (Other methods already provided by our base class)
 
     ###########################################
@@ -59,7 +70,7 @@ class FeatureSelectionGui(LayerViewerGui):
     def __init__(self, mainOperator):
         """
         """
-        super(FeatureSelectionGui, self).__init__([ mainOperator.FeatureLayers ])
+        super(FeatureSelectionGui, self).__init__([ mainOperator.FeatureLayers, mainOperator.InputImage ])
         self.mainOperator = mainOperator
 
         self.initFeatureDlg()
@@ -120,7 +131,7 @@ class FeatureSelectionGui(LayerViewerGui):
 
         inputSlot = self.mainOperator.InputImage[currentImageIndex]
         featureMultiSlot = self.mainOperator.FeatureLayers[currentImageIndex]
-        if featureMultiSlot.ready():
+        if inputSlot.ready() and featureMultiSlot.ready():
             for featureIndex, featureSlot in enumerate(featureMultiSlot):
                 assert featureSlot.ready()
                 layers += self.getFeatureLayers(inputSlot, featureSlot)
@@ -137,8 +148,8 @@ class FeatureSelectionGui(LayerViewerGui):
         
         channelAxis = inputSlot.meta.axistags.channelIndex
         assert channelAxis == featureSlot.meta.axistags.channelIndex
-        numInputChannels = inputSlot.shape[channelAxis]
-        numFeatureChannels = featureSlot.shape[channelAxis]
+        numInputChannels = inputSlot.meta.shape[channelAxis]
+        numFeatureChannels = featureSlot.meta.shape[channelAxis]
 
         # Determine how many channels this feature has (up to 3)
         featureChannelsPerInputChannel = numFeatureChannels / numInputChannels
@@ -179,13 +190,14 @@ class FeatureSelectionGui(LayerViewerGui):
         """
         self.featureDlg = FeatureDlg()
         self.featureDlg.setWindowTitle("Features")
-        self.featureDlg.createFeatureTable( { "Features": [ FeatureEntry(s) for s in self.mainOperator.FeatureNames.value ] },
-                                            self.mainOperator.Scales.value)
+        self.featureDlg.createFeatureTable( { "Features": [ FeatureEntry(s) for s in self.FeatureNames ] },
+                                            self.ScalesList)
         self.featureDlg.setImageToPreView(None)
 
         # Create a matrix of False values
-        print self.mainOperator.FeatureIds.value
-        defaultFeatures = numpy.zeros((len(self.mainOperator.FeatureNames.value),len(self.mainOperator.Scales.value)), dtype=bool)
+        nrows = len(self.FeatureIds)
+        ncols = len(self.ScalesList)
+        defaultFeatures = numpy.zeros((nrows,ncols), dtype=bool)
 
         # Select some default features.
         defaultFeatures[0,0] = True
@@ -208,14 +220,12 @@ class FeatureSelectionGui(LayerViewerGui):
 
     def onNewFeaturesFromFeatureDlg(self):
         # Re-initialize the scales and features
-        # self.mainOperator.Scales.setValue( self.ScalesList )
-        # self.mainOperator.FeatureIds.setValue(self.FeatureIds)
+        self.mainOperator.Scales.setValue( self.ScalesList )
+        self.mainOperator.FeatureIds.setValue(self.FeatureIds)
 
         # Give the new features to the pipeline (if there are any)
         featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
         if featureMatrix.any():
-            print "BBBBBBBBBBB reseting value of SelectionMatrix"
-            print type(self.mainOperator.SelectionMatrix)
             self.mainOperator.SelectionMatrix.setValue( featureMatrix )
         else:
             # Not valid to give a matrix with no features selected.

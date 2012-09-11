@@ -21,7 +21,10 @@ class FeatureSelectionAutocontextApplet( Applet ):
         self._serializableItems = [ FeatureSelectionSerializer(self._topLevelOperator, projectFileGroupName),
                                     Ilastik05FeatureSelectionDeserializer(self._topLevelOperator) ]
 
+        print "Initializing applet:", self._topLevelOperator.SelectionMatrix.meta
+        print "Inside:", self._topLevelOperator
         self._gui = None
+        
             
     @property
     def dataSerializers(self):

@@ -1,6 +1,7 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiOutputSlot
 
 from lazyflow.operators import OpPixelFeaturesPresmoothed, OpSlicedBlockedArrayCache, OpMultiArraySlicer2
+import numpy
 
 class OpFeatureSelection(Operator):
     """
@@ -13,32 +14,13 @@ class OpFeatureSelection(Operator):
     InputImage = InputSlot()
 
     # The following input slots are applied uniformly to all input images
-    # The default values have to be provided here - only the operator knows what it computes
-    Scales = InputSlot(value = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]) # The list of possible scales to use when computing features
-    FeatureIds = InputSlot(value = [ 'GaussianSmoothing',
-                   'LaplacianOfGaussian',
-                   'StructureTensorEigenvalues',
-                   'HessianOfGaussianEigenvalues',
-                   'GaussianGradientMagnitude',
-                   'DifferenceOfGaussians',
-                   'AutocontectMeanVar',
-                   'AutocontextHisto' ]) # The list of features to compute
-    
-    FeatureNames = InputSlot(value = [ "Gaussian Smoothing",
-                     "Laplacian of Gaussian",
-                     "Structure Tensor Eigenvalues",
-                     "Hessian of Gaussian Eigenvalues",
-                     "Gaussian Gradient Magnitude",
-                     "Difference of Gaussians",
-                     "Autocontext by Mean and Variance",
-                     "Autocontext by Histogram" ])
-    
-    
+    Scales = InputSlot() # The list of possible scales to use when computing features
+    FeatureIds = InputSlot() # The list of features to compute
     SelectionMatrix = InputSlot(name = "SelectionMatrix") # A matrix of bools indicating which features to output.
-                                # The matrix rows correspond to feature types in the order specified by the FeatureIds input.
-                                #  (See OpPixelFeaturesPresmoothed for the available feature types.)
-                                # The matrix columns correspond to the scales provided in the Scales input,
-                                #  which requires that the number of matrix columns must match len(Scales.value)
+                         # The matrix rows correspond to feature types in the order specified by the FeatureIds input.
+                         #  (See OpPixelFeaturesPresmoothed for the available feature types.)
+                         # The matrix columns correspond to the scales provided in the Scales input,
+                         #  which requires that the number of matrix columns must match len(Scales.value)
     
     # Features are presented in the channels of the output image
     # Output can be optionally accessed via an internal cache.
@@ -62,7 +44,7 @@ class OpFeatureSelection(Operator):
 
         # Connect our internal operators to our external inputs 
         self.opPixelFeatures.Scales.connect( self.Scales )
-        self.opPixelFeatures.FeatureIds.connect( self.FeatureIds )
+        #self.opPixelFeatures.FeatureIds.connect( self.FeatureIds )
         #self.opPixelFeatures.Matrix.connect( self.SelectionMatrix )
         self.opPixelFeatures.Input.connect( self.InputImage )
         
@@ -70,12 +52,10 @@ class OpFeatureSelection(Operator):
         self.OutputImage.connect( self.opPixelFeatures.Output )
         self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )        
         self.FeatureLayers.connect( self.opPixelFeatures.Features )
-        
 
     def setupOutputs(self):        
         # We choose block shapes that have only 1 channel because the channels may be 
         #  coming from different features (e.g different filters) and probably shouldn't be cached together.
-        
         blockDimsX = { 't' : (1,1),
                        'z' : (32,128),
                        'y' : (32,128),
@@ -110,28 +90,21 @@ class OpFeatureSelection(Operator):
 
 
     def propagateDirty(self, inputSlot, roi):
-        # Output slots are directly connected to internal operators
-        print "AAAAAAAAAAAAAAA in propagate dirty of the opFeatureSelection"
-        print "Are defaults ready?", self.FeatureIds.ready(), self.Scales.ready()
-        print "Is the selection matrix ready?", self.SelectionMatrix.ready()
-        
-        
         
         if self.SelectionMatrix.ready():
             pixelFeatureMatrix = []
             autocontextFeatureMatrix = []
-            print "Our feature ids:", self.FeatureIds.value
-            '''
-            for i, fid in self.FeatureIds.value:
-                
-                if "Autocontext" not in fid:
-                    pixelFeatureMatrix.append(self.SelectionMatrix.value[i])
-                else:
+            pixelFeatureIds = []
+            for i, fid in enumerate(self.FeatureIds.value):
+                if "Autocontext" in fid:
                     autocontextFeatureMatrix.append(self.SelectionMatrix.value[i])
+                else:
+                    pixelFeatureMatrix.append(self.SelectionMatrix.value[i])
+                    pixelFeatureIds.append(fid)
             
-            print "Shape of new pixel feature matrix:", pixelFeatureMatrix.shape
-            self.opPixelFeatures.Matrix.setValue(pixelFeatureMatrix)
-            '''
+            pixelFeatureMatrixArr = numpy.asarray(pixelFeatureMatrix)
+            self.opPixelFeatures.Matrix.setValue( pixelFeatureMatrixArr )
+            self.opPixelFeatures.FeatureIds.setValue( pixelFeatureIds )
 
 
 
