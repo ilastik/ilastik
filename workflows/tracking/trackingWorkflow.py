@@ -84,7 +84,8 @@ class TrackingWorkflow( Workflow ):
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
 
         opTracking.RawData.connect( dataProv.Raw )
-        opTracking.Traxels.connect( dataProv.Traxels )
+        #opTracking.Traxels.connect( dataProv.Traxels )
+        opTracking.Traxels.connect( opObjExtraction.Traxels )
         opTracking.ObjectCenters.connect( opObjExtraction.RegionCenters )
 
         self._applets.append(self.dataSelectionApplet)

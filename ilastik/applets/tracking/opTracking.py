@@ -1,5 +1,5 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.rtype import SubRegion
+from lazyflow.rtype import SubRegion, List
 from lazyflow.stype import Opaque
 from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
 
@@ -53,7 +53,7 @@ class OpTracking(Operator):
     
 
     LabelImage = InputSlot()
-    Traxels = InputSlot()
+    Traxels = InputSlot( stype=Opaque, rtype=List )
     ObjectCenters = InputSlot( stype=Opaque, optional=True )
 
     Output = OutputSlot()
@@ -117,8 +117,8 @@ class OpTracking(Operator):
                                         min_angle,
                                         ep_gap)
 
-        ts = self.Traxels.get( SubRegion(self.Traxels)).wait()
-
+        ts = self.Traxels(range(self.LabelImage.meta.shape[0]) ).wait()
+        
         events = tracker(ts)
         label2color = []
         label2color.append({})

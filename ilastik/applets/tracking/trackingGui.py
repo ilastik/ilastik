@@ -193,12 +193,12 @@ class TrackingGui( QWidget ):
 
         det = noiseweight*(-1)*math.log(1-noiserate)
         mdet = noiseweight*(-1)*math.log(noiserate)
-        self.mainOperator.track(app=app,
-                                dis=dis,
-                                opp=opp,
-                                det=det,
-                                mdet=mdet,
-                                ep_gap=epGap)
+        self.mainOperator.innerOperators[0].track(app=app,
+                                                  dis=dis,
+                                                  opp=opp,
+                                                  det=det,
+                                                  mdet=mdet,
+                                                  ep_gap=epGap)
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):

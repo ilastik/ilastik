@@ -112,7 +112,7 @@ class OpObjectExtraction( Operator ):
             
             print "filling traxelstore"
             print "WARNING: USING Z SCALE OF 12.3"
-            ts = ctracking.Traxels()
+            ts = ctracking.TraxelStore()
             for t in rcs.keys():
                 print "at timestep ", t
                 rc = rcs[t]
@@ -122,11 +122,11 @@ class OpObjectExtraction( Operator ):
                     tr.set_y_scale(1.)
                     tr.set_z_scale(12.3) ##FIXME
                     tr.Id = int(idx)
-                    tr.Timestep = 0
+                    tr.Timestep = t
                     tr.add_feature_array("com", len(rc[idx]))
                     for i,v in enumerate(rc[idx]):
                         tr.set_feature_value('com', i, float(v))
-                    ts.add_traxel(tr)
+                    ts.add(tr)
                 
             print ts
             return ts
@@ -136,7 +136,7 @@ class OpObjectExtraction( Operator ):
 
     def updateLabelImage( self ):
         m = self.LabelImage.meta
-        for t in range(0, 1):#meta.shape[0]):
+        for t in range(m.shape[0]):
             print "Calculating LabelImage at", t
             start = [t,] + (len(m.shape) - 1) * [0,]
             stop = [t+1,] + list(m.shape[1:])
