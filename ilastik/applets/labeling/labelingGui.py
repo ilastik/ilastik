@@ -70,7 +70,7 @@ class LabelingGui(LayerViewerGui):
     def labelListData(self):
         return self._labelControlUi.labelListModel
     
-    class LabelingGuiSlots(object):
+    class LabelingSlots(object):
         def __init__(self):
             # Label slots are multi (level=1) and accessed as shown.
             # Slot to insert labels onto
@@ -87,31 +87,30 @@ class LabelingGui(LayerViewerGui):
             # Slot to specify which images the user is allowed to label.
             self.labelsAllowed = None # labelsAllowed[image_index].value == True
 
-            # Each display slot can be either:
-            # Multi with level=1, accessed as: slot[image_index].get(roi)
-            # Multi with level=2, accessed as: slot[image_index][layer_index].get(roi)
-            self.displaySlots = []
-            
     @traceLogged(traceLogger)
-    def __init__(self, labelingGuiSlots=None, drawerUiPath=None, rawInputSlot=None ):
+    def __init__(self, labelingSlots, observedSlots, drawerUiPath=None, rawInputSlot=None ):
         """
-        See LabelingGuiSlots class (above) for expected type of labelingGuiSlots parameter.
+        See LabelingSlots class (above) for expected type of labelingSlots parameter.
+        
+        observedSlots is the same as in the LayerViewer constructor.
+        drawerUiPath can be given if you provide an extended drawer UI file.  Otherwise a default one is used.
+        Data from the rawInputSlot parameter will be displayed directly underneatch the labels (if provided).
         """
         # Do have have all the slots we need?
-        assert isinstance(labelingGuiSlots, LabelingGui.LabelingGuiSlots)
-        assert all( [v is not None for v in labelingGuiSlots.__dict__.values()] )
+        assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
+        assert all( [v is not None for v in labelingSlots.__dict__.values()] )
         
         self._rawInputSlot = rawInputSlot
         if rawInputSlot is not None:
-            labelingGuiSlots.displaySlots.append(rawInputSlot)
+            observedSlots.append(rawInputSlot)
         
         # Init base class
-        allSlots = labelingGuiSlots.displaySlots + [ labelingGuiSlots.labelOutput, labelingGuiSlots.labelsAllowed ]
-        super(LabelingGui, self).__init__( allSlots )
+        observedSlots += [ labelingSlots.labelOutput, labelingSlots.labelsAllowed ]
+        super(LabelingGui, self).__init__( observedSlots )
 
-        self._labelingGuiSlots = labelingGuiSlots
-        self._labelingGuiSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)
-        self._labelingGuiSlots.maxLabelValue.notifyDirty( bind(self.updateLabelList) )
+        self._labelingSlots = labelingSlots
+        self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)
+        self._labelingSlots.maxLabelValue.notifyDirty( bind(self.updateLabelList) )
 
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
@@ -253,7 +252,7 @@ class LabelingGui(LayerViewerGui):
         # If the user can't label this image, disable the button and say why its disabled
         labelsAllowed = False
         if self.imageIndex != -1:
-            labelsAllowedSlot = self._labelingGuiSlots.labelsAllowed[self.imageIndex]
+            labelsAllowedSlot = self._labelingSlots.labelsAllowed[self.imageIndex]
             if labelsAllowedSlot.ready():
                 labelsAllowed = labelsAllowedSlot.value
     
@@ -359,7 +358,7 @@ class LabelingGui(LayerViewerGui):
         """
         # Get the number of labels in the label data
         # (Or the number of the labels the user has added.)
-        numLabels = max(self._labelingGuiSlots.maxLabelValue.value, self._labelControlUi.labelListModel.rowCount())
+        numLabels = max(self._labelingSlots.maxLabelValue.value, self._labelControlUi.labelListModel.rowCount())
         if numLabels == None:
             numLabels = 0
 
@@ -447,12 +446,12 @@ class LabelingGui(LayerViewerGui):
 
         # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
         #  to search through the entire list of labels and delete the entries for the matching label.
-        self._labelingGuiSlots.labelDelete.setValue(row+1)
+        self._labelingSlots.labelDelete.setValue(row+1)
         
         # We need to "reset" the deleteLabel input to -1 when we're finished.
         #  Otherwise, you can never delete the same label twice in a row.
         #  (Only *changes* to the input are acted upon.)
-        self._labelingGuiSlots.labelDelete.setValue(-1)
+        self._labelingSlots.labelDelete.setValue(-1)
         
     def getLabelLayer(self):
         # Find the labellayer in the viewer stack
@@ -467,14 +466,14 @@ class LabelingGui(LayerViewerGui):
         """
         Return a colortable layer that displays the label slot data, along with its associated label source.
         """
-        labelOutput = self._labelingGuiSlots.labelOutput[currentImageIndex]
+        labelOutput = self._labelingSlots.labelOutput[currentImageIndex]
         if not labelOutput.ready():
             return (None, None)
         else:
             traceLogger.debug("Setting up labels for image index={}".format(currentImageIndex) )
             # Add the layer to draw the labels, but don't add any labels
-            labelsrc = LazyflowSinkSource( self._labelingGuiSlots.labelOutput[currentImageIndex],
-                                           self._labelingGuiSlots.labelInput[currentImageIndex])
+            labelsrc = LazyflowSinkSource( self._labelingSlots.labelOutput[currentImageIndex],
+                                           self._labelingSlots.labelInput[currentImageIndex])
         
             labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16 )
             labellayer.name = "Labels"
@@ -505,7 +504,7 @@ class LabelingGui(LayerViewerGui):
         
         # Side effect 2: Switch to navigation mode if labels aren't 
         #  allowed on this image.
-        labelsAllowedSlot = self._labelingGuiSlots.labelsAllowed[self.imageIndex]
+        labelsAllowedSlot = self._labelingSlots.labelsAllowed[self.imageIndex]
         if labelsAllowedSlot.ready() and not labelsAllowedSlot.value:
             self.changeInteractionMode(Tool.Navigation)
 

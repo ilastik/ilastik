@@ -26,7 +26,7 @@ class LabelingApplet( Applet ):
         if self._gui is None:
             from labelingGui import LabelingGui
 
-            labelingSlots = LabelingGui.LabelingGuiSlots()
+            labelingSlots = LabelingGui.LabelingSlots()
             labelingSlots.labelInput = self.topLevelOperator.LabelInputs
             labelingSlots.labelOutput = self.topLevelOperator.LabelImages
             labelingSlots.labelEraserValue = self.topLevelOperator.LabelEraserValue
@@ -34,7 +34,5 @@ class LabelingApplet( Applet ):
             labelingSlots.maxLabelValue = self.topLevelOperator.MaxLabelValue
             labelingSlots.labelsAllowed = self.topLevelOperator.LabelsAllowedFlags
             
-            labelingSlots.displaySlots = []
-            
-            self._gui = LabelingGui( labelingSlots, rawInputSlot=self.topLevelOperator.InputImages )
+            self._gui = LabelingGui( labelingSlots, [], rawInputSlot=self.topLevelOperator.InputImages )
         return self._gui
