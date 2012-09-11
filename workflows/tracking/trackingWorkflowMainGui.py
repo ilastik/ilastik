@@ -6,11 +6,11 @@ from trackingWorkflow import TrackingWorkflow
 
 debug_testing = False
 if debug_testing:
-    def test(shell):
+    def test(shell, workflow):
         import h5py
 
         #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
-        projFilePath = '/home/bergs/gigacube.ilp'        
+        projFilePath = '/home/bkausler/withLabelImageAndRegionCenters.ilp'
 
         shell.openProjectFile(projFilePath)
         

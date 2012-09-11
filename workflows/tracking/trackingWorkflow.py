@@ -70,27 +70,27 @@ class TrackingWorkflow( Workflow ):
         self.dataSelectionApplet = DataSelectionApplet(graph, "Input Segmentation", "Input Segmentation", batchDataGui=False)
 
         self.objectExtractionApplet = ObjectExtractionApplet( graph )
-        #self.trackingApplet = TrackingApplet( graph )
+        self.trackingApplet = TrackingApplet( graph )
 
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator
         opObjExtraction = self.objectExtractionApplet.topLevelOperator
-        #opTracking = self.trackingApplet.topLevelOperator
+        opTracking = self.trackingApplet.topLevelOperator
         
         ## Connect operators ##
         dataProv = OpTrackingDataProvider( graph=graph )
         opObjExtraction.BinaryImage.connect( opData.Image )
 
-        #opTracking.LabelImage.connect( opObjExtraction.LabelImage )
-        #opTracking.LabelImage.connect( dataProv.LabelImage )        
+        opTracking.LabelImage.connect( opObjExtraction.LabelImage )
 
-        #opTracking.RawData.connect( dataProv.Raw )
+        opTracking.RawData.connect( dataProv.Raw )
         #opTracking.Traxels.connect( dataProv.Traxels )
-        #opTracking.ObjectCenters.connect( opObjExtraction.RegionCenters )
+        opTracking.Traxels.connect( opObjExtraction.Traxels )
+        opTracking.ObjectCenters.connect( opObjExtraction.RegionCenters )
 
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.objectExtractionApplet)
-        #self._applets.append(self.trackingApplet)
+        self._applets.append(self.trackingApplet)
 
         # The shell needs a slot from which he can read the list of image names to switch between.
         # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.

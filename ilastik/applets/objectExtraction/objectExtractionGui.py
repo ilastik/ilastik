@@ -81,10 +81,6 @@ class ObjectExtractionGui( QWidget ):
 
         self._initAppletDrawerUi()
 
-        #if self.mainOperator.LabelImage.meta.shape:
-        #    self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
-        #self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
-
     def _onMetaChanged( self, slot ):
         if slot is self.curOp.BinaryImage:
             if slot.meta.shape:
@@ -123,6 +119,8 @@ class ObjectExtractionGui( QWidget ):
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
 
         self._drawer.labelImageButton.pressed.connect(self._onLabelImageButtonPressed)
+        self._drawer.extractObjectsButton.pressed.connect(self._onExtractObjectsButtonPressed)
+        self._drawer.generateTraxelsButton.pressed.connect(self._onGenerateTraxelsButtonPressed)
 
     def _initViewerControlUi( self ):
         p = os.path.split(__file__)[0]+'/'
@@ -131,3 +129,10 @@ class ObjectExtractionGui( QWidget ):
 
     def _onLabelImageButtonPressed( self ):
         self.curOp.updateLabelImage()
+
+    def _onExtractObjectsButtonPressed( self ):
+        self.curOp.calcRegionCenters()
+
+    def _onGenerateTraxelsButtonPressed( self ):
+        self.curOp.generateTraxels()
+

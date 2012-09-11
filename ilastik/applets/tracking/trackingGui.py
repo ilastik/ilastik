@@ -39,10 +39,11 @@ class TrackingGui( QWidget ):
 
     def setImageIndex( self, imageIndex ):
         mainOperator = self.mainOperator.innerOperators[imageIndex]
-        self.rawsrc = LazyflowSource( mainOperator.RawData )
-        layerraw = GrayscaleLayer( self.rawsrc )
-        layerraw.name = "Raw"
-        self.layerstack.append( layerraw )
+
+        # self.rawsrc = LazyflowSource( mainOperator.RawData )
+        # layerraw = GrayscaleLayer( self.rawsrc )
+        # layerraw.name = "Raw"
+        # self.layerstack.append( layerraw )
 
         self.objectssrc = LazyflowSource( mainOperator.LabelImage )
         ct = colortables.create_default_8bit()
@@ -56,10 +57,14 @@ class TrackingGui( QWidget ):
         layer.name = "Tracking"
         self.layerstack.append(layer)
 
-        self.locpicsrc = LazyflowSource( mainOperator.Locpic )
-        layerlocpic = RGBALayer( red=ConstantSource(255), alpha=self.locpicsrc )
-        layerlocpic.name = "Locpic"
-        self.layerstack.append( layerlocpic )
+        # self.locpicsrc = LazyflowSource( mainOperator.Locpic )
+        # layerlocpic = RGBALayer( red=ConstantSource(255), alpha=self.locpicsrc )
+        # layerlocpic.name = "Locpic"
+        # self.layerstack.append( layerlocpic )
+
+        if mainOperator.LabelImage.meta.shape:
+            self.editor.dataShape = mainOperator.LabelImage.meta.shape
+        
 
     def reset( self ):
         print "TrackinGui.reset(): not implemented"
@@ -188,12 +193,12 @@ class TrackingGui( QWidget ):
 
         det = noiseweight*(-1)*math.log(1-noiserate)
         mdet = noiseweight*(-1)*math.log(noiserate)
-        self.mainOperator.track(app=app,
-                                dis=dis,
-                                opp=opp,
-                                det=det,
-                                mdet=mdet,
-                                ep_gap=epGap)
+        self.mainOperator.innerOperators[0].track(app=app,
+                                                  dis=dis,
+                                                  opp=opp,
+                                                  det=det,
+                                                  mdet=mdet,
+                                                  ep_gap=epGap)
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):
