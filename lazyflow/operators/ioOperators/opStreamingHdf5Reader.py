@@ -37,11 +37,16 @@ class OpStreamingHdf5Reader(Operator):
             assert numDimensions != 0, "OpStreamingHdf5Reader: Zero-dimensional datasets not supported."
             assert numDimensions != 1, "OpStreamingHdf5Reader: Support for 1-D data not yet supported"
             assert numDimensions != 2, "OpStreamingHdf5Reader: BUG: 2-D was supposed to be reshaped above."
-            if numDimensions == 3:
+            if numDimensions == 3 and dataset.shape[2] <= 3:
                 axistags = vigra.AxisTags(
                     vigra.AxisInfo('x',vigra.AxisType.Space),
                     vigra.AxisInfo('y',vigra.AxisType.Space),
                     vigra.AxisInfo('c',vigra.AxisType.Channels))
+            elif numDimensions == 3 and dataset.shape[2] > 3:
+                axistags = vigra.AxisTags(
+                    vigra.AxisInfo('x',vigra.AxisType.Space),
+                    vigra.AxisInfo('y',vigra.AxisType.Space),
+                    vigra.AxisInfo('z',vigra.AxisType.Space))
             if numDimensions == 4:
                 axistags = vigra.AxisTags(
                     vigra.AxisInfo('x',vigra.AxisType.Space),
