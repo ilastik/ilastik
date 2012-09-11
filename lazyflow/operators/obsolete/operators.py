@@ -17,7 +17,7 @@ from lazyflow import request
 import generic
 import itertools
 from lazyflow.rtype import SubRegion
-
+import time
 try:
     import blist
     has_blist = True
@@ -982,8 +982,9 @@ if has_blist:
 
         def setInSlot(self, slot, key, value):
             with Tracer(self.traceLogger):
+                time1 = time.time()
 
-
+                logger.info("OpBlockedSparseLabelArray")
                 start, stop = sliceToRoi(key, self._cacheShape)
     
                 blockStart = (1.0 * start / self._blockShape).floor()
@@ -1010,7 +1011,9 @@ if has_blist:
                             self._labelers[b_ind].inputs["eraser"].connect(self.inputs["eraser"])
                             
                         self._labelers[b_ind].inputs["Input"][smallkey] = smallvalues
-    
+                
+                time2 = time.time()
+                logger.info("OpBlockedSparseLabelArray: setInSlot writing took %fs" % (time2-time1,))
                 # Set our max label output dirty
                 maxLabel = numpy.max(value)
                 if maxLabel > self._maxLabel:
@@ -1019,6 +1022,10 @@ if has_blist:
                     self.maxLabel.setDirty((slice(None)))
 
                 self.Output.setDirty(key)
+
+                time3 = time.time()
+                logger.info("OpBlockedSparseLabelArray: setInSlot setDirty took %fs" % (time3-time2,))
+                logger.info("OpBlockedSparseLabelArray: setInSlot total took %fs" % (time3-time1,))
 
         def notifyDirty(self, slot, key):
             with Tracer(self.traceLogger):
