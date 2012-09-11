@@ -239,8 +239,7 @@ class OpPredictRandomForest(Operator):
         RF=self.inputs["Classifier"].value
         if RF is None:
             # Training operator may return 'None' if there was no data to train with
-            result[...] = numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.float32)[...]
-            return
+            return numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.float32)[...]
         traceLogger.debug("OpPredictRandomForest: Got classifier")        
         #assert RF.labelCount() == nlabels, "ERROR: OpPredictRandomForest, labelCount differs from true labelCount! %r vs. %r" % (RF.labelCount(), nlabels)
 
@@ -260,7 +259,7 @@ class OpPredictRandomForest(Operator):
         # then our results aren't really valid.
         # Duplicate the last label's predictions
         chanslice = slice(min(key[-1].start, RF.labelCount()-1), min(key[-1].stop, RF.labelCount()))
-        result[...]=prediction[...,chanslice] # FIXME: This assumes that channel is the last axis
+        return prediction[...,chanslice] # FIXME: This assumes that channel is the last axis
 
 
 
@@ -327,7 +326,7 @@ class OpSegmentation(Operator):
         seg = numpy.array(seg)
         seg.resize(img.shape[:-1])
 
-        result[:] = seg[:]
+        return seg[:]
 
 
 
@@ -367,7 +366,7 @@ class OpAreas(Operator):
         for i in img.flat:
             areas[int(i)] +=1
 
-        result[:] = numpy.array(areas)
+        return numpy.array(areas)
 
 
 

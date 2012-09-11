@@ -14,6 +14,7 @@ import math
 
 from threading import Lock
 from lazyflow.roi import roiToSlice
+from functools import partial
 
 import logging
 logger = logging.getLogger(__name__)
@@ -497,8 +498,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
                                 destArea = result[tuple(reskey)]
                                 
-                                def closure():
-                                    oslot.operator.getOutSlot(oslot,tuple(key_),destArea, sourceArray = sourceArraysForSigmas[j])
+                                closure = partial(oslot.operator.getOutSlot,oslot,tuple(key_),destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
 
                                 written += end - begin
@@ -513,8 +513,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 destArea = result[tuple(reskey)]
                                 logger.debug(oldkey, destArea.shape, sourceArraysForSigmas[j].shape)
 
-                                def closure():
-                                    oslot.operator.getOutSlot(oslot,tuple(oldkey),destArea, sourceArray = sourceArraysForSigmas[j])
+                                closure = partial(oslot.operator.getOutSlot, oslot,tuple(oldkey),destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
 
                                 written += 1

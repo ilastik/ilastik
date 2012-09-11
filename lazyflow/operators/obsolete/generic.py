@@ -130,7 +130,7 @@ class OpMultiArraySlicer(Operator):
         writeKey.insert(indexAxis, 0)
         writeKey = tuple(writeKey)
 
-        result[:]=ttt[writeKey ]#+ (0,)]
+        return ttt[writeKey ]#+ (0,)]
 
 
 class OpMultiArraySlicer2(Operator):
@@ -215,7 +215,7 @@ class OpMultiArraySlicer2(Operator):
         newKey=roi.roiToSlice(numpy.array(start),numpy.array(stop))
 
         ttt = self.inputs["Input"][newKey].allocate().wait()
-        result[:]=ttt[:]
+        return ttt[:]
 
     def propagateDirty(self, inputSlot, roi):
         if inputSlot == self.AxisFlag or inputSlot == self.SliceIndexes:
@@ -369,7 +369,7 @@ class OpSingleChannelSelector(Operator):
         newKey = key[:-1] + (slice(index,index+1),)
 
         im=self.inputs["Input"][newKey].wait()
-        result[...,0]=im[...,0] # Copy into the (only) channel of our result
+        return im[...,0:1] # Copy into the (only) channel of our result
 
     def notifyDirty(self, slot, key):
         if slot == self.Input:
@@ -502,7 +502,7 @@ class OpMultiArrayMerger(Operator):
         
         fun=self.inputs["MergingFunction"].value
 
-        result[:]=fun(data)
+        return fun(data)
 
     def propagateDirty(self, dirtySlot, roi):
         assert dirtySlot == self.MergingFunction
@@ -533,7 +533,7 @@ class OpPixelOperator(Operator):
         matrix = self.inputs["Input"][key].allocate().wait()
         matrix = self.function(matrix)
 
-        result[:] = matrix[:]
+        return matrix[:]
 
     def notifyDirty(self,slot,key):
         if slot == self.Input:
