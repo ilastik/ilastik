@@ -202,11 +202,9 @@ class LayerViewerGui(QMainWindow):
         # Examine channel dimension to determine Grayscale vs. RGB
         shape = slot.meta.shape
         normalize = getRange(slot.meta)
-        try:
-            channelAxisIndex = slot.meta.axistags.index('c')
-            numChannels = shape[channelAxisIndex]
-        except:
-            numChannels = 1
+        channelAxisIndex = slot.meta.axistags.index('c')
+        assert channelAxisIndex < len(slot.meta.axistags)
+        numChannels = shape[channelAxisIndex]
         
         if lastChannelIsAlpha:
             assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha)."

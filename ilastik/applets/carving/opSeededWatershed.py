@@ -121,12 +121,14 @@ class OpSegmentor(Operator):
 
     shape = self._shape = self.raw.meta.shape = self.image.meta.shape
     self.raw.meta.dtype = self.image.meta.dtype
+    #assert len(shape) == 3
 
     self.seeds.meta.shape = shape
     self.seeds.meta.dtype = numpy.uint8
 
     self.segmentation.meta.shape = shape
     self.segmentation.meta.dtype = numpy.uint8
+    self.segmentation.meta.axistags = vigra.defaultAxistags('txyzc')
     
     self.uncertainty.meta.shape = shape
     self.uncertainty.meta.dtype = numpy.uint8
@@ -158,7 +160,7 @@ class OpSegmentor(Operator):
     self.maxUncertainBG.meta.dtype = object                     
 
     self.opLabelArray.inputs["shape"].setValue( shape )
-    self.opLabelArray.inputs["blockShape"].setValue((1, 32, 32, 32, 1))
+    self.opLabelArray.inputs["blockShape"].setValue((1,32, 32, 32,1))
     self.opLabelArray.inputs["eraser"].setValue(self._eraser)
     
     self.nonzeroSeedBlocks.connect(self.opLabelArray.nonzeroBlocks)
@@ -327,7 +329,8 @@ class OpSegmentor(Operator):
 
       if border_indicator == "hessian_ev_0":
         print "Preprocessor: Eigenvalues (sigma = %r)" % (sigma,)
-        fvol = (numpy.max(volume) - volume).astype(numpy.float32)[0,:,:,:,0]
+        print volume.shape
+        fvol = (numpy.max(volume) - volume).astype(numpy.float32)[...][0,:,:,:,0]
         volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,0]
       elif border_indicator == "hessian_ev_0_inv":
         print "Preprocessor: Eigenvalues (inverted, sigma = %r)" % (sigma,)
@@ -337,6 +340,7 @@ class OpSegmentor(Operator):
       volume_mi = numpy.min(volume_feat)
       volume_feat = (volume_feat - volume_mi) * 255.0 / (volume_ma-volume_mi)
       result[0,...,0] = volume_feat
+      #result[...] = volume_feat
       
 
     elif slot == self.segmentor:
