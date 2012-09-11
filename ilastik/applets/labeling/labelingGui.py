@@ -91,15 +91,19 @@ class LabelingGui(LayerViewerGui):
             # Multi with level=1, accessed as: slot[image_index].get(roi)
             # Multi with level=2, accessed as: slot[image_index][layer_index].get(roi)
             self.displaySlots = []
-    
+            
     @traceLogged(traceLogger)
-    def __init__(self, labelingGuiSlots, drawerUiPath=None ):
+    def __init__(self, labelingGuiSlots=None, drawerUiPath=None, rawInputSlot=None ):
         """
         See LabelingGuiSlots class (above) for expected type of labelingGuiSlots parameter.
         """
         # Do have have all the slots we need?
         assert isinstance(labelingGuiSlots, LabelingGui.LabelingGuiSlots)
         assert all( [v is not None for v in labelingGuiSlots.__dict__.values()] )
+        
+        self._rawInputSlot = rawInputSlot
+        if rawInputSlot is not None:
+            labelingGuiSlots.displaySlots.append(rawInputSlot)
         
         # Init base class
         allSlots = labelingGuiSlots.displaySlots + [ labelingGuiSlots.labelOutput, labelingGuiSlots.labelsAllowed ]
@@ -467,11 +471,10 @@ class LabelingGui(LayerViewerGui):
         if not labelOutput.ready():
             return (None, None)
         else:
-            traceLogger.debug("Setting up labels for image index={}".format(self.imageIndex) )
+            traceLogger.debug("Setting up labels for image index={}".format(currentImageIndex) )
             # Add the layer to draw the labels, but don't add any labels
-            labelsrc = LazyflowSinkSource( self.pipeline.LabelImages[self.imageIndex],
-                                           self.pipeline.LabelInputs[self.imageIndex])
-            #labelsrc.setObjectName("labels")
+            labelsrc = LazyflowSinkSource( self._labelingGuiSlots.labelOutput[currentImageIndex],
+                                           self._labelingGuiSlots.labelInput[currentImageIndex])
         
             labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16 )
             labellayer.name = "Labels"
@@ -505,6 +508,15 @@ class LabelingGui(LayerViewerGui):
         labelsAllowedSlot = self._labelingGuiSlots.labelsAllowed[self.imageIndex]
         if labelsAllowedSlot.ready() and not labelsAllowedSlot.value:
             self.changeInteractionMode(Tool.Navigation)
+
+        # Raw Input Layer
+        if self._rawInputSlot is not None and self._rawInputSlot[currentImageIndex].ready():
+            layer = self.createStandardLayerFromSlot( self._rawInputSlot[currentImageIndex] )
+            layer.name = "Raw Input"
+            layer.visible = True
+            layer.opacity = 1.0
+            
+            layers.append(layer)
 
         return layers
         
