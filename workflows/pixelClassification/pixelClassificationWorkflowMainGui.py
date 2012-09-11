@@ -40,12 +40,18 @@ def debug_with_new(shell, workflow):
     featureGui = workflow.featureSelectionApplet.gui
     opFeatures = workflow.featureSelectionApplet.topLevelOperator
     #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
-    selections = numpy.array( [[True, False, False,  False, False, False, False],
-                               [False, False, False, False, False, False, False],
-                               [False, False, False, False, False, False, False], # ST EVs
-                               [False, False, False, False, False, False, False],
-                               [False, False, False, False, False, False, False],  # GGM
-                               [False, False, False, False, False, False, False]] )
+    selections = numpy.array( [[True, True, True,  True, True, True, True],
+                               [True, True, True,  True, True, True, True],
+                               [True, True, True,  True, True, True, True], # ST EVs
+                               [True, True, True,  True, True, True, True],
+                               [True, True, True,  True, True, True, True],  # GGM
+                               [True, True, True,  True, True, True, True]] )
+#    selections = numpy.array( [[True, False, False,  False, False, False, False],
+#                               [False, False, False, False, False, False, False],
+#                               [False, False, False, False, False, False, False], # ST EVs
+#                               [False, False, False, False, False, False, False],
+#                               [False, False, False, False, False, False, False],  # GGM
+#                               [False, False, False, False, False, False, False]] )
     opFeatures.SelectionMatrix.setValue(selections)
     opFeatures.Scales.setValue( featureGui.ScalesList )
     opFeatures.FeatureIds.setValue( featureGui.FeatureIds )
@@ -59,9 +65,9 @@ def debug_with_new(shell, workflow):
 
 if __name__ == "__main__":
     # Start the GUI
-    startShellGui( PixelClassificationWorkflow )
+    #startShellGui( PixelClassificationWorkflow )
 
     # Start the GUI with a debug project    
-    #startShellGui( PixelClassificationWorkflow, debug_with_existing )    
+    startShellGui( PixelClassificationWorkflow, debug_with_existing )    
     #startShellGui( PixelClassificationWorkflow, debug_with_new )
 

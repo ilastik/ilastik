@@ -99,8 +99,8 @@ class PixelClassificationGui(LabelingGui):
 
         # Add each of the predictions
         for channel, predictionSlot in enumerate(self.pipeline.PredictionProbabilityChannels[currentImageIndex]):
-            ref_label = labels[channel]
             if predictionSlot.ready():
+                ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
                                                     tintColor=ref_label.color,
@@ -193,6 +193,8 @@ class PixelClassificationGui(LabelingGui):
         else:
             self.labelingDrawerUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
+    @pyqtSlot()
+    @traceLogged(traceLogger)
     def handleLabelSelectionChange(self):
         enabled = False
         if self.pipeline.MaxLabelValue.ready():

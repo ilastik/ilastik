@@ -81,7 +81,7 @@ class OpPixelClassification( Operator ):
         ##
         
         self.opTrain.inputs['Labels'].connect(self.opLabelArray.outputs["Output"])
-        self.opTrain.inputs['Images'].connect(self.FeatureImages)
+        self.opTrain.inputs['Images'].connect(self.CachedFeatureImages)
         self.opTrain.inputs["nonzeroLabelBlocks"].connect(self.opLabelArray.outputs["nonzeroBlocks"])
         self.opTrain.inputs['fixClassifier'].setValue(False)
 
@@ -93,7 +93,7 @@ class OpPixelClassification( Operator ):
         # 
         ##
         self.predict.inputs['Classifier'].connect(self.classifier_cache.outputs['Output']) 
-        self.predict.inputs['Image'].connect(self.FeatureImages)
+        self.predict.inputs['Image'].connect(self.CachedFeatureImages)
         self.predict.inputs['LabelsCount'].connect(self.opMaxLabel.Output)
         
         # prediction cache for downstream operators (if they want it)

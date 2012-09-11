@@ -134,8 +134,16 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(3)
             
-            # Turn of the huds so we can capture the raw image
+            # Turn off the huds and so we can capture the raw image
             gui.menuGui.actionToggleAllHuds.trigger()
+
+            ## Turn off the slicing position lines
+            ## FIXME: This disables the lines without unchecking the position  
+            ##        box in the VolumeEditorWidget, making the checkbox out-of-sync
+            #gui.editor.navCtrl.indicateSliceIntersection = False
+
+            # Do our tests at position 0,0,0
+            gui.editor.posModel.slicingPos = (0,0,0)
 
             assert not gui._labelControlUi.checkInteractive.isChecked()
             assert gui._labelControlUi.labelListModel.rowCount() == 0
