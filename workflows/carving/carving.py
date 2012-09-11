@@ -1,15 +1,79 @@
+import os
+
 from ilastik.workflow import Workflow
 
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.layerViewer import LayerViewerApplet
 from ilastik.applets.labeling.labelingApplet import LabelingApplet
+from ilastik.applets.labeling.labelingGui import LabelingGui
 
 from lazyflow.graph import Graph, Operator, OperatorWrapper
 from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
 
 from cylemon import segmentation
 print segmentation.__file__
+
+from ilastik.applets.carving.opSeededWatershed import OpSegmentor
+
+class CarvingGui(LabelingGui):
+    def __init__(self, labelingSlots, observedSlots, drawerUiPath=None, rawInputSlot=None,
+                 carvingApplet=None):
+        # We provide our own UI file (which adds an extra control for interactive mode)
+        print __file__
+        directory = os.path.split(__file__)[0]
+        labelingDrawerUiPath = os.path.join(directory, 'labelingDrawer.ui')
+
+        super(CarvingGui, self).__init__(labelingSlots, observedSlots, labelingDrawerUiPath, rawInputSlot)
+        self._carvingApplet = carvingApplet
+
+        def testit():
+            self._carvingApplet.carvingOperator.update.setValue(True)
+        self.labelingDrawerUi.segment.clicked.connect(testit)
+
+    def setupLayers(self, currentImageIndex):
+        layers = super(CarvingGui, self).setupLayers(currentImageIndex)
+
+        #if self._carvingApplet.carvingOperator.segmentation[currentImageIndex].ready():
+        #    layer = self.createStandardLayerFromSlot( self._rawInputSlot[currentImageIndex] )
+        #    layer.name = "Raw Input"
+        #    layer.visible = True
+        #    layer.opacity = 1.0
+        #    layers.insert(layer, 1)
+
+        return layers
+
+class CarvingApplet(LabelingApplet):
+    def __init__(self, graph, projectFileGroupName):
+        super(CarvingApplet, self).__init__(graph, projectFileGroupName)
+
+        from volumina.adaptors import Op5ifyer
+
+        self.carvingOperator = OperatorWrapper( OpSegmentor(graph) )
+
+        op5 = OperatorWrapper( Op5ifyer(graph) )
+        op5.input.connect(self.topLevelOperator.InputImages)
+        op5.order.setValue('xyz')
+        self.carvingOperator.image.connect(op5.output)
+
+    @property
+    def gui(self):
+        if self._gui is None:
+
+            labelingSlots = LabelingGui.LabelingSlots()
+            labelingSlots.labelInput = self.topLevelOperator.LabelInputs
+            labelingSlots.labelOutput = self.topLevelOperator.LabelImages
+            labelingSlots.labelEraserValue = self.topLevelOperator.LabelEraserValue
+            labelingSlots.labelDelete = self.topLevelOperator.LabelDelete
+            labelingSlots.maxLabelValue = self.topLevelOperator.MaxLabelValue
+            labelingSlots.labelsAllowed = self.topLevelOperator.LabelsAllowedFlags
+
+            #self.carvingOperator.writeSeeds.connect(labelingSlots.labelOutput)
+            #self.carvingOperator.deleteSeed.connect(labelingSlots.labelDelete)
+            #self.carvingOperator.eraser.connect(labelingSlots.labelEraserValue)
+            
+            self._gui = CarvingGui( labelingSlots, [self.carvingOperator.segmentation], rawInputSlot=self.topLevelOperator.InputImages, carvingApplet=self )
+        return self._gui
 
 class CarvingWorkflow(Workflow):
     
@@ -31,7 +95,7 @@ class CarvingWorkflow(Workflow):
         self.viewerApplet.topLevelOperator.RawInput.connect( self.dataSelectionApplet.topLevelOperator.Image )
        
         if labeling:
-            self.labelingApplet = LabelingApplet(graph, "xxx")
+            self.labelingApplet = CarvingApplet(graph, "xxx")
             self.labelingApplet.topLevelOperator.InputImages.connect( self.dataSelectionApplet.topLevelOperator.Image )
             self.labelingApplet.topLevelOperator.LabelsAllowedFlags.connect( self.dataSelectionApplet.topLevelOperator.AllowLabels )
             self.labelingApplet.gui.minLabelNumber = 2
@@ -77,7 +141,7 @@ def debug_tk(shell, workflow):
     shell.openProjectFile("carving_40nm.ilp")
 
     # Select the labeling drawer
-    shell.setSelectedAppletDrawer(2)
+    shell.setSelectedAppletDrawer(3)
 
 def debug_with_new(shell, workflow):
     """

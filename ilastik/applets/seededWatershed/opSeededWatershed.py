@@ -86,6 +86,7 @@ class OpSegmentor(Operator):
     self.deleteSeed.meta.dtype = numpy.uint8
 
     shape = self.raw.meta.shape = self.image.meta.shape
+    assert len(shape) == 3
     self.raw.meta.dtype = self.image.meta.dtype
 
     self.seeds.meta.shape = shape
