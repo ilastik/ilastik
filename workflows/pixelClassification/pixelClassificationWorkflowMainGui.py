@@ -64,8 +64,21 @@ def debug_with_new(shell, workflow):
 
 
 if __name__ == "__main__":
+    from optparse import OptionParser
+    usage = "%prog [options] filename"
+    parser = OptionParser(usage)
+
+    (options, args) = parser.parse_args()
+
     # Start the GUI
-    startShellGui( PixelClassificationWorkflow )
+    if len(args) == 1:
+        def loadProject(shell, workflow):
+            shell.openProjectFile(args[0])
+        startShellGui( PixelClassificationWorkflow, loadProject )
+    elif len(args) == 0:
+        startShellGui( PixelClassificationWorkflow )
+    else:
+        parser.error("incorrect number of arguments")
 
     # Start the GUI with a debug project    
     #startShellGui( PixelClassificationWorkflow, debug_with_existing )    

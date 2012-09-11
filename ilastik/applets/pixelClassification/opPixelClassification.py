@@ -159,9 +159,12 @@ class OpPixelClassification( Operator ):
         self.LabelInputs.resize(numImages)
 
         # Special case: We have to set up the shape of our label *input* according to our image input shape
-        channelIndex = self.InputImages[imageIndex].meta.axistags.index('c')
         shapeList = list(self.InputImages[imageIndex].meta.shape)
-        shapeList[channelIndex] = 1
+        try:
+            channelIndex = self.InputImages[imageIndex].meta.axistags.index('c')
+            shapeList[channelIndex] = 1
+        except:
+            pass
         self.LabelInputs[imageIndex].meta.shape = tuple(shapeList)
         self.LabelInputs[imageIndex].meta.axistags = inputSlot.meta.axistags
 
@@ -233,9 +236,12 @@ class OpShapeReader(Operator):
         self.OutputShape.meta.dtype = tuple
         
         # Our output is simply the shape of our input, but with only one channel
-        channelIndex = self.Input.meta.axistags.index('c')
         shapeList = list(self.Input.meta.shape)
-        shapeList[channelIndex] = 1
+        try:
+            channelIndex = self.Input.meta.axistags.index('c')
+            shapeList[channelIndex] = 1
+        except:
+            pass
         self.OutputShape.setValue( tuple(shapeList) )
     
     def execute(self, slot, roi, result):

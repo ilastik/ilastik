@@ -39,7 +39,7 @@ class LabelingGui(LayerViewerGui):
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
-    
+
     def centralWidget( self ):
         return self
 
@@ -61,6 +61,23 @@ class LabelingGui(LayerViewerGui):
 
     ###########################################
     ###########################################
+
+    @property
+    def minLabelNumber(self):
+        return self._minLabelNumber
+    @minLabelNumber.setter
+    def minLabelNumber(self, n):
+        self._minLabelNumer = n
+        while self._labelControlUi.labelListModel.rowCount() < n:
+            self.addNewLabel()
+    @property
+    def maxLabelNumber(self):
+        return self._maxLabelNumber
+    @maxLabelNumber.setter
+    def maxLabelNumber(self, n):
+        self._maxLabelNumber = n
+        while self._labelControlUi.labelListModel.rowCount() < n:
+            self.removeLastLabel()
 
     @property
     def labelingDrawerUi(self):
@@ -99,7 +116,10 @@ class LabelingGui(LayerViewerGui):
         # Do have have all the slots we need?
         assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
         assert all( [v is not None for v in labelingSlots.__dict__.values()] )
-        
+       
+        self._minLabelNumber = 0
+        self._maxLabelNumber = 99 #100 or 255 is reserved for eraser
+
         self._rawInputSlot = rawInputSlot
         if rawInputSlot is not None:
             observedSlots.append(rawInputSlot)
@@ -256,7 +276,7 @@ class LabelingGui(LayerViewerGui):
             if labelsAllowedSlot.ready():
                 labelsAllowed = labelsAllowedSlot.value
     
-                self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed)
+                self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed and self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
                 if labelsAllowed:
                     self._labelControlUi.AddLabelButton.setText("Add Label")
                 else:
@@ -365,6 +385,8 @@ class LabelingGui(LayerViewerGui):
         # Add rows until we have the right number
         while self._labelControlUi.labelListModel.rowCount() < numLabels:
             self.addNewLabel()
+       
+        self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
         
     @traceLogged(traceLogger)
     def addNewLabel(self):

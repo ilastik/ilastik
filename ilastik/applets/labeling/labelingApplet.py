@@ -36,3 +36,4 @@ class LabelingApplet( Applet ):
             
             self._gui = LabelingGui( labelingSlots, [], rawInputSlot=self.topLevelOperator.InputImages )
         return self._gui
+

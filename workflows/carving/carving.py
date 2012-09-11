@@ -8,6 +8,9 @@ from ilastik.applets.labeling.labelingApplet import LabelingApplet
 from lazyflow.graph import Graph, Operator, OperatorWrapper
 from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
 
+from cylemon import segmentation
+print segmentation.__file__
+
 class CarvingWorkflow(Workflow):
     
     def __init__(self):
@@ -18,20 +21,21 @@ class CarvingWorkflow(Workflow):
         graph = Graph()
         self._graph = graph
 
-        ######################
-        # Interactive workflow
-        ######################
+        labeling = True
         
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
         self.viewerApplet = LayerViewerApplet(graph)
-        self.labelingApplet = LabelingApplet(graph, "xxx")
 
         self.viewerApplet.topLevelOperator.RawInput.connect( self.dataSelectionApplet.topLevelOperator.Image )
-        
-        self.labelingApplet.topLevelOperator.InputImages.connect( self.dataSelectionApplet.topLevelOperator.Image )
-        self.labelingApplet.topLevelOperator.LabelsAllowedFlags.connect( self.dataSelectionApplet.topLevelOperator.AllowLabels )
+       
+        if labeling:
+            self.labelingApplet = LabelingApplet(graph, "xxx")
+            self.labelingApplet.topLevelOperator.InputImages.connect( self.dataSelectionApplet.topLevelOperator.Image )
+            self.labelingApplet.topLevelOperator.LabelsAllowedFlags.connect( self.dataSelectionApplet.topLevelOperator.AllowLabels )
+            self.labelingApplet.gui.minLabelNumber = 2
+            self.labelingApplet.gui.maxLabelNumber = 2
 
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator
@@ -41,7 +45,8 @@ class CarvingWorkflow(Workflow):
         self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.viewerApplet)
-        self._applets.append(self.labelingApplet)
+        if labeling:
+            self._applets.append(self.labelingApplet)
 
         # The shell needs a slot from which he can read the list of image names to switch between.
         # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
@@ -64,12 +69,12 @@ class CarvingWorkflow(Workflow):
         '''the lazyflow graph shared by the applets'''
         return self._graph
 
-def debug_with_existing(shell, workflow):
+def debug_tk(shell, workflow):
     """
     (Function for debug and testing.)
     """
     # Open a project
-    #shell.openProjectFile("test.ilp")
+    shell.openProjectFile("carving_40nm.ilp")
 
     # Select the labeling drawer
     shell.setSelectedAppletDrawer(2)
@@ -101,11 +106,15 @@ def debug_with_new(shell, workflow):
 
 if __name__ == "__main__":
     from ilastik.shell.gui.startShellGui import startShellGui
+    import socket
     
     # Start the GUI
     
     #startShellGui( CarvingWorkflow )
 
     # Start the GUI with a debug project    
-    #startShellGui( CarvingWorkflow, debug_with_existing )    
-    startShellGui( CarvingWorkflow, debug_with_new )    
+    if socket.gethostname() == "carsten":
+        #Thorben debugging stuff
+        startShellGui( CarvingWorkflow, debug_tk )    
+    else:
+        startShellGui( CarvingWorkflow, debug_with_new )    
