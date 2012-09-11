@@ -982,6 +982,8 @@ if has_blist:
 
         def setInSlot(self, slot, key, value):
             with Tracer(self.traceLogger):
+
+
                 start, stop = sliceToRoi(key, self._cacheShape)
     
                 blockStart = (1.0 * start / self._blockShape).floor()
@@ -1002,38 +1004,26 @@ if has_blist:
                     if (smallvalues != 0 ).any():
                         if not b_ind in self._labelers:
                             self._labelers[b_ind]=OpSparseLabelArray(self)
-                            self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
-                            self._labelers[b_ind].inputs["eraser"].connect(self.inputs["eraser"])
                             # Don't connect deletelabel; it is set manually (here and also above)
                             self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"].value)
+                            self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
+                            self._labelers[b_ind].inputs["eraser"].connect(self.inputs["eraser"])
                             
-                            def updateMaxLabel(*args):
-                                maxLabel = 0
-                                for labeler in self._labelers.values():
-                                    if labeler.maxLabel.ready():
-                                        maxLabel = max(maxLabel, labeler.maxLabel.value)
-                                self._maxLabel = maxLabel
-                                self.outputs["maxLabel"].setValue( self._maxLabel )
-                            
-                            self._labelers[b_ind].outputs["maxLabel"].notifyDirty( updateMaxLabel )
-
-                            def handleDirtyLabelerOutput(slot, smallroi):
-                                bigroi = SubRegion(slot, start=offset + smallroi.start, stop=offset + smallroi.stop)
-                                self.Output.setDirty( bigroi )
-                            self._labelers[b_ind].outputs["Output"].notifyDirty( handleDirtyLabelerOutput )
-    
                         self._labelers[b_ind].inputs["Input"][smallkey] = smallvalues
     
-                        # If necessary, update our max label using the labeler's max value
-                        self._maxLabel = max( self._maxLabel, self._labelers[b_ind].outputs['maxLabel'].value )
-    
                 # Set our max label output dirty
-                self.outputs["maxLabel"].setValue( self._maxLabel )
+                maxLabel = numpy.max(value)
+                if maxLabel > self._maxLabel:
+                    self._maxLabel = maxLabel
+                    self.maxLabel.setValue(self._maxLabel)
+                    self.maxLabel.setDirty((slice(None)))
+
+                self.Output.setDirty(key)
 
         def notifyDirty(self, slot, key):
             with Tracer(self.traceLogger):
                 if slot == self.inputs["Input"]:
-                    self.outputs["Output"].setDirty(key)
+                    self.Output.setDirty(key)
 
 class OpBlockedArrayCache(Operator):
     name = "OpBlockedArrayCache"
