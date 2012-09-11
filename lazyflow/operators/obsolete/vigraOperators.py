@@ -5,6 +5,8 @@ import gc
 from lazyflow import roi
 import copy
 
+from functools import partial
+
 from operators import OpArrayPiper, OpMultiArrayPiper
 from lazyflow.rtype import SubRegion
 
