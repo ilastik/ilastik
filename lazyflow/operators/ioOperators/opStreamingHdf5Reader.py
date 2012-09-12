@@ -25,7 +25,8 @@ class OpStreamingHdf5Reader(Operator):
         hdf5File = self.Hdf5File.value
         internalPath = self.InternalPath.value
 
-        dataset = hdf5File[internalPath]
+        dataset = hdf5File[internalPath]        
+        outputShape = dataset.shape
 
         try:
             # Read the axistags property without actually importing the data
@@ -36,23 +37,36 @@ class OpStreamingHdf5Reader(Operator):
             numDimensions = len(dataset.shape)
             assert numDimensions != 0, "OpStreamingHdf5Reader: Zero-dimensional datasets not supported."
             assert numDimensions != 1, "OpStreamingHdf5Reader: Support for 1-D data not yet supported"
-            assert numDimensions != 2, "OpStreamingHdf5Reader: BUG: 2-D was supposed to be reshaped above."
+
+            if numDimensions == 2:
+                # Add a singleton channel dimension to the data
+                outputShape = outputShape + (1,)
+                axistags = vigra.AxisTags(
+                    vigra.AxisInfo('x',vigra.AxisType.Space),
+                    vigra.AxisInfo('y',vigra.AxisType.Space),
+                    vigra.AxisInfo('c',vigra.AxisType.Channels))
+
             if numDimensions == 3 and dataset.shape[2] <= 3:
                 axistags = vigra.AxisTags(
                     vigra.AxisInfo('x',vigra.AxisType.Space),
                     vigra.AxisInfo('y',vigra.AxisType.Space),
                     vigra.AxisInfo('c',vigra.AxisType.Channels))
             elif numDimensions == 3 and dataset.shape[2] > 3:
+                # Add a singleton channel dimension to the data
+                outputShape = outputShape + (1,)
                 axistags = vigra.AxisTags(
                     vigra.AxisInfo('x',vigra.AxisType.Space),
                     vigra.AxisInfo('y',vigra.AxisType.Space),
-                    vigra.AxisInfo('z',vigra.AxisType.Space))
+                    vigra.AxisInfo('z',vigra.AxisType.Space),
+                    vigra.AxisInfo('c',vigra.AxisType.Channels))
+            
             if numDimensions == 4:
                 axistags = vigra.AxisTags(
                     vigra.AxisInfo('x',vigra.AxisType.Space),
                     vigra.AxisInfo('y',vigra.AxisType.Space),
                     vigra.AxisInfo('z',vigra.AxisType.Space),
                     vigra.AxisInfo('c',vigra.AxisType.Channels))
+            
             if numDimensions == 5:
                 axistags =  vigra.AxisTags(
                     vigra.AxisInfo('t',vigra.AxisType.Time),
@@ -63,7 +77,7 @@ class OpStreamingHdf5Reader(Operator):
 
         # Configure our slot meta-info
         self.OutputImage.meta.dtype = dataset.dtype
-        self.OutputImage.meta.shape = dataset.shape
+        self.OutputImage.meta.shape = outputShape
         self.OutputImage.meta.axistags = axistags
 
         # If the dataset specifies a datarange, add it to the slot metadata
