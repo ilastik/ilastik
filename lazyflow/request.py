@@ -627,5 +627,10 @@ class Request(object):
         self.kwargs["destination"] = destination
         return self
 
+    def clean(self):
+        self.kwargs = {}
+        self.result = None
+
+
     def getResult(self):
         return self.result
