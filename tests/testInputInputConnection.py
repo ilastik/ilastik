@@ -5,7 +5,7 @@ from lazyflow import operators
 
 import logging
 logger = logging.getLogger()
-logger.addHandler( logging.StreamHandler() )
+logger.addHandler( logging.NullHandler() )
 
 class OpB(graph.Operator):
 
