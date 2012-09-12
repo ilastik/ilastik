@@ -1849,6 +1849,9 @@ class OperatorWrapper(Operator):
             self._initialized = True
 
 
+    def __getitem__(self, key):
+        return self.innerOperators[key]
+
     def _callbackInserted(self, slot, index, size):
         with Tracer(self.traceLogger, msg=self.name):
             self._insertInnerOperator(index, size)
