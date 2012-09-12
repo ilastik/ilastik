@@ -16,7 +16,7 @@ install:
    - export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
    - sudo sh requirements/build_drtile.sh $VIRTUAL_ENV
 script:
-   - python setup.py nosetests
+   - nosetests --nologcapture tests
 notifications:
   email:
     - bergs@janelia.hhmi.org
