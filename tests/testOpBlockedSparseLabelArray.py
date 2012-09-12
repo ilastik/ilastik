@@ -28,6 +28,9 @@ class TestOpSparseLabelArray(object):
         self.data = data
 
     def testOutput(self):
+        """
+        Verify that the label array has all of the data it was given.
+        """
         op = self.op
         slicing = self.slicing
         inData = self.inData
@@ -45,6 +48,9 @@ class TestOpSparseLabelArray(object):
         assert len(nz) == len(numpy.unique(inData))-1
         
     def testDeleteLabel(self):
+        """
+        Check behavior after deleting an entire label class from the sparse array.
+        """
         op = self.op
         slicing = self.slicing
         inData = self.inData
@@ -64,6 +70,9 @@ class TestOpSparseLabelArray(object):
         # assert op.deleteLabel.value == -1 # Apparently not?
     
     def testEraser(self):
+        """
+        Check that some labels can be deleted correctly from the sparse array.
+        """
         op = self.op
         slicing = self.slicing
         inData = self.inData
@@ -87,8 +96,47 @@ class TestOpSparseLabelArray(object):
         
         assert expectedOutput.max() == 2
         assert op.maxLabel.value == 2
-        
     
+    def testEraseAll(self):
+        """
+        Test behavior when all labels of a particular class are erased.
+        Note that this is not the same as deleting a label class, but should have the same effect on the output slots.
+        """
+        op = self.op
+        slicing = self.slicing
+        data = self.data
+
+        assert op.maxLabel.value == 2
+        
+        newSlicing = list(slicing)
+        newSlicing[1] = slice(1,2)
+
+        # Add some new labels for a class that hasn't been seen yet (3)        
+        threeData = numpy.ndarray(slicing2shape(newSlicing), dtype=numpy.uint8)
+        threeData[...] = 3
+        op.Input[newSlicing] = threeData        
+        expectedData = data[...]
+        expectedData[newSlicing] = 3
+        
+        # Sanity check: Are the new labels in the data?
+        assert (op.Output[...].wait() == expectedData).all()
+        assert expectedData.max() == 3
+        assert op.maxLabel.value == 3
+
+        # Now erase all the 3s
+        eraserData = numpy.ones(slicing2shape(newSlicing), dtype=numpy.uint8) * 100
+        op.Input[newSlicing] = eraserData        
+        expectedData = data[...]
+        expectedData[newSlicing] = 0
+        
+        # The data we erased should be zeros
+        assert (op.Output[...].wait() == expectedData).all()
+        
+        # The maximum label should be reduced, because all the 3s were removed.
+        assert expectedData.max() == 2
+        assert op.maxLabel.value == 2
+
+
 if __name__ == "__main__":
     import sys
     import nose
