@@ -92,7 +92,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         labels1 = 1 * numpy.ones(slicing2shape(slicing1), dtype=numpy.uint8)
         opPixelClass.LabelInputs[0][slicing1] = labels1
 
-        slicing2 = sl[0:1,0:10,0:20,0:1,0:1]
+        slicing2 = sl[0:1,0:10,10:20,0:1,0:1]
         labels2 = 2 * numpy.ones(slicing2shape(slicing2), dtype=numpy.uint8)
         opPixelClass.LabelInputs[0][slicing2] = labels2
         

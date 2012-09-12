@@ -48,21 +48,22 @@ class PixelClassificationGui(LabelingGui):
     @traceLogged(traceLogger)
     def __init__(self, pipeline, guiControlSignal, shellRequestSignal, predictionSerializer ):
         # Tell our base class which slots to monitor
-        slots = LabelingGui.LabelingGuiSlots()
-        slots.labelInput = pipeline.LabelInputs
-        slots.labelOutput = pipeline.LabelImages
-        slots.labelEraserValue = pipeline.opLabelArray.eraser
-        slots.labelDelete = pipeline.opLabelArray.deleteLabel
-        slots.maxLabelValue = pipeline.MaxLabelValue
-        slots.labelsAllowed = pipeline.LabelsAllowedFlags
-        slots.displaySlots = [ pipeline.InputImages,
-                               pipeline.PredictionProbabilityChannels ]
+        labelSlots = LabelingGui.LabelingSlots()
+        labelSlots.labelInput = pipeline.LabelInputs
+        labelSlots.labelOutput = pipeline.LabelImages
+        labelSlots.labelEraserValue = pipeline.opLabelArray.eraser
+        labelSlots.labelDelete = pipeline.opLabelArray.deleteLabel
+        labelSlots.maxLabelValue = pipeline.MaxLabelValue
+        labelSlots.labelsAllowed = pipeline.LabelsAllowedFlags
+
+        observedSlots = [ pipeline.InputImages,
+                          pipeline.PredictionProbabilityChannels ]
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
         
         # Base class init
-        super(PixelClassificationGui, self).__init__( slots, labelingDrawerUiPath )
+        super(PixelClassificationGui, self).__init__( labelSlots, observedSlots, labelingDrawerUiPath )
         
         self.pipeline = pipeline
         self.guiControlSignal = guiControlSignal

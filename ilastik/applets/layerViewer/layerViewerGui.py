@@ -62,24 +62,20 @@ class LayerViewerGui(QMainWindow):
     ###########################################
 
     @traceLogged(traceLogger)
-    def __init__(self, dataProviderSlots, layerSetupCallback=None):
+    def __init__(self, observedSlots):
         """
         Args:
-            dataProviderSlot - A list of slots that we'll listen for changes on.
+            observedSlots   - A list of slots that we'll listen for changes on.
                                Each must be a multislot with level=1 or level=2.
                                The first index in the multislot is the image index. 
-            layerSetupCallback: a function that produces all layers for the GUI.
         """
         super(LayerViewerGui, self).__init__()
 
         self.threadRouter = ThreadRouter(self) # For using @threadRouted
 
-        self.dataProviderSlots = []
-#            dataProviderSlots = []
-#            for op in operators:
-#                dataProviderSlots += op.outputs.values()
+        self.observedSlots = []
 
-        for slot in dataProviderSlots:
+        for slot in observedSlots:
             if slot.level == 1:
                 # The user gave us a slot that is indexed as slot[image]
                 # Wrap the operator so it has the right level.  Indexed as: slot[image][0]
@@ -89,13 +85,7 @@ class LayerViewerGui(QMainWindow):
 
             # Each slot should now be indexed as slot[image][sub_index]
             assert slot.level == 2
-            self.dataProviderSlots.append( slot )
-
-        # If the user didn't provide a layer setup function for us,
-        #  we assume he's using a subclass of this GUI.
-        self.layerSetupCallback = layerSetupCallback
-        if self.layerSetupCallback is None:
-            self.layerSetupCallback = self.setupLayers
+            self.observedSlots.append( slot )
 
         self.layerstack = LayerStackModel()
 
@@ -113,7 +103,7 @@ class LayerViewerGui(QMainWindow):
             if self.imageIndex == -1 and self.areProvidersInSync():
                 self.setImageIndex( imageIndex )
         
-        for provider in self.dataProviderSlots:
+        for provider in self.observedSlots:
             provider.notifyInserted( bind( handleDatasetInsertion ) )
         
         def handleDatasetRemoval(slot, index, finalsize):
@@ -128,16 +118,17 @@ class LayerViewerGui(QMainWindow):
                     newIndex = 1
                 self.setImageIndex(newIndex)
             
-        for provider in self.dataProviderSlots:
+        for provider in self.observedSlots:
             provider.notifyRemove( bind( handleDatasetRemoval ) )
 
     def setupLayers( self, currentImageIndex ):
         layers = []
-        for slotLevel2 in self.dataProviderSlots:
+        for slotLevel2 in self.observedSlots:
             for i, slotLevel1 in enumerate(slotLevel2):
-                for i, slot in enumerate(slotLevel1):
+                for j, slot in enumerate(slotLevel1):
                     if slot.ready():
                         layer = self.createStandardLayerFromSlot(slot)
+                        layer.name = slotLevel2.name + " " + str(j)
                         layers.append(layer)
         
         return layers
@@ -145,7 +136,7 @@ class LayerViewerGui(QMainWindow):
     @traceLogged(traceLogger)
     def _setImageIndex(self, imageIndex):
         if self.imageIndex != -1:
-            for provider in self.dataProviderSlots:
+            for provider in self.observedSlots:
                 # We're switching datasets.  Unsubscribe from the old one's notifications.
                 provider[self.imageIndex].unregisterInserted( bind(self.handleLayerInsertion) )
                 provider[self.imageIndex].unregisterRemove( bind(self.handleLayerRemoval) )
@@ -161,13 +152,13 @@ class LayerViewerGui(QMainWindow):
         self.updateAllLayers()
 
         # For layers that already exist, subscribe to ready notifications
-        for provider in self.dataProviderSlots:
+        for provider in self.observedSlots:
             for slotIndex, slot in enumerate(provider):
                 slot.notifyReady( bind(self.updateAllLayers) )
                 slot.notifyUnready( bind(self.updateAllLayers) )
         
         # Make sure we're notified if a layer is inserted in the future so we can subscribe to its ready notifications
-        for provider in self.dataProviderSlots:
+        for provider in self.observedSlots:
             provider[self.imageIndex].notifyInserted( bind(self.handleLayerInsertion) )
             provider[self.imageIndex].notifyRemoved( bind(self.handleLayerRemoval) )
 
@@ -211,11 +202,9 @@ class LayerViewerGui(QMainWindow):
         # Examine channel dimension to determine Grayscale vs. RGB
         shape = slot.meta.shape
         normalize = getRange(slot.meta)
-        try:
-            channelAxisIndex = slot.meta.axistags.index('c')
-            numChannels = shape[channelAxisIndex]
-        except:
-            numChannels = 1
+        channelAxisIndex = slot.meta.axistags.index('c')
+        assert channelAxisIndex < len(slot.meta.axistags)
+        numChannels = shape[channelAxisIndex]
         
         if lastChannelIsAlpha:
             assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha)."
@@ -265,12 +254,12 @@ class LayerViewerGui(QMainWindow):
     @traceLogged(traceLogger)
     def areProvidersInSync(self):
         try:
-            numImages = len(self.dataProviderSlots[0])
-        except IndexError: # dataProviderSlots is empty
+            numImages = len(self.observedSlots[0])
+        except IndexError: # observedSlots is empty
             pass
 
         inSync = True
-        for slot in self.dataProviderSlots:
+        for slot in self.observedSlots:
             inSync &= (  len(slot) == numImages
                       or ( slot._optional and slot.partner is None ) )
 
@@ -286,7 +275,7 @@ class LayerViewerGui(QMainWindow):
 
         if self.imageIndex >= 0:        
             # Ask the subclass for the updated layer list
-            newGuiLayers = self.layerSetupCallback(self.imageIndex)
+            newGuiLayers = self.setupLayers(self.imageIndex)
         else:
             newGuiLayers = []
             
@@ -359,7 +348,7 @@ class LayerViewerGui(QMainWindow):
             return None
 
         newDataShape = None
-        for provider in self.dataProviderSlots:
+        for provider in self.observedSlots:
             for i, slot in enumerate(provider[self.imageIndex]):
                 if newDataShape is None and slot.ready() and slot.meta.axistags is not None:
                     # Use an Op5ifyer adapter to transpose the shape for us.

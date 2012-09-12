@@ -1,21 +1,16 @@
 from ilastik.applets.base.applet import Applet
+from opLabeling import OpLabeling
 #from labelingSerializer import LabelingSerializer
 
-class PixelClassificationApplet( Applet ):
+class LabelingApplet( Applet ):
     """
     Implements the pixel classification "applet", which allows the ilastik shell to use it.
     """
     def __init__( self, graph, projectFileGroupName ):
         Applet.__init__( self, "Generic Labeling" )
 
-        self._topLevelOperator = None
-
+        self._topLevelOperator = OpLabeling(graph=graph)
         self._serializableItems = []
-#        # We provide two independent serializing objects:
-#        #  one for the current scheme and one for importing old projects.
-#        self._serializableItems = [PixelClassificationSerializer(self._topLevelOperator, projectFileGroupName), # Default serializer for new projects
-#                                   Ilastik05ImportDeserializer(self._topLevelOperator)]   # Legacy (v0.5) importer
-
         self._gui = None
             
     @property
@@ -30,5 +25,15 @@ class PixelClassificationApplet( Applet ):
     def gui(self):
         if self._gui is None:
             from labelingGui import LabelingGui
-            self._gui = LabelingGui( self._topLevelOperator, self.guiControlSignal )        
+
+            labelingSlots = LabelingGui.LabelingSlots()
+            labelingSlots.labelInput = self.topLevelOperator.LabelInputs
+            labelingSlots.labelOutput = self.topLevelOperator.LabelImages
+            labelingSlots.labelEraserValue = self.topLevelOperator.LabelEraserValue
+            labelingSlots.labelDelete = self.topLevelOperator.LabelDelete
+            labelingSlots.maxLabelValue = self.topLevelOperator.MaxLabelValue
+            labelingSlots.labelsAllowed = self.topLevelOperator.LabelsAllowedFlags
+            
+            self._gui = LabelingGui( labelingSlots, [], rawInputSlot=self.topLevelOperator.InputImages )
         return self._gui
+
