@@ -22,6 +22,7 @@ except:
     from opVigraLabelVolume import OpVigraLabelVolume
     from opFilterLabels import OpFilterLabels
     from opColorizeLabels import OpColorizeLabels
+    from opObjectFeatures import OpObjectFeatures
 
     ops = itersubclasses(Operator)
     logger.debug("Loading default Operators...")
