@@ -68,6 +68,10 @@ class OpRegionCenters( Operator ):
                 centers[t] = centers_at
 
             return centers
+        
+    def propagateDirty(self, slot, roi):
+        if slot is self.LabelImage:
+            self.Output.setDirty(List(self.Output, range(roi.start[0], roi.stop[0]))) 
 
 class OpObjectExtraction( Operator ):
     name = "Object Extraction"
@@ -154,7 +158,8 @@ class OpObjectExtraction( Operator ):
             a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()
             a = a[0,...,0]
             self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a )
-        self.LabelImage.setDirty(SubRegion(self.LabelImage))
+        roi = SubRegion(self.LabelImage, start=5*(0,), stop=m.shape)
+        self.LabelImage.setDirty(roi)
 
     def calcRegionCenters( self ):
         print "calc region centers"
@@ -170,16 +175,6 @@ class OpObjectExtraction( Operator ):
 
     def generateTraxels( self ):
         self.Traxels(range(self.LabelImage.meta.shape[0])).wait()
-
-    def _labelImageAt( self, t ):
-        m = self.BinaryImage.meta
-        print "Calculating LabelImage at", t
-        start = [t,] + (len(m.shape) - 1) * [0,]
-        stop = [t+1,] + list(m.shape[1:])
-        a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()
-        a = a[0,...,0]
-        img3d = vigra.analysis.labelVolumeWithBackground( a )
-        return img3d
 
     def __contained_in_subregion( self, roi, coords ):
         b = True
