@@ -3,6 +3,10 @@ from lazyflow import graph
 from lazyflow import stype
 from lazyflow import operators
 
+import logging
+logger = logging.getLogger()
+logger.addHandler( logging.StreamHandler() )
+
 class OpB(graph.Operator):
 
     Input = graph.InputSlot()
