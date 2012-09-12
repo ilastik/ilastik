@@ -16,7 +16,8 @@ install:
    - export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
    - sudo sh requirements/build_drtile.sh $VIRTUAL_ENV
    - mkdir ~/.lazyflow
-   - echo "[verbosity]\ndeprecation_warnings = false" > ~/.lazyflow/config
+   - echo "[verbosity]" > ~/.lazyflow/config
+   - echo "deprecation_warnings = false >> ~/.lazyflow/config
 script:
    - nosetests --nologcapture tests
 notifications:
