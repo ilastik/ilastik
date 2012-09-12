@@ -57,11 +57,6 @@ class TrackingGui( QWidget ):
         layer.name = "Tracking"
         self.layerstack.append(layer)
 
-        # self.locpicsrc = LazyflowSource( mainOperator.Locpic )
-        # layerlocpic = RGBALayer( red=ConstantSource(255), alpha=self.locpicsrc )
-        # layerlocpic.name = "Locpic"
-        # self.layerstack.append( layerlocpic )
-
         if mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = mainOperator.LabelImage.meta.shape
         

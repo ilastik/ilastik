@@ -48,7 +48,13 @@ class ObjectExtractionGui( QWidget ):
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         layer = ColortableLayer( self.objectssrc, ct )
         layer.name = "Label Image"
+        layer.opacity = 0.5
         self.layerstack.append(layer)
+
+        self.centerimagesrc = LazyflowSource( mainOperator.ObjectCenterImage )
+        layer = RGBALayer( red=ConstantSource(255), alpha=self.centerimagesrc )
+        layer.name = "Object Centers"
+        self.layerstack.append( layer )
 
         if mainOperator.BinaryImage.meta.shape:
             self.editor.dataShape = mainOperator.LabelImage.meta.shape

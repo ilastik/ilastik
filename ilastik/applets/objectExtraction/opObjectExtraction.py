@@ -36,10 +36,11 @@ class OpRegionCenters( Operator ):
                                               graph=graph,
                                               register=register)
         self._cache = {}
+        self.fixed = True
 
     def setupOutputs( self ):
         self.Output.meta.shape = self.LabelImage.meta.shape
-        self.Output.meta.dtyp = self.LabelImage.meta.dtype
+        self.Output.meta.dtype = self.LabelImage.meta.dtype
     
     def execute( self, slot, roi, result ):
         if slot is self.Output:
@@ -56,6 +57,8 @@ class OpRegionCenters( Operator ):
                 print "RegionCenters at", t
                 if t in self._cache:
                     centers_at = self._cache[t]
+                elif self.fixed:
+                    centers_at = numpy.asarray([], dtype=numpy.uint16)
                 else:
                     troi = SubRegion( self.LabelImage, start = [t,] + (len(self.LabelImage.meta.shape) - 1) * [0,], stop = [t+1,] + list(self.LabelImage.meta.shape[1:]))
                     a = self.LabelImage.get(troi).wait()
@@ -74,8 +77,10 @@ class OpObjectExtraction( Operator ):
     #FeatureNames = InputSlot( stype=Opaque )
 
     LabelImage = OutputSlot()
+    ObjectCenterImage = OutputSlot()
     RegionCenters = OutputSlot( stype=Opaque, rtype=List )
     Traxels = OutputSlot( stype=Opaque, rtype=List )
+
 
     def __init__( self, parent = None, graph = None, register = True ):
         super(OpObjectExtraction, self).__init__(parent=parent,graph=graph,register=register)
@@ -97,14 +102,21 @@ class OpObjectExtraction( Operator ):
         self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
         m = self.LabelImage.meta
         self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=m.dtype, compression=1 )
+
+        self._reg_cents = dict.fromkeys(xrange(m.shape[0]), numpy.asarray([], dtype=numpy.uint16))
+        
+        self.ObjectCenterImage.meta.assignFrom(self.BinaryImage.meta)
     
     def execute(self, slot, roi, result):
+        if slot is self.ObjectCenterImage:
+            return self._execute_ObjectCenterImage( roi, result )
         if slot is self.LabelImage:
             result = self._mem_h5['LabelImage'][roi.toSlice()]
             return result
         if slot is self.RegionCenters:
             res = self._opRegCent.Output.get( roi ).wait()
             return res
+
         if slot is self.Traxels:
             print "generating traxels"
             print "fetching region centers"
@@ -130,7 +142,6 @@ class OpObjectExtraction( Operator ):
                 
             print ts
             return ts
-
     def propagateDirty(self, inputSlot, roi):
         raise NotImplementedError
 
@@ -148,12 +159,14 @@ class OpObjectExtraction( Operator ):
     def calcRegionCenters( self ):
         print "calc region centers"
         reqs = []
+        self._opRegCent.fixed = False
         for t in range(self.LabelImage.meta.shape[0]):
             reqs.append(self.RegionCenters([t]))
             reqs[-1].submit()
         for req in reqs:
             req.wait()
-        print self.RegionCenters(range(self.LabelImage.meta.shape[0])).wait()            
+        self._opRegCent.fixed = True 
+        self.ObjectCenterImage.setDirty( SubRegion(self.ObjectCenterImage) )
 
     def generateTraxels( self ):
         self.Traxels(range(self.LabelImage.meta.shape[0])).wait()
@@ -167,4 +180,54 @@ class OpObjectExtraction( Operator ):
         a = a[0,...,0]
         img3d = vigra.analysis.labelVolumeWithBackground( a )
         return img3d
-        
+
+    def __contained_in_subregion( self, roi, coords ):
+        b = True
+        for i in range(len(coords)):
+            b = b and (roi.start[i] <= coords[i] and coords[i] < roi.stop[i])
+        return b
+
+    def __make_key( self, roi, coords ):
+        return (coords[0] - roi.start[0],
+                coords[1] - roi.start[1],
+                coords[2] - roi.start[2],
+                coords[3] - roi.start[3],
+                coords[4] - roi.start[4],)
+                
+    
+    def _execute_ObjectCenterImage( self, roi, result ):
+        result[:] = 0
+        for t in range(roi.start[0], roi.stop[0]):
+            centers = self.RegionCenters( [t] ).wait()
+            centers = centers[t]
+            for row in range(0,centers.shape[0]):
+                x = centers[row,0]
+                y = centers[row,1]
+                z = centers[row,2]
+                
+                # mark center
+                c =  (t,x,y,z,0)
+                if self.__contained_in_subregion( roi, c ): 
+                    result[self.__make_key(roi,c)] = 255
+
+                # make the point into a cross
+                c =  (t,x-1,y,z,0)
+                if self.__contained_in_subregion( roi, c ):
+                    result[self.__make_key(roi, c)] = 255
+                c =  (t,x,y-1,z,0)
+                if self.__contained_in_subregion( roi, c ):
+                    result[self.__make_key(roi, c)] = 255
+                c =  (t,x,y,z-1,0)
+                if self.__contained_in_subregion( roi, c ):
+                    result[self.__make_key(roi, c)] = 255
+
+                c =  (t,x+1,y,z,0)
+                if self.__contained_in_subregion( roi, c ):
+                    result[self.__make_key(roi, c)] = 255
+                c =  (t,x,y+1,z,0)
+                if self.__contained_in_subregion( roi, c ):
+                    result[self.__make_key(roi, c)] = 255
+                c =  (t,x,y,z+1,0)
+                if self.__contained_in_subregion( roi, c ):
+                    result[self.__make_key(roi, c)] = 255
+        return result
