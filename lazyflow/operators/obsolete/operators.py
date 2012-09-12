@@ -18,6 +18,8 @@ import generic
 import itertools
 from lazyflow.rtype import SubRegion
 import time
+from functools import partial
+
 try:
     import blist
     has_blist = True
@@ -825,9 +827,11 @@ if has_blist:
     
                 self._sparseNZ = None
                 self._labelers = {}
+                self._oldMaxLabels = {}
                 self._cacheShape = None
                 self._cacheEraser = None
                 self._maxLabel = 0
+                self._maxLabelHistogram = numpy.zeros((1024,), numpy.uint32) # keeps track of how many sub- OpSparseLabelArrays vote for a vertain maxLabel
                 self.deleteLabel.setValue(-1)
     
         def setupOutputs(self):
@@ -906,8 +910,8 @@ if has_blist:
                     # allocate queryArray object
                     self._flatBlockIndices =  _blockIndices[:]
                     self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
-    
-    
+
+
                 if self.inputs["deleteLabel"].ready():
                     for l in self._labelers.values():
                         l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
@@ -1009,17 +1013,50 @@ if has_blist:
                             self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"].value)
                             self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
                             self._labelers[b_ind].inputs["eraser"].connect(self.inputs["eraser"])
+
+                            # remember old max labele, i.e. 0 since we just created
+                            self._oldMaxLabels[b_ind] = 0
+                            # add the 0 to the histogram
+                            self._maxLabelHistogram[0] += 1
+                            
+                            def max_label_changed(b_ind, slot, *args):
+                                self.lock.acquire()
+
+                                newmax = slot.value
+
+                                # make sure histogram is large enough
+                                if newmax > self._maxLabelHistogram.shape[0] -1:
+                                    self._maxLabelHistogram.resize((newmax+1,))
+
+                                # update histogram
+                                oldmax = self._oldMaxLabels[b_ind]
+                                self._maxLabelHistogram[oldmax] -= 1
+                                self._maxLabelHistogram[newmax] += 1
+                                self._oldMaxLabels[b_ind] = newmax
+
+                                # check wether self._maxlabel needs to be updated (up and down)
+                                maxdirty = False
+                                if newmax > self._maxLabel:
+                                    assert self._maxLabelHistogram[newmax] == 1
+                                    self._maxLabel = newmax
+                                    maxdirty = True
+                                elif oldmax > newmax and oldmax == self._maxLabel and self._maxLabelHistogram[oldmax] == 0:
+                                    self._maxLabel = numpy.max(numpy.nonzero(self._maxLabelHistogram)[0])
+                                    maxdirty = True
+
+                                self.lock.release()
+                                if maxdirty:
+                                    self.maxLabel.setDirty((slice(None),))
+
+
+                             
+                            self._labelers[b_ind].inputs["maxLabel"].notifyDirty(partial(max_label_changed, b_ind))
                             
                         self._labelers[b_ind].inputs["Input"][smallkey] = smallvalues
                 
                 time2 = time.time()
                 logger.info("OpBlockedSparseLabelArray: setInSlot writing took %fs" % (time2-time1,))
                 # Set our max label output dirty
-                maxLabel = numpy.max(value)
-                if maxLabel > self._maxLabel:
-                    self._maxLabel = maxLabel
-                    self.maxLabel.setValue(self._maxLabel)
-                    self.maxLabel.setDirty((slice(None)))
 
                 self.Output.setDirty(key)
 
