@@ -1092,6 +1092,7 @@ class OpBlockedArrayCache(Operator):
             self._innerBlockShape = None
             self._outerBlockShape = None
             self._blockShape = None
+            self._fixed_all_dirty = False  # this is a shortcut for storing wehter all subblocks are dirty
 
     def setupOutputs(self):
         with Tracer(self.traceLogger):
@@ -1255,14 +1256,21 @@ class OpBlockedArrayCache(Operator):
             
                     blockStart = (start / self._blockShape)
                     blockStop = (stop * 1.0 / self._blockShape).ceil()
-                    blockKey = roiToSlice(blockStart,blockStop)
-                    innerBlocks = self._blockNumbers[blockKey]
-                    for b_ind in innerBlocks.flat:
-                        with self._lock:
-                            # Only need to remember this dirty block if we don't have a cache for it already
-                            # (Existing OpArrayCaches will propagate dirty keys on their own.)
-                            if not self._cache_list.has_key(b_ind):
-                                self._fixed_dirty_blocks.add(b_ind)            
+                    
+                    with self._lock:
+                        # check wether the dirty region encompasses the whole cache
+                        if (blockStart == 0).all() and (blockStop == self._blockNumbers.shape).all():
+                            self._fixed_all_dirty = True
+
+                        # shortcut, if everything is dirty already, dont loop over the blocks
+                        if self._fixed_all_dirty is False:
+                            blockKey = roiToSlice(blockStart,blockStop)
+                            innerBlocks = self._blockNumbers[blockKey]
+                            for b_ind in innerBlocks.flat:
+                                # Only need to remember this dirty block if we don't have a cache for it already
+                                # (Existing OpArrayCaches will propagate dirty keys on their own.)
+                                if not self._cache_list.has_key(b_ind):
+                                    self._fixed_dirty_blocks.add(b_ind)            
             if slot == self.fixAtCurrent:
                 self._fixed = self.fixAtCurrent.value
                 if not self._fixed:
@@ -1270,7 +1278,10 @@ class OpBlockedArrayCache(Operator):
                     # Take the superset of all the blocks that became dirty in the meantime and notify our output
                     dirtystart, dirtystop = (None,None)
                     with self._lock:
-                        if len(self._fixed_dirty_blocks) > 0:
+                        if self._fixed_all_dirty is True:
+                            dirtystop = self.Output.meta.shape
+                            dirtystart = [0] * len(self.Output.meta.shape)
+                        elif len(self._fixed_dirty_blocks) > 0:
                             dirtystart = self.Output.meta.shape
                             dirtystop = [0] * len(self.Output.meta.shape)
                             for b_ind in self._fixed_dirty_blocks:
@@ -1282,6 +1293,8 @@ class OpBlockedArrayCache(Operator):
                                 dirtystop = numpy.maximum(bigstop, dirtystop)
                             
                             self._fixed_dirty_blocks = set()
+                        # reset all dirty state to false
+                        self._fixed_all_dirty = False 
 
                     if dirtystart is not None:
                         self.Output.setDirty(dirtystart, dirtystop)
