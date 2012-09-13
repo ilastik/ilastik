@@ -1267,6 +1267,7 @@ class OpBlockedArrayCache(Operator):
                 self._opSub_list = {}
                 self._cache_list = {}
 
+
                 self._configured = True
 
                 if notifyOutputDirty:
@@ -1312,9 +1313,9 @@ class OpBlockedArrayCache(Operator):
                 with self._lock:    
                     if not self._fixed:
                         if not self._cache_list.has_key(b_ind):
+
                             self._opSub_list[b_ind] = generic.OpSubRegion(self)
                             self._opSub_list[b_ind].inputs["Input"].connect(self.inputs["Input"])#source.outputs["Output"])
-        
                             tstart = self._blockShape*self._flatBlockIndices[b_ind]
                             tstop = numpy.minimum((self._flatBlockIndices[b_ind]+numpy.ones(self._flatBlockIndices[b_ind].shape, numpy.uint8))*self._blockShape, self.shape)
         
@@ -1325,16 +1326,8 @@ class OpBlockedArrayCache(Operator):
                             self._cache_list[b_ind].inputs["Input"].connect(self._opSub_list[b_ind].outputs["Output"])
                             self._cache_list[b_ind].inputs["fixAtCurrent"].connect( self.fixAtCurrent )
                             self._cache_list[b_ind].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
-                            
-                            # Forward dirtyness from inner caches to our output slot
-                            def handleDirtyBlock( slot, smallroi ):
-                                # Translate the block roi to a roi for our output
-                                bigroi = smallroi
-                                bigroi.start += offset
-                                bigroi.stop += offset
-                                self.Output.setDirty(bigroi.start, bigroi.stop)
-                            self._cache_list[b_ind].Output.notifyDirty( handleDirtyBlock )
-    
+                            # we dont register a callback for dirtyness, since we already forward the signal
+
                 if self._cache_list.has_key(b_ind):
                     op = self._cache_list[b_ind]
                     #req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
@@ -1382,10 +1375,8 @@ class OpBlockedArrayCache(Operator):
                             blockKey = roiToSlice(blockStart,blockStop)
                             innerBlocks = self._blockNumbers[blockKey]
                             for b_ind in innerBlocks.flat:
-                                # Only need to remember this dirty block if we don't have a cache for it already
-                                # (Existing OpArrayCaches will propagate dirty keys on their own.)
-                                if not self._cache_list.has_key(b_ind):
-                                    self._fixed_dirty_blocks.add(b_ind)            
+                                self._fixed_dirty_blocks.add(b_ind)            
+
             if slot == self.fixAtCurrent:
                 self._fixed = self.fixAtCurrent.value
                 if not self._fixed:

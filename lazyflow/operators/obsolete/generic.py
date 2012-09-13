@@ -386,11 +386,16 @@ class OpSubRegion(Operator):
     name = "OpSubRegion"
     description = "Select a region of interest from an numpy array"
 
-    inputSlots = [InputSlot("Input"), InputSlot("Start"), InputSlot("Stop")]
+    inputSlots = [InputSlot("Input"), InputSlot("Start"), InputSlot("Stop"), InputSlot("propagate_dirty", value = True)]
     outputSlots = [OutputSlot("Output")]
+    
+    def __init__(self, *args, **kwargs):
+        Operator.__init__(self, *args, **kwargs)
+        self._propagate_dirty = False
 
     def setupOutputs(self):
         with Tracer(traceLogger):
+            self._propagate_dirty = self.propagate_dirty.value
             start = self.inputs["Start"].value
             stop = self.inputs["Stop"].value
             assert isinstance(start, tuple)
@@ -442,7 +447,7 @@ class OpSubRegion(Operator):
             resultArea[:] = res[resultKey]
 
     def propagateDirty(self, dirtySlot, roi):
-        if dirtySlot == self.Input:
+        if self._propagate_dirty and dirtySlot == self.Input:
             # Translate the input key to a small subregion key
             smallstart = roi.start - self.Start.value
             smallstop = roi.stop - self.Start.value
@@ -454,6 +459,7 @@ class OpSubRegion(Operator):
             # If there's an intersection with our output,
             #  propagate dirty region to output
             if ((smallstop - smallstart ) > 0).all():
+                print "OpSubRegion propagating"
                 self.Output.setDirty( smallstart, smallstop )
 
 class OpMultiArrayMerger(Operator):
