@@ -103,11 +103,14 @@ class OpTrainRandomForestBlocked(Operator):
     def __init__(self, *args, **kwargs):
         super(OpTrainRandomForestBlocked, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
+        self._forest_count = 10
+        # TODO: Make treecount configurable via an InputSlot
+        self._tree_count = 10
 
     def setupOutputs(self):
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"]._dtype = object
-            self.outputs["Classifier"]._shape = (1,)
+            self.outputs["Classifier"]._shape = (self._forest_count,)
             self.outputs["Classifier"]._axistags  = "classifier"
 
             # No need to set dirty here: notifyDirty handles it.
@@ -187,15 +190,25 @@ class OpTrainRandomForestBlocked(Operator):
 
         if len(featMatrix) == 0 or len(labelsMatrix) == 0:
             # If there was no actual data for the random forest to train with, we return None
-            result[0] = None
+            result[:] = None
         else:
             featMatrix=numpy.concatenate(featMatrix,axis=0)
             labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
 
-            RF=vigra.learning.RandomForest(100)
             try:
                 logger.debug("Learning with Vigra...")
-                RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
+                # train and store self._forest_count forests in parallel
+                requests = []
+                for i in range(self._forest_count):
+                    def train_and_store(number):
+                        result[number] = vigra.learning.RandomForest(self._tree_count) 
+                        result[number].learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
+                    req = Request(partial(train_and_store, i))
+                    req.submit()
+                    requests.append(req)
+
+                for r in requests:
+                    r.wait()
                 logger.debug("Vigra finished")
             except:
                 logger.error( "ERROR: could not learn classifier" )
@@ -204,8 +217,6 @@ class OpTrainRandomForestBlocked(Operator):
                 raise
             finally:
                 self.progressSignal(100)
-            assert RF is not None, "RF = %r" % RF
-            result[0]=RF
         
         return result
 
@@ -267,7 +278,7 @@ class OpPredictRandomForest(Operator):
         predictions = [0]*len(forests)
         
         def predict_forest(number):
-            predictions[number] = forests[number].predictProbabilities(features.astype(numpy.float32)) 
+            predictions[number] = forests[number].predictProbabilities(features.astype(numpy.float32))
         
         # predict the data with all the forests in parallel
         requests = []
@@ -280,12 +291,8 @@ class OpPredictRandomForest(Operator):
         for r in requests:
             r.wait()
 
-        prediction=predictions[0]
-        for p in predictions[1:]:
-            prediction += p
-
-        prediction = prediction / len(forests)
-
+        prediction=numpy.dstack(predictions)
+        prediction = numpy.average(prediction, axis=2)
 
         prediction = prediction.reshape(*(shape[:-1] + (forests[0].labelCount(),)))
 
