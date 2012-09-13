@@ -17,6 +17,8 @@ def startShellGui(workflowClass, testFunc = None, windowTitle="ilastikShell", wo
     
     workflowClass - the type of workflow to instantiate for the shell.    
     """
+    if not workflowKwargs:
+        workflowKwargs = dict()
     application = QApplication([])
     
     # Splash Screen
