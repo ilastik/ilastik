@@ -22,11 +22,11 @@ class OpLabeling( Operator ):
     LabelImages = MultiOutputSlot() # Labels from the user
     NonzeroLabelBlocks = MultiOutputSlot() # A list if slices that contain non-zero label values
 
-    def __init__( self, graph ):
+    def __init__( self, *args, **kwargs ):
         """
         Instantiate all internal operators and connect them together.
         """
-        super(OpLabeling, self).__init__(graph=graph)
+        super(OpLabeling, self).__init__( *args, **kwargs )
 
         # Create internal operators
         self.opInputShapeReader = OperatorWrapper( OpShapeReader(graph=self.graph) )
