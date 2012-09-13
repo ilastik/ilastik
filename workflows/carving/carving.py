@@ -85,6 +85,12 @@ class OpCarving(Operator):
     def setInSlot(self, slot, key, value):
         assert slot == self.WriteSeeds
         assert self._mst is not None
+        
+        #FIXME: Somehow, the labelingGui sends a value of 100 for the eraser,
+        #       but the cython part of carving expects 255.
+        #       Fix it here so that erasing of labels works.
+        value = numpy.where(value == 100, 255, value[:])
+        
         self._mst.seeds[key] = value
         
     def notifyDirty(self, slot, key):
