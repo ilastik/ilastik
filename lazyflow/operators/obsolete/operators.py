@@ -817,12 +817,11 @@ if has_blist:
                         self._sparseNZ.pop(index)
                 # Labels are continuous values: Shift all higher label values down by 1.
                 self._denseArray[:] = numpy.where(self._denseArray > labelNr, self._denseArray - 1, self._denseArray)
+                self._maxLabel = self._denseArray.max()
                 self.lock.release()
                 self.outputs["nonzeroValues"].setDirty(slice(None))
                 self.outputs["nonzeroCoordinates"].setDirty(slice(None))
                 self.outputs["Output"].setDirty(slice(None))
-                if labelNr <= self._maxLabel:
-                    self._maxLabel -= 1
                 self.outputs["maxLabel"].setValue(self._maxLabel)
 
         def getOutSlot(self, slot, key, result):
@@ -989,9 +988,7 @@ if has_blist:
                     self.outputs["nonzeroBlocks"].meta.shape = (1,)
                     self.outputs["nonzeroBlocks"].meta.axistags = vigra.defaultAxistags(1)
     
-                    self.outputs["maxLabel"].meta.dtype = object
-                    self.outputs["maxLabel"].meta.shape = (1,)
-                    self.outputs["maxLabel"].meta.axistags = vigra.defaultAxistags(1)
+                    self.outputs["maxLabel"].setValue(0)
     
                     #Filled on request
                     self._sparseNZ =  blist.sorteddict()
@@ -1154,20 +1151,18 @@ if has_blist:
                                 self._maxLabelHistogram[oldmax] -= 1
                                 self._maxLabelHistogram[newmax] += 1
                                 self._oldMaxLabels[b_ind] = newmax
-
+                                
                                 # check wether self._maxlabel needs to be updated (up and down)
                                 maxdirty = False
                                 if newmax > self._maxLabel:
                                     assert self._maxLabelHistogram[newmax] == 1
                                     self._maxLabel = newmax
-                                    maxdirty = True
-                                elif oldmax > newmax and oldmax == self._maxLabel and self._maxLabelHistogram[oldmax] == 0:
+                                elif self._maxLabelHistogram[oldmax] == 0:
                                     self._maxLabel = numpy.max(numpy.nonzero(self._maxLabelHistogram)[0])
-                                    maxdirty = True
 
                                 self.lock.release()
-                                if maxdirty:
-                                    self.maxLabel.setDirty((slice(None),))
+                                
+                                self.maxLabel.setValue(self._maxLabel)
 
 
                              
