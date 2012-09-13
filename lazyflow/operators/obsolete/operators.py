@@ -1189,7 +1189,7 @@ class OpBlockedArrayCache(Operator):
     name = "OpBlockedArrayCache"
     description = ""
 
-    inputSlots = [InputSlot("Input"),InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent")]
+    inputSlots = [InputSlot("Input"),InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent"), InputSlot("forward_dirty", value = True)]
     outputSlots = [OutputSlot("Output")]
 
     loggerName = __name__ + ".OpBlockedArrayCache"
@@ -1209,11 +1209,13 @@ class OpBlockedArrayCache(Operator):
             self._outerBlockShape = None
             self._blockShape = None
             self._fixed_all_dirty = False  # this is a shortcut for storing wehter all subblocks are dirty
+            self._forward_dirty = False
 
     def setupOutputs(self):
         with Tracer(self.traceLogger):
             self._fixed = self.inputs["fixAtCurrent"].value
-    
+            self._forward_dirty = self.forward_dirty.value
+
             inputSlot = self.inputs["Input"]
             shape = inputSlot.meta.shape
             if (    shape != self.Output.meta.shape
@@ -1355,7 +1357,7 @@ class OpBlockedArrayCache(Operator):
 
     def notifyDirty(self, slot, key):
         with Tracer(self.traceLogger):
-            if slot == self.inputs["Input"]:
+            if slot == self.inputs["Input"] and self._forward_dirty:
                 if not self._fixed:
                     self.outputs["Output"].setDirty(key)                    
                 elif self._blockShape is not None:
@@ -1444,14 +1446,18 @@ class OpSlicedBlockedArrayCache(Operator):
             for i,innershape in enumerate(self._innerShapes):
                 op = OpBlockedArrayCache(self)
                 op.inputs["fixAtCurrent"].connect(self.inputs["fixAtCurrent"])
-                op.inputs["Input"].connect(self.inputs["Input"])
                 self._innerOps.append(op)
                 
                 # Forward dirty propagations only from one blocked cache to our Output
                 if i == 0:
+                    op.forward_dirty.setValue(True)
                     def handleDirty( slot, roi ):
                         self.Output.setDirty( roi.start, roi.stop )
                     op.Output.notifyDirty( handleDirty )
+                else:
+                    op.forward_dirty.setValue(False)
+
+                op.inputs["Input"].connect(self.inputs["Input"])
 
         for i,innershape in enumerate(self._innerShapes):
             op = self._innerOps[i]
