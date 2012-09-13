@@ -425,7 +425,7 @@ class IlastikShell( QMainWindow ):
         with Tracer(traceLogger):
             if requestAction == ShellRequest.RequestSave:
                 # Call the handler directly to ensure this is a synchronous call (not queued to the GUI thread)
-                self.onSaveProjectActionTriggered()
+                self.projectManager.saveProject()
 
     def __len__( self ):
         return self.appletBar.count()
@@ -604,7 +604,13 @@ class IlastikShell( QMainWindow ):
     
     def onSaveProjectActionTriggered(self):
         logger.debug("Save Project action triggered")
-        self.projectManager.saveProject()
+        def save():
+            self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.DisableAll ) )
+            self.projectManager.saveProject()
+            self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.Pop ) )
+        
+        saveThread = threading.Thread( target=save )
+        saveThread.start()
 
     def onSaveProjectSnapshotActionTriggered(self):
         logger.debug("Saving Snapshot")
