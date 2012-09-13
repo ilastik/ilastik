@@ -250,6 +250,7 @@ class ArrayCacheMemoryMgr(threading.Thread):
         self._max_usage = 85
         self._target_usage = 70
         self._lock = threading.Lock()
+        self._last_usage = 0
 
     def _new_list(self):
         def getPrio(array_cache):
@@ -273,9 +274,14 @@ class ArrayCacheMemoryMgr(threading.Thread):
         while True:
             time.sleep(2)      
             mem_usage = psutil.phymem_usage().percent
-            print "Memory Manager: usage = %f" % mem_usage
+
+            delta = abs(self._last_usage - mem_usage)
+            if delta > 10:
+                logger.info("Memory Manager: usage = %f%%" % mem_usage)
+                self._last_usage = mem_usage
+
             if mem_usage > self._max_usage:
-                print "Memory Manager: freeing memory..." 
+                logger.info("Memory Manager: freeing memory...")
                 self._lock.acquire()
                 count = 0
                 not_freed = []
@@ -297,9 +303,9 @@ class ArrayCacheMemoryMgr(threading.Thread):
                 self._lock.release()
                 gc.collect()
                 if mem_usage < self._target_usage:
-                    print "Memory Manager: freed %d/%d blocks, new usage = %f" % (count,old_length, mem_usage)
+                    logger.info("Memory Manager: freed %d/%d blocks, new usage = %f%%" % (count,old_length, mem_usage))
                 else:
-                    print "Memory Manager: freed all (%d/%d) blocks, new usage = %f, failed goal of %f since all other blocks are currently in use." % (count, old_length,mem_usage, self._target_usage)
+                    logger.info("Memory Manager: freed all (%d/%d) blocks, new usage = %f%%, failed goal of %f since all other blocks are currently in use." % (count, old_length,mem_usage, self._target_usage))
                 
                 for c in not_freed:
                     # add the caches which could not be freed
