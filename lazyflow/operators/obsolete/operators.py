@@ -988,7 +988,7 @@ if has_blist:
                     self.outputs["nonzeroBlocks"].meta.shape = (1,)
                     self.outputs["nonzeroBlocks"].meta.axistags = vigra.defaultAxistags(1)
     
-                    self.outputs["maxLabel"].setValue(0)
+                    self.outputs["maxLabel"].setValue(self._maxLabel)
     
                     #Filled on request
                     self._sparseNZ =  blist.sorteddict()
