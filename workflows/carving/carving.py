@@ -1,4 +1,6 @@
-import os, numpy, vigra, h5py
+#!/usr/bin/env python
+
+import os, numpy
 
 from PyQt4.QtGui import QShortcut, QKeySequence
 from PyQt4.QtGui import QColor
@@ -158,6 +160,12 @@ class CarvingGui(LabelingGui):
             self._carvingApplet.opCarving.NoBiasBelow.setValue(value)
         self.labelingDrawerUi.noBiasBelowSpin.valueChanged.connect(onNoBiasBelowSpin)
         
+    def getNextLabelName(self):
+        l = len(self._labelControlUi.labelListModel)
+        if l == 0:
+            return "Background"
+        else:
+            return "Object"
         
     def appletDrawers(self):
         return [ ("Carving", self._labelControlUi) ]
