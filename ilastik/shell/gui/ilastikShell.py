@@ -288,6 +288,7 @@ class IlastikShell( QMainWindow ):
             
             if len(self.appletBarMapping) != 0:
                 # Determine which applet this drawer belongs to
+                assert drawerIndex in self.appletBarMapping
                 applet_index = self.appletBarMapping[drawerIndex]
 
                 # Select the appropriate central widget, menu widget, and viewer control widget for this applet

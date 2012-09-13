@@ -11,7 +11,7 @@ import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
 
-def startShellGui(workflowClass, testFunc = None):
+def startShellGui(workflowClass, testFunc = None, windowTitle="ilastikShell", workflowKwargs=None):
     """
     Start the ilastik shell GUI with the given workflow type.
     
@@ -25,10 +25,11 @@ def startShellGui(workflowClass, testFunc = None):
     splashScreen.show()
     
     # Create workflow
-    workflow = workflowClass()
+    workflow = workflowClass(**workflowKwargs)
     
     # Create the shell and populate it
     shell = IlastikShell(sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
+    shell.setWindowTitle(windowTitle)
     for app in workflow.applets:
         shell.addApplet(app)
     shell.setImageNameListSlot( workflow.imageNameListSlot )
