@@ -52,14 +52,14 @@ class OpTracking(Operator):
     category = "other"
 
     LabelImage = InputSlot()
-    Traxels = InputSlot( stype=Opaque, rtype=List )
-    ObjectCenters = InputSlot( stype=Opaque, optional=True )
+    ObjectCenters = InputSlot( stype=Opaque, rtype=List )
 
     Output = OutputSlot()
 
     def __init__( self, parent = None, graph = None, register = True ):
         super(OpTracking, self).__init__(parent=parent,graph=graph,register=register)
         self.label2color = []
+        self.last_timerange = ()
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta )
@@ -69,7 +69,7 @@ class OpTracking(Operator):
             result = self.LabelImage.get(roi).wait()
             
             t = roi.start[0]
-            if t < len(self.label2color):
+            if self.last_timerange and t <= self.last_timerange[-1] and t >= self.last_timerange[0]:
                 result[0,...,0] = relabel( result[0,...,0], self.label2color[t] )
             else:
                 result[...] = 0
@@ -80,6 +80,10 @@ class OpTracking(Operator):
             self.Output.setDirty(roi)
 
     def track( self,
+            time_range,
+            x_scale = 1.0,
+            y_scale = 1.0,
+            z_scale = 1.0,               
             rf_fn = "none",
             app = 500,
             dis = 500,
@@ -108,11 +112,15 @@ class OpTracking(Operator):
                                         min_angle,
                                         ep_gap)
 
-        ts = self.Traxels(range(self.LabelImage.meta.shape[0]) ).wait()
+        ts = self._generate_traxelstore( time_range, x_scale, y_scale, z_scale )
         
         events = tracker(ts)
         label2color = []
         label2color.append({})
+
+        # handle start time offsets
+        for i in range(time_range[0]):
+            label2color.append({})
 
         for i, events_at in enumerate(events):
             dis = []
@@ -149,4 +157,33 @@ class OpTracking(Operator):
                 label2color[-1][e[2]] = ancestor_color
 
         self.label2color = label2color
+        self.last_timerange = time_range
         self.Output.setDirty(SubRegion(self.Output))
+
+    def _generate_traxelstore( self,
+                               time_range,
+                               x_scale = 1.0,
+                               y_scale = 1.0,
+                               z_scale = 1.0):
+        print "generating traxels"
+        print "fetching region centers"
+        rcs = self.ObjectCenters( time_range ).wait()
+        print "filling traxelstore"
+        ts = ctracking.TraxelStore()
+        for t in rcs.keys():
+            rc = rcs[t]
+            print "at timestep ", t, rc.shape[0], "traxels found"
+            for idx in range(rc.shape[0]):
+                tr = ctracking.Traxel()
+                tr.set_x_scale(x_scale)
+                tr.set_y_scale(y_scale)
+                tr.set_z_scale(z_scale)
+                tr.Id = int(idx)
+                tr.Timestep = t
+                tr.add_feature_array("com", len(rc[idx]))
+                for i,v in enumerate(rc[idx]):
+                    tr.set_feature_value('com', i, float(v))
+                ts.add(tr)
+        return ts
+
+

@@ -83,8 +83,6 @@ class OpObjectExtraction( Operator ):
     LabelImage = OutputSlot()
     ObjectCenterImage = OutputSlot()
     RegionCenters = OutputSlot( stype=Opaque, rtype=List )
-    Traxels = OutputSlot( stype=Opaque, rtype=List )
-
 
     def __init__( self, parent = None, graph = None, register = True ):
         super(OpObjectExtraction, self).__init__(parent=parent,graph=graph,register=register)
@@ -121,31 +119,6 @@ class OpObjectExtraction( Operator ):
             res = self._opRegCent.Output.get( roi ).wait()
             return res
 
-        if slot is self.Traxels:
-            print "generating traxels"
-            print "fetching region centers"
-            rcs = self.RegionCenters.get( roi ).wait()
-            
-            print "filling traxelstore"
-            print "WARNING: USING Z SCALE OF 12.3"
-            ts = ctracking.TraxelStore()
-            for t in rcs.keys():
-                print "at timestep ", t
-                rc = rcs[t]
-                for idx in range(rc.shape[0]):
-                    tr = ctracking.Traxel()
-                    tr.set_x_scale(1.)
-                    tr.set_y_scale(1.)
-                    tr.set_z_scale(12.3) ##FIXME
-                    tr.Id = int(idx)
-                    tr.Timestep = t
-                    tr.add_feature_array("com", len(rc[idx]))
-                    for i,v in enumerate(rc[idx]):
-                        tr.set_feature_value('com', i, float(v))
-                    ts.add(tr)
-                
-            print ts
-            return ts
     def propagateDirty(self, inputSlot, roi):
         raise NotImplementedError
 

@@ -43,8 +43,6 @@ class TrackingWorkflow( Workflow ):
         opObjExtraction.BinaryImage.connect( opData.Image )
 
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
-
-        opTracking.Traxels.connect( opObjExtraction.Traxels )
         opTracking.ObjectCenters.connect( opObjExtraction.RegionCenters )
 
         self._applets.append(self.dataSelectionApplet)

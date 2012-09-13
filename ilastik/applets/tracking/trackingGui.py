@@ -52,6 +52,7 @@ class TrackingGui( QWidget ):
         layer.name = "Objects"
         self.layerstack.append(layer)
 
+        ct[255] = QColor(0,0,0,128).rgba() # misdetections        
         self.trackingsrc = LazyflowSource( mainOperator.Output )
         layer = ColortableLayer( self.trackingsrc, ct )
         layer.name = "Tracking"
@@ -59,6 +60,12 @@ class TrackingGui( QWidget ):
 
         if mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = mainOperator.LabelImage.meta.shape
+
+            maxt = mainOperator.LabelImage.meta.shape[0]
+            self._drawer.from_time.setRange(0,maxt-1)
+            self._drawer.from_time.setValue(0)
+            self._drawer.to_time.setRange(0,maxt-1)
+            self._drawer.to_time.setValue(maxt-1)       
         
 
     def reset( self ):
@@ -73,36 +80,6 @@ class TrackingGui( QWidget ):
         super(TrackingGui, self).__init__()
         self.mainOperator = mainOperator
         self.layerstack = LayerStackModel()
-
-        # self.rawsrc = LazyflowSource( self.mainOperator.RawData )
-        # layerraw = GrayscaleLayer( self.rawsrc )
-        # layerraw.name = "Raw"
-        # self.layerstack.append( layerraw )
-
-
-        # self.objectssrc = LazyflowSource( self.mainOperator.LabelImage )
-        # ct = colortables.create_default_8bit()
-        # ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        # layer = ColortableLayer( self.objectssrc, ct )
-        # layer.name = "Objects"
-        # self.layerstack.append(layer)
-
-        # self.trackingsrc = LazyflowSource( self.mainOperator.Output )
-        # layer = ColortableLayer( self.trackingsrc, ct )
-        # layer.name = "Tracking"
-        # self.layerstack.append(layer)
-
-        # self.locpicsrc = LazyflowSource( self.mainOperator.Locpic )
-        # layerlocpic = RGBALayer( red=ConstantSource(255), alpha=self.locpicsrc )
-        # layerlocpic.name = "Locpic"
-        # self.layerstack.append( layerlocpic )
-                               
-        # self.src = LazyflowSource( self.mainOperator.Output )
-        # ct = colortables.create_default_8bit()
-        # ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        # layer = ColortableLayer( self.src, ct )
-        # layer.name = "Tracking"
-        # self.layerstack.append(layer)
 
         self._viewerControlWidget = None
         self._initViewerControlUi()
@@ -122,6 +99,12 @@ class TrackingGui( QWidget ):
             if slot.meta.shape:
                 print slot.meta.shape
                 self.editor.dataShape = slot.meta.shape
+
+                maxt = slot.meta.shape[0]
+                self._drawer.from_time.setRange(0,maxt-1)
+                self._drawer.from_time.setValue(0)
+                self._drawer.to_time.setRange(0,maxt-1)
+                self._drawer.to_time.setValue(maxt-1)       
 
     def _initEditor(self):
         """
@@ -156,22 +139,6 @@ class TrackingGui( QWidget ):
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
 
         self._drawer.TrackButton.pressed.connect(self._onTrackButtonPressed)
-        #     thresholdWidget = ThresholdingWidget(self)
-            #thresholdWidget.valueChanged.connect( self.handleThresholdGuiValuesChanged )
-        #      layout.addWidget( thresholdWidget )
-            
-            # def updateDrawerFromOperator():
-            #     minValue, maxValue = (0,255)
-
-            #     if self.mainOperator.MinValue.ready():
-            #         minValue = self.mainOperator.MinValue.value
-            #     if self.mainOperator.MaxValue.ready():
-            #         maxValue = self.mainOperator.MaxValue.value
-
-            #     thresholdWidget.setValue(minValue, maxValue)                
-                
-            # self.mainOperator.MinValue.notifyDirty( bind(updateDrawerFromOperator) )
-            # self.mainOperator.MaxValue.notifyDirty( bind(updateDrawerFromOperator) )
 
     def _initViewerControlUi( self ):
         p = os.path.split(__file__)[0]+'/'
@@ -188,7 +155,16 @@ class TrackingGui( QWidget ):
 
         det = noiseweight*(-1)*math.log(1-noiserate)
         mdet = noiseweight*(-1)*math.log(noiserate)
-        self.mainOperator.innerOperators[0].track(app=app,
+
+
+        
+
+        self.mainOperator.innerOperators[0].track(
+            time_range = range(self._drawer.from_time.value(), self._drawer.to_time.value() + 1),
+            x_scale = self._drawer.x_scale.value(),
+            y_scale = self._drawer.y_scale.value(),
+            z_scale = self._drawer.z_scale.value(),
+                                                  app=app,
                                                   dis=dis,
                                                   opp=opp,
                                                   det=det,
