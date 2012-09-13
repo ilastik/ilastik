@@ -46,7 +46,7 @@ class ObjectExtractionGui( QWidget ):
         layer.name = "Binary Image"
         self.layerstack.append(layer)
 
-        ct = colortables.create_default_8bit()
+        ct = colortables.create_default_16bit()
         self.objectssrc = LazyflowSource( mainOperator.LabelImage )
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         layer = ColortableLayer( self.objectssrc, ct )

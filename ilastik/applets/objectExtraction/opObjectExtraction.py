@@ -105,7 +105,7 @@ class OpObjectExtraction( Operator ):
     def setupOutputs(self):
         self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
         m = self.LabelImage.meta
-        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=m.dtype, compression=1 )
+        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )
 
         self._reg_cents = dict.fromkeys(xrange(m.shape[0]), numpy.asarray([], dtype=numpy.uint16))
         
