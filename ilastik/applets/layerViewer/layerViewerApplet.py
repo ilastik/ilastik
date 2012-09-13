@@ -31,5 +31,5 @@ class LayerViewerApplet( Applet ):
     
     @property
     def appletPreferencesManager(self):
-         return self._preferencesManager
+        return self._preferencesManager
     
