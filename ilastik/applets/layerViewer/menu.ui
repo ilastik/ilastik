@@ -34,6 +34,7 @@
     <addaction name="actionToggleAllHuds"/>
     <addaction name="actionCenterAllImages"/>
     <addaction name="actionShowDebugPatches"/>
+    <addaction name="actionSetCacheSize"/>
     <addaction name="separator"/>
     <addaction name="actionOnly_for_current_view"/>
     <addaction name="actionFitImage"/>
@@ -215,6 +216,11 @@
    </property>
    <property name="text">
     <string>Open &amp;Stack</string>
+   </property>
+  </action>
+  <action name="actionSetCacheSize">
+   <property name="text">
+    <string>Set Layer Cache Size</string>
    </property>
   </action>
  </widget>

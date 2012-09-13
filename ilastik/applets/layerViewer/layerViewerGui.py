@@ -404,6 +404,30 @@ class LayerViewerGui(QMainWindow):
             
         def toggleDebugPatches(show):
             self.editor.showDebugPatches = show
+        
+        def setCacheSize( cache_size ):
+            dlg = QDialog(self)
+            layout = QHBoxLayout()
+            layout.addWidget( QLabel("Cached Slices Per View:") )
+
+            cache_size = [self.editor.cacheSize]
+            def parseCacheSize( strSize ):
+                try:
+                    cache_size[0] = int(strSize)
+                except:
+                    pass
+                
+            edit = QLineEdit( str(cache_size[0]), parent=dlg )
+            edit.textChanged.connect( parseCacheSize )
+            layout.addWidget( edit )
+            okButton = QPushButton( "OK", parent=dlg )
+            okButton.clicked.connect( dlg.accept )
+            layout.addWidget( okButton )
+            dlg.setLayout( layout )
+            dlg.setModal(True)
+            dlg.exec_()
+            self.editor.cacheSize = cache_size[0]
+        
         def fitToScreen():
             shape = self.editor.posModel.shape
             for i, v in enumerate(self.editor.imageViews):
@@ -455,7 +479,8 @@ class LayerViewerGui(QMainWindow):
         self.menuGui.actionFitToScreen.triggered.connect(fitToScreen)
         self.menuGui.actionFitImage.triggered.connect(fitImage)
         self.menuGui.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
-        self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)
+        self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)        
+        self.menuGui.actionSetCacheSize.triggered.connect(setCacheSize)
                 
     @traceLogged(traceLogger)
     def initEditor(self):
