@@ -336,6 +336,7 @@ if __name__ == "__main__":
             opDataSelection.Dataset.resize(1)
             opDataSelection.Dataset[0].setValue(info)
             shell.setSelectedAppletDrawer(2)
-        startShellGui( CarvingWorkflow, loadProject, workflowKwargs={'carvingGraphFile': carvingGraphFilename} )
+        startShellGui( CarvingWorkflow, loadProject, windowTitle="Carving %s" % carvingGraphFilename,
+                       workflowKwargs={'carvingGraphFile': carvingGraphFilename} )
     else:
         parser.error("incorrect number of arguments")
