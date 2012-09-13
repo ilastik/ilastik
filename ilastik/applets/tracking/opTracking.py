@@ -50,25 +50,16 @@ def cTraxels_from_objects_group( objects_g, timestep=0):
 class OpTracking(Operator):
     name = "Tracking"
     category = "other"
-    
 
     LabelImage = InputSlot()
     Traxels = InputSlot( stype=Opaque, rtype=List )
     ObjectCenters = InputSlot( stype=Opaque, optional=True )
 
     Output = OutputSlot()
-    RawData = OutputSlot()
-    Locpic = OutputSlot()
-
 
     def __init__( self, parent = None, graph = None, register = True ):
         super(OpTracking, self).__init__(parent=parent,graph=graph,register=register)
-
         self.label2color = []
-
-        self._locpicReader = OpInputDataReader( graph )
-        self._locpicReader.FilePath.setValue('/home/bkausler/src/ilastik/tracking/relabeled-stack/locpic.h5/locpic')
-        self.Locpic.connect( self._locpicReader.Output )
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta )
