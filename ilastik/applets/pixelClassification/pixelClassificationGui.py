@@ -57,7 +57,8 @@ class PixelClassificationGui(LabelingGui):
         labelSlots.labelsAllowed = pipeline.LabelsAllowedFlags
 
         observedSlots = [ pipeline.InputImages,
-                          pipeline.PredictionProbabilityChannels ]
+                          pipeline.PredictionProbabilityChannels,
+                          pipeline.SegmentationChannels ]
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
@@ -122,6 +123,30 @@ class PixelClassificationGui(LabelingGui):
                 ref_label.nameChanged.connect(setLayerName)
                 layers.append(predictLayer)
 
+        # Add each of the segementations
+        for channel, segmentationSlot in enumerate(self.pipeline.SegmentationChannels[currentImageIndex]):
+            if segmentationSlot.ready():
+                ref_label = labels[channel]
+                segsrc = LazyflowSource(segmentationSlot)
+                segLayer = AlphaModulatedLayer( segsrc,
+                                                tintColor=ref_label.color,
+                                                range=(0.0, 1.0),
+                                                normalize=(0.0, 1.0) )
+                segLayer.opacity = 1
+                segLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+                segLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
+
+                def setLayerColor(c):
+                    segLayer.tintColor = c
+                def setLayerName(n):
+                    newName = "Segmentation (%s)" % ref_label.name
+                    segLayer.name = newName
+                setLayerName(ref_label.name)
+
+                ref_label.colorChanged.connect(setLayerColor)
+                ref_label.nameChanged.connect(setLayerName)
+                layers.append(segLayer)
+
         # Add the raw data last (on the bottom)
         inputDataSlot = self.pipeline.InputImages[currentImageIndex]
         if inputDataSlot.ready():
@@ -175,6 +200,10 @@ class PixelClassificationGui(LabelingGui):
         # If we're being turned off, turn off live prediction mode, too.
         if not checked and self.labelingDrawerUi.checkInteractive.isChecked():
             self.labelingDrawerUi.checkInteractive.setChecked(False)
+            # And hide all segmentation layers
+            for layer in self.layerstack:
+                if "Segmentation" in layer.name:
+                    layer.visible = False
 
     @pyqtSlot()
     @traceLogged(traceLogger)

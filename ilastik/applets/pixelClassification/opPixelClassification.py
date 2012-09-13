@@ -1,7 +1,8 @@
+import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
 
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
-                               OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpPrecomputedInput
+                               OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpPrecomputedInput, OpPixelOperator
 
 class OpPixelClassification( Operator ):
     """
@@ -27,6 +28,7 @@ class OpPixelClassification( Operator ):
     PredictionProbabilities = MultiOutputSlot() # Classification predictions
 
     PredictionProbabilityChannels = MultiOutputSlot(level=2) # Classification predictions, enumerated by channel
+    SegmentationChannels = MultiOutputSlot(level=2) # Binary image of the final selections.
     
     MaxLabelValue = OutputSlot()
     LabelImages = MultiOutputSlot() # Labels from the user
@@ -139,6 +141,15 @@ class OpPixelClassification( Operator ):
         self.opPredictionSlicer.Input.connect( self.precomputed_predictions_gui.Output )
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
+        
+        self.opSegementor = OperatorWrapper( OpPixelOperator( graph=self.graph ) )
+        self.opSegementor.Input.connect( self.precomputed_predictions_gui.Output )
+        self.opSegementor.Function.setValue( lambda x: numpy.where(x < 0.5, 0, 1) )
+
+        self.opSegmentationSlicer = OperatorWrapper( OpMultiArraySlicer2(parent=self) )
+        self.opSegmentationSlicer.Input.connect( self.opSegementor.Output )
+        self.opSegmentationSlicer.AxisFlag.setValue('c')
+        self.SegmentationChannels.connect( self.opSegmentationSlicer.Slices )
 
         def handleNewInputImage( multislot, index, *args ):
             def handleInputReady(slot):

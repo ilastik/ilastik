@@ -212,9 +212,9 @@ class LayerViewerGui(QMainWindow):
             numChannels = 1
         
         if lastChannelIsAlpha:
-            assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha)."
+            assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha).  Your image has {} channels.".format(numChannels)
         else:
-            assert numChannels <= 3, "Can't display a standard layer with more than three channels (no alpha)."
+            assert numChannels <= 3, "Can't display a standard layer with more than three channels (with no alpha).  Your image has {} channels.".format(numChannels)
 
         if numChannels == 1:
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"

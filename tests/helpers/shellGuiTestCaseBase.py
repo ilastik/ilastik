@@ -87,6 +87,11 @@ class ShellGuiTestCaseBase(object):
         def teardown_impl():
             cls.shell.onQuitActionTriggered(True)
         cls.shell.thunkEventHandler.post(teardown_impl)
+
+        # Make sure the app has finished quitting before continuing        
+        finished = threading.Event()
+        cls.shell.thunkEventHandler.post(finished.set)
+        finished.wait()
         
         if cls.guiThread is not None:
             cls.guiThread.join()
