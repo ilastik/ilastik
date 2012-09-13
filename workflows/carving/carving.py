@@ -42,12 +42,21 @@ class OpCarvingTopLevel(Operator):
         self.opCarving.WriteSeeds.connect(self.opLabeling.LabelInputs)
 
     def saveObjectAs(self, name, imageIndex):
+        # first, save the object under "name"
         self.opCarving.innerOperators[imageIndex].saveObjectAs(name)
         
         # Sparse label array automatically shifts label values down 1
         self.opLabeling.LabelDelete.setValue(2)
         self.opLabeling.LabelDelete.setValue(1)
         self.opLabeling.LabelDelete.setValue(-1)
+        
+        # trigger a re-computation
+        self.opCarving.innerOperators[imageIndex].Trigger.setDirty(slice(None))
+        
+    def loadObject(self, name, imageIndex):
+        print "want to load object with name = %s" % name
+        self.opCarving.innerOperators[imageIndex].loadObject(name)
+        self.opLabeling.LabelInputs[imageIndex][:] = self.opCarving.innerOperators[imageIndex]._mst.seeds[:]
 
 class OpCarving(Operator):
     name = "Carving"
@@ -98,16 +107,41 @@ class OpCarving(Operator):
         
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
+    
+    def loadObject(self, name):      
+        with self._cond:
+            while self._nExecutingThreads > 0:
+                self._cond.wait()
+        objNr = self._mst.object_names[name]
+        print "   --> Loading object %r from nr %r" % (name, objNr)
+
+        lut_segmentation = self._mst.segmentation.lut[:]
+        lut_objects = self._mst.objects.lut[:]
+        lut_seeds = self._mst.seeds.lut[:]
+
+        obj_seeds_fg = self._mst.object_seeds_fg[name]
+        obj_seeds_bg = self._mst.object_seeds_bg[name]
+      
+        # clean seeds
+        lut_seeds[:] = 0
+
+        # set foreground and background seeds
+        lut_seeds[obj_seeds_fg] = 2
+        lut_seeds[obj_seeds_bg] = 1
+
+        # set current segmentation
+        lut_segmentation[:] = numpy.where( lut_objects == objNr, 2, 1)
         
+      
     def saveObjectAs(self, name): 
         with self._cond:
             while self._nExecutingThreads > 0:
                 self._cond.wait()
                 
-            seed = 1
+            seed = 2
             print "   --> Saving object %r from seed %r" % (name, seed)
             if self._mst.object_names.has_key(name):
-                objNr = self.seg.object_names[name]
+                objNr = self._mst.object_names[name]
             else:
                 # find free objNr
                 if len(self._mst.object_names.values())> 0:
@@ -134,8 +168,7 @@ class OpCarving(Operator):
             self._mst.object_seeds_bg[name] = numpy.where(lut_seeds == 1)[0] #one is background=
            
             # reset seeds 
-            self._mst.seeds[:] = numpy.int32(0)
-            self.Segmentation.setDirty(slice(None))
+            self._mst.seeds[:] = numpy.int32(-1) #see segmentation.pyx: -1 means write zeros
             
         #now release the lock!
     
@@ -247,6 +280,16 @@ class CarvingGui(LabelingGui):
             if ok:
                 self._carvingApplet.topLevelOperator.saveObjectAs(name, self.imageIndex)
         self.labelingDrawerUi.saveAs.clicked.connect(onSaveAsButton)
+        
+        def onLoadObjectButton():
+            print "load which object?"
+            from PyQt4.QtGui import QInputDialog
+            name, ok = QInputDialog.getText(self, 'Load Object', 'object name') 
+            name = str(name)
+            print "load object %s" % name
+            if ok:
+                self._carvingApplet.topLevelOperator.loadObject(name, self.imageIndex)
+        self.labelingDrawerUi.load.clicked.connect(onLoadObjectButton)
         
     def getNextLabelName(self):
         l = len(self._labelControlUi.labelListModel)
