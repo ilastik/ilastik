@@ -46,6 +46,16 @@ class TestOpSparseLabelArray(object):
         # nonzeroValues
         nz = op.nonzeroValues.value
         assert len(nz) == len(numpy.unique(inData))-1
+
+    def testSetupTwice(self):
+        """
+        If one of the inputs to the label array is changed, the output should not change (including max label value!)
+        """
+        # Change one of the inputs, causing setupOutputs to be changed.
+        self.op.eraser.setValue(255)
+        
+        # Run the plain output test.
+        self.testOutput()
         
     def testDeleteLabel(self):
         """
@@ -69,6 +79,51 @@ class TestOpSparseLabelArray(object):
         # delete label input resets automatically
         # assert op.deleteLabel.value == -1 # Apparently not?
     
+    def testDeleteLabel2(self):
+        """
+        Another test to check behavior after deleting an entire label class from the sparse array.
+        This one ensures that different blocks have different max label values before the delete occurs.
+        """
+        op = self.op
+        slicing = self.slicing
+        data = self.data
+
+        assert op.maxLabel.value == 2
+        
+        # Choose slicings that do NOT intersect with any of the previous data or with each other
+        # The goal is to make sure that the data for each slice ends up in a separate block
+        slicing1 = sl[0:1, 60:65, 0:10, 3:7, 0:1]
+        slicing2 = sl[0:1, 90:95, 0:90, 3:7, 0:1]
+
+        expectedData = self.data[...]
+
+        labels1 = numpy.ndarray(slicing2shape(slicing1), dtype=numpy.uint8)
+        labels1[...] = 1
+        op.Input[slicing1] = labels1
+        expectedData[slicing1] = labels1
+
+        labels2 = numpy.ndarray(slicing2shape(slicing2), dtype=numpy.uint8)
+        labels2[...] = 2
+        op.Input[slicing2] = labels2
+        expectedData[slicing2] = labels2
+
+        # Sanity check:
+        # Does the data contain our new labels?
+        assert (op.Output[...].wait() == expectedData).all()
+        assert expectedData.max() == 2
+        assert op.maxLabel.value == 2
+
+        # Delete label 1
+        op.deleteLabel.setValue(1)
+        outputData = op.Output[...].wait()
+
+        # Expected: All 1s removed, all 2s converted to 1s
+        expectedData = numpy.where(expectedData == 1, 0, expectedData)
+        expectedData = numpy.where(expectedData == 2, 1, expectedData)
+        assert (outputData[...] == expectedData[...]).all()
+        
+        assert op.maxLabel.value == expectedData.max() == 1
+        
     def testEraser(self):
         """
         Check that some labels can be deleted correctly from the sparse array.
