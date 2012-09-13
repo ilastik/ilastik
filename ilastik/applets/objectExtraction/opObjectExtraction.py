@@ -173,9 +173,6 @@ class OpObjectExtraction( Operator ):
         self._opRegCent.fixed = True 
         self.ObjectCenterImage.setDirty( SubRegion(self.ObjectCenterImage) )
 
-    def generateTraxels( self ):
-        self.Traxels(range(self.LabelImage.meta.shape[0])).wait()
-
     def __contained_in_subregion( self, roi, coords ):
         b = True
         for i in range(len(coords)):

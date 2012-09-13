@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>113</height>
+    <height>80</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -48,13 +48,6 @@
       <widget class="QPushButton" name="extractObjectsButton">
        <property name="text">
         <string>Extract Objects</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="generateTraxelsButton">
-       <property name="text">
-        <string>Generate Traxels</string>
        </property>
       </widget>
      </item>
