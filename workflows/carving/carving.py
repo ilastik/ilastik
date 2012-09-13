@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, numpy
+import os, numpy, threading
 
 from PyQt4.QtGui import QShortcut, QKeySequence
 from PyQt4.QtGui import QColor
@@ -64,6 +64,8 @@ class OpCarving(Operator):
         # FIXME: this operator has state
         #
         self._mst = MSTSegmentor.loadH5(carvingGraphFilename,  "graph")
+        self._nExecutingThreads = 0
+        self._cond = threading.Condition()
     
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.RawData.meta)
@@ -71,8 +73,52 @@ class OpCarving(Operator):
         
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
+        
+    def saveObjectAs(self, name): 
+        with self._cond:
+            while self._nExecutingThreads > 0:
+                self._cond.wait()
+                
+            seed = 1
+            print "   --> Saving object %r from seed %r" % (name, seed)
+            if self._mst.object_names.has_key(name):
+                objNr = self.seg.object_names[name]
+            else:
+                # find free objNr
+                if len(self._mst.object_names.values())> 0:
+                    objNr = numpy.max(numpy.array(self._mst.object_names.values())) + 1
+                else:
+                    objNr = 1
+    
+            #delete old object, if it exists
+            lut_objects = self._mst.objects.lut[:]
+            lut_objects[:] = numpy.where(lut_objects == objNr, 0, lut_objects)
+    
+            #save new object 
+            lut_segmentation = self._mst.segmentation.lut[:]
+            lut_objects[:] = numpy.where(lut_segmentation == seed, objNr, lut_objects)
+    
+            #save object name with objNr
+            self._mst.object_names[name] = objNr
+    
+            lut_seeds = self._mst.seeds.lut[:]
+            print  "nonzero fg seeds shape: ",numpy.where(lut_seeds == seed)[0].shape
+      
+            # save object seeds
+            self._mst.object_seeds_fg[name] = numpy.where(lut_seeds == seed)[0]
+            self._mst.object_seeds_bg[name] = numpy.where(lut_seeds == 1)[0] #one is background=
+           
+            # reset seeds 
+            self._mst.seeds[:] = numpy.int32(0)
+            self.Segmentation.setDirty(slice(None))
+            
+        #now release the lock!
     
     def execute(self, slot, roi, result):
+        with self._cond:
+            self._nExecutingThreads += 1
+            self._cond.notify()
+        
         if self._mst is None:
             return
         sl = roi.toSlice()
@@ -82,18 +128,25 @@ class OpCarving(Operator):
             result[0,:,:,:,0] = self._mst.regionVol[sl[1:4]]
         else:
             raise RuntimeError("unknown slot")
+        
+        with self._cond:
+            self._nExecutingThreads -= 1
+            self._cond.notify()
+            
         return result    
     
     def setInSlot(self, slot, key, value):
-        assert slot == self.WriteSeeds
-        assert self._mst is not None
+        if slot == self.WriteSeeds: 
+            assert self._mst is not None
         
-        #FIXME: Somehow, the labelingGui sends a value of 100 for the eraser,
-        #       but the cython part of carving expects 255.
-        #       Fix it here so that erasing of labels works.
-        value = numpy.where(value == 100, 255, value[:])
-        
-        self._mst.seeds[key] = value
+            #FIXME: Somehow, the labelingGui sends a value of 100 for the eraser,
+            #       but the cython part of carving expects 255.
+            #       Fix it here so that erasing of labels works.
+            value = numpy.where(value == 100, 255, value[:])
+            
+            self._mst.seeds[key] = value
+        else:
+            raise RuntimeError("unknown slots")
         
     def notifyDirty(self, slot, key):
         if slot == self.Trigger or slot == self.BackgroundPriority or slot == self.NoBiasBelow: 
@@ -159,6 +212,16 @@ class CarvingGui(LabelingGui):
             print "background priority changed to %f" % value
             self._carvingApplet.opCarving.NoBiasBelow.setValue(value)
         self.labelingDrawerUi.noBiasBelowSpin.valueChanged.connect(onNoBiasBelowSpin)
+        
+        def onSaveAsButton():
+            print "save object as?"
+            from PyQt4.QtGui import QInputDialog
+            name, ok = QInputDialog.getText(self, 'Save Object As', 'object name') 
+            name = str(name)
+            print "save object as %s" % name
+            if ok:
+                self._carvingApplet.opCarving.operator.saveObjectAs(name)
+        self.labelingDrawerUi.saveAs.clicked.connect(onSaveAsButton)
         
     def getNextLabelName(self):
         l = len(self._labelControlUi.labelListModel)
