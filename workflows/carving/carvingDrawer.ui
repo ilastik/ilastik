@@ -63,6 +63,20 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="saveAs">
+     <property name="text">
+      <string>Save As ...</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="save">
+     <property name="text">
+      <string>Save</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_3">
      <item>
       <widget class="QLabel" name="label_2">
