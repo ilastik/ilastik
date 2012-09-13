@@ -214,7 +214,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             assert gui._labelControlUi.labelListModel.selectedRow() == 0
             
             # Did the label get removed from the label array?
-            assert opPix.MaxLabelValue.value == 2
+            assert opPix.MaxLabelValue.value == 2, "Max label value did not decrement after the label was deleted.  Expected 2, got {}".format( opPix.MaxLabelValue.value  )
 
             self.waitForViews(gui.editor.imageViews)
 
@@ -298,7 +298,6 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
-
     def test_7_EraseCompleteLabel(self):
         """
         Erase all of the labels of a particular color using the eraser.
