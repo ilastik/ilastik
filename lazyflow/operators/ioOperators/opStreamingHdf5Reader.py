@@ -93,8 +93,11 @@ class OpStreamingHdf5Reader(Operator):
         # On windows, internalPath may have backslashes, so replace them with forward slashes.
         internalPath = internalPath.replace('\\', '/')
 
-        # Access the data
-        result[...] = hdf5File[internalPath][key]
+        if len(key) > len(hdf5File[internalPath].shape):
+            key = key[:len(hdf5File[internalPath].shape)]
+            result[...,0] = hdf5File[internalPath][key]
+        else:
+            result[...] = hdf5File[internalPath][key]            
 
     def propagateDirty(self, slot, roi):
         if slot == self.Hdf5File or slot == self.InternalPath:
