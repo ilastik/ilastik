@@ -12,6 +12,7 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.layerViewer import LayerViewerApplet
 from ilastik.applets.labeling.labelingApplet import LabelingApplet
 from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.labeling import OpLabeling
 
 from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot
 from lazyflow.operators import OpAttributeSelector
@@ -23,6 +24,30 @@ from volumina import adaptors
 from cylemon.segmentation import MSTSegmentor
 
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class OpCarvingTopLevel(Operator):
+    name = "OpCarvingTopLevel"
+    
+    RawData = InputSlot(level=1)
+
+    def __init__(self, carvingGraphFile, *args, **kwargs):
+        super(OpCarvingTopLevel, self).__init__(*args, **kwargs)
+        
+        self.opLabeling = OpLabeling(graph=self.graph, parent=self)
+        self.opCarving = OperatorWrapper( OpCarving(carvingGraphFile, graph=self.graph) )
+        
+        self.opLabeling.InputImages.connect( self.RawData )
+        self.opCarving.RawData.connect( self.RawData )
+        
+        self.opCarving.WriteSeeds.connect(self.opLabeling.LabelInputs)
+
+    def saveObjectAs(self, name, imageIndex):
+        self.opCarving.innerOperators[imageIndex].saveObjectAs(name)
+        
+        # Sparse label array automatically shifts label values down 1
+        self.opLabeling.LabelDelete.setValue(2)
+        self.opLabeling.LabelDelete.setValue(1)
+        self.opLabeling.LabelDelete.setValue(-1)
 
 class OpCarving(Operator):
     name = "Carving"
@@ -56,8 +81,8 @@ class OpCarving(Operator):
     Segmentation = OutputSlot()
     Supervoxels  = OutputSlot()
     
-    def __init__(self, graph, carvinGraphFilename):
-        super(OpCarving, self).__init__(graph)
+    def __init__(self, carvingGraphFilename, *args, **kwargs):
+        super(OpCarving, self).__init__(*args, **kwargs)
         print "[Carving id=%d] CONSTRUCTOR" % id(self) 
         
         #
@@ -200,17 +225,17 @@ class CarvingGui(LabelingGui):
 
         def onSegmentButton():
             print "segment button clicked"
-            self._carvingApplet.opCarving.Trigger[0].setDirty(slice(None))
+            self._carvingApplet.topLevelOperator.opCarving.Trigger[0].setDirty(slice(None))
         self.labelingDrawerUi.segment.clicked.connect(onSegmentButton)
         
         def onBackgroundPrioritySpin(value):
             print "background priority changed to %f" % value
-            self._carvingApplet.opCarving.BackgroundPriority.setValue(value)
+            self._carvingApplet.topLevelOperator.opCarving.BackgroundPriority.setValue(value)
         self.labelingDrawerUi.backgroundPrioritySpin.valueChanged.connect(onBackgroundPrioritySpin)
         
         def onNoBiasBelowSpin(value):
             print "background priority changed to %f" % value
-            self._carvingApplet.opCarving.NoBiasBelow.setValue(value)
+            self._carvingApplet.topLevelOperator.opCarving.NoBiasBelow.setValue(value)
         self.labelingDrawerUi.noBiasBelowSpin.valueChanged.connect(onNoBiasBelowSpin)
         
         def onSaveAsButton():
@@ -220,7 +245,7 @@ class CarvingGui(LabelingGui):
             name = str(name)
             print "save object as %s" % name
             if ok:
-                self._carvingApplet.opCarving.operator.saveObjectAs(name)
+                self._carvingApplet.topLevelOperator.saveObjectAs(name, self.imageIndex)
         self.labelingDrawerUi.saveAs.clicked.connect(onSaveAsButton)
         
     def getNextLabelName(self):
@@ -245,7 +270,7 @@ class CarvingGui(LabelingGui):
        
         #segmentation 
         #seg = self._carvingApplet._segmentation5D[currentImageIndex]
-        seg = self._carvingApplet.opCarving.Segmentation[currentImageIndex]
+        seg = self._carvingApplet.topLevelOperator.opCarving.Segmentation[currentImageIndex]
         if seg.ready(): 
             #source = RelabelingArraySource(seg)
             #source.setRelabeling(numpy.arange(256, dtype=numpy.uint8))
@@ -261,7 +286,7 @@ class CarvingGui(LabelingGui):
             layers.append(layer)
             
         #supervoxel
-        sv = self._carvingApplet.opCarving.Supervoxels[currentImageIndex]
+        sv = self._carvingApplet.topLevelOperator.opCarving.Supervoxels[currentImageIndex]
         if sv.ready():
             for i in range(256):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
@@ -301,15 +326,15 @@ class CarvingApplet(LabelingApplet):
         o.input.connect(self._raw)
         self._inputImage = o.output
 
-        self.opCarving = OperatorWrapper( OpCarving(graph, carvingGraphFilename) )
-        self.opCarving.RawData.connect(self._inputImage)
-        self.opCarving.BackgroundPriority.setValue(0.95)
-        self.opCarving.NoBiasBelow.setValue(64)
+        self._topLevelOperator = OpCarvingTopLevel( carvingGraphFile, graph=graph )
+        self._topLevelOperator.opCarving.RawData.connect(self._inputImage)
+        self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
+        self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
         #self.opCarving.CarvingGraphFile.setValue(carvingGraphFile)
 
         o = OperatorWrapper( adaptors.Op5ifyer(graph) )
         o.order.setValue('txyzc')
-        o.input.connect(self.opCarving.Segmentation)
+        o.input.connect(self._topLevelOperator.opCarving.Segmentation)
         self._segmentation5D = o.output
         assert self._segmentation5D is not None
 
@@ -318,14 +343,12 @@ class CarvingApplet(LabelingApplet):
         if self._gui is None:
 
             labelingSlots = LabelingGui.LabelingSlots()
-            labelingSlots.labelInput = self.topLevelOperator.LabelInputs
-            labelingSlots.labelOutput = self.topLevelOperator.LabelImages
-            labelingSlots.labelEraserValue = self.topLevelOperator.LabelEraserValue
-            labelingSlots.labelDelete = self.topLevelOperator.LabelDelete
-            labelingSlots.maxLabelValue = self.topLevelOperator.MaxLabelValue
-            labelingSlots.labelsAllowed = self.topLevelOperator.LabelsAllowedFlags
-
-            self.opCarving.WriteSeeds.connect(labelingSlots.labelInput)
+            labelingSlots.labelInput = self.topLevelOperator.opLabeling.LabelInputs
+            labelingSlots.labelOutput = self.topLevelOperator.opLabeling.LabelImages
+            labelingSlots.labelEraserValue = self.topLevelOperator.opLabeling.LabelEraserValue
+            labelingSlots.labelDelete = self.topLevelOperator.opLabeling.LabelDelete
+            labelingSlots.maxLabelValue = self.topLevelOperator.opLabeling.MaxLabelValue
+            labelingSlots.labelsAllowed = self.topLevelOperator.opLabeling.LabelsAllowedFlags
             
             self._gui = CarvingGui( labelingSlots, [self._segmentation5D, self._inputImage], rawInputSlot=self._raw, carvingApplet=self )
         return self._gui
@@ -347,8 +370,8 @@ class CarvingWorkflow(Workflow):
         self.viewerApplet = LayerViewerApplet(graph)
 
         self.carvingApplet = CarvingApplet(graph, "xxx", self.dataSelectionApplet.topLevelOperator.Image, carvingGraphFile)
-        self.carvingApplet.topLevelOperator.InputImages.connect( self.dataSelectionApplet.topLevelOperator.Image )
-        self.carvingApplet.topLevelOperator.LabelsAllowedFlags.connect( self.dataSelectionApplet.topLevelOperator.AllowLabels )
+        self.carvingApplet.topLevelOperator.RawData.connect( self.dataSelectionApplet.topLevelOperator.Image )
+        self.carvingApplet.topLevelOperator.opLabeling.LabelsAllowedFlags.connect( self.dataSelectionApplet.topLevelOperator.AllowLabels )
         self.carvingApplet.gui.minLabelNumber = 2
         self.carvingApplet.gui.maxLabelNumber = 2
 
@@ -370,7 +393,7 @@ class CarvingWorkflow(Workflow):
         self._imageNameListSlot = opSelectFilename.Result
 
     def setCarvingGraphFile(self, fname):
-        self.carvingApplet.opCarving.CarvingGraphFile.setValue(fname)
+        self.carvingApplet.topLevelOperator.opCarving.CarvingGraphFile.setValue(fname)
 
     @property
     def applets(self):
@@ -396,6 +419,10 @@ if __name__ == "__main__":
     from optparse import OptionParser
     usage = "%prog [options] <carving graph filename> <project filename to be created>"
     parser = OptionParser(usage)
+
+#    import sys
+#    sys.argv.append("/Users/bergs/Documents/workspace/applet-workflows/denk.h5")
+#    sys.argv.append("test.ilp")
 
     (options, args) = parser.parse_args()
     
