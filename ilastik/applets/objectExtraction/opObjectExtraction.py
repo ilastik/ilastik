@@ -161,17 +161,14 @@ class OpObjectExtraction( Operator ):
         roi = SubRegion(self.LabelImage, start=5*(0,), stop=m.shape)
         self.LabelImage.setDirty(roi)
 
-    def calcRegionCenters( self ):
-        print "calc region centers"
-        reqs = []
-        self._opRegCent.fixed = False
-        for t in range(self.LabelImage.meta.shape[0]):
-            reqs.append(self.RegionCenters([t]))
-            reqs[-1].submit()
-        for req in reqs:
-            req.wait()
-        self._opRegCent.fixed = True 
-        self.ObjectCenterImage.setDirty( SubRegion(self.ObjectCenterImage) )
+    def updateLabelImageAt( self, t ):
+        m = self.LabelImage.meta
+        print "Calculating LabelImage at", t
+        start = [t,] + (len(m.shape) - 1) * [0,]
+        stop = [t+1,] + list(m.shape[1:])
+        a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()
+        a = a[0,...,0]
+        self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a )
 
     def __contained_in_subregion( self, roi, coords ):
         b = True

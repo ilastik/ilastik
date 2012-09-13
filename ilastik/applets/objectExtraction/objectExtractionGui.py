@@ -1,5 +1,8 @@
-from PyQt4.QtGui import QWidget, QColor, QVBoxLayout
+from PyQt4.QtGui import QWidget, QColor, QVBoxLayout, QProgressDialog
 from PyQt4 import uic
+from PyQt4.QtCore import Qt, QString
+
+from lazyflow.rtype import SubRegion
 
 import os
 
@@ -133,7 +136,42 @@ class ObjectExtractionGui( QWidget ):
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
     def _onLabelImageButtonPressed( self ):
-        self.curOp.updateLabelImage()
+        m = self.curOp.LabelImage.meta
+        maxt = m.shape[0]
+        progress = QProgressDialog("Labelling Binary Image...", "Stop", 0, maxt)
+        progress.setWindowModality(Qt.ApplicationModal)
+        progress.setMinimumDuration(0)
+        progress.setCancelButtonText(QString())
+        progress.forceShow()
+
+        for t in range(maxt):
+            progress.setValue(t)
+            if progress.wasCanceled():
+                break
+            else:
+                self.curOp.updateLabelImageAt( t )
+        progress.setValue(maxt)                
+        roi = SubRegion(self.curOp.LabelImage, start=5*(0,), stop=m.shape)
+        self.curOp.LabelImage.setDirty(roi)
 
     def _onExtractObjectsButtonPressed( self ):
-        self.curOp.calcRegionCenters()
+        maxt = self.curOp.LabelImage.meta.shape[0]
+        progress = QProgressDialog("Extracting objects...", "Stop", 0, maxt)
+        progress.setWindowModality(Qt.ApplicationModal)
+        progress.setMinimumDuration(0)
+        progress.setCancelButtonText(QString())
+
+        reqs = []
+        self.curOp._opRegCent.fixed = False
+        for t in range(maxt):
+            reqs.append(self.curOp.RegionCenters([t]))
+            reqs[-1].submit()
+        for i, req in enumerate(reqs):
+            progress.setValue(i)
+            if progress.wasCanceled():
+                req.cancel()
+            else:
+                req.wait()
+        self.curOp._opRegCent.fixed = True 
+        progress.setValue(maxt)
+        self.curOp.ObjectCenterImage.setDirty( SubRegion(self.curOp.ObjectCenterImage))

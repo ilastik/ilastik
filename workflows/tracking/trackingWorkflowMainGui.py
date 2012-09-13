@@ -10,7 +10,7 @@ if debug_testing:
         import h5py
 
         #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
-        projFilePath = '/home/bkausler/withLabelImageAndRegionCenters.ilp'
+        projFilePath = '/home/bkausler/withLabelImage.ilp'
 
         shell.openProjectFile(projFilePath)
         
