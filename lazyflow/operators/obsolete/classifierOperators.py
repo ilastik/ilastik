@@ -2,8 +2,10 @@ import numpy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, OrderedSignal
 from lazyflow.roi import sliceToRoi, roiToSlice
+from lazyflow.request import Request
 import vigra
 import copy
+from functools import partial
 
 import logging
 logger = logging.getLogger(__name__)
@@ -18,10 +20,16 @@ class OpTrainRandomForest(Operator):
     inputSlots = [MultiInputSlot("Images"),MultiInputSlot("Labels"), InputSlot("fixClassifier", stype="bool")]
     outputSlots = [OutputSlot("Classifier")]
 
+    def __init__(self, parent = None):
+        Operator.__init__(self, parent)
+        self._forest_count = 10
+        # TODO: Make treecount configurable via an InputSlot
+        self._tree_count = 10
+
     def setupOutputs(self):
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"]._dtype = object
-            self.outputs["Classifier"]._shape = (1,)
+            self.outputs["Classifier"]._shape = (self._forest_count,)
             self.outputs["Classifier"]._axistags  = "classifier"
             self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
@@ -49,18 +57,20 @@ class OpTrainRandomForest(Operator):
         featMatrix=numpy.concatenate(featMatrix,axis=0)
         labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
 
-        # TODO: Make treecount configurable via an InputSlot
-        RF=vigra.learning.RandomForest(100)
-        try:
-            RF.learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
-        except:
-            logger.error( "ERROR: could not learn classifier" )
-            logger.error( "featMatrix={}, labelsMatrix={}".format(featMatrix, labelsMatrix) )
-            logger.error( "featMatrix shape={}, dtype={}".format(featMatrix.shape, featMatrix.dtype) )
-            logger.error( "labelsMatrix shape={}, dtype={}".format(labelsMatrix.shape, labelsMatrix.dtype ) )
-            raise
+        # train and store self._forest_count forests in parallel
+        requests = []
+        for i in range(self._forest_count):
+            def train_and_store(number):
+                result[number] = vigra.learning.RandomForest(self._tree_count) 
+                result[number].learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
+            req = Request(partial(train_and_store, i))
+            req.submit()
+            requests.append(req)
 
-        result[0]=RF
+        for r in requests:
+            r.wait()
+
+        return result
 
     def setInSlot(self, slot, key, value):
         if self.inputs["fixClassifier"].value == False:
@@ -236,10 +246,12 @@ class OpPredictRandomForest(Operator):
         nlabels=self.inputs["LabelsCount"].value
 
         traceLogger.debug("OpPredictRandomForest: Requesting classifier. roi={}".format(roi))
-        RF=self.inputs["Classifier"].value
-        if RF is None:
+        forests=self.inputs["Classifier"][:].wait()
+
+        if forests is None:
             # Training operator may return 'None' if there was no data to train with
             return numpy.zeros(numpy.subtract(roi.stop, roi.start), dtype=numpy.float32)[...]
+
         traceLogger.debug("OpPredictRandomForest: Got classifier")        
         #assert RF.labelCount() == nlabels, "ERROR: OpPredictRandomForest, labelCount differs from true labelCount! %r vs. %r" % (RF.labelCount(), nlabels)
 
@@ -252,13 +264,35 @@ class OpPredictRandomForest(Operator):
         prod = numpy.prod(shape[:-1])
         features=res.reshape(prod, shape[-1])
 
-        prediction=RF.predictProbabilities(features.astype(numpy.float32))
-        prediction = prediction.reshape(*(shape[:-1] + (RF.labelCount(),)))
+        predictions = [0]*len(forests)
+        
+        def predict_forest(number):
+            predictions[number] = forests[number].predictProbabilities(features.astype(numpy.float32)) 
+        
+        # predict the data with all the forests in parallel
+        requests = []
+        for i,f in enumerate(forests):
+            req = Request(partial(predict_forest, i))
+            req.submit()
+            requests.append(req)
+
+
+        for r in requests:
+            r.wait()
+
+        prediction=predictions[0]
+        for p in predictions[1:]:
+            prediction += p
+
+        prediction = prediction / len(forests)
+
+
+        prediction = prediction.reshape(*(shape[:-1] + (forests[0].labelCount(),)))
 
         # If our LabelsCount is higher than the number of labels in the training set,
         # then our results aren't really valid.
         # Duplicate the last label's predictions
-        chanslice = slice(min(key[-1].start, RF.labelCount()-1), min(key[-1].stop, RF.labelCount()))
+        chanslice = slice(min(key[-1].start, forests[0].labelCount()-1), min(key[-1].stop, forests[0].labelCount()))
         return prediction[...,chanslice] # FIXME: This assumes that channel is the last axis
 
 

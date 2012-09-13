@@ -630,6 +630,8 @@ class OpArrayCache(OpArrayPiper):
                     f.create_dataset("data",data = tileWeights)
                     print "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights)
                     assert 1 == 2
+                self._blockState[key2] = OpArrayCache.IN_PROCESS
+
         # indicate the inprocessing state, by setting array to 0 (i.e. IN_PROCESS)
         if not self._fixed:
             blockSet[:]  = fastWhere(cond, OpArrayCache.IN_PROCESS, blockSet, numpy.uint8)
