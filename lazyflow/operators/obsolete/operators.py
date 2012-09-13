@@ -1171,14 +1171,14 @@ if has_blist:
                         self._labelers[b_ind].inputs["Input"][smallkey] = smallvalues
                 
                 time2 = time.time()
-                logger.info("OpBlockedSparseLabelArray: setInSlot writing took %fs" % (time2-time1,))
+                logger.debug("OpBlockedSparseLabelArray: setInSlot writing took %fs" % (time2-time1,))
                 # Set our max label output dirty
 
                 self.Output.setDirty(key)
 
                 time3 = time.time()
-                logger.info("OpBlockedSparseLabelArray: setInSlot setDirty took %fs" % (time3-time2,))
-                logger.info("OpBlockedSparseLabelArray: setInSlot total took %fs" % (time3-time1,))
+                logger.debug("OpBlockedSparseLabelArray: setInSlot setDirty took %fs" % (time3-time2,))
+                logger.debug("OpBlockedSparseLabelArray: setInSlot total took %fs" % (time3-time1,))
 
         def notifyDirty(self, slot, key):
             with Tracer(self.traceLogger):
