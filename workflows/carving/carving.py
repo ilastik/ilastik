@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os, numpy, threading
+from collections import defaultdict
 
 from PyQt4.QtGui import QShortcut, QKeySequence
 from PyQt4.QtGui import QColor, QMenu
@@ -13,6 +14,7 @@ from ilastik.applets.layerViewer import LayerViewerApplet
 from ilastik.applets.labeling.labelingApplet import LabelingApplet
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.labeling import OpLabeling
+from ilastik.applets.base.appletSerializer import AppletSerializer
 
 from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot
 from lazyflow.operators import OpAttributeSelector
@@ -40,15 +42,23 @@ class OpCarvingTopLevel(Operator):
         self.opCarving.RawData.connect( self.RawData )
         
         self.opCarving.WriteSeeds.connect(self.opLabeling.LabelInputs)
+        
+        self._dirtyObjects = defaultdict(set)
 
     def saveCurrentObject(self, imageIndex):  
-        self.opCarving.innerOperators[imageIndex].saveCurrentObject()
+        name = self.opCarving.innerOperators[imageIndex].saveCurrentObject()
+        if name == "":
+            return
+        
         # Sparse label array automatically shifts label values down 1
         self.opLabeling.LabelDelete.setValue(2)
         self.opLabeling.LabelDelete.setValue(1)
         self.opLabeling.LabelDelete.setValue(-1)
         # trigger a re-computation
         self.opCarving.innerOperators[imageIndex].Trigger.setDirty(slice(None))
+       
+        assert name in self._dirtyObjects[imageIndex] 
+        self._dirtyObjects[imageIndex].remove(name)
         
     def saveObjectAs(self, name, imageIndex):
         # first, save the object under "name"
@@ -90,6 +100,8 @@ class OpCarvingTopLevel(Operator):
         self.opLabeling.LabelDelete.setValue(-1)
         # trigger a re-computation
         self.opCarving.innerOperators[imageIndex].Trigger.setDirty(slice(None))
+        
+        self._dirtyObjects[imageIndex].add(name)
     
     def doneObjectNamesForPosition(self, position3d, imageIndex):
         return self.opCarving.innerOperators[imageIndex].doneObjectNamesForPosition(position3d)
@@ -191,12 +203,15 @@ class OpCarving(Operator):
             self._mst.object_seeds_bg_voxels[name] = bgVoxels
                 
     def loadObject(self, name):      
+        assert self._mst is not None
+        print "[OpCarving] load object %s (opCarving=%d, mst=%d)" % (name, id(self), id(self._mst)) 
         with self._cond:
             while self._nExecutingThreads > 0:
                 self._cond.wait()
-                
-            objNr = self._mst.object_names[name]
-            print "   --> Loading object %r from nr %r" % (name, objNr)
+            
+            #old way of doing things:    
+            #objNr = self._mst.object_names[name]
+            #print "   --> Loading object %r from nr %r" % (name, objNr)
     
             lut_segmentation = self._mst.segmentation.lut[:]
             lut_objects = self._mst.objects.lut[:]
@@ -236,6 +251,8 @@ class OpCarving(Operator):
         if self._currObjectName:
             print "saving object %s" % self._currObjectName
             self.saveObjectAs(self._currObjectName)
+            return self._currObjectName
+        return ""
     
     def saveObjectAs(self, name): 
         with self._cond:
@@ -355,15 +372,82 @@ class OpCarving(Operator):
             
             self.Segmentation.setDirty(slice(None))
         elif slot == self.CarvingGraphFile:
+            if self._mst is not None:
+                #FIXME
+                return
+            
             fname = self.CarvingGraphFile.value
-            print "[Carving id=%d] loading graph file %s" % (id(self), fname) 
             self._mst = MSTSegmentor.loadH5(fname,  "graph")
+            print "[Carving id=%d] loading graph file %s (mst=%d)" % (id(self), fname, id(self._mst)) 
             
             self.Segmentation.setDirty(slice(None))
         else:
             super(OpCarving, self).notifyDirty(slot, key) 
     
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class CarvingSerializer( AppletSerializer ):
+    def __init__(self, carvingTopLevelOperator, *args, **kwargs):
+        super(CarvingSerializer, self).__init__(*args, **kwargs)
+        self._o = carvingTopLevelOperator 
+        
+    def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
+        obj = self.getOrCreateGroup(topGroup, "objects")
+        
+        imageIndex = 0 #FIXME
+        
+        mst = self._o.opCarving.innerOperators[imageIndex]._mst 
+            
+        for name in self._o._dirtyObjects[imageIndex]:
+            print "[CarvingSerializer] serializing %s" % name
+            g = self.getOrCreateGroup(obj, name)
+            
+            self.deleteIfPresent(g, "fg_voxels")
+            self.deleteIfPresent(g, "bg_voxels")
+            self.deleteIfPresent(g, "sv")
+            
+            v = mst.object_seeds_fg_voxels[name]
+            v = [v[i][:,numpy.newaxis] for i in range(3)]
+            v = numpy.concatenate(v, axis=1)
+            g.create_dataset("fg_voxels", data=v)
+            
+            v = mst.object_seeds_bg_voxels[name]
+            v = [v[i][:,numpy.newaxis] for i in range(3)]
+            v = numpy.concatenate(v, axis=1)
+            g.create_dataset("bg_voxels", data=v)
+            
+            g.create_dataset("sv", data=mst.object_lut[name])
+        self._o._dirtyObjects[imageIndex] = set()
+        
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        obj = topGroup["objects"]
+        
+        imageIndex = 0 #FIXME
+        
+        mst = self._o.opCarving.innerOperators[imageIndex]._mst 
+        opCarving = self._o.opCarving.innerOperators[imageIndex] 
+        
+        for name in obj:
+            g = obj[name]
+            print "[CarvingSerializer] de-serializing %s, with opCarving=%d, mst=%d" % (name, id(opCarving), id(mst))
+            fg_voxels = g["fg_voxels"]
+            bg_voxels = g["bg_voxels"]
+            print "  %d voxels labeled with green seed" % fg_voxels.shape[0] 
+            print "  %d voxels labeled with red seed" % bg_voxels.shape[0] 
+            fg_voxels = [fg_voxels[:,i] for i in range(3)]
+            bg_voxels = [bg_voxels[:,i] for i in range(3)]
+            
+            sv = g["sv"].value
+            print "  object is made up of %d supervoxels" % sv.size
+            
+            mst.object_seeds_fg_voxels[name] = fg_voxels
+            mst.object_seeds_bg_voxels[name] = bg_voxels
+            mst.object_lut[name] = sv
+    
+    def isDirty(self):
+        return True
+    def unload(self): 
+        pass
 
 class CarvingGui(LabelingGui):
     def __init__(self, labelingSlots, observedSlots, drawerUiPath=None, rawInputSlot=None,
@@ -400,8 +484,10 @@ class CarvingGui(LabelingGui):
             name, ok = QInputDialog.getText(self, 'Save Object As', 'object name') 
             name = str(name)
             print "save object as %s" % name
-            if ok:
-                self._carvingApplet.topLevelOperator.saveObjectAs(name, self.imageIndex)
+            if not ok:
+                return
+            self._carvingApplet.topLevelOperator.saveObjectAs(name, self.imageIndex)
+            
         self.labelingDrawerUi.saveAs.clicked.connect(onSaveAsButton)
         
         def onSaveButton():
@@ -567,6 +653,11 @@ class CarvingApplet(LabelingApplet):
         assert self._segmentation5D is not None
 
     @property
+    def dataSerializers(self):
+        return [ CarvingSerializer(self._topLevelOperator, "carving", 0.1) ]
+        #return []
+
+    @property
     def gui(self):
         if self._gui is None:
 
@@ -658,7 +749,10 @@ if __name__ == "__main__":
         carvingGraphFilename = args[0]
         projectFilename = args[1]
         def loadProject(shell, workflow):
-            shell.createAndLoadNewProject(projectFilename)
+            if not os.path.exists(projectFilename):
+                shell.createAndLoadNewProject(projectFilename)
+            else:
+                shell.openProjectFile(projectFilename)
             workflow.setCarvingGraphFile(carvingGraphFilename)
             # Add a file
             from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
