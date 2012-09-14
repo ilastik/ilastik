@@ -4,7 +4,7 @@ from PyQt4.QtCore import QRectF, Qt
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
-from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, \
+from volumina.api import LazyflowSource, NormalizingSource, GrayscaleLayer, RGBALayer, \
                          AlphaModulatedLayer, LayerStackModel, VolumeEditor
 
 from lazyflow.graph import OperatorWrapper
@@ -197,7 +197,9 @@ class LayerViewerGui(QMainWindow):
                 # We assume that ints range up to their max possible value,
                 return (0, numpy.iinfo( meta.dtype ).max)
             else:
-                return 'auto' # Ask the image to be auto-normalized
+                # If we don't know the range of the data, create a layer that is auto-normalized.
+                # See volumina.pixelpipeline.datasources for details.
+                return 'autoPercentiles'
 
         # Examine channel dimension to determine Grayscale vs. RGB
         shape = slot.meta.shape
@@ -219,41 +221,39 @@ class LayerViewerGui(QMainWindow):
         if numChannels == 1:
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
             source = LazyflowSource(slot)
-            return GrayscaleLayer(source, normalize=normalize)
+            normSource = NormalizingSource( source, bounds='autoMinMax' )
+            return GrayscaleLayer(normSource)
 
         assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha)
         redProvider = OpSingleChannelSelector(graph=slot.graph)
         redProvider.Input.connect(slot)
         redProvider.Index.setValue( 0 )
         redSource = LazyflowSource( redProvider.Output )
-        normalizeR = normalize
+        redNormSource = NormalizingSource( redSource, bounds=normalize )
         
         greenProvider = OpSingleChannelSelector(graph=slot.graph)
         greenProvider.Input.connect(slot)
         greenProvider.Index.setValue( 1 )
         greenSource = LazyflowSource( greenProvider.Output )
-        normalizeG = normalize
+        greenNormSource = NormalizingSource( greenSource, bounds=normalize )
                         
-        blueSource = None
-        normalizeB = None
+        blueNormSource = None
         if numChannels > 3 or (numChannels == 3 and not lastChannelIsAlpha):
             blueProvider = OpSingleChannelSelector(graph=slot.graph)
             blueProvider.Input.connect(slot)
             blueProvider.Index.setValue( 2 )
             blueSource = LazyflowSource( blueProvider.Output )
-            normalizeB = normalize
+            blueNormSource = NormalizingSource( blueSource, bounds=normalize )
 
-        alphaSource = None
-        normalizeA = None
+        alphaNormSource = None
         if lastChannelIsAlpha:
             alphaProvider = OpSingleChannelSelector(graph=slot.graph)
             alphaProvider.Input.connect(slot)
             alphaProvider.Index.setValue( numChannels-1 )
             alphaSource = LazyflowSource( alphaProvider.Output )
-            normalizeA = normalize
+            alphaNormSource = NormalizingSource( alphaSource, bounds=normalize )
         
-        layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource,
-                           normalizeR=normalizeR, normalizeG=normalizeG, normalizeB=normalizeB, normalizeA=normalizeA )
+        layer = RGBALayer( red=redNormSource, green=greenNormSource, blue=blueNormSource, alpha=alphaNormSource )
         return layer
 
     @traceLogged(traceLogger)
@@ -536,7 +536,7 @@ class LayerViewerGui(QMainWindow):
                     dataTags = datasource.dataSlot.meta.axistags
                     break
 
-        assert dataTags is not None, "Could not find a lazyflow data source in any layer."
+        assert dataTags is not None, "Can't convert mouse click coordinates from volumina-5d: Could not find a lazyflow data source in any layer."
         position = ()
         for tag in dataTags:
             position += (taggedPosition[tag.key],)
