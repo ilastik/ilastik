@@ -87,6 +87,11 @@ class LabelingGui(LayerViewerGui):
     def labelListData(self):
         return self._labelControlUi.labelListModel
     
+    def selectLabel(self, labelIndex):
+        """Programmatically select the given labelIndex, which start from 0.
+           Equivalent to clicking on the (labelIndex+1)'th position in the label widget."""
+        self._labelControlUi.labelListModel.select(labelIndex)
+    
     class LabelingSlots(object):
         def __init__(self):
             # Label slots are multi (level=1) and accessed as shown.
@@ -157,7 +162,7 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.labelListView.setModel(model)
         _labelControlUi.labelListModel=model
         _labelControlUi.labelListModel.rowsRemoved.connect(self.onLabelRemoved)
-        _labelControlUi.labelListModel.labelSelected.connect(self.switchLabel)
+        _labelControlUi.labelListModel.labelSelected.connect(self.onLabelSelected)
         
         @traceLogged(traceLogger)
         def onDataChanged(topLeft, bottomRight):
@@ -350,7 +355,7 @@ class LabelingGui(LayerViewerGui):
             self.editor.brushingModel.setBrushSize(newSize)
 
     @traceLogged(traceLogger)
-    def switchLabel(self, row):
+    def onLabelSelected(self, row):
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
 
         # If the user is selecting a label, he probably wants to be in paint mode
@@ -387,7 +392,7 @@ class LabelingGui(LayerViewerGui):
             self.addNewLabel()
        
         self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
-        
+    
     @traceLogged(traceLogger)
     def addNewLabel(self):
         """
@@ -410,8 +415,7 @@ class LabelingGui(LayerViewerGui):
 
         # Make the new label selected
         selectedRow = nlabels-1
-        self._labelControlUi.labelListView.selectRow(selectedRow)
-        self.switchLabel(selectedRow)
+        self._labelControlUi.labelListModel.select(selectedRow)
 
     def getNextLabelName(self):
         maxNum = 0

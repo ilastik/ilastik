@@ -3,7 +3,7 @@
 import os, numpy, threading
 
 from PyQt4.QtGui import QShortcut, QKeySequence
-from PyQt4.QtGui import QColor
+from PyQt4.QtGui import QColor, QMenu
 
 from ilastik.workflow import Workflow
 
@@ -41,22 +41,76 @@ class OpCarvingTopLevel(Operator):
         
         self.opCarving.WriteSeeds.connect(self.opLabeling.LabelInputs)
 
-    def saveObjectAs(self, name, imageIndex):
-        # first, save the object under "name"
-        self.opCarving.innerOperators[imageIndex].saveObjectAs(name)
-        
+    def saveCurrentObject(self, imageIndex):  
+        self.opCarving.innerOperators[imageIndex].saveCurrentObject()
         # Sparse label array automatically shifts label values down 1
         self.opLabeling.LabelDelete.setValue(2)
         self.opLabeling.LabelDelete.setValue(1)
         self.opLabeling.LabelDelete.setValue(-1)
-        
         # trigger a re-computation
         self.opCarving.innerOperators[imageIndex].Trigger.setDirty(slice(None))
         
+    def saveObjectAs(self, name, imageIndex):
+        # first, save the object under "name"
+        self.opCarving.innerOperators[imageIndex].saveObjectAs(name)
+        # Sparse label array automatically shifts label values down 1
+        
+        nonzeroSlicings = self.opLabeling.NonzeroLabelBlocks[imageIndex][:].wait()[0]
+      
+        def coordinateList(): 
+            coors1 = [[], [], []]
+            coors2 = [[], [], []]
+            for sl in nonzeroSlicings:
+                a = self.opLabeling.LabelImages[imageIndex][sl].wait()
+                w1 = numpy.where(a == 1)
+                w2 = numpy.where(a == 2)
+                w1 = [w1[i] + sl[i].start for i in range(3)]
+                w2 = [w2[i] + sl[i].start for i in range(3)]
+                for i in range(3):
+                    coors1[i].append( w1[i] )
+                    coors2[i].append( w2[i] )
+                    
+            for i in range(3):
+                coors1[i] = numpy.concatenate(coors1[i])
+                coors2[i] = numpy.concatenate(coors2[i])
+            print "coors1 = ", coors1
+            print "coors2 = ", coors2
+            return (coors1, coors2)
+       
+        #find non-zero coordinates
+        fgVoxels, bgVoxels = coordinateList()
+        
+        self.opCarving.innerOperators[imageIndex].attachVoxelLabelsToObject(name, fgVoxels, bgVoxels)
+        #mst = self.opCarving.innerOperators[imageIndex]._mst 
+        #mst.object_seeds_fg_voxels[name] = fgVoxels
+        #mst.object_seeds_bg_voxels[name] = bgVoxels
+        
+        self.opLabeling.LabelDelete.setValue(2)
+        self.opLabeling.LabelDelete.setValue(1)
+        self.opLabeling.LabelDelete.setValue(-1)
+        # trigger a re-computation
+        self.opCarving.innerOperators[imageIndex].Trigger.setDirty(slice(None))
+    
+    def doneObjectNamesForPosition(self, position3d, imageIndex):
+        return self.opCarving.innerOperators[imageIndex].doneObjectNamesForPosition(position3d)
+        
     def loadObject(self, name, imageIndex):
         print "want to load object with name = %s" % name
-        self.opCarving.innerOperators[imageIndex].loadObject(name)
-        self.opLabeling.LabelInputs[imageIndex][:] = self.opCarving.innerOperators[imageIndex]._mst.seeds[:]
+        fgVoxels, bgVoxels = self.opCarving.innerOperators[imageIndex].loadObject(name)
+        
+        #if we want to supervoxelize the seeds, do this:
+        #self.opLabeling.LabelInputs[imageIndex][:] = self.opCarving.innerOperators[imageIndex]._mst.seeds[:]
+        
+        #else:
+        shape = self.opLabeling.LabelImages[imageIndex].meta.shape
+        dtype = self.opLabeling.LabelImages[imageIndex].meta.dtype
+        print "shape=", shape, "dtype=", dtype
+        z = numpy.zeros(shape, dtype=dtype)
+        z[fgVoxels] = 2
+        z[bgVoxels] = 1
+        self.opLabeling.LabelInputs[imageIndex][:] = z[:]
+
+#//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class OpCarving(Operator):
     name = "Carving"
@@ -89,6 +143,7 @@ class OpCarving(Operator):
     
     Segmentation = OutputSlot()
     Supervoxels  = OutputSlot()
+    DoneObjects  = OutputSlot()
     
     def __init__(self, carvingGraphFilename, *args, **kwargs):
         super(OpCarving, self).__init__(*args, **kwargs)
@@ -100,39 +155,88 @@ class OpCarving(Operator):
         self._mst = MSTSegmentor.loadH5(carvingGraphFilename,  "graph")
         self._nExecutingThreads = 0
         self._cond = threading.Condition()
+        
+        self._currObjectName = ""
     
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.RawData.meta)
         self.Supervoxels.meta.assignFrom(self.RawData.meta)
+        self.DoneObjects.meta.assignFrom(self.RawData.meta)
         
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
     
+    def doneObjectNamesForPosition(self, position3d):
+        assert len(position3d) == 3
+        with self._cond:
+            while self._nExecutingThreads > 0:
+                self._cond.wait()
+          
+            #find the supervoxel that was clicked 
+            sv = self._mst.regionVol[position3d]
+            print "clicked on supervoxel = %r" % sv
+            names = []
+            for name, objectSupervoxels in self._mst.object_lut.iteritems(): 
+                if numpy.sum(sv == objectSupervoxels) > 0: 
+                    names.append(name)
+            print "click on %r, supervoxel=%d: %r" % (position3d, sv, names)
+            return names
+        
+    def attachVoxelLabelsToObject(self, name, fgVoxels, bgVoxels):
+        with self._cond:
+            while self._nExecutingThreads > 0:
+                self._cond.wait()
+                
+            self._mst.object_seeds_fg_voxels[name] = fgVoxels
+            self._mst.object_seeds_bg_voxels[name] = bgVoxels
+                
     def loadObject(self, name):      
         with self._cond:
             while self._nExecutingThreads > 0:
                 self._cond.wait()
-        objNr = self._mst.object_names[name]
-        print "   --> Loading object %r from nr %r" % (name, objNr)
-
-        lut_segmentation = self._mst.segmentation.lut[:]
-        lut_objects = self._mst.objects.lut[:]
-        lut_seeds = self._mst.seeds.lut[:]
-
-        obj_seeds_fg = self._mst.object_seeds_fg[name]
-        obj_seeds_bg = self._mst.object_seeds_bg[name]
-      
-        # clean seeds
-        lut_seeds[:] = 0
-
-        # set foreground and background seeds
-        lut_seeds[obj_seeds_fg] = 2
-        lut_seeds[obj_seeds_bg] = 1
-
-        # set current segmentation
-        lut_segmentation[:] = numpy.where( lut_objects == objNr, 2, 1)
-        
-      
+                
+            objNr = self._mst.object_names[name]
+            print "   --> Loading object %r from nr %r" % (name, objNr)
+    
+            lut_segmentation = self._mst.segmentation.lut[:]
+            lut_objects = self._mst.objects.lut[:]
+            lut_seeds = self._mst.seeds.lut[:]
+            # clean seeds
+            lut_seeds[:] = 0
+    
+            # set foreground and background seeds
+            fgVoxels = self._mst.object_seeds_fg_voxels[name]
+            bgVoxels = self._mst.object_seeds_bg_voxels[name]
+           
+            #supervoxelize seeds: 
+            #obj_seeds_fg = self._mst.object_seeds_fg[name]
+            #obj_seeds_bg = self._mst.object_seeds_bg[name]
+            #lut_seeds[obj_seeds_fg] = 2
+            #lut_seeds[obj_seeds_bg] = 1
+            
+            #user-drawn seeds:
+            self._mst.seeds[:] = 0
+            self._mst.seeds[fgVoxels] = 2
+            self._mst.seeds[bgVoxels] = 1
+    
+            #old way of setting current segmentation
+            # set current segmentation
+            #lut_segmentation[:] = numpy.where( lut_objects == objNr, 2, 1)
+           
+            newSegmentation = numpy.ones(len(lut_objects), dtype=numpy.int32) 
+            newSegmentation[ self._mst.object_lut[name] ] = 2
+            lut_segmentation[:] = newSegmentation
+            del self._mst.object_lut[name]
+            
+            self._currObjectName = name
+            
+            return (fgVoxels, bgVoxels)
+    
+    def saveCurrentObject(self):  
+        if self._currObjectName:
+            print "saving object %s" % self._currObjectName
+            self.saveObjectAs(self._currObjectName)
+    
     def saveObjectAs(self, name): 
         with self._cond:
             while self._nExecutingThreads > 0:
@@ -156,6 +260,10 @@ class OpCarving(Operator):
             #save new object 
             lut_segmentation = self._mst.segmentation.lut[:]
             lut_objects[:] = numpy.where(lut_segmentation == seed, objNr, lut_objects)
+            
+            objectSupervoxels = numpy.where(lut_segmentation == seed)
+            print "supervoxels = %r" % objectSupervoxels
+            self._mst.object_lut[name] = objectSupervoxels
     
             #save object name with objNr
             self._mst.object_names[name] = objNr
@@ -169,6 +277,8 @@ class OpCarving(Operator):
            
             # reset seeds 
             self._mst.seeds[:] = numpy.int32(-1) #see segmentation.pyx: -1 means write zeros
+            
+            self._currObjectName = name
             
         #now release the lock!
     
@@ -184,6 +294,19 @@ class OpCarving(Operator):
             result[0,:,:,:,0] = self._mst.segmentation[sl[1:4]]
         elif slot == self.Supervoxels:
             result[0,:,:,:,0] = self._mst.regionVol[sl[1:4]]
+        elif slot  == self.DoneObjects:
+            
+            done_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32) 
+          
+            print "building done" 
+            for name, objectSupervoxels in self._mst.object_lut.iteritems(): 
+                print " ... name"
+                done_lut[objectSupervoxels] += 1
+            print "building done done, %d nonzero" % numpy.sum(done_lut > 0)
+                
+            result[0,:,:,:,0] = done_lut[self._mst.regionVol[sl[1:4]]]
+            print "building done done, result %d nonzero" % numpy.sum(result > 0)
+            
         else:
             raise RuntimeError("unknown slot")
         
@@ -281,6 +404,10 @@ class CarvingGui(LabelingGui):
                 self._carvingApplet.topLevelOperator.saveObjectAs(name, self.imageIndex)
         self.labelingDrawerUi.saveAs.clicked.connect(onSaveAsButton)
         
+        def onSaveButton():
+            self._carvingApplet.topLevelOperator.saveCurrentObject(self.imageIndex)
+        self.labelingDrawerUi.save.clicked.connect(onSaveButton)
+        
         def onLoadObjectButton():
             print "load which object?"
             from PyQt4.QtGui import QInputDialog
@@ -290,6 +417,50 @@ class CarvingGui(LabelingGui):
             if ok:
                 self._carvingApplet.topLevelOperator.loadObject(name, self.imageIndex)
         self.labelingDrawerUi.load.clicked.connect(onLoadObjectButton)
+        
+        def labelBackground():
+            self.selectLabel(0)
+        def labelObject():
+            self.selectLabel(1)
+       
+        self._labelControlUi.labelListModel.allowRemove(False) 
+        
+        QShortcut(QKeySequence("1"), self, member=labelBackground, ambiguousMember=labelBackground)
+        QShortcut(QKeySequence("2"), self, member=labelObject, ambiguousMember=labelObject)
+       
+        def layerIndexForName(name): 
+            return self.layerstack.findMatchingIndex(lambda x: x.name == name)
+        
+        def toggleDone():
+            row = layerIndexForName("done")
+            self.layerstack.selectRow(row)
+            layer = self.layerstack[row]
+            layer.visible = not layer.visible
+            self.viewerControlWidget().layerWidget.setFocus()
+        QShortcut(QKeySequence("d"), self, member=toggleDone, ambiguousMember=toggleDone)
+        
+        def toggleSegmentation():
+            row = layerIndexForName("segmentation")
+            self.layerstack.selectRow(row)
+            layer = self.layerstack[row]
+            layer.visible = not layer.visible
+            self.viewerControlWidget().layerWidget.setFocus()
+        QShortcut(QKeySequence("s"), self, member=toggleSegmentation, ambiguousMember=toggleSegmentation)
+    
+    def handleEditorRightClick(self, currentImageIndex, position5d, globalWindowCoordinate):
+        print "handleEd"
+        names = self._carvingApplet.topLevelOperator.doneObjectNamesForPosition(position5d[1:4], currentImageIndex)
+       
+        m = QMenu(self)
+        m.addAction("position %d %d %d" % (position5d[1], position5d[2], position5d[3]))
+        for n in names:
+            m.addAction("edit %s" % n)
+            m.addAction("delete %s" % n)
+            
+        act = m.exec_(globalWindowCoordinate) 
+        for n in names:
+            if act.text() == "edit %s" %n:
+                self._carvingApplet.topLevelOperator.loadObject(n, self.imageIndex)
         
     def getNextLabelName(self):
         l = len(self._labelControlUi.labelListModel)
@@ -326,6 +497,20 @@ class CarvingGui(LabelingGui):
             layer.name = "segmentation"
             layer.visible = True
             layer.opacity = 0.3
+            layers.append(layer)
+        
+        #segmentation 
+        done = self._carvingApplet.topLevelOperator.opCarving.DoneObjects[currentImageIndex]
+        if done.ready(): 
+            colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,255).rgba()]
+            for i in range(254-len(colortable)):
+                r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
+                colortable.append(QColor(r,g,b).rgba())
+            layer = ColortableLayer(LazyflowSource(done), colortable)
+            #layer = ColortableLayer(source, colortable)
+            layer.name = "done"
+            layer.visible = False
+            layer.opacity = 0.5
             layers.append(layer)
             
         #supervoxel

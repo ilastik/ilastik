@@ -548,19 +548,19 @@ class LayerViewerGui(QMainWindow):
             
         return position
     
-    def _handleEditorRightClick(self, position5d):
+    def _handleEditorRightClick(self, position5d, globalWindowCoordinate):
         dataPosition = self._convertPositionToDataSpace(position5d)
-        self.handleEditorRightClick(self.imageIndex, dataPosition)
+        self.handleEditorRightClick(self.imageIndex, dataPosition, globalWindowCoordinate)
 
-    def _handleEditorLeftClick(self, position5d):
+    def _handleEditorLeftClick(self, position5d, globalWindowCoordinate):
         dataPosition = self._convertPositionToDataSpace(position5d)
-        self.handleEditorLeftClick(self.imageIndex, dataPosition)
+        self.handleEditorLeftClick(self.imageIndex, dataPosition, globalWindowCoordinate)
 
-    def handleEditorRightClick(self, currentImageIndex, position5d):
+    def handleEditorRightClick(self, currentImageIndex, position5d, globalWindowCoordinate):
         # Override me
         pass
 
-    def handleEditorLeftClick(self, currentImageIndex, position5d):
+    def handleEditorLeftClick(self, currentImageIndex, position5d, globalWindowCoordiante):
         # Override me
         pass
 
