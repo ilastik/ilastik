@@ -1,8 +1,8 @@
 import numpy
-
+import time
 from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, OrderedSignal
 from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.request import Request
+from lazyflow.request import Request, Pool
 import vigra
 import copy
 from functools import partial
@@ -22,9 +22,9 @@ class OpTrainRandomForest(Operator):
 
     def __init__(self, parent = None):
         Operator.__init__(self, parent)
-        self._forest_count = 10
+        self._forest_count = 4
         # TODO: Make treecount configurable via an InputSlot
-        self._tree_count = 10
+        self._tree_count = 25
 
     def setupOutputs(self):
         if self.inputs["fixClassifier"].value == False:
@@ -58,17 +58,14 @@ class OpTrainRandomForest(Operator):
         labelsMatrix=numpy.concatenate(labelsMatrix,axis=0)
 
         # train and store self._forest_count forests in parallel
-        requests = []
+        pool = Pool()
         for i in range(self._forest_count):
             def train_and_store(number):
                 result[number] = vigra.learning.RandomForest(self._tree_count) 
                 result[number].learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
-            req = Request(partial(train_and_store, i))
-            req.submit()
-            requests.append(req)
-
-        for r in requests:
-            r.wait()
+            req = pool.request(partial(train_and_store, i))
+        
+        pool.wait()
 
         return result
 
@@ -198,17 +195,16 @@ class OpTrainRandomForestBlocked(Operator):
             try:
                 logger.debug("Learning with Vigra...")
                 # train and store self._forest_count forests in parallel
-                requests = []
+                pool = Pool()
+
                 for i in range(self._forest_count):
                     def train_and_store(number):
                         result[number] = vigra.learning.RandomForest(self._tree_count) 
                         result[number].learnRF(featMatrix.astype(numpy.float32),labelsMatrix.astype(numpy.uint32))
-                    req = Request(partial(train_and_store, i))
-                    req.submit()
-                    requests.append(req)
+                    req = pool.request(partial(train_and_store, i))
 
-                for r in requests:
-                    r.wait()
+                pool.wait()
+
                 logger.debug("Vigra finished")
             except:
                 logger.error( "ERROR: could not learn classifier" )
@@ -253,6 +249,7 @@ class OpPredictRandomForest(Operator):
         self.PMaps.meta.drange = (0.0, 1.0)
 
     def execute(self,slot, roi, result):
+        t1 = time.time()
         key = roi.toSlice()
         nlabels=self.inputs["LabelsCount"].value
 
@@ -269,37 +266,41 @@ class OpPredictRandomForest(Operator):
         newKey = key[:-1]
         newKey += (slice(0,self.inputs["Image"].shape[-1],None),)
 
-        res = self.inputs["Image"][newKey].allocate().wait()
+        res = self.inputs["Image"][newKey].wait()
 
         shape=res.shape
         prod = numpy.prod(shape[:-1])
-        features=res.reshape(prod, shape[-1])
+        res.shape = (prod, shape[-1])
+        features=res
 
         predictions = [0]*len(forests)
         
         def predict_forest(number):
             predictions[number] = forests[number].predictProbabilities(features.astype(numpy.float32))
         
+        t2 = time.time()
+
         # predict the data with all the forests in parallel
-        requests = []
+        pool = Pool()
+
         for i,f in enumerate(forests):
-            req = Request(partial(predict_forest, i))
-            req.submit()
-            requests.append(req)
+            req = pool.request(partial(predict_forest, i))
 
-
-        for r in requests:
-            r.wait()
+        pool.wait()
 
         prediction=numpy.dstack(predictions)
         prediction = numpy.average(prediction, axis=2)
-
-        prediction = prediction.reshape(*(shape[:-1] + (forests[0].labelCount(),)))
+        prediction.shape =  shape[:-1] + (forests[0].labelCount(),)
+        #prediction = prediction.reshape(*(shape[:-1] + (forests[0].labelCount(),)))
 
         # If our LabelsCount is higher than the number of labels in the training set,
         # then our results aren't really valid.
         # Duplicate the last label's predictions
         chanslice = slice(min(key[-1].start, forests[0].labelCount()-1), min(key[-1].stop, forests[0].labelCount()))
+
+        t3 = time.time()
+
+        logger.info("Predict took %fseconds, actual RF time was %fs, feature time was %fs" % (t3-t1, t3-t2, t2-t1))
         return prediction[...,chanslice] # FIXME: This assumes that channel is the last axis
 
 

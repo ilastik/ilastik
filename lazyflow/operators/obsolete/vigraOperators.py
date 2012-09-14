@@ -4,6 +4,7 @@ from lazyflow.graph import *
 import gc
 from lazyflow import roi
 import copy
+from lazyflow.request import Pool, Request
 
 from functools import partial
 
@@ -520,15 +521,11 @@ class OpPixelFeaturesPresmoothed(Operator):
 
                                 written += 1
                             cnt += 1
-            requests = []
-
+            pool = Pool()
             for c in closures:
-                r = Request(c)
-                requests.append(r)
-                r.submit()
-
-            for r in requests[::-1]:
-                r.wait()
+                r = pool.request(c)
+            pool.wait()
+            pool.clean()
 
             for i in range(len(sourceArraysForSigmas)):
                 if sourceArraysForSigmas[i] is not None:

@@ -169,11 +169,20 @@ class ValueRequest(object):
     def wait(self):
         return self.result
 
+    def submit(self):
+        pass
+
     def notify(self, callback, *args, **kwargs):
         callback(self.result, *args, **kwargs)
 
     def onCancel(self, callback, *args, **kwargs):
         pass
+
+    def onFinish(self, callback, **kwargs):
+        callback(self, **kwargs)
+
+    def clean(self):
+        self.result = None
 
     def allocate(self, priority = 0):
         return self

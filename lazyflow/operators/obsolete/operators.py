@@ -584,7 +584,7 @@ class OpArrayCache(OpArrayPiper):
 
         dirtyRois = []
         half = tileArray.shape[0]/2
-        dirtyRequests = []
+        dirtyPool = request.Pool()
 
         def onCancel(req):
             return False # indicate that this request cannot be canceled
@@ -613,8 +613,7 @@ class OpArrayCache(OpArrayPiper):
                 req = self.inputs["Input"][key].writeInto(self._cache[key])
 
                 req.onCancel(onCancel)
-
-                dirtyRequests.append((req,key2, key3))
+                dirtyPool.add(req)
 
                 self._blockQuery[key2] = req
 
@@ -645,9 +644,9 @@ class OpArrayCache(OpArrayPiper):
         temp = itertools.count(0)
 
         #wait for all requests to finish
-        self.traceLogger.debug( "Firing all {} cache input requests...".format(len(dirtyRequests)) )
-        for req, reqBlockKey, reqSubBlockKey in dirtyRequests:
-            res = req.wait()
+        self.traceLogger.debug( "Firing all {} cache input requests...".format(len(dirtyPool)) )
+        dirtyPool.wait()
+        # dirtyPool.clean()
         self.traceLogger.debug( "All cache input requests received." )
 
         # indicate the finished inprocess state (i.e. CLEAN)
@@ -657,10 +656,13 @@ class OpArrayCache(OpArrayPiper):
                 self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)
 
 
+        inProcessPool = request.Pool()
         #wait for all in process queries
         for req in inProcessQueries:
-            req.wait()
-            req.clean()
+            inProcessPool.add(req)
+
+        inProcessPool.wait()
+        # inProcessPool.clean()
 
         # finally, store results in result area
         self._lock.acquire()
@@ -1202,8 +1204,6 @@ class OpBlockedArrayCache(Operator):
         with Tracer(self.traceLogger):
             super(OpBlockedArrayCache, self).__init__( *args, **kwargs )
             self._configured = False
-            self.source = OpArrayPiper(self)
-            self.source.inputs["Input"].connect(self.inputs["Input"])
             self._fixed = False
             self._fixed_dirty_blocks = set()
             self._lock = Lock()
@@ -1320,7 +1320,7 @@ class OpBlockedArrayCache(Operator):
                         if not self._cache_list.has_key(b_ind):
 
                             self._opSub_list[b_ind] = generic.OpSubRegion(self)
-                            self._opSub_list[b_ind].inputs["Input"].connect(self.inputs["Input"])#source.outputs["Output"])
+                            self._opSub_list[b_ind].inputs["Input"].connect(self.inputs["Input"])
                             tstart = self._blockShape*self._flatBlockIndices[b_ind]
                             tstop = numpy.minimum((self._flatBlockIndices[b_ind]+numpy.ones(self._flatBlockIndices[b_ind].shape, numpy.uint8))*self._blockShape, self.shape)
         
