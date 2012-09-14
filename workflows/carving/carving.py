@@ -351,7 +351,11 @@ class OpCarving(Operator):
             #       Fix it here so that erasing of labels works.
             value = numpy.where(value == 100, 255, value[:])
             
-            self._mst.seeds[key] = value
+            if hasattr(key, '__len__'):
+                self._mst.seeds[key[0:3]] = value
+            else:
+                self._mst.seeds[key] = value
+                
         else:
             raise RuntimeError("unknown slots")
         
