@@ -44,7 +44,7 @@ class OpTracking(Operator):
             result = self.LabelImage.get(roi).wait()
             
             t = roi.start[0]
-            if self.last_timerange and t <= self.last_timerange[-1] and t >= self.last_timerange[0]:
+            if (self.last_timerange and t <= self.last_timerange[-1] and t >= self.last_timerange[0]):
                 result[0,...,0] = relabel( result[0,...,0], self.label2color[t] )
             else:
                 result[...] = 0
@@ -56,6 +56,9 @@ class OpTracking(Operator):
 
     def track( self,
             time_range,
+            x_range,
+            y_range,
+            z_range,
             x_scale = 1.0,
             y_scale = 1.0,
             z_scale = 1.0,               
@@ -87,7 +90,7 @@ class OpTracking(Operator):
                                         min_angle,
                                         ep_gap)
 
-        ts = self._generate_traxelstore( time_range, x_scale, y_scale, z_scale )
+        ts = self._generate_traxelstore( time_range, x_range, y_range, z_range, x_scale, y_scale, z_scale )
         
         events = tracker(ts)
         label2color = []
@@ -131,7 +134,6 @@ class OpTracking(Operator):
 
             for e in div:
                 if not label2color[-2].has_key(e[0]):
-                    print "PLONK", i
                     label2color[-2][e[0]] = np.random.randint(1,255)
                 ancestor_color = label2color[-2][e[0]]
                 label2color[-1][e[1]] = ancestor_color
@@ -143,6 +145,9 @@ class OpTracking(Operator):
 
     def _generate_traxelstore( self,
                                time_range,
+                               x_range,
+                               y_range,
+                               z_range,
                                x_scale = 1.0,
                                y_scale = 1.0,
                                z_scale = 1.0):
@@ -158,7 +163,15 @@ class OpTracking(Operator):
                 rc = rc[1:,...]
             
             print "at timestep ", t, rc.shape[0], "traxels found"
+            count = 0
             for idx in range(rc.shape[0]):
+                x,y,z = rc[idx]
+                if (x < x_range[0] or x >= x_range[1] or
+                    y < y_range[0] or y >= y_range[1] or
+                    z < z_range[0] or z >= z_range[1]):
+                    continue
+                else:
+                    count += 1
                 tr = ctracking.Traxel()
                 tr.set_x_scale(x_scale)
                 tr.set_y_scale(y_scale)
@@ -169,6 +182,7 @@ class OpTracking(Operator):
                 for i,v in enumerate(rc[idx]):
                     tr.set_feature_value('com', i, float(v))
                 ts.add(tr)
+            print "at timestep ", t, count, "traxels passed filter"
         return ts
 
 

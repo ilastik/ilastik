@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>474</height>
+    <height>611</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -192,34 +192,80 @@
         </font>
        </property>
        <property name="text">
-        <string>Time range</string>
+        <string>Field of View</string>
        </property>
       </widget>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <widget class="QLabel" name="label_13">
-         <property name="text">
-          <string>From</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QSpinBox" name="from_time"/>
-       </item>
-       <item>
+      <layout class="QGridLayout" name="gridLayout_3">
+       <item row="0" column="2">
         <widget class="QLabel" name="label_14">
          <property name="text">
-          <string>to</string>
+          <string>To</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
          </property>
         </widget>
        </item>
-       <item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_15">
+         <property name="text">
+          <string>Time</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QSpinBox" name="from_z"/>
+       </item>
+       <item row="1" column="2">
         <widget class="QSpinBox" name="to_time"/>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLabel" name="label_13">
+         <property name="text">
+          <string>From</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_16">
+         <property name="text">
+          <string>X</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="2">
+        <widget class="QSpinBox" name="to_z"/>
+       </item>
+       <item row="2" column="1">
+        <widget class="QSpinBox" name="from_x"/>
+       </item>
+       <item row="3" column="1">
+        <widget class="QSpinBox" name="from_y"/>
+       </item>
+       <item row="3" column="2">
+        <widget class="QSpinBox" name="to_y"/>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_18">
+         <property name="text">
+          <string>Z</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="2">
+        <widget class="QSpinBox" name="to_x"/>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_17">
+         <property name="text">
+          <string>Y</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QSpinBox" name="from_time"/>
        </item>
       </layout>
      </item>

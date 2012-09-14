@@ -62,11 +62,28 @@ class TrackingGui( QWidget ):
             self.editor.dataShape = mainOperator.LabelImage.meta.shape
 
             maxt = mainOperator.LabelImage.meta.shape[0]
+            maxx = mainOperator.LabelImage.meta.shape[1]
+            maxy = mainOperator.LabelImage.meta.shape[2]
+            maxz = mainOperator.LabelImage.meta.shape[3]            
             self._drawer.from_time.setRange(0,maxt-1)
             self._drawer.from_time.setValue(0)
             self._drawer.to_time.setRange(0,maxt-1)
             self._drawer.to_time.setValue(maxt-1)       
+
+            self._drawer.from_x.setRange(0,maxx-1)
+            self._drawer.from_x.setValue(0)
+            self._drawer.to_x.setRange(0,maxx-1)
+            self._drawer.to_x.setValue(maxx-1)       
         
+            self._drawer.from_y.setRange(0,maxy-1)
+            self._drawer.from_y.setValue(0)
+            self._drawer.to_y.setRange(0,maxy-1)
+            self._drawer.to_y.setValue(maxy-1)       
+
+            self._drawer.from_z.setRange(0,maxz-1)
+            self._drawer.from_z.setValue(0)
+            self._drawer.to_z.setRange(0,maxz-1)
+            self._drawer.to_z.setValue(maxz-1)       
 
     def reset( self ):
         print "TrackinGui.reset(): not implemented"
@@ -155,12 +172,21 @@ class TrackingGui( QWidget ):
 
         det = noiseweight*(-1)*math.log(1-noiserate)
         mdet = noiseweight*(-1)*math.log(noiserate)
-
-
         
+        from_t = self._drawer.from_time.value()
+        to_t = self._drawer.to_time.value()
+        from_x = self._drawer.from_x.value()
+        to_x = self._drawer.to_x.value()
+        from_y = self._drawer.from_y.value()
+        to_y = self._drawer.to_y.value()        
+        from_z = self._drawer.from_z.value()
+        to_z = self._drawer.to_z.value()        
 
         self.mainOperator.innerOperators[0].track(
-            time_range = range(self._drawer.from_time.value(), self._drawer.to_time.value() + 1),
+            time_range = range(from_t, to_t + 1),
+            x_range = (from_x, to_x + 1),
+            y_range = (from_y, to_y + 1),
+            z_range = (from_z, to_z + 1),
             x_scale = self._drawer.x_scale.value(),
             y_scale = self._drawer.y_scale.value(),
             z_scale = self._drawer.z_scale.value(),

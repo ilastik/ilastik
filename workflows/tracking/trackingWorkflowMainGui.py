@@ -4,14 +4,14 @@ from ilastik.shell.gui.startShellGui import startShellGui
 from trackingWorkflow import TrackingWorkflow
 
 
-debug_testing = False
+debug_testing = True
 if debug_testing:
     def test(shell, workflow):
         import h5py
 
         #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
         #projFilePath = '/home/bkausler/withLabelImageAndRegionCenters.ilp'
-        projFilePath = '/home/bkausler/withLabelImage.ilp'        
+        projFilePath = '/home/bkausler/withLabelImageAndFeatsSmall.ilp'        
 
         shell.openProjectFile(projFilePath)
         
