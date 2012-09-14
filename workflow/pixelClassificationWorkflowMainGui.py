@@ -8,7 +8,7 @@ def debug_with_existing(shell, workflow):
     """
     #projFilePath = '/home/bergs/gigacube.ilp'
     #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
-    projFilePath = '/magnetic/250-2.ilp'
+    projFilePath = '/home/akreshuk/MyProject.ilp'
     # Open a project
     shell.openProjectFile(projFilePath)
 
@@ -54,9 +54,11 @@ def debug_with_new(shell, workflow):
 
 if __name__ == "__main__":
     # Start the GUI
-    startShellGui( PixelClassificationWorkflow )
+    #import os
+    #os.execl('/home/akreshuk/voluminave/bin/activate')
+    #startShellGui( PixelClassificationWorkflow )
 
     # Start the GUI with a debug project    
-    #startShellGui( PixelClassificationWorkflow, debug_with_existing )    
+    startShellGui( PixelClassificationWorkflow, debug_with_existing )    
 #    startShellGui( PixelClassificationWorkflow, debug_with_new )
 

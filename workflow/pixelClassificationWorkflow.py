@@ -1,6 +1,6 @@
 from ilastik.workflow import Workflow
 
-from ilastik.applets.pixelClassification import PixelClassificationApplet
+#from ilastik.applets.pixelClassification import PixelClassificationApplet
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 #from ilastik.applets.featureSelection import FeatureSelectionApplet
@@ -12,6 +12,7 @@ from lazyflow.graph import Graph, Operator, OperatorWrapper
 from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
 
 from applets.featureSelection import FeatureSelectionAutocontextApplet
+from applets.pixelClassification import AutocontextClassificationApplet
 
 class PixelClassificationWorkflow(Workflow):
     
@@ -30,27 +31,27 @@ class PixelClassificationWorkflow(Workflow):
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        opData = self.dataSelectionApplet.topLevelOperator
         self.featureSelectionApplet = FeatureSelectionAutocontextApplet(graph, "Feature Selection", "FeatureSelections")
-        #self.pcApplet = PixelClassificationApplet(graph, "PixelClassification")
+        opTrainingFeatures = self.featureSelectionApplet.topLevelOperator
+        self.pcApplet = AutocontextClassificationApplet(graph, "PixelClassification")
 
         ## Access applet operators
-        opData = self.dataSelectionApplet.topLevelOperator
-        opTrainingFeatures = self.featureSelectionApplet.topLevelOperator
-        #opClassify = self.pcApplet.topLevelOperator
+        opClassify = self.pcApplet.topLevelOperator
         
         ## Connect operators ##
         
         # Input Image -> Feature Op
         #         and -> Classification Op (for display)
         opTrainingFeatures.InputImage.connect( opData.Image )
-        #opClassify.InputImages.connect( opData.Image )
+        opClassify.InputImages.connect( opData.Image )
         
         # Feature Images -> Classification Op (for training, prediction)
-        #opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
-        #opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
+        opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
+        opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
         
         # Training flags -> Classification Op (for GUI restrictions)
-        #opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
+        opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
         
         ######################
         # Batch workflow
@@ -99,7 +100,7 @@ class PixelClassificationWorkflow(Workflow):
         self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.featureSelectionApplet)
-        #self._applets.append(self.pcApplet)
+        self._applets.append(self.pcApplet)
         #self._applets.append(self.batchInputApplet)
         #self._applets.append(self.batchResultsApplet)
         
