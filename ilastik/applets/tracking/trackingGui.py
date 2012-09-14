@@ -52,7 +52,7 @@ class TrackingGui( QWidget ):
         layer.name = "Objects"
         self.layerstack.append(layer)
 
-        ct[255] = QColor(0,0,0,128).rgba() # misdetections        
+        ct[255] = QColor(0,0,0,255).rgba() # misdetections        
         self.trackingsrc = LazyflowSource( mainOperator.Output )
         layer = ColortableLayer( self.trackingsrc, ct )
         layer.name = "Tracking"

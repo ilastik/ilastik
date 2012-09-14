@@ -137,6 +137,11 @@ class OpTracking(Operator):
                 if event.type == ctracking.EventType.Move:
                     mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
 
+            print len(dis), "dis at", i + time_range[0]
+            print len(app), "app at", i + time_range[0]
+            print len(div), "div at", i + time_range[0]
+            print len(mov), "mov at", i + time_range[0]            
+            print
             label2color.append({})
             #for e in dis:
             #    label2color[-2][e[0]] = 255 # mark disapps
