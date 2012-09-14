@@ -184,7 +184,7 @@ class OpTracking(Operator):
                 tr.set_x_scale(x_scale)
                 tr.set_y_scale(y_scale)
                 tr.set_z_scale(z_scale)
-                tr.Id = int(idx)
+                tr.Id = int(idx + 1)
                 tr.Timestep = t
                 tr.add_feature_array("com", len(rc[idx]))
                 for i,v in enumerate(rc[idx]):
