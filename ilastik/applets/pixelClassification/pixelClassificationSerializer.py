@@ -1,7 +1,8 @@
 import os
 #import tempfile
-import vigra
+import numpy
 import h5py
+import vigra
 from ilastik.applets.base.appletSerializer import AppletSerializer
 from ilastik.utility import bind
 from lazyflow.operators import OpH5WriterBigDataset
@@ -119,27 +120,31 @@ class PixelClassificationSerializer(AppletSerializer):
 
     def _serializeClassifier(self, topGroup):
         with Tracer(traceLogger):
-            self.deleteIfPresent(topGroup, 'Classifier')
+            self.deleteIfPresent(topGroup, 'ClassifierForests')
             self._dirtyFlags[Section.Classifier] = False
     
             if not self.mainOperator.Classifier.ready():
                 return
 
-            classifier = self.mainOperator.Classifier.value
+            classifier_forests = self.mainOperator.Classifier.value
 
             # Classifier can be None if there isn't any training data yet.
-            if classifier is None:
+            if classifier_forests is None:
                 return
+            for forest in classifier_forests:
+                if forest is None:
+                    return
 
             # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
             # Instead, we'll use vigra to write the classifier to a temporary file.
             tmpDir = tempfile.mkdtemp()
-            cachePath = os.path.join(tmpDir, 'classifier_cache.h5')
-            classifier.writeHDF5(cachePath, 'Classifier')
+            cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
+            for i, forest in enumerate(classifier_forests):
+                forest.writeHDF5( cachePath, 'ClassifierForests/Forest{:04d}'.format(i) )
             
             # Open the temp file and copy to our project group
             cacheFile = h5py.File(cachePath, 'r')
-            topGroup.copy(cacheFile['Classifier'], 'Classifier')
+            topGroup.copy(cacheFile['ClassifierForests'], 'ClassifierForests')
             
             cacheFile.close()
             os.remove(cachePath)
@@ -262,19 +267,22 @@ class PixelClassificationSerializer(AppletSerializer):
     def _deserializeClassifier(self, topGroup):
         with Tracer(traceLogger):
             try:
-                classifierGroup = topGroup['Classifier']
+                classifierGroup = topGroup['ClassifierForests']
             except KeyError:
                 pass
             else:
                 # Due to non-shared hdf5 dlls, vigra can't read directly from our open hdf5 group.
                 # Instead, we'll copy the classfier data to a temporary file and give it to vigra.
                 tmpDir = tempfile.mkdtemp()
-                cachePath = os.path.join(tmpDir, 'classifier_cache.h5')
+                cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
                 cacheFile = h5py.File(cachePath, 'w')
-                cacheFile.copy(classifierGroup, 'Classifier')
+                cacheFile.copy(classifierGroup, 'ClassifierForests')
                 cacheFile.close()
         
-                classifier = vigra.learning.RandomForest(cachePath, 'Classifier')
+                forests = []
+                for name, forestGroup in sorted( classifierGroup.items() ):
+                    forests.append( vigra.learning.RandomForest(cachePath, str('ClassifierForests/' + name)) )
+
                 os.remove(cachePath)
                 os.removedirs(tmpDir)
                 
@@ -282,7 +290,7 @@ class PixelClassificationSerializer(AppletSerializer):
                 # The downstream operators (e.g. the prediction operator) can use the classifier without inducing it to be re-trained.
                 # (This assumes that the classifier we are loading is consistent with the images and labels that we just loaded.
                 #  As soon as training input changes, it will be retrained.)
-                self.mainOperator.classifier_cache.forceValue( classifier )
+                self.mainOperator.classifier_cache.forceValue( numpy.array(forests) )
             finally:
                 self._dirtyFlags[Section.Classifier] = False
 
