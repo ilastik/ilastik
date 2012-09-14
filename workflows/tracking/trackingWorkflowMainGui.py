@@ -4,7 +4,7 @@ from ilastik.shell.gui.startShellGui import startShellGui
 from trackingWorkflow import TrackingWorkflow
 
 
-debug_testing = True
+debug_testing = False
 if debug_testing:
     def test(shell, workflow):
         import h5py
