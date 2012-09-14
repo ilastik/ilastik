@@ -35,6 +35,9 @@ class OpTracking(Operator):
         super(OpTracking, self).__init__(parent=parent,graph=graph,register=register)
         self.label2color = []
         self.last_timerange = ()
+        self.last_x_range = ()
+        self.last_y_range = ()
+        self.last_z_range = ()
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta )
@@ -91,7 +94,7 @@ class OpTracking(Operator):
                                         min_angle,
                                         ep_gap)
 
-        ts = self._generate_traxelstore( time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale )
+        ts, filtered_labels = self._generate_traxelstore( time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale )
         
         events = tracker(ts)
         label2color = []
@@ -140,8 +143,19 @@ class OpTracking(Operator):
                 label2color[-1][e[1]] = ancestor_color
                 label2color[-1][e[2]] = ancestor_color
 
+        # mark the filtered objects
+        for t in filtered_labels.keys():
+
+            fl_at = filtered_labels[t]
+            for l in fl_at:
+                assert( l not in label2color[int(t)])
+                label2color[int(t)][l] = 128
+
         self.label2color = label2color
         self.last_timerange = time_range
+        self.last_x_range = x_range
+        self.last_y_range = y_range
+        self.last_z_range = z_range
         self.Output.setDirty(SubRegion(self.Output))
 
     def _generate_traxelstore( self,
@@ -159,6 +173,7 @@ class OpTracking(Operator):
 
         print "filling traxelstore"
         ts = ctracking.TraxelStore()
+        filtered_labels = {}
         for t in feats.keys():
             rc = feats[t]['RegionCenter']
             if rc.size:
@@ -170,6 +185,7 @@ class OpTracking(Operator):
             
             print "at timestep ", t, rc.shape[0], "traxels found"
             count = 0
+            filtered_labels[t] = []
             for idx in range(rc.shape[0]):
                 x,y,z = rc[idx]
                 size = ct[idx]
@@ -177,6 +193,7 @@ class OpTracking(Operator):
                     y < y_range[0] or y >= y_range[1] or
                     z < z_range[0] or z >= z_range[1] or
                     size < size_range[0] or size >= size_range[1]):
+                    filtered_labels[t].append(int(idx + 1))
                     continue
                 else:
                     count += 1
@@ -191,6 +208,6 @@ class OpTracking(Operator):
                     tr.set_feature_value('com', i, float(v))
                 ts.add(tr)
             print "at timestep ", t, count, "traxels passed filter"
-        return ts
+        return ts, filtered_labels
 
 
