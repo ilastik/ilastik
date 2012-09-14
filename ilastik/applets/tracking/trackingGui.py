@@ -181,12 +181,15 @@ class TrackingGui( QWidget ):
         to_y = self._drawer.to_y.value()        
         from_z = self._drawer.from_z.value()
         to_z = self._drawer.to_z.value()        
+        from_size = self._drawer.from_size.value()
+        to_size = self._drawer.to_size.value()        
 
         self.mainOperator.innerOperators[0].track(
             time_range = range(from_t, to_t + 1),
             x_range = (from_x, to_x + 1),
             y_range = (from_y, to_y + 1),
             z_range = (from_z, to_z + 1),
+            size_range = (from_size, to_size + 1),
             x_scale = self._drawer.x_scale.value(),
             y_scale = self._drawer.y_scale.value(),
             z_scale = self._drawer.z_scale.value(),

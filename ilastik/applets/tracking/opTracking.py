@@ -59,6 +59,7 @@ class OpTracking(Operator):
             x_range,
             y_range,
             z_range,
+            size_range = (0,100000),
             x_scale = 1.0,
             y_scale = 1.0,
             z_scale = 1.0,               
@@ -90,7 +91,7 @@ class OpTracking(Operator):
                                         min_angle,
                                         ep_gap)
 
-        ts = self._generate_traxelstore( time_range, x_range, y_range, z_range, x_scale, y_scale, z_scale )
+        ts = self._generate_traxelstore( time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale )
         
         events = tracker(ts)
         label2color = []
@@ -148,6 +149,7 @@ class OpTracking(Operator):
                                x_range,
                                y_range,
                                z_range,
+                               size_range,
                                x_scale = 1.0,
                                y_scale = 1.0,
                                z_scale = 1.0):
@@ -161,14 +163,20 @@ class OpTracking(Operator):
             rc = feats[t]['RegionCenter']
             if rc.size:
                 rc = rc[1:,...]
+
+            ct = feats[t]['Count']
+            if ct.size:
+                ct = ct[1:,...]
             
             print "at timestep ", t, rc.shape[0], "traxels found"
             count = 0
             for idx in range(rc.shape[0]):
                 x,y,z = rc[idx]
+                size = ct[idx]
                 if (x < x_range[0] or x >= x_range[1] or
                     y < y_range[0] or y >= y_range[1] or
-                    z < z_range[0] or z >= z_range[1]):
+                    z < z_range[0] or z >= z_range[1] or
+                    size < size_range[0] or size >= size_range[1]):
                     continue
                 else:
                     count += 1
