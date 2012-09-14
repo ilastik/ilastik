@@ -646,7 +646,7 @@ class OpArrayCache(OpArrayPiper):
         #wait for all requests to finish
         self.traceLogger.debug( "Firing all {} cache input requests...".format(len(dirtyPool)) )
         dirtyPool.wait()
-        # dirtyPool.clean()
+        dirtyPool.clean()
         self.traceLogger.debug( "All cache input requests received." )
 
         # indicate the finished inprocess state (i.e. CLEAN)
@@ -662,7 +662,7 @@ class OpArrayCache(OpArrayPiper):
             inProcessPool.add(req)
 
         inProcessPool.wait()
-        # inProcessPool.clean()
+        inProcessPool.clean()
 
         # finally, store results in result area
         self._lock.acquire()

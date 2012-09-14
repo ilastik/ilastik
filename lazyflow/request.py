@@ -438,7 +438,7 @@ class Pool(object):
         """
         for r in self.requests:
             r.clean()
-        self.requests = set()
+        self.requests = []
         self.callbacks_finish = []
     
     def _finalize(self):
@@ -749,6 +749,7 @@ class Request(object):
         self.kwargs = {}
         self.result = None
         self.callbacks_finish = []
+        self.callbacks_cancel = []
 
 
     def getResult(self):

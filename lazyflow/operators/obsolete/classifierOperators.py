@@ -204,6 +204,7 @@ class OpTrainRandomForestBlocked(Operator):
                     req = pool.request(partial(train_and_store, i))
 
                 pool.wait()
+                pool.clean()
 
                 logger.debug("Vigra finished")
             except:
@@ -287,6 +288,7 @@ class OpPredictRandomForest(Operator):
             req = pool.request(partial(predict_forest, i))
 
         pool.wait()
+        pool.clean()
 
         prediction=numpy.dstack(predictions)
         prediction = numpy.average(prediction, axis=2)
@@ -300,7 +302,7 @@ class OpPredictRandomForest(Operator):
 
         t3 = time.time()
 
-        logger.info("Predict took %fseconds, actual RF time was %fs, feature time was %fs" % (t3-t1, t3-t2, t2-t1))
+        # logger.info("Predict took %fseconds, actual RF time was %fs, feature time was %fs" % (t3-t1, t3-t2, t2-t1))
         return prediction[...,chanslice] # FIXME: This assumes that channel is the last axis
 
 
