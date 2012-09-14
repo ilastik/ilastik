@@ -364,6 +364,11 @@ class LayerViewerGui(QMainWindow):
                     # We just needed the operator to determine the transposed shape.
                     # Disconnect it so it can be garbage collected.
                     op5.input.disconnect()
+
+        if newDataShape is not None:
+            # For now, this base class combines multi-channel images into a single layer,
+            # So, we want the volume editor to behave as though there is only one channel 
+            newDataShape = newDataShape[:-1] + (1,)
         return newDataShape
 
     @traceLogged(traceLogger)
