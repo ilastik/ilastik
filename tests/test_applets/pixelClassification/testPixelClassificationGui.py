@@ -86,7 +86,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             opFeatures.SelectionMatrix.setValue(selections)
         
             # Save and close
-            shell.onSaveProjectActionTriggered()
+            shell.projectManager.saveProject()
             shell.ensureNoCurrentProject(assertClean=True)
 
         # Run this test from within the shell event loop

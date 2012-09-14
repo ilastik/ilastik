@@ -125,7 +125,7 @@ class PixelClassificationGui(LabelingGui):
 
         # Add each of the segementations
         for channel, segmentationSlot in enumerate(self.pipeline.SegmentationChannels[currentImageIndex]):
-            if segmentationSlot.ready():
+            if segmentationSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 segsrc = LazyflowSource(segmentationSlot)
                 segLayer = AlphaModulatedLayer( segsrc,

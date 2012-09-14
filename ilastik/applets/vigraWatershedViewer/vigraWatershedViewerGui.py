@@ -204,7 +204,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
         else:
             return None
 
-    def handleEditorLeftClick(self, currentImageIndex, position5d):
+    def handleEditorLeftClick(self, currentImageIndex, position5d, globalWindowCoordinate):
         """
         This is an override from the base class.  Called when the user clicks in the volume.
         
@@ -217,7 +217,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
             overrides[label] = (255, 255, 255, 255)
             overrideSlot.setValue(overrides)
             
-    def handleEditorRightClick(self, currentImageIndex, position5d):
+    def handleEditorRightClick(self, currentImageIndex, position5d, globalWindowCoordinate):
         """
         This is an override from the base class.  Called when the user clicks in the volume.
         
