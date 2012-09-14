@@ -162,9 +162,9 @@ class ObjectExtractionGui( QWidget ):
         progress.setCancelButtonText(QString())
 
         reqs = []
-        self.curOp._opRegCent.fixed = False
+        self.curOp._opRegFeats.fixed = False
         for t in range(maxt):
-            reqs.append(self.curOp.RegionCenters([t]))
+            reqs.append(self.curOp.RegionFeatures([t]))
             reqs[-1].submit()
         for i, req in enumerate(reqs):
             progress.setValue(i)
@@ -172,6 +172,7 @@ class ObjectExtractionGui( QWidget ):
                 req.cancel()
             else:
                 req.wait()
-        self.curOp._opRegCent.fixed = True 
+                
+        self.curOp._opRegFeats.fixed = True 
         progress.setValue(maxt)
         self.curOp.ObjectCenterImage.setDirty( SubRegion(self.curOp.ObjectCenterImage))

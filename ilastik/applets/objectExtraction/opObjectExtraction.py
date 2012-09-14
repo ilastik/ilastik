@@ -26,6 +26,56 @@ class OpLabelImage( Operator ):
             destination[0,...,0] = vigra.analysis.labelVolumeWithBackground( a[0,...,0] )
             return destination
 
+
+
+class OpRegionFeatures( Operator ):
+    LabelImage = InputSlot()
+    Output = OutputSlot( stype=Opaque, rtype=List )
+
+    def __init__( self, parent=None, graph=None, register=True ):
+        super(OpRegionFeatures, self).__init__(parent=parent,
+                                              graph=graph,
+                                              register=register)
+        self._cache = {}
+        self.fixed = True
+
+    def setupOutputs( self ):
+        pass
+    
+    def execute( self, slot, roi, result ):
+        if slot is self.Output:
+            def extract( a ):
+                labels = numpy.asarray(a, dtype=numpy.uint32)
+                data = numpy.asarray(a, dtype=numpy.float32)
+                feats = vigra.analysis.extractRegionFeatures(data, labels, features=['RegionCenter', 'Count'], ignoreLabel=0)
+                return feats
+                centers = numpy.asarray(feats['RegionCenter'], dtype=numpy.uint16)
+                centers = centers[1:,:]
+                return centers
+                
+            feats = {}
+            for t in roi:
+                print "RegionFeatures at", t
+                if t in self._cache:
+                    feats_at = self._cache[t]
+                elif self.fixed:
+                    feats_at = { 'RegionCenter': numpy.asarray([]), 'Count': numpy.asarray([]) }
+                else:
+                    troi = SubRegion( self.LabelImage, start = [t,] + (len(self.LabelImage.meta.shape) - 1) * [0,], stop = [t+1,] + list(self.LabelImage.meta.shape[1:]))
+                    a = self.LabelImage.get(troi).wait()
+                    a = a[0,...,0] # assumes t,x,y,z,c
+                    feats_at = extract(a)
+                    self._cache[t] = feats_at
+                feats[t] = feats_at
+
+            return feats
+        
+    def propagateDirty(self, slot, roi):
+        if slot is self.LabelImage:
+            self.Output.setDirty(List(self.Output, range(roi.start[0], roi.stop[0]))) 
+
+
+
 class OpRegionCenters( Operator ):
     LabelImage = InputSlot()
     Output = OutputSlot( stype=Opaque, rtype=List )
@@ -47,7 +97,7 @@ class OpRegionCenters( Operator ):
             def extract( a ):
                 labels = numpy.asarray(a, dtype=numpy.uint32)
                 data = numpy.asarray(a, dtype=numpy.float32)
-                feats = vigra.analysis.extractRegionFeatures(data, labels, features=['RegionCenter'], ignoreLabel=0)
+                feats = vigra.analysis.extractRegionFeatures(data, labels, features=['RegionCenter', 'Count'], ignoreLabel=0)
                 centers = numpy.asarray(feats['RegionCenter'], dtype=numpy.uint16)
                 centers = centers[1:,:]
                 return centers
@@ -83,6 +133,7 @@ class OpObjectExtraction( Operator ):
     LabelImage = OutputSlot()
     ObjectCenterImage = OutputSlot()
     RegionCenters = OutputSlot( stype=Opaque, rtype=List )
+    RegionFeatures = OutputSlot( stype=Opaque, rtype=List )
 
     def __init__( self, parent = None, graph = None, register = True ):
         super(OpObjectExtraction, self).__init__(parent=parent,graph=graph,register=register)
@@ -95,6 +146,9 @@ class OpObjectExtraction( Operator ):
 
         self._opRegCent = OpRegionCenters( graph = graph )
         self._opRegCent.LabelImage.connect( self.LabelImage )
+
+        self._opRegFeats = OpRegionFeatures( graph = graph )
+        self._opRegFeats.LabelImage.connect( self.LabelImage )
 
     
     def __del__( self ):
@@ -117,6 +171,9 @@ class OpObjectExtraction( Operator ):
             return result
         if slot is self.RegionCenters:
             res = self._opRegCent.Output.get( roi ).wait()
+            return res
+        if slot is self.RegionFeatures:
+            res = self._opRegFeats.Output.get( roi ).wait()
             return res
 
     def propagateDirty(self, inputSlot, roi):
@@ -160,8 +217,10 @@ class OpObjectExtraction( Operator ):
     def _execute_ObjectCenterImage( self, roi, result ):
         result[:] = 0
         for t in range(roi.start[0], roi.stop[0]):
-            centers = self.RegionCenters( [t] ).wait()
-            centers = centers[t]
+            centers = self.RegionFeatures( [t] ).wait()[t]['RegionCenter']
+            centers = numpy.asarray( centers, dtype=numpy.uint32)
+            if centers.size:
+                centers = centers[1:,:]
             for row in range(0,centers.shape[0]):
                 x = centers[row,0]
                 y = centers[row,1]

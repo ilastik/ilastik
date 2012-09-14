@@ -22,37 +22,12 @@ def relabel( volume, replace ):
     #mp[replace.keys()] = replace.values()
     return mp[volume]
 
-def cTraxels_from_objects_group( objects_g, timestep=0):
-    features_g = objects_g["features"]
-    ids = objects_g["meta/id"].value
-
-    features = {}
-    for name in features_g.keys():
-        features[name] = features_g[name].value
-
-    ts = ctracking.Traxels()
-    for idx in xrange(len(ids)):
-        tr = ctracking.Traxel()
-        tr.set_x_scale(1.)
-        tr.set_y_scale(1.)
-        tr.set_z_scale(12.3)
-        tr.Id = int(ids[idx])
-        tr.Timestep = timestep
-        for name_value in features.items():
-            if name_value[0] == "RegionCenter":
-                name_value = ("com", name_value[1])
-            tr.add_feature_array(str(name_value[0]), len(name_value[1][idx]))
-            for i,v in enumerate(name_value[1][idx]):
-                tr.set_feature_value(str(name_value[0]), i, float(v))
-        ts.add_traxel(tr)
-    return ts
-
 class OpTracking(Operator):
     name = "Tracking"
     category = "other"
 
     LabelImage = InputSlot()
-    ObjectCenters = InputSlot( stype=Opaque, rtype=List )
+    ObjectFeatures = InputSlot( stype=Opaque, rtype=List )
 
     Output = OutputSlot()
 
@@ -156,6 +131,7 @@ class OpTracking(Operator):
 
             for e in div:
                 if not label2color[-2].has_key(e[0]):
+                    print "PLONK", i
                     label2color[-2][e[0]] = np.random.randint(1,255)
                 ancestor_color = label2color[-2][e[0]]
                 label2color[-1][e[1]] = ancestor_color
@@ -172,11 +148,15 @@ class OpTracking(Operator):
                                z_scale = 1.0):
         print "generating traxels"
         print "fetching region centers"
-        rcs = self.ObjectCenters( time_range ).wait()
+        feats = self.ObjectFeatures( time_range ).wait()
+
         print "filling traxelstore"
         ts = ctracking.TraxelStore()
-        for t in rcs.keys():
-            rc = rcs[t]
+        for t in feats.keys():
+            rc = feats[t]['RegionCenter']
+            if rc.size:
+                rc = rc[1:,...]
+            
             print "at timestep ", t, rc.shape[0], "traxels found"
             for idx in range(rc.shape[0]):
                 tr = ctracking.Traxel()
