@@ -67,6 +67,7 @@ class OpCarvingTopLevel(Operator):
         
         nonzeroSlicings = self.opLabeling.NonzeroLabelBlocks[imageIndex][:].wait()[0]
       
+        #the voxel coordinates of fg and bg labels
         def coordinateList(): 
             coors1 = [[], [], []]
             coors2 = [[], [], []]
@@ -86,18 +87,15 @@ class OpCarvingTopLevel(Operator):
             print "coors1 = ", coors1
             print "coors2 = ", coors2
             return (coors1, coors2)
-       
-        #find non-zero coordinates
         fgVoxels, bgVoxels = coordinateList()
         
         self.opCarving.innerOperators[imageIndex].attachVoxelLabelsToObject(name, fgVoxels, bgVoxels)
-        #mst = self.opCarving.innerOperators[imageIndex]._mst 
-        #mst.object_seeds_fg_voxels[name] = fgVoxels
-        #mst.object_seeds_bg_voxels[name] = bgVoxels
-        
+       
+        #clear the labels 
         self.opLabeling.LabelDelete.setValue(2)
         self.opLabeling.LabelDelete.setValue(1)
         self.opLabeling.LabelDelete.setValue(-1)
+        
         # trigger a re-computation
         self.opCarving.innerOperators[imageIndex].Trigger.setDirty(slice(None))
         
@@ -121,6 +119,12 @@ class OpCarvingTopLevel(Operator):
         z[fgVoxels] = 2
         z[bgVoxels] = 1
         self.opLabeling.LabelInputs[imageIndex][:] = z[:]
+        
+        #restore the correct parameter values 
+        o=self.opCarving
+        mst = self.opCarving.innerOperators[imageIndex]._mst
+        o.BackgroundPriority.setValue( mst.bg_priority[name] )
+        o.NoBiasBelow.setValue( mst.no_bias_below[name] )
 
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -242,7 +246,7 @@ class OpCarving(Operator):
             newSegmentation[ self._mst.object_lut[name] ] = 2
             lut_segmentation[:] = newSegmentation
             del self._mst.object_lut[name]
-            
+           
             self._currObjectName = name
             
             return (fgVoxels, bgVoxels)
@@ -294,6 +298,11 @@ class OpCarving(Operator):
            
             # reset seeds 
             self._mst.seeds[:] = numpy.int32(-1) #see segmentation.pyx: -1 means write zeros
+           
+            #numpy.asarray([BackgroundPriority.value()], dtype=numpy.float32)
+            #numpy.asarray([NoBiasBelow.value()], dtype=numpy.int32)
+            self._mst.bg_priority[name] = self.BackgroundPriority.value
+            self._mst.no_bias_below[name] = self.NoBiasBelow.value
             
             self._currObjectName = name
             
@@ -405,6 +414,8 @@ class CarvingSerializer( AppletSerializer ):
             self.deleteIfPresent(g, "fg_voxels")
             self.deleteIfPresent(g, "bg_voxels")
             self.deleteIfPresent(g, "sv")
+            self.deleteIfPresent(g, "bg_prio")
+            self.deleteIfPresent(g, "no_bias_below")
             
             v = mst.object_seeds_fg_voxels[name]
             v = [v[i][:,numpy.newaxis] for i in range(3)]
@@ -417,6 +428,12 @@ class CarvingSerializer( AppletSerializer ):
             g.create_dataset("bg_voxels", data=v)
             
             g.create_dataset("sv", data=mst.object_lut[name])
+            
+            d1 = numpy.asarray(mst.bg_priority[name], dtype=numpy.float32)
+            d2 = numpy.asarray(mst.no_bias_below[name], dtype=numpy.int32)
+            g.create_dataset("bg_prio", data=d1)
+            g.create_dataset("no_bias_below", data=d2)
+            
         self._o._dirtyObjects[imageIndex] = set()
         
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
@@ -443,6 +460,10 @@ class CarvingSerializer( AppletSerializer ):
             mst.object_seeds_fg_voxels[name] = fg_voxels
             mst.object_seeds_bg_voxels[name] = bg_voxels
             mst.object_lut[name] = sv
+          
+            mst.bg_priority[name] = g["bg_prio"].value
+            mst.no_bias_below[name] = g["no_bias_below"].value
+           
     
     def isDirty(self):
         return True
@@ -472,6 +493,20 @@ class CarvingGui(LabelingGui):
             print "background priority changed to %f" % value
             self._carvingApplet.topLevelOperator.opCarving.BackgroundPriority.setValue(value)
         self.labelingDrawerUi.backgroundPrioritySpin.valueChanged.connect(onBackgroundPrioritySpin)
+        
+        def onBackgroundPriorityDirty(slot, roi):
+            oldValue = self.labelingDrawerUi.backgroundPrioritySpin.value()
+            newValue = self._carvingApplet.topLevelOperator.opCarving.BackgroundPriority.value
+            if  newValue != oldValue:
+                self.labelingDrawerUi.backgroundPrioritySpin.setValue(newValue)
+        self._carvingApplet.topLevelOperator.opCarving.BackgroundPriority.notifyDirty(onBackgroundPriorityDirty)
+        
+        def onNoBiasBelowDirty(slot, roi):
+            oldValue = self.labelingDrawerUi.noBiasBelowSpin.value()
+            newValue = self._carvingApplet.topLevelOperator.opCarving.NoBiasBelow.value
+            if  newValue != oldValue:
+                self.labelingDrawerUi.noBiasBelowSpin.setValue(newValue)
+        self._carvingApplet.topLevelOperator.opCarving.NoBiasBelow.notifyDirty(onNoBiasBelowDirty)
         
         def onNoBiasBelowSpin(value):
             print "background priority changed to %f" % value
