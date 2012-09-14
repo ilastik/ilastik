@@ -1450,15 +1450,6 @@ class OpSlicedBlockedArrayCache(Operator):
                 op.inputs["fixAtCurrent"].connect(self.inputs["fixAtCurrent"])
                 self._innerOps.append(op)
                 
-                # Forward dirty propagations only from one blocked cache to our Output
-                if i == 0:
-                    op.forward_dirty.setValue(True)
-                    def handleDirty( slot, roi ):
-                        self.Output.setDirty( roi.start, roi.stop )
-                    op.Output.notifyDirty( handleDirty )
-                else:
-                    op.forward_dirty.setValue(False)
-
                 op.inputs["Input"].connect(self.inputs["Input"])
 
         for i,innershape in enumerate(self._innerShapes):
@@ -1497,8 +1488,22 @@ class OpSlicedBlockedArrayCache(Operator):
         op.outputs["Output"][key].writeInto(result).wait()
 
     def notifyDirty(self, slot, key):
-        # Dirtiness is automatically forwarded from one of our inner operators to our output.
-        pass
+        # We *could* simply forward dirty notifications from our inner operators
+        # to our output (by subscribing to their notifyDirty signals),
+        # but that would result in duplicates of many (not all!) dirty notifications
+        # (since we have more than one inner cache, and each is receiving dirty notifications)
+        # Instead, we simply mark *everything* dirty when we beome unfixed or if the block shape changes.
+        fixed = self.fixAtCurrent.value
+        if not fixed:
+            if slot == self.Input:
+                self.Output.setDirty( key )        
+            elif slot == self.outerBlockShape or slot == self.innerBlockShape:
+                self.Output.setDirty( slice(None) )
+            elif slot == self.fixAtCurrent:
+                self.Output.setDirty( slice(None) )
+            else:
+                assert False, "Unknown dirty input slot"
+
 
 
 

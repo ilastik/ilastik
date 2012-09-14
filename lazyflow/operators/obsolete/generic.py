@@ -459,7 +459,6 @@ class OpSubRegion(Operator):
             # If there's an intersection with our output,
             #  propagate dirty region to output
             if ((smallstop - smallstart ) > 0).all():
-                print "OpSubRegion propagating"
                 self.Output.setDirty( smallstart, smallstop )
 
 class OpMultiArrayMerger(Operator):
