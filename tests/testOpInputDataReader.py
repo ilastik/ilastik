@@ -3,23 +3,32 @@ import os
 import numpy
 import vigra
 import lazyflow.graph
+import tempfile
 
 class TestOpInputDataReader(object):
 
     @classmethod
     def setupClass(cls):
         cls.graph = lazyflow.graph.Graph()
-        localdir = os.path.split(__file__)[0]
-        cls.testNpyDataFileName = localdir + '/test.npy'
-        cls.testImageFileName = localdir + '/test.png'
-        cls.testH5FileName = localdir + '/test.h5'
+        tmpDir = tempfile.gettempdir()
+        cls.testNpyDataFileName = tmpDir + '/test.npy'
+        cls.testImageFileName = tmpDir + '/test.png'
+        cls.testH5FileName = tmpDir + '/test.h5'
 
     @classmethod
     def teardownClass(cls):
         # Clean up: Delete the test data files.
-        os.remove(cls.testNpyDataFileName)
-        os.remove(cls.testImageFileName)
-        os.remove(cls.testH5FileName)
+        filesToDelete = [ cls.testNpyDataFileName,
+                          cls.testImageFileName,
+                          cls.testH5FileName ]
+
+        for filename in filesToDelete:
+            try:
+                os.remove(filename)
+            except OSError:
+                # If one of the tests below failed early, the test file may not exist yet.
+                # Avoid an additional backtrace here so as not to obscure the real error.
+                pass
 
     def test_npy(self):
         # Create Numpy test data
