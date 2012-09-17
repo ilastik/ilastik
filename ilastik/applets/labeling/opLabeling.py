@@ -98,7 +98,7 @@ class OpLabeling( Operator ):
         blockShape = tuple( blockDims[k] for k in axisOrder )
         self.opLabelArray.blockShape.setValue( blockShape )
 
-    def notifyDirty(self, inputSlot, key):
+    def propagateDirty(self, inputSlot, roi):
         # Nothing to do here: All outputs are directly connected to 
         #  internal operators that handle their own dirty propagation.
         pass
