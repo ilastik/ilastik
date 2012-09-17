@@ -767,9 +767,8 @@ class Slot(object):
                 # call callbacks
                 self._sig_dirty(self, roi)
     
-                if self._type == "input":
+                if self._type == "input" and self.operator.configured():
                     self.operator.propagateDirty(self, roi)
-
 
 
     def __getitem__(self, key):
@@ -938,18 +937,10 @@ class Slot(object):
 
     def configured(self):
         """
-        Returns if the slot (and all its subslots) is connected or optional
+        Slots of level >= 1 must implement parts of the operator interface,
+        including this function.  This "operator" is considered "configured" if it is ready.
         """
-        answer = True
-        if (self._value is None and self.partner is None) or not self.stype.isConfigured():
-            answer = False
-        if answer is False and len(self._subSlots) > 0:
-            answer = True
-            for s in self._subSlots:
-                if s.configured() is False and s._optional is False:
-                    answer = False
-                    break
-        return answer
+        return self.ready()
 
     def ready(self):
         if self.level == 0:
@@ -1516,7 +1507,7 @@ class Operator(object):
     outputslots.
     """
     def propagateDirty(self, inputSlot, roi):
-        raise NotImplementedError(".propagatedirty of Operator %r is not implemented !" % (self))
+        raise NotImplementedError(".propagateDirty() of Operator %r is not implemented !" % (self.name))
 
     """
     This method corresponds to the notifyDirty method, but is used
@@ -1870,7 +1861,8 @@ class OperatorWrapper(Operator):
         with Tracer(self.traceLogger, msg=self.name):
             self._testRestoreOriginalOperator()
 
-    def notifyDirty(self, slot, key):
+    def propagateDirty(self, slot, roi):
+        # Nothing to do: All inputs are directly connected to internal operators.
         pass
 
     def notifySubSlotDirty(self, slots, indexes, key):
