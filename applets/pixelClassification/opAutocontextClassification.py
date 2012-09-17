@@ -36,7 +36,6 @@ class OpAutocontextClassification( Operator ):
     PixelOnlyPredictionChannels = MultiOutputSlot(level=2)
 
     PredictionProbabilities = MultiOutputSlot() # Classification predictions
-
     PredictionProbabilityChannels = MultiOutputSlot(level=2) # Classification predictions, enumerated by channel
     
     MaxLabelValue = OutputSlot()
@@ -46,6 +45,7 @@ class OpAutocontextClassification( Operator ):
     Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
 
     CachedPredictionProbabilities = MultiOutputSlot() # Classification predictions (via a cache)
+    CachedPixelPredictionProbabilities = MultiOutputSlot()
     
     
     def __init__( self, graph ):
@@ -67,7 +67,7 @@ class OpAutocontextClassification( Operator ):
         self.prediction_caches_gui = []
         
         #FIXME: we should take it from the input slot
-        niter = 2
+        niter = 4
         
         for i in range(niter):
             predict = OperatorWrapper( OpPredictRandomForest( graph= self.graph ))
@@ -92,6 +92,9 @@ class OpAutocontextClassification( Operator ):
         self.precomputed_predictions_gui.SlowInput.resize(0)   
         
         #Display pixel-only predictions to compare
+        self.precomputed_predictions_pixel = OperatorWrapper( OpPrecomputedInput(graph=self.graph))
+        self.precomputed_predictions_pixel.SlowInput.resize(0)
+        
         self.precomputed_predictions_pixel_gui = OperatorWrapper( OpPrecomputedInput(graph=self.graph)) 
         self.precomputed_predictions_pixel_gui.SlowInput.resize(0)
 
@@ -146,8 +149,8 @@ class OpAutocontextClassification( Operator ):
                 print "Multi: Connecting an output", "Input%.2d"%(ifeat)
                 self.autocontextFeaturesMulti[i].inputs["Input%.2d"%(ifeat)].connect(feat.outputs["Output"])
             # connect the pixel features to the same multislot
-            print "Multi: Connecting an output", "Input%.2d"%(len(self.autocontextFeatures)+1)
-            self.autocontextFeaturesMulti[i].inputs["Input%.2d"%(len(self.autocontextFeatures)+1)].connect(self.CachedFeatureImages)
+            print "Multi: Connecting an output", "Input%.2d"%(len(self.autocontextFeatures[i]))
+            self.autocontextFeaturesMulti[i].inputs["Input%.2d"%(len(self.autocontextFeatures[i]))].connect(self.CachedFeatureImages)
             
             
             # stack the autocontext features with pixel features
@@ -201,6 +204,9 @@ class OpAutocontextClassification( Operator ):
         # if the predictions haven't become dirty since the project file was opened.
         self.precomputed_predictions.SlowInput.connect( self.prediction_caches[-1].Output )
         self.precomputed_predictions.PrecomputedInput.connect( self.PredictionsFromDisk )
+        
+        self.precomputed_predictions_pixel.SlowInput.connect( self.prediction_caches[0].Output )
+        self.precomputed_predictions_pixel.PrecomputedInput.connect( self.PredictionsFromDisk )
 
         # !!! here we can change which prediction step we show:
         self.precomputed_predictions_gui.SlowInput.connect( self.prediction_caches_gui[-1].Output )
@@ -216,14 +222,18 @@ class OpAutocontextClassification( Operator ):
         self.PixelOnlyPredictions.connect(self.predictors[0].PMaps)
         self.PredictionProbabilities.connect(self.predictors[-1].PMaps)
         self.CachedPredictionProbabilities.connect(self.precomputed_predictions.Output)
+        self.CachedPixelPredictionProbabilities.connect(self.precomputed_predictions_pixel.Output)
         self.Classifier.connect( self.classifier_caches[-1].Output )
         
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
                 self.LabelImages.resize(0)
                 self.NonzeroLabelBlocks.resize(0)
+                self.PixelOnlyPredictions.resize(0)
                 self.PredictionProbabilities.resize(0)
                 self.CachedPredictionProbabilities.resize(0)
+                self.CachedPixelPredictionProbabilities.resize(0)
+                
         self.InputImages.notifyResized( inputResizeHandler )
 
         # Check to make sure the non-wrapped operators stayed that way.

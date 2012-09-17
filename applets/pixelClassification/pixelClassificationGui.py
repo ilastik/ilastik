@@ -57,7 +57,8 @@ class PixelClassificationGui(LabelingGui):
         labelSlots.labelsAllowed = pipeline.LabelsAllowedFlags
 
         observedSlots = [ pipeline.InputImages,
-                          pipeline.PredictionProbabilityChannels ]
+                          pipeline.PredictionProbabilityChannels,
+                          pipeline.PixelOnlyPredictionChannels ]
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
@@ -96,10 +97,10 @@ class PixelClassificationGui(LabelingGui):
         # Base class provides the label layer.
         layers = super(PixelClassificationGui, self).setupLayers(currentImageIndex)
 
-        pred_layers = self.setupPredictionLayers(currentImageIndex, "")
-        layers.extend(pred_layers)
-        pixel_pred_layers = self.setupPredictionLayers(currentImageIndex, "_auto")
+        pixel_pred_layers = self.setupPredictionLayers(currentImageIndex, self.pipeline.PixelOnlyPredictionChannels, "")
         layers.extend(pixel_pred_layers)
+        pred_layers = self.setupPredictionLayers(currentImageIndex, self.pipeline.PredictionProbabilityChannels, "auto")
+        layers.extend(pred_layers)
 
 
         # Add the raw data last (on the bottom)
@@ -114,14 +115,19 @@ class PixelClassificationGui(LabelingGui):
         return layers
     
     @traceLogged(traceLogger)
-    def setupPredictionLayers(self, currentImageIndex, name_suffix):
+    def setupPredictionLayers(self, currentImageIndex, predictionChannels, name_suffix):
         """
         Setup the layers for predicted class probabilities
         """
+        
+        print "AAAAAAAAAAAAAAAa, setting up prediction layers", name_suffix
+        print "currentImageIndex:", currentImageIndex
+        print "total channels:", len(predictionChannels[currentImageIndex])
+        
         labels = self.labelListData
         layers = []
         # Add each of the predictions
-        for channel, predictionSlot in enumerate(self.pipeline.PredictionProbabilityChannels[currentImageIndex]):
+        for channel, predictionSlot in enumerate(predictionChannels[currentImageIndex]):
             if predictionSlot.ready():
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
