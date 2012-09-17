@@ -221,7 +221,7 @@ class LayerViewerGui(QMainWindow):
         if numChannels == 1:
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
             source = LazyflowSource(slot)
-            normSource = NormalizingSource( source, bounds='autoMinMax' )
+            normSource = NormalizingSource( source, bounds=normalize )
             return GrayscaleLayer(normSource)
 
         assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha)
