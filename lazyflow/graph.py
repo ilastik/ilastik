@@ -559,8 +559,10 @@ class Slot(object):
           size    : the desired number of subslots
         """
         with Tracer(self.traceLogger):
-            if self.level == 0 or self._resizing:
+            if self._resizing:
                 return
+            if self.level == 0:
+                raise RuntimeError("Can't resize a level-0 slot!")
     
             oldsize = len(self)
             if size == oldsize:
