@@ -192,19 +192,19 @@ class OpPixelClassification( Operator ):
                        'z' : (128,256),
                        'y' : (128,256),
                        'x' : (1,1),
-                       'c' : (2,2) }
+                       'c' : (100, 100) }
 
         blockDimsY = { 't' : (1,1),
                        'z' : (128,256),
                        'y' : (1,1),
                        'x' : (128,256),
-                       'c' : (2,2) }
+                       'c' : (100,100) }
 
         blockDimsZ = { 't' : (1,1),
                        'z' : (1,1),
                        'y' : (128,256),
                        'x' : (128,256),
-                       'c' : (2,2) }
+                       'c' : (100,100) }
 
         innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
         outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
