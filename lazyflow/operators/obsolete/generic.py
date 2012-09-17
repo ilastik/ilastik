@@ -84,8 +84,6 @@ class OpMultiArraySlicer(Operator):
     category = "Misc"
 
     def setupOutputs(self):
-
-        dtype=self.inputs["Input"].meta.dtype
         flag=self.inputs["AxisFlag"].value
 
         indexAxis=self.inputs["Input"].meta.axistags.index(flag)
@@ -94,7 +92,6 @@ class OpMultiArraySlicer(Operator):
         outshape=tuple(outshape)
 
         outaxistags=copy.copy(self.inputs["Input"].meta.axistags)
-
         del outaxistags[flag]
 
         self.outputs["Slices"].resize(n)
@@ -106,12 +103,8 @@ class OpMultiArraySlicer(Operator):
             o.meta.shape = outshape
 
     def getSubOutSlot(self, slots, indexes, key, result):
-
         #print "SLICER: key", key, "indexes[0]", indexes[0], "result", result.shape
-
         start,stop=roi.sliceToRoi(key,self.outputs["Slices"][indexes[0]].meta.shape)
-
-        oldstart,oldstop=start,stop
 
         start=list(start)
         stop=list(stop)
@@ -132,6 +125,28 @@ class OpMultiArraySlicer(Operator):
 
         return ttt[writeKey ]#+ (0,)]
 
+    def propagateDirty(self, slot, roi):
+        if slot == self.AxisFlag:
+            for i,s in enumerate(self.Slices):
+                s.setDirty( slice(None) )
+        elif slot == self.Input:
+            key = roi.toSlice()
+            reducedKey = list(key)
+            inputTags = self.Input.meta.axistags
+            flag = self.AxisFlag.value
+            axisSlice = reducedKey.pop( inputTags.index(flag) )
+            
+            axisStart, axisStop = axisSlice.start, axisSlice.stop
+            if axisStart is None:
+                axisStart = 0
+            if axisStop is None:
+                axisStop = len( self.Slices )
+    
+            for i in range(axisStart, axisStop):
+                self.Slices[i].setDirty( reducedKey )
+        else:
+            assert False, "Unknown dirty input slot"
+        
 
 class OpMultiArraySlicer2(Operator):
     """
@@ -285,8 +300,8 @@ class OpMultiArrayStacker(Operator):
 
 
 
-    def execute(self, slot, roi, result):
-        key = roiToSlice(roi.start,roi.stop)
+    def execute(self, slot, rroi, result):
+        key = roiToSlice(rroi.start,rroi.stop)
 
         cnt = 0
         written = 0
@@ -374,7 +389,8 @@ class OpSingleChannelSelector(Operator):
         im=self.inputs["Input"][newKey].wait()
         return im[...,0:1] # Copy into the (only) channel of our result
 
-    def notifyDirty(self, slot, key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         if slot == self.Input:
             key = key[:-1] + (slice(0,1,None),)
             self.outputs["Output"].setDirty(key)
@@ -548,7 +564,8 @@ class OpPixelOperator(Operator):
 
         return matrix[:]
 
-    def notifyDirty(self,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         if slot == self.Input:
             self.outputs["Output"].setDirty(key)
         elif slot == self.Function:
