@@ -103,7 +103,7 @@ class TestOpFeatureSelection(object):
         print "Matrix changed."
         
         assert len(dirtyRois) == 1
-        assert (dirtyRois[0].start, dirtyRois[0].stop) == sliceToRoi( slice(None), self.opFeatures.OutputImage[0].shape )
+        assert (dirtyRois[0].start, dirtyRois[0].stop) == sliceToRoi( slice(None), self.opFeatures.OutputImage[0].meta.shape )
 
 if __name__ == "__main__":
     import sys
