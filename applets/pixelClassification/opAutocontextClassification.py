@@ -138,7 +138,7 @@ class OpAutocontextClassification( Operator ):
             autocontext_cache = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
             autocontext_cache.Input.resize(0)
             self.autocontext_caches.append(autocontext_cache)
-            
+        
         # connect the features to predictors
         for i in range(niter-1):
             for ifeat, feat in enumerate(self.autocontextFeatures[i]):
@@ -170,6 +170,10 @@ class OpAutocontextClassification( Operator ):
         for i in range(1, niter):
             self.trainers[i].inputs["Images"].connect(self.featureStackers[i-1].outputs["Output"])
         
+        ##
+        # prediction
+        ##
+        
         # The classifier is cached here to allow serializers to force in a pre-calculated classifier...
         self.classifier_caches = []
         for i in range(niter):
@@ -187,9 +191,6 @@ class OpAutocontextClassification( Operator ):
             self.prediction_caches_gui[i].name = "PredictionCache"
             self.prediction_caches_gui[i].inputs["fixAtCurrent"].connect( self.FreezePredictions )
             self.prediction_caches_gui[i].inputs["Input"].connect(self.predictors[i].PMaps)
-        ##
-        # 
-        ##
         
         self.predictors[0].inputs['Image'].connect(self.CachedFeatureImages)
         for i in range(1, niter):
@@ -200,12 +201,6 @@ class OpAutocontextClassification( Operator ):
         # if the predictions haven't become dirty since the project file was opened.
         self.precomputed_predictions.SlowInput.connect( self.prediction_caches[-1].Output )
         self.precomputed_predictions.PrecomputedInput.connect( self.PredictionsFromDisk )
-
-        # Prediction cache for the GUI
-        # self.prediction_cache_gui.name = "PredictionCache"
-        # self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
-        # self.prediction_cache_gui.inputs["Input"].connect( self.predictors[-1].PMaps )
-
 
         # !!! here we can change which prediction step we show:
         self.precomputed_predictions_gui.SlowInput.connect( self.prediction_caches_gui[-1].Output )
@@ -285,20 +280,20 @@ class OpAutocontextClassification( Operator ):
         blockDimsX = { 't' : (1,1),
                        'z' : (128,256),
                        'y' : (128,256),
-                       'x' : (1,1),
-                       'c' : (2,2) }
+                       'x' : (32,32),
+                       'c' : (1000,1000) }
 
         blockDimsY = { 't' : (1,1),
                        'z' : (128,256),
-                       'y' : (1,1),
+                       'y' : (32,32),
                        'x' : (128,256),
-                       'c' : (2,2) }
+                       'c' : (1000,1000) }
 
         blockDimsZ = { 't' : (1,1),
-                       'z' : (1,1),
+                       'z' : (32,32),
                        'y' : (128,256),
                        'x' : (128,256),
-                       'c' : (2,2) }
+                       'c' : (1000,1000) }
 
         innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
         outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
@@ -318,7 +313,7 @@ class OpAutocontextClassification( Operator ):
             cache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
 
-        #Copy-paste from feaatures
+        #Copy-paste from features
         blockDimsX = { 't' : (1,1),
                         'z' : (128,256),
                         'y' : (128,256),
