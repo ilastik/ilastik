@@ -17,6 +17,7 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.labeling import OpLabeling
 from ilastik.applets.base.appletSerializer import AppletSerializer
 
+from lazyflow.roi import roiToSlice
 from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot
 from lazyflow.operators import OpAttributeSelector
 
@@ -454,7 +455,8 @@ class OpCarving(Operator):
         else:
             raise RuntimeError("unknown slots")
         
-    def notifyDirty(self, slot, key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         if slot == self.Trigger or slot == self.BackgroundPriority or slot == self.NoBiasBelow: 
             if self._mst is None:
                 return 
