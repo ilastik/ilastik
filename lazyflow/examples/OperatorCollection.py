@@ -79,7 +79,8 @@ class OpArrayShifter1(Operator):
         res = req()
         return res
 
-    def notifyDirty(self,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 
     @property
@@ -164,7 +165,8 @@ class OpArrayShifter2(Operator):
         res = req()
         return res
 
-    def notifyDirty(selfut,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 
     @property
@@ -240,7 +242,8 @@ class OpArrayShifter3(Operator):
         res = req()
         return res
 
-    def notifyDirty(selfut,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 
     @property
@@ -320,7 +323,8 @@ class OpImageResizer(Operator):
         result[:] = res[subKey]
 
 
-    def notifyDirty(self,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 
     @property
@@ -390,7 +394,8 @@ class OpSwapAxes(Operator):
 
 
 
-    def notifyDirty(self,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 
     @property
@@ -458,7 +463,8 @@ class OpSubregion(Operator):
         res = req()
         return res
 
-    def notifyDirty(self,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 
     @property

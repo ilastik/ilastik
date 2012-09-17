@@ -82,7 +82,7 @@ class OpAttributeSelector(Operator):
         needToPropagate = False
 
         # We're only dirty if the field we're interested in changed
-        if islot == self.InputObject and self.AttributeName.configured():
+        if islot == self.InputObject and self.AttributeName.ready():
             attrName = self.AttributeName.value
             inputObject = self.InputObject.value
             newResult = getattr(inputObject, attrName)

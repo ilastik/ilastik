@@ -58,7 +58,8 @@ class OpArrayPiper(Operator):
         req.wait()
         return result
 
-    def notifyDirty(self,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         # Check for proper name because subclasses may define extra inputs.
         # (but decline to override notifyDirty)
         if slot.name == 'Input':
@@ -470,7 +471,8 @@ class OpArrayCache(OpArrayPiper):
 
 
 
-    def notifyDirty(self, slot, key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         if slot == self.inputs["Input"]:
             start, stop = sliceToRoi(key, self.shape)
 
@@ -1188,10 +1190,10 @@ if has_blist:
                 logger.debug("OpBlockedSparseLabelArray: setInSlot setDirty took %fs" % (time3-time2,))
                 logger.debug("OpBlockedSparseLabelArray: setInSlot total took %fs" % (time3-time1,))
 
-        def notifyDirty(self, slot, key):
-            with Tracer(self.traceLogger):
-                if slot == self.inputs["Input"]:
-                    self.Output.setDirty(key)
+        def propagateDirty(self, slot, roi):
+            key = roi.toSlice()
+            if slot == self.inputs["Input"]:
+                self.Output.setDirty(key)
 
 class OpBlockedArrayCache(Operator):
     name = "OpBlockedArrayCache"
@@ -1361,58 +1363,58 @@ class OpBlockedArrayCache(Operator):
                 r.wait()
 
 
-    def notifyDirty(self, slot, key):
-        with Tracer(self.traceLogger):
-            if slot == self.inputs["Input"] and self._forward_dirty:
-                if not self._fixed:
-                    self.outputs["Output"].setDirty(key)                    
-                elif self._blockShape is not None:
-                    # Find the block key
-                    roi = SubRegion(slot, pslice=key)
-                    start, stop = roi.start, roi.stop
-            
-                    blockStart = (start / self._blockShape)
-                    blockStop = (stop * 1.0 / self._blockShape).ceil()
-                    
-                    with self._lock:
-                        # check wether the dirty region encompasses the whole cache
-                        if (blockStart == 0).all() and (blockStop == self._blockNumbers.shape).all():
-                            self._fixed_all_dirty = True
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
+        if slot == self.inputs["Input"] and self._forward_dirty:
+            if not self._fixed:
+                self.outputs["Output"].setDirty(key)                    
+            elif self._blockShape is not None:
+                # Find the block key
+                roi = SubRegion(slot, pslice=key)
+                start, stop = roi.start, roi.stop
+        
+                blockStart = (start / self._blockShape)
+                blockStop = (stop * 1.0 / self._blockShape).ceil()
+                
+                with self._lock:
+                    # check wether the dirty region encompasses the whole cache
+                    if (blockStart == 0).all() and (blockStop == self._blockNumbers.shape).all():
+                        self._fixed_all_dirty = True
 
-                        # shortcut, if everything is dirty already, dont loop over the blocks
-                        if self._fixed_all_dirty is False:
-                            blockKey = roiToSlice(blockStart,blockStop)
-                            innerBlocks = self._blockNumbers[blockKey]
-                            for b_ind in innerBlocks.flat:
-                                self._fixed_dirty_blocks.add(b_ind)            
+                    # shortcut, if everything is dirty already, dont loop over the blocks
+                    if self._fixed_all_dirty is False:
+                        blockKey = roiToSlice(blockStart,blockStop)
+                        innerBlocks = self._blockNumbers[blockKey]
+                        for b_ind in innerBlocks.flat:
+                            self._fixed_dirty_blocks.add(b_ind)            
 
-            if slot == self.fixAtCurrent:
-                self._fixed = self.fixAtCurrent.value
-                if not self._fixed:
-                    # We've become unfixed.
-                    # Take the superset of all the blocks that became dirty in the meantime and notify our output
-                    dirtystart, dirtystop = (None,None)
-                    with self._lock:
-                        if self._fixed_all_dirty is True:
-                            dirtystop = self.Output.meta.shape
-                            dirtystart = [0] * len(self.Output.meta.shape)
-                        elif len(self._fixed_dirty_blocks) > 0:
-                            dirtystart = self.Output.meta.shape
-                            dirtystop = [0] * len(self.Output.meta.shape)
-                            for b_ind in self._fixed_dirty_blocks:
-                                offset = self._blockShape*self._flatBlockIndices[b_ind]
-                                bigstart = offset
-                                bigstop = numpy.minimum(offset + self._blockShape, self.Output.meta.shape)
-                                
-                                dirtystart = numpy.minimum(bigstart, dirtystart)
-                                dirtystop = numpy.maximum(bigstop, dirtystop)
+        if slot == self.fixAtCurrent:
+            self._fixed = self.fixAtCurrent.value
+            if not self._fixed:
+                # We've become unfixed.
+                # Take the superset of all the blocks that became dirty in the meantime and notify our output
+                dirtystart, dirtystop = (None,None)
+                with self._lock:
+                    if self._fixed_all_dirty is True:
+                        dirtystop = self.Output.meta.shape
+                        dirtystart = [0] * len(self.Output.meta.shape)
+                    elif len(self._fixed_dirty_blocks) > 0:
+                        dirtystart = self.Output.meta.shape
+                        dirtystop = [0] * len(self.Output.meta.shape)
+                        for b_ind in self._fixed_dirty_blocks:
+                            offset = self._blockShape*self._flatBlockIndices[b_ind]
+                            bigstart = offset
+                            bigstop = numpy.minimum(offset + self._blockShape, self.Output.meta.shape)
                             
-                            self._fixed_dirty_blocks = set()
-                        # reset all dirty state to false
-                        self._fixed_all_dirty = False 
+                            dirtystart = numpy.minimum(bigstart, dirtystart)
+                            dirtystop = numpy.maximum(bigstop, dirtystop)
+                        
+                        self._fixed_dirty_blocks = set()
+                    # reset all dirty state to false
+                    self._fixed_all_dirty = False 
 
-                    if dirtystart is not None:
-                        self.Output.setDirty(dirtystart, dirtystop)
+                if dirtystart is not None:
+                    self.Output.setDirty(dirtystart, dirtystop)
 
     def setInSlot(self,slot,key):
         pass
@@ -1491,7 +1493,8 @@ class OpSlicedBlockedArrayCache(Operator):
         op = self._innerOps[index]
         op.outputs["Output"][key].writeInto(result).wait()
 
-    def notifyDirty(self, slot, key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         # We *could* simply forward dirty notifications from our inner operators
         # to our output (by subscribing to their notifyDirty signals),
         # but that would result in duplicates of many (not all!) dirty notifications

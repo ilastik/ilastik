@@ -53,7 +53,7 @@ if 1==2:
         invalidated by this, and must call the .setDirty(key) of the corresponding
         outputslots.
         """
-        def notifyDirty(self, inputSlot, key):
+        def propagateDirty(self, slot, roi):
             pass
 
         """
@@ -271,7 +271,8 @@ class OpArrayShifter1(Operator):
         res = req.wait()
         return res
 
-    def notifyDirty(self,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 
 

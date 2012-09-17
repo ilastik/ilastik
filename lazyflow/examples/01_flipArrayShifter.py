@@ -151,7 +151,8 @@ class OpFlipArrayShifter(Operator):
         result[wkey] = res[:]
 
 
-    def notifyDirty(selfut,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 
     @property

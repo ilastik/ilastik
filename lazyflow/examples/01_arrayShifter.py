@@ -90,7 +90,8 @@ class OpArrayShifter1(Operator):
         res = req.wait()
         return res
 
-    def notifyDirty(self,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 
     @property

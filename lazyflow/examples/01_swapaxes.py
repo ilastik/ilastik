@@ -81,7 +81,8 @@ class OpSwapAxes(Operator):
 
 
 
-    def notifyDirty(self,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 
     @property

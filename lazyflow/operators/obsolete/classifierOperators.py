@@ -81,7 +81,8 @@ class OpTrainRandomForest(Operator):
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
-    def notifyDirty(self, slot, key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         if slot is not self.inputs["fixClassifier"] and self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
@@ -229,7 +230,8 @@ class OpTrainRandomForestBlocked(Operator):
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
-    def notifyDirty(self, slot, key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         if slot is not self.fixClassifier and self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
@@ -307,7 +309,8 @@ class OpPredictRandomForest(Operator):
 
 
 
-    def notifyDirty(self, slot, key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         if slot == self.inputs["Classifier"]:
             logger.debug("OpPredictRandomForest: Classifier changed, setting dirty")
             if self.LabelsCount.ready() and self.LabelsCount.value > 0:
@@ -375,7 +378,8 @@ class OpSegmentation(Operator):
 
 
 
-    def notifyDirty(self,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 
     @property
@@ -414,7 +418,8 @@ class OpAreas(Operator):
 
 
 
-    def notifyDirty(self,slot,key):
+    def propagateDirty(self, slot, roi):
+        key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 
     @property
