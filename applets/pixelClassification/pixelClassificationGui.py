@@ -120,10 +120,6 @@ class PixelClassificationGui(LabelingGui):
         Setup the layers for predicted class probabilities
         """
         
-        print "AAAAAAAAAAAAAAAa, setting up prediction layers", name_suffix
-        print "currentImageIndex:", currentImageIndex
-        print "total channels:", len(predictionChannels[currentImageIndex])
-        
         labels = self.labelListData
         layers = []
         # Add each of the predictions
