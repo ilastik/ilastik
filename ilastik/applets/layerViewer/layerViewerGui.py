@@ -537,9 +537,12 @@ class LayerViewerGui(QMainWindow):
         dataTags = None
         for layer in self.layerstack:
             for datasource in layer.datasources:
+                if isinstance( datasource, NormalizingSource ):
+                    datasource = datasource._rawSource
                 if isinstance(datasource, LazyflowSource):
                     dataTags = datasource.dataSlot.meta.axistags
-                    break
+                    if dataTags is not None:
+                        break
 
         assert dataTags is not None, "Can't convert mouse click coordinates from volumina-5d: Could not find a lazyflow data source in any layer."
         position = ()
