@@ -8,8 +8,6 @@ import copy
 
 from lazyflow.operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper, OpMultiMultiArrayPiper
 
-from lazyflow.graph import MultiInputSlot
-
 from lazyflow.operators import *
 
 

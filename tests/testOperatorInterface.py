@@ -11,7 +11,7 @@ class OpA(graph.Operator):
     Input1 = graph.InputSlot()                # required slot
     Input2 = graph.InputSlot(optional = True) # optional slot
     Input3 = graph.InputSlot(value = 3)       # required slot with default value, i.e. already connected
-    Input4 = graph.MultiInputSlot(level = 1)       # required slot with default value, i.e. already connected
+    Input4 = graph.InputSlot(level = 1)       # required slot with default value, i.e. already connected
 
     Output1 = graph.OutputSlot()
     Output2 = graph.OutputSlot()
@@ -157,6 +157,44 @@ class TestOperator_setupOutputs(object):
         op1.Input1.setValue(1)
         assert op2._configured == True
 
+
+class OpMultiOutput(graph.Operator):
+    Input = graph.InputSlot()
+    Outputs = graph.OutputSlot(level=3)
+    
+    def __init__(self, *args, **kwargs):
+        super(OpMultiOutput, self).__init__(*args, **kwargs)
+
+    def setupOutputs(self):
+        self.Outputs.resize(4)
+        for i, s in enumerate(self.Outputs):
+            s.resize(4)
+            for j, t in enumerate(s):
+                t.resize(4)
+                for k,u in enumerate(t):
+                    u.meta.assignFrom(self.Input.meta)                    
+
+    def execute(self, slot, subindex, roi, result):
+        """Result of the output slot is the subslot's subindex."""
+        assert slot == self.Outputs
+        result[0] = subindex
+        return result
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        pass
+
+class TestOperatorMultiSlotExecute(object):
+    def setup(self):
+        self.g = graph.Graph()
+    
+    def test(self):
+        op = OpMultiOutput(self.g)
+        op.Input.setValue( () )
+        # Index the output slot with every possible getitem syntax that we support
+        assert op.Outputs[1][2][3][...].wait()[0] == (1,2,3)
+        assert op.Outputs[3,2,1][...].wait()[0] == (3,2,1)
+        assert op.Outputs[(2,1,3)][...].wait()[0] == (2,1,3)
+
 class TestOperator_meta(object):
 
     def setUp(self):
@@ -196,8 +234,8 @@ class TestOperator_meta(object):
         assert op2.Output1.meta.shape == (20,)
 
 class OpWithMultiInputs(graph.Operator):
-    Input = graph.MultiInputSlot()
-    Output = graph.MultiOutputSlot()
+    Input = graph.InputSlot(level=1)
+    Output = graph.OutputSlot(level=1)
 
     def setupOutputs(self):
         self.Output.resize(len(self.Input))
@@ -494,8 +532,11 @@ class TestSlotStates(object):
         assert b.shape == a.shape
 
 if __name__ == "__main__":
+    import sys
     import nose
-    nose.run( defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1} )
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)
 
 #    test = TestSlotStates()
 #    test.setup()    

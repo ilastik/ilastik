@@ -201,7 +201,7 @@ class ValueRequest(object):
 
 class Slot(object):
     """
-    Base class for InputSlot, OutputSlot, MultiInputSlot and MultiOutputSlot
+    Base class for InputSlot, OutputSlot
     """
 
     loggerName = __name__ + '.Slot'
@@ -233,13 +233,13 @@ class Slot(object):
         self.name = name              # a user readable name for the slot
         self._optional = optional     # defines wether the slot needs a connection or value for a functional operator
         self.operator = operator      # the parent operator of the slot
-        self.partner = None           # in the case of an InputSlot or MultiInputSlot this is the slot to wich it is connected
+        self.partner = None           # in the case of an InputSlot this is the slot to wich it is connected
         self.level = level            # defines the dimensionality of the slot, 0 = single element (e.g. single numpy.ndarray), 1 = list of elements (e.g. list of strings), 2 = list of list of elements
-        self._value = None            # in the case of an InputSlot or MultiInputSlot one can directly assign a value to a slot instead of connecting it to a partner, this attribute holds the value
-        self._defaultValue = value    # a InputSlot or MultiInputSlot can
+        self._value = None            # in the case of an InputSlot one can directly assign a value to a slot instead of connecting it to a partner, this attribute holds the value
+        self._defaultValue = value    # a InputSlot can
         self.rtype = rtype            # the region of interest type of the slot ( rtype.py)
         self.meta = MetaDict()        # the MetaDict that holds the slots meta information
-        self._subSlots = []           # in the case of an MultiInputSlot or MultiOutputSlot this holds the sub-Input/Output slots
+        self._subSlots = []           # if level > 0, this holds the sub-Input/Output slots
         self._stypeType = stype       # the slot type class
         self.stype = stype(self)      # the slot type instance
 
@@ -858,7 +858,7 @@ class Slot(object):
 
     def setValue(self, value, notify = True, check_changed = True):
         """
-        This method can be used to directly assign a value to an InputSlot or MultiInputSlot.
+        This method can be used to directly assign a value to an InputSlot.
 
         Usually a slot is either connected to another slot from which it retrieves
         the content when it is queried, or it directly holds a value itself.
@@ -997,15 +997,9 @@ class Slot(object):
             if level is None:
                 level = self.level
             if self._type == "input":
-                if level > 0:
-                    s = MultiInputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
-                else:
-                    s = InputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional)
+                s = InputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
             elif self._type == "output":
-                if level > 0:
-                    s= MultiOutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
-                else:
-                    s= OutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional)
+                s = OutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
             return s
 
     def onDisconnect(self, slot):
@@ -1193,21 +1187,6 @@ class OutputSlot(Slot):
         totalIndex = (self._subSlots.index(slot),) + subindex
         return self.operator.execute(self, totalIndex, roi, result)
 
-class MultiInputSlot(InputSlot):
-    """
-    MultiInputSlots are the same as InputSlots, but they default to level=1
-    """
-
-    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, value = None, optional = False):
-        super(MultiInputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
-
-class MultiOutputSlot(OutputSlot):
-    """
-    MultiOutputSlots are the same as InputSlots, but they default to level=1
-    """
-    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, level = 1, optional = False, value = None):
-        super(MultiOutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
-
 class InputDict(dict):
 
     def __init__(self, operator):
@@ -1215,7 +1194,7 @@ class InputDict(dict):
 
 
     def __setitem__(self, key, value):
-        assert isinstance(value, InputSlot), "ERROR: all elements of .inputs must be of type InputSlot or MultiInputSlot, you provided %r !" % (value,)
+        assert isinstance(value, InputSlot), "ERROR: all elements of .inputs must be of type InputSlot you provided %r !" % (value,)
         return dict.__setitem__(self, key, value)
     def __getitem__(self, key):
         if self.has_key(key):
@@ -1234,7 +1213,7 @@ class OutputDict(dict):
 
 
     def __setitem__(self, key, value):
-        assert isinstance(value, OutputSlot), "ERROR: all elements of .outputs must be of type OutputSlot or MultiOutputSlot, you provided %r !" % (value,)
+        assert isinstance(value, OutputSlot), "ERROR: all elements of .outputs must be of type OutputSlot you provided %r !" % (value,)
         return dict.__setitem__(self, key, value)
     def __getitem__(self, key):
         if self.has_key(key):

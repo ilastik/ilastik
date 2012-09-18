@@ -36,7 +36,7 @@ class ListToMultiOperator(Operator):
     name = "List to Multislot converter"
     category = "Input"
     inputSlots = [InputSlot("List", stype = "sequence")]
-    outputSlots = [MultiOutputSlot("Items", level = 1)]
+    outputSlots = [OutputSlot("Items", level = 1)]
 
     def setupOutputs(self):
         inputSlot = self.inputs["List"]

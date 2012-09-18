@@ -70,13 +70,13 @@ for o in Operators.operators.values():
         doConnections.append("""
     _argument = %s
     _slotname = '%s'
-    if isinstance(_argument, OutputSlot) or isinstance(_argument, MultiOutputSlot):
+    if isinstance(_argument, OutputSlot):
         o.inputs[_slotname].connect(_argument)
     else:
         print "Setting value", _slotname, _argument, type(_argument)
         if isinstance(o.inputs[_slotname], InputSlot):
-            o.inputs[_slotname].setValue(_argument)
-        elif isinstance(o.inputs[_slotname], MultiInputSlot):
+            if o.inputs[_slotname].level == 0:
+                o.inputs[_slotname].setValue(_argument)
             if o.inputs[_slotname].level == 1:
                 for i, slot in enumerate(o.inputs[_slotname]):
                     slot.setValue(_argument)""" % (slot.name,slot.name))

@@ -10,7 +10,7 @@ class OpS(graph.Operator):
     Output1 = graph.OutputSlot()
     Output2 = graph.OutputSlot()
     Output3 = graph.OutputSlot()
-    Output4 = graph.MultiOutputSlot(level = 1)
+    Output4 = graph.OutputSlot(level = 1)
 
     def __init__(self, parent):
         graph.Operator.__init__(self,parent)
@@ -33,12 +33,12 @@ class OpA(graph.Operator):
     Input1 = graph.InputSlot()                # required slot
     Input2 = graph.InputSlot(optional = True) # optional slot
     Input3 = graph.InputSlot(value = 3)       # required slot with default value, i.e. already connected
-    Input4 = graph.MultiInputSlot(level = 1)
+    Input4 = graph.InputSlot(level = 1)
 
     Output1 = graph.OutputSlot()
     Output2 = graph.OutputSlot()
     Output3 = graph.OutputSlot()
-    Output4 = graph.MultiOutputSlot(level =1)
+    Output4 = graph.OutputSlot(level =1)
 
 
     def __init__(self, parent):
@@ -260,6 +260,4 @@ class TestSlot_notifyMetaChanged(object):
         opa.Input3.connect(ops.Output1)
         assert upval[0] == True
 
-
-        # test MultiInputSlot
         upval[0] = False

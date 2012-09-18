@@ -2,8 +2,6 @@ import numpy, vigra
 
 from lazyflow import graph
 
-from lazyflow.graph import MultiInputSlot
-
 from lazyflow.operators import *
 
 

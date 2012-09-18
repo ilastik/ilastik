@@ -1,7 +1,7 @@
 import lazyflow
 import numpy
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import sliceToRoi, roiToSlice, block_view, TinyVector
 from Queue import Empty
 from collections import deque
@@ -90,8 +90,8 @@ class OpMultiArrayPiper(Operator):
     name = "MultiArrayPiper"
     description = "simple piping operator"
 
-    inputSlots = [MultiInputSlot("MultiInput")]
-    outputSlots = [MultiOutputSlot("MultiOutput")]
+    inputSlots = [InputSlot("MultiInput", level=1)]
+    outputSlots = [OutputSlot("MultiOutput", level=1)]
 
     def setupOutputs(self):
         inputSlot = self.inputs["MultiInput"]
@@ -128,8 +128,8 @@ class OpMultiMultiArrayPiper(Operator):
     name = "MultiMultiArrayPiper"
     description = "simple piping operator"
 
-    inputSlots = [MultiInputSlot("MultiInput", level = 2)]
-    outputSlots = [MultiOutputSlot("MultiOutput", level = 2)]
+    inputSlots = [InputSlot("MultiInput", level = 2)]
+    outputSlots = [OutputSlot("MultiOutput", level = 2)]
 
     def setupOutputs(self):
         inputSlot = self.inputs["MultiInput"]
@@ -1409,7 +1409,7 @@ class OpSlicedBlockedArrayCache(Operator):
     Input = InputSlot()
 
     inputSlots = [InputSlot("innerBlockShape"), InputSlot("outerBlockShape"), InputSlot("fixAtCurrent", value = False)]
-    outputSlots = [OutputSlot("Output"), MultiOutputSlot("InnerOutputs")]
+    outputSlots = [OutputSlot("Output"), OutputSlot("InnerOutputs", level=1)]
 
     loggerName = __name__ + ".OpSlicedBlockedArrayCache"
     logger = logging.getLogger(loggerName)

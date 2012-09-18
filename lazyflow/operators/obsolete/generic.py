@@ -78,7 +78,7 @@ class OpMultiArraySlicer(Operator):
     The sliced axis is discarded in the output image shape.
     """
     inputSlots = [InputSlot("Input"),InputSlot('AxisFlag')]
-    outputSlots = [MultiOutputSlot("Slices",level=1)]
+    outputSlots = [OutputSlot("Slices",level=1)]
 
     name = "Multi Array Slicer"
     category = "Misc"
@@ -159,7 +159,7 @@ class OpMultiArraySlicer2(Operator):
     #FIXME: This operator return a sigleton in the sliced direction
     #Should be integrated with the above one to have a more consistent notation
     inputSlots = [InputSlot("Input"),InputSlot('AxisFlag'), InputSlot("SliceIndexes", optional=True)]
-    outputSlots = [MultiOutputSlot("Slices",level=1)]
+    outputSlots = [OutputSlot("Slices",level=1)]
 
     name = "Multi Array Slicer"
     category = "Misc"
@@ -256,7 +256,7 @@ class OpMultiArraySlicer2(Operator):
             assert False, "Unknown dirty input slot."
 
 class OpMultiArrayStacker(Operator):
-    inputSlots = [MultiInputSlot("Images"), InputSlot("AxisFlag"), InputSlot("AxisIndex")]
+    inputSlots = [InputSlot("Images", level=1), InputSlot("AxisFlag"), InputSlot("AxisIndex")]
     outputSlots = [OutputSlot("Output")]
 
     name = "Multi Array Stacker"
@@ -487,7 +487,7 @@ class OpSubRegion(Operator):
                 self.Output.setDirty( smallstart, smallstop )
 
 class OpMultiArrayMerger(Operator):
-    inputSlots = [MultiInputSlot("Inputs"),InputSlot('MergingFunction')]
+    inputSlots = [InputSlot("Inputs", level=1),InputSlot('MergingFunction')]
     outputSlots = [OutputSlot("Output")]
 
     name = "Merge Multi Arrays based on a variadic merging function"
@@ -589,8 +589,8 @@ class OpMultiInputConcatenater(Operator):
     name = "OpMultiInputConcatenater"
     description = "Combine two or more MultiInput slots into a single MultiOutput slot"
 
-    Inputs = MultiInputSlot(level=2, optional=True)
-    Output = MultiOutputSlot(level=1)
+    Inputs = InputSlot(level=2, optional=True)
+    Output = OutputSlot(level=1)
 
     def __init__(self, *args, **kwargs):
         super(OpMultiInputConcatenater, self).__init__(*args, **kwargs)
@@ -680,8 +680,8 @@ class OpTransposeSlots(Operator):
     Takes an input slot indexed as [i][j] and produces an output slot indexed as [j][i]
     Note: Only works for a slot of level 2.
     """
-    Inputs = MultiInputSlot(level=2)
-    Outputs = MultiOutputSlot(level=2)
+    Inputs = InputSlot(level=2)
+    Outputs = OutputSlot(level=2)
             
     def setupOutputs(self):
         minSize = None

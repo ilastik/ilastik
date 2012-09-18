@@ -74,7 +74,7 @@ class Op1ToMulti(OpXToMulti):
     inputSlots = []
     for i in xrange(1):
         inputSlots.append(InputSlot("Input"))
-    outputSlots = [MultiOutputSlot("Outputs")]
+    outputSlots = [OutputSlot("Outputs", level=1)]
 
 class Op5ToMulti(OpXToMulti):
     name = "5 Elements to Multislot"
@@ -83,7 +83,7 @@ class Op5ToMulti(OpXToMulti):
     inputSlots = []
     for i in xrange(5):
         inputSlots.append(InputSlot("Input%.1d"%(i), optional = True))
-    outputSlots = [MultiOutputSlot("Outputs")]
+    outputSlots = [OutputSlot("Outputs", level=1)]
 
 
 class Op10ToMulti(OpXToMulti):
@@ -93,7 +93,7 @@ class Op10ToMulti(OpXToMulti):
     inputSlots = []
     for i in xrange(10):
         inputSlots.append(InputSlot("Input%.1d"%(i), optional = True))
-    outputSlots = [MultiOutputSlot("Outputs")]
+    outputSlots = [OutputSlot("Outputs", level=1)]
 
 
 class Op20ToMulti(OpXToMulti):
@@ -103,7 +103,7 @@ class Op20ToMulti(OpXToMulti):
     inputSlots = []
     for i in xrange(20):
         inputSlots.append(InputSlot("Input%.2d"%(i), optional = True))
-    outputSlots = [MultiOutputSlot("Outputs")]
+    outputSlots = [OutputSlot("Outputs", level=1)]
 
 
 
@@ -116,7 +116,7 @@ class Op50ToMulti(OpXToMulti):
     inputSlots = []
     for i in xrange(50):
         inputSlots.append(InputSlot("Input%.2d"%(i), optional = True))
-    outputSlots = [MultiOutputSlot("Outputs")]
+    outputSlots = [OutputSlot("Outputs", level=1)]
 
 
 class OpPixelFeaturesPresmoothed(Operator):
@@ -129,7 +129,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                   InputSlot("FeatureIds")] # The selection of features to compute
 
     outputSlots = [OutputSlot("Output"),        # The entire block of features as a single image (many channels)
-                   MultiOutputSlot("Features")] # Each feature image listed separately, with feature name provided in metadata
+                   OutputSlot("Features", level=1)] # Each feature image listed separately, with feature name provided in metadata
 
     # Specify a default set & order for the features we compute
     DefaultFeatureIds = [ 'GaussianSmoothing',
@@ -1014,7 +1014,7 @@ class OpFileGlobList(Operator):
     category = "Input"
 
     inputSlots = [InputSlot("Globstring", stype = "string")]
-    outputSlots = [MultiOutputSlot("Filenames", stype = "filestring")]
+    outputSlots = [OutputSlot("Filenames", stype = "filestring", level=1)]
 
     def setupOutputs(self):
         globstring = self.inputs["Globstring"].value
@@ -1389,7 +1389,7 @@ class OpH5ReaderSmoothedDataset(Operator):
     category = "Input"
 
     inputSlots = [InputSlot("Filenames"), InputSlot("hdf5Path", stype = "string")]
-    outputSlots = [MultiOutputSlot("Outputs"),MultiOutputSlot("Sigmas")]
+    outputSlots = [OutputSlot("Outputs", level=1),OutputSlot("Sigmas", level=1)]
 
 
     def setupOutputs(self):

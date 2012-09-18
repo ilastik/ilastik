@@ -1,4 +1,4 @@
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators import Op5ToMulti, OpArrayPiper
 import numpy
 import copy
@@ -30,7 +30,7 @@ class OpSimple(Operator):
             assert False
 
 class OpExplicitMulti(Operator):
-    Output = MultiOutputSlot()
+    Output = OutputSlot(level=1)
 
 class OpCopyInput(Operator):
     Input = InputSlot()
@@ -58,9 +58,12 @@ class TestBasic(object):
         """
         orig = OpSimple(graph=self.graph)
         wrapped = OperatorWrapper( orig )
-        assert type(wrapped.InputA) == MultiInputSlot
-        assert type(wrapped.InputB) == MultiInputSlot
-        assert type(wrapped.Output) == MultiOutputSlot
+        assert type(wrapped.InputA) == InputSlot
+        assert type(wrapped.InputB) == InputSlot
+        assert type(wrapped.Output) == OutputSlot
+        assert wrapped.InputA.level == 1
+        assert wrapped.InputB.level == 1
+        assert wrapped.Output.level == 1
 
         assert len(wrapped.InputA) == 0
         assert len(wrapped.InputB) == 0
@@ -89,9 +92,12 @@ class TestBasic(object):
         """
         orig = OpSimple(graph=self.graph)
         wrapped = OperatorWrapper( orig, promotedSlotNames=set(['InputA']) )
-        assert type(wrapped.InputA) == MultiInputSlot  # Promoted because it was listed in the constructor call
-        assert type(wrapped.InputB) == InputSlot       # NOT promoted
-        assert type(wrapped.Output) == MultiOutputSlot # Promoted because it's an output
+        assert type(wrapped.InputA) == InputSlot  
+        assert type(wrapped.InputB) == InputSlot
+        assert type(wrapped.Output) == OutputSlot 
+        assert wrapped.InputA.level == 1 # Promoted because it was listed in the constructor call
+        assert wrapped.InputB.level == 0 # NOT promoted
+        assert wrapped.Output.level == 1 # Promoted because it's an output
 
         assert len(wrapped.InputA) == 0
         assert len(wrapped.InputB) == 0
@@ -142,8 +148,10 @@ class TestMultiOutputToWrapped(object):
         assert type(wrapper.innerOperators[0].InputA) == InputSlot
         assert wrapper.innerOperators[0].InputA.partner is not None
         assert type(wrapper.innerOperators[0].InputA.partner) == InputSlot
-        assert type(wrapper.innerOperators[0].InputA.partner.operator) == MultiInputSlot
-        assert type(wrapper.innerOperators[0].InputA.partner.operator.partner) == MultiOutputSlot
+        assert type(wrapper.innerOperators[0].InputA.partner.operator) == InputSlot
+        assert wrapper.innerOperators[0].InputA.partner.operator.level == 1
+        assert type(wrapper.innerOperators[0].InputA.partner.operator.partner) == OutputSlot
+        assert wrapper.innerOperators[0].InputA.partner.operator.partner.level == 1
         assert wrapper.innerOperators[0].InputA.partner.operator.partner.name == 'Outputs'
 
         assert len(wrapper.innerOperators) == 1
@@ -151,8 +159,10 @@ class TestMultiOutputToWrapped(object):
         assert type(wrapper.innerOperators[0].InputB) == InputSlot
         assert wrapper.innerOperators[0].InputB.partner is not None
         assert type(wrapper.innerOperators[0].InputB.partner) == InputSlot
-        assert type(wrapper.innerOperators[0].InputB.partner.operator) == MultiInputSlot
-        assert type(wrapper.innerOperators[0].InputB.partner.operator.partner) == MultiOutputSlot
+        assert type(wrapper.innerOperators[0].InputB.partner.operator) == InputSlot
+        assert wrapper.innerOperators[0].InputB.partner.operator.level == 1
+        assert type(wrapper.innerOperators[0].InputB.partner.operator.partner) == OutputSlot
+        assert wrapper.innerOperators[0].InputB.partner.operator.partner.level == 1
         assert wrapper.innerOperators[0].InputB.partner.operator.partner.name == 'Outputs'
 
 class TestMultiOutputToWrapped(object):

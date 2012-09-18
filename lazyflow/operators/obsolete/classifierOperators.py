@@ -1,6 +1,6 @@
 import numpy
 import time
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, OrderedSignal
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.request import Request, Pool
 import vigra
@@ -17,7 +17,7 @@ class OpTrainRandomForest(Operator):
     description = "Train a random forest on multiple images"
     category = "Learning"
 
-    inputSlots = [MultiInputSlot("Images"),MultiInputSlot("Labels"), InputSlot("fixClassifier", stype="bool")]
+    inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool")]
     outputSlots = [OutputSlot("Classifier")]
 
     def __init__(self, parent = None):
@@ -79,8 +79,8 @@ class OpTrainRandomForestBlocked(Operator):
     description = "Train a random forest on multiple images"
     category = "Learning"
 
-    inputSlots = [MultiInputSlot("Images"),MultiInputSlot("Labels"), InputSlot("fixClassifier", stype="bool"), \
-                  MultiInputSlot("nonzeroLabelBlocks")]
+    inputSlots = [InputSlot("Images", level=1),InputSlot("Labels", level=1), InputSlot("fixClassifier", stype="bool"), \
+                  InputSlot("nonzeroLabelBlocks", level=1)]
     outputSlots = [OutputSlot("Classifier")]
 
     WarningEmitted = False
