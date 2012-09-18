@@ -221,6 +221,11 @@ class OpPixelClassification( Operator ):
         self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs that support __setitem__
+        #   are directly connected to internal operators.
+        pass
+
     def propagateDirty(self, inputSlot, roi):
         # Nothing to do here: All outputs are directly connected to 
         #  internal operators that handle their own dirty propagation.
@@ -255,7 +260,7 @@ class OpShapeReader(Operator):
             pass
         self.OutputShape.setValue( tuple(shapeList) )
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
 
     def propagateDirty(self, inputSlot, roi):
@@ -279,7 +284,7 @@ class OpMaxValue(Operator):
         self.updateOutput()
         self.Output.setValue(self._output)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         result[0] = self._output
         return result
 

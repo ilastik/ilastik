@@ -22,7 +22,7 @@ class OpThresholdMasking(Operator):
         self.Output.meta.assignFrom( self.InputImage.meta )
         self.InvertedOutput.meta.assignFrom( self.InputImage.meta )
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         raw = self.InputImage[key].wait()
         mask = numpy.logical_and(self.MinValue.value <= raw, raw <= self.MaxValue.value)

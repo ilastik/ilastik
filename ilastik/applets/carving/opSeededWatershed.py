@@ -281,7 +281,7 @@ class OpSegmentor(Operator):
 
 
 
-  def execute(self, slot, roi, result):
+  def execute(self, slot, subindex, roi, result):
     key = roi.toSlice()[1:-1]
     if slot == self.raw:
       if self.seg is not None:
@@ -422,25 +422,6 @@ class OpSegmentor(Operator):
     index = numpy.argmax(ufg)
     return self.seg.regionCenter[index]
 
-
-class OpShapeReader(Operator):
-    """
-    This operator outputs the shape of its input image, except the number of channels is set to 1.
-    """
-    Input = InputSlot()
-    OutputShape = OutputSlot(stype='shapetuple')
-    
-    def setupOutputs(self):
-        self.OutputShape.meta.shape = (1,)
-        self.OutputShape.meta.axistags = 'shapetuple'
-        self.OutputShape.meta.dtype = tuple
-    
-    def execute(self, slot, roi, result):
-        # Our 'result' is simply the shape of our input, but with only one channel
-        channelIndex = self.Input.meta.axistags.index('c')
-        shapeList = list(self.Input.meta.shape)
-        shapeList[channelIndex] = 1
-        result[0] = tuple(shapeList)
 
 
 

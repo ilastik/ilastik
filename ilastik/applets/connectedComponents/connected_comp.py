@@ -22,7 +22,7 @@ class OpThreshold(Operator):
         self.outputs["Output"].meta.dtype = numpy.uint8
         self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
         shape = self.inputs["Input"].meta.shape
         rstart, rstop = sliceToRoi(key, shape)  
@@ -72,7 +72,7 @@ class OpConnectedComponents(Operator):
         self.outputs["Output"].meta.dtype = numpy.uint32
         self.outputs["Output"].meta.axistags= inputSlot.meta.axistags
         
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
         
         timeAxis = None

@@ -132,7 +132,7 @@ class OpShapeReader(Operator):
             pass
         self.OutputShape.setValue( tuple(shapeList) )
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
 
     def propagateDirty(self, inputSlot, roi):
@@ -156,7 +156,7 @@ class OpMaxValue(Operator):
         self.updateOutput()
         self.Output.setValue(self._output)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         result[0] = self._output
         return result
 

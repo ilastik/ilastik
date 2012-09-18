@@ -415,7 +415,7 @@ class OpCarving(Operator):
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay 
         self._buildDone()
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         with self._cond:
             self._nExecutingThreads += 1
             self._cond.notify()
