@@ -16,7 +16,6 @@ from functools import partial
 from ilastik.versionManager import VersionManager
 from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEvent, ThunkEventHandler
-from lazyflow.graph import MultiOutputSlot
 
 import sys
 import logging
@@ -224,7 +223,7 @@ class IlastikShell( QMainWindow ):
             self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoCurrentDrawer )
 
     def setImageNameListSlot(self, multiSlot):
-        assert type(multiSlot) == MultiOutputSlot
+        assert multiSlot.level == 1
         self.imageNamesSlot = multiSlot
         
         def insertImageName( index, slot ):

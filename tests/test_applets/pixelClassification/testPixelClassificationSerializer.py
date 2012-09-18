@@ -3,7 +3,7 @@ import numpy
 import h5py
 import vigra
 from lazyflow.roi import roiToSlice
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache
 from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
 from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
@@ -19,16 +19,16 @@ class OpMockPixelClassifier(Operator):
     """
     name = "OpMockPixelClassifier"
 
-    LabelInputs = MultiInputSlot(optional = True) # Input for providing label data from an external source
+    LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
 
-    PredictionsFromDisk = MultiInputSlot( optional = True ) # TODO: Actually use this input for something
+    PredictionsFromDisk = InputSlot( optional = True, level=1 ) # TODO: Actually use this input for something
 
-    NonzeroLabelBlocks = MultiOutputSlot(stype='object') # A list if slices that contain non-zero label values
-    LabelImages = MultiOutputSlot() # Labels from the user
+    NonzeroLabelBlocks = OutputSlot(level=1, stype='object') # A list if slices that contain non-zero label values
+    LabelImages = OutputSlot(level=1) # Labels from the user
     
     Classifier = OutputSlot(stype='object')
     
-    PredictionProbabilities = MultiOutputSlot()
+    PredictionProbabilities = OutputSlot(level=1)
     
     FreezePredictions = InputSlot()
     

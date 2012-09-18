@@ -1,5 +1,5 @@
 import numpy
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpPrecomputedInput, OpPixelOperator
@@ -13,29 +13,29 @@ class OpPixelClassification( Operator ):
     
     # Graph inputs
     
-    InputImages = MultiInputSlot() # Original input data.  Used for display only.
+    InputImages = InputSlot(level=1) # Original input data.  Used for display only.
 
-    LabelsAllowedFlags = MultiInputSlot(stype='bool') # Specifies which images are permitted to be labeled 
-    LabelInputs = MultiInputSlot(optional = True) # Input for providing label data from an external source
+    LabelsAllowedFlags = InputSlot(stype='bool', level=1) # Specifies which images are permitted to be labeled 
+    LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
 
-    FeatureImages = MultiInputSlot() # Computed feature images (each channel is a different feature)
-    CachedFeatureImages = MultiInputSlot() # Cached feature data.
+    FeatureImages = InputSlot(level=1) # Computed feature images (each channel is a different feature)
+    CachedFeatureImages = InputSlot(level=1) # Cached feature data.
 
     FreezePredictions = InputSlot(stype='bool')
 
-    PredictionsFromDisk = MultiInputSlot(optional=True)
+    PredictionsFromDisk = InputSlot(optional=True, level=1)
 
-    PredictionProbabilities = MultiOutputSlot() # Classification predictions
+    PredictionProbabilities = OutputSlot(level=1) # Classification predictions
 
-    PredictionProbabilityChannels = MultiOutputSlot(level=2) # Classification predictions, enumerated by channel
-    SegmentationChannels = MultiOutputSlot(level=2) # Binary image of the final selections.
+    PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
+    SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
     
     MaxLabelValue = OutputSlot()
-    LabelImages = MultiOutputSlot() # Labels from the user
-    NonzeroLabelBlocks = MultiOutputSlot() # A list if slices that contain non-zero label values
+    LabelImages = OutputSlot(level=1) # Labels from the user
+    NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
     Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
 
-    CachedPredictionProbabilities = MultiOutputSlot() # Classification predictions (via a cache)
+    CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via a cache)
 
     def __init__( self, graph ):
         """
@@ -266,7 +266,7 @@ class OpMaxValue(Operator):
     """
     Accepts a list of non-array values as an input and outputs the max of the list.
     """
-    Inputs = MultiInputSlot() # A list of non-array values
+    Inputs = InputSlot(level=1) # A list of non-array values
     Output = OutputSlot()
     
     def __init__(self, *args, **kwargs):

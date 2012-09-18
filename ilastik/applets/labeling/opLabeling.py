@@ -1,4 +1,4 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 
 from lazyflow.operators import OpBlockedSparseLabelArray
 
@@ -11,16 +11,16 @@ class OpLabeling( Operator ):
     
     # Graph inputs
     
-    InputImages = MultiInputSlot() # Original input data.
-    LabelsAllowedFlags = MultiInputSlot(stype='bool') # Specifies which images are permitted to be labeled 
+    InputImages = InputSlot(level=1) # Original input data.
+    LabelsAllowedFlags = InputSlot(stype='bool', level=1) # Specifies which images are permitted to be labeled 
 
-    LabelInputs = MultiInputSlot(optional = True) # Input for providing label data from an external source
+    LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
     LabelEraserValue = InputSlot()
     LabelDelete = InputSlot()
 
     MaxLabelValue = OutputSlot()
-    LabelImages = MultiOutputSlot() # Labels from the user
-    NonzeroLabelBlocks = MultiOutputSlot() # A list if slices that contain non-zero label values
+    LabelImages = OutputSlot(level=1) # Labels from the user
+    NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
 
     def __init__( self, *args, **kwargs ):
         """
@@ -138,7 +138,7 @@ class OpMaxValue(Operator):
     """
     Accepts a list of non-array values as an input and outputs the max of the list.
     """
-    Inputs = MultiInputSlot() # A list of non-array values
+    Inputs = InputSlot(level=1) # A list of non-array values
     Output = OutputSlot()
     
     def __init__(self, *args, **kwargs):

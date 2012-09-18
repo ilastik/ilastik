@@ -1,4 +1,4 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiOutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 from lazyflow.operators import OpPixelFeaturesPresmoothed, OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 
@@ -27,7 +27,7 @@ class OpFeatureSelection(Operator):
     OutputImage = OutputSlot()
     CachedOutputImage = OutputSlot()
 
-    FeatureLayers = MultiOutputSlot() # For the GUI, we also provide each feature as a separate slot in this multislot
+    FeatureLayers = OutputSlot(level=1) # For the GUI, we also provide each feature as a separate slot in this multislot
     
     def __init__(self, *args, **kwargs):
         super(OpFeatureSelection, self).__init__(*args, **kwargs)

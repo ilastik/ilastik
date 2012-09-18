@@ -2,7 +2,7 @@ import numpy, vigra, h5py
 from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, OpArrayPiper, Op5ToMulti, OpBlockedSparseLabelArray, OpArrayCache, \
                                OpTrainRandomForestBlocked, OpPredictRandomForest, OpSlicedBlockedArrayCache
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from threading import Lock
 import pyximport; pyximport.install()
 from cylemon.segmentation import GCSegmentor, MSTSegmentorKruskal, MSTSegmentor, PerturbMSTSegmentor
