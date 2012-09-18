@@ -78,11 +78,11 @@ class OpChainLoader(Operator):
             self.inverter.inputs["input"].connect(self.converter.outputs["outout"])
             self.outpiper.inputs["Input"].connect(self.inverter.outputs["output"])
 
-        self.outputs["output"]._dtype = self.outpiper.outputs["Output"]._dtype
-        self.outputs["output"]._shape = self.outpiper.outputs["Output"]._shape
-        self.outputs["output"]._axistags = self.outpiper.outputs["Output"]._axistags
+        self.outputs["output"].meta.dtype = self.outpiper.outputs["Output"].meta.dtype
+        self.outputs["output"].meta.shape = self.outpiper.outputs["Output"].meta.shape
+        self.outputs["output"].meta.axistags = self.outpiper.outputs["Output"].meta.axistags
         
-    def execute(self,slot,roi,result):
+    def execute(self, slot, subindex, roi, result):
         
         result[:] = self.outpiper.outputs["Output"](roi).wait()
         return result
@@ -100,7 +100,7 @@ class StackLoader(QtGui.QDialog):
         #SETUP OpStackChainLoader
         self.graph = graph
         self.ChainLoader = OpChainLoader(self.graph) 
-        #set default for inputslots, because only the notifyConnectAll method is
+        #set default for inputslots, because only the setupOutputs method is
         #overridden, so all inputslots have to be set to setup the OperatorGroup
         #correctly
         self.ChainLoader.inputs["invert"].setValue(False)

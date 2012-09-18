@@ -64,7 +64,7 @@ class Main(QMainWindow):
         
         self.layerstack.append(layer1)
         
-        shape=readerNew.outputs["Output"].shape
+        shape=readerNew.outputs["Output"].meta.shape
         print shape
         self.editor = VolumeEditor(shape, self.layerstack)  
         #self.editor.setDrawingEnabled(False)
