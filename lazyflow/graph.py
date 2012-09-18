@@ -60,6 +60,7 @@ import rtype
 from roi import sliceToRoi, roiToSlice
 from lazyflow.stype import ArrayLike
 from lazyflow import stype
+from lazyflow import slicingtools
 
 from lazyflow.tracer import Tracer
 
@@ -797,11 +798,14 @@ class Slot(object):
         assert not isinstance(value, Slot), "Can't use setitem to connect slots.  Use connect()"
         assert self.level == 0, "setitem can only be used with slots of level 0.  Did you forget to append a key?"
         assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"
+        assert slicingtools.is_bounded(key), "Can't use Slot.__setitem__ with keys that include : or ..."
+        roi = self.rtype(self,pslice = key)
         if self._value is not None:
-            roi = self.rtype(self,pslice = key)
             self._value[key] = value
             self.setDirty(roi) # only propagate the dirty key at the very beginning of the chain
-        self.operator.setInSlot(self,key,value)
+        if self._type == "input":
+            self.operator.setInSlot(self, (), roi, value)
+
         # Forward to partners
         for p in self.partners:
             p[key] = value
@@ -809,15 +813,15 @@ class Slot(object):
     def index(self, slot):
         return self._subSlots.index(slot)
 
-    def setInSlot(self, slot, key, value):
+    def setInSlot(self, slot, subindex, roi, value):
         """
         For now, Slots of level > 0 pretend to be operators (as far as their subslots are concerned).
         That's why they have to have this setInSlot() method.
         """
-        # Determine which subslot this is
-        index = self._subSlots.index(slot)
-        # Forward the call to our operator using setSubInSlot
-        self.operator.setSubInSlot(self, slot, index, key, value)
+        # Determine which subslot this is and prepend it to the totalIndex
+        totalIndex = (self._subSlots.index(slot),) + subindex
+        # Forward the call to our operator
+        self.operator.setInSlot(self, totalIndex, roi, value)
 
     def __len__(self):
         """
@@ -1611,15 +1615,10 @@ class Operator(object):
     run the calculation and put the results into the provided result argument.
     """
     def execute(self, slot, subindex, roi, result):
-        raise NotImplementedError("Operator {} does not implement execute()")
+        raise NotImplementedError("Operator {} does not implement execute()".format(self.name))
 
-    def setInSlot(self, slot, key, value):
-        pass
-
-    def setSubInSlot(self,multislot,slot,index, key,value):
-        pass
-
-
+    def setInSlot(self, slot, subindex, key, value):
+        raise NotImplementedError("Can't use __setitem__ with Operator {} because it doesn't implement setInSlot()".format(self.name))
 
 class OperatorWrapper(Operator):
     name = ""
@@ -1920,21 +1919,10 @@ class OperatorWrapper(Operator):
         #this should never be called !!!
         assert False
 
-    def setInSlot(self, slot, key, value):
-        with Tracer(self.traceLogger, msg=self.name):
-            # This should never be called for any slots that were promoted (promoted slots are all multi)
-            assert slot.name not in self.promotedSlots
-    
-            # Broadcast this to all inner operators
-            for innerOp in self.innerOperators:
-                innerSlot = innerOp.inputs[slot.name]
-                innerOp.setInSlot( innerSlot, key, value )
-
-    def setSubInSlot(self,multislot,slot,index, key,value):
-        with Tracer(self.traceLogger, msg=self.name):
-            # Forward this call to the operator (whose slot is partnered with ours)
-            slot = self.innerOperators[index].inputs[slot.name]
-            self.innerOperators[index].setInSlot(slot, key, value)
+    def setInSlot(self, slot, subindex, key, value):
+        # Nothing to do here.
+        # Calls to Slot.setitem are already forwarded to all slot partners.
+        pass
 
 class Graph(object):
     def __init__(self, numThreads=-1):

@@ -69,14 +69,6 @@ class OpTrainRandomForest(Operator):
 
         return result
 
-    def setInSlot(self, slot, key, value):
-        if self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"].setDirty((slice(0,1,None),))
-
-    def setSubInSlot(self,slots,indexes, key,value):
-        if self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"].setDirty((slice(0,1,None),))
-
     def notifySubSlotDirty(self, slots, indexes, key):
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].setDirty((slice(0,1,None),))
@@ -217,14 +209,6 @@ class OpTrainRandomForestBlocked(Operator):
                 self.progressSignal(100)
         
         return result
-
-    def setInSlot(self, slot, key, value):
-        if self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"].setDirty((slice(0,1,None),))
-
-    def setSubInSlot(self,slots,indexes, key,value):
-        if self.inputs["fixClassifier"].value == False:
-            self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
     def notifySubSlotDirty(self, slots, indexes, key):
         if self.inputs["fixClassifier"].value == False:

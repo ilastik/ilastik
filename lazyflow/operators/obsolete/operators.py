@@ -69,7 +69,11 @@ class OpArrayPiper(Operator):
             # then mark the entire output dirty.  This is the correct behavior for e.g. 'sigma' inputs.
             self.outputs["Output"].setDirty(slice(None))
 
-    def setInSlot(self, slot, key, value):
+    def setInSlot(self, slot, subindex, roi, value):
+        # Forward to output
+        assert subindex == ()
+        assert slot == self.Input
+        key = roi.toSlice()
         self.outputs["Output"][key] = value
 
     @property
@@ -116,12 +120,6 @@ class OpMultiArrayPiper(Operator):
         res = req.wait()
         return res
 
-    def setInSlot(self, slot, key, value):
-        raise RuntimeError("OpMultiPipler does not support setInSlot")
-
-    def setSubInSlot(self,multislot,slot,index, key,value):
-        pass
-
     def notifySubSlotDirty(self,slots,indexes,key):
         self.outputs["MultiOutput"][indexes[0]].setDirty(key)
 
@@ -151,12 +149,6 @@ class OpMultiMultiArrayPiper(Operator):
         req = self.inputs["MultiInput"][subindex][key].writeInto(result)
         res = req()
         return res
-
-    def setInSlot(self, slot, key, value):
-        raise RuntimeError("OpMultiPipler does not support setInSlot")
-
-    def setSubInSlot(self,multislot,slot,index, key,value):
-        pass
 
     def notifySubSlotDirty(self,slots,indexes,key):
         self.outputs["Output"][indexes[0]][indexes[1]].setDirty(key)
@@ -682,38 +674,29 @@ class OpArrayCache(OpArrayPiper):
 
         self._lock.release()
 
-    def setInSlot(self, slot, key, value):
-        if slot == self.inputs["Input"]:
-            ch = self._cacheHits
-            ch += 1
-            self._cacheHits = ch
-            start, stop = sliceToRoi(key, self.shape)
-            blockStart = numpy.ceil(1.0 * start / self._blockShape)
-            blockStop = numpy.floor(1.0 * stop / self._blockShape)
-            blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
-            blockKey = roiToSlice(blockStart,blockStop)
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot == self.inputs["Input"]
+        ch = self._cacheHits
+        ch += 1
+        self._cacheHits = ch
+        start, stop = sliceToRoi(key, self.shape)
+        blockStart = numpy.ceil(1.0 * start / self._blockShape)
+        blockStop = numpy.floor(1.0 * stop / self._blockShape)
+        blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
+        blockKey = roiToSlice(blockStart,blockStop)
 
-            if (self._blockState[blockKey] != OpArrayCache.CLEAN).any():
-                start2 = blockStart * self._blockShape
-                stop2 = blockStop * self._blockShape
-                stop2 = numpy.minimum(stop2, self.shape)
-                key2 = roiToSlice(start2,stop2)
-                self._lock.acquire()
-                if self._cache is None:
-                    self._allocateCache()
-                self._cache[key2] = value[roiToSlice(start2-start,stop2-start)]
-                self._blockState[blockKey] = self._dirtyState
-                self._blockQuery[blockKey] = None
-                self._lock.release()
-
-            #pass request on
-            #if not self._fixed:
-            #    self.outputs["Output"][key] = value
-        if slot == self.inputs["fixAtCurrent"]:
-            self._fixed = value
-            assert 1==2
-
-
+        if (self._blockState[blockKey] != OpArrayCache.CLEAN).any():
+            start2 = blockStart * self._blockShape
+            stop2 = blockStop * self._blockShape
+            stop2 = numpy.minimum(stop2, self.shape)
+            key2 = roiToSlice(start2,stop2)
+            self._lock.acquire()
+            if self._cache is None:
+                self._allocateCache()
+            self._cache[key2] = value[roiToSlice(start2-start,stop2-start)]
+            self._blockState[blockKey] = self._dirtyState
+            self._blockQuery[blockKey] = None
+            self._lock.release()
 
     def dumpToH5G(self, h5g, patchBoard):
         h5g.dumpSubObjects({
@@ -846,7 +829,8 @@ if has_blist:
             self.lock.release()
             return result
 
-        def setInSlot(self, slot, key, value):
+        def setInSlot(self, slot, subindex, roi, value):
+            key = roi.toSlice()
             assert value.dtype == self._denseArray.dtype, "Labels must be {}".format(self._denseArray.dtype)
             assert isinstance(value, numpy.ndarray)            
             if type(value) != numpy.ndarray:
@@ -1110,7 +1094,8 @@ if has_blist:
                 self.lock.release()
                 return result
 
-        def setInSlot(self, slot, key, value):
+        def setInSlot(self, slot, subindex, roi, value):
+            key = roi.toSlice()
             with Tracer(self.traceLogger):
                 time1 = time.time()
 
@@ -1413,12 +1398,6 @@ class OpBlockedArrayCache(Operator):
 
                 if dirtystart is not None:
                     self.Output.setDirty(dirtystart, dirtystop)
-
-    def setInSlot(self,slot,key):
-        pass
-
-
-
 
 class OpSlicedBlockedArrayCache(Operator):
     name = "OpSlicedBlockedArrayCache"
