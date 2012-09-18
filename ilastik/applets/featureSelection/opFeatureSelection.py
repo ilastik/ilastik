@@ -88,7 +88,7 @@ class OpFeatureSelection(Operator):
         self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators
         pass
 

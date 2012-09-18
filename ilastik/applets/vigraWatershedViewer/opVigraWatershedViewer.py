@@ -173,7 +173,7 @@ class OpVigraWatershedViewer(Operator):
             self.opWatershed.SeedImage.disconnect()
             self.opThreshold.Function.disconnect()
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # All outputs are directly connected to internal operators
         pass
 

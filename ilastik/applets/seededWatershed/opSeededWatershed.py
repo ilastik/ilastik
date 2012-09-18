@@ -212,7 +212,7 @@ class OpSegmentor(Operator):
       result[0,:,:,:,0] = res[:]
     return result
   
-  def propagateDirty(self, slot, roi):
+  def propagateDirty(self, slot, subindex, roi):
     if slot in [self.image, self.sigma, self.border_indicator]:
       print "  ======================= setting segmentor to dirty"
       self._dirty = True

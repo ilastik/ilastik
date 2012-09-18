@@ -455,7 +455,7 @@ class OpCarving(Operator):
         else:
             raise RuntimeError("unknown slots")
         
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         if slot == self.Trigger or slot == self.BackgroundPriority or slot == self.NoBiasBelow: 
             if self._mst is None:

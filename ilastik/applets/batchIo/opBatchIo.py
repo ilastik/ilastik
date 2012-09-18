@@ -98,7 +98,7 @@ class OpBatchIo(Operator):
         elif formatId == ExportFormat.Tiff:
             self.OutputDataPath.setValue( outputPath )
 
-    def propagateDirty(self, islot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # Out input data changed, so we have work to do when we get executed.
         self.Dirty.setValue(True)
 

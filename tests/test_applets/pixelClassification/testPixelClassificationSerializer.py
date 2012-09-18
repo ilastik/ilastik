@@ -104,7 +104,7 @@ class OpMockPixelClassifier(Operator):
         if slot.name == "PredictionProbabilities":
             result[...] = self.predictionData[key]
     
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         pass
     
 class TestOpMockPixelClassifier(object):

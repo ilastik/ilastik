@@ -226,12 +226,7 @@ class OpPixelClassification( Operator ):
         #   are directly connected to internal operators.
         pass
 
-    def propagateDirty(self, inputSlot, roi):
-        # Nothing to do here: All outputs are directly connected to 
-        #  internal operators that handle their own dirty propagation.
-        pass
-
-    def notifySubSlotDirty(self, slots, indexes, key):
+    def propagateDirty(self, slot, subindex, roi):
         # Nothing to do here: All outputs are directly connected to 
         #  internal operators that handle their own dirty propagation.
         pass
@@ -263,7 +258,7 @@ class OpShapeReader(Operator):
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass
 
@@ -288,7 +283,7 @@ class OpMaxValue(Operator):
         result[0] = self._output
         return result
 
-    def notifySubSlotDirty(self, slots, indexes, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         self.updateOutput()
         self.Output.setValue(self._output)
 
