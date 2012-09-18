@@ -58,7 +58,7 @@ class OpArrayPiper(Operator):
         req.wait()
         return result
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         # Check for proper name because subclasses may define extra inputs.
         # (but decline to override notifyDirty)
@@ -120,8 +120,9 @@ class OpMultiArrayPiper(Operator):
         res = req.wait()
         return res
 
-    def notifySubSlotDirty(self,slots,indexes,key):
-        self.outputs["MultiOutput"][indexes[0]].setDirty(key)
+    def propagateDirty(self, inputSlot, subindex, roi):
+        key = roi.toSlice()
+        self.outputs["MultiOutput"][subindex].setDirty(key)
 
 class OpMultiMultiArrayPiper(Operator):
     name = "MultiMultiArrayPiper"
@@ -150,8 +151,10 @@ class OpMultiMultiArrayPiper(Operator):
         res = req()
         return res
 
-    def notifySubSlotDirty(self,slots,indexes,key):
-        self.outputs["Output"][indexes[0]][indexes[1]].setDirty(key)
+    def propagateDirty(self, inputSlot, subindex, roi):
+        key = roi.toSlice()
+        assert len(subindex) == 2 == len(self.MultiInput)
+        self.outputs["Output"][subindex].setDirty(key)
 
 
 
@@ -461,7 +464,7 @@ class OpArrayCache(OpArrayPiper):
 
 
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         if slot == self.inputs["Input"]:
             start, stop = sliceToRoi(key, self.shape)
@@ -902,8 +905,8 @@ if has_blist:
             self.outputs["maxLabel"].setValue(self._maxLabel)
             self.outputs["Output"].setDirty(key)
         
-        def propagateDirty(self, inputSlot, roi):
-            if inputSlot == self.Input:
+        def propagateDirty(self, dirtySlot, subindex, roi):
+            if dirtySlot == self.Input:
                 self.Output.setDirty(roi)
             else:
                 # All other inputs are single-value inputs that will trigger
@@ -1173,7 +1176,7 @@ if has_blist:
                 logger.debug("OpBlockedSparseLabelArray: setInSlot setDirty took %fs" % (time3-time2,))
                 logger.debug("OpBlockedSparseLabelArray: setInSlot total took %fs" % (time3-time1,))
 
-        def propagateDirty(self, slot, roi):
+        def propagateDirty(self, slot, subindex, roi):
             key = roi.toSlice()
             if slot == self.inputs["Input"]:
                 self.Output.setDirty(key)
@@ -1346,7 +1349,7 @@ class OpBlockedArrayCache(Operator):
                 r.wait()
 
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         if slot == self.inputs["Input"] and self._forward_dirty:
             if not self._fixed:
@@ -1470,7 +1473,7 @@ class OpSlicedBlockedArrayCache(Operator):
         op = self._innerOps[index]
         op.outputs["Output"][key].writeInto(result).wait()
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         # We *could* simply forward dirty notifications from our inner operators
         # to our output (by subscribing to their notifyDirty signals),

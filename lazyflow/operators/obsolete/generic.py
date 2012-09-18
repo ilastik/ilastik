@@ -127,7 +127,7 @@ class OpMultiArraySlicer(Operator):
 
         return ttt[writeKey ]#+ (0,)]
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         if slot == self.AxisFlag:
             for i,s in enumerate(self.Slices):
                 s.setDirty( slice(None) )
@@ -236,7 +236,7 @@ class OpMultiArraySlicer2(Operator):
         ttt = self.inputs["Input"][newKey].allocate().wait()
         return ttt[:]
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.AxisFlag or inputSlot == self.SliceIndexes:
             # AxisFlag or slice set changed.  Everything is dirty
             for i, slot in enumerate(self.Slices):
@@ -360,7 +360,7 @@ class OpMultiArrayStacker(Operator):
         for r in requests:
             r.wait()
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.AxisFlag or inputSlot == self.AxisIndex:
             self.Output.setDirty( slice(None) )
         else:
@@ -393,7 +393,7 @@ class OpSingleChannelSelector(Operator):
         im=self.inputs["Input"][newKey].wait()
         return im[...,0:1] # Copy into the (only) channel of our result
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         if slot == self.Input:
             key = key[:-1] + (slice(0,1,None),)
@@ -471,7 +471,7 @@ class OpSubRegion(Operator):
             res = self.inputs["Input"][newKey].allocate().wait()
             result[:] = res[resultKey]
 
-    def propagateDirty(self, dirtySlot, roi):
+    def propagateDirty(self, dirtySlot, subindex, roi):
         if self._propagate_dirty and dirtySlot == self.Input:
             # Translate the input key to a small subregion key
             smallstart = roi.start - self.Start.value
@@ -535,14 +535,13 @@ class OpMultiArrayMerger(Operator):
 
         return fun(data)
 
-    def propagateDirty(self, dirtySlot, roi):
-        assert dirtySlot == self.MergingFunction
-        self.Output.setDirty( slice(None) )
-
-    def notifySubSlotDirty(self, slots, indexes, key):
-        assert slots[0] == self.Inputs
-        # Assumes a pixel-wise merge function.        
-        self.Output.setDirty( key )
+    def propagateDirty(self, dirtySlot, subindex, roi):
+        if dirtySlot == self.MergingFunction:
+            self.Output.setDirty( slice(None) )
+        elif dirtySlot == self.Inputs:
+            # Assumes a pixel-wise merge function.
+            key = roi.toSlice()
+            self.Output.setDirty( key )
 
 class OpPixelOperator(Operator):
     name = "OpPixelOperator"
@@ -568,7 +567,7 @@ class OpPixelOperator(Operator):
 
         return matrix[:]
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         if slot == self.Input:
             self.outputs["Output"].setDirty(key)
@@ -671,7 +670,7 @@ class OpMultiInputConcatenater(Operator):
         # Should never be called.  All output slots are directly connected to an input slot.
         assert False
 
-    def notifySubSlotDirty(self, slots, indexes, key):
+    def propagateDirty(self, inputSlot, subindex, roi):
         # Nothing to do here.
         # All outputs are directly connected to an input slot.
         pass
@@ -702,7 +701,7 @@ class OpTransposeSlots(Operator):
         # Should never be called.  All output slots are directly connected to an input slot.
         assert False
 
-    def notifySubSlotDirty(self, slots, indexes, key):
+    def propagateDirty(self, inputSlot, subindex, roi):
         # Nothing to do here.
         # All outputs are directly connected to an input slot.
         pass

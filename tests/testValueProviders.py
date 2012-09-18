@@ -98,7 +98,7 @@ class TestOpValueCache(object):
             time.sleep(2)
             result[...] = self.Input.value
         
-        def propagateDirty(self, inputSlot, roi):
+        def propagateDirty(self, inputSlot, subindex, roi):
             self.Output.setDirty(roi)
     
     def test_basic(self):

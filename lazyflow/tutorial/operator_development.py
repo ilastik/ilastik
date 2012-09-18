@@ -53,25 +53,7 @@ if 1==2:
         invalidated by this, and must call the .setDirty(key) of the corresponding
         outputslots.
         """
-        def propagateDirty(self, slot, roi):
-            pass
-
-        """
-        This method corresponds to the notifyDirty method, but is used
-        for multidimensional inputslots, which contain subslots.
-
-        The slots argument is a list of slots in which the first
-        element specifies the mainslot (i.e. the slot which is specified
-        in the operator.). The next element specifies the sub slot, i.e. the
-        child of the main slot, and so forth.
-
-        The indexes argument is a list of the subslot indexes. As such it is
-        of lenght n-1 where n is the length of the slots arugment list.
-        It contains the indexes of all subslots realtive to their parent slot.
-
-        The key argument specifies the region of interest.
-        """
-        def notifySubSlotDirty(self, slots, indexes, key):
+        def propagateDirty(self, slot, subindex, roi):
             pass
 
         """
@@ -251,7 +233,7 @@ class OpArrayShifter1(Operator):
         res = req.wait()
         return res
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 

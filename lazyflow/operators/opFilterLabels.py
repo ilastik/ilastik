@@ -27,7 +27,7 @@ class OpFilterLabels(Operator):
         self.remove_small_connected_components(result, min_size=minSize, in_place=True)
         return result
         
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         # Both input slots can affect the entire output
         assert inputSlot == self.Input or inputSlot == self.MinLabelSize
         self.Output.setDirty( slice(None) )

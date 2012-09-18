@@ -116,7 +116,7 @@ class OpVigraWatershed(Operator):
         # Return only the region the user requested
         return watershed[outputSlices].view(numpy.ndarray).reshape(result.shape)
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         if not self.configured():
             self.Output.setDirty(slice(None))
         elif inputSlot.name == "InputImage" or inputSlot.name == "SeedImage":

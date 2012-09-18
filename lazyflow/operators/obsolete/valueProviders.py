@@ -79,7 +79,7 @@ class OpAttributeSelector(Operator):
         inputObject = self.InputObject.value
         result[0] = getattr(inputObject, attrName)
 
-    def propagateDirty(self, islot, roi):
+    def propagateDirty(self, islot, subindex, roi):
         needToPropagate = False
 
         # We're only dirty if the field we're interested in changed
@@ -118,7 +118,7 @@ class OpMetadataInjector(Operator):
         key = roi.toSlice()
         result[...] = self.Input(roi.start, roi.stop).wait()
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # Forward to the output slot
         self.Output.setDirty(roi)
 
@@ -138,7 +138,7 @@ class OpMetadataSelector(Operator):
     def execute(self, slot, subindex, roi, result):
         assert False # Output is directly connected
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # Output is dirty if the meta data attribute of interest changed.
         # Otherwise, not dirty.
         if slot.name == "MetadataKey":
@@ -235,7 +235,7 @@ class OpValueCache(Operator):
                 self._request = None
                 self._dirty = False
 
-    def propagateDirty(self, islot, roi):
+    def propagateDirty(self, islot, subindex, roi):
         self._dirty = True
         self.Output.setDirty(roi)
 
@@ -272,7 +272,7 @@ class OpPrecomputedInput(Operator):
         else:
             self.Output.connect(self.SlowInput)
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # If either input became dirty, the party is over.
         # We can't use the pre-computed input anymore.
         if slot == self.SlowInput:

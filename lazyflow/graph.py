@@ -769,7 +769,7 @@ class Slot(object):
                 self._sig_dirty(self, roi)
     
                 if self._type == "input" and self.operator.configured():
-                    self.operator.propagateDirty(self, roi)
+                    self.operator.propagateDirty(self, (), roi)
 
 
     def __getitem__(self, key):
@@ -1114,20 +1114,15 @@ class Slot(object):
             index = len(self) + index
         self._subSlots.pop(index)
 
-    def propagateDirty(self, slot, roi):
-        with Tracer(self.traceLogger):
-            index = self._subSlots.index(slot)
-            self.operator.notifySubSlotDirty((self,slot),(index,),roi)
+    def propagateDirty(self, slot, subindex, roi):
+        """
+        Slots with level > 0 must implement part of the operator interface so
+         they look like an operator as far as their subslots are concerned.
+        That's why this function is here.
+        """
+        totalIndex = (self._subSlots.index(slot),) + subindex
+        self.operator.propagateDirty(self, totalIndex, roi)
 
-    def notifySubSlotDirty(self, slots, indexes, roi):
-        with Tracer(self.traceLogger):
-            index = self._subSlots.index(slots[0])
-            self.operator.notifySubSlotDirty((self,)+slots,(index,) + indexes,roi)
-
-    @property
-    def graph(self):
-        return self.operator.graph
-    
     # # # # #
     #
     #   methods aimed to enhance usability
@@ -1488,30 +1483,8 @@ class Operator(object):
     invalidated by this, and must call the .setDirty(key) of the corresponding
     outputslots.
     """
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         raise NotImplementedError(".propagateDirty() of Operator %r is not implemented !" % (self.name))
-
-    """
-    This method corresponds to the notifyDirty method, but is used
-    for multidimensional inputslots, which contain subslots.
-
-    The slots argument is a list of slots in which the first
-    element specifies the mainslot (i.e. the slot which is specified
-    in the operator.). The next element specifies the sub slot, i.e. the
-    child of the main slot, and so forth.
-
-    The indexes argument is a list of the subslot indexes. As such it is
-    of lenght n-1 where n is the length of the slots arugment list.
-    It contains the indexes of all subslots realtive to their parent slot.
-
-    The key argument specifies the region of interest.
-    """
-    def notifySubSlotDirty(self, slots, indexes, key):
-        # simple default implementation
-        # -> set all outputs dirty
-        warnings.warn( "Operator '{}' does not implement notifySubSlotDirty.".format(self.name) )
-        for os in self.outputs.values():
-            os.setDirty(slice(None,None,None))
 
     def onDisconnect(self, slot):
         pass
@@ -1819,11 +1792,8 @@ class OperatorWrapper(Operator):
         with Tracer(self.traceLogger, msg=self.name):
             self._testRestoreOriginalOperator()
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # Nothing to do: All inputs are directly connected to internal operators.
-        pass
-
-    def notifySubSlotDirty(self, slots, indexes, key):
         pass
 
     def disconnect(self):

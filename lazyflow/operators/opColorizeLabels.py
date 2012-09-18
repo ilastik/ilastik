@@ -96,7 +96,7 @@ class OpColorizeLabels(Operator):
         color[3] = 255 # Alpha            
         return color
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.Input:
             self.Output.setDirty(roi)
         elif inputSlot == self.OverrideColors:

@@ -23,7 +23,7 @@ class OpRoiTest(Operator):
         result[:] = tmpRes
         return result
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         self.output.setDirty(roi)
 
 class TestRoiInterdace(TestCase):

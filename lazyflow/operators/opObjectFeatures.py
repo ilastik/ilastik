@@ -104,7 +104,7 @@ class OpObjectFeatures(Operator):
             return rf.activeNames()
 
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # regardless of the slot which is dirty, all of the calculated features get dirty
         self.FeatureDict.setDirty((slice(None), ))
         self.FeatureMatrix.setDirty((slice(None), ))

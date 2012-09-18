@@ -54,7 +54,7 @@ class OpVigraLabelVolume(Operator):
             result =  vigra.analysis.labelVolumeWithBackground(inputData).view(numpy.ndarray)
         return result.reshape(destination.shape)
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.Input:
             # Extend the region by 1 pixel
             dirtyRoi = extendSlice(roi.start, roi.stop, self.Input.meta.shape, 1,1)

@@ -26,7 +26,7 @@ class OpOuter(graph.Operator):
         result[0] = self.Input[:].allocate().wait()[0]
         return result
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         self.Output.setDirty(roi)
 
 class OpInner(graph.Operator):
@@ -42,7 +42,7 @@ class OpInner(graph.Operator):
         result[0] = self.Input[:].allocate().wait()[0]
         return result
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         self.Output.setDirty(roi)
 
 class TestOutputOutputConnection(object):

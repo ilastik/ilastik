@@ -90,7 +90,7 @@ class OpArrayShifter1(Operator):
         res = req.wait()
         return res
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
         self.outputs["Output"].setDirty(key)
 

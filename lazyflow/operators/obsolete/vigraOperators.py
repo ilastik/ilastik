@@ -55,7 +55,7 @@ class OpXToMulti(Operator):
                     return slot[key].allocate().wait()
                 i += 1
 
-    def propagateDirty(self, islot, roi):
+    def propagateDirty(self, islot, subindex, roi):
         i = 0
         for sname in sorted(self.inputs.keys()):
             slot = self.inputs[sname]
@@ -295,7 +295,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             self.Output.meta.axistags = self.stacker.Output.meta.axistags
             self.Output.meta.shape = self.stacker.Output.meta.shape
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.Input:
             channelAxis = self.Input.meta.axistags.index('c')
             numChannels = self.Input.meta.shape[channelAxis]
@@ -1002,7 +1002,7 @@ class OpImageReader(Operator):
 
         return temp[key]
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         if slot == self.Filename:
             self.Image.setDirty(slice(None))
         else:
@@ -1284,7 +1284,7 @@ class OpH5WriterBigDataset(Operator):
             reqList.append(roiToSlice(start,stop))
         return reqList
 
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # The output from this operator isn't generally connected to other operators.
         # If someone is using it that way, we'll assume that the user wants to know that 
         #  the input image has become dirty and may need to be written to disk again.

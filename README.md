@@ -254,7 +254,7 @@ class SumOperator(Operator):
 
   output = OutputSlot(stype=ArrayLike)
 
-  def propagateDirty(self, slot, roi):
+  def propagateDirty(self, slot, subindex, roi):
     # the method receives as argument the slot
     # which was changed, and the region of interest (roi)
     # that was changed in the slot
@@ -301,7 +301,7 @@ class SumOperator(Operator):
   def execute(self, slot, subindex, roi, result):
     pass
   
-  def propagateDirty(self, slot, roi):
+  def propagateDirty(self, slot, subindex, roi):
     pass
 
 ```

@@ -41,7 +41,7 @@ class OpA(graph.Operator):
             result[0] = self.Input3[:].allocate().wait()[0]
         return result
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.Input1:
             self.Output1.setDirty(roi)
         if inputSlot == self.Input1:
@@ -49,9 +49,6 @@ class OpA(graph.Operator):
         if inputSlot == self.Input3:
             self.Output3.setDirty(roi)
             
-    def notifySubSlotDirty(self, slots, indexes, key):
-        pass
-
 class TestOperator_setupOutputs(object):
 
     def setUp(self):
@@ -233,7 +230,7 @@ class OpDirectConnection(graph.Operator):
     Input = graph.InputSlot()
     Output = graph.OutputSlot()
     
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         pass
     
     def setupOutputs(self):

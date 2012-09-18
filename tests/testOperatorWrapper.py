@@ -17,7 +17,7 @@ class OpSimple(Operator):
 
         result[...] = self.InputA(roi.start, roi.stop).wait() * self.InputB[0:1].wait()
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.InputA:
             self.Output.setDirty(roi)
         elif (inputSlot == self.InputB 
@@ -39,7 +39,7 @@ class OpCopyInput(Operator):
     def setupOutputs(self):
         self.Output.setValue(self.Input.value)
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         self.Output.setDirty(roi)
 
 class TestBasic(object):
