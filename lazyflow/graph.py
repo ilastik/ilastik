@@ -1191,7 +1191,7 @@ class OutputSlot(Slot):
         """
         For now, OutputSlots with level > 0 must pretend to be operators.  That's why this function is here.
         """
-        totalIndex = subindex + (self._subSlots.index(slot),)
+        totalIndex = (self._subSlots.index(slot),) + subindex
         return self.operator.execute(self, totalIndex, roi, result)
 
 class MultiInputSlot(InputSlot):
