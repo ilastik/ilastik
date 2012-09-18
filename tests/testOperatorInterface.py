@@ -205,10 +205,11 @@ class OpWithMultiInputs(graph.Operator):
     def setupOutputs(self):
         self.Output.resize(len(self.Input))
 
-    def getSubOutSlot(self, slots, indexes, key, result):
-        slot = slots[0]
+    def execute(self, slot, subindex, roi, result):
+        key = roi.toSlice()
+        index = subindex[0]
         if slot.name == "Output":
-            result[...] = self.Input[indexes[0]][key]
+            result[...] = self.Input[index][key]
 
 class TestMultiSlotResize(object):
     def setUp(self):

@@ -110,10 +110,9 @@ class OpMultiArrayPiper(Operator):
         self.outputs["MultiOutput"].resize(size,event = event)
 
     def execute(self, slot, subindex, roi, result):
-        raise RuntimeError("OpMultiPipler does not support execute")
-
-    def getSubOutSlot(self, slots, indexes, key, result):
-        req = self.inputs["MultiInput"][indexes[0]][key].writeInto(result)
+        key = roiToSlice(roi.start, roi.stop)
+        index = subindex[0]
+        req = self.inputs["MultiInput"][index][key].writeInto(result)
         res = req.wait()
         return res
 
@@ -147,10 +146,9 @@ class OpMultiMultiArrayPiper(Operator):
                     oslot.meta.axistags = islot.meta.axistags
 
     def execute(self, slot, subindex, roi, result):
-        raise RuntimeError("OpMultiMultiPipler does not support execute")
-
-    def getSubOutSlot(self, slots, indexes, key, result):
-        req = self.inputs["MultiInput"][indexes[0]][indexes[1]][key].writeInto(result)
+        key = roiToSlice(roi.start, roi.stop)
+        assert len(subindex) == 2 == len(self.MultiInput)
+        req = self.inputs["MultiInput"][subindex][key].writeInto(result)
         res = req()
         return res
 

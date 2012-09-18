@@ -142,26 +142,6 @@ if 1==2:
         def execute(self, slot, subindex, roi, result):
             pass
 
-
-        """
-        This method corresponds to the execute method, but is used
-        for multidimensional inputslots, which contain subslots.
-
-        The slots argument is a list of slots in which the first
-        element specifies the mainslot (i.e. the slot which is specified
-        in the operator.). The next element specifies the sub slot, i.e. the
-        child of the main slot, and so forth.
-
-        The indexes argument is a list of the subslot indexes. As such it is
-        of lenght n-1 where n is the length of the slots arugment list.
-        It contains the indexes of all subslots realtive to their parent slot.
-
-        The key argument specifies the region of interest.
-        """
-        def getSubOutSlot(self, slots, indexes, key, result):
-            return None
-
-
         """
         This method is called when an inputslot is disconnected.
 

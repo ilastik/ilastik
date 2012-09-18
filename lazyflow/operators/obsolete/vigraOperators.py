@@ -44,12 +44,14 @@ class OpXToMulti(Operator):
                 self.outputs["Outputs"][i].meta.assignFrom( slot.meta )
                 i += 1
 
-    def getSubOutSlot(self, slots, indexes, key, result):
+    def execute(self, slot, subindex, roi, result):
+        key = roiToSlice(roi.start, roi.stop)
+        index = subindex[0]
         i = 0
         for sname in sorted(self.inputs.keys()):
             slot = self.inputs[sname]
             if slot.connected():
-                if i == indexes[0]:
+                if i == index:
                     return slot[key].allocate().wait()
                 i += 1
 
@@ -325,23 +327,23 @@ class OpPixelFeaturesPresmoothed(Operator):
             assert False, "Unknown dirty input slot."
             
 
-    def getSubOutSlot(self, slots, indexes, key, result):
-        assert slots[0] == self.Features
-        index = indexes[0]
-        slot = self.Features[index]
-        key = list(key)
-        channelIndex = self.Input.meta.axistags.index('c')
-        
-        # Translate channel slice to the correct location for the output slot.
-        key[channelIndex] = slice(self.featureOutputChannels[index][0] + key[channelIndex].start,
-                                  self.featureOutputChannels[index][0] + key[channelIndex].stop)
-        roi = SubRegion(slot, pslice=key)
-
-        # Get output slot region for this channel
-        return self.execute(self.Output, (), roi, result)
-
     def execute(self, slot, subindex, rroi, result):
-        if slot == self.outputs["Output"]:
+        assert slot == self.Features or slot == self.Output
+        if slot == self.Features:
+            key = roiToSlice(rroi.start, rroi.stop)
+            index = subindex[0]
+            subslot = self.Features[index]
+            key = list(key)
+            channelIndex = self.Input.meta.axistags.index('c')
+            
+            # Translate channel slice to the correct location for the output slot.
+            key[channelIndex] = slice(self.featureOutputChannels[index][0] + key[channelIndex].start,
+                                      self.featureOutputChannels[index][0] + key[channelIndex].stop)
+            rroi = SubRegion(subslot, pslice=key)
+    
+            # Get output slot region for this channel
+            return self.execute(self.Output, (), rroi, result)
+        elif slot == self.outputs["Output"]:
             key = rroi.toSlice()
             cnt = 0
             written = 0
@@ -502,7 +504,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
                                 destArea = result[tuple(reskey)]
                                 roi_ = SubRegion(self.Input, pslice=key_)                                
-                                closure = partial(oslot.operator.execute, oslot, roi_, destArea, sourceArray = sourceArraysForSigmas[j])
+                                closure = partial(oslot.operator.execute, oslot, (), roi_, destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
 
                                 written += end - begin
@@ -517,7 +519,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 destArea = result[tuple(reskey)]
                                 logger.debug(oldkey, destArea.shape, sourceArraysForSigmas[j].shape)
                                 oldroi = SubRegion(self.Input, pslice=oldkey)
-                                closure = partial(oslot.operator.execute, oslot, oldroi, destArea, sourceArray = sourceArraysForSigmas[j])
+                                closure = partial(oslot.operator.execute, oslot, (), oldroi, destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
 
                                 written += 1
@@ -556,7 +558,8 @@ class OpBaseVigraFilter(OpArrayPiper):
     supportsRoi = False
     supportsWindow = False
 
-    def execute(self, slot, rroi, result, sourceArray=None):
+    def execute(self, slot, subindex, rroi, result, sourceArray=None):
+        assert len(subindex) == self.Output.level == 0
         key = roiToSlice(rroi.start, rroi.stop)
 
         kwparams = {}
@@ -1404,10 +1407,9 @@ class OpH5ReaderSmoothedDataset(Operator):
 
         self._setChunksAndDatasets()
 
-    def getSubOutSlot(self, slots, indexes, key, result):
-
-        slot=slots[0]
-        index=indexes[0]
+    def execute(self, slot, subindex, roi, result):
+        key = roiToSlice(roi.start, roi.stop)
+        index = subindex[0]
 
         if slot.name=='Outputs':
             indexFile=self._getFileIndex(key)

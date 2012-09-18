@@ -102,9 +102,11 @@ class OpMultiArraySlicer(Operator):
             o.meta.axistags = outaxistags
             o.meta.shape = outshape
 
-    def getSubOutSlot(self, slots, indexes, key, result):
+    def execute(self, slot, subindex, rroi, result):
+        key = roiToSlice(rroi.start, rroi.stop)
+        index = subindex[0]
         #print "SLICER: key", key, "indexes[0]", indexes[0], "result", result.shape
-        start,stop=roi.sliceToRoi(key,self.outputs["Slices"][indexes[0]].meta.shape)
+        start,stop=roi.sliceToRoi(key,self.outputs["Slices"][index].meta.shape)
 
         start=list(start)
         stop=list(stop)
@@ -112,8 +114,8 @@ class OpMultiArraySlicer(Operator):
         flag=self.inputs["AxisFlag"].value
         indexAxis=self.inputs["Input"].meta.axistags.index(flag)
 
-        start.insert(indexAxis,indexes[0])
-        stop.insert(indexAxis,indexes[0])
+        start.insert(indexAxis,index)
+        stop.insert(indexAxis,index)
 
         newKey=roi.roiToSlice(numpy.array(start),numpy.array(stop))
 
@@ -207,11 +209,13 @@ class OpMultiArraySlicer2(Operator):
             inshape = self.inputs["Input"].meta.shape
             return list( range( inshape[indexAxis] ) )
     
-    def getSubOutSlot(self, slots, indexes, key, result):
+    def execute(self, slot, subindex, rroi, result):
+        key = roiToSlice(rroi.start, rroi.stop)
+        index = subindex[0]
         # Index of the input slice this data will come from.
-        sliceIndex = self.getSliceIndexes()[indexes[0]]
+        sliceIndex = self.getSliceIndexes()[index]
 
-        outshape = self.outputs["Slices"][indexes[0]].meta.shape
+        outshape = self.outputs["Slices"][index].meta.shape
         start,stop=roi.sliceToRoi(key,outshape)
         oldstart,oldstop=start,stop
 
@@ -663,7 +667,7 @@ class OpMultiInputConcatenater(Operator):
                 outputIndex += 1
 
 
-    def getSubOutSlot(self, slots, indexes, key, result):
+    def execute(self, slot, subindex, roi, result):
         # Should never be called.  All output slots are directly connected to an input slot.
         assert False
 
@@ -694,7 +698,7 @@ class OpTransposeSlots(Operator):
             for i, oslot in enumerate( mslot ):
                 oslot.connect( self.Inputs[i][j] )
 
-    def getSubOutSlot(self, slots, indexes, key, result):
+    def execute(self, slot, subindex, roi, result):
         # Should never be called.  All output slots are directly connected to an input slot.
         assert False
 

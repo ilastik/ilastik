@@ -46,9 +46,10 @@ class ListToMultiOperator(Operator):
             o.meta.dtype = object
             o.meta.shape = (1,)
 
-    def getSubOutSlot(self, slots, indexes, key, result):
+    def execute(self, slot, subindex, roi, result):
+        index = subindex[0]
         liste = self.inputs["List"].value
-        result[0] = liste[indexes[0]]
+        result[0] = liste[index]
 
 class OpAttributeSelector(Operator):
     """

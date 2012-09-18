@@ -1186,26 +1186,13 @@ class OutputSlot(Slot):
     def __init__(self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
         super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
         self._type = "output"
-
-    def getSubOutSlot(self, slots, indexes, key, result):
-        """
-        For now, OutputSlots with level > 0 must pretend to be operators.  That's why this function is here.
-        """
-        try:
-            index = self._subSlots.index(slots[0])
-        except:
-            raise RuntimeError("OutputSlot.getSubOutSlot: name=%r, operator.name=%r, slots=%r" % \
-                               (self.name, self.operator.name, self.operator, slots))
-        return self.operator.getSubOutSlot((self,) + slots, (index,) + indexes, key, result)
  
     def execute(self, slot, subindex, roi, result):
         """
         For now, OutputSlots with level > 0 must pretend to be operators.  That's why this function is here.
         """
-        index = self._subSlots.index(slot)
-        #TODO: remove this special case  once all operators are ported
-        key = roiToSlice(roi.start,roi.stop)
-        return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
+        totalIndex = subindex + (self._subSlots.index(slot),)
+        return self.operator.execute(self, totalIndex, roi, result)
 
 class MultiInputSlot(InputSlot):
     """
@@ -1624,26 +1611,7 @@ class Operator(object):
     run the calculation and put the results into the provided result argument.
     """
     def execute(self, slot, subindex, roi, result):
-        return None
-
-
-    """
-    This method corresponds to the execute method, but is used
-    for multidimensional inputslots, which contain subslots.
-
-    The slots argument is a list of slots in which the first
-    element specifies the mainslot (i.e. the slot which is specified
-    in the operator.). The next element specifies the sub slot, i.e. the
-    child of the main slot, and so forth.
-
-    The indexes argument is a list of the subslot indexes. As such it is
-    of lenght n-1 where n is the length of the slots arugment list.
-    It contains the indexes of all subslots realtive to their parent slot.
-
-    The key argument specifies the region of interest.
-    """
-    def getSubOutSlot(self, slots, indexes, key, result):
-        return None
+        raise NotImplementedError("Operator {} does not implement execute()")
 
     def setInSlot(self, slot, key, value):
         pass
@@ -1950,10 +1918,6 @@ class OperatorWrapper(Operator):
 
     def execute(self, slot, subindex, roi, result):
         #this should never be called !!!
-        assert False
-
-    def getSubOutSlot(self, slots, indexes, key, result):
-        # this should never be called
         assert False
 
     def setInSlot(self, slot, key, value):
