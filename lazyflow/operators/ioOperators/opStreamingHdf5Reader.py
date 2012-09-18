@@ -84,7 +84,7 @@ class OpStreamingHdf5Reader(Operator):
         if 'drange' in hdf5File[internalPath].attrs:
             self.OutputImage.meta.drange = tuple( hdf5File[internalPath].attrs['drange'] )
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         # Read the desired data directly from the hdf5File
         key = roi.toSlice()
         hdf5File = self.Hdf5File.value

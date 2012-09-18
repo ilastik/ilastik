@@ -21,7 +21,7 @@ class OpFilterLabels(Operator):
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
         
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         minSize = self.MinLabelSize.value
         self.Input.get(roi, result).wait()
         self.remove_small_connected_components(result, min_size=minSize, in_place=True)

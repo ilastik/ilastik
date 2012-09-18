@@ -33,7 +33,7 @@ class OpVigraLabelVolume(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = numpy.uint32
         
-    def execute(self, slot, roi, destination):
+    def execute(self, slot, subindex, roi, destination):
         assert slot == self.Output
         
         inputData = self.Input(roi.start, roi.stop).wait()

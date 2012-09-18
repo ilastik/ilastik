@@ -45,7 +45,7 @@ class OpArrayShifter1(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method calculates the shifting
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         #new name for the shape of the InputSlot

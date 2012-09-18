@@ -300,7 +300,7 @@ class OpMultiArrayStacker(Operator):
 
 
 
-    def execute(self, slot, rroi, result):
+    def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start,rroi.stop)
 
         cnt = 0
@@ -377,7 +377,7 @@ class OpSingleChannelSelector(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.shape = self.Input.meta.shape[:-1]+(1,)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         index=self.inputs["Index"].value
@@ -433,7 +433,7 @@ class OpSubRegion(Operator):
             self.Output.meta.assignFrom(self.Input.meta)
             self.Output.meta.shape = outShape        
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         with Tracer(traceLogger):
             key = roiToSlice(roi.start,roi.stop)
 
@@ -517,7 +517,7 @@ class OpMultiArrayMerger(Operator):
             outRange = fun(dranges)
             self.Output.meta.drange = tuple(outRange)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
         requests=[]
         for input in self.inputs["Inputs"]:
@@ -556,7 +556,7 @@ class OpPixelOperator(Operator):
         self.outputs["Output"].meta.dtype = inputSlot.meta.dtype
         self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         matrix = self.inputs["Input"][key].allocate().wait()

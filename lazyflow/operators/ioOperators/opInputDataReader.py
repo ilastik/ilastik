@@ -125,7 +125,7 @@ class OpInputDataReader(Operator):
         # Directly connect our own output to the internal output
         self.Output.connect( self.internalOutput )
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here because our output is directly connected..."
 
     def propagateDirty(self, inputSlot, roi):

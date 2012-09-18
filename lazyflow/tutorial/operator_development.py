@@ -139,7 +139,7 @@ if 1==2:
         calculate the requested output area from its input slots,
         run the calculation and put the results into the provided result argument.
         """
-        def execute(self, slot, roi, result):
+        def execute(self, slot, subindex, roi, result):
             pass
 
 
@@ -226,7 +226,7 @@ class OpArrayShifter1(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method calculates the shifting
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
 
         #new name for the shape of the InputSlot

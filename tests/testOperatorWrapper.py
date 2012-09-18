@@ -12,7 +12,7 @@ class OpSimple(Operator):
         self.Output.meta.shape = self.InputA.meta.shape
         self.Output.meta.dtype = self.InputA.meta.dtype
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         assert slot == self.Output
 
         result[...] = self.InputA(roi.start, roi.stop).wait() * self.InputB[0:1].wait()

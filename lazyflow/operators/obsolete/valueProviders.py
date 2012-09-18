@@ -73,7 +73,7 @@ class OpAttributeSelector(Operator):
         self.Result.meta.shape = (1,)
         self.Result.meta.dtype = object
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         attrName = self.AttributeName.value
         inputObject = self.InputObject.value
         result[0] = getattr(inputObject, attrName)
@@ -113,7 +113,7 @@ class OpMetadataInjector(Operator):
         for k,v in extraMetadata.items():
             setattr(self.Output.meta, k, v)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         result[...] = self.Input(roi.start, roi.stop).wait()
 
@@ -134,7 +134,7 @@ class OpMetadataSelector(Operator):
         key = self.MetadataKey.value
         self.Output.setValue( self.Input.meta[key] )
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         assert False # Output is directly connected
 
     def propagateDirty(self, slot, roi):
@@ -158,7 +158,7 @@ class OpOutputProvider(Operator):
     def setupOutputs(self):
         pass
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         result[...] = self._data[key]
 
@@ -191,7 +191,7 @@ class OpValueCache(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         self._dirty = True
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         # Optimization: We don't let more than one caller trigger the value to be computed at the same time
         # If some other caller has already requested the value, we'll just wait for the request he already made.
         class State():
@@ -293,7 +293,7 @@ class OpPrecomputedInput(Operator):
         with self._lock:
             self.Output.connect(self.PrecomputedInput)
 
-    def execute(self):
+    def execute(self, slot, subindex, roi, result):
         assert False, "Should not get here: Output is directly connected to the input."
 
 

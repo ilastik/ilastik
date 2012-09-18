@@ -54,7 +54,7 @@ class OpSwapAxes(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method does the swapping
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         axis1 = self.inputs["Axis1"].value

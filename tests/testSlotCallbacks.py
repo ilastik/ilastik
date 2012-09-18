@@ -24,7 +24,7 @@ class OpS(graph.Operator):
         self.Output3.meta.shape = (3,)
         self.Output3.meta.dtype = numpy.uint32
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         pass
 
 class OpA(graph.Operator):
@@ -56,7 +56,7 @@ class OpA(graph.Operator):
         self.Output4.meta.shape = self.Input4.meta.shape
         self.Output4.meta.dtype = self.Input4.meta.dtype
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         pass
 
     def propagateDirty(self, inputSlot, roi):

@@ -61,7 +61,7 @@ class SumOperator(Operator):
 
   output = OutputSlot(stype=ArrayLike)
 
-  def execute(self, slot, roi, result):
+  def execute(self, slot, subindex, roi, result):
     # the following two lines query the inputs of the
     # operator for the specififed region of interest
 
@@ -229,7 +229,7 @@ class SumOperator(Operator):
     self.output.meta.dtype = self.inputA.meta.dtype
 
 
-  def execute(self, slot, roi, result):
+  def execute(self, slot, subindex, roi, result):
     pass
 ```
 
@@ -268,7 +268,7 @@ class SumOperator(Operator):
   def setupOutputs(self):
     pass
 
-  def execute(self, slot, roi, result):
+  def execute(self, slot, subindex, roi, result):
     pass
 ```
 
@@ -298,7 +298,7 @@ class SumOperator(Operator):
   def setupOutputs(self):
     pass
 
-  def execute(self, slot, roi, result):
+  def execute(self, slot, subindex, roi, result):
     pass
   
   def propagateDirty(self, slot, roi):

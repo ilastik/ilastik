@@ -706,7 +706,7 @@ class Slot(object):
             self._incrementOperatorExecutionCount()
             
             # Execute the workload, which might not ever return (if we get cancelled).
-            result_op = self.operator.execute(self.slot, roi, destination)
+            result_op = self.operator.execute(self.slot, (), roi, destination)
             
             # copy data from result_op to destination, if destinatino was actually given by the user, and the returned result_op is different from destination. (but don't copy if result_op is None, this means legacy op which wrote into destination anyway)
             if destination_given and result_op is not None and id(result_op) != id(destination):
@@ -773,9 +773,17 @@ class Slot(object):
 
     def __getitem__(self, key):
         """
-        This method provied access to the subslots of a MultiSlot.
+        If level=0, emulate __call__ but with a slicing instead of a roi.
+        If level>0, return the subslot corresponding to the key, which may be a tuple
         """
         if self.level > 0:
+            if isinstance(key, tuple):
+                assert len(key) > 0
+                assert len(key) <= self.level
+                if len(key) == 1:
+                    return self._subSlots[key[0]]
+                else:
+                    return self._subSlots[key[0]][key[1:]]
             return self._subSlots[key]
         else:
             assert self.meta.shape is not None, "OutputSlot.__getitem__: self.meta.shape is None !!! (operator %r [self=%r] slot: %s, key=%r" % (self.operator.name, self.operator, self.name, key)
@@ -786,26 +794,17 @@ class Slot(object):
         """
         This method provied access to the subslots of a MultiSlot.
         """
-        if isinstance(value, Slot):
-            slot = self._subSlots[key]
-            if slot != value:
-                slot.disconnect()
-                self._subSlots[key] = value
-
-                oldslot = slot
-                newslot = value
-                for p in oldslot.partners:
-                    p.connect(newslot)
-        else:
-            assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"
-            if self._value is not None:
-                roi = self.rtype(self,pslice = key)
-                self._value[key] = value
-                self.setDirty(roi) # only propagate the dirty key at the very beginning of the chain
-            self.operator.setInSlot(self,key,value)
-            # Forward to partners
-            for p in self.partners:
-                p[key] = value
+        assert not isinstance(value, Slot), "Can't use setitem to connect slots.  Use connect()"
+        assert self.level == 0, "setitem can only be used with slots of level 0.  Did you forget to append a key?"
+        assert self.operator is not None, "cannot do __setitem__ on Slot '%s' -> no operator !!"
+        if self._value is not None:
+            roi = self.rtype(self,pslice = key)
+            self._value[key] = value
+            self.setDirty(roi) # only propagate the dirty key at the very beginning of the chain
+        self.operator.setInSlot(self,key,value)
+        # Forward to partners
+        for p in self.partners:
+            p[key] = value
 
     def index(self, slot):
         return self._subSlots.index(slot)
@@ -1188,14 +1187,6 @@ class OutputSlot(Slot):
         super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
         self._type = "output"
 
-    def execute(self, slot, roi, result):
-        """
-        For now, OutputSlots with level > 0 must pretend to be operators.  That's why this function is here.
-        """
-        key = roi.toSlice()
-        index = self._subSlots.index(slot)
-        return self.operator.getSubOutSlot((self, slot,),(index,),key, result)
-
     def getSubOutSlot(self, slots, indexes, key, result):
         """
         For now, OutputSlots with level > 0 must pretend to be operators.  That's why this function is here.
@@ -1207,7 +1198,7 @@ class OutputSlot(Slot):
                                (self.name, self.operator.name, self.operator, slots))
         return self.operator.getSubOutSlot((self,) + slots, (index,) + indexes, key, result)
  
-    def execute(self,slot,roi,result):
+    def execute(self, slot, subindex, roi, result):
         """
         For now, OutputSlots with level > 0 must pretend to be operators.  That's why this function is here.
         """
@@ -1632,7 +1623,7 @@ class Operator(object):
     calculate the requested output area from its input slots,
     run the calculation and put the results into the provided result argument.
     """
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         return None
 
 
@@ -1957,9 +1948,9 @@ class OperatorWrapper(Operator):
                 oslot._changed()
 
 
-    def execute(self, slot, key, result):
-            #this should never be called !!!
-        assert 1==2
+    def execute(self, slot, subindex, roi, result):
+        #this should never be called !!!
+        assert False
 
     def getSubOutSlot(self, slots, indexes, key, result):
         # this should never be called

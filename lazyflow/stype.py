@@ -178,8 +178,8 @@ class Struct( SlotType ):
                 print "subslot ", k, "connected:", self._subSlots[k].partner,self._subSlots[k].connected(),self._subSlots[k].shape, self._subSlots[k].graph, self.slot.operator
 
 
-    def execute(self,slot,roi,destination):
-        return self.slot.operator.execute(slot,roi,destination)
+    def execute(self, slot, subindex, roi, destination):
+        return self.slot.operator.execute(slot,subindex,roi,destination)
 
     def _notifyDisconnect(self,slot):
         pass

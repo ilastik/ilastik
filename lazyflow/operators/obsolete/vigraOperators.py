@@ -338,9 +338,9 @@ class OpPixelFeaturesPresmoothed(Operator):
         roi = SubRegion(slot, pslice=key)
 
         # Get output slot region for this channel
-        return self.execute(self.Output, roi, result)
+        return self.execute(self.Output, (), roi, result)
 
-    def execute(self, slot, rroi, result):
+    def execute(self, slot, subindex, rroi, result):
         if slot == self.outputs["Output"]:
             key = rroi.toSlice()
             cnt = 0
@@ -992,7 +992,7 @@ class OpImageReader(Operator):
             oslot.meta.dtype = None
             oslot.meta.axistags = None
 
-    def execute(self, slot, rroi, result):
+    def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
         filename = self.inputs["Filename"].value
         temp = vigra.impex.readImage(filename)
@@ -1106,7 +1106,7 @@ class OpH5Reader(Operator):
         #self.ff=open(logfile,'a')
 
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         filename = self.inputs["Filename"].value
         hdf5Path = self.inputs["hdf5Path"].value
@@ -1207,7 +1207,7 @@ class OpH5WriterBigDataset(Operator):
         if 'drange' in self.Image.meta:
             self.d.attrs['drange'] = self.Image.meta.drange
 
-    def execute(self, slot, rroi, result):
+    def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
         self.progressSignal(0)
         
@@ -1339,7 +1339,7 @@ class OpH5ReaderBigDataset(Operator):
             self.F.append(f)
             self.D.append(d)
 
-    def execute(self, slot, rroi, result):
+    def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
         filenames = self.inputs["Filenames"].value
 
@@ -1495,7 +1495,7 @@ class OpGrayscaleInverter(Operator):
         oslot.meta.dtype = inputSlot.meta.dtype
         oslot.meta.axistags = copy.copy(inputSlot.meta.axistags)
 
-    def execute(self, slot, rroi, result):
+    def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
         image = self.inputs["input"][key].allocate().wait()
         # Assumes max of 255...
@@ -1515,7 +1515,7 @@ class OpToUint8(Operator):
         oslot.meta.assignFrom(inputSlot.meta)
         oslot.meta.dtype = numpy.uint8
 
-    def execute(self, slot, rroi, result):
+    def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
         image = self.inputs["input"][:].allocate().wait()
         return image.numpy.astype('uint8')
@@ -1537,7 +1537,7 @@ class OpRgbToGrayscale(Operator):
         inputtags = inputSlot.meta.axistags
         assert inputtags.channelIndex == len(inputtags)-1, "FIXME: OpRgbToGrayscale assumes the channel index is last"
 
-    def execute(self, slot, rroi, result):
+    def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
         image = self.inputs["input"][key].wait()
         channelKey = self.outputs["output"].meta.axistags.channelIndex

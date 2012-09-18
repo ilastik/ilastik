@@ -32,7 +32,7 @@ class OpObjectFeatures(Operator):
         self.AvailableFeatures.meta.shape = (1,)
         self.AvailableFeatures.meta.dtype = object
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         if slot == self.FeatureDict:
 
             features = self.SelectedFeatures[0].wait()[0]

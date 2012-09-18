@@ -15,13 +15,13 @@ import sys
 
 
 class OpA(OpArrayPiper):
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start, roi.stop)
         v = self.inputs["Input"][key].writeInto(result)
         v.wait()
 
 class OpB(OpArrayPiper):
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start, roi.stop)
         t = numpy.ndarray(result.shape, result.dtype)
         v = self.inputs["Input"][key].writeInto(t)
@@ -31,7 +31,7 @@ class OpB(OpArrayPiper):
 
 
 class OpC(OpArrayPiper):
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start, roi.stop)
         v = self.inputs["Input"][:].allocate()
         t = v.wait()

@@ -21,7 +21,7 @@ class OpOuter(graph.Operator):
         self.Output.meta.shape = self.Input.meta.shape
         self.Output.meta.dtype = self.Input.meta.dtype
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         self._was_executed = True
         result[0] = self.Input[:].allocate().wait()[0]
         return result
@@ -38,7 +38,7 @@ class OpInner(graph.Operator):
         self.Output.meta.shape = self.Input.meta.shape
         self.Output.meta.dtype = self.Input.meta.dtype
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         result[0] = self.Input[:].allocate().wait()[0]
         return result
 

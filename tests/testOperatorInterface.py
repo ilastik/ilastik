@@ -32,7 +32,7 @@ class OpA(graph.Operator):
         self.Output3.meta.dtype = self.Input1.meta.dtype
         #print "OpInternal shape=%r, dtype=%r" % (self.Input1.meta.shape, self.Input1.meta.dtype)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         if slot == self.Output1:
             result[0] = self.Input1[:].allocate().wait()[0]
         elif slot == self.Output2:

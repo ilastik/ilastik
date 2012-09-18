@@ -49,7 +49,7 @@ class OpImageResizer(Operator):
         assert self.scaleFactor > 0, "OpImageResizer: input'ScaleFactor' must be positive number !"
 
     #this method does the scaling
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         #get start and stop coordinates of the requested OutputSlot area

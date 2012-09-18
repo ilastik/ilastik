@@ -67,7 +67,7 @@ class OpColorizeLabels(Operator):
 
         self.overrideColors = newOverrideColors
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         fullKey = roi.toSlice()
         resultKey = copy.copy(roi).setStartToZero().toSlice()
         

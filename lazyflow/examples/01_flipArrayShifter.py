@@ -45,7 +45,7 @@ class OpFlipArrayShifter(Operator):
 
 
     #this method calculates the shifting
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         shape = self.inputs["Input"].meta.shape

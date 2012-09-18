@@ -35,7 +35,7 @@ class OpTrainRandomForest(Operator):
 
 
     @traceLogged(logger, level=logging.INFO, msg="OpTrainRandomForest: Training Classifier")
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         featMatrix=[]
         labelsMatrix=[]
         for i,labels in enumerate(self.inputs["Labels"]):
@@ -115,7 +115,7 @@ class OpTrainRandomForestBlocked(Operator):
             #self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
     @traceLogged(logger, level=logging.INFO, msg="OpTrainRandomForestBlocked: Training Classifier")
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         progress = 0
         self.progressSignal(progress)
         numImages = len(self.Images)
@@ -251,7 +251,7 @@ class OpPredictRandomForest(Operator):
         self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,) # FIXME: This assumes that channel is the last axis
         self.PMaps.meta.drange = (0.0, 1.0)
 
-    def execute(self,slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         t1 = time.time()
         key = roi.toSlice()
         nlabels=self.inputs["LabelsCount"].value
@@ -345,7 +345,7 @@ class OpSegmentation(Operator):
         self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
 
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         shape = self.inputs["Input"].meta.shape
@@ -402,7 +402,7 @@ class OpAreas(Operator):
 
         self.outputs["Areas"].meta.shape = (self.inputs["NumberOfChannels"].value,)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         img = self.inputs["Input"][:].allocate().wait()
 
         numC = self.inputs["NumberOfChannels"].value

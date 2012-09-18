@@ -17,7 +17,7 @@ class OpB(graph.Operator):
         self.Output.meta.dtype = self.Input.meta.dtype
         print "OpInternal shape=%r, dtype=%r" % (self.Input.meta.shape, self.Input.meta.dtype)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         result[0] = self.Input[:].allocate().wait()[0]
         return result
 
@@ -41,7 +41,7 @@ class OpA(graph.Operator):
         print "OpA shape=%r, dtype=%r" % (self.Input.meta.shape, self.Input.meta.dtype)
 
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         result[0] = self.internalOp.Output[:].allocate().wait()[0]
         return result
 
@@ -109,7 +109,7 @@ class OpC(graph.Operator):
             slot.meta.shape = self.Input[i].meta.shape
             slot.meta.dtype = self.Input[i].meta.dtype
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         result[0] = self.internalOp.Output[:].allocate().wait()[0]
         return result
 

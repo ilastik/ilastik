@@ -52,7 +52,7 @@ class OpArrayShifter2(Operator):
             self.shift = self.shift[0:numpy.array(self.shape).size]
 
     #this method calculates the shifting
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         #make shape of the input known

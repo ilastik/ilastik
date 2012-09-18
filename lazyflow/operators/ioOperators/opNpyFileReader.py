@@ -66,7 +66,7 @@ class OpNpyFileReader(Operator):
         self.Output.meta.axistags = copy.copy(self.rawVigraArray.axistags)
         self.Output.meta.shape = self.rawVigraArray.shape
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         # Simply copy the appropriate slice of array data into the result
         key = roi.toSlice()
         result[:] = self.rawVigraArray[key]

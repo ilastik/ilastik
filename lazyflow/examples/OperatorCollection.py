@@ -34,7 +34,7 @@ class OpArrayShifter1(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method calculates the shifting
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         #new name for the shape of the InputSlot
@@ -122,7 +122,7 @@ class OpArrayShifter2(Operator):
             self.shift = self.shift[0:numpy.array(self.shape).size]
 
     #this method calculates the shifting
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         #make shape of the input known
@@ -206,7 +206,7 @@ class OpArrayShifter3(Operator):
 
 
     #this method calculates the shifting
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         #make shape of the input known
@@ -281,7 +281,7 @@ class OpImageResizer(Operator):
         assert self.scaleFactor > 0, "OpImageResizer: input'ScaleFactor' must be positive number !"
 
     #this method does the scaling
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         #get start and stop coordinates of the requested OutputSlot area
@@ -367,7 +367,7 @@ class OpSwapAxes(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method does the swapping
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         axis1 = self.inputs["Axis1"].value
@@ -437,7 +437,7 @@ class OpSubregion(Operator):
         self.outputs["Output"].meta.axistags = copy.copy(inputSlot.meta.axistags)
 
     #this method calculates the shifting
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         #subregion start and stop

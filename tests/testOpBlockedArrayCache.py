@@ -19,11 +19,10 @@ class OpArrayPiperWithAccessCount(OpArrayPiper):
         self.accessCount = 0
         self._lock = threading.Lock()
     
-    def execute(self,slot,roi,result):
+    def execute(self, slot, subindex, roi, result):
         with self._lock:
-            self.accessCount += 1
-        
-        super(OpArrayPiperWithAccessCount, self).execute(slot, roi, result)
+            self.accessCount += 1        
+        super(OpArrayPiperWithAccessCount, self).execute(slot, subindex, roi, result)
         
 
 class TestOpBlockedArrayCache(object):

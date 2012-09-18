@@ -23,7 +23,7 @@ class OpH5Writer(Operator):
         self.outputs["WriteImage"].meta.dtype = object
 
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
 
         inputRoi = self.inputs["roi"].value
         key = roiToSlice(inputRoi[0], inputRoi[1])
@@ -152,7 +152,7 @@ class OpStackLoader(Operator):
             oslot.meta.dtype = None
             oslot.meta.axistags = None
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         i=0
         key = roi.toSlice()
         traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
@@ -177,7 +177,7 @@ class OpStackWriter(Operator):
         self.outputs["WritePNGStack"].meta.shape = self.inputs['input'].meta.shape
         self.outputs["WritePNGStack"].meta.dtype = object
 
-    def execute(self,slot,roi,result):
+    def execute(self, slot, subindex, roi, result):
         image = self.inputs["input"][roi.toSlice()].allocate().wait()
 
         filepath = self.inputs["filepath"].value
@@ -233,7 +233,7 @@ class OpStackToH5Writer(Operator):
         self.WriteImage.meta.shape = (1,)
         self.WriteImage.meta.dtype = object
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         # Copy the data image-by-image
         stackTags = self.opStackLoader.stack.meta.axistags
         zAxis = stackTags.index('z')

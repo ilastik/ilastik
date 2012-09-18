@@ -21,7 +21,7 @@ class A(graph.Operator):
         self.tgraph.edges.meta.dtype = numpy.uint8
 
 
-    def execute(self,slot,roi,result):#
+    def execute(self, slot, subindex, roi, result):
         if slot == self.tgraph.nodes:
             result[:] = 0
         elif slot == self.tgraph.edges:

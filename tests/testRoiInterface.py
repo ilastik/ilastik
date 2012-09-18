@@ -17,7 +17,7 @@ class OpRoiTest(Operator):
         self.outputs["output"].meta.shape = self.inputs["input"].meta.shape
         self.outputs["output"].meta.axistags = self.inputs["input"].meta.axistags
 
-    def execute(self,slot,roi,result):
+    def execute(self, slot, subindex, roi, result):
 
         tmpRes = self.inputs["input"](start=roi.start,stop=roi.stop).wait()
         result[:] = tmpRes

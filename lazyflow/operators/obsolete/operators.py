@@ -52,7 +52,7 @@ class OpArrayPiper(Operator):
         inputSlot = self.inputs["Input"]
         self.outputs["Output"].meta.assignFrom(inputSlot.meta)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         req = self.inputs["Input"][key].writeInto(result)
         req.wait()
@@ -109,7 +109,7 @@ class OpMultiArrayPiper(Operator):
     def notifySubSlotResize(self,slots,indexes,size,event):
         self.outputs["MultiOutput"].resize(size,event = event)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         raise RuntimeError("OpMultiPipler does not support execute")
 
     def getSubOutSlot(self, slots, indexes, key, result):
@@ -146,7 +146,7 @@ class OpMultiMultiArrayPiper(Operator):
                     oslot.meta.shape = islot.meta.shape
                     oslot.meta.axistags = islot.meta.axistags
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         raise RuntimeError("OpMultiMultiPipler does not support execute")
 
     def getSubOutSlot(self, slots, indexes, key, result):
@@ -195,7 +195,7 @@ class OpRequestSplitter(OpArrayPiper):
     description = "split requests into two parts along longest axis"
     category = "misc"
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roiToSlice(roi.start,roi.stop)
 
         start, stop = sliceToRoi(key, self.shape)
@@ -537,7 +537,7 @@ class OpArrayCache(OpArrayPiper):
         
 
 
-    def execute(self,slot,roi,result):
+    def execute(self, slot, subindex, roi, result):
         #return
         key = roi.toSlice()
 
@@ -832,7 +832,7 @@ if has_blist:
                 self.outputs["Output"].setDirty(slice(None))
                 self.outputs["maxLabel"].setValue(self._maxLabel)
 
-        def execute(self, slot, roi, result):
+        def execute(self, slot, subindex, roi, result):
             key = roiToSlice(roi.start,roi.stop)
 
             self.lock.acquire()
@@ -1044,7 +1044,7 @@ if has_blist:
                     for l in self._labelers.values():
                         l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
 
-        def execute(self, slot, roi, result):
+        def execute(self, slot, subindex, roi, result):
             with Tracer(self.traceLogger):
                 key = roi.toSlice()
                 self.lock.acquire()
@@ -1284,7 +1284,7 @@ class OpBlockedArrayCache(Operator):
                 if notifyOutputDirty:
                     self.Output.setDirty(slice(None))
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         with Tracer(self.traceLogger, msg='roi={}'.format(roi)):
             if not self._configured:
                 # this happends when the operator is not yet fully configured due to fixAtCurrent == True
@@ -1344,7 +1344,7 @@ class OpBlockedArrayCache(Operator):
                     #req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
     
                     smallroi = SubRegion(op.outputs["Output"], start = smallstart , stop= smallstop)
-                    op.execute(op.outputs["Output"],smallroi,result[bigkey])
+                    op.execute(op.outputs["Output"], (), smallroi, result[bigkey])
     
                     ####op.getOutSlot(op.outputs["Output"],smallkey,result[bigkey])
                     #requests.append(req)
@@ -1470,7 +1470,7 @@ class OpSlicedBlockedArrayCache(Operator):
         for i, slot in enumerate(self.InnerOutputs):
             slot.connect(self._innerOps[i].Output)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         assert slot == self.Output
         
         key = roi.toSlice()

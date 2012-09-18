@@ -56,7 +56,7 @@ class OpVigraWatershed(Operator):
         
         return paddedSlices, outputSlices
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         assert slot == self.Output
 
         # Every request is computed on-the-fly.
