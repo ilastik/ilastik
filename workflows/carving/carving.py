@@ -438,8 +438,9 @@ class OpCarving(Operator):
             
         return result    
     
-    def setInSlot(self, slot, key, value):
-        if slot == self.WriteSeeds: 
+    def setInSlot(self, slot, subindex, roi, value):
+        if slot == self.WriteSeeds:
+            key = roi.toSlice()
             assert self._mst is not None
         
             #FIXME: Somehow, the labelingGui sends a value of 100 for the eraser,
@@ -909,9 +910,9 @@ if __name__ == "__main__":
     usage = "%prog [options] <carving graph filename> <project filename to be created>"
     parser = OptionParser(usage)
 
-#    import sys
-#    sys.argv.append("/Users/bergs/Documents/workspace/applet-workflows/denk.h5")
-#    sys.argv.append("test.ilp")
+    import sys
+    sys.argv.append("/Users/bergs/Documents/workspace/applet-workflows/denk.h5")
+    sys.argv.append("test.ilp")
 
     (options, args) = parser.parse_args()
     
