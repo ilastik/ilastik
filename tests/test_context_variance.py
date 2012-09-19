@@ -1,7 +1,11 @@
 import numpy
-import context
+
 import vigra
 from numpy.testing import assert_equal, assert_almost_equal, assert_array_equal
+from lazyflow import graph
+from context.operators.contextVariance import OpContextVariance
+from context.build.contextcpp import varContext2Dmulti
+import lazyflow
 
 def testVariance2D():
     print "test variance in 2d"
@@ -155,7 +159,37 @@ def testVariance3Danis():
                     v = numpy.var(temp)
                     assert_almost_equal(v, res[x, y, z, c*2*nr+nr], 1)
     
-   
+def testVarianceOperator():
+    print "Test context variance operator"
+    g = graph.Graph()
+    opVar = OpContextVariance(g)
+    # 2d
+    nx = 10
+    ny = 10
+    nc = 2
+    aaa = numpy.random.rand(nx,ny,nc)
+    aaa = aaa.reshape((nx, ny, nc))
+    aaa = aaa.astype(numpy.float32)
+    dummy = vigra.VigraArray(aaa.shape, axistags=vigra.VigraArray.defaultAxistags(3)).astype(numpy.float32)
+    dummy[:]=aaa[:]
+
+    #print dummypred[:, :, 0]
+
+    sizes = numpy.array([1, 2], dtype=numpy.uint32)
+    nr = sizes.shape[0]
+    resshape = (nx, ny, nc*2*sizes.shape[0])
+    res = vigra.VigraArray(resshape, axistags=vigra.VigraArray.defaultAxistags(3)).astype(numpy.float32)
+    res = varContext2Dmulti(sizes, dummy, res)
+    
+    #let's compare with operator result:
+    opVar.inputs["Input"].setValue(dummy)
+    opVar.inputs["Radii"].setValue(sizes)
+    opVar.inputs["LabelsCount"].setValue(nc)
+    
+    sub = lazyflow.rtype.SubRegion(None, start = [0, 0, 0], stop = [5, 5, 8])
+    res2 = opVar.outputs["Output"](sub.start,sub.stop).allocate().wait()
+    print res2[0:3, 0:3, 0]
+    print res[0:3, 0:3, 0]
 
 if __name__=="__main__":
     testVariance2D();

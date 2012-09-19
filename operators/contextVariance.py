@@ -96,17 +96,13 @@ class OpContextVariance(Operator):
         #FIXME: why do we do that? To ensure correct types for C++?
         radii = numpy.array(radii, dtype = numpy.uint32)
         maxRadius = numpy.max(radii)
-        print "execute of opAutocontextVariance called with:"
-        print "roi:", roi
-        print "result shape:", result.shape
-        print "axistags:", axistags
         
-        '''
         #Set up roi 
         roi.setInputShape(inputShape)
         
         #get srcRoi to retrieve necessary source data
         addShape = [maxRadius for dim in inputShape]
+        roi_copy = copy.copy(roi)
         srcRoi = roi.expandByShape(addShape)
         #expand only in spatial dimensions
         srcRoi.setDim(axistags.channelIndex, 0, nclasses)
@@ -122,7 +118,6 @@ class OpContextVariance(Operator):
         resshape = list(source.shape)
         resshape[axistags.channelIndex] = outputShape[axistags.channelIndex]
         temp = vigra.VigraArray(tuple(resshape), axistags=axistags)
-        #print "allocated a temp array of size:", temp.shape
         
         nNonsingles = len([x for x in inputShape if x>1])
         
@@ -133,19 +128,42 @@ class OpContextVariance(Operator):
         else:
             context.varContext3Dmulti(radii, source, temp)
         
-        tgtKey = roi.setStartToZero().expandWithShape()
+        tgtRoi = self.shrinkToShape(maxRadius, srcRoi, roi_copy)
+        channelIndex =self.outputs["Output"].meta.axistags.channelIndex
+        tgtRoi.setDim(channelIndex, 0, self.outputs["Output"].meta.shape[channelIndex])
         
-        #Setup iterator to meet the special needs of each filter
-        self.setupIterator(source, result)
-        #get vigraRois to work with vigra filter
-        vigraRoi = roi.centerIn(source.shape).popAxis('ct')
-        for srckey,trgtkey in self.iterator:
-            mask = roi.setStartToZero().maskWithShape(result[trgtkey].shape).toSlice()
-            result[trgtkey] = self.vigraFilter(source=source[srckey],roi=vigraRoi)[mask]
-            
-        '''
+        result[:] = temp[tgtRoi.toSlice()]
         
         return result
+    
+    def shrinkToShape(self, maxRadius, srcRoi, roi):
+        #print "roi in shrinkToShape:", roi
+        tgtRoi = srcRoi.setStartToZero()
+        tgtShape = roi.stop-roi.start
+        #print "tgtShape", tgtShape
+        tgtRoi.setInputShape(srcRoi.inputShape)
+        for i in range(len(tgtRoi.start)):
+            if srcRoi.start[i]!=0:
+                tgtRoi.start[i]+=maxRadius
+                tgtRoi.stop[i]= tgtRoi.start[i]+tgtShape[i]
+                #print "case1", tgtRoi.start, tgtRoi.stop
+            elif srcRoi.stop[i]!=srcRoi.inputShape[i]:
+                tgtRoi.stop[i]-=maxRadius
+                tgtRoi.start[i] = tgtRoi.stop[i]-tgtShape[i]
+                #print "case2", tgtRoi.start, tgtRoi.stop
+            else:
+                tgtRoi.start[i] = roi.start[i]
+                tgtRoi.stop[i] = roi.stop[i]
+        
+        #print "returning:", tgtRoi
+        return tgtRoi
+        '''
+        start = [x+maxRadius if x!=0 else 0 for x in tgtRoi.start]
+        tgtShape = roi.stop-roi.start
+        print tgtShape
+        stop = [a+b if a!=0 else 0 for (a,b) in zip(tgtRoi.stop, tgtShape)]
+        '''
+    
     
     def propagateDirty(self, inputSlot, subindex, key):
         #FIXME: propagate really
