@@ -1,9 +1,11 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, Op50ToMulti, OpArrayPiper, OpMultiArrayStacker
-                               
+
+import context                           
+from context.operators.contextVariance import OpContextVariance
                                
 class OpAutocontextClassification( Operator ):
     """
@@ -15,13 +17,13 @@ class OpAutocontextClassification( Operator ):
     
     # Graph inputs
     
-    InputImages = MultiInputSlot() # Original input data.  Used for display only.
+    InputImages = InputSlot(level=1) # Original input data.  Used for display only.
 
-    LabelsAllowedFlags = MultiInputSlot(stype='bool') # Specifies which images are permitted to be labeled 
-    LabelInputs = MultiInputSlot(optional = True) # Input for providing label data from an external source
+    LabelsAllowedFlags = InputSlot(stype='bool', level=1) # Specifies which images are permitted to be labeled 
+    LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
 
-    FeatureImages = MultiInputSlot() # Computed feature images (each channel is a different feature)
-    CachedFeatureImages = MultiInputSlot() # Cached feature data.
+    FeatureImages = InputSlot(level=1) # Computed feature images (each channel is a different feature)
+    CachedFeatureImages = InputSlot(level=1) # Cached feature data.
     
     AutocontextFeatureIds = InputSlot()
     AutocontextScales = InputSlot()
@@ -30,22 +32,22 @@ class OpAutocontextClassification( Operator ):
 
     FreezePredictions = InputSlot(stype='bool')
 
-    PredictionsFromDisk = MultiInputSlot(optional=True)
+    PredictionsFromDisk = InputSlot(optional=True, level=1)
 
-    PixelOnlyPredictions = MultiOutputSlot() # Predictions based only on pixel features
-    PixelOnlyPredictionChannels = MultiOutputSlot(level=2)
+    PixelOnlyPredictions = OutputSlot(level=1) # Predictions based only on pixel features
+    PixelOnlyPredictionChannels = OutputSlot(level=2)
 
-    PredictionProbabilities = MultiOutputSlot() # Classification predictions
-    PredictionProbabilityChannels = MultiOutputSlot(level=2) # Classification predictions, enumerated by channel
+    PredictionProbabilities = OutputSlot(level=1) # Classification predictions
+    PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     
     MaxLabelValue = OutputSlot()
-    LabelImages = MultiOutputSlot() # Labels from the user
-    NonzeroLabelBlocks = MultiOutputSlot() # A list if slices that contain non-zero label values
+    LabelImages = OutputSlot(level=1) # Labels from the user
+    NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
     #FIXME: this should be the classifier chain
     Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
 
-    CachedPredictionProbabilities = MultiOutputSlot() # Classification predictions (via a cache)
-    CachedPixelPredictionProbabilities = MultiOutputSlot()
+    CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via a cache)
+    CachedPixelPredictionProbabilities = OutputSlot(level=1)
     
     
     def __init__( self, graph ):
@@ -67,7 +69,7 @@ class OpAutocontextClassification( Operator ):
         self.prediction_caches_gui = []
         
         #FIXME: we should take it from the input slot
-        niter = 4
+        niter = 2
         
         for i in range(niter):
             predict = OperatorWrapper( OpPredictRandomForest( graph= self.graph ))
@@ -359,23 +361,26 @@ class OpAutocontextClassification( Operator ):
     def createAutocontextFeatureOperators(self, iter):
         #FIXME: just to test, create some array pipers
         ops = []
-        ops.append(OperatorWrapper (OpArrayPiper(graph = self.graph)))
-        ops.append(OperatorWrapper (OpArrayPiper(graph = self.graph)))
+        #ops.append(OperatorWrapper (OpArrayPiper(graph = self.graph)))
+        #ops.append(OperatorWrapper (OpArrayPiper(graph = self.graph)))
         
-        ops[0].name = ops[0].name+" dummy1"
-        ops[1].name = ops[1].name+" dummy2"
+        ops.append(OperatorWrapper(OpContextVariance(graph=self.graph)))
+        ops[0].inputs["Radii"].setValue([1, 2])
+        ops[0].inputs["LabelsCount"].setValue(2)
+        
+        #ops[0].name = ops[0].name+" dummy1"
+        #ops[1].name = ops[1].name+" dummy2"
         # ops.append(OperatorWrapper (OpArrayPiper(graph = self.graph)))
         #for op in ops:
         #    op.inputs["Input"].connect( self.predictors[iter].PMaps)
         return ops
     
-    
-    def notifyDirty(self, inputSlot, key):
-        # Nothing to do here: All outputs are directly connected to 
-        #  internal operators that handle their own dirty propagation.
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs that support __setitem__
+        #   are directly connected to internal operators.
         pass
 
-    def notifySubSlotDirty(self, slots, indexes, key):
+    def propagateDirty(self, inputSlot, subindex, key):
         # Nothing to do here: All outputs are directly connected to 
         #  internal operators that handle their own dirty propagation.
         pass
@@ -401,10 +406,10 @@ class OpShapeReader(Operator):
         shapeList[channelIndex] = 1
         self.OutputShape.setValue( tuple(shapeList) )
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass
 
@@ -412,7 +417,7 @@ class OpMaxValue(Operator):
     """
     Accepts a list of non-array values as an input and outputs the max of the list.
     """
-    Inputs = MultiInputSlot() # A list of non-array values
+    Inputs = InputSlot(level=1) # A list of non-array values
     Output = OutputSlot()
     
     def __init__(self, *args, **kwargs):
@@ -425,11 +430,11 @@ class OpMaxValue(Operator):
         self.updateOutput()
         self.Output.setValue(self._output)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         result[0] = self._output
         return result
 
-    def notifySubSlotDirty(self, slots, indexes, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         self.updateOutput()
         self.Output.setValue(self._output)
 

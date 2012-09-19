@@ -59,6 +59,6 @@ if __name__ == "__main__":
     #startShellGui( PixelClassificationWorkflow )
 
     # Start the GUI with a debug project    
-    startShellGui( PixelClassificationWorkflow, debug_with_existing )    
+     startShellGui( PixelClassificationWorkflow, debug_with_existing )    
 #    startShellGui( PixelClassificationWorkflow, debug_with_new )
 

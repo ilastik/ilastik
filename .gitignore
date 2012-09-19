@@ -5,3 +5,5 @@ tests/*.h5
 *.*~
 tests/*.png
 tests/images
+.project
+.pydevproject

@@ -147,6 +147,7 @@ def TestIntegralHistogram():
 
     print "good"
 
+'''
 def TestIntegralHistogramBig():
     print
     print "Testing the integral histogram"
@@ -163,7 +164,7 @@ def TestIntegralHistogramBig():
         randommap = randommap.astype(numpy.float32)
         print "inputting a pmap of shape:", pmapsi.shape
         hist = context.intHistogram2D(randommap, nbins)
-    
+'''    
 
 
 def TestSimpleHistogram():
@@ -191,6 +192,7 @@ def TestSimpleHistogram():
     equal(hist(data,(9,100),3,(0,1)),res[100,9])
     print "good"
 
+'''
 def TestOverlappingHistogram():
     
     #FIXME: not tested yet
@@ -204,7 +206,7 @@ def TestOverlappingHistogram():
     
     
     #check if we get the same case of not overlap
-    res=overlappingHistogram2D(data,bins,0)
+    res=context.overlappingHistogram2D(data,bins,0)
     res=res.view(numpy.ndarray)
     assert res.shape==(data.shape[0],data.shape[1],data.shape[2]*bins)
     
@@ -225,13 +227,13 @@ def TestOverlappingHistogram():
     
     
     bins=20
-    res=overlappingHistogram2D(data,bins,0.9999999)
+    res=context.overlappingHistogram2D(data,bins,0.9999999)
     
     bins=2
-    res=overlappingHistogram2D(data,bins,0.01)
+    res=context.overlappingHistogram2D(data,bins,0.01)
     
  
-
+'''
 def TestHistContextC():
     #Test the context histogram features
     #border conditions are not tested!
@@ -298,7 +300,7 @@ def TestHistContextC():
     print "all good"
     print
 
-
+'''
 def TestHistContext():
     
     
@@ -311,7 +313,7 @@ def TestHistContext():
     data=data.view(vigra.VigraArray)
     data.axistags=vigra.VigraArray.defaultAxistags(3)
     
-    res=intHistogram2D(data,3)
+    res=context.intHistogram2D(data,3)
     
     assert res.shape==(50,50,3), "shape mismatch"
     
@@ -323,7 +325,7 @@ def TestHistContext():
     d[:]=res[:]
     file.close()
     """
-    a=histContext([1,2],res)
+    a=context.histContext([1,2],res)
     
     
     print a[:,:,0].T
@@ -335,7 +337,7 @@ def TestHistContext():
     desired=numpy.histogram(reduced[8:13,8:13], 3,(0,1))[0]-numpy.histogram(reduced[9:12,9:12], 3,(0,1))[0]
     
     equal(a[10,10],desired)
- 
+''' 
  
 if __name__=="__main__":
     #TestSimplestHistogram()
