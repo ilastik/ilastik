@@ -910,9 +910,9 @@ if __name__ == "__main__":
     usage = "%prog [options] <carving graph filename> <project filename to be created>"
     parser = OptionParser(usage)
 
-    import sys
-    sys.argv.append("/Users/bergs/Documents/workspace/applet-workflows/denk.h5")
-    sys.argv.append("test.ilp")
+    #import sys
+    #sys.argv.append("/Users/bergs/Documents/workspace/applet-workflows/denk.h5")
+    #sys.argv.append("test.ilp")
 
     (options, args) = parser.parse_args()
     
