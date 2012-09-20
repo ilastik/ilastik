@@ -502,22 +502,11 @@ class Slot(object):
                     self._sig_connect(self)
     
                 elif partner.level > self.level:
-                    if not isinstance(partner, (InputSlot)):
-                        try:
-                            partner.partners.remove(self)
-                        except ValueError:
-                            pass
-
-                    # Implicit wrapping is not recommended.
-                    # If you know what you're doing, it's not hard to explicitly create an OperatorWrapper yourself.
-                    message = "IMPLICIT WRAPPING: {}.{}.level == {}, but {}.{}.level == {}"
-                    message = message.format( partner.operator.name, partner.name, partner.level, self.operator.name, self.name, self.level )
-                    self.logger.warn(message)
-                    if isinstance(self.operator,(OperatorWrapper, Operator)):
-                        newop = OperatorWrapper(self.operator)
-                        newop.inputs[self.name].connect(partner)
-                    else:
-                        raise RuntimeError("Trying to connect a higher order slot to a subslot - NOT ALLOWED")
+                    msg =  "Can't connect slots: {}.{}.level={}, but {}.{}.level={}"
+                    msg += " (Implicit OpearatorWrapper creation is no longer supported.)"
+                    msg = msg.format( self.getRealOperator().name, self.name, self.level,
+                                      partner.getRealOperator().name, partner.name, partner.level )
+                    raise RuntimeError(msg)
 
     def disconnect(self):
         """
@@ -526,8 +515,7 @@ class Slot(object):
         with Tracer(self.traceLogger):
             for slot in self._subSlots:
                 slot.disconnect()
-            self._subSlots = []
-    
+
             if self.partner is not None:
                 had_partner = True
                 try:
@@ -538,6 +526,9 @@ class Slot(object):
             self._value = None
             oldReady = self.meta._ready 
             self.meta = MetaDict()
+
+            if len(self._subSlots) > 0:
+                self.resize(0)
     
             # call callbacks
             self._sig_disconnect(self)
@@ -548,12 +539,6 @@ class Slot(object):
             # If we were ready before, signal that we aren't any more
             if oldReady:
                 self._sig_unready(self)
-            
-            if self.operator is not None and isinstance(self, InputSlot):
-                # TODO: Only the OperatorWrapper uses this.
-                #       It should be done with the notifyDisconnect callback, not a special function!
-                self.operator.onDisconnect(self)
-
 
     def resize(self, size):
         """
@@ -573,7 +558,8 @@ class Slot(object):
                 return
     
             self._resizing = True
-            self.logger.debug("Resizing slot %r of operator %r to size %r" % (self.name, self.operator.name, size))
+            if self.operator is not None:
+                self.logger.debug("Resizing slot %r of operator %r to size %r" % (self.name, self.operator.name, size))
     
             # call before resize callbacks
             self._sig_resize(self, oldsize, size)
@@ -634,7 +620,8 @@ class Slot(object):
             if len(self) <= finalsize:
                 return None
             assert position < len(self)
-            self.logger.debug("Removing slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize))
+            if self.operator is not None:
+                self.logger.debug("Removing slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize))
             
             # call before-remove callbacks
             self._sig_remove(self, position, finalsize)
@@ -981,7 +968,15 @@ class Slot(object):
         roi = self.rtype(self,*args, **kwargs)
         return self.get( roi )
 
-
+    def getRealOperator(self):
+        """
+        If a slot is owned by a higher-level slot, self.operator is a slot.
+        This function keeps going up the hierarchy until it finds the actual operator this slot belongs to.
+        """
+        if isinstance(self.operator, Slot):
+            return self.operator.getRealOperator
+        else:
+            return self.operator
 
     #
     #
@@ -1001,9 +996,6 @@ class Slot(object):
             elif self._type == "output":
                 s = OutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
             return s
-
-    def onDisconnect(self, slot):
-        pass
 
     def _changed(self):
         oldMeta = self.meta
@@ -1132,7 +1124,7 @@ class Slot(object):
             axisStr = 'Axistags \tNone\n'
         else:
             axisStr = str(self.meta.axistags)
-        return 'Shape \t\t'+str(self.meta.shape) +'\n'\
+        return self.name + '\n' + 'Shape \t\t'+str(self.meta.shape) +'\n'\
                 +axisStr +\
                'Dtype \t\t' + str(self.meta.dtype)
 
@@ -1141,7 +1133,7 @@ class Slot(object):
             axisStr = 'Axistags \tNone\n'
         else:
             axisStr = str(self.meta.axistags)
-        return 'Shape \t\t'+str(self.meta.shape) +'\n'\
+        return self.name + '\n' + 'Shape \t\t'+str(self.meta.shape) +'\n'\
                 + axisStr +\
                'Dtype \t\t' + str(self.meta.dtype)
 
@@ -1423,9 +1415,6 @@ class Operator(object):
             if i.partner is None and i._value is None and i._defaultValue is not None:
                 i.setValue(i._defaultValue)
 
-    def _getOriginalOperator(self):
-        return self
-
     def disconnect(self):
         with Tracer(self.traceLogger):
             for s in self.outputs.values():
@@ -1447,9 +1436,6 @@ class Operator(object):
     """
     def propagateDirty(self, slot, subindex, roi):
         raise NotImplementedError(".propagateDirty() of Operator %r is not implemented !" % (self.name))
-
-    def onDisconnect(self, slot):
-        pass
 
     def _notifyConnect(self, inputSlot):
         pass#self.notifyConnect(inputSlot)
@@ -1555,6 +1541,22 @@ class Operator(object):
     def setInSlot(self, slot, subindex, key, value):
         raise NotImplementedError("Can't use __setitem__ with Operator {} because it doesn't implement setInSlot()".format(self.name))
 
+class OperatorFactory(object):
+    """
+    Callable object that can create instances of an operator with a set of initialization arguments.
+    Kindof like functools.partial, except that __call__ takes parent and graph arguments.
+    """
+    def __init__(self, operatorClass, *args, **kwargs):
+        assert issubclass(operatorClass, Operator)
+        self.operatorClass = operatorClass
+        self.args = args
+        self.kwargs = kwargs
+    
+    def __call__(self, parent, graph):
+        self.kwargs['parent'] = parent
+        self.kwargs['graph'] = graph
+        return self.operatorClass(*self.args, **self.kwargs)
+
 class OperatorWrapper(Operator):
     name = ""
 
@@ -1562,132 +1564,81 @@ class OperatorWrapper(Operator):
     logger = logging.getLogger(loggerName)
     traceLogger = logging.getLogger('TRACE.' + loggerName)
 
-    def __init__(self, operator, promotedSlotNames = None):
+    def __init__(self, operatorFactory, parent=None, graph=None, promotedSlotNames = None):
         """
         Constructs a wrapper for the given operator.
         That is, manages a list of copies of the original operator, and provides access to these inner operators' slots via external multislots.
-        If the promotedSlots argument is provided, only those slots will be promoted when replicated.
+
+        operatorFactory: Either an operator class (not instance) or an OperatorFactory (see above).
+        parent: The parent of the OperatorWrapper
+        graph: the graph operator to init each inner operator with
+        promotedSlotNames: If this argument is provided, only those slots will be promoted when replicated.
         All other slots will be replicated without promotion, and their input values will be broadcasted to all inner operators.
-        If the promotedSlots argument is not provided (i.e. promotedSlots=None), the default behavior is to promote ALL replicated slots.
-        Note: Outputslots are always promoted, regardless of whether or not they appear in the promotedSlots argument.
+        If the promotedSlotNames argument is not provided (i.e. promotedSlotNames=None), the default behavior is to promote ALL replicated slots.
+        Note: Outputslots are always promoted, regardless of whether or not they appear in the promotedSlotNames argument.
         """
-        with Tracer(self.traceLogger):
-            self.inputs = InputDict(self)
-            self.outputs = OutputDict(self)
-            self.operator = operator
-            self.graph = operator.graph
-            self._parent = operator._parent
-            self._initialized = False
-    
-            assert self.operator is not None
-    
-            self.name = "Wrapped " + operator.name
-    
-            if promotedSlotNames is None:
-                    # No slots specified: All original slots are promoted by default
-                promotedSlotNames = set(self.operator.inputs.keys())
-            else:
-                promotedSlotNames = set(promotedSlotNames)
-    
-            # ALl Outputs are always promoted
-            promotedSlotNames |= set(self.operator.outputs.values())
-    
-            self.promotedSlots = promotedSlotNames
-    
-            self.innerOperators = []
-            self.origInputs = self.operator.inputs.copy()
-            self.origOutputs = self.operator.outputs.copy()
-            if lazyflow.verboseWrapping:
-                msgLevel = logging.INFO
-            else:
-                msgLevel = logging.DEBUG
-            self.logger.log(msgLevel, "wrapping operator [self=%r] '%s'" % (operator, operator.name))
-    
-            self._inputSlots = []
-            self._outputSlots = []
-    
-            # replicate input slot definitions
-            for islot in self.operator.inputSlots:
-                level = islot.level
-                if islot.name in self.promotedSlots:
-                    level += 1
-                self._inputSlots.append(islot._getInstance(self,level = level))
-    
-            # replicate output slot definitions
-            for oslot in self.outputSlots:
-                level = oslot.level + 1
-                self._outputSlots.append(oslot._getInstance(self, level = level))
-    
-    
-            # replicate input slots for the instance
-            for islot in self.operator.inputs.values():
-                level = islot.level
-                if islot.name in self.promotedSlots:
-                    level += 1
-                ii = islot._getInstance(self,level)
-                self.inputs[islot.name] = ii
-                setattr(self,islot.name,ii)
-                op = self.operator
-                while isinstance(op.operator, Operator) \
-                      or (isinstance(op.operator, InputSlot) and op.level > 0):
-                    op = op.operator
-                op.inputs[islot.name] = ii
-                setattr(op,islot.name,ii)
-    
-            # replicate output slots for the instance
-            for oslot in self.operator.outputs.values():
-                level = oslot.level + 1
-                oo = oslot._getInstance(self,level)
-                self.outputs[oslot.name] = oo
-                setattr(self,oslot.name,oo)
-                op = self.operator
-                while isinstance(op.operator, Operator) \
-                      or (isinstance(op.operator, OutputSlot) and op.level > 0):
-                    op = op.operator
-                op.outputs[oslot.name] = oo
-                setattr(op,oslot.name,oo)
-    
-            #connect input slots
-            for islot in self.origInputs.values():
-                ii = self.inputs[islot.name]
-                partner = islot.partner
-                value = islot._value
-                self.operator.inputs[islot.name] = ii
-                if partner is not None:
-                    ii.connect(partner)
-                if value is not None:
-                    ii.setValue(value)
-                islot.disconnect()
-    
-            self._setDefaultInputValues()
-    
-            maxLen = self._ensureInputSize()
-    
-            #connect output slots
-            for oslot in self.origOutputs.values():
-                oo = self.outputs[oslot.name]
-                partners = copy.copy(oslot.partners)
-                oslot.disconnect()
-                for p in partners:
-                    p.connect(oo)
-    
-            for o in self.outputs.values():
-                o._changed()
-    
-            # register callbacks for inserted and removed input subslots
-            for s in self.inputs.values():
-                if s.name in self.promotedSlots:
-                    s.notifyInserted(self._callbackInserted)
-                    s.notifyRemoved(self._callbackRemove)
-                    s.notifyConnect(self._callbackConnect)
-    
-            # register callbacks for inserted and removed output subslots
-            for s in self.outputs.values():
+        self.inputs = InputDict(self)
+        self.outputs = OutputDict(self)
+        # If the client provides an operator class directly (not wrapped in a factory),
+        #  that's okay: we just init the operator without any special arguments.
+        assert isinstance(operatorFactory, OperatorFactory) or issubclass(operatorFactory, Operator) 
+        if issubclass(operatorFactory, Operator):
+            operatorFactory = OperatorFactory( operatorFactory )
+        self.operatorFactory = operatorFactory
+        operatorClass = self.operatorFactory.operatorClass
+
+        self._initialized = False
+
+        self.name = "Wrapped " + operatorClass.name
+
+        if promotedSlotNames is None:
+            # No slots specified: All original slots are promoted by default
+            promotedSlotNames = set(slot.name for slot in operatorClass.inputSlots)
+        else:
+            promotedSlotNames = set(promotedSlotNames)
+
+        # All Outputs are always promoted
+        promotedSlotNames |= set(slot.name for slot in operatorClass.outputSlots)
+
+        self.promotedSlotNames = promotedSlotNames
+
+        self.innerOperators = []
+        if lazyflow.verboseWrapping:
+            msgLevel = logging.INFO
+        else:
+            msgLevel = logging.DEBUG
+        self.logger.log(msgLevel, "wrapping operator '%s'" % (operatorClass.name))
+
+        # replicate input slot definitions
+        for innerSlot in operatorClass.inputSlots:
+            level = innerSlot.level
+            if innerSlot.name in self.promotedSlotNames:
+                level += 1
+            outerSlot = innerSlot._getInstance(self,level = level)
+            self.inputs[outerSlot.name] = outerSlot
+            setattr(self,outerSlot.name,outerSlot)
+
+        # replicate output slot definitions
+        for innerSlot in operatorClass.outputSlots:
+            level = innerSlot.level + 1
+            outerSlot = innerSlot._getInstance(self, level = level)
+            self.outputs[outerSlot.name] = outerSlot
+            setattr(self,outerSlot.name,outerSlot)
+
+        # register callbacks for inserted and removed input subslots
+        for s in self.inputs.values():
+            if s.name in self.promotedSlotNames:
                 s.notifyInserted(self._callbackInserted)
                 s.notifyRemoved(self._callbackRemove)
-            
-            self._initialized = True
+                s.notifyConnect(self._callbackConnect)
 
+        # register callbacks for inserted and removed output subslots
+        for s in self.outputs.values():
+            s.notifyInserted(self._callbackInserted)
+            s.notifyRemoved(self._callbackRemove)
+
+        # Base class init
+        super(OperatorWrapper, self).__init__(parent=parent, graph=graph)
 
     def __getitem__(self, key):
         return self.innerOperators[key]
@@ -1706,88 +1657,16 @@ class OperatorWrapper(Operator):
             for index, innerOp in enumerate(self.innerOperators):
                 innerOp.inputs[slot.name].connect(slot[index])
 
-    def _getOriginalOperator(self):
-        with Tracer(self.traceLogger, msg=self.name):
-            op = self.operator
-            while isinstance(op, OperatorWrapper):
-                op = self.operator
-            return op
-
-    def _testRestoreOriginalOperator(self):
-        with Tracer(self.traceLogger, msg=self.name):
-            #TODO: only restore to the level that is needed, not to the most upper one !
-            for iname, islot in self.inputs.items():
-                if islot.partner is not None:
-                    if islot.partner.level > self.origInputs[iname].level:
-                        return
-    
-            self.logger.info("Restoring original operator [self=%r] named '%s'" % (self, self.name))
-    
-            op = self
-            while isinstance(op.operator, (OperatorWrapper)):
-                op = op.operator
-    
-            op.operator.outputs = op.origOutputs
-            for o in op.operator.outputs.values():
-                setattr(op.operator, o.name, o)
-    
-    
-            op.operator.inputs = op.origInputs
-            for i in op.operator.inputs.values():
-                setattr(op.operator, i.name, i)
-    
-            op = op.operator
-
-    
-            # restore current connections
-            for k, islot in self.inputs.items():
-                if islot.partner is not None:
-                    op.inputs[k].connect(islot.partner)
-                elif islot._value is not None:
-                    op.inputs[k].setValue(islot._value)
-    
-            for k, oslot in self.outputs.items():
-                for p in oslot.partners:
-                    p.connect(op.outputs[k])
-
-    def onDisconnect(self, slot):
-        with Tracer(self.traceLogger, msg=self.name):
-            self._testRestoreOriginalOperator()
-
     def propagateDirty(self, slot, subindex, roi):
         # Nothing to do: All inputs are directly connected to internal operators.
         pass
 
-    def disconnect(self):
-        with Tracer(self.traceLogger, msg=self.name):
-            for s in self.outputs.values():
-                s.disconnect()
-            for s in self.inputs.values():
-                s.disconnect()
-            self._testRestoreOriginalOperator()
-
-
     def _createInnerOperator(self):
-        with Tracer(self.traceLogger, msg=self.name):
-            if self.operator.__class__ is not OperatorWrapper:
-                # Create each inner operator with the same init parameters that were used with the original
-                args = self.operator.initializationArgs[0]
-                kwargs = self.operator.initializationArgs[1]
-                opcopy = self.operator.__class__(*args, **kwargs)
-                opcopy.parent = self
-                opcopy.name = self.operator.name
-            else:
-                if lazyflow.verboseWrapping:
-                    msgLevel = logging.INFO
-                else:
-                    msgLevel = logging.DEBUG
-                self.logger.log(msgLevel, "_createInnerOperator OperatorWrapper")
-                opcopy = OperatorWrapper(self.operator._createInnerOperator())
-            return opcopy
+        return self.operatorFactory(parent=self, graph=self.graph)
 
     def _insertInnerOperator(self, index, length):
         with Tracer(self.traceLogger, msg=self.name):
-            if len(self.innerOperators) == length:
+            if len(self.innerOperators) >= length:
                 return self.innerOperators[index]
             op = self._createInnerOperator()
             self.innerOperators.insert(index, op)
@@ -1795,7 +1674,7 @@ class OperatorWrapper(Operator):
             # Connect the inner operator's inputs to our outer input slots
             for key,outerSlot in self.inputs.items():
                 # Only connect to a subslot if it was promoted during wrapping
-                if outerSlot.name in self.promotedSlots:
+                if outerSlot.name in self.promotedSlotNames:
                     outerSlot.insertSlot(index, length)
                     partner = outerSlot[index]
                 else:
@@ -1810,7 +1689,7 @@ class OperatorWrapper(Operator):
 
     def _removeInnerOperator(self, index, length):
         with Tracer(self.traceLogger, msg=self.name):
-            if len(self.innerOperators) == length:
+            if len(self.innerOperators) <= length:
                 return
             assert index < len(self.innerOperators)
     

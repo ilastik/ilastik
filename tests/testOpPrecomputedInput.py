@@ -85,7 +85,7 @@ class TestOpPrecomputedInput(object):
             computeCount[0] += 1
             return m*x
         
-        opSlow = OperatorWrapper( OpPixelOperator(graph=graph) )
+        opSlow = OperatorWrapper( OpPixelOperator, graph=graph )
         opSlow.Function.resize(3)
         opSlow.Function[0].setValue( partial(compute, 10) )
         opSlow.Function[1].setValue( partial(compute, 11) )
@@ -96,13 +96,13 @@ class TestOpPrecomputedInput(object):
         assert opSlow.Output[0].ready()
         assert opSlow.Output[1].ready()
         
-        opFast = OperatorWrapper( OpArrayPiper(graph=graph) )
+        opFast = OperatorWrapper( OpArrayPiper, graph=graph )
         opFast.Input.resize(3)
         opFast.Input[0].setValue(precomputedData[0])
         opFast.Input[1].setValue(precomputedData[1])
         opFast.Input[2].setValue(precomputedData[2])
         
-        op = OperatorWrapper( OpPrecomputedInput(graph=graph) )
+        op = OperatorWrapper( OpPrecomputedInput, graph=graph )
         op.PrecomputedInput.connect(opFast.Output)
         op.SlowInput.connect(opSlow.Output)
 

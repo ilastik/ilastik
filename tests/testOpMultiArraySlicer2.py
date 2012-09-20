@@ -115,8 +115,8 @@ class TestOpMultiArraySlicer2(object):
         # Note: This test creates its own opSlicer and opProvider.
         #       ( Doesn't use the ones created in self.setUp() )
         # Data is tagged by channel
-        opProvider = OperatorWrapper( OpArrayPiper(graph=self.graph) )        
-        opSlicer = OperatorWrapper( OpMultiArraySlicer2(graph=self.graph) )
+        opProvider = OperatorWrapper( OpArrayPiper, graph=self.graph )
+        opSlicer = OperatorWrapper( OpMultiArraySlicer2, graph=self.graph )
 
         opSlicer.AxisFlag.setValue('c')
         opSlicer.Input.connect(opProvider.Output)

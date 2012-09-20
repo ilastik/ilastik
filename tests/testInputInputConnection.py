@@ -1,5 +1,5 @@
 import nose
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow import stype
 from lazyflow import operators
 
@@ -75,21 +75,22 @@ class TestInputInputConnection(object):
         opm = operators.Op5ToMulti(graph=self.g)
         opm.Input0.setValue(1)
 
-        self.op.Input.connect(opm.Outputs)
-        result = self.op.Output[0][:].allocate().wait()[0]
+        op = OperatorWrapper( OpA, graph=self.g )
+        op.Input.connect(opm.Outputs)
+        result = op.Output[0][:].allocate().wait()[0]
         assert result == 1
 
         opm.Input1.setValue(2)
-        result = self.op.Output[1][:].allocate().wait()[0]
+        result = op.Output[1][:].allocate().wait()[0]
         assert result == 2
 
-        self.op.Input.disconnect()
-        print "test_wrapping: self.op.Input =  ",self.op.Input
-        print "test_wrapping: self.op.inputs[\"Input\"] =  ",self.op.inputs["Input"]
-        self.op.Input.setValue(2)
-        result = self.op.Output[:].allocate().wait()[0]
-        assert result == 2
-
+        # Note: operator wrappers do not "restore" back to unwrapped operators after disconnect
+        # (That was their behavior at some point, but no longer.)
+        op.Input.disconnect()
+        op.Input.resize(0)
+        op.Input.setValue(2)
+        assert len(op.Input) == 0
+        assert len(op.Output) == 0
 
 class OpC(Operator):
 
@@ -98,7 +99,7 @@ class OpC(Operator):
 
     def __init__(self,parent=None, graph=None):
         Operator.__init__(self, parent, graph)
-        self.internalOp = OpB(self)
+        self.internalOp = OperatorWrapper( OpB, graph=self.graph )
         self.internalOp.Input.connect(self.Input)
         self.inputBackup = self.Input
 

@@ -4,6 +4,7 @@ from lazyflow import graph
 from lazyflow import stype
 from lazyflow import operators
 import numpy
+from lazyflow.graph import OperatorWrapper
 
 class OpA(graph.Operator):
     name = "OpA"
@@ -252,8 +253,8 @@ class TestMultiSlotResize(object):
         self.op1 = OpWithMultiInputs(graph=self.g)
         self.op2 = OpWithMultiInputs(graph=self.g)
 
-        self.wrappedOp = OpA(graph=self.g)
-        # Connect multi-inputs to the single inputs to induce wrapping
+        self.wrappedOp = OperatorWrapper( OpA, graph=self.g )
+        
         self.wrappedOp.Input1.connect(self.op1.Input)
         self.wrappedOp.Input2.connect(self.op2.Input)
 
