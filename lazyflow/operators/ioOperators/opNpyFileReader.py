@@ -9,6 +9,12 @@ class OpNpyFileReader(Operator):
     category = "Input"
 
     FileName = InputSlot(stype='filestring')
+
+    # This slot specifies the assumed order of the data.
+    # Must have all 5 axes, e.g. "txyzc"
+    # If the dataset has only 4 axes, then 't' is dropped from the ordering.
+    # If the dataset has only 4 axes, then 't' and 'z' are dropped from the ordering.
+    AxisOrder = InputSlot(stype='string', value='txyzc')
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -20,6 +26,10 @@ class OpNpyFileReader(Operator):
         Load the file specified via our input slot and present its data on the output slot.
         """
         fileName = self.FileName.value
+
+        axisorder = self.AxisOrder.value
+        for a in 'txyzc':
+            assert a in axisorder
 
         # Load the file in read-only "memmap" mode to avoid reading it from disk all at once.
         rawNumpyArray = numpy.load(str(fileName), 'r')
@@ -40,26 +50,12 @@ class OpNpyFileReader(Operator):
         numDimensions = len(self.rawVigraArray.shape)
         assert numDimensions != 1, "OpNpyFileReader: Support for 1-D data not yet supported"
         assert numDimensions != 2, "OpNpyFileReader: BUG: 2-D was supposed to be reshaped above."
-        if numDimensions == 3:
-            self.rawVigraArray.axistags = vigra.AxisTags(
-                vigra.AxisInfo('x',vigra.AxisType.Space),
-                vigra.AxisInfo('y',vigra.AxisType.Space),
-                vigra.AxisInfo('c',vigra.AxisType.Channels))
-        if numDimensions == 4:
-            self.rawVigraArray.axistags = vigra.AxisTags(
-                vigra.AxisInfo('x',vigra.AxisType.Space),
-                vigra.AxisInfo('y',vigra.AxisType.Space),
-                vigra.AxisInfo('z',vigra.AxisType.Space),
-                vigra.AxisInfo('c',vigra.AxisType.Channels))
-        if numDimensions == 5:
-            self.rawVigraArray.axistags =  vigra.AxisTags(
-                vigra.AxisInfo('t',vigra.AxisType.Time),
-                vigra.AxisInfo('x',vigra.AxisType.Space),
-                vigra.AxisInfo('y',vigra.AxisType.Space),
-                vigra.AxisInfo('z',vigra.AxisType.Space),
-                vigra.AxisInfo('c',vigra.AxisType.Channels))
-        
         assert numDimensions <= 5, "OpNpyFileReader: No support for data with more than 5 dimensions."
+        if numDimensions < 5:
+            axisorder = axisorder.replace('t', '')
+        if numDimensions < 4:
+            axisorder = axisorder.replace('z', '')
+        self.rawVigraArray.axistags = vigra.defaultAxistags(axisorder)
 
         # Our output slot should match the shape of the array on disk
         self.Output.meta.dtype = self.rawVigraArray.dtype

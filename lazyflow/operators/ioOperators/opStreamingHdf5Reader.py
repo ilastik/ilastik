@@ -14,6 +14,12 @@ class OpStreamingHdf5Reader(Operator):
     # The internal path for project-local datasets
     InternalPath = InputSlot(stype='string')
 
+    # If the dataset has no axistags attribute, this slot specifies the assumed order.
+    # Must have all 5 axes, e.g. "txyzc"
+    # If the dataset has only 4 axes, then 't' is dropped from the ordering.
+    # If the dataset has only 4 axes, then 't' and 'z' are dropped from the ordering.
+    DefaultAxisOrder = InputSlot(stype='string', value='txyzc')
+
     # Output data
     OutputImage = OutputSlot()
 
@@ -28,7 +34,7 @@ class OpStreamingHdf5Reader(Operator):
         hdf5File = self.Hdf5File.value
         internalPath = self.InternalPath.value
 
-        dataset = hdf5File[internalPath]        
+        dataset = hdf5File[internalPath]
         outputShape = dataset.shape
 
         try:
@@ -36,47 +42,27 @@ class OpStreamingHdf5Reader(Operator):
             axistagsJson = hdf5File[internalPath].attrs['axistags'] # Throws KeyError if 'axistags' can't be found
             axistags = vigra.AxisTags.fromJSON(axistagsJson)
         except KeyError:
+            axisorder = self.DefaultAxisOrder.value
+            print "Reading hdf5 using default axis order:",axisorder
+            for a in 'txyzc':
+                assert a in axisorder
+
             # No axistags found.
             numDimensions = len(dataset.shape)
             assert numDimensions != 0, "OpStreamingHdf5Reader: Zero-dimensional datasets not supported."
             assert numDimensions != 1, "OpStreamingHdf5Reader: Support for 1-D data not yet supported"
 
-            if numDimensions == 2:
+            if numDimensions == 2 or (numDimensions == 3 and dataset.shape[2] > 3):
                 # Add a singleton channel dimension to the data
                 outputShape = outputShape + (1,)
-                axistags = vigra.AxisTags(
-                    vigra.AxisInfo('x',vigra.AxisType.Space),
-                    vigra.AxisInfo('y',vigra.AxisType.Space),
-                    vigra.AxisInfo('c',vigra.AxisType.Channels))
+                numDimensions = len(outputShape)
 
-            if numDimensions == 3 and dataset.shape[2] <= 3:
-                axistags = vigra.AxisTags(
-                    vigra.AxisInfo('x',vigra.AxisType.Space),
-                    vigra.AxisInfo('y',vigra.AxisType.Space),
-                    vigra.AxisInfo('c',vigra.AxisType.Channels))
-            elif numDimensions == 3 and dataset.shape[2] > 3:
-                # Add a singleton channel dimension to the data
-                outputShape = outputShape + (1,)
-                axistags = vigra.AxisTags(
-                    vigra.AxisInfo('x',vigra.AxisType.Space),
-                    vigra.AxisInfo('y',vigra.AxisType.Space),
-                    vigra.AxisInfo('z',vigra.AxisType.Space),
-                    vigra.AxisInfo('c',vigra.AxisType.Channels))
-            
-            if numDimensions == 4:
-                axistags = vigra.AxisTags(
-                    vigra.AxisInfo('x',vigra.AxisType.Space),
-                    vigra.AxisInfo('y',vigra.AxisType.Space),
-                    vigra.AxisInfo('z',vigra.AxisType.Space),
-                    vigra.AxisInfo('c',vigra.AxisType.Channels))
-            
-            if numDimensions == 5:
-                axistags =  vigra.AxisTags(
-                    vigra.AxisInfo('t',vigra.AxisType.Time),
-                    vigra.AxisInfo('x',vigra.AxisType.Space),
-                    vigra.AxisInfo('y',vigra.AxisType.Space),
-                    vigra.AxisInfo('z',vigra.AxisType.Space),
-                    vigra.AxisInfo('c',vigra.AxisType.Channels))
+            if numDimensions < 5:
+                axisorder = axisorder.replace('t', '')
+            if numDimensions < 4:
+                axisorder = axisorder.replace('z', '')
+
+            axistags = vigra.defaultAxistags(axisorder)
 
         # Configure our slot meta-info
         self.OutputImage.meta.dtype = dataset.dtype
@@ -100,7 +86,7 @@ class OpStreamingHdf5Reader(Operator):
             key = key[:len(hdf5File[internalPath].shape)]
             result[...,0] = hdf5File[internalPath][key]
         else:
-            result[...] = hdf5File[internalPath][key]            
+            result[...] = hdf5File[internalPath][key]
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Hdf5File or slot == self.InternalPath:

@@ -27,6 +27,7 @@ class OpInputDataReader(Operator):
     # For stacks, provide a globstring, e.g. /mydir/input*.png
     # Other types are determined via file extension
     WorkingDirectory = InputSlot(stype='filestring', optional=True)
+    DefaultAxisOrder = InputSlot(stype="string", value='txyzc')
     FilePath = InputSlot(stype='filestring')
     Output = OutputSlot()
 
@@ -92,6 +93,7 @@ class OpInputDataReader(Operator):
                 h5File = h5py.File(externalPath, 'r')
 
                 h5Reader = OpStreamingHdf5Reader(graph=self.graph)
+                h5Reader.DefaultAxisOrder.connect( self.DefaultAxisOrder )
                 h5Reader.Hdf5File.setValue(h5File)
 
                 # Can't set the internal path yet if we don't have one
@@ -110,6 +112,7 @@ class OpInputDataReader(Operator):
             if fileExtension in self.npyExts:
                 # Create an internal operator
                 npyReader = OpNpyFileReader(graph=self.graph)
+                npyReader.AxisOrder.connect( self.DefaultAxisOrder )
                 npyReader.FileName.setValue(filePath)
                 self.internalOperator = npyReader
                 self.internalOutput = npyReader.Output
