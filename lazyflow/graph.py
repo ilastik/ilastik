@@ -1582,7 +1582,7 @@ class OperatorWrapper(Operator):
         # If the client provides an operator class directly (not wrapped in a factory),
         #  that's okay: we just init the operator without any special arguments.
         assert isinstance(operatorFactory, OperatorFactory) or issubclass(operatorFactory, Operator) 
-        if issubclass(operatorFactory, Operator):
+        if not isinstance(operatorFactory, OperatorFactory) and issubclass(operatorFactory, Operator):
             operatorFactory = OperatorFactory( operatorFactory )
         self.operatorFactory = operatorFactory
         operatorClass = self.operatorFactory.operatorClass
