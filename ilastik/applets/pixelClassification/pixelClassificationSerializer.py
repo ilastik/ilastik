@@ -187,7 +187,7 @@ class PixelClassificationSerializer(AppletSerializer):
                             progress = [startProgress]
         
                             # Use a big dataset writer to do this in chunks
-                            opWriter = OpH5WriterBigDataset(self.mainOperator.graph)
+                            opWriter = OpH5WriterBigDataset(graph=self.mainOperator.graph)
                             opWriter.hdf5File.setValue( predictionDir )
                             opWriter.hdf5Path.setValue( datasetName )
                             opWriter.Image.connect( self.mainOperator.PredictionProbabilities[imageIndex] )

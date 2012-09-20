@@ -39,7 +39,7 @@ class ConnectedComponentsPipeline( object ):
         ##
         # thresholding
         ##
-        self.opThreshold = OpThreshold(graph)
+        self.opThreshold = OpThreshold(graph=graph)
         ##
         # entry point:
         #self.opThreshold.inputs["Input"].connect(self.pCache.outputs["Output"])
@@ -63,7 +63,7 @@ class ConnectedComponentsPipeline( object ):
         ##
         # connected components
         ##
-        self.opCC = OpConnectedComponents(graph)
+        self.opCC = OpConnectedComponents(graph=graph)
         self.opCC.inputs["Input"].connect(self.opThreshold.outputs["Output"])
         #we shouldn't have to define these. But just in case...
         self.opCC.inputs["Neighborhood"].setValue(6)

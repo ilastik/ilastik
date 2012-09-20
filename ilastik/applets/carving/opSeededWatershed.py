@@ -83,7 +83,7 @@ class OpSegmentor(Operator):
     self.parameters.notifyMetaChanged(self.onNewParameters)
     self._seedNumbers = [0,1]
     self._seedNumbersDirty = False
-    self.opLabelArray = OpBlockedSparseLabelArray( self.graph )
+    self.opLabelArray = OpBlockedSparseLabelArray( graph=self.graph )
 
 
   def onInitialSegmentor(self, slot):

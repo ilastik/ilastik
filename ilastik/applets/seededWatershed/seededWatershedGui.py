@@ -690,7 +690,7 @@ class SeededWatershedGui(QMainWindow):
             print "* Data has shape=%r" % (shape,)
             
             #create a layer for each channel of the input:
-            slicer=OpMultiArraySlicer2(self.g)
+            slicer=OpMultiArraySlicer2(graph=self.g)
             opFiver = Op5ifyer(graph=self.g)
             opFiver.input.connect(self.pipeline.image[self.imageIndex])
             slicer.inputs["Input"].connect(opFiver.output)
