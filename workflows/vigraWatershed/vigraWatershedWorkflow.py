@@ -28,7 +28,7 @@ class VigraWatershedWorkflow(Workflow):
 
         # The shell needs a slot from which he can read the list of image names to switch between.
         # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
-        opSelectFilename = OperatorWrapper( OpAttributeSelector(graph=graph) )
+        opSelectFilename = OperatorWrapper( OpAttributeSelector, graph=graph )
         opSelectFilename.InputObject.connect( self.dataSelectionApplet.topLevelOperator.Dataset )
         opSelectFilename.AttributeName.setValue( 'filePath' )
 

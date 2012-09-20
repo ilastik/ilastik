@@ -29,8 +29,8 @@ class OpLabeling( Operator ):
         super(OpLabeling, self).__init__( *args, **kwargs )
 
         # Create internal operators
-        self.opInputShapeReader = OperatorWrapper( OpShapeReader(graph=self.graph) )
-        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray( graph=self.graph ) )
+        self.opInputShapeReader = OperatorWrapper( OpShapeReader, parent=self, graph=self.graph )
+        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray, parent=self, graph=self.graph )
 
         # NOT wrapped
         self.opMaxLabel = OpMaxValue(graph=self.graph)

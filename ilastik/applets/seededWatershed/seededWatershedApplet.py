@@ -11,7 +11,7 @@ class SeededWatershedApplet( Applet ):
     """
     def __init__( self, graph ):
         Applet.__init__( self, "Seeded Watershed" )
-        self.pipeline = OperatorWrapper(OpSegmentor( graph=graph ))
+        self.pipeline = OperatorWrapper( OpSegmentor, graph=graph )
 
         # Instantiate the main GUI, which creates the applet drawers (for now)
         self._centralWidget = SeededWatershedGui( self.pipeline, graph )

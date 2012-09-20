@@ -79,7 +79,7 @@ class LayerViewerGui(QMainWindow):
             if slot.level == 1:
                 # The user gave us a slot that is indexed as slot[image]
                 # Wrap the operator so it has the right level.  Indexed as: slot[image][0]
-                opPromoteInput = OperatorWrapper( Op1ToMulti(graph=slot.operator.graph) )
+                opPromoteInput = OperatorWrapper( Op1ToMulti, graph=slot.operator.graph )
                 opPromoteInput.Input.connect(slot)
                 slot = opPromoteInput.Outputs
 

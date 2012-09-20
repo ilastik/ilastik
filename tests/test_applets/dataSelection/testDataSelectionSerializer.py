@@ -50,7 +50,7 @@ class TestDataSelectionSerializer(object):
         
             # Create an operator to work with and give it some input
             graph = Graph()
-            operatorToSave = OperatorWrapper( OpDataSelection(graph=graph) )
+            operatorToSave = OperatorWrapper( OpDataSelection, graph=graph )
             serializer = DataSelectionSerializer(operatorToSave, 'DataSelectionTest')
             assert serializer._base_initialized
         
@@ -97,7 +97,7 @@ class TestDataSelectionSerializer(object):
         
             # Create an empty operator
             graph = Graph()
-            operatorToLoad = OperatorWrapper( OpDataSelection(graph=graph) )
+            operatorToLoad = OperatorWrapper( OpDataSelection, graph=graph )
             
             deserializer = DataSelectionSerializer(operatorToLoad, serializer.topGroupName) # Copy the group name from the serializer we used.
             assert deserializer._base_initialized

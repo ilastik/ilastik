@@ -14,7 +14,7 @@ class BatchIoApplet( Applet ):
     def __init__( self, graph, title ):
         super(BatchIoApplet, self).__init__(title)
 
-        self._topLevelOperator = OperatorWrapper( OpBatchIo(graph=graph), promotedSlotNames=set(['DatasetPath', 'ImageToExport']) )
+        self._topLevelOperator = OperatorWrapper( OpBatchIo, graph=graph, promotedSlotNames=set(['DatasetPath', 'ImageToExport']) )
         
         # Ensure the operator has no length yet.
         # FIXME: Why is this necessary??!?! Shouldn't it be zero anyway?

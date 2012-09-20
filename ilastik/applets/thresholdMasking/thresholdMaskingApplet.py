@@ -13,7 +13,7 @@ class ThresholdMaskingApplet( Applet ):
         super(ThresholdMaskingApplet, self).__init__(guiName)
 
         # Wrap the top-level operator, since the GUI supports multiple images
-        self._topLevelOperator = OperatorWrapper( OpThresholdMasking(graph=graph), promotedSlotNames=['InputImage'] )
+        self._topLevelOperator = OperatorWrapper( OpThresholdMasking, graph=graph, promotedSlotNames=['InputImage'] )
 
         self._gui = None
         

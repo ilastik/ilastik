@@ -19,7 +19,7 @@ from ilastik.applets.labeling import OpLabeling
 from ilastik.applets.base.appletSerializer import AppletSerializer
 
 from lazyflow.roi import roiToSlice
-from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot
+from lazyflow.graph import Graph, Operator, OperatorWrapper, OperatorFactory, InputSlot, OutputSlot
 from lazyflow.operators import OpAttributeSelector
 from lazyflow.stype import Opaque
 
@@ -40,7 +40,7 @@ class OpCarvingTopLevel(Operator):
         super(OpCarvingTopLevel, self).__init__(*args, **kwargs)
         
         self.opLabeling = OpLabeling(graph=self.graph, parent=self)
-        self.opCarving = OperatorWrapper( OpCarving(carvingGraphFile, graph=self.graph) )
+        self.opCarving = OperatorWrapper( OperatorFactory(OpCarving, carvingGraphFile), graph=self.graph )
         
         self.opLabeling.InputImages.connect( self.RawData )
         self.opCarving.RawData.connect( self.RawData )
@@ -869,7 +869,7 @@ class CarvingApplet(LabelingApplet):
         #
         # raw data
         # 
-        o = OperatorWrapper( adaptors.Op5ifyer(graph=graph) )
+        o = OperatorWrapper( adaptors.Op5ifyer, graph=graph )
         o.order.setValue('txyzc')
         o.input.connect(self._raw)
         self._inputImage = o.output
@@ -880,7 +880,7 @@ class CarvingApplet(LabelingApplet):
         self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
         #self.opCarving.CarvingGraphFile.setValue(carvingGraphFile)
 
-        o = OperatorWrapper( adaptors.Op5ifyer(graph=graph) )
+        o = OperatorWrapper( adaptors.Op5ifyer, graph=graph )
         o.order.setValue('txyzc')
         o.input.connect(self._topLevelOperator.opCarving.Segmentation)
         self._segmentation5D = o.output
@@ -938,7 +938,7 @@ class CarvingWorkflow(Workflow):
 
         # The shell needs a slot from which he can read the list of image names to switch between.
         # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
-        opSelectFilename = OperatorWrapper( OpAttributeSelector(graph=graph) )
+        opSelectFilename = OperatorWrapper( OpAttributeSelector, graph=graph )
         opSelectFilename.InputObject.connect( opData.Dataset )
         opSelectFilename.AttributeName.setValue( 'filePath' )
 

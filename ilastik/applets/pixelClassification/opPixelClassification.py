@@ -47,15 +47,15 @@ class OpPixelClassification( Operator ):
         
         # Create internal operators
         # Explicitly wrapped:
-        self.opInputShapeReader = OperatorWrapper( OpShapeReader(graph=self.graph) )
-        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray( graph=self.graph ) )
-        self.predict = OperatorWrapper( OpPredictRandomForest( graph=self.graph ) )
-        self.prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
+        self.opInputShapeReader = OperatorWrapper( OpShapeReader, parent=self, graph=self.graph )
+        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray, parent=self, graph=self.graph )
+        self.predict = OperatorWrapper( OpPredictRandomForest, parent=self, graph=self.graph )
+        self.prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
         self.prediction_cache.Input.resize(0)
-        self.prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
+        self.prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
         self.prediction_cache_gui.Input.resize(0)
-        self.precomputed_predictions = OperatorWrapper( OpPrecomputedInput(graph=self.graph) )
-        self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput(graph=self.graph) )
+        self.precomputed_predictions = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph )
+        self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph )
 
         # NOT wrapped
         self.opMaxLabel = OpMaxValue(graph=self.graph)
@@ -137,16 +137,16 @@ class OpPixelClassification( Operator ):
         assert self.opTrain.Images.operator == self.opTrain
         
         # Also provide each prediction channel as a separate layer (for the GUI)
-        self.opPredictionSlicer = OperatorWrapper( OpMultiArraySlicer2(parent=self) )
+        self.opPredictionSlicer = OperatorWrapper( OpMultiArraySlicer2, parent=self, graph=self.graph )
         self.opPredictionSlicer.Input.connect( self.precomputed_predictions_gui.Output )
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
         
-        self.opSegementor = OperatorWrapper( OpPixelOperator( graph=self.graph ) )
+        self.opSegementor = OperatorWrapper( OpPixelOperator, parent=self, graph=self.graph )
         self.opSegementor.Input.connect( self.precomputed_predictions_gui.Output )
         self.opSegementor.Function.setValue( lambda x: numpy.where(x < 0.5, 0, 1) )
 
-        self.opSegmentationSlicer = OperatorWrapper( OpMultiArraySlicer2(parent=self) )
+        self.opSegmentationSlicer = OperatorWrapper( OpMultiArraySlicer2, parent=self, graph=self.graph )
         self.opSegmentationSlicer.Input.connect( self.opSegementor.Output )
         self.opSegmentationSlicer.AxisFlag.setValue('c')
         self.SegmentationChannels.connect( self.opSegmentationSlicer.Slices )
