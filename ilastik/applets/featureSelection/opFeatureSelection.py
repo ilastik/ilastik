@@ -49,7 +49,7 @@ class OpFeatureSelection(Operator):
         
         # Connect our external outputs to our internal operators
         self.OutputImage.connect( self.opPixelFeatures.Output )
-        self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )        
+        self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )
         self.FeatureLayers.connect( self.opPixelFeatures.Features )
 
     def setupOutputs(self):        

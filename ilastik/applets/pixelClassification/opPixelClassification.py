@@ -51,9 +51,9 @@ class OpPixelClassification( Operator ):
         self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray, parent=self, graph=self.graph )
         self.predict = OperatorWrapper( OpPredictRandomForest, parent=self, graph=self.graph )
         self.prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
-        self.prediction_cache.Input.resize(0)
+        assert len(self.prediction_cache.Input) == 0
         self.prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
-        self.prediction_cache_gui.Input.resize(0)
+        assert len(self.prediction_cache_gui.Input) == 0
         self.precomputed_predictions = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph )
         self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph )
 

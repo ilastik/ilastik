@@ -18,7 +18,7 @@ class BatchIoApplet( Applet ):
         
         # Ensure the operator has no length yet.
         # FIXME: Why is this necessary??!?! Shouldn't it be zero anyway?
-        self._topLevelOperator.ImageToExport.resize(0)
+        assert len(self._topLevelOperator.ImageToExport) == 0
 
         self._serializableItems = [ BatchIoSerializer(self._topLevelOperator, title) ]
 
