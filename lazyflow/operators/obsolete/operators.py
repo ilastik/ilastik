@@ -353,7 +353,7 @@ class OpArrayCache(OpArrayPiper):
             self._has_fixed_dirty_blocks = False
             self._memory_manager = ArrayCacheMemoryMgr.instance
             self._running = 0
-            lazyflow.verboseMemory = True
+            #lazyflow.verboseMemory = True
 
     def _memorySize(self):
         if self._cache is not None:
@@ -1101,8 +1101,6 @@ if has_blist:
             key = roi.toSlice()
             with Tracer(self.traceLogger):
                 time1 = time.time()
-
-                logger.info("OpBlockedSparseLabelArray")
                 start, stop = sliceToRoi(key, self._cacheShape)
     
                 blockStart = (1.0 * start / self._blockShape).floor()
