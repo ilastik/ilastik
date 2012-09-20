@@ -869,7 +869,7 @@ class CarvingApplet(LabelingApplet):
         #
         # raw data
         # 
-        o = OperatorWrapper( adaptors.Op5ifyer(graph) )
+        o = OperatorWrapper( adaptors.Op5ifyer(graph=graph) )
         o.order.setValue('txyzc')
         o.input.connect(self._raw)
         self._inputImage = o.output
@@ -880,7 +880,7 @@ class CarvingApplet(LabelingApplet):
         self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
         #self.opCarving.CarvingGraphFile.setValue(carvingGraphFile)
 
-        o = OperatorWrapper( adaptors.Op5ifyer(graph) )
+        o = OperatorWrapper( adaptors.Op5ifyer(graph=graph) )
         o.order.setValue('txyzc')
         o.input.connect(self._topLevelOperator.opCarving.Segmentation)
         self._segmentation5D = o.output

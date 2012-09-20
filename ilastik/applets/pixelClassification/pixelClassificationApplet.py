@@ -9,7 +9,7 @@ class PixelClassificationApplet( Applet ):
     def __init__( self, graph, projectFileGroupName ):
         Applet.__init__( self, "Pixel Classification" )
 
-        self._topLevelOperator = OpPixelClassification( graph )
+        self._topLevelOperator = OpPixelClassification( graph=graph )
 
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.
