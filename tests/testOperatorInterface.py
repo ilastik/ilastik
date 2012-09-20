@@ -60,7 +60,7 @@ class TestOperator_setupOutputs(object):
     def test_disconnected_connected(self):
         # check that operator is not configuerd initiallia
         # since it has a slot without default value
-        op = OpA(self.g)
+        op = OpA(graph=self.g)
         assert op._configured == False
 
         # check that operator is not configuerd initiallia
@@ -82,7 +82,7 @@ class TestOperator_setupOutputs(object):
 
 
     def test_set_values(self):
-        op = OpA(self.g)
+        op = OpA(graph=self.g)
 
         # check that Input4 is not connected
         assert op.Input4.connected() is False
@@ -112,7 +112,7 @@ class TestOperator_setupOutputs(object):
         assert op.Input4[1].value == 3
 
     def test_default_value(self):
-        op = OpA(self.g)
+        op = OpA(graph=self.g)
         op.Input1.setValue(1)
         op.Input4.setValues([1])
 
@@ -134,10 +134,10 @@ class TestOperator_setupOutputs(object):
         # check that connecting a required slot to an
         # already configured slots notifes the operator
         # of connecting
-        op1 = OpA(self.g)
+        op1 = OpA(graph=self.g)
         op1.Input1.setValue(1)
         op1.Input4.setValues([1])
-        op2 = OpA(self.g)
+        op2 = OpA(graph=self.g)
         op2.Input1.connect(op1.Output1)
         op2.Input4.setValues([1])
         assert op2._configured == True
@@ -148,9 +148,9 @@ class TestOperator_setupOutputs(object):
         # not yet  configured slots notifes the operator
         # of connecting after configuring the first operator
         # in the chain
-        op1 = OpA(self.g)
+        op1 = OpA(graph=self.g)
         op1.Input4.setValues([1])
-        op2 = OpA(self.g)
+        op2 = OpA(graph=self.g)
         op2.Input1.connect(op1.Output1)
         op2.Input4.setValues([1])
         assert op2._configured == False
@@ -188,7 +188,7 @@ class TestOperatorMultiSlotExecute(object):
         self.g = graph.Graph()
     
     def test(self):
-        op = OpMultiOutput(self.g)
+        op = OpMultiOutput(graph=self.g)
         op.Input.setValue( () )
         # Index the output slot with every possible getitem syntax that we support
         assert op.Outputs[1][2][3][...].wait()[0] == (1,2,3)
@@ -208,10 +208,10 @@ class TestOperator_meta(object):
         # already configured slots notifes the operator
         # of connecting and the meta information of
         # is correctly passed on between the slots
-        op1 = OpA(self.g)
+        op1 = OpA(graph=self.g)
         op1.Input1.setValue(numpy.ndarray((10,)))
         op1.Input4.setValues([1])
-        op2 = OpA(self.g)
+        op2 = OpA(graph=self.g)
         op2.Input1.connect(op1.Output1)
         op2.Input4.setValues([1])
         assert op2.Output1.meta.shape == (10,)
@@ -223,8 +223,8 @@ class TestOperator_meta(object):
         # of connecting after configuring the first operator
         # and propagates the meta information correctly
         # between the slots
-        op1 = OpA(self.g)
-        op2 = OpA(self.g)
+        op1 = OpA(graph=self.g)
+        op2 = OpA(graph=self.g)
         op1.Input4.setValues([1,2])
         op2.Input4.setValues([1,2])
         op2.Input1.connect(op1.Output1)

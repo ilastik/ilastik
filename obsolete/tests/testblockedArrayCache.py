@@ -11,11 +11,11 @@ def test1():
     g = Graph()
 
 
-    Op = operators.OpBlockedArrayCache(g)
+    Op = operators.OpBlockedArrayCache(graph=g)
 
     inputImage = vigra.impex.readImage("ostrich.jpg")
 
-    opPiper = OpArrayPiper(g)
+    opPiper = OpArrayPiper(graph=g)
     opPiper.inputs["Input"].setValue(inputImage)
 
     Op.inputs["Input"].connect(opPiper.outputs["Output"])
@@ -103,7 +103,7 @@ def operatorTest(blockShape, sync = False, cache = False):
     g = Graph()
 
 
-    op = operators.OpBlockedArrayCache(g)
+    op = operators.OpBlockedArrayCache(graph=g)
     inputImage = vigra.impex.readImage("ostrich.jpg")
     op.inputs["Input"].setValue(inputImage)
     op.inputs["outerBlockShape"].setValue(blockShape)
@@ -118,7 +118,7 @@ def operatorTest(blockShape, sync = False, cache = False):
         #imageCounter +=1
 
     if cache:
-        tempOp = OpArrayCache(g)
+        tempOp = OpArrayCache(graph=g)
         tempOp.inputs["Input"].connect(op.outputs["Output"])
 
         op = tempOp

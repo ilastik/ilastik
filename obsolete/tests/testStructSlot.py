@@ -49,8 +49,8 @@ class B(graph.Operator):
 
 
 g = graph.Graph()
-a = A(g)
-b = B(g)
+a = A(graph=g)
+b = B(graph=g)
 
 b.tgraph.connect(a.tgraph)
 

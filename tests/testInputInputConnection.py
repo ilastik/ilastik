@@ -1,5 +1,5 @@
 import nose
-from lazyflow import graph
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from lazyflow import stype
 from lazyflow import operators
 
@@ -7,10 +7,10 @@ import logging
 logger = logging.getLogger()
 logger.addHandler( logging.NullHandler() )
 
-class OpB(graph.Operator):
+class OpB(Operator):
 
-    Input = graph.InputSlot()
-    Output = graph.OutputSlot()
+    Input = InputSlot()
+    Output = OutputSlot()
 
     def setupOutputs(self):
         self.Output.meta.shape = self.Input.meta.shape
@@ -24,13 +24,13 @@ class OpB(graph.Operator):
     def propagateDirty(self, inputSlot, subindex, roi):
         self.Output.setDirty(roi)
 
-class OpA(graph.Operator):
+class OpA(Operator):
 
-    Input = graph.InputSlot()
-    Output = graph.OutputSlot()
+    Input = InputSlot()
+    Output = OutputSlot()
 
-    def __init__(self,parent):
-        graph.Operator.__init__(self, parent)
+    def __init__(self, parent=None, graph=None):
+        Operator.__init__(self, parent, graph)
         self.internalOp = OpB(self)
         self.internalOp.Input.connect(self.Input)
         self.inputBackup = self.Input
@@ -52,8 +52,8 @@ class OpA(graph.Operator):
 class TestInputInputConnection(object):
 
     def setUp(self):
-        self.g = graph.Graph()
-        self.op = OpA(self.g)
+        self.g = Graph()
+        self.op = OpA(graph=self.g)
 
     def tearDown(self):
         self.g.stopGraph()
@@ -72,7 +72,7 @@ class TestInputInputConnection(object):
 
 
     def test_wrapping(self):
-        opm = operators.Op5ToMulti(self.g)
+        opm = operators.Op5ToMulti(graph=self.g)
         opm.Input0.setValue(1)
 
         self.op.Input.connect(opm.Outputs)
@@ -91,13 +91,13 @@ class TestInputInputConnection(object):
         assert result == 2
 
 
-class OpC(graph.Operator):
+class OpC(Operator):
 
-    Input = graph.InputSlot(level = 1)
-    Output = graph.OutputSlot( level = 1)
+    Input = InputSlot(level = 1)
+    Output = OutputSlot( level = 1)
 
-    def __init__(self,parent):
-        graph.Operator.__init__(self, parent)
+    def __init__(self,parent=None, graph=None):
+        Operator.__init__(self, parent, graph)
         self.internalOp = OpB(self)
         self.internalOp.Input.connect(self.Input)
         self.inputBackup = self.Input
@@ -116,14 +116,14 @@ class OpC(graph.Operator):
 class TestMultiInputInputConnection(object):
 
     def setUp(self):
-        self.g = graph.Graph()
-        self.op = OpC(self.g)
+        self.g = Graph()
+        self.op = OpC(graph=self.g)
 
     def tearDown(self):
         self.g.stopGraph()
 
     def test_wrapping(self):
-        opm = operators.Op5ToMulti(self.g)
+        opm = operators.Op5ToMulti(graph=self.g)
         opm.Input0.setValue(1)
 
         self.op.Input.connect(opm.Outputs)

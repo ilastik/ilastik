@@ -27,29 +27,29 @@ class TestOpBaseVigraFilter(unittest.TestCase):
                 operator.outputs["Output"](start,stop).wait()
     
     def test_GaussianSmoothing(self):
-        opGaussianSmoothing = OpGaussianSmoothing(self.graph)
+        opGaussianSmoothing = OpGaussianSmoothing(graph=self.graph)
         self.generalOperatorTest(opGaussianSmoothing, 2.0)
     
     def test_DifferenceOfGaussians(self):
-        opDifferenceOfGaussians = OpDifferenceOfGaussians(self.graph)
+        opDifferenceOfGaussians = OpDifferenceOfGaussians(graph=self.graph)
         self.generalOperatorTest(opDifferenceOfGaussians, 2.0, 3.0)
     
     def test_LaplacianOfGaussian(self):
-        opLaplacianOfGaussian = OpLaplacianOfGaussian(self.graph)
+        opLaplacianOfGaussian = OpLaplacianOfGaussian(graph=self.graph)
         self.generalOperatorTest(opLaplacianOfGaussian, 2.0)
         
     def test_StructureTensorEigenvalues(self):
-        opStructureTensorEigenvalues = OpStructureTensorEigenvalues(self.graph)
+        opStructureTensorEigenvalues = OpStructureTensorEigenvalues(graph=self.graph)
         self.generalOperatorTest(opStructureTensorEigenvalues, 1.5,2.0)
         
     def test_GaussianGradientMagnitude(self):
-        opGaussianGradientMagnitude = OpGaussianGradientMagnitude(self.graph)
+        opGaussianGradientMagnitude = OpGaussianGradientMagnitude(graph=self.graph)
         self.generalOperatorTest(opGaussianGradientMagnitude, 2.0)
         
     def test_HessianOfGaussian(self):
-        opHessianOfGaussian = OpHessianOfGaussian(self.graph)
+        opHessianOfGaussian = OpHessianOfGaussian(graph=self.graph)
         self.generalOperatorTest(opHessianOfGaussian, 2.0)
 
     def test_HessianOfGaussianEigenvalues(self):
-        opHessianOfGaussianEigenvalues = OpHessianOfGaussianEigenvalues(self.graph)
+        opHessianOfGaussianEigenvalues = OpHessianOfGaussianEigenvalues(graph=self.graph)
         self.generalOperatorTest(opHessianOfGaussianEigenvalues,2.0)

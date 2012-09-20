@@ -106,12 +106,12 @@ if __name__=="__main__":
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
 
     #create Image Reader
-    vimageReader = OpImageReader(g)
+    vimageReader = OpImageReader(graph=g)
     #read an image
     vimageReader.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/tests/ostrich.jpg")
 
     #create Shifter_Operator with Graph-Objekt as argument
-    shifter = OpArrayShifter3(g)
+    shifter = OpArrayShifter3(graph=g)
 
     #set shifting
     shifter.inputs["Shift"].setValue((10,-12,2))
@@ -131,7 +131,7 @@ if __name__=="__main__":
     shifter.outputs["Output"][:].allocate().wait()
 
     #create Image Writer
-    vimageWriter = OpImageWriter(g)
+    vimageWriter = OpImageWriter(graph=g)
     #set writing path
     vimageWriter.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/shift_result.jpg")
     #connect Writer-Input with Shifter Operator-Output

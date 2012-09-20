@@ -10,7 +10,7 @@ class TestOpStreamingHdf5Reader(object):
     def setUp(self):
         self.graph = Graph()
         self.testDataFileName = 'test.h5'
-        self.op = OpStreamingHdf5Reader(self.graph)
+        self.op = OpStreamingHdf5Reader(graph=self.graph)
 
         self.h5File = h5py.File(self.testDataFileName)
         self.h5File.create_group('volume')

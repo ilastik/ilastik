@@ -35,7 +35,7 @@ class TestOpH5Writer(unittest.TestCase):
             os.mkdir(self.testdir)
 
         g = Graph()
-        self.writer = OpH5Writer(g)
+        self.writer = OpH5Writer(graph=g)
         self.writer.inputs["filename"].setValue(self.testdir+self.filename)
         self.writer.inputs["hdf5Path"].setValue(self.hdf5path)
         self.writer.inputs["roi"].setValue(self.generateRoi())

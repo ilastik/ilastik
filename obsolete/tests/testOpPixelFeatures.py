@@ -18,7 +18,7 @@ def test_OpPixelFeatures__T1():
 
     g = Graph()
 
-    OpG = OpPixelFeatures(g)
+    OpG = OpPixelFeatures(graph=g)
 
     inputImage = vigra.impex.readImage("ostrich.jpg")
 
@@ -105,7 +105,7 @@ def test_OpPixelFeatures__T2():
     g = Graph()
 
 
-    OpG = OpPixelFeatures(g)
+    OpG = OpPixelFeatures(graph=g)
 
     inputImage = vigra.impex.readImage("ostrich.jpg")
 
@@ -148,11 +148,11 @@ def test_OpPixelFeatures__T3():
 
     g = Graph()
 
-    OpPI = Op5ToMulti(g)
+    OpPI = Op5ToMulti(graph=g)
 
-    OpPS = Op5ToMulti(g)
+    OpPS = Op5ToMulti(graph=g)
 
-    OpG = OpPixelFeaturesPresmoothed(g)
+    OpG = OpPixelFeaturesPresmoothed(graph=g)
 
     inputImage = vigra.impex.readImage("ostrich.jpg")
 

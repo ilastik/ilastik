@@ -17,10 +17,10 @@ from tests.mockOperators import OpA, OpB, OpC
 
 g = Graph()
 
-source0 = OpArrayPiper(g)
+source0 = OpArrayPiper(graph=g)
 source0.inputs["Input"].setValue(numpy.zeros(shape = (200,100), dtype=numpy.uint8))
 
-opa1 = OpA(g)
+opa1 = OpA(graph=g)
 opa1.inputs["Input"].connect(source0.outputs["Output"])
 
 print "Starting wait request..."
@@ -28,7 +28,7 @@ opa1.outputs["Output"][:].allocate().wait()
 print "... wait request finished"
 
 
-obc = operators.Op5ToMulti(g)
+obc = operators.Op5ToMulti(graph=g)
 
 obc.inputs["Input0"].connect(opa1.outputs["Output"])
 

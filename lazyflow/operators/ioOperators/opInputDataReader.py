@@ -30,11 +30,15 @@ class OpInputDataReader(Operator):
     FilePath = InputSlot(stype='filestring')
     Output = OutputSlot()
 
-    def __init__(self, graph):
-        super(OpInputDataReader, self).__init__(parent=None, graph=graph)
-        self.graph = graph
+    def __init__(self, *args, **kwargs):
+        super(OpInputDataReader, self).__init__(*args, **kwargs)
         self.internalOperator = None
         self.internalOutput = None
+
+    def __del__(self):
+        if self.internalOperator is not None:
+            self.internalOperator.disconnect()
+            del self.internalOperator
 
     def setupOutputs(self):
         """
@@ -55,7 +59,10 @@ class OpInputDataReader(Operator):
                 # Convert this relative path into an absolute path
                 filePath = os.path.normpath(os.path.join(self.WorkingDirectory.value, filePath))
 
-        self.internalOperator = None
+        if self.internalOperator is not None:
+            self.internalOperator.disconnect()
+            del self.internalOperator
+            self.internalOperator = None
 
         # Check for globstring
         if self.internalOperator is None and '*' in filePath:

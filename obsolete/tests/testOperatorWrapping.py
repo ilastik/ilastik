@@ -18,22 +18,22 @@ Operators.registerOperatorSubclasses()
 
 g = Graph()
 
-source0 = OpArrayPiper(g)
+source0 = OpArrayPiper(graph=g)
 source0.inputs["Input"].setValue(numpy.zeros(shape = (200,100), dtype=numpy.uint8))
 
-opa1 = OpA(g)
-opa2 = OpB(g)
+opa1 = OpA(graph=g)
+opa2 = OpB(graph=g)
 
-opb = OpMultiArrayPiper(g)
-opc = OpB(g)
-opd = OpArrayCache(g)
-ope = OpMultiArrayPiper(g)
+opb = OpMultiArrayPiper(graph=g)
+opc = OpB(graph=g)
+opd = OpArrayCache(graph=g)
+ope = OpMultiArrayPiper(graph=g)
 
 
 opa1.inputs["Input"].connect(source0.outputs["Output"])
 opa2.inputs["Input"].connect(source0.outputs["Output"])
 
-opMulti = operators.Op5ToMulti(g)
+opMulti = operators.Op5ToMulti(graph=g)
 opMulti.inputs["Input1"].connect(opa1.outputs["Output"])
 opMulti.inputs["Input2"].connect(opa2.outputs["Output"])
 
@@ -129,15 +129,15 @@ g.finalize()
 
 g = Graph()
 
-opList1 = operators.ListToMultiOperator(g)
+opList1 = operators.ListToMultiOperator(graph=g)
 opList1.inputs["List"].setValue(["ostrich.jpg"])
-opList2 = operators.ListToMultiOperator(g)
+opList2 = operators.ListToMultiOperator(graph=g)
 opList2.inputs["List"].setValue(["ostrich.jpg","ostrich.jpg"])
-opList3 = operators.ListToMultiOperator(g)
+opList3 = operators.ListToMultiOperator(graph=g)
 opList3.inputs["List"].setValue(["ostrich.jpg","ostrich.jpg","ostrich.jpg"])
 
 
-opRead = operators.OpImageReader(g)
+opRead = operators.OpImageReader(graph=g)
 opRead.inputs["Filename"].connect(opList2.outputs["Items"])
 
 
@@ -145,18 +145,18 @@ opRead.outputs["Image"][0][:].allocate().wait()
 
 
 
-opGauss = operators.OpGaussianSmoothing(g)
+opGauss = operators.OpGaussianSmoothing(graph=g)
 opGauss.inputs["sigma"].setValue(2.0)
 opGauss.inputs["Input"].connect(opRead.outputs["Image"])
 
-opGauss2 = operators.OpGaussianSmoothing(g)
+opGauss2 = operators.OpGaussianSmoothing(graph=g)
 opGauss2.inputs["sigma"].setValue(2.0)
 opGauss2.inputs["Input"].connect(opGauss.outputs["Output"])
 
-opMulti = operators.Op5ToMulti(g)
+opMulti = operators.Op5ToMulti(graph=g)
 opMulti.inputs["Input1"].connect(opGauss.outputs["Output"])
 
-opStack = operators.OpMultiArrayStacker(g)
+opStack = operators.OpMultiArrayStacker(graph=g)
 opStack.inputs["Images"].connect(opMulti.outputs["Outputs"])
 opStack.inputs["AxisFlag"].setValue('c')
 opStack.inputs["AxisIndex"].setValue(2)

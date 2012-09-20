@@ -108,12 +108,12 @@ if __name__=="__main__":
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
 
     #create ImageReader-Operator
-    vimageReader = OpImageReader(g)
+    vimageReader = OpImageReader(graph=g)
     #read an image
     vimageReader.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/tests/ostrich.jpg")
 
     #create Resizer-Operator with Graph-Objekt as argument
-    resizer = OpImageResizer(g)
+    resizer = OpImageResizer(graph=g)
 
     #set ScaleFactor
     resizer.inputs["ScaleFactor"].setValue(2)

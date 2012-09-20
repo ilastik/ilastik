@@ -22,7 +22,7 @@ class TestOpNpyFileReader(object):
 
     def test_OpNpyFileReader(self):
         # Now read back our test data using an OpNpyFileReader operator
-        npyReader = OpNpyFileReader(self.graph)
+        npyReader = OpNpyFileReader(graph=self.graph)
         npyReader.FileName.setValue(self.testDataFileName)
 
         # Read the entire file and verify the contents

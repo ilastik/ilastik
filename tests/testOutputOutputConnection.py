@@ -1,16 +1,15 @@
 import nose
-from lazyflow import graph
-from lazyflow.graph import Operator
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from lazyflow import stype
 from lazyflow import operators
 
-class OpOuter(graph.Operator):
+class OpOuter(Operator):
 
-    Input = graph.InputSlot()
-    Output = graph.OutputSlot()
+    Input = InputSlot()
+    Output = OutputSlot()
 
     def __init__(self, graph):
-        Operator.__init__(self, graph)
+        Operator.__init__(self, graph=graph)
         self._was_executed = False
         self._inner_op = OpInner(self)
 
@@ -29,10 +28,10 @@ class OpOuter(graph.Operator):
     def propagateDirty(self, inputSlot, subindex, roi):
         self.Output.setDirty(roi)
 
-class OpInner(graph.Operator):
+class OpInner(Operator):
 
-    Input = graph.InputSlot()
-    Output = graph.OutputSlot()
+    Input = InputSlot()
+    Output = OutputSlot()
 
     def setupOutputs(self):
         self.Output.meta.shape = self.Input.meta.shape
@@ -48,8 +47,8 @@ class OpInner(graph.Operator):
 class TestOutputOutputConnection(object):
 
     def setUp(self):
-        self.g = graph.Graph()
-        self.op = OpOuter(self.g)
+        self.g = Graph()
+        self.op = OpOuter(graph=self.g)
 
     def tearDown(self):
         self.g.stopGraph()

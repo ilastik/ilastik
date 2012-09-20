@@ -66,7 +66,7 @@ if __name__ == "__main__":
     g = Graph()
 
 
-    op = operators.qcOperators.OpLabelToImage(g)
+    op = operators.qcOperators.OpLabelToImage(graph=g)
 
     a = numpy.array([[1,0,1,0,1,0,1,0],[0,1,0,1,0,1,0,1],[1,0,1,0,1,0,1,0],[0,1,0,1,0,1,0,1],[1,0,1,0,1,0,1,0],[0,1,0,1,0,1,0,1],[1,0,1,0,1,0,1,0],[0,1,0,1,0,1,0,1]])
 

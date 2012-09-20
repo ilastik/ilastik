@@ -29,7 +29,7 @@ class testOpStackLoader(TestCase):
     def stackAndTestFull(self,filetype = "png"):
 
         g = Graph()
-        loader = OpStackLoader(g)
+        loader = OpStackLoader(graph=g)
         loader.inputs["globstring"].setValue(self.testdir+"/*."+filetype)
         result = loader.outputs["stack"][:].allocate().wait()
 
@@ -40,7 +40,7 @@ class testOpStackLoader(TestCase):
     def stackAndTestKey(self):
 
         g = Graph()
-        loader = OpStackLoader(g)
+        loader = OpStackLoader(graph=g)
         loader.inputs["globstring"].setValue(self.testdir+"*.png")
 
         for i in range(self.keys):

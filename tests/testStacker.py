@@ -22,12 +22,12 @@ def testFullAllocate():
     g = Graph()
 
     #assume that the slicer works
-    slicerX = OpMultiArraySlicer(g)
+    slicerX = OpMultiArraySlicer(graph=g)
     slicerX.inputs["Input"].setValue(stack)
     slicerX.inputs["AxisFlag"].setValue('x')
 
     #insert the x dimension
-    stackerX = OpMultiArrayStacker(g)
+    stackerX = OpMultiArrayStacker(graph=g)
     stackerX.inputs["AxisFlag"].setValue('x')
     stackerX.inputs["AxisIndex"].setValue(0)
     stackerX.inputs["Images"].connect(slicerX.outputs["Slices"])
@@ -39,13 +39,13 @@ def testFullAllocate():
     #merge stuff that already has an x dimension
     stack2 = numpy.random.rand(nx-1, ny, nz, nc)
 
-    opMulti = Op5ToMulti(g)
+    opMulti = Op5ToMulti(graph=g)
     opMulti.inputs["Input0"].setValue(stack)
     opMulti.inputs["Input1"].setValue(stack2)
 
     #print "OPMULTI: ", len(opMulti.outputs["Outputs"])
 
-    stackerX2 = OpMultiArrayStacker(g)
+    stackerX2 = OpMultiArrayStacker(graph=g)
 
     stackerX2.inputs["Images"].connect(opMulti.outputs["Outputs"])
     stackerX2.inputs["AxisFlag"].setValue('x')
@@ -65,13 +65,13 @@ def testFullAllocate():
     ##### channel
 
     #assume that the slicer works
-    slicerC = OpMultiArraySlicer(g)
+    slicerC = OpMultiArraySlicer(graph=g)
     slicerC.inputs["Input"].setValue(stack)
     slicerC.inputs["AxisFlag"].setValue('c')
 
     #insert the c dimension
 
-    stackerC = OpMultiArrayStacker(g)
+    stackerC = OpMultiArrayStacker(graph=g)
     stackerC.inputs["AxisFlag"].setValue('c')
     stackerC.inputs["AxisIndex"].setValue(3)
     stackerC.inputs["Images"].connect(slicerC.outputs["Slices"])
@@ -85,11 +85,11 @@ def testFullAllocate():
     #merge stuff that already has an x dimension
     stack3 = numpy.random.rand(nx, ny, nz, nc-1)
 
-    opMulti = Op5ToMulti(g)
+    opMulti = Op5ToMulti(graph=g)
     opMulti.inputs["Input0"].setValue(stack)
     opMulti.inputs["Input1"].setValue(stack3)
 
-    stackerC2 = OpMultiArrayStacker(g)
+    stackerC2 = OpMultiArrayStacker(graph=g)
     stackerC2.inputs["AxisFlag"].setValue('c')
     stackerC2.inputs["AxisIndex"].setValue(3)
     stackerC2.inputs["Images"].connect(opMulti.outputs["Outputs"])
@@ -113,12 +113,12 @@ def testPartialAllocate():
     g = Graph()
 
     #assume that the slicer works
-    slicerX = OpMultiArraySlicer(g)
+    slicerX = OpMultiArraySlicer(graph=g)
     slicerX.inputs["Input"].setValue(stack)
     slicerX.inputs["AxisFlag"].setValue('x')
 
     #insert the x dimension
-    stackerX = OpMultiArrayStacker(g)
+    stackerX = OpMultiArrayStacker(graph=g)
     stackerX.inputs["AxisFlag"].setValue('x')
     stackerX.inputs["AxisIndex"].setValue(0)
     stackerX.inputs["Images"].connect(slicerX.outputs["Slices"])

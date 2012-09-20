@@ -82,22 +82,22 @@ def operatorTest(operator_name, sync = False, cache = False):
 
     #set up operators
     if operator_name == "OpArrayShifter1":
-        op = OpArrayShifter1(g)
+        op = OpArrayShifter1(graph=g)
     elif operator_name == "OpImageResizer":
-        op = OpImageResizer(g)
+        op = OpImageResizer(graph=g)
         op.inputs["ScaleFactor"].setValue(2)
     elif operator_name == "OpSubregion":
-        op = OpSubregion(g)
+        op = OpSubregion(graph=g)
         op.inputs["region_start"].setValue((100,100,0))
         op.inputs["region_stop"].setValue((300,300,3))
     elif operator_name == "OpSwapAxes":
-        op = OpSwapAxes(g)
+        op = OpSwapAxes(graph=g)
         op.inputs["Axis1"].setValue(0)
         op.inputs["Axis2"].setValue(1)
     elif operator_name == "OpArrayShifter2":
-        op = OpArrayShifter2(g)
+        op = OpArrayShifter2(graph=g)
     elif operator_name == "OpArrayShifter3":
-        op = OpArrayShifter3(g)
+        op = OpArrayShifter3(graph=g)
         op.inputs["Shift"].setValue((10,-12,0))
     else:
         print "Operatorname nicht bekannt!"
@@ -115,7 +115,7 @@ def operatorTest(operator_name, sync = False, cache = False):
     op.inputs["Input"].setValue(inputImage)
 
     if cache:
-        tempOp = operators.OpArrayCache(g)
+        tempOp = operators.OpArrayCache(graph=g)
         tempOp.inputs["Input"].connect(op.outputs["Output"])
 
         op = tempOp

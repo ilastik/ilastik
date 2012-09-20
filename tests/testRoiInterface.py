@@ -32,9 +32,9 @@ class TestRoiInterdace(TestCase):
         self.testVol = vigra.VigraArray((200,200,200))
         self.testVol[:] = numpy.random.rand(200,200,200)
         self.graph = Graph()
-        self.op = OpArrayPiper(self.graph)
+        self.op = OpArrayPiper(graph=self.graph)
         self.op.inputs["Input"].setValue(self.testVol)
-        self.roiOp = OpRoiTest(self.graph)
+        self.roiOp = OpRoiTest(graph=self.graph)
         self.roiOp.inputs["input"].setValue(self.testVol)
 
     def test_roi(self):

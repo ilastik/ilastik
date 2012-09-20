@@ -251,9 +251,9 @@ class OpPixelFeaturesPresmoothed(Operator):
     def __init__(self,parent):
         Operator.__init__(self, parent, register=True)
         
-        self.multi = Op50ToMulti(self.graph)
-        self.stacker = OpMultiArrayStacker(self.graph)
-        self.smoother = OpGaussianSmoothing(self.graph)
+        self.multi = Op50ToMulti(graph=self.graph)
+        self.stacker = OpMultiArrayStacker(graph=self.graph)
+        self.smoother = OpGaussianSmoothing(graph=self.graph)
         self.destSigma = 1.0
         self.windowSize = 4
         self.operatorList = [OpGaussianSmoothing,OpLaplacianOfGaussian,\
@@ -291,7 +291,7 @@ class OpPixelFeaturesPresmoothed(Operator):
         for i in xrange(len(self.inMatrix)): #Cycle through operators == i
             for j in xrange(len(self.inMatrix[i])): #Cycle through sigmas == j
                 if self.inMatrix[i][j]:
-                    self.operatorMatrix[i][j] = operatorList[i](self.graph)
+                    self.operatorMatrix[i][j] = operatorList[i](graph=self.graph)
                     self.operatorMatrix[i][j].inputs["Input"].connect(self.inputs["Input"])
                     self.operatorMatrix[i][j].inputs["Sigma"].setValue(self.destSigma)
                     if scaleMultiplyList[i]:
@@ -359,7 +359,7 @@ if __name__ == "__main__":
     
     v = vigra.VigraArray((20,20,10))
     g = Graph()
-    op = OpHessianOfGaussianEigenvalues(g)
+    op = OpHessianOfGaussianEigenvalues(graph=g)
     op.inputs["Sigma"].setValue(2.0)
     op.inputs["Input"].setValue(v)
     print op.outputs["Output"]().wait().shape

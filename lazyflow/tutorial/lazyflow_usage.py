@@ -28,7 +28,7 @@ g = Graph()
 #    All operators must receive as first argument
 #    the graph to which they will belong
 
-reader = operators.OpImageReader(g)
+reader = operators.OpImageReader(graph=g)
 
 #    To configure the image reader operator we
 #    must provide a filename.
@@ -51,7 +51,7 @@ reader.inputs["Filename"].setValue("ostrich.jpg")
 #    its inputs to its outputs
 
 
-noOp = operators.OpArrayPiper(g)
+noOp = operators.OpArrayPiper(graph=g)
 
 noOp.inputs["Input"].connect(reader.outputs["Image"])
 
@@ -148,7 +148,7 @@ imshow(result2)
 #    on the output side is the OpSubRegion operator
 #    which selects a subwindow of its input
 
-subwin = operators.OpSubRegion(g)
+subwin = operators.OpSubRegion(graph=g)
 subwin.inputs["Input"].connect(reader.outputs["Image"])
 
 #    next we define the subwindow which it should select:

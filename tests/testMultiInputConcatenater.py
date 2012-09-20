@@ -17,7 +17,7 @@ class TestMultiInputConcatenater(object):
         array2[0,0] = 0.123
         array6[0,0] = 0.456
         
-        opIn0Provider = OperatorWrapper( OpArrayPiper(g) )
+        opIn0Provider = OperatorWrapper( OpArrayPiper(graph=g) )
         
         # We will provide 2 lists to concatenate
         # The first is provided by a separate operator which we set up in advance
@@ -26,7 +26,7 @@ class TestMultiInputConcatenater(object):
         opIn0Provider.Input[1].setValue( array2 )
         opIn0Provider.Input[2].setValue( array3 )
         
-        op = OpMultiInputConcatenater(g)
+        op = OpMultiInputConcatenater(graph=g)
         op.Inputs.resize(2) # Two lists to concatenate
         
         # Connect the first list

@@ -14,20 +14,20 @@ from tests.mockOperators import OpA, OpB, OpC
 
 g = Graph()
 
-source0 = OpArrayPiper(g)
+source0 = OpArrayPiper(graph=g)
 source0.inputs["Input"].setValue(numpy.zeros((200,200),dtype = numpy.uint8))
 
-source1 = OpArrayPiper(g)
+source1 = OpArrayPiper(graph=g)
 source1.inputs["Input"].setValue(numpy.zeros((375,50),dtype = numpy.uint8))
 
 
-opa = OpMultiArrayPiper(g)
-opb = OpMultiArrayPiper(g)
-opc = OpMultiArrayPiper(g)
+opa = OpMultiArrayPiper(graph=g)
+opb = OpMultiArrayPiper(graph=g)
+opc = OpMultiArrayPiper(graph=g)
 
-opd = OpA(g)
-ope = OpB(g)
-ope2 = OpB(g)
+opd = OpA(graph=g)
+ope = OpB(graph=g)
+ope2 = OpB(graph=g)
 
 opa.inputs["MultiInput"].resize(2)
 opa.inputs["MultiInput"].connect(source0.outputs["Output"])

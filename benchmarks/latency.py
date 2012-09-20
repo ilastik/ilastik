@@ -63,8 +63,8 @@ class C(object):
         return self.array[key]
 
 
-cache = operators.OpArrayCache(g)
-p = operators.OpArrayPiper(g)
+cache = operators.OpArrayCache(graph=g)
+p = operators.OpArrayPiper(graph=g)
 
 
 arr = numpy.ndarray((100,100,100,1),numpy.uint8)
@@ -72,7 +72,7 @@ arr = numpy.ndarray((100,100,100,1),numpy.uint8)
 cache.inputs["Input"].setValue(arr)
 p.Input.connect(cache.outputs["Output"])
 
-features = operators.OpPixelFeaturesPresmoothed(g)
+features = operators.OpPixelFeaturesPresmoothed(graph=g)
 matrix = numpy.ndarray((6,2), numpy.uint8)
 matrix[:] = 0
 matrix[0,:] = 1

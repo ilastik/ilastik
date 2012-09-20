@@ -22,7 +22,7 @@ def test_OpPixelFeatures__T1():
 
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
 
-    OpG = operators.OpPixelFeatures(g)
+    OpG = operators.OpPixelFeatures(graph=g)
 
     inputImage = vigra.impex.readImage("../../tests/ostrich.jpg")
 
@@ -109,7 +109,7 @@ def test_OpPixelFeatures__T2():
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
 
 
-    OpG = operators.OpPixelFeatures(g)
+    OpG = operators.OpPixelFeatures(graph=g)
 
     inputImage = vigra.impex.readImage("../../tests/ostrich.jpg")
 

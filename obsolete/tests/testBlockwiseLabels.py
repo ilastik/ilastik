@@ -39,8 +39,8 @@ def randomKey(shape):
 def test(shape, blockshape):
 
     g = Graph()
-    opLabel = OpSparseLabelArray(g)
-    opLabelBlocked = OpBlockedSparseLabelArray(g)
+    opLabel = OpSparseLabelArray(graph=g)
+    opLabelBlocked = OpBlockedSparseLabelArray(graph=g)
 
     opLabel.inputs["shape"].setValue(shape[:-1] + (1,))
     opLabelBlocked.inputs["shape"].setValue(shape[:-1] + (1,))
@@ -91,8 +91,8 @@ def test(shape, blockshape):
 
 def veryRandomTest(shape, blockshape):
     g = Graph()
-    opLabel = OpSparseLabelArray(g)
-    opLabelBlocked = OpBlockedSparseLabelArray(g)
+    opLabel = OpSparseLabelArray(graph=g)
+    opLabelBlocked = OpBlockedSparseLabelArray(graph=g)
 
     opLabel.inputs["shape"].setValue(shape[:-1] + (1,))
     opLabelBlocked.inputs["shape"].setValue(shape[:-1] + (1,))
@@ -135,7 +135,7 @@ def veryRandomTest(shape, blockshape):
 
 def testBlocks(shape, blockshape):
     g = Graph()
-    opLabelBlocked = OpBlockedSparseLabelArray(g)
+    opLabelBlocked = OpBlockedSparseLabelArray(graph=g)
     opLabelBlocked.inputs["shape"].setValue(shape[:-1] + (1,))
 
     opLabelBlocked.inputs["blockShape"].setValue(blockshape)

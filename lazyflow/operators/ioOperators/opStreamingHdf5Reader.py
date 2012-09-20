@@ -17,8 +17,11 @@ class OpStreamingHdf5Reader(Operator):
     # Output data
     OutputImage = OutputSlot()
 
-    def __init__(self, graph):
-        super(OpStreamingHdf5Reader, self).__init__(graph=graph)
+    def __init__(self, *args, **kwargs):
+        super(OpStreamingHdf5Reader, self).__init__(*args, **kwargs)
+
+    def __del__(self):
+        self.disconnect()
 
     def setupOutputs(self):
         # Read the dataset meta-info from the HDF5 dataset

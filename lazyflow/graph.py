@@ -12,8 +12,8 @@ from lazyflow.operators.operators import  OpArrayPiper
 
 g = lazyflow.graph.Graph()
 
-operator1 = OpArrayPiper(g)
-operator2 = OpArrayPiper(g)
+operator1 = OpArrayPiper(graph=g)
+operator2 = OpArrayPiper(graph=g)
 
 operator1.inputs["Input"].setValue(numpy.zeros((10,20,30), dtype = numpy.uint8))
 
@@ -1316,40 +1316,23 @@ class Operator(object):
             obj.execute = types.MethodType(getOutSlot_wrapper, obj)
         return obj
 
-    def __init__( self, parent = None, graph = None, register = True ):
-        with Tracer(self.traceLogger, msg=self.name):
-            # if no parent is given, assign the global graph instance as parent
-            if parent is None and graph is None:
-                graph = GlobalGraph()
-    
-    
-            self._initialized = False
-    
-            self._condition = threading.Condition()
-            self._executionCount = 0
-            self._settingUp = False
-    
-            # preserve compatability with old operators
-            # that give the graph as first argument to
-            # operators they instantiate
-            if parent is not None:
-                if isinstance(parent, Graph):
-                    self.graph = parent
-                    self._parent = None
-                else:
-                    self._parent = parent
-                    self.graph = self._parent.graph
-            if graph is not None:
-                if isinstance(graph, Graph):
-                    self.graph = graph
-                    self._parent = None
-                elif not  isinstance(graph, bool):
-                    self._parent = graph
-                    self.graph = self._parent.graph
-    
-            self._instantiate_slots()
+    def __init__( self, parent = None, graph = None ):
+        if not( parent is None or isinstance(parent, Operator) ):
+            assert False, "parent must be an operator!"
+        if graph is None:
+            assert parent is not None
+            graph=parent.graph
+        
+        self._parent = parent
+        self.graph = graph
+        
+        self._initialized = False
 
+        self._condition = threading.Condition()
+        self._executionCount = 0
+        self._settingUp = False
 
+        self._instantiate_slots()
 
     # continue initialization, when user overrides __init__
     def _after_init(self):

@@ -9,7 +9,7 @@ class testOpPixelFeaturesPreesmoothed(TestCase):
         self.shape = (10,)*5
         self.testVol = numpy.random.rand(*self.shape)
         self.graph = Graph()
-        self.operator = OpPixelFeaturesPresmoothed(self.graph)
+        self.operator = OpPixelFeaturesPresmoothed(graph=self.graph)
         self.matrix = None
         self.scales = None
         

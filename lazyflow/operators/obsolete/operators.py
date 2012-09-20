@@ -723,7 +723,7 @@ class OpArrayCache(OpArrayPiper):
 
         g = h5g["graph"].reconstructObject(patchBoard)
 
-        op = stringToClass(h5g.attrs["className"])(g)
+        op = stringToClass(h5g.attrs["className"])(graph=g)
 
         patchBoard[h5g.attrs["id"]] = op
         h5g.reconstructSubObjects(op, {

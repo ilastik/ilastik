@@ -13,11 +13,11 @@ from lazyflow.operators import *
 
 graph = graph.Graph()
 
-ostrichProvider = OpImageReader(graph)
+ostrichProvider = OpImageReader(graph=graph)
 ostrichProvider.inputs["Filename"].setValue("ostrich.jpg")
 
 
-ostrichWriter = OpImageWriter(graph)
+ostrichWriter = OpImageWriter(graph=graph)
 ostrichWriter.inputs["Filename"].setValue("ostrich_piped.jpg")
 ostrichWriter.inputs["Image"].connect(ostrichProvider.outputs["Image"])
 
@@ -27,7 +27,7 @@ operators = [OpGaussianSmoothing,OpOpening, OpClosing, OpHessianOfGaussian]
 print "Beginning vigra operator tests..."
 for op in operators:
 
-    operinstance = op(graph)
+    operinstance = op(graph=graph)
     operinstance.inputs["Input"].connect(ostrichProvider.outputs["Image"])
     operinstance.inputs["sigma"].setValue(float(10)) #connect(sigmaProvider)
     result = operinstance.outputs["Output"][:,:,:].allocate().wait()
@@ -41,14 +41,14 @@ for op in operators:
 
 
 
-g1 = OpHessianOfGaussian(graph)
+g1 = OpHessianOfGaussian(graph=graph)
 g1.inputs["Input"].connect(ostrichProvider.outputs["Image"])
 g1.inputs["sigma"].setValue(float(30)) #connect(sigmaProvider)
 
 print "JJJJJJJJJJ1", g1.outputs["Output"].meta.shape
 
 
-g4 = OpGaussianSmoothing(graph)
+g4 = OpGaussianSmoothing(graph=graph)
 g4.inputs["Input"].connect(ostrichProvider.outputs["Image"])
 g4.inputs["sigma"].setValue(float(30)) #connect(sigmaProvider)
 
@@ -57,7 +57,7 @@ g4.inputs["sigma"].setValue(float(30)) #connect(sigmaProvider)
 print "JJJJJJJJJJ4", g4.outputs["Output"].meta.shape
 
 
-g2 = Op5ToMulti(graph)
+g2 = Op5ToMulti(graph=graph)
 g2.inputs["Input0"].connect(ostrichProvider.outputs["Image"])
 g2.inputs["Input1"].connect(g4.outputs["Output"])
 
@@ -66,7 +66,7 @@ g2.outputs["Outputs"][0][:,:,:].allocate().wait()
 print "JJJJJJJJJJ1", g2.outputs["Outputs"][0].meta.shape
 print "JJJJJJJJJJ2", g2.outputs["Outputs"][1].meta.shape
 
-g3 = OpGaussianSmoothing(graph)
+g3 = OpGaussianSmoothing(graph=graph)
 g3.inputs["Input"].connect(g2.outputs["Outputs"])
 g3.inputs["sigma"].setValue(float(30)) #connect(sigmaProvider)
 

@@ -243,10 +243,10 @@ from lazyflow import operators
 # create graph
 g = Graph()
 # construct image reader
-reader = operators.OpImageReader(g)
+reader = operators.OpImageReader(graph=g)
 reader.inputs["Filename"].setValue("ostrich.jpg")
 # create Shifter_Operator with Graph-Objekt as argument
-shifter = OpArrayShifter1(g)
+shifter = OpArrayShifter1(graph=g)
 
 # connect Shifter-Input with Image Reader Output
 # because the Operator has only one Input Slot in this example,

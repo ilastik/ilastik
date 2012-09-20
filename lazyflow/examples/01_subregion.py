@@ -96,12 +96,12 @@ if __name__=="__main__":
     g = Graph(numThreads = 1, softMaxMem = 2000*1024**2)
 
     #create ImageReader-Operator
-    vimageReader = OpImageReader(g)
+    vimageReader = OpImageReader(graph=g)
     #read an image
     vimageReader.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/tests/ostrich.jpg")
 
     #create Subregion_Operator with Graph-Objekt as argument
-    subregion = OpSubregion(g)
+    subregion = OpSubregion(graph=g)
 
     #connect Subregion-Input with Image Reader Output
     subregion.inputs["Input"].connect(vimageReader.outputs["Image"])
@@ -120,7 +120,7 @@ if __name__=="__main__":
     subregion.outputs["Output"][:].allocate().wait()
 
     #create Image Writer
-    vimageWriter = OpImageWriter(g)
+    vimageWriter = OpImageWriter(graph=g)
     #set writing path
     vimageWriter.inputs["Filename"].setValue("/net/gorgonzola/storage/cripp/lazyflow/lazyflow/examples/subregion_result.jpg")
     #connect Writer-Input with Subregion Operator-Output

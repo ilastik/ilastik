@@ -13,7 +13,7 @@ def testThreshold():
     pred[5:, 5:, 3] = 0.8
 
     g = Graph()
-    opTh = operators.OpThreshold(g)
+    opTh = operators.OpThreshold(graph=g)
     opTh.inputs["Input"].setValue(pred)
     opTh.inputs["Threshold"].setValue(0.55)
 
@@ -40,7 +40,7 @@ def testCC():
     predva[7:8, 7:8] = 1
 
     g = Graph()
-    opCC = operators.OpConnectedComponents(g)
+    opCC = operators.OpConnectedComponents(graph=g)
     opCC.inputs["Input"].setValue(predva)
     opCC.inputs["Neighborhood"].setValue(8)
     opCC.inputs["Background"].setValue(0)

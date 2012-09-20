@@ -6,7 +6,7 @@ from lazyflow.operators import *
 
 g = Graph()
 
-opSparse = OpSparseLabelArray(g)
+opSparse = OpSparseLabelArray(graph=g)
 
 opSparse.inputs["shape"].setValue((30,40,50))
 opSparse.inputs["eraser"].setValue(1)

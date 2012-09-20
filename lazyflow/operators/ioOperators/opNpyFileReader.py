@@ -11,8 +11,8 @@ class OpNpyFileReader(Operator):
     FileName = InputSlot(stype='filestring')
     Output = OutputSlot()
 
-    def __init__(self, graph):
-        super(OpNpyFileReader, self).__init__(graph=graph)
+    def __init__(self, *args, **kwargs):
+        super(OpNpyFileReader, self).__init__(*args, **kwargs)
         self.rawVigraArray = None
 
     def setupOutputs(self):
