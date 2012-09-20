@@ -3,6 +3,7 @@
 import os, numpy, threading, time
 from collections import defaultdict
 
+from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QShortcut, QKeySequence
 from PyQt4.QtGui import QColor, QMenu
 from PyQt4.QtGui import QInputDialog, QMessageBox
@@ -734,6 +735,16 @@ class CarvingGui(LabelingGui):
             layer.visible = not layer.visible
             self.viewerControlWidget().layerWidget.setFocus()
         QShortcut(QKeySequence("s"), self, member=toggleSegmentation, ambiguousMember=toggleSegmentation)
+        
+        def updateLayerTimings():
+            s = "Layer timings:\n"
+            for l in self.layerstack:
+                s += "%s: %f sec.\n" % (l.name, l.averageTimePerTile)
+            self.labelingDrawerUi.layerTimings.setText(s)
+        t = QTimer(self)
+        t.setInterval(1*1000) # 10 seconds
+        t.start()
+        t.timeout.connect(updateLayerTimings)
         
     def handleEditorRightClick(self, currentImageIndex, position5d, globalWindowCoordinate):
         names = self._carvingApplet.topLevelOperator.doneObjectNamesForPosition(position5d[1:4], currentImageIndex)
