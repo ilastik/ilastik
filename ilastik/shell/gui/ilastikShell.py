@@ -533,16 +533,19 @@ class IlastikShell( QMainWindow ):
 
         # If the user didn't cancel
         if importedFilePath is not None and newProjectFilePath is not None:
-            newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
-            self.projectManager.importProject(importedFilePath, newProjectFile, newProjectFilePath)
+            self.importProject( importedFilePath, newProjectFilePath )
 
-            # Now that a project is loaded, the user is allowed to save
-            self._shellActions.saveProjectAction.setEnabled(True)
-            self._shellActions.saveProjectSnapshotAction.setEnabled(True)
+    def importProject(self, originalPath, newProjectFilePath):
+        newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
+        self.projectManager.importProject(originalPath, newProjectFile, newProjectFilePath)
 
-            # Enable all the applet controls
-            self.enableWorkflow = True
-            self.updateAppletControlStates()
+        # Now that a project is loaded, the user is allowed to save
+        self._shellActions.saveProjectAction.setEnabled(True)
+        self._shellActions.saveProjectSnapshotAction.setEnabled(True)
+
+        # Enable all the applet controls
+        self.enableWorkflow = True
+        self.updateAppletControlStates()
         
     def getProjectPathToOpen(self):
         """
