@@ -152,6 +152,12 @@ class OpStackLoader(Operator):
             oslot.meta.dtype = None
             oslot.meta.axistags = None
 
+    def propagateDirty(self, slot, subindex, roi):
+        assert slot == self.globstring
+        # Any change to the globstring means our entire output is dirty.
+        self.stack.setDirty(slice(None))
+
+
     def execute(self, slot, subindex, roi, result):
         i=0
         key = roi.toSlice()
@@ -232,6 +238,11 @@ class OpStackToH5Writer(Operator):
     def setupOutputs(self):
         self.WriteImage.meta.shape = (1,)
         self.WriteImage.meta.dtype = object
+    
+    def propagateDirty(self, slot, subindex, roi):
+        # Any change to our inputs means we're dirty
+        assert slot == self.GlobString or slot == self.hdf5Group or slot == self.hdf5Path
+        self.WriteImage.setDirty(slice(None))
 
     def execute(self, slot, subindex, roi, result):
         # Copy the data image-by-image
