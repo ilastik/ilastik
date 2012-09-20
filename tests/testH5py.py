@@ -12,7 +12,7 @@ class TestH5Py(object):
     """
 
     def test(self):
-        shape = (10,100,100,100)
+        shape = (2,100,100,6) # Make this bigger to try hammering hdf5 with bigger data accesses...
 
         filename1 = 'test1.h5'
         self.prepare_tstfile(shape, filename1)
