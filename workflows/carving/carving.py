@@ -799,7 +799,7 @@ class CarvingGui(LabelingGui):
 
 class CarvingApplet(LabelingApplet):
     def __init__(self, graph, projectFileGroupName, raw, carvingGraphFile):
-        super(CarvingApplet, self).__init__(graph=graph, projectFileGroupName)
+        super(CarvingApplet, self).__init__(graph, projectFileGroupName)
 
         self._raw = raw
        
