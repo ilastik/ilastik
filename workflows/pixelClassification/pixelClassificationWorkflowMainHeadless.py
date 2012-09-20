@@ -21,6 +21,7 @@ from pixelClassificationWorkflow import PixelClassificationWorkflow
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.applets.batchIo.opBatchIo import ExportFormat
 from ilastik.utility import PathComponents
+import ilastik.utility.globals
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ def getArgParser():
     parser.add_argument('--batch_output_suffix', default='_prediction', help='Suffix for batch output filenames (before extension).')
     parser.add_argument('--batch_output_dataset_name', default='/volume/prediction', help='HDF5 internal dataset path')
     parser.add_argument('--sys_tmp_dir', help='Override the default directory for temporary file storage.')
+    parser.add_argument('--assume_old_ilp_axes', default=False, help='When importing 0.5 project files, assume axes are in the wrong order and need to be transposed.')
     parser.add_argument('batch_inputs', nargs='*', help='List of input files to process. Supported filenames: .h5, .npy, or globstring for stacks (e.g. *.png)')
     return parser
 
@@ -74,6 +76,14 @@ def runWorkflow(parsed_args):
     # Instantiate 'shell'
     shell, workflow = startShellHeadless( PixelClassificationWorkflow )
     
+    if args.assume_old_ilp_axes:
+        # Special hack for Janelia: 
+        # In some old versions of 0.5, the data was stored in tyxzc order.
+        # We have no way of inspecting the data to determine this, so we allow 
+        #  users to specify that their ilp is very old using the 
+        #  assume_old_ilp_axes command-line flag
+        ilastik.utility.globals.ImportOptions.default_axis_order = 'tyxzc'
+
     # Load project (auto-import it if necessary)
     logger.info("Opening project: '" + args.project + "'")
     shell.openProjectPath(args.project)

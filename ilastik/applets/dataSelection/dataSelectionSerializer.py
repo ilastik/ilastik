@@ -5,6 +5,7 @@ from lazyflow.operators import OpH5WriterBigDataset
 import os
 import copy
 from ilastik.utility import bind, PathComponents
+import ilastik.utility.globals
 
 from ilastik.applets.base.appletSerializer import AppletSerializer
 
@@ -103,6 +104,8 @@ class DataSelectionSerializer( AppletSerializer ):
                 infoGroup.create_dataset('filePath', data=datasetInfo.filePath)
                 infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
                 infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
+                if datasetInfo.axisorder is not None:
+                    infoGroup.create_dataset('axisorder', data=datasetInfo.axisorder)
             
             self._dirty = False
 
@@ -166,6 +169,13 @@ class DataSelectionSerializer( AppletSerializer ):
                     datasetInfo.allowLabels = infoGroup['allowLabels'].value
                 except KeyError:
                     pass
+
+                # Deserialize the axisorder (if present)
+                try:
+                    datasetInfo.axisorder = infoGroup['axisorder'].value
+                except KeyError:
+                    if ilastik.utility.globals.ImportOptions.default_axis_order is not None:
+                        datasetInfo.axisorder = ilastik.utility.globals.ImportOptions.default_axis_order
                 
                 # If the data is supposed to be in the project,
                 #  check for it now.
@@ -248,6 +258,12 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
                 # Since we are importing from a 0.5 file, all datasets will be external 
                 #  to the project (pulled in from the old file as hdf5 datasets)
                 datasetInfo.location = DatasetInfo.Location.FileSystem
+                
+                # Some older versions of ilastik 0.5 stored the data in tzyxc order.
+                # Some power-users can enable a command-line flag that tells us to 
+                #  transpose the data back to txyzc order when we import the old project. 
+                if ilastik.utility.globals.ImportOptions.default_axis_order is not None:
+                    datasetInfo.axisorder = ilastik.utility.globals.ImportOptions.default_axis_order
                 
                 # Write to the 'private' members to avoid resetting the dataset id
                 totalDatasetPath = projectFilePath + '/DataSets/' + datasetDirName + '/data'

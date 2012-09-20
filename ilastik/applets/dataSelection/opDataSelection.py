@@ -18,6 +18,7 @@ class DatasetInfo(object):
         self._filePath = ""                 # The original path to the data (also used as a fallback if the data isn't in the project yet)
         self._datasetId = ""                # The name of the data within the project file (if it is stored locally)
         self.allowLabels = True             # Whether or not this dataset should be used for training a classifier.
+        self.axisorder = None
 
     @property
     def filePath(self):
@@ -75,8 +76,10 @@ class OpDataSelection(Operator):
         else:
             # Use a normal (filesystem) reader
             reader = OpInputDataReader(graph=self.graph)
-            reader.FilePath.setValue(datasetInfo.filePath)
+            if datasetInfo.axisorder is not None:
+                reader.DefaultAxisOrder.setValue( datasetInfo.axisorder )
             reader.WorkingDirectory.connect( self.WorkingDirectory )
+            reader.FilePath.setValue(datasetInfo.filePath)
             providerSlot = reader.Output        
         
         # Connect our external outputs to the internal operators we chose
