@@ -48,7 +48,7 @@ def getArgParser():
     parser.add_argument('--batch_output_suffix', default='_prediction', help='Suffix for batch output filenames (before extension).')
     parser.add_argument('--batch_output_dataset_name', default='/volume/prediction', help='HDF5 internal dataset path')
     parser.add_argument('--sys_tmp_dir', help='Override the default directory for temporary file storage.')
-    parser.add_argument('--assume_old_ilp_axes', default=False, help='When importing 0.5 project files, assume axes are in the wrong order and need to be transposed.')
+    parser.add_argument('--assume_old_ilp_axes', action='store_true', help='When importing 0.5 project files, assume axes are in the wrong order and need to be transposed.')
     parser.add_argument('batch_inputs', nargs='*', help='List of input files to process. Supported filenames: .h5, .npy, or globstring for stacks (e.g. *.png)')
     return parser
 
