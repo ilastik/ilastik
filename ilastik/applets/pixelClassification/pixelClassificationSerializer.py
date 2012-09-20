@@ -402,7 +402,8 @@ class Ilastik05ImportDeserializer(AppletSerializer):
                     # That's allowed, so we simply continue.
                     pass
                 else:
-                    self.mainOperator.LabelInputs[index][...] = dataset.value[...]
+                    slicing = [slice(0,s) for s in dataset.shape]
+                    self.mainOperator.LabelInputs[index][slicing] = dataset[...]
 
     def importClassifier(self, hdf5File):
         """
