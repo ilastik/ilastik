@@ -56,6 +56,13 @@
     </widget>
    </item>
    <item>
+    <widget class="QLabel" name="currentObjectLabel">
+     <property name="text">
+      <string>current object:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_6">
      <item>
       <widget class="QPushButton" name="segment">
