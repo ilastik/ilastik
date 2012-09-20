@@ -270,24 +270,24 @@ class OpPixelFeaturesPresmoothed(Operator):
                 fakeOp.inputs["sigma"].setValue(10)
                 self.multi.inputs["Input%02d" %(i*dimCol+j+1)].connect(fakeOp.outputs["Output"])
                 self.multi.inputs["Input%02d" %(i*dimCol+j+1)].disconnect()
-                self.stacker.outputs["Output"].meta.shape=()
-                return
-
-
-            index = len(self.source.outputs["Output"].meta.shape) - 1
-            self.stacker.inputs["AxisFlag"].setValue('c')
-            self.stacker.inputs["AxisIndex"].setValue(self.source.outputs["Output"].meta.axistags.index('c'))
-            self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
-
-            self.maxSigma = 0
-            #determine maximum sigma
-            for i in range(dimRow):
-                for j in range(dimCol):
-                    val=self.matrix[i,j]
-                    if val:
-                        self.maxSigma = max(self.scales[j],self.maxSigma)
-
-            self.featureOps = oparray
+                stackerShape = list(self.Input.meta.shape)
+                stackerShape[ self.Input.meta.axistags.index('c') ] = 0
+                self.stacker.Output.meta.shape = tuple(stackerShape)
+                self.stacker.Output.meta.axistags = self.Input.meta.axistags
+            else:
+                self.stacker.inputs["AxisFlag"].setValue('c')
+                self.stacker.inputs["AxisIndex"].setValue(self.source.outputs["Output"].meta.axistags.index('c'))
+                self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
+    
+                self.maxSigma = 0
+                #determine maximum sigma
+                for i in range(dimRow):
+                    for j in range(dimCol):
+                        val=self.matrix[i,j]
+                        if val:
+                            self.maxSigma = max(self.scales[j],self.maxSigma)
+    
+                self.featureOps = oparray
 
             # Output meta is a modified copy of the input meta
             self.Output.meta.assignFrom(self.Input.meta)
