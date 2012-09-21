@@ -31,8 +31,8 @@ class OpTracking(Operator):
 
     Output = OutputSlot()
 
-    def __init__( self, parent = None, graph = None, register = True ):
-        super(OpTracking, self).__init__(parent=parent,graph=graph,register=register)
+    def __init__( self, parent = None, graph = None ):
+        super(OpTracking, self).__init__(parent=parent,graph=graph)
         self.label2color = []
         self.last_timerange = ()
         self.last_x_range = ()
@@ -42,7 +42,7 @@ class OpTracking(Operator):
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta )
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         if slot is self.Output:
             result = self.LabelImage.get(roi).wait()
             

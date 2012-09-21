@@ -14,7 +14,7 @@ class TrackingApplet( Applet ):
         super(TrackingApplet, self).__init__( guiName )
 
         # Wrap the top-level operator, since the GUI supports multiple images
-        self._topLevelOperator = OperatorWrapper(OpTracking(graph=graph))
+        self._topLevelOperator = OperatorWrapper(OpTracking, graph=graph)
 
         self._gui = TrackingGui(self._topLevelOperator)
         

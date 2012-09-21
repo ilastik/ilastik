@@ -3,7 +3,7 @@ import h5py
 import vigra
 import vigra.analysis
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import Everything, SubRegion, List
 from lazyflow.operators.ioOperators.opStreamingHdf5Reader import OpStreamingHdf5Reader
@@ -18,7 +18,7 @@ class OpLabelImage( Operator ):
     def setupOutputs( self ):
         self.LabelImageWithBackground.meta.assignFrom( self.BinaryImage.meta )
 
-    def execute( self, slot, roi, destination ):
+    def execute( self, slot, subindex, roi, destination ):
         if slot is self.LabelImageWithBackground:
             a = self.BinaryImage.get(roi).wait()
             assert(a.shape[0] == 1)
@@ -32,17 +32,16 @@ class OpRegionFeatures( Operator ):
     LabelImage = InputSlot()
     Output = OutputSlot( stype=Opaque, rtype=List )
 
-    def __init__( self, parent=None, graph=None, register=True ):
+    def __init__( self, parent=None, graph=None ):
         super(OpRegionFeatures, self).__init__(parent=parent,
-                                              graph=graph,
-                                              register=register)
+                                              graph=graph)
         self._cache = {}
         self.fixed = True
 
     def setupOutputs( self ):
         pass
     
-    def execute( self, slot, roi, result ):
+    def execute( self, slot, subindex, roi, result ):
         if slot is self.Output:
             def extract( a ):
                 labels = numpy.asarray(a, dtype=numpy.uint32)
@@ -81,10 +80,9 @@ class OpRegionCenters( Operator ):
     Output = OutputSlot( stype=Opaque, rtype=List )
 
     
-    def __init__( self, parent=None, graph=None, register=True ):
+    def __init__( self, parent=None, graph=None ):
         super(OpRegionCenters, self).__init__(parent=parent,
-                                              graph=graph,
-                                              register=register)
+                                              graph=graph)
         self._cache = {}
         self.fixed = True
 
@@ -92,7 +90,7 @@ class OpRegionCenters( Operator ):
         self.Output.meta.shape = self.LabelImage.meta.shape
         self.Output.meta.dtype = self.LabelImage.meta.dtype
     
-    def execute( self, slot, roi, result ):
+    def execute( self, slot, subindex, roi, result ):
         if slot is self.Output:
             def extract( a ):
                 labels = numpy.asarray(a, dtype=numpy.uint32)
@@ -135,8 +133,8 @@ class OpObjectExtraction( Operator ):
     RegionCenters = OutputSlot( stype=Opaque, rtype=List )
     RegionFeatures = OutputSlot( stype=Opaque, rtype=List )
 
-    def __init__( self, parent = None, graph = None, register = True ):
-        super(OpObjectExtraction, self).__init__(parent=parent,graph=graph,register=register)
+    def __init__( self, parent = None, graph = None ):
+        super(OpObjectExtraction, self).__init__(parent=parent,graph=graph)
 
         self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
         self._reg_cents = {}
@@ -163,7 +161,7 @@ class OpObjectExtraction( Operator ):
         
         self.ObjectCenterImage.meta.assignFrom(self.BinaryImage.meta)
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         if slot is self.ObjectCenterImage:
             return self._execute_ObjectCenterImage( roi, result )
         if slot is self.LabelImage:
