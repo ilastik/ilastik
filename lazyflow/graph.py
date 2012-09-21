@@ -1640,6 +1640,11 @@ class OperatorWrapper(Operator):
         # Base class init
         super(OperatorWrapper, self).__init__(parent=parent, graph=graph)
 
+        for s in self.inputs.values():
+            assert len(s) == 0
+        for s in self.outputs.values():
+            assert len(s) == 0
+
     def __getitem__(self, key):
         return self.innerOperators[key]
 
