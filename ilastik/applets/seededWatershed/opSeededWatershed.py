@@ -2,7 +2,7 @@ import numpy, vigra, h5py
 from lazyflow.operators import OpPixelFeaturesPresmoothed, OpBlockedArrayCache, OpArrayPiper, Op5ToMulti, OpBlockedSparseLabelArray, OpArrayCache, \
                                OpTrainRandomForestBlocked, OpPredictRandomForest, OpSlicedBlockedArrayCache
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from threading import Lock
 import pyximport; pyximport.install()
 from cylemon.segmentation import GCSegmentor, MSTSegmentorKruskal, MSTSegmentor, PerturbMSTSegmentor
@@ -130,7 +130,7 @@ class OpSegmentor(Operator):
         self._dirty = True
 
 
-  def execute(self, slot, roi, result):
+  def execute(self, slot, subindex, roi, result):
     key = roi.toSlice()[1:-1]
     if slot == self.raw:
       if self.seg is not None:
@@ -212,7 +212,7 @@ class OpSegmentor(Operator):
       result[0,:,:,:,0] = res[:]
     return result
   
-  def propagateDirty(self, slot, roi):
+  def propagateDirty(self, slot, subindex, roi):
     if slot in [self.image, self.sigma, self.border_indicator]:
       print "  ======================= setting segmentor to dirty"
       self._dirty = True
@@ -230,28 +230,6 @@ class OpSegmentor(Operator):
     ufg = numpy.where(self.seg.segmentation.lut == 1, self.seg.uncertainty.lut, 0)
     index = numpy.argmax(ufg)
     return self.seg.regionCenter[index]
-
-
-class OpShapeReader(Operator):
-    """
-    This operator outputs the shape of its input image, except the number of channels is set to 1.
-    """
-    Input = InputSlot()
-    OutputShape = OutputSlot(stype='shapetuple')
-    
-    def setupOutputs(self):
-        self.OutputShape.meta.shape = (1,)
-        self.OutputShape.meta.axistags = 'shapetuple'
-        self.OutputShape.meta.dtype = tuple
-    
-    def execute(self, slot, roi, result):
-        # Our 'result' is simply the shape of our input, but with only one channel
-        channelIndex = self.Input.meta.axistags.index('c')
-        shapeList = list(self.Input.meta.shape)
-        shapeList[channelIndex] = 1
-        result[0] = tuple(shapeList)
-
-
 
 
 

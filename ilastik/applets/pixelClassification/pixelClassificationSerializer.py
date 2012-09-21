@@ -187,7 +187,7 @@ class PixelClassificationSerializer(AppletSerializer):
                             progress = [startProgress]
         
                             # Use a big dataset writer to do this in chunks
-                            opWriter = OpH5WriterBigDataset(self.mainOperator.graph)
+                            opWriter = OpH5WriterBigDataset(graph=self.mainOperator.graph)
                             opWriter.hdf5File.setValue( predictionDir )
                             opWriter.hdf5Path.setValue( datasetName )
                             opWriter.Image.connect( self.mainOperator.PredictionProbabilities[imageIndex] )
@@ -402,7 +402,8 @@ class Ilastik05ImportDeserializer(AppletSerializer):
                     # That's allowed, so we simply continue.
                     pass
                 else:
-                    self.mainOperator.LabelInputs[index][...] = dataset.value[...]
+                    slicing = [slice(0,s) for s in dataset.shape]
+                    self.mainOperator.LabelInputs[index][slicing] = dataset[...]
 
     def importClassifier(self, hdf5File):
         """

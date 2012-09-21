@@ -1,5 +1,5 @@
 import numpy
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpPrecomputedInput, OpPixelOperator
@@ -13,29 +13,29 @@ class OpPixelClassification( Operator ):
     
     # Graph inputs
     
-    InputImages = MultiInputSlot() # Original input data.  Used for display only.
+    InputImages = InputSlot(level=1) # Original input data.  Used for display only.
 
-    LabelsAllowedFlags = MultiInputSlot(stype='bool') # Specifies which images are permitted to be labeled 
-    LabelInputs = MultiInputSlot(optional = True) # Input for providing label data from an external source
+    LabelsAllowedFlags = InputSlot(stype='bool', level=1) # Specifies which images are permitted to be labeled 
+    LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
 
-    FeatureImages = MultiInputSlot() # Computed feature images (each channel is a different feature)
-    CachedFeatureImages = MultiInputSlot() # Cached feature data.
+    FeatureImages = InputSlot(level=1) # Computed feature images (each channel is a different feature)
+    CachedFeatureImages = InputSlot(level=1) # Cached feature data.
 
     FreezePredictions = InputSlot(stype='bool')
 
-    PredictionsFromDisk = MultiInputSlot(optional=True)
+    PredictionsFromDisk = InputSlot(optional=True, level=1)
 
-    PredictionProbabilities = MultiOutputSlot() # Classification predictions
+    PredictionProbabilities = OutputSlot(level=1) # Classification predictions
 
-    PredictionProbabilityChannels = MultiOutputSlot(level=2) # Classification predictions, enumerated by channel
-    SegmentationChannels = MultiOutputSlot(level=2) # Binary image of the final selections.
+    PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
+    SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
     
     MaxLabelValue = OutputSlot()
-    LabelImages = MultiOutputSlot() # Labels from the user
-    NonzeroLabelBlocks = MultiOutputSlot() # A list if slices that contain non-zero label values
+    LabelImages = OutputSlot(level=1) # Labels from the user
+    NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
     Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
 
-    CachedPredictionProbabilities = MultiOutputSlot() # Classification predictions (via a cache)
+    CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via a cache)
 
     def __init__( self, graph ):
         """
@@ -47,15 +47,15 @@ class OpPixelClassification( Operator ):
         
         # Create internal operators
         # Explicitly wrapped:
-        self.opInputShapeReader = OperatorWrapper( OpShapeReader(graph=self.graph) )
-        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray( graph=self.graph ) )
-        self.predict = OperatorWrapper( OpPredictRandomForest( graph=self.graph ) )
-        self.prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
-        self.prediction_cache.Input.resize(0)
-        self.prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
-        self.prediction_cache_gui.Input.resize(0)
-        self.precomputed_predictions = OperatorWrapper( OpPrecomputedInput(graph=self.graph) )
-        self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput(graph=self.graph) )
+        self.opInputShapeReader = OperatorWrapper( OpShapeReader, parent=self, graph=self.graph )
+        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray, parent=self, graph=self.graph )
+        self.predict = OperatorWrapper( OpPredictRandomForest, parent=self, graph=self.graph )
+        self.prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
+        assert len(self.prediction_cache.Input) == 0
+        self.prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
+        assert len(self.prediction_cache_gui.Input) == 0
+        self.precomputed_predictions = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph )
+        self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph )
 
         # NOT wrapped
         self.opMaxLabel = OpMaxValue(graph=self.graph)
@@ -137,16 +137,16 @@ class OpPixelClassification( Operator ):
         assert self.opTrain.Images.operator == self.opTrain
         
         # Also provide each prediction channel as a separate layer (for the GUI)
-        self.opPredictionSlicer = OperatorWrapper( OpMultiArraySlicer2(parent=self) )
+        self.opPredictionSlicer = OperatorWrapper( OpMultiArraySlicer2, parent=self, graph=self.graph )
         self.opPredictionSlicer.Input.connect( self.precomputed_predictions_gui.Output )
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
         
-        self.opSegementor = OperatorWrapper( OpPixelOperator( graph=self.graph ) )
+        self.opSegementor = OperatorWrapper( OpPixelOperator, parent=self, graph=self.graph )
         self.opSegementor.Input.connect( self.precomputed_predictions_gui.Output )
         self.opSegementor.Function.setValue( lambda x: numpy.where(x < 0.5, 0, 1) )
 
-        self.opSegmentationSlicer = OperatorWrapper( OpMultiArraySlicer2(parent=self) )
+        self.opSegmentationSlicer = OperatorWrapper( OpMultiArraySlicer2, parent=self, graph=self.graph )
         self.opSegmentationSlicer.Input.connect( self.opSegementor.Output )
         self.opSegmentationSlicer.AxisFlag.setValue('c')
         self.SegmentationChannels.connect( self.opSegmentationSlicer.Slices )
@@ -192,19 +192,19 @@ class OpPixelClassification( Operator ):
                        'z' : (128,256),
                        'y' : (128,256),
                        'x' : (1,1),
-                       'c' : (2,2) }
+                       'c' : (100, 100) }
 
         blockDimsY = { 't' : (1,1),
                        'z' : (128,256),
                        'y' : (1,1),
                        'x' : (128,256),
-                       'c' : (2,2) }
+                       'c' : (100,100) }
 
         blockDimsZ = { 't' : (1,1),
                        'z' : (1,1),
                        'y' : (128,256),
                        'x' : (128,256),
-                       'c' : (2,2) }
+                       'c' : (100,100) }
 
         innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
         outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
@@ -221,12 +221,12 @@ class OpPixelClassification( Operator ):
         self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
-    def notifyDirty(self, inputSlot, key):
-        # Nothing to do here: All outputs are directly connected to 
-        #  internal operators that handle their own dirty propagation.
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs that support __setitem__
+        #   are directly connected to internal operators.
         pass
 
-    def notifySubSlotDirty(self, slots, indexes, key):
+    def propagateDirty(self, slot, subindex, roi):
         # Nothing to do here: All outputs are directly connected to 
         #  internal operators that handle their own dirty propagation.
         pass
@@ -255,10 +255,10 @@ class OpShapeReader(Operator):
             pass
         self.OutputShape.setValue( tuple(shapeList) )
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass
 
@@ -266,7 +266,7 @@ class OpMaxValue(Operator):
     """
     Accepts a list of non-array values as an input and outputs the max of the list.
     """
-    Inputs = MultiInputSlot() # A list of non-array values
+    Inputs = InputSlot(level=1) # A list of non-array values
     Output = OutputSlot()
     
     def __init__(self, *args, **kwargs):
@@ -279,11 +279,11 @@ class OpMaxValue(Operator):
         self.updateOutput()
         self.Output.setValue(self._output)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         result[0] = self._output
         return result
 
-    def notifySubSlotDirty(self, slots, indexes, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         self.updateOutput()
         self.Output.setValue(self._output)
 

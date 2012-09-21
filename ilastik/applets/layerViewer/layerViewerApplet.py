@@ -9,7 +9,7 @@ class LayerViewerApplet( Applet ):
     def __init__( self, graph ):
         super(LayerViewerApplet, self).__init__("layer Viewer")
 
-        self._topLevelOperator = OperatorWrapper( OpLayerViewer(graph=graph), promotedSlotNames=set(['RawInput']) )
+        self._topLevelOperator = OperatorWrapper( OpLayerViewer, graph=graph, promotedSlotNames=set(['RawInput']) )
         self._preferencesManager = None
         self._serializableItems = []
         self._gui = None

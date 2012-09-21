@@ -22,7 +22,7 @@ class OpThresholdMasking(Operator):
         self.Output.meta.assignFrom( self.InputImage.meta )
         self.InvertedOutput.meta.assignFrom( self.InputImage.meta )
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         raw = self.InputImage[key].wait()
         mask = numpy.logical_and(self.MinValue.value <= raw, raw <= self.MaxValue.value)
@@ -32,10 +32,12 @@ class OpThresholdMasking(Operator):
         if slot.name == 'InvertedOutput':
             result[...] = numpy.logical_not(mask) * raw
 
-    def propagateDirty(self, inputSlot, roi):
-        if inputSlot.name == "InputImage":
+    def propagateDirty(self, slot, subindex, roi):
+        if slot.name == "InputImage":
             self.Output.setDirty(roi)
             self.InvertedOutput.setDirty(roi)
-        if inputSlot.name == "MinValue" or inputSlot.name == "MaxValue":
+        elif slot.name == "MinValue" or slot.name == "MaxValue":
             self.Output.setDirty( slice(None) )
             self.InvertedOutput.setDirty( slice(None) )
+        else:
+            assert False, "Unknown dirty input slot"

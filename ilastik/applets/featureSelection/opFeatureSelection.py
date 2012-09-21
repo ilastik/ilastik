@@ -1,4 +1,4 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiOutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 from lazyflow.operators import OpPixelFeaturesPresmoothed, OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 
@@ -27,7 +27,7 @@ class OpFeatureSelection(Operator):
     OutputImage = OutputSlot()
     CachedOutputImage = OutputSlot()
 
-    FeatureLayers = MultiOutputSlot() # For the GUI, we also provide each feature as a separate slot in this multislot
+    FeatureLayers = OutputSlot(level=1) # For the GUI, we also provide each feature as a separate slot in this multislot
     
     def __init__(self, *args, **kwargs):
         super(OpFeatureSelection, self).__init__(*args, **kwargs)
@@ -49,7 +49,7 @@ class OpFeatureSelection(Operator):
         
         # Connect our external outputs to our internal operators
         self.OutputImage.connect( self.opPixelFeatures.Output )
-        self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )        
+        self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )
         self.FeatureLayers.connect( self.opPixelFeatures.Features )
 
     def setupOutputs(self):        
@@ -88,7 +88,7 @@ class OpFeatureSelection(Operator):
         self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators
         pass
 

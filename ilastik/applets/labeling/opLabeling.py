@@ -1,4 +1,4 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot, OperatorWrapper
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 
 from lazyflow.operators import OpBlockedSparseLabelArray
 
@@ -11,16 +11,16 @@ class OpLabeling( Operator ):
     
     # Graph inputs
     
-    InputImages = MultiInputSlot() # Original input data.
-    LabelsAllowedFlags = MultiInputSlot(stype='bool') # Specifies which images are permitted to be labeled 
+    InputImages = InputSlot(level=1) # Original input data.
+    LabelsAllowedFlags = InputSlot(stype='bool', level=1) # Specifies which images are permitted to be labeled 
 
-    LabelInputs = MultiInputSlot(optional = True) # Input for providing label data from an external source
+    LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
     LabelEraserValue = InputSlot()
     LabelDelete = InputSlot()
 
     MaxLabelValue = OutputSlot()
-    LabelImages = MultiOutputSlot() # Labels from the user
-    NonzeroLabelBlocks = MultiOutputSlot() # A list if slices that contain non-zero label values
+    LabelImages = OutputSlot(level=1) # Labels from the user
+    NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
 
     def __init__( self, *args, **kwargs ):
         """
@@ -29,8 +29,8 @@ class OpLabeling( Operator ):
         super(OpLabeling, self).__init__( *args, **kwargs )
 
         # Create internal operators
-        self.opInputShapeReader = OperatorWrapper( OpShapeReader(graph=self.graph) )
-        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray( graph=self.graph ) )
+        self.opInputShapeReader = OperatorWrapper( OpShapeReader, parent=self, graph=self.graph )
+        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray, parent=self, graph=self.graph )
 
         # NOT wrapped
         self.opMaxLabel = OpMaxValue(graph=self.graph)
@@ -98,14 +98,14 @@ class OpLabeling( Operator ):
         blockShape = tuple( blockDims[k] for k in axisOrder )
         self.opLabelArray.blockShape.setValue( blockShape )
 
-    def notifyDirty(self, inputSlot, key):
+    def propagateDirty(self, slot, subindex, roi):
         # Nothing to do here: All outputs are directly connected to 
         #  internal operators that handle their own dirty propagation.
         pass
 
-    def notifySubSlotDirty(self, slots, indexes, key):
-        # Nothing to do here: All outputs are directly connected to 
-        #  internal operators that handle their own dirty propagation.
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs that support __setitem__
+        #   are directly connected to internal operators.
         pass
 
 class OpShapeReader(Operator):
@@ -132,10 +132,10 @@ class OpShapeReader(Operator):
             pass
         self.OutputShape.setValue( tuple(shapeList) )
     
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass
 
@@ -143,7 +143,7 @@ class OpMaxValue(Operator):
     """
     Accepts a list of non-array values as an input and outputs the max of the list.
     """
-    Inputs = MultiInputSlot() # A list of non-array values
+    Inputs = InputSlot(level=1) # A list of non-array values
     Output = OutputSlot()
     
     def __init__(self, *args, **kwargs):
@@ -156,11 +156,11 @@ class OpMaxValue(Operator):
         self.updateOutput()
         self.Output.setValue(self._output)
 
-    def execute(self, slot, roi, result):
+    def execute(self, slot, subindex, roi, result):
         result[0] = self._output
         return result
 
-    def notifySubSlotDirty(self, slots, indexes, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         self.updateOutput()
         self.Output.setValue(self._output)
 

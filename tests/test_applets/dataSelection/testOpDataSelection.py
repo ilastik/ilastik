@@ -45,7 +45,7 @@ class TestOpDataSelection_Basic():
     
     def testBasic(self):
         graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper( OpDataSelection(graph=graph) )
+        reader = OperatorWrapper( OpDataSelection, graph=graph )
         reader.ProjectFile.setValue(self.projectFile)
         reader.WorkingDirectory.setValue( os.getcwd() )
         reader.ProjectDataGroup.setValue( 'DataSelection/local_data' )
@@ -203,7 +203,7 @@ class TestOpDataSelection_Basic():
 #                                                                          + 0.114*(255-self.pngData[x,y,2]) ))
     def testProjectLocalData(self):
         graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper( OpDataSelection(graph=graph) )
+        reader = OperatorWrapper( OpDataSelection, graph=graph )
         reader.ProjectFile.setValue(self.projectFile)
         reader.WorkingDirectory.setValue( os.getcwd() )
         reader.ProjectDataGroup.setValue( 'DataSelection/local_data' )

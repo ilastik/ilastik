@@ -44,9 +44,9 @@ def debug_with_new(shell, workflow):
 
 
 if __name__ == "__main__":
-    #startShellGui( PixelClassificationWithVigraWatershedWorkflow )
+    startShellGui( PixelClassificationWithVigraWatershedWorkflow )
     #startShellGui( PixelClassificationWithVigraWatershedWorkflow, debug_with_new )
-    startShellGui( PixelClassificationWithVigraWatershedWorkflow, debug_with_existing )
+    #startShellGui( PixelClassificationWithVigraWatershedWorkflow, debug_with_existing )
 
 
 

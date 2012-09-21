@@ -1,4 +1,4 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot, MultiOutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpMultiArrayMerger, OpPixelOperator
 
@@ -31,7 +31,7 @@ class OpVigraWatershedViewer(Operator):
     ColoredPixels = OutputSlot()    # Colored watershed labels (for gui display)
     ColoredSeeds = OutputSlot()     # Seeds to the watershed (for gui display)
     
-    SelectedInputChannels = MultiOutputSlot(level=1)
+    SelectedInputChannels = OutputSlot(level=1)
 
     def __init__(self, *args, **kwargs):
         super(OpVigraWatershedViewer, self).__init__(*args, **kwargs)
@@ -173,7 +173,7 @@ class OpVigraWatershedViewer(Operator):
             self.opWatershed.SeedImage.disconnect()
             self.opThreshold.Function.disconnect()
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         # All outputs are directly connected to internal operators
         pass
 

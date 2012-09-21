@@ -2,7 +2,8 @@ import os
 import numpy
 import h5py
 import vigra
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, MultiInputSlot, MultiOutputSlot
+from lazyflow.roi import roiToSlice
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache
 from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
 from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
@@ -18,16 +19,16 @@ class OpMockPixelClassifier(Operator):
     """
     name = "OpMockPixelClassifier"
 
-    LabelInputs = MultiInputSlot(optional = True) # Input for providing label data from an external source
+    LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
 
-    PredictionsFromDisk = MultiInputSlot( optional = True ) # TODO: Actually use this input for something
+    PredictionsFromDisk = InputSlot( optional = True, level=1 ) # TODO: Actually use this input for something
 
-    NonzeroLabelBlocks = MultiOutputSlot(stype='object') # A list if slices that contain non-zero label values
-    LabelImages = MultiOutputSlot() # Labels from the user
+    NonzeroLabelBlocks = OutputSlot(level=1, stype='object') # A list if slices that contain non-zero label values
+    LabelImages = OutputSlot(level=1) # Labels from the user
     
     Classifier = OutputSlot(stype='object')
     
-    PredictionProbabilities = MultiOutputSlot()
+    PredictionProbabilities = OutputSlot(level=1)
     
     FreezePredictions = InputSlot()
     
@@ -79,19 +80,19 @@ class OpMockPixelClassifier(Operator):
         
         self.Classifier.connect( self.opClassifier.Classifier )
         
-    def setSubInSlot(self, multislot, slot, index, key, value):
+    def setInSlot(self, slot, subindex, roi, value):
+        key = roi.toSlice()
         assert slot.name == "LabelInputs"
-        self._data[index][key] = value
-        self.LabelImages[index].setDirty(key)
+        self._data[subindex[0]][key] = value
+        self.LabelImages[subindex[0]].setDirty(key)
     
-    def getSubOutSlot(self, slots, indexes, key, result):
-        slot = slots[0]
-        index = indexes[0]
+    def execute(self, slot, subindex, roi, result):
+        key = roiToSlice(roi.start, roi.stop)
+        index = subindex[0]
         if slot.name == "NonzeroLabelBlocks":
             # Split into 10 chunks
             blocks = []
             slicing = [slice(0,max) for max in self.dataShape]
-            chunks = numpy.split(self._data[index], 10, 2)
             for i in range(10):
                 slicing[2] = slice(i*10, (i+1)*10)
                 if not (self._data[index][slicing] == 0).all():
@@ -103,7 +104,7 @@ class OpMockPixelClassifier(Operator):
         if slot.name == "PredictionProbabilities":
             result[...] = self.predictionData[key]
     
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         pass
     
 class TestOpMockPixelClassifier(object):
@@ -122,8 +123,8 @@ class TestOpMockPixelClassifier(object):
         labeldata[:,:,50:60,:] = 8
 
         # Slice them into our operator
-        op.LabelInputs[0][:,:,0:5,:,:] = labeldata[:,:,0:5,:,:]
-        op.LabelInputs[0][:,:,50:60,:,:] = labeldata[:,:,50:60,:,:]
+        op.LabelInputs[0][0:1, 0:10, 0:5,   0:100, 0:1] = labeldata[:,:,0:5,:,:]
+        op.LabelInputs[0][0:1, 0:10, 50:60, 0:100, 0:1] = labeldata[:,:,50:60,:,:]
 
         assert (op._data[0] == labeldata).all()
 
@@ -165,8 +166,8 @@ class TestPixelClassificationSerializer(object):
             labeldata[:,:,50:60,:] = 2
     
             # Slice them into our operator
-            op.LabelInputs[0][:,:,0:5,:,:] = labeldata[:,:,0:5,:,:]
-            op.LabelInputs[0][:,:,50:60,:,:] = labeldata[:,:,50:60,:,:]
+            op.LabelInputs[0][0:1, 0:10, 0:5,   0:100, 0:1] = labeldata[:,:,0:5,:,:]
+            op.LabelInputs[0][0:1, 0:10, 50:60, 0:100, 0:1] = labeldata[:,:,50:60,:,:]
             
             # Simulate the predictions changing by setting the prediction output dirty
             op.PredictionProbabilities[0].setDirty(slice(None))

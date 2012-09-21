@@ -488,9 +488,10 @@ class LabelingGui(LayerViewerGui):
         return labellayer
 
     @traceLogged(traceLogger)
-    def createLabelLayer(self, currentImageIndex):
+    def createLabelLayer(self, currentImageIndex, direct=False):
         """
         Return a colortable layer that displays the label slot data, along with its associated label source.
+        direct: whether this layer is drawn synchronously by volumina
         """
         labelOutput = self._labelingSlots.labelOutput[currentImageIndex]
         if not labelOutput.ready():
@@ -501,7 +502,7 @@ class LabelingGui(LayerViewerGui):
             labelsrc = LazyflowSinkSource( self._labelingSlots.labelOutput[currentImageIndex],
                                            self._labelingSlots.labelInput[currentImageIndex])
         
-            labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16 )
+            labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16, direct=direct )
             labellayer.name = "Labels"
             labellayer.ref_object = None
             

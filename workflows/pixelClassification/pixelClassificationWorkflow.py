@@ -64,11 +64,11 @@ class PixelClassificationWorkflow(Workflow):
         opBatchResults = self.batchResultsApplet.topLevelOperator
         
         ## Create additional batch workflow operators
-        opBatchFeatures = OperatorWrapper( OpFeatureSelection(graph=graph), promotedSlotNames=['InputImage'] )
+        opBatchFeatures = OperatorWrapper( OpFeatureSelection, graph=graph, promotedSlotNames=['InputImage'] )
         opBatchFeatures.name = "opBatchFeatures"
-        opBatchPredictor = OperatorWrapper( OpPredictRandomForest(graph=graph), promotedSlotNames=['Image'])
+        opBatchPredictor = OperatorWrapper( OpPredictRandomForest, graph=graph, promotedSlotNames=['Image'])
         opBatchPredictor.name = "opBatchPredictor"
-        opSelectBatchDatasetPath = OperatorWrapper( OpAttributeSelector(graph=graph) )
+        opSelectBatchDatasetPath = OperatorWrapper( OpAttributeSelector, graph=graph )
         
         ## Connect Operators ## 
         
@@ -102,7 +102,7 @@ class PixelClassificationWorkflow(Workflow):
 
         # The shell needs a slot from which he can read the list of image names to switch between.
         # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
-        opSelectFilename = OperatorWrapper( OpAttributeSelector(graph=graph) )
+        opSelectFilename = OperatorWrapper( OpAttributeSelector, graph=graph )
         opSelectFilename.InputObject.connect( opData.Dataset )
         opSelectFilename.AttributeName.setValue( 'filePath' )
 

@@ -79,7 +79,7 @@ class LayerViewerGui(QMainWindow):
             if slot.level == 1:
                 # The user gave us a slot that is indexed as slot[image]
                 # Wrap the operator so it has the right level.  Indexed as: slot[image][0]
-                opPromoteInput = OperatorWrapper( Op1ToMulti(graph=slot.operator.graph) )
+                opPromoteInput = OperatorWrapper( Op1ToMulti, graph=slot.operator.graph )
                 opPromoteInput.Input.connect(slot)
                 slot = opPromoteInput.Outputs
 
@@ -221,7 +221,7 @@ class LayerViewerGui(QMainWindow):
         if numChannels == 1:
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
             source = LazyflowSource(slot)
-            normSource = NormalizingSource( source, bounds='autoMinMax' )
+            normSource = NormalizingSource( source, bounds=normalize )
             return GrayscaleLayer(normSource)
 
         assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha)
@@ -537,9 +537,12 @@ class LayerViewerGui(QMainWindow):
         dataTags = None
         for layer in self.layerstack:
             for datasource in layer.datasources:
+                if isinstance( datasource, NormalizingSource ):
+                    datasource = datasource._rawSource
                 if isinstance(datasource, LazyflowSource):
                     dataTags = datasource.dataSlot.meta.axistags
-                    break
+                    if dataTags is not None:
+                        break
 
         assert dataTags is not None, "Can't convert mouse click coordinates from volumina-5d: Could not find a lazyflow data source in any layer."
         position = ()

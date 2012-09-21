@@ -41,6 +41,7 @@ class PixelClassificationGui(LabelingGui):
 
         # Ensure that we are NOT in interactive mode
         self.labelingDrawerUi.checkInteractive.setChecked(False)
+        self.labelingDrawerUi.checkShowPredictions.setChecked(False)
 
     ###########################################
     ###########################################
