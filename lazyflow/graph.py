@@ -1287,25 +1287,8 @@ class Operator(object):
         # before __init__
         ##
         obj = super(Operator, cls).__new__(cls)
-        obj.graph = None
-        obj.operator = None
         obj.inputs = InputDict(obj)
-        obj.outputs = OutputDict(obj)
-        obj.register = True
-        
-        # Save the arguments we were initialized with so we can 
-        #  create sibling operators if necessary (e.g. in an OperatorWrapper)
-        obj.initializationArgs = (args, kwargs)
-
-        ##
-        # wrap old api
-        ##
-        if hasattr(obj, "getOutSlot"):
-            warnings.warn( "Operator '{}' defines getOutSlot(), which is deprecated.  Should define execute() instead.".format(obj.name) )
-            def getOutSlot_wrapper( self, slot, roi, result ):
-                pslice = roiToSlice(roi.start,roi.stop)
-                return self.getOutSlot(slot,pslice,result)
-            obj.execute = types.MethodType(getOutSlot_wrapper, obj)
+        obj.outputs = OutputDict(obj)        
         return obj
 
     def __init__( self, parent = None, graph = None ):
