@@ -1676,27 +1676,10 @@ class OperatorWrapper(Operator):
             op.disconnect()
             length = len(self.innerOperators)
 
-
-    def _ensureInputSize(self, numMax = 0, event = None):
-        with Tracer(self.traceLogger, msg=self.name):
-            newInnerOps = []
-            maxLen = numMax
-            for name, islot in self.inputs.items():
-                maxLen = max(islot._requiredLength(), maxLen)
-    
-            while maxLen > len(self.innerOperators):
-                self._insertInnerOperator(len(self.innerOperators), maxLen)
-    
-            while maxLen < len(self.innerOperators):
-                self._removeInnerOperator(len(self.innerOperators) - 1, maxLen)
-    
-            return maxLen
-
     def _setupOutputs(self):
         with Tracer(self.traceLogger, msg=self.name):
             for name, oslot in self.outputs.items():
                 oslot._changed()
-
 
     def execute(self, slot, subindex, roi, result):
         #this should never be called !!!
