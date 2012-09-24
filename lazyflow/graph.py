@@ -34,6 +34,7 @@ import sys
 import copy
 import traceback
 import psutil
+import functools
 
 if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".")[1]) < 3:
     print "Lazyflow: Please install a psutil python module version of at least >= 0.3.0"
@@ -1524,22 +1525,6 @@ class Operator(object):
     def setInSlot(self, slot, subindex, key, value):
         raise NotImplementedError("Can't use __setitem__ with Operator {} because it doesn't implement setInSlot()".format(self.name))
 
-class OperatorFactory(object):
-    """
-    Callable object that can create instances of an operator with a set of initialization arguments.
-    Kindof like functools.partial, except that __call__ takes parent and graph arguments.
-    """
-    def __init__(self, operatorClass, *args, **kwargs):
-        assert issubclass(operatorClass, Operator)
-        self.operatorClass = operatorClass
-        self.args = args
-        self.kwargs = kwargs
-    
-    def __call__(self, parent, graph):
-        self.kwargs['parent'] = parent
-        self.kwargs['graph'] = graph
-        return self.operatorClass(*self.args, **self.kwargs)
-
 class OperatorWrapper(Operator):
     name = ""
 
@@ -1547,12 +1532,14 @@ class OperatorWrapper(Operator):
     logger = logging.getLogger(loggerName)
     traceLogger = logging.getLogger('TRACE.' + loggerName)
 
-    def __init__(self, operatorFactory, parent=None, graph=None, promotedSlotNames = None):
+    def __init__(self, operatorClass, operator_args=None, operator_kwargs=None, parent=None, graph=None, promotedSlotNames = None):
         """
         Constructs a wrapper for the given operator.
         That is, manages a list of copies of the original operator, and provides access to these inner operators' slots via external multislots.
 
-        operatorFactory: Either an operator class (not instance) or an OperatorFactory (see above).
+        operatorClass: An operator type that can be constructed with the given args and kwargs
+        operator_args, operator_kwargs: Positional and keyword arguments to give to the operator's constructor.
+                                        Note: Do not include 'parent' and 'graph' arguments in these lists.
         parent: The parent of the OperatorWrapper
         graph: the graph operator to init each inner operator with
         promotedSlotNames: If this argument is provided, only those slots will be promoted when replicated.
@@ -1562,13 +1549,13 @@ class OperatorWrapper(Operator):
         """
         self.inputs = InputDict(self)
         self.outputs = OutputDict(self)
-        # If the client provides an operator class directly (not wrapped in a factory),
-        #  that's okay: we just init the operator without any special arguments.
-        assert isinstance(operatorFactory, OperatorFactory) or issubclass(operatorFactory, Operator) 
-        if not isinstance(operatorFactory, OperatorFactory) and issubclass(operatorFactory, Operator):
-            operatorFactory = OperatorFactory( operatorFactory )
-        self.operatorFactory = operatorFactory
-        operatorClass = self.operatorFactory.operatorClass
+        if operator_args == None:
+            operator_args = ()
+        if operator_kwargs == None:
+            operator_kwargs = {}
+        assert isinstance(operator_args, (tuple, list))
+        assert isinstance(operator_kwargs, dict)
+        self._createInnerOperator = functools.partial( operatorClass, parent=self, graph=graph, *operator_args, **operator_kwargs )
 
         self._initialized = False
 
@@ -1648,9 +1635,6 @@ class OperatorWrapper(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Nothing to do: All inputs are directly connected to internal operators.
         pass
-
-    def _createInnerOperator(self):
-        return self.operatorFactory(parent=self, graph=self.graph)
 
     def _insertInnerOperator(self, index, length):
         with Tracer(self.traceLogger, msg=self.name):

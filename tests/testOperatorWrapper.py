@@ -1,4 +1,4 @@
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper, OperatorFactory
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators import Op5ToMulti
 import numpy
 import copy
