@@ -353,8 +353,8 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
     MultiArray<4, T> integral(predictions.shape());
     MultiArray<4, T> integral2(predictions.shape());
     
-    std::clock_t start;
-    double duration;
+    //std::clock_t start;
+    //double duration;
 
     //start = std::clock();
 
@@ -370,13 +370,13 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
 
     IND maxRadius, minRadius;
     sizes.minmax(&minRadius, &maxRadius);
-    std::cout<<"max Radius: "<<maxRadius<<std::endl;
+    //std::cout<<"max Radius: "<<maxRadius<<std::endl;
     maxRadius++;
     IND nzoff = nz-maxRadius+1;
 	IND nyoff = ny-maxRadius+1;
 	IND nxoff = nx-maxRadius+1;
 
-    start = std::clock();
+    //start = std::clock();
     for (IND z=0; z<maxRadius; ++z){
     	//std::cout<<"first loop z= "<<z<<std::endl;
     	for (IND y=0; y<ny; ++y){
@@ -463,8 +463,8 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
     }
 
 
-    duration = (std::clock() - start)/(double)CLOCKS_PER_SEC;
-    std::cout<<"main loop duration:"<<duration<<'\n';
+    //duration = (std::clock() - start)/(double)CLOCKS_PER_SEC;
+    //std::cout<<"main loop duration:"<<duration<<'\n';
     return;
 }
 
