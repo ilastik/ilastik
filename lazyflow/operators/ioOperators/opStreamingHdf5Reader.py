@@ -43,7 +43,6 @@ class OpStreamingHdf5Reader(Operator):
             axistags = vigra.AxisTags.fromJSON(axistagsJson)
         except KeyError:
             axisorder = self.DefaultAxisOrder.value
-            print "Reading hdf5 using default axis order:",axisorder
             for a in 'txyzc':
                 assert a in axisorder
 
