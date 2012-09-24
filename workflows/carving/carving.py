@@ -19,7 +19,7 @@ from ilastik.applets.labeling import OpLabeling
 from ilastik.applets.base.appletSerializer import AppletSerializer
 
 from lazyflow.roi import roiToSlice
-from lazyflow.graph import Graph, Operator, OperatorWrapper, OperatorFactory, InputSlot, OutputSlot
+from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot
 from lazyflow.operators import OpAttributeSelector
 from lazyflow.stype import Opaque
 
@@ -40,7 +40,7 @@ class OpCarvingTopLevel(Operator):
         super(OpCarvingTopLevel, self).__init__(*args, **kwargs)
         
         self.opLabeling = OpLabeling(graph=self.graph, parent=self)
-        self.opCarving = OperatorWrapper( OperatorFactory(OpCarving, carvingGraphFile), graph=self.graph )
+        self.opCarving = OperatorWrapper( OpCarving, operator_args=[carvingGraphFile], graph=self.graph )
         
         self.opLabeling.InputImages.connect( self.RawData )
         self.opCarving.RawData.connect( self.RawData )
@@ -1027,9 +1027,9 @@ if __name__ == "__main__":
     usage = "%prog [options] <carving graph filename> <project filename to be created>"
     parser = OptionParser(usage)
 
-    #import sys
-    #sys.argv.append("/Users/bergs/Documents/workspace/applet-workflows/denk.h5")
-    #sys.argv.append("test.ilp")
+#    import sys
+#    sys.argv.append("/Users/bergs/Documents/workspace/applet-workflows/denk.h5")
+#    sys.argv.append("test.ilp")
 
     (options, args) = parser.parse_args()
     
