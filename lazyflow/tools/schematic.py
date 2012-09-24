@@ -180,6 +180,7 @@ class SvgOperator( DrawableABC ):
         if len(self.op.children) > 0:
             # Draw child operators
             sorted_children = sorted( self.op.children, cmp=partial(streamPos, self) )
+            #sorted_children = sorted( reversed(sorted_children), cmp=partial(streamPos, self) )
             #sorted_children = sortByPos(self.op.children, self)
     
             child_ordering[0] = [sorted_children[0]]
@@ -230,6 +231,7 @@ class SvgOperator( DrawableABC ):
         path_d = 'M {startx} {y} L {endx} {y} Z'.format(startx=rect_x, y=rect_y+r+2, endx=rect_x+rect_width)
         canvas += svg.path(d=path_d, stroke='black', stroke_width=1)
 
+        block = partial(svg.tagblock, canvas)
         with block(svg.text, x=rect_x+rect_width/2, y=rect_y+r, text_anchor='middle'):
             canvas += self.op.name + '\n'
 
