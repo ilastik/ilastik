@@ -89,9 +89,9 @@ def testVariance3D():
                     temp = dummy[x-sizes[0]:x+sizes[0]+1, y-sizes[0]:y+sizes[0]+1, z-sizes[0]:z+sizes[0]+1, c]
                     #print x, y, z
                     m = numpy.mean(temp)
-                    assert_almost_equal(m, res[x, y, z, c*2*nr], 1)
+                    assert_almost_equal(res[x, y, z, c*2*nr], m, 1)
                     v = numpy.var(temp)
-                    assert_almost_equal(v, res[x, y, z, c*2*nr+nr], 1)
+                    assert_almost_equal(res[x, y, z, c*2*nr+nr], v, 1)
                     
     for x in range(sizes[1], nx-sizes[1]):
         for y in range(sizes[1], ny-sizes[1]):

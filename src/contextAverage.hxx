@@ -115,6 +115,63 @@ void average_features_3d_is(MultiArrayView<1, IND, S1>& radii,
 }
 
 template <class IND, class T, class S1, class S2>
+void average_features_3d_anis_no_check(MultiArrayView<2, IND, S1>& radii,
+                            IND x, IND y, IND z, IND c,
+                            MultiArrayView<4, T, S2>& integral,
+                            std::vector<T>& averages)
+{
+    int nx = integral.shape()[0];
+    int ny = integral.shape()[1];
+    int nz = integral.shape()[2];
+    int nr = radii.shape()[0];
+    int nclasses = integral.shape()[3];
+    //std::cout<<"radii shape:"<<radii.shape()[0]<<" "<<radii.shape()[1]<<std::endl;
+
+    IND xplus, yplus, zplus, xminus, yminus, zminus;
+    bool xrad, yrad, zrad;
+    T uul, ull, uur, ulr, lul, lll, lur, llr, sum;
+
+    for (int ir=0; ir<nr; ++ir){
+    	xplus = x+radii(ir, 0);
+    	yplus = y+radii(ir, 1);
+    	zplus = z+radii(ir, 2);
+
+        xminus = x-radii(ir,0)-1;
+        yminus = y-radii(ir,1)-1;
+        zminus = z-radii(ir, 2)-1;
+
+        uul = integral(xminus, yminus, zminus, c);
+        ull = integral(xplus, yminus, zminus, c);
+        uur = integral(xminus, yplus, zminus, c);
+        ulr = integral(xplus, yplus, zminus, c);
+
+        lul = integral(xminus, yminus, zplus, c);
+        lll = integral(xplus, yminus, zplus, c);
+        lur = integral(xminus, yplus, zplus, c);
+        llr = integral(xplus, yplus, zplus, c);
+
+        sum = uur + ull + llr + lul - ulr - uul - lur -lll;
+
+
+        //T sum = 0;
+        int n = (2*radii(ir,0)+1)*(2*radii(ir,1)+1)*(2*radii(ir,2)+1);
+
+        if (ir>0){
+            int n_prev = (2*radii(ir-1,0)+1)*(2*radii(ir-1,1)+1)*(2*radii(ir-1,2)+1);
+            T sum_prev = averages[ir-1]*n_prev;
+            sum-=sum_prev;
+            n-=n_prev;
+        }
+        averages[ir]=sum/n;
+
+    }
+
+    return;
+
+
+
+}
+template <class IND, class T, class S1, class S2>
 void average_features_3d_anis(MultiArrayView<2, IND, S1>& radii,
                             IND x, IND y, IND z, IND c,
                             MultiArrayView<4, T, S2>& integral,
@@ -133,8 +190,6 @@ void average_features_3d_anis(MultiArrayView<2, IND, S1>& radii,
     int nclasses = integral.shape()[3];
     //std::cout<<"radii shape:"<<radii.shape()[0]<<" "<<radii.shape()[1]<<std::endl;
     
-
-
     IND xplus, yplus, zplus, xminus, yminus, zminus;
     bool xrad, yrad, zrad;
     T uul, ull, uur, ulr, lul, lll, lur, llr, sum;
@@ -156,7 +211,6 @@ void average_features_3d_anis(MultiArrayView<2, IND, S1>& radii,
         xrad = (x==radii(ir, 0));
         yrad = (y==radii(ir, 1));
         zrad = (z==radii(ir, 2));
-
 
         uul = (xrad || yrad || zrad) ? 0 : integral(xminus, yminus, zminus, c);
         ull = (yrad || zrad) ? 0 : integral(xplus, yminus, zminus, c);
@@ -181,7 +235,7 @@ void average_features_3d_anis(MultiArrayView<2, IND, S1>& radii,
             n-=n_prev;
         }
         averages[ir]=sum/n;
-        
+
     }
         
     return;
@@ -299,8 +353,8 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
     MultiArray<4, T> integral(predictions.shape());
     MultiArray<4, T> integral2(predictions.shape());
     
-    //std::clock_t start;
-    //double duration;
+    std::clock_t start;
+    double duration;
 
     //start = std::clock();
 
@@ -312,31 +366,129 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
     
     std::vector<T> newf(nnewfeatures);
     std::vector<T> newf2(nnewfeatures);
+    IND offset;
 
-    //start = std::clock();
-    for (IND z=0; z<nz; ++z){
+    IND maxRadius, minRadius;
+    sizes.minmax(&minRadius, &maxRadius);
+    std::cout<<"max Radius: "<<maxRadius<<std::endl;
+    maxRadius++;
+    IND nzoff = nz-maxRadius+1;
+	IND nyoff = ny-maxRadius+1;
+	IND nxoff = nx-maxRadius+1;
+
+    start = std::clock();
+    for (IND z=0; z<maxRadius; ++z){
+    	//std::cout<<"first loop z= "<<z<<std::endl;
     	for (IND y=0; y<ny; ++y){
-    		for (IND x=0; x<nx; ++x) {
+    		for (IND x=0; x<nx; ++x){
+    			for (IND c=0; c<nclasses;++c){
+    				varContext3DmultiInnerLoop(sizes, integral, integral2, res, x, y, z, c, newf, newf2);
+    			}
+    		}
+    	}
+    }
+
+	for (IND z=nzoff; z<nz; ++z){
+		for (IND y=0; y<ny; ++y){
+			for (IND x=0; x<nx; ++x){
+				for (IND c=0; c<nclasses;++c){
+					varContext3DmultiInnerLoop(sizes, integral, integral2, res, x, y, z, c, newf, newf2);
+				}
+			}
+		}
+	}
+
+	for (IND z=maxRadius; z<nzoff; ++z){
+		for (IND y=0; y<maxRadius; ++y){
+			for (IND x=0; x<nx; ++x){
+				for (IND c=0; c<nclasses; ++c){
+					varContext3DmultiInnerLoop(sizes, integral, integral2, res, x, y, z, c, newf, newf2);
+				}
+			}
+		}
+	}
+
+	for (IND z=maxRadius; z<nzoff; ++z){
+		for (IND y=nyoff; y<ny; ++y){
+			for (IND x=0; x<nx; ++x){
+				for (IND c=0; c<nclasses; ++c){
+					varContext3DmultiInnerLoop(sizes, integral, integral2, res, x, y, z, c, newf, newf2);
+				}
+			}
+		}
+	}
+	for (IND z=maxRadius; z<nzoff; ++z){
+		for (IND y=maxRadius; y<nyoff; ++y){
+			for (IND x=0; x<maxRadius; ++x){
+				for (IND c=0; c<nclasses; ++c){
+					varContext3DmultiInnerLoop(sizes, integral, integral2, res, x, y, z, c, newf, newf2);
+				}
+			}
+		}
+	}
+	for (IND z=maxRadius; z<nzoff; ++z){
+		for (IND y=maxRadius; y<nyoff; ++y){
+			for (IND x=nxoff; x<nx; ++x){
+				for (IND c=0; c<nclasses; ++c){
+					varContext3DmultiInnerLoop(sizes, integral, integral2, res, x, y, z, c, newf, newf2);
+				}
+			}
+		}
+	}
+
+
+	for (IND z=maxRadius; z<nzoff; ++z){
+    	//std::cout<<"second loop z= "<<z<<std::endl;
+
+    	for (IND y=maxRadius; y<nyoff; ++y){
+    		for (IND x=maxRadius; x<nxoff; ++x) {
 				for (IND c=0; c<nclasses; ++c){
                     //
-                    average_features_3d_anis(sizes, x, y, z, c, integral, newf);
+					//varContext3DmultiInnerLoop(sizes, integral, integral2, res, x, y, z, c, newf, newf2);
+                    average_features_3d_anis_no_check(sizes, x, y, z, c, integral, newf);
                     //
-                    average_features_3d_anis(sizes, x, y, z, c, integral2, newf2);
+                    average_features_3d_anis_no_check(sizes, x, y, z, c, integral2, newf2);
                     //fill the averages
+                    offset = c*2*nnewfeatures;
                     for (IND ii=0; ii<nnewfeatures; ++ii){
-                    	res(x, y, z, c*2*nnewfeatures+ii) = newf[ii];
+                    	res(x, y, z, offset+ii) = newf[ii];
                     }
                     //fill the variances
                     for (IND ii=0; ii<nnewfeatures; ++ii) {
-                        res(x, y, z, c*2*nnewfeatures+nnewfeatures+ii) = newf2[ii]-newf[ii]*newf[ii];
+                        res(x, y, z, offset+nnewfeatures+ii) = newf2[ii]-newf[ii]*newf[ii];
                     }
                 }
             }
         }
     }
-    //duration = (std::clock() - start)/(double)CLOCKS_PER_SEC;
-    //std::cout<<"main loop duration:"<<duration<<'\n';
+
+
+    duration = (std::clock() - start)/(double)CLOCKS_PER_SEC;
+    std::cout<<"main loop duration:"<<duration<<'\n';
     return;
 }
 
+template <class IND, class T, class S, class S1, class S2>
+void varContext3DmultiInnerLoop(MultiArrayView<2, IND, S1>& sizes,
+                       MultiArrayView<4, T, S2>& integral,
+                       MultiArrayView<4, T, S2>& integral2,
+                       MultiArrayView<4, T, S>& res,
+                       IND x, IND y, IND z, IND c,
+                       std::vector<T>& newf, std::vector<T>& newf2)
+
+{
+	average_features_3d_anis(sizes, x, y, z, c, integral, newf);
+	//
+	average_features_3d_anis(sizes, x, y, z, c, integral2, newf2);
+	//fill the averages
+	int nnewfeatures = sizes.shape()[0];
+	IND offset = c*2*nnewfeatures;
+	for (IND ii=0; ii<nnewfeatures; ++ii){
+		res(x, y, z, offset+ii) = newf[ii];
+	}
+	//fill the variances
+	for (IND ii=0; ii<nnewfeatures; ++ii) {
+		res(x, y, z, offset+nnewfeatures+ii) = newf2[ii]-newf[ii]*newf[ii];
+	}
+}
 #endif
