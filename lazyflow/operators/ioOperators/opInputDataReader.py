@@ -68,7 +68,7 @@ class OpInputDataReader(Operator):
         # Check for globstring
         if self.internalOperator is None and '*' in filePath:
             # Load as a stack
-            stackReader = OpStackLoader(graph=self.graph)
+            stackReader = OpStackLoader(parent=self, graph=self.graph)
             stackReader.globstring.setValue(filePath)
             self.internalOperator = stackReader
             self.internalOutput = stackReader.stack
@@ -92,7 +92,7 @@ class OpInputDataReader(Operator):
                 # Open the h5 file in read-only mode
                 h5File = h5py.File(externalPath, 'r')
 
-                h5Reader = OpStreamingHdf5Reader(graph=self.graph)
+                h5Reader = OpStreamingHdf5Reader(parent=self, graph=self.graph)
                 h5Reader.DefaultAxisOrder.connect( self.DefaultAxisOrder )
                 h5Reader.Hdf5File.setValue(h5File)
 
@@ -111,18 +111,18 @@ class OpInputDataReader(Operator):
             # Check for numpy extension
             if fileExtension in self.npyExts:
                 # Create an internal operator
-                npyReader = OpNpyFileReader(graph=self.graph)
+                npyReader = OpNpyFileReader(parent=self, graph=self.graph)
                 npyReader.AxisOrder.connect( self.DefaultAxisOrder )
                 npyReader.FileName.setValue(filePath)
                 self.internalOperator = npyReader
                 self.internalOutput = npyReader.Output
             # Check if this file type is supported by vigra.impex
             elif fileExtension in vigra.impex.listExtensions().split():
-                vigraReader = OpImageReader(graph=self.graph)
+                vigraReader = OpImageReader(parent=self, graph=self.graph)
                 vigraReader.Filename.setValue(filePath)
 
                 # Cache the image instead of reading the hard disk for every access.
-                imageCache = OpArrayCache( graph=self.graph )
+                imageCache = OpArrayCache(parent=self, graph=self.graph)
                 imageCache.Input.connect(vigraReader.Image)
                 imageCache.blockShape.setValue( vigraReader.Image.meta.shape ) # Just one block for the whole image
                 assert imageCache.Output.ready()
