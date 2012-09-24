@@ -60,26 +60,25 @@ class OpAutocontextClassification( Operator ):
         
         # Create internal operators
         # Explicitly wrapped:
-        self.opInputShapeReader = OperatorWrapper( OpShapeReader(graph=self.graph) )
+        self.opInputShapeReader = OperatorWrapper( OpShapeReader, graph=self.graph )
         self.opInputShapeReader.Input.resize(0)
-        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray( graph=self.graph ) )
+        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray, graph=self.graph  )
         self.opLabelArray.Input.resize(0)
         self.predictors = []
         self.prediction_caches = []
         self.prediction_caches_gui = []
         
         #FIXME: we should take it from the input slot
-        niter = 2
+        niter = 1
         
         for i in range(niter):
-            predict = OperatorWrapper( OpPredictRandomForest( graph= self.graph ))
+            predict = OperatorWrapper( OpPredictRandomForest, graph= self.graph )
             predict.Image.resize(0)
-            predict.operator.name = predict.name + " " + str(i)
             
-            prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
+            prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache, graph=self.graph ) 
             prediction_cache.Input.resize(0)
             
-            prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
+            prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache, graph=self.graph )
             prediction_cache_gui.Input.resize(0)   
             
             self.predictors.append(predict)
@@ -88,16 +87,16 @@ class OpAutocontextClassification( Operator ):
         
         #We only display the last prediction layer
          
-        self.precomputed_predictions = OperatorWrapper( OpPrecomputedInput(graph=self.graph) )
+        self.precomputed_predictions = OperatorWrapper( OpPrecomputedInput, graph=self.graph)
         self.precomputed_predictions.SlowInput.resize(0)    
-        self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput(graph=self.graph) )
+        self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput, graph=self.graph)
         self.precomputed_predictions_gui.SlowInput.resize(0)   
         
         #Display pixel-only predictions to compare
-        self.precomputed_predictions_pixel = OperatorWrapper( OpPrecomputedInput(graph=self.graph))
+        self.precomputed_predictions_pixel = OperatorWrapper( OpPrecomputedInput, graph=self.graph)
         self.precomputed_predictions_pixel.SlowInput.resize(0)
         
-        self.precomputed_predictions_pixel_gui = OperatorWrapper( OpPrecomputedInput(graph=self.graph)) 
+        self.precomputed_predictions_pixel_gui = OperatorWrapper( OpPrecomputedInput, graph=self.graph) 
         self.precomputed_predictions_pixel_gui.SlowInput.resize(0)
 
         # NOT wrapped
@@ -133,14 +132,14 @@ class OpAutocontextClassification( Operator ):
         for i in range(niter-1):
             features = self.createAutocontextFeatureOperators(i)
             self.autocontextFeatures.append(features)
-            opMulti = OperatorWrapper( Op50ToMulti(graph = self.graph) )
+            opMulti = OperatorWrapper( Op50ToMulti, graph = self.graph)
             opMulti.Input00.resize(0)
             self.autocontextFeaturesMulti.append(opMulti)
-            opStacker = OperatorWrapper( OpMultiArrayStacker(graph = self.graph))
+            opStacker = OperatorWrapper( OpMultiArrayStacker, graph = self.graph)
             opStacker.inputs["AxisFlag"].setValue("c")
             opStacker.inputs["AxisIndex"].setValue(5)
             self.featureStackers.append(opStacker)
-            autocontext_cache = OperatorWrapper( OpSlicedBlockedArrayCache( graph=self.graph ) )
+            autocontext_cache = OperatorWrapper( OpSlicedBlockedArrayCache, graph=self.graph )
             autocontext_cache.Input.resize(0)
             self.autocontext_caches.append(autocontext_cache)
         
@@ -245,12 +244,12 @@ class OpAutocontextClassification( Operator ):
         #assert self.opTrain.Images.operator == self.opTrain
         
         # Also provide each prediction channel as a separate layer (for the GUI)
-        self.opPredictionSlicer = OperatorWrapper( OpMultiArraySlicer2(parent=self) )
+        self.opPredictionSlicer = OperatorWrapper( OpMultiArraySlicer2, parent=self) 
         self.opPredictionSlicer.Input.connect( self.precomputed_predictions_gui.Output )
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
         
-        self.opPixelPredictionSlicer = OperatorWrapper( OpMultiArraySlicer2(parent=self))
+        self.opPixelPredictionSlicer = OperatorWrapper( OpMultiArraySlicer2, parent=self)
         self.opPixelPredictionSlicer.Input.connect( self.precomputed_predictions_pixel_gui.Output)
         self.opPixelPredictionSlicer.AxisFlag.setValue('c')
         self.PixelOnlyPredictionChannels.connect( self.opPixelPredictionSlicer.Slices )
@@ -361,11 +360,11 @@ class OpAutocontextClassification( Operator ):
     def createAutocontextFeatureOperators(self, iter):
         #FIXME: just to test, create some array pipers
         ops = []
-        #ops.append(OperatorWrapper (OpArrayPiper(graph = self.graph)))
-        #ops.append(OperatorWrapper (OpArrayPiper(graph = self.graph)))
+        #ops.append(OperatorWrapper (OpArrayPiper, graph = self.graph))
+        #ops.append(OperatorWrapper (OpArrayPiper, graph = self.graph))
         
-        ops.append(OperatorWrapper(OpContextVariance(graph=self.graph)))
-        ops[0].inputs["Radii"].setValue([1, 2])
+        ops.append(OperatorWrapper(OpContextVariance, graph=self.graph))
+        ops[0].inputs["Radii"].setValue([3])
         ops[0].inputs["LabelsCount"].setValue(2)
         
         #ops[0].name = ops[0].name+" dummy1"

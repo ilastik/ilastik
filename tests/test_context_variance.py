@@ -4,7 +4,7 @@ import vigra
 from numpy.testing import assert_equal, assert_almost_equal, assert_array_equal
 from lazyflow import graph
 from context.operators.contextVariance import OpContextVariance
-from context.build.contextcpp import varContext2Dmulti
+from context.build.contextcpp import varContext2Dmulti, varContext3Dmulti, varContext3Danis
 import lazyflow
 
 def testVariance2D():
@@ -32,7 +32,7 @@ def testVariance2D():
     resshape = (nx, ny, nc*2*sizes.shape[0])
     res = vigra.VigraArray(resshape, axistags=vigra.VigraArray.defaultAxistags(3)).astype(numpy.float32)
 
-    res = context.varContext2Dmulti(sizes, dummy, res)
+    res = varContext2Dmulti(sizes, dummy, res)
 
     #test simple variance
     var11_0 = numpy.var(dummypred[0:3, 0:3, 0])
@@ -79,7 +79,7 @@ def testVariance3D():
     resshape = (nx, ny, nz, nc*2*sizes.shape[0])
     res = vigra.VigraArray(resshape, axistags=vigra.VigraArray.defaultAxistags(4)).astype(numpy.float32)
 
-    res = context.varContext3Dmulti(sizes, dummy, res)
+    res = varContext3Dmulti(sizes, dummy, res)
     
     #test the first radius, we should have just average and variance for it
     for x in range(sizes[0], nx-sizes[0]):
@@ -131,18 +131,18 @@ def testVariance3Danis():
     nr = sizes.shape[0]
     resshape = (nx, ny, nz, nc*2*nr)
     res = vigra.VigraArray(resshape, axistags=vigra.VigraArray.defaultAxistags(4)).astype(numpy.float32)
-    res = context.varContext3Danis(sizes, dummy, res)
+    res = varContext3Danis(sizes, dummy, res)
     
     #test, that for isotropic sizes it's the same as before
     sizes_is = numpy.array([2, 3], dtype=numpy.uint32)
     res_is = vigra.VigraArray(resshape, axistags=vigra.VigraArray.defaultAxistags(4)).astype(numpy.float32)
-    res_is = context.varContext3Dmulti(sizes_is, dummy, res_is)
+    res_is = varContext3Dmulti(sizes_is, dummy, res_is)
     
     assert_array_equal(res, res_is)
     
     sizes[0, 2] = 1
     sizes[1, 2] = 2
-    res = context.varContext3Danis(sizes, dummy, res)
+    res = varContext3Danis(sizes, dummy, res)
     
     #test the first radius, we should have just average and variance for it
     for x in range(sizes[0, 0], nx-sizes[0, 0]):

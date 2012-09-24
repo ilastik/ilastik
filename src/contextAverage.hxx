@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <limits>
+#include <ctime>
 
 #include <vigra/multi_array.hxx>
 #include <vigra/numpy_array.hxx>
@@ -132,27 +133,45 @@ void average_features_3d_anis(MultiArrayView<2, IND, S1>& radii,
     int nclasses = integral.shape()[3];
     //std::cout<<"radii shape:"<<radii.shape()[0]<<" "<<radii.shape()[1]<<std::endl;
     
+
+
+    IND xplus, yplus, zplus, xminus, yminus, zminus;
+    bool xrad, yrad, zrad;
+    T uul, ull, uur, ulr, lul, lll, lur, llr, sum;
+
     for (int ir=0; ir<nr; ++ir){
-        //FIXME: do a better border treatment
-        if (x<radii(ir, 0) || y<radii(ir, 1) || z<radii(ir, 2) || x+radii(ir, 0)>nx-1 || y+radii(ir,1)>ny-1 || z+radii(ir, 2)>nz-1){
+    	xplus = x+radii(ir, 0);
+    	yplus = y+radii(ir, 1);
+    	zplus = z+radii(ir, 2);
+    	//FIXME: do a better border treatment
+        if (x<radii(ir, 0) || y<radii(ir, 1) || z<radii(ir, 2) || xplus>nx-1 || yplus>ny-1 || zplus>nz-1){
             averages[ir] = 1./nclasses;
             continue;
         }
 
-        T uul = (x==radii(ir,0) || y==radii(ir,1) || z==radii(ir,2)) ? 0 : integral(x-radii(ir,0)-1, y-radii(ir,1)-1, z-radii(ir,2)-1, c);
-        T ull = (y==radii(ir, 1) || z==radii(ir,2)) ? 0 : integral(x+radii(ir,0), y-radii(ir, 1)-1, z-radii(ir,2)-1, c);
-        T uur = (x==radii(ir,0) || z==radii(ir,2)) ? 0 : integral(x-radii(ir,0)-1, y+radii(ir, 1), z-radii(ir,2)-1, c);
-        T ulr = (z==radii(ir, 2)) ? 0 : integral(x+radii(ir,0), y+radii(ir, 1), z-radii(ir, 2)-1, c);
+        xminus = x-radii(ir,0)-1;
+        yminus = y-radii(ir,1)-1;
+        zminus = z-radii(ir, 2)-1;
+
+        xrad = (x==radii(ir, 0));
+        yrad = (y==radii(ir, 1));
+        zrad = (z==radii(ir, 2));
+
+
+        uul = (xrad || yrad || zrad) ? 0 : integral(xminus, yminus, zminus, c);
+        ull = (yrad || zrad) ? 0 : integral(xplus, yminus, zminus, c);
+        uur = (xrad || zrad) ? 0 : integral(xminus, yplus, zminus, c);
+        ulr = (zrad) ? 0 : integral(xplus, yplus, zminus, c);
         
-        T lul = (x==radii(ir,0) || y==radii(ir, 1)) ? 0 : integral(x-radii(ir,0)-1, y-radii[ir]-1, z+radii(ir, 2), c);
-        T lll = (y==radii(ir,1)) ? 0 : integral(x+radii(ir,0), y-radii(ir,1)-1, z+radii(ir,2), c);
-        T lur = (x==radii(ir,0)) ? 0 : integral(x-radii(ir,0)-1, y+radii(ir,1), z+radii(ir,2), c);
-        T llr = integral(x+radii(ir,0), y+radii(ir, 1), z+radii(ir, 2), c);
+        lul = (xrad || yrad) ? 0 : integral(xminus, yminus, zplus, c);
+        lll = (yrad) ? 0 : integral(xplus, yminus, zplus, c);
+        lur = (xrad) ? 0 : integral(xminus, yplus, zplus, c);
+        llr = integral(xplus, yplus, zplus, c);
         
-        //T sum = lr-ll-ur+ul;
-        //T sum = ulr - uur - ull - llr + uul + lur + lll - lul;
-        T sum = uur + ull + llr + lul - ulr - uul - lur -lll;
+        sum = uur + ull + llr + lul - ulr - uul - lur -lll;
         
+
+        //T sum = 0;
         int n = (2*radii(ir,0)+1)*(2*radii(ir,1)+1)*(2*radii(ir,2)+1);
         
         if (ir>0){
@@ -275,24 +294,37 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
     int nz = predictions.shape()[2];
     int nclasses = predictions.shape()[3];
     
+
     int nnewfeatures = sizes.shape()[0];
     MultiArray<4, T> integral(predictions.shape());
     MultiArray<4, T> integral2(predictions.shape());
     
+    //std::clock_t start;
+    //double duration;
+
+    //start = std::clock();
+
     integralVolume(predictions, integral);
+
+    //duration = (std::clock() - start)/(double)CLOCKS_PER_SEC;
+    //std::cout<<"integralVolume duration:"<<duration<<'\n';
     integralVolume2(predictions, integral2);
     
-    for (IND c=0; c<nclasses; ++c){
-        for (IND x=0; x<nx; ++x) {
-            for (IND y=0; y<ny; ++y){
-                for (IND z=0; z<nz; ++z){
-                    std::vector<T> newf(nnewfeatures);
+    std::vector<T> newf(nnewfeatures);
+    std::vector<T> newf2(nnewfeatures);
+
+    //start = std::clock();
+    for (IND z=0; z<nz; ++z){
+    	for (IND y=0; y<ny; ++y){
+    		for (IND x=0; x<nx; ++x) {
+				for (IND c=0; c<nclasses; ++c){
+                    //
                     average_features_3d_anis(sizes, x, y, z, c, integral, newf);
-                    std::vector<T> newf2(nnewfeatures);
+                    //
                     average_features_3d_anis(sizes, x, y, z, c, integral2, newf2);
                     //fill the averages
                     for (IND ii=0; ii<nnewfeatures; ++ii){
-                        res(x, y, z, c*2*nnewfeatures+ii) = newf[ii];
+                    	res(x, y, z, c*2*nnewfeatures+ii) = newf[ii];
                     }
                     //fill the variances
                     for (IND ii=0; ii<nnewfeatures; ++ii) {
@@ -302,6 +334,8 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
             }
         }
     }
+    //duration = (std::clock() - start)/(double)CLOCKS_PER_SEC;
+    //std::cout<<"main loop duration:"<<duration<<'\n';
     return;
 }
 

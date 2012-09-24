@@ -17,6 +17,7 @@ os.mkdir(build)
 
 do('cmake ..')
 do(' make ')
+do ('touch __init__.py')
 
 #if os.path.exists(os.path.join(build,context)):os.rmdir(os.path.join(build,context))
 #do('mkdir context')
