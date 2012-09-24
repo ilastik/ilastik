@@ -974,7 +974,7 @@ class Slot(object):
         This function keeps going up the hierarchy until it finds the actual operator this slot belongs to.
         """
         if isinstance(self.operator, Slot):
-            return self.operator.getRealOperator
+            return self.operator.getRealOperator()
         else:
             return self.operator
 
