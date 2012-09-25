@@ -306,7 +306,7 @@ class Slot(object):
         """
         self._sig_unready.subscribe(function, **kwargs)
 
-    def notifyConnect(self, function, **kwargs):
+    def _notifyConnect(self, function, **kwargs):
         """
         calls the corresponding function when the slot is connected
         first argument of the function is the slot
@@ -379,7 +379,7 @@ class Slot(object):
         """
         self._sig_dirty.unsubscribe(function)
 
-    def unregisterConnect(self, function):
+    def _unregisterConnect(self, function):
         """
         unregister a connect callback
         """
@@ -1582,7 +1582,7 @@ class OperatorWrapper(Operator):
             if s.name in self.promotedSlotNames:
                 s.notifyInserted(self._callbackInserted)
                 s.notifyRemoved(self._callbackRemove)
-                s.notifyConnect(self._callbackConnect)
+                s._notifyConnect(self._callbackConnect)
 
         # register callbacks for inserted and removed output subslots
         for s in self.outputs.values():

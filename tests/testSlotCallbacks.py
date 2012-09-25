@@ -83,21 +83,21 @@ class TestSlot_notifyConnect(object):
             upval[0] = True
 
         # check the connect callback is called
-        opa.Input1.notifyConnect(callBack)
+        opa.Input1._notifyConnect(callBack)
         opa.Input1.connect(ops.Output1)
         assert upval[0] == True
 
 
         # check the connect callback is called for a slot with default value
         upval[0] = False
-        opa.Input3.notifyConnect(callBack)
+        opa.Input3._notifyConnect(callBack)
         opa.Input3.connect(ops.Output3)
         assert upval[0] == True
 
 
         # check the connect callback is called for a multi inputslot
         upval[0] = False
-        opa.Input4.notifyConnect(callBack)
+        opa.Input4._notifyConnect(callBack)
         opa.Input4.connect(ops.Output4)
         assert upval[0] == True
 
@@ -111,7 +111,7 @@ class TestSlot_notifyConnect(object):
         def callBack(slot):
             upval[0] = True
 
-        opa.Input1.notifyConnect(callBack)
+        opa.Input1._notifyConnect(callBack)
 
         # check the connect callback is not called when reconnecting to the same slot
         opa.Input1.connect(ops.Output1)
@@ -135,8 +135,8 @@ class TestSlot_notifyConnect(object):
         def callBack(slot):
             upval[0] = True
 
-        opa.Input1.notifyConnect(callBack)
-        opa.Input1.unregisterConnect(callBack)
+        opa.Input1._notifyConnect(callBack)
+        opa.Input1._unregisterConnect(callBack)
 
         opa.Input1.connect(ops.Output1)
         assert upval[0] == False

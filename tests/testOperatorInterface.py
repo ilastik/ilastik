@@ -298,8 +298,8 @@ class TestSlotStates(object):
             connectedSlots[slot] = True
         
         # Test notifyConnect
-        op.Input.notifyConnect( handleConnect )
-        op.Output.notifyConnect( handleConnect )
+        op.Input._notifyConnect( handleConnect )
+        op.Output._notifyConnect( handleConnect )
         
         readySlots = { op.Input  : False,
                        op.Output : False }
@@ -338,8 +338,8 @@ class TestSlotStates(object):
             connectedSlots[slot] = True
         
         # Test notifyConnect
-        op.Input.notifyConnect( handleConnect )
-        op.Output.notifyConnect( handleConnect )
+        op.Input._notifyConnect( handleConnect )
+        op.Output._notifyConnect( handleConnect )
         
         readySlots = { op.Input  : False,
                        op.Output : False }
@@ -380,8 +380,8 @@ class TestSlotStates(object):
             connectedSlots.add(slot)
         
         # Test notifyConnect
-        op.Input0.notifyConnect( handleConnect )
-        op.Outputs.notifyConnect( handleConnect )
+        op.Input0._notifyConnect( handleConnect )
+        op.Outputs._notifyConnect( handleConnect )
         
         readySlots = set()
         def handleReady(slot):
@@ -444,8 +444,8 @@ class TestSlotStates(object):
             connectedSlots[slot] = True
         
         # Test notifyConnect
-        op.Input.notifyConnect( handleConnect )
-        op.Output.notifyConnect( handleConnect )
+        op.Input._notifyConnect( handleConnect )
+        op.Output._notifyConnect( handleConnect )
         
         readySlots = { op.Input  : False,
                        op.Output : False }
