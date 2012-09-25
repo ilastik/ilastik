@@ -66,6 +66,9 @@ class OpXToMulti(Operator):
                 self.outputs["Outputs"][i].meta.assignFrom( slot.meta )
                 i += 1
 
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs are directly connected to an input slot.
+        pass
 
 class Op1ToMulti(OpXToMulti):
     name = "1 Element to Multislot"
