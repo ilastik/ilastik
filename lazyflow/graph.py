@@ -496,10 +496,18 @@ class Slot(object):
         """
         Disconnect a InputSlot from its partner
         """
+        if self.backpropagate_values:
+            if self.partner is not None:
+                assert self.partner._type == "input"
+                self.partner.disconnect()
+            return
+
         for slot in self._subSlots:
             slot.disconnect()
 
+        had_partner = False
         if self.partner is not None:
+            had_partner = True
             try:
                 self.partner.partners.remove(self)
             except ValueError:
@@ -513,7 +521,8 @@ class Slot(object):
             self.resize(0)
 
         # call callbacks
-        self._sig_disconnect(self)
+        if had_partner:
+            self._sig_disconnect(self)
         
         # Notify our partners that we changed.
         self._changed()
@@ -1609,8 +1618,9 @@ class OperatorWrapper(Operator):
             op = self._createInnerOperator()            
             # If anyone calls setValue() on one of these slots, forward the setValue 
             #  call to the slot's partner (the outer slot on the operator wrapper)
-            for slot in op.inputs.values() + op.outputs.values():
+            for slot in op.inputs.values():
                 slot.backpropagate_values = True
+                slot.notifyDisconnect( self.handleEarlyDisconnect )
             
             self.innerOperators.insert(index, op)
     
@@ -1630,6 +1640,9 @@ class OperatorWrapper(Operator):
                 #mslot[index]._changed()
             return op
 
+    def handleEarlyDisconnect(self, slot):
+        assert False, "You aren't allowed to disconnect the internal connections of an operator wrapper."
+
     def _removeInnerOperator(self, index, length):
         with Tracer(self.traceLogger, msg=self.name):
             if len(self.innerOperators) <= length:
@@ -1637,6 +1650,9 @@ class OperatorWrapper(Operator):
             assert index < len(self.innerOperators)
     
             op = self.innerOperators.pop(index)
+            for slot in op.inputs.values():
+                slot.backpropagate_values = False
+                slot.unregisterDisconnect( self.handleEarlyDisconnect )
     
             for oslot in self.outputs.values():
                 oslot.removeSlot(index, length)
