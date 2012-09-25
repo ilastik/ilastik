@@ -1,7 +1,9 @@
-from lazyflow.graph import *
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 import lazyflow.roi
 import threading
 import copy
+
+import logging
 
 from operators import OpArrayCache, OpArrayPiper, OpMultiArrayPiper
 

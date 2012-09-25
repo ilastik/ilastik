@@ -29,10 +29,8 @@ g.finalize()
 
 import lazyflow
 import numpy
-import vigra
 import sys
 import copy
-import traceback
 import psutil
 import functools
 
@@ -40,27 +38,12 @@ if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".
     print "Lazyflow: Please install a psutil python module version of at least >= 0.3.0"
     sys.exit(1)
 
-import os
-import time
-import gc
-import string
-import types
-import itertools
 import threading
 import logging
-import warnings
 
-from h5dumprestore import instanceClassToString, stringToClass
-from helpers import itersubclasses, detectCPUs, deprecated, warn_deprecated
-from collections import deque
-from Queue import Queue, LifoQueue, Empty, PriorityQueue
-from threading import Thread, Event, current_thread, Lock
-import weakref
-from request import Request, Singleton, global_thread_pool
+from request import Request, Singleton
 import rtype
-from roi import sliceToRoi, roiToSlice
 from lazyflow.stype import ArrayLike
-from lazyflow import stype
 from lazyflow import slicingtools
 
 from lazyflow.tracer import Tracer
@@ -879,7 +862,7 @@ class Slot(object):
                 self.stype.setupMetaForValue(value)
                 self.meta._dirty = True
     
-                for i,s in enumerate(self._subSlots):
+                for s in self._subSlots:
                     s.setValue(self._value)
     
                 notify = (self.meta._ready == False)
@@ -902,7 +885,6 @@ class Slot(object):
         with Tracer(self.traceLogger):
             # call disconnect callbacks
             self._sig_disconnect(self)
-            changed = True
             self.resize(len(values))
             for i,s in enumerate(self._subSlots):
                 s.setValue(values[i])

@@ -1,7 +1,7 @@
 import vigra
 import numpy
 import threading
-from lazyflow.graph import *
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from lazyflow import operators
 from lazyflow.operators import *
 

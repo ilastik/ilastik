@@ -1,18 +1,18 @@
 import numpy, vigra, h5py
 import traceback
-from lazyflow.graph import *
-import gc
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow import roi
 from lazyflow.roi import sliceToRoi
 import copy
-from lazyflow.request import Pool, Request
+from lazyflow.request import Pool
 
-from functools import partial
-
-from operators import OpArrayPiper, OpMultiArrayPiper
+from operators import OpArrayPiper
 from lazyflow.rtype import SubRegion
 
-from generic import OpMultiArrayStacker, getSubKeyWithFlags, popFlagsFromTheKey
+import os
+from collections import deque
+
+from generic import OpMultiArrayStacker, popFlagsFromTheKey
 
 import math
 
