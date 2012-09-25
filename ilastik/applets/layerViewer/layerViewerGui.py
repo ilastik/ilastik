@@ -62,7 +62,10 @@ class LayerViewerGui(QMainWindow):
     ###########################################
 
     def operatorForCurrentImage(self):
-        return self.topLevelOperator[self.imageIndex]
+        try:
+            return self.topLevelOperator[self.imageIndex]
+        except IndexError:
+            return None
 
     @traceLogged(traceLogger)
     def __init__(self, topLevelOperator):

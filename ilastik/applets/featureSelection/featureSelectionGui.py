@@ -70,7 +70,7 @@ class FeatureSelectionGui(LayerViewerGui):
         self.mainOperator = mainOperator
 
         self.initFeatureDlg()
-        self.mainOperator.SelectionMatrix.notifyReady( bind(self.onFeaturesSelectionsChanged) )
+        self.mainOperator.SelectionMatrix.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
     
     @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
@@ -215,18 +215,20 @@ class FeatureSelectionGui(LayerViewerGui):
         self.featureDlg.show()
 
     def onNewFeaturesFromFeatureDlg(self):
-        # Re-initialize the scales and features
-        self.mainOperator.Scales.setValue( self.ScalesList )
-        self.mainOperator.FeatureIds.setValue(self.FeatureIds)
+        opFeatureSelection = self.operatorForCurrentImage()
+        if opFeatureSelection is not None:
+            # Re-initialize the scales and features
+            opFeatureSelection.Scales.setValue( self.ScalesList )
+            opFeatureSelection.FeatureIds.setValue(self.FeatureIds)
 
-        # Give the new features to the pipeline (if there are any)
-        featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
-        if featureMatrix.any():
-            self.mainOperator.SelectionMatrix.setValue( featureMatrix )
-        else:
-            # Not valid to give a matrix with no features selected.
-            # Disconnect.
-            self.mainOperator.SelectionMatrix.disconnect()
+            # Give the new features to the pipeline (if there are any)
+            featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
+            if featureMatrix.any():
+                opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
+            else:
+                # Not valid to give a matrix with no features selected.
+                # Disconnect.
+                opFeatureSelection.SelectionMatrix.disconnect()
     
     def onFeaturesSelectionsChanged(self):
         """
