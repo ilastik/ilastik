@@ -66,7 +66,7 @@ class FeatureSelectionGui(LayerViewerGui):
     def __init__(self, mainOperator):
         """
         """
-        super(FeatureSelectionGui, self).__init__([ mainOperator.FeatureLayers, mainOperator.InputImage ])
+        super(FeatureSelectionGui, self).__init__(mainOperator)
         self.mainOperator = mainOperator
 
         self.initFeatureDlg()
@@ -124,9 +124,11 @@ class FeatureSelectionGui(LayerViewerGui):
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
         layers = []
+        
+        opFeatureSelection = self.operatorForCurrentImage()
 
-        inputSlot = self.mainOperator.InputImage[currentImageIndex]
-        featureMultiSlot = self.mainOperator.FeatureLayers[currentImageIndex]
+        inputSlot = opFeatureSelection.InputImage
+        featureMultiSlot = opFeatureSelection.FeatureLayers
         if inputSlot.ready() and featureMultiSlot.ready():
             for featureIndex, featureSlot in enumerate(featureMultiSlot):
                 assert featureSlot.ready()

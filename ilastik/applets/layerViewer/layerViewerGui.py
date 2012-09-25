@@ -57,12 +57,15 @@ class LayerViewerGui(QMainWindow):
     def reset(self):
         # Remove all layers
         self.layerstack.clear()
+    
+    ###########################################
+    ###########################################
 
-    ###########################################
-    ###########################################
+    def operatorForCurrentImage(self):
+        return self.topLevelOperator[self.imageIndex]
 
     @traceLogged(traceLogger)
-    def __init__(self, observedSlots):
+    def __init__(self, topLevelOperator):
         """
         Args:
             observedSlots   - A list of slots that we'll listen for changes on.
@@ -73,8 +76,15 @@ class LayerViewerGui(QMainWindow):
 
         self.threadRouter = ThreadRouter(self) # For using @threadRouted
 
-        self.observedSlots = []
+        self.topLevelOperator = topLevelOperator
 
+        observedSlots = []
+
+        for slot in topLevelOperator.inputs.values() + topLevelOperator.outputs.values():
+            if slot.level == 1 or slot.level == 2:
+                observedSlots.append(slot)
+        
+        self.observedSlots = []        
         for slot in observedSlots:
             if slot.level == 1:
                 # The user gave us a slot that is indexed as slot[image]

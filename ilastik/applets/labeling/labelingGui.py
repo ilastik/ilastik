@@ -110,7 +110,7 @@ class LabelingGui(LayerViewerGui):
             self.labelsAllowed = None # labelsAllowed[image_index].value == True
 
     @traceLogged(traceLogger)
-    def __init__(self, labelingSlots, observedSlots, drawerUiPath=None, rawInputSlot=None ):
+    def __init__(self, labelingSlots, topLevelOperator, drawerUiPath=None, rawInputSlot=None ):
         """
         See LabelingSlots class (above) for expected type of labelingSlots parameter.
         
@@ -126,12 +126,9 @@ class LabelingGui(LayerViewerGui):
         self._maxLabelNumber = 99 #100 or 255 is reserved for eraser
 
         self._rawInputSlot = rawInputSlot
-        if rawInputSlot is not None:
-            observedSlots.append(rawInputSlot)
         
         # Init base class
-        observedSlots += [ labelingSlots.labelOutput, labelingSlots.labelsAllowed ]
-        super(LabelingGui, self).__init__( observedSlots )
+        super(LabelingGui, self).__init__( topLevelOperator )
 
         self._labelingSlots = labelingSlots
         self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)

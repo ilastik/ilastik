@@ -57,15 +57,11 @@ class PixelClassificationGui(LabelingGui):
         labelSlots.maxLabelValue = pipeline.MaxLabelValue
         labelSlots.labelsAllowed = pipeline.LabelsAllowedFlags
 
-        observedSlots = [ pipeline.InputImages,
-                          pipeline.PredictionProbabilityChannels,
-                          pipeline.SegmentationChannels ]
-
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
         
         # Base class init
-        super(PixelClassificationGui, self).__init__( labelSlots, observedSlots, labelingDrawerUiPath )
+        super(PixelClassificationGui, self).__init__( labelSlots, pipeline, labelingDrawerUiPath )
         
         self.pipeline = pipeline
         self.guiControlSignal = guiControlSignal
