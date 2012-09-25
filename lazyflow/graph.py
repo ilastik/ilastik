@@ -736,6 +736,9 @@ class Slot(object):
             if self._type == "input" and self.operator.configured():
                 self.operator.propagateDirty(self, (), roi)
 
+    def __iter__(self):
+        assert self.level >= 1
+        return self._subSlots.__iter__()
 
     def __getitem__(self, key):
         """
