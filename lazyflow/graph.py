@@ -501,7 +501,6 @@ class Slot(object):
                 slot.disconnect()
 
             if self.partner is not None:
-                had_partner = True
                 try:
                     self.partner.partners.remove(self)
                 except ValueError:
@@ -1316,7 +1315,7 @@ class Operator(object):
     
             self._setDefaultInputValues()
     
-            for name, islot in self.inputs.items():
+            for islot in self.inputs.values():
                 islot.notifyUnready( self.handleInputBecameUnready )
     
     
@@ -1335,7 +1334,7 @@ class Operator(object):
                     self.inputs[i.name] = ii
     
             for k,v in self.inputs.items():
-                self.__dict__[v.name] = v
+                self.__dict__[k] = v
     
             # relicate output slots
             # defined for the operator for the instance
@@ -1345,7 +1344,7 @@ class Operator(object):
                     self.outputs[o.name] = oo
     
             for k,v in self.outputs.items():
-                self.__dict__[v.name] = v
+                self.__dict__[k] = v
 
     @property
     def parent(self):
@@ -1631,10 +1630,10 @@ class OperatorWrapper(Operator):
     
             op = self.innerOperators.pop(index)
     
-            for name, oslot in self.outputs.items():
+            for oslot in self.outputs.values():
                 oslot.removeSlot(index, length)
     
-            for name, islot in self.inputs.items():
+            for islot in self.inputs.values():
                 islot.removeSlot(index, length)
     
             op.disconnect()
@@ -1642,7 +1641,7 @@ class OperatorWrapper(Operator):
 
     def _setupOutputs(self):
         with Tracer(self.traceLogger, msg=self.name):
-            for name, oslot in self.outputs.items():
+            for oslot in self.outputs.values():
                 oslot._changed()
 
     def execute(self, slot, subindex, roi, result):
