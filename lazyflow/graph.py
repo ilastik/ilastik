@@ -429,99 +429,97 @@ class Slot(object):
         Arguments:
           partner   : the slot to which this slot is conencted
         """
-        with Tracer(self.traceLogger):
-            if partner is None:
-                self.disconnect()
-                return
-    
-            if self.partner == partner and partner.level == self.level:
-                return
-            if self.level == 0:
-                self.disconnect()
-    
-            if partner is not None:
-                self._value = None
-                if partner.level == self.level:
-                    self.partner = partner
-                    notifyReady = self.partner.meta._ready and not self.meta._ready
-                    self.meta = self.partner.meta.copy()
-    
-                    # the slot with more sub-slots determines
-                    # the number of subslots
-                    if len(self) < len(partner):
-                        self.resize(len(partner))
-                    elif len(self) > len(partner):
-                        partner.resize(len(self))
-    
-                    partner.partners.append(self)
-                    for i in range(len(self.partner)):
-                        p = self.partner[i]
-                        self[i].connect(p)
-    
-                    # call slot type connect function
-                    self.stype.connect(partner)
-    
-                    if self.level > 0 or self.stype.isConfigured():
-                        self._changed()
-    
-                    # call connect callbacks
-                    self._sig_connect(self)
-    
-                    # Notify readiness after partner is updated
-                    if notifyReady:
-                        self._sig_ready(self)
-    
-                elif partner.level < self.level:
-                    self.partner = partner
-                    notifyReady = self.partner.meta._ready and not self.meta._ready
-                    self.meta = self.partner.meta.copy()
-                    for i, slot in enumerate(self._subSlots):
-                        slot.connect(partner)
-    
-                    if notifyReady:
-                        self._sig_ready(self)
-    
+        if partner is None:
+            self.disconnect()
+            return
+
+        if self.partner == partner and partner.level == self.level:
+            return
+        if self.level == 0:
+            self.disconnect()
+
+        if partner is not None:
+            self._value = None
+            if partner.level == self.level:
+                self.partner = partner
+                notifyReady = self.partner.meta._ready and not self.meta._ready
+                self.meta = self.partner.meta.copy()
+
+                # the slot with more sub-slots determines
+                # the number of subslots
+                if len(self) < len(partner):
+                    self.resize(len(partner))
+                elif len(self) > len(partner):
+                    partner.resize(len(self))
+
+                partner.partners.append(self)
+                for i in range(len(self.partner)):
+                    p = self.partner[i]
+                    self[i].connect(p)
+
+                # call slot type connect function
+                self.stype.connect(partner)
+
+                if self.level > 0 or self.stype.isConfigured():
                     self._changed()
-                    # call connect callbacks
-                    self._sig_connect(self)
-    
-                elif partner.level > self.level:
-                    msg =  "Can't connect slots: {}.{}.level={}, but {}.{}.level={}"
-                    msg += " (Implicit OpearatorWrapper creation is no longer supported.)"
-                    msg = msg.format( self.getRealOperator().name, self.name, self.level,
-                                      partner.getRealOperator().name, partner.name, partner.level )
-                    raise RuntimeError(msg)
+
+                # call connect callbacks
+                self._sig_connect(self)
+
+                # Notify readiness after partner is updated
+                if notifyReady:
+                    self._sig_ready(self)
+
+            elif partner.level < self.level:
+                self.partner = partner
+                notifyReady = self.partner.meta._ready and not self.meta._ready
+                self.meta = self.partner.meta.copy()
+                for i, slot in enumerate(self._subSlots):
+                    slot.connect(partner)
+
+                if notifyReady:
+                    self._sig_ready(self)
+
+                self._changed()
+                # call connect callbacks
+                self._sig_connect(self)
+
+            elif partner.level > self.level:
+                msg =  "Can't connect slots: {}.{}.level={}, but {}.{}.level={}"
+                msg += " (Implicit OpearatorWrapper creation is no longer supported.)"
+                msg = msg.format( self.getRealOperator().name, self.name, self.level,
+                                  partner.getRealOperator().name, partner.name, partner.level )
+                raise RuntimeError(msg)
 
     def disconnect(self):
         """
         Disconnect a InputSlot from its partner
         """
-        with Tracer(self.traceLogger):
-            for slot in self._subSlots:
-                slot.disconnect()
+        for slot in self._subSlots:
+            slot.disconnect()
 
-            if self.partner is not None:
-                try:
-                    self.partner.partners.remove(self)
-                except ValueError:
-                    pass
-            self.partner = None
-            self._value = None
-            oldReady = self.meta._ready 
-            self.meta = MetaDict()
+        if self.partner is not None:
+            try:
+                self.partner.partners.remove(self)
+            except ValueError:
+                pass
+        self.partner = None
+        self._value = None
+        oldReady = self.meta._ready 
+        self.meta = MetaDict()
 
-            if len(self._subSlots) > 0:
-                self.resize(0)
-    
-            # call callbacks
-            self._sig_disconnect(self)
-            
-            # Notify our partners that we changed.
-            self._changed()
-    
-            # If we were ready before, signal that we aren't any more
-            if oldReady:
-                self._sig_unready(self)
+        if len(self._subSlots) > 0:
+            self.resize(0)
+
+        # call callbacks
+        self._sig_disconnect(self)
+        
+        # Notify our partners that we changed.
+        self._changed()
+
+        # If we were ready before, signal that we aren't any more
+        if oldReady:
+            self._sig_unready(self)
 
     def resize(self, size):
         """
@@ -530,44 +528,43 @@ class Slot(object):
         Arguments:
           size    : the desired number of subslots
         """
-        with Tracer(self.traceLogger):
-            if self._resizing:
-                return
-            if self.level == 0:
-                raise RuntimeError("Can't resize a level-0 slot!")
-    
-            oldsize = len(self)
-            if size == oldsize:
-                return
-    
-            self._resizing = True
-            if self.operator is not None:
-                self.logger.debug("Resizing slot %r of operator %r to size %r" % (self.name, self.operator.name, size))
-    
-            # call before resize callbacks
-            self._sig_resize(self, oldsize, size)
-    
-            while size > len(self):
-                self.insertSlot(len(self), len(self)+1, propagate = False)
-                # connect newly added slots
-                self._connectSubSlot(len(self) - 1)
-    
-            while size < len(self):
-                self.removeSlot(len(self)-1, len(self)-1, propagate = False)
-    
-            # propagate size change downward
-            for c in self.partners:
-                if c.level == self.level:
-                    c.resize(size)
-    
-            # propagate size change upward
-            if self.partner and len(self.partner) < size and self.partner.level == self.level:
-                self.partner.resize(size)
-    
-            # call after resize callbacks
-            self._sig_resized(self, oldsize, size)
-    
-            self._resizing = False
+        if self._resizing:
+            return
+        if self.level == 0:
+            raise RuntimeError("Can't resize a level-0 slot!")
+
+        oldsize = len(self)
+        if size == oldsize:
+            return
+
+        self._resizing = True
+        if self.operator is not None:
+            self.logger.debug("Resizing slot %r of operator %r to size %r" % (self.name, self.operator.name, size))
+
+        # call before resize callbacks
+        self._sig_resize(self, oldsize, size)
+
+        while size > len(self):
+            self.insertSlot(len(self), len(self)+1, propagate = False)
+            # connect newly added slots
+            self._connectSubSlot(len(self) - 1)
+
+        while size < len(self):
+            self.removeSlot(len(self)-1, len(self)-1, propagate = False)
+
+        # propagate size change downward
+        for c in self.partners:
+            if c.level == self.level:
+                c.resize(size)
+
+        # propagate size change upward
+        if self.partner and len(self.partner) < size and self.partner.level == self.level:
+            self.partner.resize(size)
+
+        # call after resize callbacks
+        self._sig_resized(self, oldsize, size)
+
+        self._resizing = False
 
 
 
@@ -576,51 +573,49 @@ class Slot(object):
         Insert a new slot at the specififed position
         finalsize indicates the final destination size
         """
-        with Tracer(self.traceLogger):
-            if len(self) >= finalsize:
-                return self[position]
-            slot =  self._insertNew(position)
-            self.logger.debug("Inserting slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize))
-            if propagate:
-                if self.partner is not None and self.partner.level == self.level:
-                    self.partner.insertSlot(position, finalsize)
-                self._connectSubSlot(position)
-    
-                for p in self.partners:
-                    if p.level == self.level:
-                        p.insertSlot(position, finalsize)
-    
-            # call after insert callbacks
-            self._sig_inserted(self, position, finalsize)
-            return slot
+        if len(self) >= finalsize:
+            return self[position]
+        slot =  self._insertNew(position)
+        self.logger.debug("Inserting slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize))
+        if propagate:
+            if self.partner is not None and self.partner.level == self.level:
+                self.partner.insertSlot(position, finalsize)
+            self._connectSubSlot(position)
+
+            for p in self.partners:
+                if p.level == self.level:
+                    p.insertSlot(position, finalsize)
+
+        # call after insert callbacks
+        self._sig_inserted(self, position, finalsize)
+        return slot
 
     def removeSlot(self, position, finalsize, propagate = True):
         """
         Remove the slot at position
         finalsize indicates the final size of all subslots
         """
-        with Tracer(self.traceLogger):
-            if len(self) <= finalsize:
-                return None
-            assert position < len(self)
-            if self.operator is not None:
-                self.logger.debug("Removing slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize))
-            
-            # call before-remove callbacks
-            self._sig_remove(self, position, finalsize)
-    
-            slot = self._subSlots.pop(position)
-            slot.operator = None
-            slot.disconnect()
-            if propagate:
-                if self.partner is not None and self.partner.level == self.level:
-                    self.partner.removeSlot(position, finalsize)
-                for p in self.partners:
-                    if p.level == self.level:
-                        p.removeSlot(position, finalsize)
-    
-            # call after-remove callbacks
-            self._sig_removed(self, position, finalsize)
+        if len(self) <= finalsize:
+            return None
+        assert position < len(self)
+        if self.operator is not None:
+            self.logger.debug("Removing slot %r into slot %r of operator %r to size %r" % (position, self.name, self.operator.name, finalsize))
+        
+        # call before-remove callbacks
+        self._sig_remove(self, position, finalsize)
+
+        slot = self._subSlots.pop(position)
+        slot.operator = None
+        slot.disconnect()
+        if propagate:
+            if self.partner is not None and self.partner.level == self.level:
+                self.partner.removeSlot(position, finalsize)
+            for p in self.partners:
+                if p.level == self.level:
+                    p.removeSlot(position, finalsize)
+
+        # call after-remove callbacks
+        self._sig_removed(self, position, finalsize)
 
     def get( self, roi, destination = None ):
         """
@@ -723,23 +718,22 @@ class Slot(object):
         the key parameter identifies the changed region
         of an numpy.ndarray
         """
-        with Tracer(self.traceLogger):
-            assert self.operator is not None, \
-                   "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
-            if self.stype.isConfigured():
-                if not isinstance(args[0],rtype.Roi):
-                    roi = self.rtype(self, *args, **kwargs)
-                else:
-                    roi = args[0]
-    
-                for c in self.partners:
-                    c.setDirty(roi)
-    
-                # call callbacks
-                self._sig_dirty(self, roi)
-    
-                if self._type == "input" and self.operator.configured():
-                    self.operator.propagateDirty(self, (), roi)
+        assert self.operator is not None, \
+               "Slot '%s' cannot be set dirty, slot not belonging to any actual operator instance" % self.name
+        if self.stype.isConfigured():
+            if not isinstance(args[0],rtype.Roi):
+                roi = self.rtype(self, *args, **kwargs)
+            else:
+                roi = args[0]
+
+            for c in self.partners:
+                c.setDirty(roi)
+
+            # call callbacks
+            self._sig_dirty(self, roi)
+
+            if self._type == "input" and self.operator.configured():
+                self.operator.propagateDirty(self, (), roi)
 
 
     def __getitem__(self, key):
@@ -839,57 +833,55 @@ class Slot(object):
         large array-like values). In that case you should turn off the check.
 
         """
-        with Tracer(self.traceLogger):
-            assert isinstance( notify, bool )
-            assert isinstance( check_changed, bool )
-            
-            # This assertion is here to prevent accidental use of setValue when connect should be used.
-            # If your use case requires passing slots as values, then this assertion can be refined.
-            assert not isinstance(value, Slot), "When using setValue, value cannot be a slot.  Use connect instead."
+        assert isinstance( notify, bool )
+        assert isinstance( check_changed, bool )
+        
+        # This assertion is here to prevent accidental use of setValue when connect should be used.
+        # If your use case requires passing slots as values, then this assertion can be refined.
+        assert not isinstance(value, Slot), "When using setValue, value cannot be a slot.  Use connect instead."
 
-            changed = True
-            try:
-                if check_changed and value == self._value:
-                    changed = False
-            except:
-                pass
-            if changed:
-                #if self.stype.isCompatible(value):
-                # call disconnect callbacks
-                self._sig_disconnect(self)
-                self._value = value
-                self.stype.setupMetaForValue(value)
-                self.meta._dirty = True
-    
-                for s in self._subSlots:
-                    s.setValue(self._value)
-    
-                notify = (self.meta._ready == False)
-                self.meta._ready = True # a slot with a value is always ready
-                if notify:
-                    self._sig_ready(self)
-    
-                # call connect callbacks
-                self._sig_connect(self)
-                self._changed()
-    
-                # Propagate dirtyness
-                self.setDirty(slice(None))
+        changed = True
+        try:
+            if check_changed and value == self._value:
+                changed = False
+        except:
+            pass
+        if changed:
+            #if self.stype.isCompatible(value):
+            # call disconnect callbacks
+            self._sig_disconnect(self)
+            self._value = value
+            self.stype.setupMetaForValue(value)
+            self.meta._dirty = True
+
+            for s in self._subSlots:
+                s.setValue(self._value)
+
+            notify = (self.meta._ready == False)
+            self.meta._ready = True # a slot with a value is always ready
+            if notify:
+                self._sig_ready(self)
+
+            # call connect callbacks
+            self._sig_connect(self)
+            self._changed()
+
+            # Propagate dirtyness
+            self.setDirty(slice(None))
 
     def setValues(self, values):
         """
         set values of subslots with arraylike object
         resizes the multinputslot with the length of the values array
         """
-        with Tracer(self.traceLogger):
-            # call disconnect callbacks
-            self._sig_disconnect(self)
-            self.resize(len(values))
-            for i,s in enumerate(self._subSlots):
-                s.setValue(values[i])
-            # call connect callbacks
-            self._changed()
-            self._sig_connect(self)
+        # call disconnect callbacks
+        self._sig_disconnect(self)
+        self.resize(len(values))
+        for i,s in enumerate(self._subSlots):
+            s.setValue(values[i])
+        # call connect callbacks
+        self._changed()
+        self._sig_connect(self)
 
     def connected(self):
         """
@@ -969,14 +961,13 @@ class Slot(object):
         this method is used when creating an Instance of an Operator.
         All defined Input and Output slots of the Class are cloned and inserted into the instance of the Operator.
         """
-        with Tracer(self.traceLogger):
-            if level is None:
-                level = self.level
-            if self._type == "input":
-                s = InputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
-            elif self._type == "output":
-                s = OutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
-            return s
+        if level is None:
+            level = self.level
+        if self._type == "input":
+            s = InputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
+        elif self._type == "output":
+            s = OutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
+        return s
 
     def _changed(self):
         oldMeta = self.meta
@@ -1013,53 +1004,49 @@ class Slot(object):
         call setupOutputs of Operator if all slots
         of the operator are connected and configured
         """
-        with Tracer(self.traceLogger):
-            if self.operator is not None:
-                # check wether all slots are connected and notify operator
-                if self.operator.configured():
-                    self.operator._setupOutputs()
+        if self.operator is not None:
+            # check wether all slots are connected and notify operator
+            if self.operator.configured():
+                self.operator._setupOutputs()
 
     def _requiredLength(self):
         """
         Returns the required number of subslots
         """
-        with Tracer(self.traceLogger):
-            if self.partner is not None:
-                if self.partner.level == self.level:
-                    return len(self.partner)
-                elif self.partner.level < self.level:
-                    return 1
-            elif self._value is not None:
+        if self.partner is not None:
+            if self.partner.level == self.level:
+                return len(self.partner)
+            elif self.partner.level < self.level:
                 return 1
-            else:
-                return 0
+        elif self._value is not None:
+            return 1
+        else:
+            return 0
 
     def _setupOutputs(self):
         """
         """
-        with Tracer(self.traceLogger):
-            self._changed()
+        self._changed()
 
     def _connectSubSlot(self,slot, notify = True):
         """
         Connect a subslot either to the partner, or set the correct
         value in case of  self._value != None
         """
-        with Tracer(self.traceLogger):
-            if type(slot) == int:
-                index = slot
-                slot = self._subSlots[slot]
+        if type(slot) == int:
+            index = slot
+            slot = self._subSlots[slot]
+        else:
+            index = self._subSlots.index(slot)
+
+        if self.partner is not None:
+            if self.partner.level == self.level:
+                if len(self.partner) > index:
+                    slot.connect(self.partner[index])
             else:
-                index = self._subSlots.index(slot)
-    
-            if self.partner is not None:
-                if self.partner.level == self.level:
-                    if len(self.partner) > index:
-                        slot.connect(self.partner[index])
-                else:
-                    slot.connect(self.partner)
-            if self._value is not None:
-                slot.setValue(self._value, notify = notify)
+                slot.connect(self.partner)
+        if self._value is not None:
+            slot.setValue(self._value, notify = notify)
 
 
     def _insertNew(self, position):
@@ -1067,14 +1054,13 @@ class Slot(object):
         Construct a new subSlot of correct type and level and insert
         it to the list of subslots
         """
-        with Tracer(self.traceLogger):
-            assert position >= 0 and position <= len(self._subSlots)
-            slot = self._getInstance(self, level = self.level - 1)
-            self._subSlots.insert(position, slot)
-            slot.name = self.name
-            if self._value is not None:
-                slot.setValue(self._value)
-            return slot
+        assert position >= 0 and position <= len(self._subSlots)
+        slot = self._getInstance(self, level = self.level - 1)
+        self._subSlots.insert(position, slot)
+        slot.name = self.name
+        if self._value is not None:
+            slot.setValue(self._value)
+        return slot
 
     def pop(self, index = -1, event = None):
         if index < 0:
@@ -1292,59 +1278,57 @@ class Operator(object):
 
     # continue initialization, when user overrides __init__
     def _after_init(self):
-        with Tracer(self.traceLogger, msg=self.name):
-            #provide simple default name for lazy users
-            if self.name == "":
-                self.name = type(self).__name__
-            assert self.graph is not None, "Operator %r: self.graph is None, the parent  (%r) given to the operator must have a valid .graph attribute! " % (self, self._parent)
-            # check for slot uniqueness
-            temp = {}
-            for i in self.inputSlots:
-                if temp.has_key(i.name):
-                    raise Exception("ERROR: Operator %s has multiple slots with name %s, please make sure that all input and output slot names are unique" % (self.name, i.name))
-                    sys.exit(1)
-                temp[i.name] = True
-    
-            for i in self.outputSlots:
-                if temp.has_key(i.name):
-                    raise Exception("ERROR: Operator %s has multiple slots with name %s, please make sure that all input and output slot names are unique" % (self.name, i.name))
-                    sys.exit(1)
-                temp[i.name] = True
-    
-            self._instantiate_slots()
-    
-            self._setDefaultInputValues()
-    
-            for islot in self.inputs.values():
-                islot.notifyUnready( self.handleInputBecameUnready )
-    
-    
-            self._initialized = True
-            if self.configured():
-                self._setupOutputs()
+        #provide simple default name for lazy users
+        if self.name == "":
+            self.name = type(self).__name__
+        assert self.graph is not None, "Operator %r: self.graph is None, the parent  (%r) given to the operator must have a valid .graph attribute! " % (self, self._parent)
+        # check for slot uniqueness
+        temp = {}
+        for i in self.inputSlots:
+            if temp.has_key(i.name):
+                raise Exception("ERROR: Operator %s has multiple slots with name %s, please make sure that all input and output slot names are unique" % (self.name, i.name))
+                sys.exit(1)
+            temp[i.name] = True
+
+        for i in self.outputSlots:
+            if temp.has_key(i.name):
+                raise Exception("ERROR: Operator %s has multiple slots with name %s, please make sure that all input and output slot names are unique" % (self.name, i.name))
+                sys.exit(1)
+            temp[i.name] = True
+
+        self._instantiate_slots()
+
+        self._setDefaultInputValues()
+
+        for islot in self.inputs.values():
+            islot.notifyUnready( self.handleInputBecameUnready )
+
+
+        self._initialized = True
+        if self.configured():
+            self._setupOutputs()
 
     def _instantiate_slots(self):
-        with Tracer(self.traceLogger, msg=self.name):
-            # replicate input slot connections
-            # defined for the operator for the instance
-            for i in self.inputSlots:
-                if not self.inputs.has_key(i.name):
-                    ii = i._getInstance(self)
-                    ii.connect(i.partner)
-                    self.inputs[i.name] = ii
-    
-            for k,v in self.inputs.items():
-                self.__dict__[k] = v
-    
-            # relicate output slots
-            # defined for the operator for the instance
-            for o in self.outputSlots:
-                if not self.outputs.has_key(o.name):
-                    oo = o._getInstance(self)
-                    self.outputs[o.name] = oo
-    
-            for k,v in self.outputs.items():
-                self.__dict__[k] = v
+        # replicate input slot connections
+        # defined for the operator for the instance
+        for i in self.inputSlots:
+            if not self.inputs.has_key(i.name):
+                ii = i._getInstance(self)
+                ii.connect(i.partner)
+                self.inputs[i.name] = ii
+
+        for k,v in self.inputs.items():
+            self.__dict__[k] = v
+
+        # relicate output slots
+        # defined for the operator for the instance
+        for o in self.outputSlots:
+            if not self.outputs.has_key(o.name):
+                oo = o._getInstance(self)
+                self.outputs[o.name] = oo
+
+        for k,v in self.outputs.items():
+            self.__dict__[k] = v
 
     @property
     def parent(self):
@@ -1380,11 +1364,10 @@ class Operator(object):
                 i.setValue(i._defaultValue)
 
     def disconnect(self):
-        with Tracer(self.traceLogger):
-            for s in self.outputs.values():
-                s.disconnect()
-            for s in self.inputs.values():
-                s.disconnect()
+        for s in self.outputs.values():
+            s.disconnect()
+        for s in self.inputs.values():
+            s.disconnect()
 
 
     """
