@@ -884,7 +884,6 @@ class Slot(object):
     
                 notify = (self.meta._ready == False)
                 self.meta._ready = True # a slot with a value is always ready
-                self._currentStateTag = self.operator.graph.stateTag
                 if notify:
                     self._sig_ready(self)
     
@@ -1423,24 +1422,12 @@ class Operator(object):
 
     def _setupOutputs(self):
         with Tracer(self.traceLogger, msg=self.name):
-            # Changing the graph causes a chain of recursive calls to setupOutputs.
-            # The callDepthCounter tracks how many calls deep we are so we know when we've come back out again and we're about to return to the user.
-            # The graph's "state tag" should be unique for each change made from the outside, so we only change it once for each external graph change.
-            if self.graph.callDepthCounter == 0:
-                self.graph.newStateTag()
-            self.graph.incrementCallDepth()
-    
             # Don't setup this operator if there are currently requests on it.
             with self._condition:
                 while self._executionCount > 0:
                     self._condition.wait()            
                 self._settingUp = True
                 
-                # Update the state tag of every output.
-                # Requests made with the old state tag will not be processed.
-                for k, oslot in self.outputs.items():
-                    oslot._currentStateTag = self.graph.stateTag
-        
                 # Outputslots may become "ready" during setupOutputs()
                 # Save a copy of the ready flag for each output slot so we can decide whether or not to fire the ready signal.
                 readyFlags = {}
@@ -1462,8 +1449,6 @@ class Operator(object):
             #notify outputs of probably changed meta information
             for k,v in self.outputs.items():
                 v._changed()
-    
-            self.graph.decrementCallDepth()
 
     def handleInputBecameUnready(self, slot):
         with Tracer(self.traceLogger, msg=self.name):
@@ -1687,29 +1672,7 @@ class OperatorWrapper(Operator):
         # Calls to Slot.setitem are already forwarded to all slot partners.
         pass
 
-class Graph(object):
-    def __init__(self, numThreads=-1):
-        self._callDepthCounter = 0
-        self._stateTag = 0
-        
-    @property
-    def callDepthCounter(self):
-        return self._callDepthCounter
-
-    def incrementCallDepth(self):
-        self._callDepthCounter += 1
-        
-    def decrementCallDepth(self):
-        self._callDepthCounter -= 1
-
-    @property
-    def stateTag(self):
-        return self._stateTag
-    
-    def newStateTag(self):
-        self._stateTag += 1
-        return self._stateTag
-    
+class Graph(object):    
     def stopGraph(self):
         pass
 
