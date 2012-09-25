@@ -70,7 +70,7 @@ class FeatureSelectionGui(LayerViewerGui):
         self.mainOperator = mainOperator
 
         self.initFeatureDlg()
-        self.mainOperator.SelectionMatrix.notifyConnect( bind(self.onFeaturesSelectionsChanged) )
+        self.mainOperator.SelectionMatrix.notifyReady( bind(self.onFeaturesSelectionsChanged) )
     
     @traceLogged(traceLogger)
     def initAppletDrawerUi(self):

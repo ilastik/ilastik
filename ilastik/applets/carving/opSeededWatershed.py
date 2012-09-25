@@ -78,7 +78,7 @@ class OpSegmentor(Operator):
     self.lock = Lock()
     self.initial_seg = None
     self._dirtySeg = True
-    self.initial_segmentor.notifyConnect(self.onInitialSegmentor)
+    self.initial_segmentor.notifyReady(self.onInitialSegmentor)
     self.initial_segmentor.notifyMetaChanged(self.onInitialSegmentor)
     self.parameters.notifyMetaChanged(self.onNewParameters)
     self._seedNumbers = [0,1]

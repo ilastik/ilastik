@@ -232,14 +232,14 @@ class SeededWatershedGui(QMainWindow):
         """This closure is called when a new input image is connected to the multi-input slot."""
         if len(self.pipeline.image) > 0:
             # Subscribe to changes on the graph input.
-            self.pipeline.image[self.imageIndex].notifyConnect( bind(self.handleGraphInputChanged) )
+            self.pipeline.image[self.imageIndex]._notifyConnect( bind(self.handleGraphInputChanged) )
             self.pipeline.image[self.imageIndex].notifyMetaChanged( bind(self.handleGraphInputChanged) )
 
     def subscribeToLabelImageChanges(self):
         if len(self.pipeline.seeds) > 0:
             # Subscribe to changes on the graph input.
             self.pipeline.seeds[self.imageIndex].notifyMetaChanged( bind(self.initLabelLayer) )
-            self.pipeline.seeds[self.imageIndex].notifyConnect( bind(self.initLabelLayer) )
+            self.pipeline.seeds[self.imageIndex]._notifyConnect( bind(self.initLabelLayer) )
 
     def setImageIndex(self, imageIndex):
         self.imageIndex = imageIndex
