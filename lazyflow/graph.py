@@ -1421,9 +1421,6 @@ class Operator(object):
     def propagateDirty(self, slot, subindex, roi):
         raise NotImplementedError(".propagateDirty() of Operator %r is not implemented !" % (self.name))
 
-    def _notifyConnect(self, inputSlot):
-        pass#self.notifyConnect(inputSlot)
-
     def _setupOutputs(self):
         with Tracer(self.traceLogger, msg=self.name):
             # Changing the graph causes a chain of recursive calls to setupOutputs.

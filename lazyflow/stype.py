@@ -181,12 +181,6 @@ class Struct( SlotType ):
     def execute(self, slot, subindex, roi, destination):
         return self.slot.operator.execute(slot,subindex,roi,destination)
 
-    def _notifyDisconnect(self,slot):
-        pass
-
-    def _notifyConnect(self,slot):
-        pass
-
     def copy_data(self, dst, src):
         raise("Not Implemented")
 
