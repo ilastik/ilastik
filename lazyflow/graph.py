@@ -221,6 +221,7 @@ class Slot(object):
         self.level = level            # defines the dimensionality of the slot, 0 = single element (e.g. single numpy.ndarray), 1 = list of elements (e.g. list of strings), 2 = list of list of elements
         self._value = None            # in the case of an InputSlot one can directly assign a value to a slot instead of connecting it to a partner, this attribute holds the value
         self._defaultValue = value    # a InputSlot can
+        self._backpropagate_values = False # Causes calls to setValue to be propagated backwards to the partner slot.  Used by the OperatorWrapper.
         self.rtype = rtype            # the region of interest type of the slot ( rtype.py)
         self.meta = MetaDict()        # the MetaDict that holds the slots meta information
         self._subSlots = []           # if level > 0, this holds the sub-Input/Output slots
@@ -840,6 +841,12 @@ class Slot(object):
         # If your use case requires passing slots as values, then this assertion can be refined.
         assert not isinstance(value, Slot), "When using setValue, value cannot be a slot.  Use connect instead."
 
+        if not self.backpropagate_values:
+            assert self.partner is None, "Cannot call setValue on this slot.  It is already connected to a partner.  Call disconnect first if that's what you really wanted."
+        elif self.partner is not None:
+            self.partner.setValue(value, notify, check_changed)
+            return
+
         changed = True
         try:
             if check_changed and value == self._value:
@@ -882,6 +889,16 @@ class Slot(object):
         # call connect callbacks
         self._changed()
         self._sig_connect(self)
+
+    @property
+    def backpropagate_values(self):
+        return self._backpropagate_values
+
+    @backpropagate_values.setter
+    def backpropagate_values(self, backprop):
+        self._backpropagate_values = backprop
+        for slot in self._subSlots:
+            slot.backpropagate_values = backprop
 
     def connected(self):
         """
@@ -1586,7 +1603,12 @@ class OperatorWrapper(Operator):
         with Tracer(self.traceLogger, msg=self.name):
             if len(self.innerOperators) >= length:
                 return self.innerOperators[index]
-            op = self._createInnerOperator()
+            op = self._createInnerOperator()            
+            # If anyone calls setValue() on one of these slots, forward the setValue 
+            #  call to the slot's partner (the outer slot on the operator wrapper)
+            for slot in op.inputs.values() + op.outputs.values():
+                slot.backpropagate_values = True
+            
             self.innerOperators.insert(index, op)
     
             # Connect the inner operator's inputs to our outer input slots

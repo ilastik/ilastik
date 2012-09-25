@@ -1124,7 +1124,7 @@ if has_blist:
                             # Don't connect deletelabel; it is set manually (here and also above)
                             self._labelers[b_ind].inputs["deleteLabel"].setValue(self.inputs["deleteLabel"].value)
                             self._labelers[b_ind].inputs["shape"].setValue(self._blockShape)
-                            self._labelers[b_ind].inputs["eraser"].connect(self.inputs["eraser"])
+                            self._labelers[b_ind].inputs["eraser"].setValue(self.inputs["eraser"].value)
 
                             # remember old max labele, i.e. 0 since we just created
                             self._oldMaxLabels[b_ind] = 0
