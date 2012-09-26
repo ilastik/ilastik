@@ -194,6 +194,7 @@ class ProjectManager(object):
         if self.currentProjectFile is not None:
             self.currentProjectFile.close()
             self.currentProjectFile = None
+            self.currentProjectPath = None
 
     def unloadAllApplets(self):
         """

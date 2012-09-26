@@ -129,7 +129,6 @@ class IlastikShell( QMainWindow ):
 
     def __init__( self, workflow = [], parent = None, flags = QtCore.Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
         QMainWindow.__init__(self, parent = parent, flags = flags )
-
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
 
@@ -217,10 +216,18 @@ class IlastikShell( QMainWindow ):
         super(IlastikShell, self).show()
         self.enableWorkflow = (self.projectManager.currentProjectFile is not None)
         self.updateAppletControlStates()
+        self.updateWindowTitle()
         if self._sideSplitterSizePolicy == SideSplitterSizePolicy.Manual:
             self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoLargestDrawer )
         else:
             self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoCurrentDrawer )
+
+    def updateWindowTitle(self):
+        projectPath = self.projectManager.currentProjectPath
+        if projectPath is None:
+            self.setWindowTitle("ilastik - No Project Loaded")
+        else:
+            self.setWindowTitle("ilastik - " + projectPath)
 
     def setImageNameListSlot(self, multiSlot):
         assert multiSlot.level == 1
@@ -461,6 +468,7 @@ class IlastikShell( QMainWindow ):
         self.projectManager.closeCurrentProject()
         self.enableWorkflow = False
         self.updateAppletControlStates()
+        self.updateWindowTitle()
     
     def onNewProjectActionTriggered(self):
         logger.debug("New Project action triggered")
@@ -599,6 +607,8 @@ class IlastikShell( QMainWindow ):
             # Now that a project is loaded, the user is allowed to save
             self._shellActions.saveProjectAction.setEnabled(True)
             self._shellActions.saveProjectSnapshotAction.setEnabled(True)
+    
+            self.updateWindowTitle()
     
             # Enable all the applet controls
             self.enableWorkflow = True
