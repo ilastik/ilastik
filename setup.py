@@ -18,7 +18,8 @@ packages=['ilastik',
           'ilastik.shell.headless',
           'ilastik.ilastik_logging',
           'ilastik.utility',
-          'ilastik.utility.gui']
+          'ilastik.utility.gui',
+          'ilastik.widgets']
 
 package_data={'ilastik': ['ilastik-splash.png',
                           'ilastik-splash.xcf'],
@@ -33,7 +34,7 @@ package_data={'ilastik': ['ilastik-splash.png',
           'ilastik.applets.thresholdMasking': ['*.ui'],
           'ilastik.applets.vigraWatershedViewer': ['*.ui'],
           'ilastik.shell.gui': ['ui/*.ui'],
-          'ilastik.ilastik_logging': ['logging_config.json']              
+          'ilastik.ilastik_logging': ['logging_config.json']
               }
 
 setup(name='ilastik',
