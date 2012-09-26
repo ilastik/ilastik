@@ -1,7 +1,6 @@
 from ilastik.shell.gui.startShellGui import startShellGui
 from pixelClassificationWorkflow import PixelClassificationWorkflow
 
-
 def debug_with_existing(shell, workflow):
     """
     (Function for debug and testing.)
@@ -40,18 +39,18 @@ def debug_with_new(shell, workflow):
     featureGui = workflow.featureSelectionApplet.gui
     opFeatures = workflow.featureSelectionApplet.topLevelOperator
     #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
-    selections = numpy.array( [[True, True, True,  True, True, True, True],
-                               [True, True, True,  True, True, True, True],
-                               [True, True, True,  True, True, True, True], # ST EVs
-                               [True, True, True,  True, True, True, True],
-                               [True, True, True,  True, True, True, True],  # GGM
-                               [True, True, True,  True, True, True, True]] )
-#    selections = numpy.array( [[True, False, False,  False, False, False, False],
-#                               [False, False, False, False, False, False, False],
-#                               [False, False, False, False, False, False, False], # ST EVs
-#                               [False, False, False, False, False, False, False],
-#                               [False, False, False, False, False, False, False],  # GGM
-#                               [False, False, False, False, False, False, False]] )
+#    selections = numpy.array( [[True, True, True,  True, True, True, True],
+#                               [True, True, True,  True, True, True, True],
+#                               [True, True, True,  True, True, True, True], # ST EVs
+#                               [True, True, True,  True, True, True, True],
+#                               [True, True, True,  True, True, True, True],  # GGM
+#                               [True, True, True,  True, True, True, True]] )
+    selections = numpy.array( [[True, False, False, False, False, False, False],
+                               [False, False, False, False, False, False, False],
+                               [False, False, False, False, False, False, False], # ST EVs
+                               [False, False, False, False, False, False, False],
+                               [False, False, False, False, False, False, False],  # GGM
+                               [False, False, False, False, False, False, False]] )
     opFeatures.SelectionMatrix.setValue(selections)
     opFeatures.Scales.setValue( featureGui.ScalesList )
     opFeatures.FeatureIds.setValue( featureGui.FeatureIds )
@@ -62,6 +61,22 @@ def debug_with_new(shell, workflow):
     # Save the project
     shell.onSaveProjectActionTriggered()
 
+def debug_with_imported(shell, workflow):
+    import os
+    import ilastik.utility.globals
+    ilastik.utility.globals.ImportOptions.default_axis_order = 'tyxzc'
+    
+    importedFilePath = "/magnetic/old_05_with_labels_needs_transpose.ilp"
+    
+    # Create a blank project file
+    base = os.path.splitext(importedFilePath)[0]
+    newProjectFilePath = base + "_imported.ilp"
+
+    # Import the project    
+    shell.importProject(importedFilePath, newProjectFilePath)
+
+    # Select the labeling drawer
+    shell.setSelectedAppletDrawer(3)
 
 if __name__ == "__main__":
     from optparse import OptionParser
@@ -81,6 +96,10 @@ if __name__ == "__main__":
         parser.error("incorrect number of arguments")
 
     # Start the GUI with a debug project    
-    #startShellGui( PixelClassificationWorkflow, debug_with_existing )    
+    #startShellGui( PixelClassificationWorkflow )    
+    #startShellGui( PixelClassificationWorkflow, debug_with_existing )
     #startShellGui( PixelClassificationWorkflow, debug_with_new )
 
+    # Test special transpose-on-import feature
+    #startShellGui( PixelClassificationWorkflow, debug_with_imported )
+ 

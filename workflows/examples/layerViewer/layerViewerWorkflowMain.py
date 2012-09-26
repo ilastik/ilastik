@@ -13,7 +13,8 @@ def debug_with_new(shell, workflow):
     # Add a file
     from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
     info = DatasetInfo()
-    info.filePath = '/magnetic/gigacube.h5'
+    #info.filePath = '/magnetic/gigacube.h5'
+    info.filePath = '/magnetic/5d.npy'
     #info.filePath = '/magnetic/synapse_small.npy'
     #info.filePath = '/magnetic/singleslice.h5'
     opDataSelection = workflow.dataSelectionApplet.topLevelOperator
@@ -24,5 +25,5 @@ def debug_with_new(shell, workflow):
     shell.onSaveProjectActionTriggered()
 
 if __name__ == "__main__":    
-    #startShellGui( LayerViewerWorkflow )
-    startShellGui( LayerViewerWorkflow, debug_with_new )
+    startShellGui( LayerViewerWorkflow )
+    #startShellGui( LayerViewerWorkflow, debug_with_new )
