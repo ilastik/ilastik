@@ -1,4 +1,5 @@
 import os
+import copy
 import h5py
 import logging
 logger = logging.getLogger(__name__)
@@ -91,7 +92,6 @@ class ProjectManager(object):
 
     def saveProject(self):
         logger.debug("Save Project triggered")
-
         assert self.currentProjectFile != None
         assert self.currentProjectPath != None
 
@@ -120,17 +120,41 @@ class ProjectManager(object):
 
     def saveProjectSnapshot(self, snapshotPath):
         """
-        Save the project, then save a copy of it to a different file.
-        The current project REMAINS OPEN.
+        Copy the project file as it is, then serialize any dirty state into the copy.
+        Original serializers and project file should not be touched.
         """
-        # First save the project
-        self.saveProject()
+        with h5py.File(snapshotPath, 'w') as snapshotFile:
+            # Minor GUI nicety: Pre-activate the progress signals for dirty applets so
+            #  the progress manager treats these tasks as a group instead of several sequential jobs.
+            for aplt in self._applets:
+                for ser in aplt.dataSerializers:
+                    if ser.isDirty():
+                        aplt.progressSignal.emit(0)
 
-        f = h5py.File(snapshotPath, 'w')
-        # Copy the entire contents of the file
-        for key in self.currentProjectFile.keys():
-            f.copy(self.currentProjectFile[key], key)
-        f.close()
+            # Start by copying the current project state into the file
+            # This should be faster than serializing everything from scratch
+            for key in self.currentProjectFile.keys():
+                snapshotFile.copy(self.currentProjectFile[key], key)
+
+            try:
+                # Applet serializable items are given the whole file (root group) for now
+                for aplt in self._applets:
+                    for item in aplt.dataSerializers:
+                        assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
+
+                        if item.isDirty():
+                            # Use a COPY of the serializer, so the original serializer doesn't forget it's dirty state
+                            itemCopy = copy.copy(item)
+                            itemCopy.serializeToHdf5(snapshotFile, snapshotPath)
+            except:
+                logger.error("Project Save Snapshot Action failed due to the following exception:")
+                traceback.print_exc()
+            finally:
+                # Flush any changes we made to disk, but don't close the file.
+                snapshotFile.flush()
+                
+                for applet in self._applets:
+                    applet.progressSignal.emit(100)
 
     def importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
         """
@@ -143,7 +167,12 @@ class ProjectManager(object):
         importedFilePath = os.path.abspath(importedFilePath)
         
         # Open and load the original project file
-        importedFile = h5py.File(importedFilePath, 'r')
+        try:
+            importedFile = h5py.File(importedFilePath, 'r')
+        except:
+            logger.error("Error opening file: " + importedFilePath)
+            raise
+
         self.loadProject(importedFile, importedFilePath)
         
         # Export the current workflow state to the new file.
