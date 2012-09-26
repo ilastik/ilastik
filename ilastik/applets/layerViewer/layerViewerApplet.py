@@ -18,7 +18,7 @@ class LayerViewerApplet( Applet ):
     def gui(self):
         if self._gui is None:
             from layerViewerGui import LayerViewerGui            
-            self._gui = LayerViewerGui( [ self.topLevelOperator.RawInput ] )
+            self._gui = LayerViewerGui( self.topLevelOperator )
         return self._gui
 
     @property
