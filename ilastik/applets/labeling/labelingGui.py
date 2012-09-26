@@ -137,7 +137,7 @@ class LabelingGui(LayerViewerGui):
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
 
-        self._colorTable16 = self._createDefault16ColorColorTable()        
+        self._colorTable16 = self._createDefault16ColorColorTable()
         self._programmaticallyRemovingLabels = False
         
         if drawerUiPath is None:
@@ -273,7 +273,7 @@ class LabelingGui(LayerViewerGui):
 
         # If the user can't label this image, disable the button and say why its disabled
         labelsAllowed = False
-        if self.imageIndex != -1:
+        if 0 <= self.imageIndex < len(self._labelingSlots.labelsAllowed) :
             labelsAllowedSlot = self._labelingSlots.labelsAllowed[self.imageIndex]
             if labelsAllowedSlot.ready():
                 labelsAllowed = labelsAllowedSlot.value
