@@ -272,6 +272,10 @@ class LayerViewerGui(QMainWindow):
 
     @traceLogged(traceLogger)
     def areProvidersInSync(self):
+        """
+        When an image is appended to the workflow, not all slots are resized simultaneously.
+        We should avoid calling setupLayers() until all the slots have been resized with the new image.
+        """
         try:
             numImages = len(self.observedSlots[0])
         except IndexError: # observedSlots is empty
