@@ -25,7 +25,7 @@ from lazyflow.stype import Opaque
 
 from volumina.pixelpipeline.datasources import RelabelingArraySource, LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
-from volumina import adaptors
+from volumina.adaptors import Op5ifyer
 
 from cylemon.segmentation import MSTSegmentor
 
@@ -38,12 +38,16 @@ class OpCarvingTopLevel(Operator):
 
     def __init__(self, carvingGraphFile, *args, **kwargs):
         super(OpCarvingTopLevel, self).__init__(*args, **kwargs)
+
+        # Convert data to 5d before giving it to the real operators
+        op5 = OperatorWrapper( Op5ifyer, parent=self, graph=self.graph )
+        op5.input.connect( self.RawData )
         
         self.opLabeling = OpLabeling(graph=self.graph, parent=self)
         self.opCarving = OperatorWrapper( OpCarving, operator_args=[carvingGraphFile], graph=self.graph )
         
-        self.opLabeling.InputImages.connect( self.RawData )
-        self.opCarving.RawData.connect( self.RawData )
+        self.opLabeling.InputImages.connect( op5.output )
+        self.opCarving.RawData.connect( op5.output )
         
         self.opCarving.WriteSeeds.connect(self.opLabeling.LabelInputs)
         
@@ -91,8 +95,8 @@ class OpCarvingTopLevel(Operator):
                 a = self.opLabeling.LabelImages[imageIndex][sl].wait()
                 w1 = numpy.where(a == 1)
                 w2 = numpy.where(a == 2)
-                w1 = [w1[i] + sl[i].start for i in range(3)]
-                w2 = [w2[i] + sl[i].start for i in range(3)]
+                w1 = [w1[i] + sl[i].start for i in range(1,4)]
+                w2 = [w2[i] + sl[i].start for i in range(1,4)]
                 for i in range(3):
                     coors1[i].append( w1[i] )
                     coors2[i].append( w2[i] )
@@ -134,9 +138,9 @@ class OpCarvingTopLevel(Operator):
         shape = self.opLabeling.LabelImages[imageIndex].meta.shape
         dtype = self.opLabeling.LabelImages[imageIndex].meta.dtype
         z = numpy.zeros(shape, dtype=dtype)
-        z[fgVoxels] = 2
-        z[bgVoxels] = 1
-        self.opLabeling.LabelInputs[imageIndex][:shape[0],:shape[1],:shape[2]] = z[:,:,:]
+        z[0][fgVoxels] = 2
+        z[0][bgVoxels] = 1
+        self.opLabeling.LabelInputs[imageIndex][0:1, :shape[1],:shape[2],:shape[3]] = z[:,:,:]
         
         #restore the correct parameter values 
         o=self.opCarving
@@ -492,7 +496,7 @@ class OpCarving(Operator):
             value = numpy.where(value == 100, 255, value[:])
             
             if hasattr(key, '__len__'):
-                self._mst.seeds[key[0:3]] = value
+                self._mst.seeds[key[1:4]] = value
             else:
                 self._mst.seeds[key] = value
                 
@@ -916,35 +920,16 @@ class CarvingGui(LabelingGui):
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class CarvingApplet(LabelingApplet):
-    def __init__(self, graph, projectFileGroupName, raw, carvingGraphFile):
+    def __init__(self, graph, projectFileGroupName, carvingGraphFile):
         super(CarvingApplet, self).__init__(graph, projectFileGroupName)
 
-        self._raw = raw
-       
-        #
-        # raw data
-        # 
-        o = OperatorWrapper( adaptors.Op5ifyer, graph=graph )
-        o.order.setValue('txyzc')
-        o.input.connect(self._raw)
-        self._inputImage = o.output
-
         self._topLevelOperator = OpCarvingTopLevel( carvingGraphFile, graph=graph )
-        self._topLevelOperator.opCarving.RawData.connect(self._inputImage)
         self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
         self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
-        #self.opCarving.CarvingGraphFile.setValue(carvingGraphFile)
-
-        o = OperatorWrapper( adaptors.Op5ifyer, graph=graph )
-        o.order.setValue('txyzc')
-        o.input.connect(self._topLevelOperator.opCarving.Segmentation)
-        self._segmentation5D = o.output
-        assert self._segmentation5D is not None
 
     @property
     def dataSerializers(self):
         return [ CarvingSerializer(self._topLevelOperator, "carving", 0.1) ]
-        #return []
 
     @property
     def gui(self):
@@ -958,7 +943,10 @@ class CarvingApplet(LabelingApplet):
             labelingSlots.maxLabelValue = self.topLevelOperator.opLabeling.MaxLabelValue
             labelingSlots.labelsAllowed = self.topLevelOperator.opLabeling.LabelsAllowedFlags
             
-            self._gui = CarvingGui( labelingSlots, [self._segmentation5D, self._inputImage], rawInputSlot=self._raw, carvingApplet=self )
+            self._gui = CarvingGui( labelingSlots,
+                                    self.topLevelOperator,
+                                    rawInputSlot=self.topLevelOperator.opCarving.RawData,
+                                    carvingApplet=self )
         return self._gui
 
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -976,7 +964,7 @@ class CarvingWorkflow(Workflow):
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
 
-        self.carvingApplet = CarvingApplet(graph, "xxx", self.dataSelectionApplet.topLevelOperator.Image, carvingGraphFile)
+        self.carvingApplet = CarvingApplet(graph, "xxx", carvingGraphFile)
         self.carvingApplet.topLevelOperator.RawData.connect( self.dataSelectionApplet.topLevelOperator.Image )
         self.carvingApplet.topLevelOperator.opLabeling.LabelsAllowedFlags.connect( self.dataSelectionApplet.topLevelOperator.AllowLabels )
         self.carvingApplet.gui.minLabelNumber = 2
@@ -1028,8 +1016,8 @@ if __name__ == "__main__":
     parser = OptionParser(usage)
 
 #    import sys
-#    sys.argv.append("/Users/bergs/Documents/workspace/applet-workflows/denk.h5")
-#    sys.argv.append("test.ilp")
+#    sys.argv.append("/magnetic/denk.h5")
+#    sys.argv.append("/magnetic/carving_test.ilp")
 
     (options, args) = parser.parse_args()
     
