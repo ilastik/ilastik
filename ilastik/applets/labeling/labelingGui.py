@@ -13,8 +13,8 @@ from PyQt4.QtGui import *
 # HCI
 from lazyflow.tracer import traceLogged
 from volumina.api import LazyflowSinkSource, ColortableLayer
-from igms.labelListView import Label
-from igms.labelListModel import LabelListModel
+from ilastik.widgets.labelListView import Label
+from ilastik.widgets.labelListModel import LabelListModel
 
 # ilastik
 from ilastik.utility import bind

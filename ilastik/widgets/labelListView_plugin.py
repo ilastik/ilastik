@@ -1,8 +1,8 @@
 from PyQt4.QtDesigner import QPyDesignerCustomWidgetPlugin
 from PyQt4.QtGui import QPixmap, QIcon, QColor
 
-from igms.labelListView import LabelListView
-from igms.labelListModel import Label, LabelListModel
+from ilastik.widgets.labelListView import LabelListView
+from ilastik.widgets.labelListModel import Label, LabelListModel
 
 class PyLabelListViewPlugin(QPyDesignerCustomWidgetPlugin):
 
@@ -54,5 +54,5 @@ class PyLabelListViewPlugin(QPyDesignerCustomWidgetPlugin):
                )
     
     def includeFile(self):
-        return "igms.labelListView"
+        return "ilastik.widgets.labelListView"
  

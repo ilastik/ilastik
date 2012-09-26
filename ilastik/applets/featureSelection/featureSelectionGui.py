@@ -1,8 +1,8 @@
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
-from igms.featureTableWidget import FeatureEntry
-from igms.featureDlg import FeatureDlg
+from ilastik.widgets.featureTableWidget import FeatureEntry
+from ilastik.widgets.featureDlg import FeatureDlg
 
 import os
 import numpy

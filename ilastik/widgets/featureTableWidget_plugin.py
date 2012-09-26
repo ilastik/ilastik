@@ -1,7 +1,7 @@
 from PyQt4.QtDesigner import QPyDesignerCustomWidgetPlugin
 from PyQt4.QtGui import QPixmap, QIcon, QColor
 
-from igms.featureTableWidget import FeatureTableWidget, FeatureEntry
+from ilastik.widgets.featureTableWidget import FeatureTableWidget, FeatureEntry
 
 class PyFeatureTableWidgetPlugin(QPyDesignerCustomWidgetPlugin):
 
@@ -53,5 +53,5 @@ class PyFeatureTableWidgetPlugin(QPyDesignerCustomWidgetPlugin):
                )
     
     def includeFile(self):
-        return "igms.tableWidget"
+        return "ilastik.widgets.tableWidget"
  

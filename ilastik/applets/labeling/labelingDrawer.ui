@@ -178,7 +178,7 @@
   <customwidget>
    <class>LabelListView</class>
    <extends>QTableView</extends>
-   <header>igms.labelListView</header>
+   <header>ilastik.widgets.labelListView</header>
   </customwidget>
  </customwidgets>
  <resources/>

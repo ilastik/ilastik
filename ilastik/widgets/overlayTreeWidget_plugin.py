@@ -1,7 +1,7 @@
 from PyQt4.QtDesigner import QPyDesignerCustomWidgetPlugin
 from PyQt4.QtGui import QPixmap, QIcon, QColor
 
-from igms.overlayTreeWidget import OverlayTreeWidget, OverlayEntry
+from ilastik.widgets.overlayTreeWidget import OverlayTreeWidget, OverlayEntry
 
 class PyOverlayTreeWidgetPlugin(QPyDesignerCustomWidgetPlugin):
 
@@ -51,5 +51,5 @@ class PyOverlayTreeWidgetPlugin(QPyDesignerCustomWidgetPlugin):
                )
     
     def includeFile(self):
-        return "igms.overlayTreeWidget"
+        return "ilastik.widgets.overlayTreeWidget"
  
