@@ -11,8 +11,8 @@ from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelecti
 from lazyflow.graph import Graph, Operator, OperatorWrapper
 from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
 
-from applets.featureSelection import FeatureSelectionAutocontextApplet
-from applets.pixelClassification import AutocontextClassificationApplet
+from context.applets.featureSelection import FeatureSelectionAutocontextApplet
+from context.applets.pixelClassification import AutocontextClassificationApplet
 
 class PixelClassificationWorkflow(Workflow):
     

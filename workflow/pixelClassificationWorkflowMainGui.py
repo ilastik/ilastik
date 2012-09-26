@@ -8,7 +8,7 @@ def debug_with_existing(shell, workflow):
     """
     #projFilePath = '/home/bergs/gigacube.ilp'
     #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
-    projFilePath = '/home/akreshuk/MyProject.ilp'
+    projFilePath = '/home/akreshuk/Training.ilp'
     # Open a project
     shell.openProjectFile(projFilePath)
 

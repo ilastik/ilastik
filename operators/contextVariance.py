@@ -41,15 +41,16 @@ class OpVarianceContext2DOld(Operator):
 
 
 class OpContextVariance(Operator):
-    name = "VarianceContext2D"
+    name = "VarianceContext"
     description = "Compute averages and variances in the neighborhoods of different sizes"
        
-    inputSlots = [InputSlot("Input"),InputSlot("Radii"),InputSlot("LabelsCount")]
+    #inputSlots = [InputSlot("Input"),InputSlot("Radii"),InputSlot("LabelsCount")]
+    inputSlots = [InputSlot("Input"), InputSlot("Radii")]
     outputSlots = [OutputSlot("Output")]    
     
     def setupOutputs(self):
         
-        nclasses = self.inputs["LabelsCount"].value
+        #nclasses = self.inputs["LabelsCount"].value
         radii = self.inputs["Radii"].value
         
         inputSlot = self.inputs["Input"]
@@ -57,6 +58,8 @@ class OpContextVariance(Operator):
         #copy over all the dtype and such
         outputSlot.meta.assignFrom(inputSlot.meta)
         #set the correct number of channels
+        nclasses = inputSlot.meta.shape[inputSlot.meta.axistags.channelIndex]
+        print "n classes at operator setup:", nclasses
         channelNum = 2*nclasses*len(radii)
         
         outputSlot.setShapeAtAxisTo('c', channelNum)
@@ -66,7 +69,8 @@ class OpContextVariance(Operator):
         inputShape  = self.inputs["Input"].meta.shape
         outputShape = self.outputs["Output"].meta.shape
         radii = self.inputs["Radii"].value
-        nclasses=self.inputs["LabelsCount"].value
+        #nclasses=self.inputs["LabelsCount"].value
+        nclasses = self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.channelIndex]
         #FIXME: why do we do that? To ensure correct types for C++?
         radii = numpy.array(radii, dtype = numpy.uint32)
         maxRadius = numpy.max(radii)
@@ -93,8 +97,9 @@ class OpContextVariance(Operator):
         
         #allocate space for the output
         resshape = list(source.shape)
-        resshape[axistags.channelIndex] = outputShape[axistags.channelIndex]
-        temp = vigra.VigraArray(tuple(resshape), axistags=axistags)
+        resshape[axistags.channelIndex] = numpy.long(outputShape[axistags.channelIndex])
+        
+        temp = vigra.VigraArray(tuple(resshape), axistags=axistags, dtype=self.outputs["Output"].meta.dtype )
         
         nNonsingles = len([x for x in inputShape if x>1])
         
@@ -134,12 +139,6 @@ class OpContextVariance(Operator):
         
         #print "returning:", tgtRoi
         return tgtRoi
-        '''
-        start = [x+maxRadius if x!=0 else 0 for x in tgtRoi.start]
-        tgtShape = roi.stop-roi.start
-        print tgtShape
-        stop = [a+b if a!=0 else 0 for (a,b) in zip(tgtRoi.stop, tgtShape)]
-        '''
     
     
     def propagateDirty(self, inputSlot, subindex, key):

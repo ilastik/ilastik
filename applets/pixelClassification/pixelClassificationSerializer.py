@@ -77,12 +77,12 @@ class PixelClassificationSerializer(AppletSerializer):
                 self._serializeLabels( topGroup )            
                 progress += increment
                 self.progressSignal.emit( progress )
-    
+            '''
             if self._dirtyFlags[Section.Classifier]:
                 self._serializeClassifier( topGroup )
                 progress += increment
                 self.progressSignal.emit( progress )
-
+            '''
             # Need to call serialize predictions even if it isn't dirty
             # (Since it isn't always stored.)    
             self._serializePredictions( topGroup, progress, progress + increment )

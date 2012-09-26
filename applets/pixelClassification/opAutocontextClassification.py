@@ -69,7 +69,7 @@ class OpAutocontextClassification( Operator ):
         self.prediction_caches_gui = []
         
         #FIXME: we should take it from the input slot
-        niter = 1
+        niter = 3
         
         for i in range(niter):
             predict = OperatorWrapper( OpPredictRandomForest, graph= self.graph )
@@ -291,17 +291,17 @@ class OpAutocontextClassification( Operator ):
         blockDimsX = { 't' : (1,1),
                        'z' : (128,256),
                        'y' : (128,256),
-                       'x' : (32,32),
+                       'x' : (5,5),
                        'c' : (1000,1000) }
 
         blockDimsY = { 't' : (1,1),
                        'z' : (128,256),
-                       'y' : (32,32),
+                       'y' : (5,5),
                        'x' : (128,256),
                        'c' : (1000,1000) }
 
         blockDimsZ = { 't' : (1,1),
-                       'z' : (32,32),
+                       'z' : (5,5),
                        'y' : (128,256),
                        'x' : (128,256),
                        'c' : (1000,1000) }
@@ -328,17 +328,17 @@ class OpAutocontextClassification( Operator ):
         blockDimsX = { 't' : (1,1),
                         'z' : (128,256),
                         'y' : (128,256),
-                        'x' : (32,32),
+                        'x' : (5,5),
                         'c' : (1000,1000) } # Overestimate number of feature channels: Cache block dimensions will be clipped to the size of the actual feature image
         
         blockDimsY = { 't' : (1,1),
                         'z' : (128,256),
-                        'y' : (32,32),
+                        'y' : (5,5),
                         'x' : (128,256),
                         'c' : (1000,1000) }
         
         blockDimsZ = { 't' : (1,1),
-                        'z' : (32,32),
+                        'z' : (5,5),
                         'y' : (128,256),
                         'x' : (128,256),
                         'c' : (1000,1000) }
@@ -364,8 +364,15 @@ class OpAutocontextClassification( Operator ):
         #ops.append(OperatorWrapper (OpArrayPiper, graph = self.graph))
         
         ops.append(OperatorWrapper(OpContextVariance, graph=self.graph))
-        ops[0].inputs["Radii"].setValue([3])
-        ops[0].inputs["LabelsCount"].setValue(2)
+        ops[0].inputs["Radii"].setValue([[3, 3, 0], [5, 5, 0], [10, 10, 0]])
+        #ops[0].inputs["LabelsCount"].setValue(2)
+        ops.append(OperatorWrapper(OpContextVariance, graph=self.graph))
+        #ops[1].inputs["Radii"].setValue([5, 5, 1])
+        #ops[1].inputs["LabelsCount"].setValue(2)
+        #ops.append(OperatorWrapper(OpContextVariance, graph=self.graph))
+        #ops[2].inputs["Radii"].setValue([10, 10, 2])
+        #ops[2].inputs["LabelsCount"].setValue(2)
+        
         
         #ops[0].name = ops[0].name+" dummy1"
         #ops[1].name = ops[1].name+" dummy2"

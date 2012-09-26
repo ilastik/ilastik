@@ -162,7 +162,7 @@ def testVariance3Danis():
 def testVarianceOperator():
     print "Test context variance operator"
     g = graph.Graph()
-    opVar = OpContextVariance(g)
+    opVar = OpContextVariance(graph = g)
     # 2d
     nx = 10
     ny = 10
@@ -173,8 +173,6 @@ def testVarianceOperator():
     dummy = vigra.VigraArray(aaa.shape, axistags=vigra.VigraArray.defaultAxistags(3)).astype(numpy.float32)
     dummy[:]=aaa[:]
 
-    #print dummypred[:, :, 0]
-
     sizes = numpy.array([1, 2], dtype=numpy.uint32)
     nr = sizes.shape[0]
     resshape = (nx, ny, nc*2*sizes.shape[0])
@@ -184,12 +182,42 @@ def testVarianceOperator():
     #let's compare with operator result:
     opVar.inputs["Input"].setValue(dummy)
     opVar.inputs["Radii"].setValue(sizes)
-    opVar.inputs["LabelsCount"].setValue(nc)
+    #opVar.inputs["LabelsCount"].setValue(nc)
     
     sub = lazyflow.rtype.SubRegion(None, start = [0, 0, 0], stop = [5, 5, 8])
     res2 = opVar.outputs["Output"](sub.start,sub.stop).allocate().wait()
+    res2 = numpy.asarray(res2)
+    res2 = res2.swapaxes(0, 1)
+    #assert_almost_equal(res[0:3, 0:3, 0], res2[0:3, 0:3, 0])
     print res2[0:3, 0:3, 0]
     print res[0:3, 0:3, 0]
+    
+    nz = 10
+    sizes_anis = numpy.array([[1, 1, 1], [2, 2, 2]], dtype=numpy.uint32)
+    sizes_anis_list = [[1, 1, 1], [2, 2, 2]]
+    bbb = numpy.random.rand(nx, ny, nz, nc)
+    bbb = bbb.reshape((nx, ny, nz, nc))
+    bbb = bbb.astype(numpy.float32)
+    dummy = vigra.VigraArray(bbb.shape, axistags=vigra.VigraArray.defaultAxistags(4)).astype(numpy.float32)
+    dummy[:]=bbb[:]
+    resshape = (nx, ny, nz, nc*2*sizes.shape[0])
+    res = vigra.VigraArray(resshape, axistags =vigra.VigraArray.defaultAxistags(4)).astype(numpy.float32)
+    res = varContext3Danis(sizes_anis, dummy, res) 
+    
+    opVar3D = OpContextVariance(graph = g)
+    opVar3D.inputs["Input"].setValue(dummy)
+    opVar3D.inputs["Radii"].setValue(sizes_anis_list)
+    sub2 = lazyflow.rtype.SubRegion(None, start=[0, 0, 0, 0], stop=[5, 5, 5, 8])
+    res2 = opVar3D.outputs["Output"](sub2.start, sub2.stop).allocate().wait()
+    res2 = numpy.asarray(res2)
+    res2 = res2.swapaxes(0, 1)
+    print res2[0:3, 0:3, 2, 0]
+    print res[0:3, 0:3, 2, 0]
+    
+    
+    
+    
+    
 
 if __name__=="__main__":
     testVariance2D();
