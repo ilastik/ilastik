@@ -3,22 +3,11 @@ TODO Document
 cleanup existing code:
 * remove examples directory
 * write 2 examples for operators with the new api
-* remove all unused operatores from the codebase
+* remove all unused operators from the codebase
 * port the remaining ones to the new api
 * write unit tests for each operator which test
   the operators compatability with many possible dimensions and axis
   cponfigurations
-* clean up Operator.__init__ with graph/operator
-
-evolve api:
-* use roi specification for all operator/slot calls
-  setDirty
-  setInslot
-  setSubInSlot
-  getSubOutSlot
-
-
-* operator which is wrapped has innerOps which are connected to slotsm which have no parent operator ??
 
 
  

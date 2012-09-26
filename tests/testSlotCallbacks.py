@@ -120,6 +120,7 @@ class TestSlot_notifyConnect(object):
         assert upval[0] == False
 
         # check the connect callback is not called when setting the same value again
+        opa.Input1.disconnect()
         opa.Input1.setValue(10)
         upval[0] = False
         opa.Input1.setValue(10)
@@ -176,6 +177,7 @@ class TestSlot_notifyDisconnect(object):
         # check the disconnect callback is called upon setValue when being already connected
         opa.Input1.connect(ops.Output1)
         upval[0] = False
+        opa.Input1.disconnect()
         opa.Input1.setValue(19)
         assert upval[0] == True
 
@@ -197,6 +199,7 @@ class TestSlot_notifyDisconnect(object):
         assert upval[0] == False
 
         # check the disconnect callback is not called when setting the same value again
+        opa.Input1.disconnect()
         opa.Input1.setValue(10)
         upval[0] = False
         opa.Input1.setValue(10)
