@@ -136,14 +136,14 @@ class LayerViewerGui(QMainWindow):
 
     def setupLayers( self, currentImageIndex ):
         layers = []
-        for slotLevel2 in self.observedSlots:
-            for i, slotLevel1 in enumerate(slotLevel2):
-                for j, slot in enumerate(slotLevel1):
+        for multiImageSlot in self.observedSlots:
+            if 0 <= currentImageIndex < len(multiImageSlot):
+                multiLayerSlot = multiImageSlot[currentImageIndex]
+                for j, slot in enumerate(multiLayerSlot):
                     if slot.ready():
                         layer = self.createStandardLayerFromSlot(slot)
-                        layer.name = slotLevel2.name + " " + str(j)
-                        layers.append(layer)
-        
+                        layer.name = multiImageSlot.name + " " + str(j)
+                        layers.append(layer)        
         return layers
 
     @traceLogged(traceLogger)
@@ -172,8 +172,9 @@ class LayerViewerGui(QMainWindow):
         
         # Make sure we're notified if a layer is inserted in the future so we can subscribe to its ready notifications
         for provider in self.observedSlots:
-            provider[self.imageIndex].notifyInserted( bind(self.handleLayerInsertion) )
-            provider[self.imageIndex].notifyRemoved( bind(self.handleLayerRemoval) )
+            if self.imageIndex < len(provider):
+                provider[self.imageIndex].notifyInserted( bind(self.handleLayerInsertion) )
+                provider[self.imageIndex].notifyRemoved( bind(self.handleLayerRemoval) )
 
     def handleLayerInsertion(self, slot, slotIndex):
         """
@@ -367,16 +368,17 @@ class LayerViewerGui(QMainWindow):
 
         newDataShape = None
         for provider in self.observedSlots:
-            for i, slot in enumerate(provider[self.imageIndex]):
-                if newDataShape is None and slot.ready() and slot.meta.axistags is not None:
-                    # Use an Op5ifyer adapter to transpose the shape for us.
-                    op5 = Op5ifyer( graph=slot.graph )
-                    op5.input.connect( slot )
-                    newDataShape = op5.output.meta.shape
-
-                    # We just needed the operator to determine the transposed shape.
-                    # Disconnect it so it can be garbage collected.
-                    op5.input.disconnect()
+            if self.imageIndex < len(provider):
+                for i, slot in enumerate(provider[self.imageIndex]):
+                    if newDataShape is None and slot.ready() and slot.meta.axistags is not None:
+                        # Use an Op5ifyer adapter to transpose the shape for us.
+                        op5 = Op5ifyer( graph=slot.graph )
+                        op5.input.connect( slot )
+                        newDataShape = op5.output.meta.shape
+    
+                        # We just needed the operator to determine the transposed shape.
+                        # Disconnect it so it can be garbage collected.
+                        op5.input.disconnect()
 
         if newDataShape is not None:
             # For now, this base class combines multi-channel images into a single layer,
