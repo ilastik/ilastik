@@ -62,24 +62,24 @@ class FeatureDlg(QDialog):
         self.buttonsLayout = QHBoxLayout()
         self.memReqLabel = QLabel()
         self.buttonsLayout.addWidget(self.memReqLabel)
-        self.ok = QToolButton()
-        self.ok.setText("OK")
-        self.ok.clicked.connect(self.on_okClicked)
         
         self.buttonsLayout.addStretch()
-        self.buttonsLayout.addWidget(self.ok)
-        
+
+        # Add Cancel
         self.cancel = QToolButton()
         self.cancel.setText("Cancel")
         self.cancel.clicked.connect(self.on_cancelClicked)
-
         self.buttonsLayout.addWidget(self.cancel)
+
+        # Add OK
+        self.ok = QToolButton()
+        self.ok.setText("OK")
+        self.ok.clicked.connect(self.on_okClicked)
+        self.buttonsLayout.addWidget(self.ok)
+
         self.buttonsLayout.addSpacerItem(QSpacerItem(10,0))
-#        self.viewAndButtonLayout.addLayout(self.buttonsLayout)
         self.viewAndButtonLayout.addSpacerItem(QSpacerItem(0,10))
-#        self.tableAndViewLayout.addLayout(self.viewAndButtonLayout)
         self.tableAndViewGroupBox.setLayout(self.tableAndViewLayout)
-        self.tableAndViewLayout.addStretch()
         self.tableAndViewLayout.addLayout(self.buttonsLayout)
         self.layout.addWidget(self.tableAndViewGroupBox)
         

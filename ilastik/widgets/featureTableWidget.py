@@ -405,7 +405,7 @@ class FeatureTableWidget(QTableWidget):
                 yield row,column
             
     def sizeHint(self):
-        height = 200
+        height = super(FeatureTableWidget, self).sizeHint().height()
         width  = self.horizontalHeader().sizeHint().width() * self.columnCount() + self.verticalHeader().sizeHint().width() + 22
         return QSize(width, height)
     
