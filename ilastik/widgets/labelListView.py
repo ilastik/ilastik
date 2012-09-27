@@ -4,7 +4,13 @@ from PyQt4.QtCore import Qt, QSize
 from labelListModel import LabelListModel, Label
 import sys
 
-class LabelListView(QTableView):        
+class LabelListView(QTableView):
+
+    class ColumnID():
+        Color = 0
+        Name = 1
+        Delete = 2
+      
     def __init__(self, parent = None):
         QTableView.__init__(self, parent)
         self.clicked.connect(self.tableViewCellClicked)
@@ -13,7 +19,7 @@ class LabelListView(QTableView):
         self.setShowGrid(False)
         
     def tableViewCellDoubleClicked(self, modelIndex):
-        if modelIndex.column() == 0:
+        if modelIndex.column() == LabelListView.ColumnID.Color:
             color = QColorDialog().getColor()
             self.model().setData(modelIndex, color)
         
@@ -27,9 +33,9 @@ class LabelListView(QTableView):
         self.setShowGrid(False)
         self.horizontalHeader().hide()
         self.verticalHeader().hide()
-        self.resizeColumnToContents(0)
+        self.resizeColumnToContents(LabelListView.ColumnID.Color)
         self.horizontalHeader().setResizeMode(1, QHeaderView.Stretch)
-        self.resizeColumnToContents(2)
+        self.resizeColumnToContents(LabelListView.ColumnID.Delete)
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
     
@@ -39,9 +45,17 @@ class LabelListView(QTableView):
         self._setListViewLook()
             
     def tableViewCellClicked(self, modelIndex):
-        if modelIndex.column() == 2 and not self.model().flags(modelIndex) == Qt.NoItemFlags:
+        if modelIndex.column() == LabelListView.ColumnID.Delete and not self.model().flags(modelIndex) == Qt.NoItemFlags:
             self.model().removeRow(modelIndex.row())
     
+    @property
+    def allowDelete(self):
+        return not self.isColumnHidden(LabelListView.ColumnID.Delete)
+    
+    @allowDelete.setter
+    def allowDelete(self, allow):
+        self.setColumnHidden(LabelListView.ColumnID.Delete, not allow)
+        
 
 if __name__ == '__main__':
     import numpy

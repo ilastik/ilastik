@@ -176,12 +176,16 @@ class PixelClassificationGui(LabelingGui):
             self.labelingDrawerUi.checkShowPredictions.setChecked( True )
             self.handleShowPredictionsClicked()
 
-        # If we're changing modes, enable/disable other applets accordingly
+        # If we're changing modes, enable/disable our controls and other applets accordingly
         if self.interactiveModeActive != checked:
             if checked:
+                self.labelingDrawerUi.labelListView.allowDelete = False
+                self.labelingDrawerUi.AddLabelButton.setEnabled( False )
                 self.guiControlSignal.emit( ControlCommand.DisableUpstream )
                 self.guiControlSignal.emit( ControlCommand.DisableDownstream )
             else:
+                self.labelingDrawerUi.labelListView.allowDelete = True
+                self.labelingDrawerUi.AddLabelButton.setEnabled( True )
                 self.guiControlSignal.emit( ControlCommand.Pop )                
                 self.guiControlSignal.emit( ControlCommand.Pop )
         self.interactiveModeActive = checked    
