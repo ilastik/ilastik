@@ -24,20 +24,26 @@ class FeatureSelectionGui(LayerViewerGui):
     ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
     DefaultColorTable = None
 
-    FeatureIds = [ 'GaussianSmoothing',
-                   'LaplacianOfGaussian',
-                   'StructureTensorEigenvalues',
-                   'HessianOfGaussianEigenvalues',
-                   'GaussianGradientMagnitude',
-                   'DifferenceOfGaussians' ]
+#    # Default order
+#    FeatureIds = [ 'GaussianSmoothing',
+#                   'LaplacianOfGaussian',
+#                   'GaussianGradientMagnitude',
+#                   'DifferenceOfGaussians',
+#                   'StructureTensorEigenvalues',
+#                   'HessianOfGaussianEigenvalues' ]
 
-    # Note: The order of these feature names must match the order of the feature Ids above
-    FeatureNames = [ "Gaussian Smoothing",
-                     "Laplacian of Gaussian",
-                     "Structure Tensor Eigenvalues",
-                     "Hessian of Gaussian Eigenvalues",
-                     "Gaussian Gradient Magnitude",
-                     "Difference of Gaussians" ]
+    # Map feature groups to lists of feature IDs
+    FeatureGroups = [ ( "Color",   [ "GaussianSmoothing" ] ),
+                      ( "Edge",    [ "LaplacianOfGaussian", "GaussianGradientMagnitude", "DifferenceOfGaussians" ] ),
+                      ( "Texture", [ "StructureTensorEigenvalues", "HessianOfGaussianEigenvalues" ] ) ]
+
+    # Map feature IDs to feature names
+    FeatureNames = { 'GaussianSmoothing' : 'Gaussian Smoothing',
+                     'LaplacianOfGaussian' : "Laplacian of Gaussian",
+                     'GaussianGradientMagnitude' : "Gaussian Gradient Magnitude",
+                     'DifferenceOfGaussians' : "Difference of Gaussians",
+                     'StructureTensorEigenvalues' : "Structure Tensor EigenValues",
+                     'HessianOfGaussianEigenvalues' : "Hessian of Gaussian Eigenvalues" }
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -69,9 +75,21 @@ class FeatureSelectionGui(LayerViewerGui):
         super(FeatureSelectionGui, self).__init__(mainOperator)
         self.mainOperator = mainOperator
 
-        self.initFeatureDlg()
         self.mainOperator.SelectionMatrix.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
-    
+
+        # Init feature dialog
+        self.initFeatureDlg()
+
+    def getFeatureIdOrder(self):
+        featureIrdOrder = []
+        for group, featureIds in self.FeatureGroups:
+            featureIrdOrder += featureIds
+        return featureIrdOrder
+
+    def initFeatureOrder(self):
+        self.mainOperator.Scales.setValue( self.ScalesList )
+        self.mainOperator.FeatureIds.setValue( self.getFeatureIdOrder() )
+            
     @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
         """
@@ -186,30 +204,47 @@ class FeatureSelectionGui(LayerViewerGui):
         """
         Initialize the feature selection widget.
         """
+        self.initFeatureOrder()
+
         self.featureDlg = FeatureDlg()
         self.featureDlg.setWindowTitle("Features")
-        self.featureDlg.createFeatureTable( { "Features": [ FeatureEntry(s) for s in self.FeatureNames ] },
-                                            self.ScalesList)
+        
+        # Map from groups of feature IDs to groups of feature NAMEs
+        groupedNames = []
+        for group, featureIds in self.FeatureGroups:
+            featureEntries = []
+            for featureId in featureIds:
+                featureName = self.FeatureNames[featureId]
+                featureEntries.append( FeatureEntry(featureName) )
+            groupedNames.append( (group, featureEntries) )
+        self.featureDlg.createFeatureTable( groupedNames, self.ScalesList )
         self.featureDlg.setImageToPreView(None)
 
-        # Create a matrix of False values
-        defaultFeatures = numpy.zeros((6,7), dtype=bool)
-
-        # Select some default features.
-        defaultFeatures[0,0] = True
-        defaultFeatures[1,0] = True
-        defaultFeatures[3,0] = True
-        defaultFeatures[4,0] = True
-        defaultFeatures[5,0] = True
-
+        # Init with no features
+        rows = len(self.mainOperator.FeatureIds.value)
+        cols = len(self.mainOperator.Scales.value)
+        defaultFeatures = numpy.zeros((rows,cols), dtype=bool)
         self.featureDlg.selectedFeatureBoolMatrix = defaultFeatures
+
         self.featureDlg.accepted.connect(self.onNewFeaturesFromFeatureDlg)
 
     def onFeatureButtonClicked(self):
         # Refresh the feature matrix in case it has changed since the last time we were opened
         # (e.g. if the user loaded a project from disk)
-        if self.mainOperator.SelectionMatrix.ready():
-            self.featureDlg.selectedFeatureBoolMatrix = self.mainOperator.SelectionMatrix.value
+        if self.mainOperator.SelectionMatrix.ready() and self.mainOperator.FeatureIds.ready():
+            # Re-order the feature matrix using the loaded feature ids
+            matrix = self.mainOperator.SelectionMatrix.value
+            featureOrdering = self.mainOperator.FeatureIds.value
+            
+            reorderedMatrix = numpy.zeros(matrix.shape, dtype=bool)
+            newrow = 0
+            for group, featureIds in self.FeatureGroups:
+                for featureId in featureIds:
+                    oldrow = featureOrdering.index(featureId)
+                    reorderedMatrix[newrow] = matrix[oldrow]
+                    newrow += 1
+                
+            self.featureDlg.selectedFeatureBoolMatrix = reorderedMatrix
         
         # Now open the feature selection dialog
         self.featureDlg.show()
@@ -218,8 +253,7 @@ class FeatureSelectionGui(LayerViewerGui):
         opFeatureSelection = self.operatorForCurrentImage()
         if opFeatureSelection is not None:
             # Re-initialize the scales and features
-            opFeatureSelection.Scales.setValue( self.ScalesList )
-            opFeatureSelection.FeatureIds.setValue(self.FeatureIds)
+            self.initFeatureOrder()
 
             # Give the new features to the pipeline (if there are any)
             featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
@@ -239,7 +273,9 @@ class FeatureSelectionGui(LayerViewerGui):
             self.drawer.caption.setText( "(No features selected)" )
             self.layerstack.clear()
         else:
-            self.drawer.caption.setText( "(Selected %d features)" % numpy.sum(self.mainOperator.SelectionMatrix.value) )
+            self.initFeatureOrder()
+            matrix = self.mainOperator.SelectionMatrix.value
+            self.drawer.caption.setText( "(Selected %d features)" % numpy.sum(matrix) )
 
 
 

@@ -55,18 +55,33 @@ class FeatureSelectionSerializer(AppletSerializer):
                 pass
             else:
                 self.mainOperator.Scales.setValue(scales)
-                self.mainOperator.FeatureIds.setValue(featureIds)
+
+                # If the main operator already has a feature ordering (provided by the GUI),
+                # then don't overwrite it.  We'll re-order the matrix to match the existing ordering.
+                if not self.mainOperator.FeatureIds.ready():
+                    self.mainOperator.FeatureIds.setValue(featureIds)
             
                 # If the matrix isn't there, just return
                 try:
-                    selectionMatrix = topGroup['SelectionMatrix'].value                
+                    savedMatrix = topGroup['SelectionMatrix'].value                
                     # Check matrix dimensions
-                    assert selectionMatrix.shape[0] == len(featureIds)
-                    assert selectionMatrix.shape[1] == len(scales)
+                    assert savedMatrix.shape[0] == len(featureIds), "Invalid project data: feature selection matrix dimensions don't make sense"
+                    assert savedMatrix.shape[1] == len(scales), "Invalid project data: feature selection matrix dimensions don't make sense"
                 except KeyError:
                     pass
                 else:
-                    self.mainOperator.SelectionMatrix.setValue(selectionMatrix)
+                    # If the feature order has changed since this project was last saved,
+                    #  then we need to re-order the features.
+                    # The 'new' order is provided by the operator
+                    newFeatureOrder = list(self.mainOperator.FeatureIds.value)
+
+                    newMatrixShape = ( len(newFeatureOrder), len(scales) )
+                    newMatrix = numpy.zeros(newMatrixShape, dtype=bool)
+                    for oldFeatureIndex, featureId in enumerate(featureIds):
+                        newFeatureIndex = newFeatureOrder.index(featureId)
+                        newMatrix[newFeatureIndex] = savedMatrix[oldFeatureIndex]
+
+                    self.mainOperator.SelectionMatrix.setValue(newMatrix)
     
             self._dirty = False
 
@@ -78,8 +93,6 @@ class FeatureSelectionSerializer(AppletSerializer):
 
     def unload(self):
         with Tracer(traceLogger):
-            self.mainOperator.Scales.disconnect()
-            self.mainOperator.FeatureIds.disconnect()
             self.mainOperator.SelectionMatrix.disconnect()
 
 class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
@@ -114,7 +127,10 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
                            'DifferenceOfGaussians' ]
     
             self.mainOperator.Scales.setValue(ScalesList)
-            self.mainOperator.FeatureIds.setValue(FeatureIds)
+            # If the main operator already has a feature ordering (provided by the GUI),
+            # then don't overwrite it.  We'll re-order the matrix to match the existing ordering.
+            if not self.mainOperator.FeatureIds.ready():
+                self.mainOperator.FeatureIds.setValue(featureIds)
     
             # Create a feature selection matrix of the correct shape (all false by default)
             pipeLineSelectedFeatureMatrix = numpy.array(numpy.zeros((6,7)), dtype=bool)
@@ -138,17 +154,20 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
                 
                 # Here's how features map to the old "feature groups"
                 # (Note: Nothing maps to the orientation group.)
-                featureToGroup = { 0 : 0,  # Gaussian Smoothing -> Color
-                                   1 : 1,  # Laplacian of Gaussian -> Edge
-                                   2 : 3,  # Structure Tensor Eigenvalues -> Texture
-                                   3 : 3,  # Eigenvalues of Hessian of Gaussian -> Texture
-                                   4 : 1,  # Gradient Magnitude of Gaussian -> Edge
-                                   5 : 1 } # Difference of Gaussians -> Edge
+                featureToGroup = { 'GaussianSmoothing'              : 0,  # Gaussian Smoothing -> Color
+                                   'LaplacianOfGaussian'            : 1,  # Laplacian of Gaussian -> Edge
+                                   'StructureTensorEigenvalues'     : 3,  # Structure Tensor Eigenvalues -> Texture
+                                   'HessianOfGaussianEigenvalues'   : 3,  # Eigenvalues of Hessian of Gaussian -> Texture
+                                   'GaussianGradientMagnitude'      : 1,  # Gradient Magnitude of Gaussian -> Edge
+                                   'DifferenceOfGaussians'          : 1 } # Difference of Gaussians -> Edge
     
+
+                newFeatureIds = self.mainOperator.FeatureIds.value
                 # For each feature, determine which group's settings to take
-                for featureIndex, featureGroupIndex in featureToGroup.items():
+                for featureId, featureGroupIndex in featureToGroup.items():
+                    newRow = newFeatureIds.index(featureId)
                     # Copy the whole row of selections from the feature group
-                    pipeLineSelectedFeatureMatrix[featureIndex] = userFriendlyFeatureMatrix[featureGroupIndex]
+                    pipeLineSelectedFeatureMatrix[newRow] = userFriendlyFeatureMatrix[featureGroupIndex]
             
             # Finally, update the pipeline with the feature selections
             self.mainOperator.SelectionMatrix.setValue( pipeLineSelectedFeatureMatrix )
@@ -161,8 +180,6 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
 
     def unload(self):
         with Tracer(traceLogger):
-            self.mainOperator.Scales.disconnect()
-            self.mainOperator.FeatureIds.disconnect()
             self.mainOperator.SelectionMatrix.disconnect()
 
 

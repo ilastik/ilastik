@@ -288,7 +288,8 @@ class FeatureTableWidget(QTableWidget):
         self.tmpSelectedItems = []
         #FIXME: what does this do? put a comment, why 30,30?
         self._sigmaList = None
-        self._featureGroupDict = None
+        self._featureGroupMapping = None # Schema: [ (groupName1, [entry, entry...]),
+                                         #           (groupName2, [entry, entry...]) ]
         #layout
         # ------------------------------------------------
         self.setCornerButtonEnabled(False)
@@ -369,12 +370,17 @@ class FeatureTableWidget(QTableWidget):
         return result
     
     def createTableForFeatureDlg(self, featureGroups, sigmas, text=None):
+        """
+        featureGroups: A list with schema: [ (groupName1, [entry, entry...]),
+                                             (groupName2, [entry, entry...]), ... ]
+        sigmas: List of sigmas (applies to all features)
+        """
         self._sigmaList = sigmas
-        self._featureGroupDict = featureGroups
+        self._featureGroupMapping = featureGroups
         if self._sigmaList is None:
             raise RuntimeError("No sigmas set!")
         self._addHHeader(text)
-        if self._featureGroupDict is None:
+        if self._featureGroupMapping is None:
             raise RuntimeError("No featuregroups set!")
         self._addVHeader()
         self._setFixedSizeToHeaders()
@@ -383,6 +389,9 @@ class FeatureTableWidget(QTableWidget):
         self.itemDelegate = ItemDelegate(self, self.horizontalHeader().sizeHint().width(), self.verticalHeader().sizeHint().height())
         self.setItemDelegate(self.itemDelegate)
         self._updateParentCell()
+
+        # Hide fine-grain control by default
+        self._collapsAllRows()
 
     def createSigmaList(self):
         result = []
@@ -538,13 +547,13 @@ class FeatureTableWidget(QTableWidget):
     
     def _addVHeader(self):
         row = 0
-        for group in self._featureGroupDict.keys():
+        for group, features in self._featureGroupMapping:
             self.insertRow(row)
             vGroupHeader = FeatureTableWidgetVHeader()
             vGroupHeader.setGroupVHeader(group)
             self.setVerticalHeaderItem(row, vGroupHeader)
             row += 1
-            for feature in self._featureGroupDict[group]:
+            for feature in features:
                 self.insertRow(row)
                 vFeatureHeader = FeatureTableWidgetVHeader()
                 vFeatureHeader.setFeatureVHeader(feature)
