@@ -1301,8 +1301,8 @@ class OpH5ReaderBigDataset(Operator):
     inputSlots = [InputSlot("Filenames"), InputSlot("hdf5Path", stype = "string")]
     outputSlots = [OutputSlot("Output")]
 
-    def __init__(self, parent):
-        Operator.__init__(self, parent)
+    def __init__(self, parent=None, graph=None):
+        Operator.__init__(self, parent=parent, graph=graph)
 
         self._lock = Lock()
 
