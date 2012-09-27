@@ -91,6 +91,8 @@ class OpInputDataReader(Operator):
                 externalPath = filePath.split(ext)[0] + ext
                 internalPath = filePath.split(ext)[1]
 
+                externalPath = externalPath.replace("/home/tkroeger/phd/src/mpi_denk2/mpi20120918/", "")
+
                 if not os.path.exists(externalPath):
                     raise RuntimeError("Input file does not exist: " + externalPath)
 
