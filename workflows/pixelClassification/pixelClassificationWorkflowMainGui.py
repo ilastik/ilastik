@@ -5,7 +5,8 @@ def debug_with_existing(shell, workflow):
     """
     (Function for debug and testing.)
     """
-    projFilePath = "/magnetic/test_project.ilp"
+    #projFilePath = "/magnetic/test_project.ilp"
+    projFilePath = "/magnetic/best_v4_imported_snapshot.ilp"
     #projFilePath = '/magnetic/gigacube.ilp'
     #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
     #projFilePath = '/magnetic/250-2.ilp'
@@ -27,8 +28,8 @@ def debug_with_new(shell, workflow):
     # Add a file
     from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
     info = DatasetInfo()
-    #info.filePath = '/magnetic/gigacube.h5'
-    info.filePath = '/magnetic/synapse_small.npy'
+    info.filePath = '/magnetic/gigacube.h5'
+    #info.filePath = '/magnetic/synapse_small.npy'
     #info.filePath = '/magnetic/singleslice.h5'
     opDataSelection = workflow.dataSelectionApplet.topLevelOperator
     opDataSelection.Dataset.resize(1)
@@ -41,19 +42,17 @@ def debug_with_new(shell, workflow):
     #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
 #    selections = numpy.array( [[True, True, True,  True, True, True, True],
 #                               [True, True, True,  True, True, True, True],
-#                               [True, True, True,  True, True, True, True], # ST EVs
 #                               [True, True, True,  True, True, True, True],
-#                               [True, True, True,  True, True, True, True],  # GGM
+#                               [True, True, True,  True, True, True, True],
+#                               [True, True, True,  True, True, True, True],
 #                               [True, True, True,  True, True, True, True]] )
     selections = numpy.array( [[True, False, False, False, False, False, False],
                                [False, False, False, False, False, False, False],
-                               [False, False, False, False, False, False, False], # ST EVs
                                [False, False, False, False, False, False, False],
-                               [False, False, False, False, False, False, False],  # GGM
+                               [False, False, False, False, False, False, False],
+                               [False, False, False, False, False, False, False],
                                [False, False, False, False, False, False, False]] )
     opFeatures.SelectionMatrix.setValue(selections)
-    opFeatures.Scales.setValue( featureGui.ScalesList )
-    opFeatures.FeatureIds.setValue( featureGui.FeatureIds )
 
     # Select the feature drawer
     shell.setSelectedAppletDrawer(2)
@@ -66,11 +65,13 @@ def debug_with_imported(shell, workflow):
     import ilastik.utility.globals
     ilastik.utility.globals.ImportOptions.default_axis_order = 'tyxzc'
     
-    importedFilePath = "/magnetic/old_05_with_labels_needs_transpose.ilp"
+    importedFilePath = "/magnetic/best_v4_orig.ilp"
     
     # Create a blank project file
-    base = os.path.splitext(importedFilePath)[0]
-    newProjectFilePath = base + "_imported.ilp"
+#    base = os.path.splitext(importedFilePath)[0]
+#    newProjectFilePath = base + "_imported.ilp"
+    #newProjectFilePath = "/groups/flyem/data/medulla-FIB-Z1211-25/ilp/best_v4_imported.ilp"
+    newProjectFilePath = "/magnetic/best_v4_imported.ilp"
 
     # Import the project    
     shell.importProject(importedFilePath, newProjectFilePath)

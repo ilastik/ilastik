@@ -74,8 +74,6 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Set some features
             featureGui = workflow.featureSelectionApplet.gui
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
-            opFeatures.Scales.setValue( featureGui.ScalesList )
-            opFeatures.FeatureIds.setValue( featureGui.FeatureIds )
             #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
             selections = numpy.array( [[True, False, False, False, False, False, False],
                                        [True, False, False, False, False, False, False],
