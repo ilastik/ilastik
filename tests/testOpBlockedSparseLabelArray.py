@@ -1,10 +1,11 @@
 import numpy
+import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpBlockedSparseLabelArray
 
 from lazyflow.slicingtools import sl, slicing2shape
 
-class TestOpSparseLabelArray(object):
+class TestOpBlockedSparseLabelArray(object):
     
     def setup(self):
         graph = Graph()
@@ -14,6 +15,9 @@ class TestOpSparseLabelArray(object):
         blockshape = (1,10,10,10,1) # Why doesn't this work if blockshape is an ndarray?
         op.inputs["blockShape"].setValue( blockshape )
         op.eraser.setValue(100)
+
+        dummyData = vigra.VigraArray(arrayshape, axistags=vigra.defaultAxistags('txyzc'))
+        op.Input.setValue( dummyData )
 
         slicing = sl[0:1, 1:15, 2:36, 3:7, 0:1]
         inDataShape = slicing2shape(slicing)

@@ -769,7 +769,7 @@ if has_blist:
             self._maxLabel = 0            
 
         def setupOutputs(self):
-            if (self._oldShape != self.inputs["shape"].value).all():
+            if (self._oldShape != self.inputs["shape"].value).any():
                 shape = self.inputs["shape"].value
                 self._oldShape = shape
                 self.outputs["Output"].meta.dtype = numpy.uint8
@@ -916,10 +916,36 @@ if has_blist:
 
 
     class OpBlockedSparseLabelArray(Operator):
+        """
+        This operator is designed to provide sparse access to label data.
+        
+        Inputs:
+            Input - Must be connected to a slot whose axistags are correct for the data being stored.
+                    The partner will NOT be used for obtaining label data.  It will just be used to get the axistags.
+                    Client code uses setitem syntax with this input to insert new labels into the array.
+                    e.g. op.Input[0:1,10:20,20:30,30:40,0:1] = mydata[0:1,0:10,0:10,0:10,0:1]
+            shape - The shape of the overall data array
+            eraser - The value that represents the eraser label.  If this label is seen in data that 
+                     comes in via setInSlot(), then the labels at these points will be deleted (reset to zero).
+            deleteLabel - A "special" input that is monitored for TRANSITIONS.  
+                         When it transitions from -1 to some label value N, label value N is deleted from the array.  
+                         All other labels > N are decremented afterwards, so the stored labels are always in a continuous sequence.
+                         For example, if the array already has values for labels 1, 2, and 3, setting deleteLabel to 2 
+                         will cause all 2s to be deleted, and then the 3s are converted to 2s.  
+                         The end result is a stored array that contains label values for 1 and 2.
+            blockShape - The shape of the internal blocks used to store (sparsely) the label values in the array
+        
+        Outputs:
+            Output - The stored values.  Any data that has not been marked with a label yet will be given as zeros.
+            nonzeroValues - The list of label values (e.g. [1,2,3])
+            nonzeroCoordinates - NOT SUPPORTED
+            nonzeroBlocks - A list of slicings that will yield non-zero data if queried on the Output slot
+            maxLabel - The maximum label value currently stored anywhere in the array.
+        """
         name = "Blocked Sparse Label Array"
         description = "simple cache for sparse label arrays"
 
-        inputSlots = [InputSlot("Input", optional = True),
+        inputSlots = [InputSlot("Input"),
                       InputSlot("shape"),
                       InputSlot("eraser"),
                       InputSlot("deleteLabel", optional = True),
@@ -964,7 +990,7 @@ if has_blist:
     
                     self.outputs["Output"].meta.dtype = numpy.uint8
                     self.outputs["Output"].meta.shape = self._cacheShape
-                    self.outputs["Output"].meta.axistags = vigra.defaultAxistags(len(self._cacheShape)) # Default if no input tags
+                    self.outputs["Output"].meta.axistags = self.Input.meta.axistags
     
                     # Copy axis tags from input if possible
                     inputAxisTags = self.inputs["Input"].meta.axistags
