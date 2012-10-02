@@ -17,6 +17,8 @@ from volumina.api import LazyflowSource, AlphaModulatedLayer
 from ilastik.utility import bind
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
+from lazyflow.operators.opTempDifference import OpTempDifference
+from lazyflow.operators.obsolete.generic import OpSubRegion
 
 # Loggers
 logger = logging.getLogger(__name__)
@@ -142,11 +144,37 @@ class PixelClassificationGui(LabelingGui):
 
                 ref_label.colorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)
-                layers.append(segLayer)
+                layers.append(segLayer)        
+
 
         # Add the raw data last (on the bottom)
-        inputDataSlot = self.pipeline.InputImages[currentImageIndex]
-        if inputDataSlot.ready():
+        inputDataSlot = self.pipeline.InputImages[currentImageIndex]        
+        if inputDataSlot.ready():            
+            # provisional: Add the raw data merged with the time feature
+            opTempDiff = OpTempDifference(graph=self)
+            opTempDiff.inputs["Input"].connect(self.pipeline.InputImages[currentImageIndex])
+            tempDiffSlot = opTempDiff.outputs["Output"]     
+            assert tempDiffSlot.ready()       
+            opSubRegion = OpSubRegion(graph=self)
+            opSubRegion.Input.connect( tempDiffSlot )
+            start = [0] * len(tempDiffSlot.meta.shape)
+            channelAxis = inputDataSlot.meta.axistags.channelIndex
+            # TODO: softcoding!
+            inputChannel = 0
+            featureChannelsPerInputChannel = 2
+            start[channelAxis] = inputChannel * featureChannelsPerInputChannel
+            stop = list(tempDiffSlot.meta.shape)
+            stop[channelAxis] = (inputChannel+1) * featureChannelsPerInputChannel
+            opSubRegion.Start.setValue( tuple(start) )
+            opSubRegion.Stop.setValue( tuple(stop) )                        
+            rgbInputLayer = self.createStandardLayerFromSlot( opSubRegion.Output )
+            rgbInputLayer.name = "Temporal Difference"
+            rgbInputLayer.visible = True
+            rgbInputLayer.opacity = 0.4
+            layers.append(rgbInputLayer)
+            
+            
+            
             inputLayer = self.createStandardLayerFromSlot( inputDataSlot )
             inputLayer.name = "Input Data"
             inputLayer.visible = True

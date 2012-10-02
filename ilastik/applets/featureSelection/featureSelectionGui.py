@@ -35,7 +35,8 @@ class FeatureSelectionGui(LayerViewerGui):
     # Map feature groups to lists of feature IDs
     FeatureGroups = [ ( "Color",   [ "GaussianSmoothing" ] ),
                       ( "Edge",    [ "LaplacianOfGaussian", "GaussianGradientMagnitude", "DifferenceOfGaussians" ] ),
-                      ( "Texture", [ "StructureTensorEigenvalues", "HessianOfGaussianEigenvalues" ] ) ]
+                      ( "Texture", [ "StructureTensorEigenvalues", "HessianOfGaussianEigenvalues" ] ),
+                      ( "Time",   [ "BlurredTempDifference" ] ) ]
 
     # Map feature IDs to feature names
     FeatureNames = { 'GaussianSmoothing' : 'Gaussian Smoothing',
@@ -43,7 +44,8 @@ class FeatureSelectionGui(LayerViewerGui):
                      'GaussianGradientMagnitude' : "Gaussian Gradient Magnitude",
                      'DifferenceOfGaussians' : "Difference of Gaussians",
                      'StructureTensorEigenvalues' : "Structure Tensor EigenValues",
-                     'HessianOfGaussianEigenvalues' : "Hessian of Gaussian Eigenvalues" }
+                     'HessianOfGaussianEigenvalues' : "Hessian of Gaussian Eigenvalues",
+                     'BlurredTempDifference' : "Blurred Temporal Difference" }
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###

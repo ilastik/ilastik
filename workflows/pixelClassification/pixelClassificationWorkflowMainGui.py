@@ -20,7 +20,7 @@ def debug_with_new(shell, workflow):
     """
     (Function for debug and testing.)
     """
-    projFilePath = "/magnetic/test_project.ilp"
+    projFilePath = "/home/mschiegg/debugging_proj.ilp"
 
     # New project
     shell.createAndLoadNewProject(projFilePath)
@@ -28,7 +28,8 @@ def debug_with_new(shell, workflow):
     # Add a file
     from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
     info = DatasetInfo()
-    info.filePath = '/magnetic/gigacube.h5'
+    #info.filePath = '/magnetic/gigacube.h5'
+    info.filePath = '/home/mschiegg/hufnagel2012-08-03/derived/raw/000-004.h5'
     #info.filePath = '/magnetic/synapse_small.npy'
     #info.filePath = '/magnetic/singleslice.h5'
     opDataSelection = workflow.dataSelectionApplet.topLevelOperator
@@ -40,22 +41,17 @@ def debug_with_new(shell, workflow):
     featureGui = workflow.featureSelectionApplet.gui
     opFeatures = workflow.featureSelectionApplet.topLevelOperator
     #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
-#    selections = numpy.array( [[True, True, True,  True, True, True, True],
-#                               [True, True, True,  True, True, True, True],
-#                               [True, True, True,  True, True, True, True],
-#                               [True, True, True,  True, True, True, True],
-#                               [True, True, True,  True, True, True, True],
-#                               [True, True, True,  True, True, True, True]] )
     selections = numpy.array( [[True, False, False, False, False, False, False],
                                [False, False, False, False, False, False, False],
                                [False, False, False, False, False, False, False],
                                [False, False, False, False, False, False, False],
                                [False, False, False, False, False, False, False],
-                               [False, False, False, False, False, False, False]] )
+                               [False, False, False, False, False, False, False],
+                               [True, False, False, False, True, False, False]] )
     opFeatures.SelectionMatrix.setValue(selections)
 
     # Select the feature drawer
-    shell.setSelectedAppletDrawer(2)
+    shell.setSelectedAppletDrawer(3)
 
     # Save the project
     shell.onSaveProjectActionTriggered()
@@ -87,19 +83,19 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
 
     # Start the GUI
-    if len(args) == 1:
-        def loadProject(shell, workflow):
-            shell.openProjectFile(args[0])
-        startShellGui( PixelClassificationWorkflow, loadProject )
-    elif len(args) == 0:
-        startShellGui( PixelClassificationWorkflow )
-    else:
-        parser.error("incorrect number of arguments")
+#    if len(args) == 1:
+#        def loadProject(shell, workflow):
+#            shell.openProjectFile(args[0])
+#        startShellGui( PixelClassificationWorkflow, loadProject )
+#    elif len(args) == 0:
+#        startShellGui( PixelClassificationWorkflow )
+#    else:
+#        parser.error("incorrect number of arguments")
 
     # Start the GUI with a debug project    
     #startShellGui( PixelClassificationWorkflow )    
     #startShellGui( PixelClassificationWorkflow, debug_with_existing )
-    #startShellGui( PixelClassificationWorkflow, debug_with_new )
+    startShellGui( PixelClassificationWorkflow, debug_with_new )
 
     # Test special transpose-on-import feature
     #startShellGui( PixelClassificationWorkflow, debug_with_imported )
