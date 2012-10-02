@@ -6,3 +6,4 @@
 .project
 *.h5
 .pydevproject
+.settings
