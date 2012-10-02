@@ -32,7 +32,7 @@ class OpXToMulti(Operator):
     def setupOutputs(self):
         length = 0
         for slot in self.inputs.values():
-            if slot.connected():
+            if slot.ready():
                 length += 1
 
         self.outputs["Outputs"].resize(length)
@@ -40,7 +40,7 @@ class OpXToMulti(Operator):
         i = 0
         for sname in sorted(self.inputs.keys()):
             slot = self.inputs[sname]
-            if slot.connected():
+            if slot.ready():
                 self.outputs["Outputs"][i].meta.assignFrom( slot.meta )
                 i += 1
 
@@ -50,7 +50,7 @@ class OpXToMulti(Operator):
         i = 0
         for sname in sorted(self.inputs.keys()):
             slot = self.inputs[sname]
-            if slot.connected():
+            if slot.ready():
                 if i == index:
                     return slot[key].allocate().wait()
                 i += 1
@@ -62,7 +62,7 @@ class OpXToMulti(Operator):
             if slot == islot:
                 self.outputs["Outputs"][i].setDirty(roi)
                 break
-            if slot.connected():
+            if slot.ready():
                 self.outputs["Outputs"][i].meta.assignFrom( slot.meta )
                 i += 1
 
