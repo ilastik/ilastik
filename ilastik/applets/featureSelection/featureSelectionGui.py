@@ -129,7 +129,7 @@ class FeatureSelectionGui(LayerViewerGui):
         self.layerstack.rowsInserted.connect( handleInsertedLayers )
 
         def handleRemovedLayers(parent, start, end):
-            for i in range(start, end+1):
+            for i in reversed(range(start, end+1)):
                 layerListWidget.takeItem(i)
         self.layerstack.rowsRemoved.connect( handleRemovedLayers )
         
