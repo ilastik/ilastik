@@ -98,7 +98,7 @@ class PixelClassificationGui(LabelingGui):
 
         # Add each of the predictions
         for channel, predictionSlot in enumerate(self.pipeline.PredictionProbabilityChannels[currentImageIndex]):
-            if predictionSlot.ready():
+            if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
