@@ -283,9 +283,15 @@ class LayerViewerGui(QMainWindow):
 
         inSync = True
         for slot in self.observedSlots:
-            inSync &= (  len(slot) == numImages
-                      or ( slot._optional and slot.partner is None ) )
-
+            # Check each slot for out-of-sync status except:
+            # - slots that are optional and unconnected
+            # - slots that are not images (e.g. a classifier or other object)
+            if not (slot._optional and slot.partner is None):
+                if len(slot) == 0:
+                    inSync = False
+                    break
+                elif len(slot[0]) > 0 and slot[0][0].meta.axistags is not None:
+                    inSync &= (len(slot) == numImages)
         return inSync
 
     @traceLogged(traceLogger)
