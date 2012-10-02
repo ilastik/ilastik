@@ -42,12 +42,13 @@ class PixelClassificationGui(LabelingGui):
         # Ensure that we are NOT in interactive mode
         self.labelingDrawerUi.checkInteractive.setChecked(False)
         self.labelingDrawerUi.checkShowPredictions.setChecked(False)
-
+        self.toggleInteractive(False)
+        
     ###########################################
     ###########################################
 
     @traceLogged(traceLogger)
-    def __init__(self, pipeline, guiControlSignal, shellRequestSignal, predictionSerializer ):
+    def __init__(self, pipeline, shellRequestSignal, predictionSerializer ):
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = pipeline.LabelInputs
@@ -64,7 +65,6 @@ class PixelClassificationGui(LabelingGui):
         super(PixelClassificationGui, self).__init__( labelSlots, pipeline, labelingDrawerUiPath )
         
         self.pipeline = pipeline
-        self.guiControlSignal = guiControlSignal
         self.shellRequestSignal = shellRequestSignal
         self.predictionSerializer = predictionSerializer
         
@@ -85,6 +85,17 @@ class PixelClassificationGui(LabelingGui):
         
         self.pipeline.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
 
+    def hideEvent(self, event):
+        """
+        Called by QT when the user has switched to a different applet.
+        """
+        # To avoid potential complications, disable live prediction mode 
+        #  while the user might be manipulating other applet settings.
+        self.labelingDrawerUi.checkInteractive.setChecked(False)
+        self.labelingDrawerUi.checkShowPredictions.setChecked(False)
+        self.toggleInteractive(False)
+        self.handleShowPredictionsClicked()
+        
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
         """
@@ -181,13 +192,9 @@ class PixelClassificationGui(LabelingGui):
             if checked:
                 self.labelingDrawerUi.labelListView.allowDelete = False
                 self.labelingDrawerUi.AddLabelButton.setEnabled( False )
-                self.guiControlSignal.emit( ControlCommand.DisableUpstream )
-                self.guiControlSignal.emit( ControlCommand.DisableDownstream )
             else:
                 self.labelingDrawerUi.labelListView.allowDelete = True
                 self.labelingDrawerUi.AddLabelButton.setEnabled( True )
-                self.guiControlSignal.emit( ControlCommand.Pop )                
-                self.guiControlSignal.emit( ControlCommand.Pop )
         self.interactiveModeActive = checked    
 
     @pyqtSlot()
