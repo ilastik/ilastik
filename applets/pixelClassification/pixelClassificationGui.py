@@ -41,7 +41,8 @@ class PixelClassificationGui(LabelingGui):
 
         # Ensure that we are NOT in interactive mode
         self.labelingDrawerUi.checkInteractive.setChecked(False)
-
+        self.labelingDrawerUi.checkShowPredictions.setChecked(False)
+        
     ###########################################
     ###########################################
 
@@ -56,15 +57,11 @@ class PixelClassificationGui(LabelingGui):
         labelSlots.maxLabelValue = pipeline.MaxLabelValue
         labelSlots.labelsAllowed = pipeline.LabelsAllowedFlags
 
-        observedSlots = [ pipeline.InputImages,
-                          pipeline.PredictionProbabilityChannels,
-                          pipeline.PixelOnlyPredictionChannels ]
-
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
         
         # Base class init
-        super(PixelClassificationGui, self).__init__( labelSlots, observedSlots, labelingDrawerUiPath )
+        super(PixelClassificationGui, self).__init__( labelSlots, pipeline, labelingDrawerUiPath )
         
         self.pipeline = pipeline
         self.guiControlSignal = guiControlSignal
@@ -94,9 +91,10 @@ class PixelClassificationGui(LabelingGui):
         Called by our base class when one of our data slots has changed.
         This function creates a layer for each slot we want displayed in the volume editor.
         """
+        
         # Base class provides the label layer.
         layers = super(PixelClassificationGui, self).setupLayers(currentImageIndex)
-
+        
         pixel_pred_layers = self.setupPredictionLayers(currentImageIndex, self.pipeline.PixelOnlyPredictionChannels, "")
         layers.extend(pixel_pred_layers)
         pred_layers = self.setupPredictionLayers(currentImageIndex, self.pipeline.PredictionProbabilityChannels, "auto")

@@ -43,8 +43,8 @@ class OpAutocontextClassification( Operator ):
     MaxLabelValue = OutputSlot()
     LabelImages = OutputSlot(level=1) # Labels from the user
     NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
-    #FIXME: this should be the classifier chain
-    Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
+    
+    Classifiers = OutputSlot() # Holds the chain 
 
     CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via a cache)
     CachedPixelPredictionProbabilities = OutputSlot(level=1)
@@ -179,13 +179,20 @@ class OpAutocontextClassification( Operator ):
         ##
         
         # The classifier is cached here to allow serializers to force in a pre-calculated classifier...
-        self.classifier_caches = []
+        self.classifiers = []
+        self.classifiers_cache = OpValueCache( graph = self.graph )
+        
         for i in range(niter):
-            classifier_cache = OpValueCache( graph=self.graph )
-            classifier_cache.inputs["Input"].connect(self.trainers[i].outputs['Classifier'])
-            self.classifier_caches.append(classifier_cache)
+            self.classifiers.append(self.trainers[i].outputs['Classifier'])
+                        
+        self.classifiers_cache.forceValue(self.classifiers)
+        
+        for i in range(niter):        
+            #classifier_cache = OpValueCache( graph=self.graph )
+            #classifier_cache.inputs["Input"].connect(self.trainers[i].outputs['Classifier'])
+            #self.classifier_caches.append(classifier_cache)
             
-            self.predictors[i].inputs['Classifier'].connect(classifier_cache.outputs["Output"])
+            self.predictors[i].inputs['Classifier'].connect(self.classifiers_cache.outputs["Output"][:][i])
             self.predictors[i].inputs['LabelsCount'].connect(self.opMaxLabel.Output)
             
             self.prediction_caches[i].inputs["fixAtCurrent"].setValue(False)
@@ -195,6 +202,8 @@ class OpAutocontextClassification( Operator ):
             self.prediction_caches_gui[i].name = "PredictionCache"
             self.prediction_caches_gui[i].inputs["fixAtCurrent"].connect( self.FreezePredictions )
             self.prediction_caches_gui[i].inputs["Input"].connect(self.predictors[i].PMaps)
+            
+            
         
         self.predictors[0].inputs['Image'].connect(self.CachedFeatureImages)
         for i in range(1, niter):
@@ -224,7 +233,8 @@ class OpAutocontextClassification( Operator ):
         self.PredictionProbabilities.connect(self.predictors[-1].PMaps)
         self.CachedPredictionProbabilities.connect(self.precomputed_predictions.Output)
         self.CachedPixelPredictionProbabilities.connect(self.precomputed_predictions_pixel.Output)
-        self.Classifier.connect( self.classifier_caches[-1].Output )
+        
+        self.Classifiers.connect( self.classifiers_caches.Output )
         
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):

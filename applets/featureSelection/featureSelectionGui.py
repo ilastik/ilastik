@@ -70,11 +70,11 @@ class FeatureSelectionGui(LayerViewerGui):
     def __init__(self, mainOperator):
         """
         """
-        super(FeatureSelectionGui, self).__init__([ mainOperator.FeatureLayers, mainOperator.InputImage ])
+        super(FeatureSelectionGui, self).__init__( mainOperator )
         self.mainOperator = mainOperator
 
         self.initFeatureDlg()
-        self.mainOperator.SelectionMatrix.notifyConnect( bind(self.onFeaturesSelectionsChanged) )
+        self.mainOperator.SelectionMatrix.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
     
     @traceLogged(traceLogger)
     def initAppletDrawerUi(self):

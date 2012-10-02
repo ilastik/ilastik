@@ -37,7 +37,7 @@ class PixelClassificationSerializer(AppletSerializer):
             def handleDirty(section):
                 self._dirtyFlags[section] = True
     
-            self.mainOperator.Classifier.notifyDirty( bind(handleDirty, Section.Classifier) )
+            self.mainOperator.Classifiers.notifyDirty( bind(handleDirty, Section.Classifier) )
     
             def handleNewImage(section, slot, index):
                 slot[index].notifyDirty( bind(handleDirty, section) )
@@ -77,12 +77,12 @@ class PixelClassificationSerializer(AppletSerializer):
                 self._serializeLabels( topGroup )            
                 progress += increment
                 self.progressSignal.emit( progress )
-            '''
+            
             if self._dirtyFlags[Section.Classifier]:
-                self._serializeClassifier( topGroup )
+                self._serializeClassifiers( topGroup )
                 progress += increment
                 self.progressSignal.emit( progress )
-            '''
+            
             # Need to call serialize predictions even if it isn't dirty
             # (Since it isn't always stored.)    
             self._serializePredictions( topGroup, progress, progress + increment )
@@ -122,27 +122,30 @@ class PixelClassificationSerializer(AppletSerializer):
             self.deleteIfPresent(topGroup, 'Classifier')
             self._dirtyFlags[Section.Classifier] = False
     
-            if not self.mainOperator.Classifier.ready():
+            if not self.mainOperator.Classifiers.ready():
                 return
-
-            classifier = self.mainOperator.Classifier.value
-
-            # Classifier can be None if there isn't any training data yet.
-            if classifier is None:
-                return
-
-            # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
-            # Instead, we'll use vigra to write the classifier to a temporary file.
+        
+            classifiers = self.mainOperator.Classifiers.value
             tmpDir = tempfile.mkdtemp()
-            cachePath = os.path.join(tmpDir, 'classifier_cache.h5')
-            classifier.writeHDF5(cachePath, 'Classifier')
-            
-            # Open the temp file and copy to our project group
-            cacheFile = h5py.File(cachePath, 'r')
-            topGroup.copy(cacheFile['Classifier'], 'Classifier')
-            
-            cacheFile.close()
-            os.remove(cachePath)
+            for ic, classifier in enumerate(classifiers):
+                # Classifier can be None if there isn't any training data yet.
+                if classifier is None:
+                    return
+    
+                # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
+                # Instead, we'll use vigra to write the classifier to a temporary file.
+                cachePath = os.path.join(tmpDir, 'classifier_cache.h5')
+                for i, forest in enumerate(classifier):
+                    forest.writeHDF5( cachePath, 'ClassifierForests/Forest{:04d}'.format(i) )
+                
+                # Open the temp file and copy to our project group
+                cacheFile = h5py.File(cachePath, 'r')
+                subGroup = topGroup.create_group("Classifier%.2d"%(ic))
+                
+                #topGroup.copy(cacheFile['Classifier'], 'Classifier')
+                subGroup.copy(cacheFile['ClassifierForests'], 'ClassifierForests')
+                cacheFile.close()
+                os.remove(cachePath)
             os.removedirs(tmpDir)
 
     def _serializePredictions(self, topGroup, startProgress, endProgress):
