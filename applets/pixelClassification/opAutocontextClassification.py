@@ -44,7 +44,7 @@ class OpAutocontextClassification( Operator ):
     LabelImages = OutputSlot(level=1) # Labels from the user
     NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
     
-    Classifiers = OutputSlot() # Holds the chain 
+    Classifiers = OutputSlot(level = 1) # Holds the chain 
 
     CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via a cache)
     CachedPixelPredictionProbabilities = OutputSlot(level=1)
@@ -180,19 +180,23 @@ class OpAutocontextClassification( Operator ):
         
         # The classifier is cached here to allow serializers to force in a pre-calculated classifier...
         self.classifiers = []
-        self.classifiers_cache = OpValueCache( graph = self.graph )
+        self.classifier_caches = []
         
         for i in range(niter):
+            
             self.classifiers.append(self.trainers[i].outputs['Classifier'])
+            cache = OpValueCache(graph = self.graph)
+            cache.inputs["Input"].connect(self.trainers[i].outputs['Classifier'])
+            self.classifier_caches.append(cache)
                         
-        self.classifiers_cache.forceValue(self.classifiers)
+        #self.classifiers_cache.forceValue(self.classifiers)
         
         for i in range(niter):        
             #classifier_cache = OpValueCache( graph=self.graph )
             #classifier_cache.inputs["Input"].connect(self.trainers[i].outputs['Classifier'])
             #self.classifier_caches.append(classifier_cache)
             
-            self.predictors[i].inputs['Classifier'].connect(self.classifiers_cache.outputs["Output"][:][i])
+            self.predictors[i].inputs['Classifier'].connect(self.classifier_caches[i].outputs["Output"])
             self.predictors[i].inputs['LabelsCount'].connect(self.opMaxLabel.Output)
             
             self.prediction_caches[i].inputs["fixAtCurrent"].setValue(False)
@@ -234,7 +238,11 @@ class OpAutocontextClassification( Operator ):
         self.CachedPredictionProbabilities.connect(self.precomputed_predictions.Output)
         self.CachedPixelPredictionProbabilities.connect(self.precomputed_predictions_pixel.Output)
         
-        self.Classifiers.connect( self.classifiers_caches.Output )
+        self.multi = Op50ToMulti(graph = self.graph)
+        for i in range(niter):
+            self.multi.inputs["Input%.2d"%i].connect(self.classifier_caches[i].outputs["Output"])
+        
+        self.Classifiers.connect( self.multi.outputs["Outputs"] )
         
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
