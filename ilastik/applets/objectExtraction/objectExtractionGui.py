@@ -41,9 +41,9 @@ class ObjectExtractionGui( QWidget ):
         self.curOp = mainOperator
 
         ct = colortables.create_default_8bit()
-        self.binaryimagesrc = LazyflowSource( mainOperator.BinaryImage )
-        layer = GrayscaleLayer( self.binaryimagesrc, range=(0,1), normalize=(0,1) )
-        layer.name = "Binary Image"
+        self.binaryimages = LazyflowSource( mainOperator.BinaryImage )
+        layer = GrayscaleLayer( self.binaryimages, range=(0,1), normalize=(0,1) )
+        layer.name = "Input Image"
         self.layerstack.append(layer)
 
         ct = colortables.create_default_16bit()
@@ -59,9 +59,9 @@ class ObjectExtractionGui( QWidget ):
         layer.name = "Object Centers"
         self.layerstack.append( layer )
 
-        if mainOperator.BinaryImage.meta.shape:
+        if mainOperator.Images.meta.shape:
             self.editor.dataShape = mainOperator.LabelImage.meta.shape
-        mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged )            
+        mainOperator.Images.notifyMetaChanged( self._onMetaChanged )            
 
     def reset( self ):
         print "reset(): not implemented"
@@ -91,7 +91,7 @@ class ObjectExtractionGui( QWidget ):
         self._initAppletDrawerUi()
 
     def _onMetaChanged( self, slot ):
-        if slot is self.curOp.BinaryImage:
+        if slot is self.curOp.Images:
             if slot.meta.shape:
                 self.editor.dataShape = slot.meta.shape
  
