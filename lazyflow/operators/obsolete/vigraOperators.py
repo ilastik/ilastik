@@ -1268,7 +1268,10 @@ class OpH5WriterBigDataset(Operator):
         chunkShape = numpy.asarray(self.chunkShape)
 
         # Choose a request shape that is a multiple of the chunk shape
-        shift = chunkShape * numpy.array([10,2,2,2,10])
+        axistags = self.Image.meta.axistags
+        multipliers = { 'x':2, 'y':2, 'z':2, 't':1, 'c':10 }
+        multiplier = [multipliers[tag.key] for tag in axistags ]
+        shift = chunkShape * numpy.array(multiplier)
         shift=numpy.minimum(shift,shape)
         start=numpy.asarray([0]*len(shape))
 
