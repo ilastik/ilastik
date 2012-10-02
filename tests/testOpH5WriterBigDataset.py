@@ -1,5 +1,6 @@
 from lazyflow.operators import OpH5WriterBigDataset
 import numpy
+import vigra
 import h5py
 import os
 import sys
@@ -19,17 +20,8 @@ class TestOpH5WriterBigDataset(object):
 
         # Generate some test data
         self.dataShape = (1, 10, 128, 128, 1)
-        self.testData = numpy.zeros(self.dataShape)
-        def addIndexSums(a):
-            """
-            For each element e located at pos = (i0, i1,...iN),
-            e += sum(pos)
-            """
-            if len(a.shape) > 0:
-                for index in range(a.shape[0]):
-                    addIndexSums( a[index,...] )
-                    a[index,...] += index
-        addIndexSums(self.testData)
+        self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc') )
+        self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
     def tearDown(self):
         pass
@@ -60,7 +52,7 @@ class TestOpH5WriterBigDataset(object):
         f = h5py.File(self.testDataFileName, 'r')
         dataset = f[self.datasetInternalPath]
         assert dataset.shape == self.dataShape
-        assert numpy.all( dataset[...] == self.testData[...] )
+        assert numpy.all( dataset[...] == self.testData.view(numpy.ndarray)[...] )
 
 class TestOpH5WriterBigDataset_2(object):
 
@@ -71,17 +63,8 @@ class TestOpH5WriterBigDataset_2(object):
 
         # Generate some test data
         self.dataShape = (1, 10, 128, 128, 1)
-        self.testData = numpy.zeros(self.dataShape)
-        def addIndexSums(a):
-            """
-            For each element e located at pos = (i0, i1,...iN),
-            e += sum(pos)
-            """
-            if len(a.shape) > 0:
-                for index in range(a.shape[0]):
-                    addIndexSums( a[index,...] )
-                    a[index,...] += index
-        addIndexSums(self.testData)
+        self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc') )
+        self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
     def tearDown(self):
         pass
@@ -115,7 +98,7 @@ class TestOpH5WriterBigDataset_2(object):
         f = h5py.File(self.testDataFileName, 'r')
         dataset = f[self.datasetInternalPath]
         assert dataset.shape == self.dataShape
-        assert numpy.all( dataset[...] == self.testData[...] )
+        assert numpy.all( dataset[...] == self.testData.view(numpy.ndarray)[...] )
 
 
 

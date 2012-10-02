@@ -113,8 +113,6 @@ class ArrayLike( SlotType ):
             self.slot.meta.dtype = value.dtype
             if hasattr(value,"axistags"):
                 self.slot.meta.axistags = value.axistags
-            else:
-                self.slot.meta.axistags = vigra.defaultAxistags(len(value.shape))
         else:
             self.slot.meta.shape = (1,)
             self.slot.meta.dtype = object

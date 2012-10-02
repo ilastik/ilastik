@@ -17,7 +17,8 @@ def testFullAllocate():
     ny = 10
     nz = 2
     nc = 7
-    stack = numpy.random.rand(nx, ny, nz, nc)
+    stack = vigra.VigraArray((nx, ny, nz, nc), axistags=vigra.defaultAxistags('xyzc'))
+    stack[...] = numpy.random.rand(nx, ny, nz, nc)
 
     g = Graph()
 
@@ -33,11 +34,12 @@ def testFullAllocate():
     stackerX.inputs["Images"].connect(slicerX.outputs["Slices"])
 
     newdata = stackerX.outputs["Output"][:].allocate().wait()
-    assert_array_equal(newdata, stack)
+    assert_array_equal(newdata, stack.view(numpy.ndarray))
 
     print "1st part ok................."
     #merge stuff that already has an x dimension
-    stack2 = numpy.random.rand(nx-1, ny, nz, nc)
+    stack2 = vigra.VigraArray((nx-1, ny, nz, nc), axistags=vigra.defaultAxistags('xyzc'))
+    stack2[...] = numpy.random.rand(nx-1, ny, nz, nc)
 
     opMulti = Op5ToMulti(graph=g)
     opMulti.inputs["Input0"].setValue(stack)
@@ -55,7 +57,7 @@ def testFullAllocate():
 
     newdata = stackerX2.outputs["Output"][:].allocate().wait()
     bothstacks = numpy.concatenate((stack, stack2), axis=0)
-    assert_array_equal(newdata, bothstacks)
+    assert_array_equal(newdata, bothstacks.view(numpy.ndarray))
     #print newdata.shape, bothstacks.shape
 
     print "2nd part ok................."
@@ -77,13 +79,14 @@ def testFullAllocate():
     stackerC.inputs["Images"].connect(slicerC.outputs["Slices"])
 
     newdata = stackerC.outputs["Output"][:].allocate().wait()
-    assert_array_equal(newdata, stack)
+    assert_array_equal(newdata, stack.view(numpy.ndarray))
 
     print "3rd part ok................."
     #print "STACKER: ", stackerC.outputs["Output"].meta.shape
 
     #merge stuff that already has an x dimension
-    stack3 = numpy.random.rand(nx, ny, nz, nc-1)
+    stack3 = vigra.VigraArray((nx, ny, nz, nc-1), axistags=vigra.defaultAxistags('xyzc'))
+    stack3[...] = numpy.random.rand(nx, ny, nz, nc-1)
 
     opMulti = Op5ToMulti(graph=g)
     opMulti.inputs["Input0"].setValue(stack)
@@ -96,7 +99,7 @@ def testFullAllocate():
 
     newdata = stackerC2.outputs["Output"][:].allocate().wait()
     bothstacks = numpy.concatenate((stack, stack3), axis=3)
-    assert_array_equal(newdata, bothstacks)
+    assert_array_equal(newdata, bothstacks.view(numpy.ndarray))
     print "4th part ok................."
 
     g.finalize()
@@ -108,7 +111,8 @@ def testPartialAllocate():
     ny = 20
     nz = 17
     nc = 7
-    stack = numpy.random.rand(nx, ny, nz, nc)
+    stack = vigra.VigraArray((nx, ny, nz, nc), axistags=vigra.defaultAxistags('xyzc'))
+    stack[...] = numpy.random.rand(nx, ny, nz, nc)
 
     g = Graph()
 
@@ -127,7 +131,7 @@ def testPartialAllocate():
     newdata = stackerX.outputs["Output"][key].allocate().wait()
     substack = stack[key]
     print newdata.shape, substack.shape
-    assert_array_equal(newdata, substack)
+    assert_array_equal(newdata, substack.view(numpy.ndarray))
 
 if __name__=="__main__":
     testFullAllocate()
