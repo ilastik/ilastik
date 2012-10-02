@@ -85,17 +85,6 @@ class PixelClassificationGui(LabelingGui):
         
         self.pipeline.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
 
-    def hideEvent(self, event):
-        """
-        Called by QT when the user has switched to a different applet.
-        """
-        # To avoid potential complications, disable live prediction mode 
-        #  while the user might be manipulating other applet settings.
-        self.labelingDrawerUi.checkInteractive.setChecked(False)
-        self.labelingDrawerUi.checkShowPredictions.setChecked(False)
-        self.toggleInteractive(False)
-        self.handleShowPredictionsClicked()
-        
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
         """
