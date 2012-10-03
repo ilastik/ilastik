@@ -33,6 +33,7 @@ import sys
 import copy
 import psutil
 import functools
+import collections
 
 if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".")[1]) < 3:
     print "Lazyflow: Please install a psutil python module version of at least >= 0.3.0"
@@ -143,6 +144,14 @@ class MetaDict(dict):
         # Readiness can't be assigned.  It can only be assigned in _setupOutputs or setValue (or copied via _changed)
         self._ready = origready
 
+    def getTaggedShape(self):
+        """
+        Convenience function for creating an OrderedDict of axistag keys and shape dimensions.
+        """
+        assert self.axistags is not None
+        assert self.shape is not None
+        keys = [tag.key for tag in self.axistags]
+        return collections.OrderedDict( zip(keys, self.shape) )
 
 class ValueRequest(object):
     """
