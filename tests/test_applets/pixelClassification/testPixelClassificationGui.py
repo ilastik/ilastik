@@ -117,8 +117,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     LABEL_START = (-20,-20)
     LABEL_STOP = (20,20)
     LABEL_SAMPLE = (0,0)
-    LABEL_ERASE_START = (-5,-5)
-    LABEL_ERASE_STOP = (5,5)
+    LABEL_ERASE_START = (-10,--10)
+    LABEL_ERASE_STOP = (10,10)
 
     def test_4_AddLabels(self):
         """
@@ -292,7 +292,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.strokeMouseFromCenter( imgView, self.LABEL_ERASE_START, self.LABEL_ERASE_STOP )
             self.waitForViews([imgView])
             erasedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-            assert erasedColor == rawDataColor, "Pixel color was not correct after label was erased.  Expected {}, got {}".format(hex(erasedColor), hex(rawDataColor))
+            assert erasedColor == rawDataColor, "Pixel color was not correct after label was erased.  Expected {}, got {}".format(hex(rawDataColor), hex(erasedColor))
         
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
@@ -341,7 +341,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.strokeMouseFromCenter( imgView, self.LABEL_START, self.LABEL_STOP )
             self.waitForViews([imgView])
             erasedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-            assert erasedColor == rawDataColor, "Eraser did not remove labels! Expected {}, got {}".format( hex(erasedColor), hex(rawDataColor) )
+            assert erasedColor == rawDataColor, "Eraser did not remove labels! Expected {}, got {}".format( hex(rawDataColor), hex(erasedColor) )
 
             # We just erased all the labels of value 2, so the max label value should be reduced.
             assert opPix.MaxLabelValue.value == 1, "Max label value was wrong. Expected 2, got {}".format( opPix.MaxLabelValue.value  )
@@ -356,7 +356,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             self.waitForViews([imgView])
             erasedColor = self.getPixelColor(imgView, (5,-5))
-            assert erasedColor == rawDataColor, "Erasing blank pixels generated non-zero labels."
+            assert erasedColor == rawDataColor, "Erasing blank pixels generated non-zero labels. Expected {}, got {}".format( hex(rawDataColor), hex(erasedColor) )
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
