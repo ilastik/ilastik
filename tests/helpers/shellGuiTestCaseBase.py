@@ -2,6 +2,7 @@ import nose
 import threading
 import platform
 import traceback
+import atexit
 from functools import partial
 from ilastik.shell.gui.startShellGui import startShellGui
 
@@ -33,6 +34,12 @@ def run_shell_nosetest(filename):
         # Linux: Run this test like usual (as if we're running from the command line)
         run_nose()
 
+@atexit.register
+def stopMainThread():
+    if ShellGuiTestCaseBase.guiThread is not None:
+        ShellGuiTestCaseBase.workFn = None
+        ShellGuiTestCaseBase.mainThreadEvent.set()
+
 class ShellGuiTestCaseBase(object):
     """
     This is a base class for test cases that need to run their tests from within the ilastik shell.
@@ -42,6 +49,10 @@ class ShellGuiTestCaseBase(object):
     - Subclasses must specify the workflow they are testing by overriding the workflowClass() classmethod. 
     - Subclasses may access the shell and workflow via the shell and workflow class members.
     """
+    
+    guiThread = None
+    mainThreadEvent = threading.Event()
+
     
     @classmethod
     def setupClass(cls):
@@ -58,6 +69,14 @@ class ShellGuiTestCaseBase(object):
         # This partial starts up the gui.
         startGui = partial(startShellGui, cls.workflowClass(), initTest)
 
+        cls.workReadyEvent = threading.Event()
+        def waitForWork():
+            ShellGuiTestCaseBase.mainThreadEvent.wait()
+            while ShellGuiTestCaseBase.workFn is not None:
+                ShellGuiTestCaseBase.mainThreadEvent.clear()
+                ShellGuiTestCaseBase.workFn()
+                ShellGuiTestCaseBase.mainThreadEvent.wait()
+        
         # If nose was run from the main thread, start the gui in a separate thread.
         # If nose is running in a non-main thread, we assume the main thread is available to launch the gui.
         # This is a workaround for Mac OS, in which the gui MUST be started from the main thread 
@@ -67,15 +86,24 @@ class ShellGuiTestCaseBase(object):
                 # On Mac, we can't run the gui in a non-main thread.
                 raise nose.SkipTest
             else:
-                # Start the gui in a separate thread.  Workflow is provided by our subclass.
-                cls.guiThread = threading.Thread( target=startGui )
-                cls.guiThread.start()
+                if ShellGuiTestCaseBase.guiThread is None:
+                    # Create just ONE "main" thread for the gui.
+                    # If the user is running nose with more than one gui test,
+                    #  The QApplications will always be created in this thread.
+                    ShellGuiTestCaseBase.guiThread = threading.Thread( target=waitForWork )
+                    ShellGuiTestCaseBase.guiThread.daemon = True
+                    ShellGuiTestCaseBase.guiThread.start()
+
+                # Start the gui in the "main" thread.  Workflow is provided by our subclass.
+                ShellGuiTestCaseBase.workFn = startGui
+                ShellGuiTestCaseBase.mainThreadEvent.set()
+                
         else:
                 # We're currently running in a non-main thread.
                 # Start the gui IN THE MAIN THREAD.  Workflow is provided by our subclass.
                 from tests.helpers.mainThreadHelpers import run_in_main_thread
                 run_in_main_thread( startGui )
-                cls.guiThread = None
+                ShellGuiTestCaseBase.guiThread = None
 
         init_complete.wait()
 
@@ -84,18 +112,14 @@ class ShellGuiTestCaseBase(object):
         """
         Force the shell to quit (without a save prompt), and wait for the app to exit.
         """
+        # Make sure the app has finished quitting before continuing        
         def teardown_impl():
             cls.shell.onQuitActionTriggered(True)
-        cls.shell.thunkEventHandler.post(teardown_impl)
 
-        # Make sure the app has finished quitting before continuing        
         finished = threading.Event()
         cls.shell.thunkEventHandler.post(finished.set)
+        cls.shell.thunkEventHandler.post(teardown_impl)
         finished.wait()
-        
-        if cls.guiThread is not None:
-            cls.guiThread.join()
-        
 
     @classmethod
     def exec_in_shell(cls, func):
