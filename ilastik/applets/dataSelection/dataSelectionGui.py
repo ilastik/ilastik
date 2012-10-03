@@ -311,9 +311,7 @@ class DataSelectionGui(QMainWindow):
             options[ LocationOptions.AbsolutePath ] = absPath
             options[ LocationOptions.RelativePath ] = relPath
             
-            # Saving data to the project file is not an option in batch mode
-            if self.guiMode == GuiMode.Normal:
-                options[ LocationOptions.Project ] = "<project>"
+            options[ LocationOptions.Project ] = "<project>"
                     
             for option, text in sorted(options.items()):
                 # Add to the combo, storing the option as the item data
