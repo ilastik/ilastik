@@ -62,7 +62,6 @@ class ShellGuiTestCaseBase(object):
         def initTest(shell, workflow):
             cls.shell = shell
             cls.workflow = workflow
-            cls.shell.setAttribute( Qt.WA_QuitOnClose, False )
             init_complete.set()
 
         appCreationEvent = threading.Event()
