@@ -144,12 +144,12 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             gui.editor.posModel.slicingPos = (0,0,0)
 
             assert not gui._labelControlUi.checkInteractive.isChecked()
-            assert gui._labelControlUi.labelListModel.rowCount() == 0
+            assert gui._labelControlUi.labelListModel.rowCount() == 0, "Got {} rows".format(gui._labelControlUi.labelListModel.rowCount())
             
             # Add label classes
             for i in range(3):
                 gui._labelControlUi.AddLabelButton.click()
-                assert gui._labelControlUi.labelListModel.rowCount() == i+1
+                assert gui._labelControlUi.labelListModel.rowCount() == i+1, "Got {} rows".format(gui._labelControlUi.labelListModel.rowCount())
 
             # Select the brush
             gui._labelControlUi.paintToolButton.click()
@@ -169,7 +169,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 self.strokeMouseFromCenter( imgView, self.LABEL_START, self.LABEL_STOP )
 
                 # Make sure the labels were added to the label array operator
-                assert opPix.MaxLabelValue.value == i+1
+                assert opPix.MaxLabelValue.value == i+1, "Max label value was {}".format( opPix.MaxLabelValue.value )
 
             self.waitForViews(gui.editor.imageViews)
 
@@ -199,7 +199,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             originalLabelNames = [label.name for label in gui.labelListData]
 
             # We assume that there are three labels to start with (see previous test)
-            assert opPix.MaxLabelValue.value == 3
+            assert opPix.MaxLabelValue.value == 3, "Max label value was {}".format( opPix.MaxLabelValue.value )
 
             # Make sure that it's okay to delete a row even if the deleted label is selected.
             gui._labelControlUi.labelListModel.select(1)
@@ -209,7 +209,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             QApplication.processEvents()
             
             # Selection should auto-reset back to the first row.
-            assert gui._labelControlUi.labelListModel.selectedRow() == 0
+            assert gui._labelControlUi.labelListModel.selectedRow() == 0, "Row {} was selected.".format(gui._labelControlUi.labelListModel.selectedRow())
             
             # Did the label get removed from the label array?
             assert opPix.MaxLabelValue.value == 2, "Max label value did not decrement after the label was deleted.  Expected 2, got {}".format( opPix.MaxLabelValue.value  )
@@ -232,7 +232,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             
             # Original layer should not be anywhere in the layerstack.
             for layer in gui.layerstack:
-                assert layer.name is not originalLabelNames[1]
+                assert layer.name is not originalLabelNames[1], "Layer {} was still present in the stack.".format(layer.name)
             
             # All the other layers should be in the layerstack.
             for i in [0,2]:
@@ -242,8 +242,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                     layer = gui.layerstack[index]
                     
                     # Check the color
-                    assert isinstance(layer, AlphaModulatedLayer)
-                    assert layer.tintColor.rgba() == originalLabelColors[i]
+                    assert isinstance(layer, AlphaModulatedLayer), "layer is {}".format( layer )
+                    assert layer.tintColor.rgba() == originalLabelColors[i], "Expected {}, got {}".format( hex(originalLabelColors[i]), hex(layer.tintColor.rgba()) )
                 except ValueError:
                     assert False, "Could not find layer for label with name: {}".format(labelName)
 
@@ -262,7 +262,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.shell.setSelectedAppletDrawer(3)
 
             assert not gui._labelControlUi.checkInteractive.isChecked()
-            assert gui._labelControlUi.labelListModel.rowCount() == 2
+            assert gui._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui._labelControlUi.labelListModel.rowCount() )
             
             # Use the first view for this test
             imgView = gui.editor.imageViews[0]
@@ -275,11 +275,11 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # Hide labels and sample raw data
             labelLayer = gui.layerstack[0]
-            assert labelLayer.name == "Labels"
+            assert labelLayer.name == "Labels", "Layer name was wrong: {}".labelLayer.name
             labelLayer.visible = False            
             self.waitForViews([imgView])
             rawDataColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-            assert rawDataColor != labelColor
+            assert rawDataColor != labelColor, "Pixel color was not correct after label was hidden.  rawDataColor: {}, labelColor: {}".format(hex(rawDataColor), hex(labelColor))
             
             # Show labels
             labelLayer.visible = True
@@ -292,7 +292,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.strokeMouseFromCenter( imgView, self.LABEL_ERASE_START, self.LABEL_ERASE_STOP )
             self.waitForViews([imgView])
             erasedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-            assert erasedColor == rawDataColor
+            assert erasedColor == rawDataColor, "Pixel color was not correct after label was erased.  Expected {}, got {}".format(hex(erasedColor), hex(rawDataColor))
         
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
@@ -309,9 +309,9 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.shell.setSelectedAppletDrawer(3)
 
             assert not gui._labelControlUi.checkInteractive.isChecked()
-            assert gui._labelControlUi.labelListModel.rowCount() == 2
+            assert gui._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui._labelControlUi.labelListModel.rowCount() )
 
-            assert opPix.MaxLabelValue.value == 2
+            assert opPix.MaxLabelValue.value == 2, "Max label value was wrong. Expected 2, got {}".format( opPix.MaxLabelValue.value  )
             
             # Use the third view for this test (which has the max label value)
             imgView = gui.editor.imageViews[2]
@@ -328,7 +328,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             labelLayer.visible = False            
             self.waitForViews([imgView])
             rawDataColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-            assert rawDataColor != labelColor
+            assert rawDataColor != labelColor, "Pixel color was not correct after label was hidden.  rawDataColor: {}, labelColor: {}".format(hex(rawDataColor), hex(labelColor))
             
             # Show labels
             labelLayer.visible = True
@@ -341,10 +341,10 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.strokeMouseFromCenter( imgView, self.LABEL_START, self.LABEL_STOP )
             self.waitForViews([imgView])
             erasedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-            assert erasedColor == rawDataColor, "Eraser did not remove labels!"
+            assert erasedColor == rawDataColor, "Eraser did not remove labels! Expected {}, got {}".format( hex(erasedColor), hex(rawDataColor) )
 
             # We just erased all the labels of value 2, so the max label value should be reduced.
-            assert opPix.MaxLabelValue.value == 1
+            assert opPix.MaxLabelValue.value == 1, "Max label value was wrong. Expected 2, got {}".format( opPix.MaxLabelValue.value  )
 
             # Now stroke the eraser once more.
             # The new stroke should make NO DIFFERENCE to the image.
