@@ -11,16 +11,26 @@ import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
 
+import functools
+
 def startShellGui(workflowClass, testFunc = None, windowTitle="ilastikShell", workflowKwargs=None):
     """
+    Create an application and launch the shell in it.
+    """
+    app = QApplication([])
+    QTimer.singleShot( 0, functools.partial(launchShell, workflowClass, testFunc, windowTitle, workflowKwargs ) )
+    app.exec_()
+
+def launchShell(workflowClass, testFunc = None, windowTitle="ilastikShell", workflowKwargs=None):
+    """
     Start the ilastik shell GUI with the given workflow type.
+    Note: A QApplication must already exist, and you must call this function from its event loop.
     
     workflowClass - the type of workflow to instantiate for the shell.    
     """
-    if not workflowKwargs:
+    if workflowKwargs is None:
         workflowKwargs = dict()
-    application = QApplication([])
-    
+
     # Splash Screen
     splashImage = QPixmap("../ilastik-splash.png")
     splashScreen = QSplashScreen(splashImage)
@@ -44,7 +54,4 @@ def startShellGui(workflowClass, testFunc = None, windowTitle="ilastikShell", wo
 
     # Run a test (if given)
     if testFunc:
-        import functools
-        QTimer.singleShot(1, functools.partial(testFunc, shell, workflow) )
-
-    application.exec_()
+        QTimer.singleShot(0, functools.partial(testFunc, shell, workflow) )

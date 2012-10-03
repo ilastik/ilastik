@@ -633,10 +633,13 @@ class IlastikShell( QMainWindow ):
         if snapshotPath is not None:
             self.projectManager.saveProjectSnapshot(snapshotPath)
 
-    def onQuitActionTriggered(self, force=False):
+    def onQuitActionTriggered(self, force=False, quitApp=True):
         """
         The user wants to quit the application.
         Check his project for unsaved data and ask if he really means it.
+        Args:
+            force - Don't check the project for unsaved data.
+            quitApp - For testing purposes, set this to False if you just want to close the main window without quitting the app.
         """
         logger.info("Quit Action Triggered")
         
@@ -651,8 +654,12 @@ class IlastikShell( QMainWindow ):
 
         # Stop the thread that checks for log config changes.
         ilastik.ilastik_logging.stopUpdates()
-
-        qApp.quit()
+        
+        if quitApp:
+            qApp.quit()
+        else:
+            # Just close the window
+            self.close()        
 
     
     def updateAppletControlStates(self):
