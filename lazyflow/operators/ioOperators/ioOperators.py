@@ -123,6 +123,17 @@ class OpH5Writer(Operator):
         self.WriteImage.setDirty(slice(None))
 
 class OpStackLoader(Operator):
+    """
+    Imports an image stack.
+    Note: This operator does NOT cache the images, so direct access via the execute() 
+          function is very inefficient, especially through the Z-axis.
+          Typically, you'll want to connect this operator to a cache whose block size is large in the X-Y plane.
+    
+    Input:
+    globstring - A glob string as defined by the glob module.
+                 We also support the following special globstring syntax:
+                 A list of globstrings can be provided.  Each separate globstring is separated by two forward slashes (//).
+    """
     name = "Image Stack Reader"
     category = "Input"
 
