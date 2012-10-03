@@ -7,7 +7,7 @@ import threading
 # Third-party
 import numpy
 from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox
+from PyQt4.QtGui import QMessageBox, QColor
 
 # HCI
 from lazyflow.tracer import Tracer, traceLogged
@@ -95,6 +95,19 @@ class PixelClassificationGui(LabelingGui):
         layers = super(PixelClassificationGui, self).setupLayers(currentImageIndex)
 
         labels = self.labelListData
+
+        # Add the uncertainty estimate layer
+        uncertaintySlot = self.pipeline.UncertaintyEstimate[currentImageIndex]
+        if uncertaintySlot.ready():
+            uncertaintySrc = LazyflowSource(uncertaintySlot)
+            uncertaintyLayer = AlphaModulatedLayer( uncertaintySrc,
+                                                    tintColor=QColor( Qt.cyan ),
+                                                    range=(0.0, 1.0),
+                                                    normalize=(0.0, 1.0) )
+            uncertaintyLayer.name = "Uncertainty"
+            uncertaintyLayer.visible = False
+            uncertaintyLayer.opacity = 1.0
+            layers.append(uncertaintyLayer)
 
         # Add each of the predictions
         for channel, predictionSlot in enumerate(self.pipeline.PredictionProbabilityChannels[currentImageIndex]):
