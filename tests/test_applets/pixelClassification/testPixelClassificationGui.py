@@ -117,7 +117,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     LABEL_START = (-20,-20)
     LABEL_STOP = (20,20)
     LABEL_SAMPLE = (0,0)
-    LABEL_ERASE_START = (-10,--10)
+    LABEL_ERASE_START = (-10,-10)
     LABEL_ERASE_STOP = (10,10)
 
     def test_4_AddLabels(self):
