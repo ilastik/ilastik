@@ -30,7 +30,6 @@ class OpTrainRandomForest(Operator):
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].meta.dtype = object
             self.outputs["Classifier"].meta.shape = (self._forest_count,)
-            self.outputs["Classifier"].meta.axistags  = "classifier"
             self.outputs["Classifier"].setDirty((slice(0,1,None),))
 
 
@@ -96,7 +95,6 @@ class OpTrainRandomForestBlocked(Operator):
         if self.inputs["fixClassifier"].value == False:
             self.outputs["Classifier"].meta.dtype = object
             self.outputs["Classifier"].meta.shape = (self._forest_count,)
-            self.outputs["Classifier"].meta.axistags  = "classifier"
 
             # No need to set dirty here: notifyDirty handles it.
             #self.outputs["Classifier"].setDirty((slice(0,1,None),))
