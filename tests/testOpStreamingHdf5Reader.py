@@ -17,13 +17,7 @@ class TestOpStreamingHdf5Reader(object):
 
         # Create a test dataset
         datashape = (1,2,3,4,5)
-        self.data = numpy.zeros(datashape, dtype=numpy.float32)
-        for i in range(datashape[0]):
-            for j in range(datashape[1]):
-                for k in range(datashape[2]):
-                    for l in range(datashape[3]):
-                        for m in range(datashape[4]):
-                            self.data[i,j,k,l,m] = i+j+k+l+m
+        self.data = numpy.indices(datashape).sum(0).astype(numpy.float32)
 
     def tearDown(self):
         self.h5File.close()
