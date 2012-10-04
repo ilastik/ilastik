@@ -622,10 +622,10 @@ class OpArrayCache(OpArrayPiper):
                     print "sub condition", self._blockState[key2] == OpArrayCache.DIRTY
                     print "START, STOP", drStart2, drStop2
                     import h5py
-                    f = h5py.File("test.h5", "w")
-                    f.create_dataset("data",data = tileWeights)
-                    print "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights)
-                    assert 1 == 2
+                    with h5py.File("test.h5", "w") as f:
+                        f.create_dataset("data",data = tileWeights)
+                        print "%r \n %r \n %r\n %r\n %r \n%r" % (key2, blockKey,self._blockState[key2], self._blockState[blockKey][trueDirtyIndices],self._blockState[blockKey],tileWeights)
+                    assert False
                 self._blockState[key2] = OpArrayCache.IN_PROCESS
 
         # indicate the inprocessing state, by setting array to 0 (i.e. IN_PROCESS)
@@ -1227,6 +1227,9 @@ class OpBlockedArrayCache(Operator):
             self._blockShape = None
             self._fixed_all_dirty = False  # this is a shortcut for storing wehter all subblocks are dirty
             self._forward_dirty = False
+            self._opDummy = None
+            self._opSub_list = {}
+            self._cache_list = {}
 
     def setupOutputs(self):
         with Tracer(self.traceLogger):
@@ -1244,8 +1247,8 @@ class OpBlockedArrayCache(Operator):
                 # FIXME: This is evil, but there's no convenient way around it.
                 # We don't want our output to be flagged as 'ready'
                 # The only way to do that is to temporarily connect it to an unready operator
-                opTmp = OpArrayPiper(graph=self.graph)
-                opTmp.Output.connect( self.Output )
+#                opTmp = OpArrayPiper(parent=self, graph=self.graph)
+#                opTmp.Output.connect( self.Output )
                 self._configured = False
                 return
             else:
@@ -1284,9 +1287,10 @@ class OpBlockedArrayCache(Operator):
                 self._flatBlockIndices =  _blockIndices[:]
                 self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
 
-                self._opSub_list = {}
-                self._cache_list = {}
-
+                for op in self._cache_list.values():
+                    op.cleanUp()
+                for op in self._opSub_list.values():
+                    op.cleanUp()
 
                 self._configured = True
 
@@ -1333,7 +1337,7 @@ class OpBlockedArrayCache(Operator):
                 if not self._fixed:
                     if not self._cache_list.has_key(b_ind):
 
-                        self._opSub_list[b_ind] = generic.OpSubRegion(self)
+                        self._opSub_list[b_ind] = generic.OpSubRegion(parent=self)
                         self._opSub_list[b_ind].inputs["Input"].connect(self.inputs["Input"])
                         tstart = self._blockShape*self._flatBlockIndices[b_ind]
                         tstop = numpy.minimum((self._flatBlockIndices[b_ind]+numpy.ones(self._flatBlockIndices[b_ind].shape, numpy.uint8))*self._blockShape, self.shape)
@@ -1341,7 +1345,7 @@ class OpBlockedArrayCache(Operator):
                         self._opSub_list[b_ind].inputs["Start"].setValue(tuple(tstart))
                         self._opSub_list[b_ind].inputs["Stop"].setValue(tuple(tstop))
     
-                        self._cache_list[b_ind] = OpArrayCache(self)
+                        self._cache_list[b_ind] = OpArrayCache(parent=self)
                         self._cache_list[b_ind].inputs["Input"].connect(self._opSub_list[b_ind].outputs["Output"])
                         self._cache_list[b_ind].inputs["fixAtCurrent"].connect( self.fixAtCurrent )
                         self._cache_list[b_ind].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
@@ -1448,13 +1452,16 @@ class OpSlicedBlockedArrayCache(Operator):
         self._innerShapes = self.inputs["innerBlockShape"].value
 
         if len(self._innerShapes) != len(self._innerOps):
+            # Clean up previous inner operators
+            for slot in self.InnerOutputs:
+                slot.disconnect()
             for o in self._innerOps:
-                o.disconnect()
+                o.cleanUp()
 
             self._innerOps = []
 
             for i,innershape in enumerate(self._innerShapes):
-                op = OpBlockedArrayCache(self)
+                op = OpBlockedArrayCache(parent=self)
                 op.inputs["fixAtCurrent"].connect(self.inputs["fixAtCurrent"])
                 self._innerOps.append(op)
                 

@@ -25,21 +25,22 @@ class OpStreamingHdf5Reader(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpStreamingHdf5Reader, self).__init__(*args, **kwargs)
-
-    def __del__(self):
-        self.disconnect()
+        self._hdf5File = None
 
     def setupOutputs(self):
+        if self._hdf5File is not None:
+            self._hdf5File.close()
+        
         # Read the dataset meta-info from the HDF5 dataset
-        hdf5File = self.Hdf5File.value
+        self._hdf5File = self.Hdf5File.value
         internalPath = self.InternalPath.value
 
-        dataset = hdf5File[internalPath]
+        dataset = self._hdf5File[internalPath]
         outputShape = dataset.shape
 
         try:
             # Read the axistags property without actually importing the data
-            axistagsJson = hdf5File[internalPath].attrs['axistags'] # Throws KeyError if 'axistags' can't be found
+            axistagsJson = self._hdf5File[internalPath].attrs['axistags'] # Throws KeyError if 'axistags' can't be found
             axistags = vigra.AxisTags.fromJSON(axistagsJson)
         except KeyError:
             axisorder = self.DefaultAxisOrder.value
@@ -69,13 +70,14 @@ class OpStreamingHdf5Reader(Operator):
         self.OutputImage.meta.axistags = axistags
 
         # If the dataset specifies a datarange, add it to the slot metadata
-        if 'drange' in hdf5File[internalPath].attrs:
-            self.OutputImage.meta.drange = tuple( hdf5File[internalPath].attrs['drange'] )
+        if 'drange' in self._hdf5File[internalPath].attrs:
+            self.OutputImage.meta.drange = tuple( self._hdf5File[internalPath].attrs['drange'] )
 
     def execute(self, slot, subindex, roi, result):
+        assert self._hdf5File is not None
         # Read the desired data directly from the hdf5File
         key = roi.toSlice()
-        hdf5File = self.Hdf5File.value
+        hdf5File = self._hdf5File
         internalPath = self.InternalPath.value
         
         # On windows, internalPath may have backslashes, so replace them with forward slashes.

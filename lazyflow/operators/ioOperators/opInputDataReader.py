@@ -35,11 +35,12 @@ class OpInputDataReader(Operator):
         super(OpInputDataReader, self).__init__(*args, **kwargs)
         self.internalOperator = None
         self.internalOutput = None
+        self._file = None
 
-    def __del__(self):
-        if self.internalOperator is not None:
-            self.internalOperator.disconnect()
-            del self.internalOperator
+    def cleanUp(self):
+        super(OpInputDataReader, self).cleanUp()
+        if self._file is not None:
+            self._file.close()
 
     def setupOutputs(self):
         """
@@ -60,10 +61,14 @@ class OpInputDataReader(Operator):
                 # Convert this relative path into an absolute path
                 filePath = os.path.normpath(os.path.join(self.WorkingDirectory.value, filePath))
 
+        # Clean up before reconfiguring
         if self.internalOperator is not None:
-            self.internalOperator.disconnect()
-            del self.internalOperator
+            self.Output.disconnect()
+            self.internalOperator.cleanUp()
             self.internalOperator = None
+            self.internalOutput = None
+        if self._file is not None:
+            self._file.close()
 
         # Check for globstring
         if self.internalOperator is None and '*' in filePath:
@@ -91,6 +96,7 @@ class OpInputDataReader(Operator):
 
                 # Open the h5 file in read-only mode
                 h5File = h5py.File(externalPath, 'r')
+                self._file = h5File
 
                 h5Reader = OpStreamingHdf5Reader(parent=self, graph=self.graph)
                 h5Reader.DefaultAxisOrder.connect( self.DefaultAxisOrder )

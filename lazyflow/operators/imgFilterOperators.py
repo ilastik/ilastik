@@ -251,9 +251,9 @@ class OpPixelFeaturesPresmoothed(Operator):
     def __init__(self,parent):
         Operator.__init__(self, parent, register=True)
         
-        self.multi = Op50ToMulti(graph=self.graph)
-        self.stacker = OpMultiArrayStacker(graph=self.graph)
-        self.smoother = OpGaussianSmoothing(graph=self.graph)
+        self.multi = Op50ToMulti(parent=self, graph=self.graph)
+        self.stacker = OpMultiArrayStacker(parent=self, graph=self.graph)
+        self.smoother = OpGaussianSmoothing(parent=self, graph=self.graph)
         self.destSigma = 1.0
         self.windowSize = 4
         self.operatorList = [OpGaussianSmoothing,OpLaplacianOfGaussian,\

@@ -1305,6 +1305,9 @@ class Operator(object):
         
         self._parent = parent
         self.graph = graph
+        self._children = set()
+        if parent is not None:
+            parent._children.add(self)
         
         self._initialized = False
 
@@ -1372,10 +1375,6 @@ class Operator(object):
     def parent(self):
         return self._parent
     
-    @parent.setter
-    def parent(self, p):
-        self._parent = p
-
     def __setattr__(self, name, value):
         """
         This method safeguards that operators do not overwrite slot names with
@@ -1401,12 +1400,32 @@ class Operator(object):
             if i.partner is None and i._value is None and i._defaultValue is not None:
                 i.setValue(i._defaultValue)
 
-    def disconnect(self):
-        for s in self.outputs.values():
-            s.disconnect()
-        for s in self.inputs.values():
+    def _disconnect(self):
+        """
+        Disconnect our slots from their upstream partners (not their downstream ones)
+        and recursively do the same to all our child operators.
+        """
+        for s in self.inputs.values() + self.outputs.values():
             s.disconnect()
 
+        for child in self._children:
+            child._disconnect()
+
+    def cleanUp(self):
+        if self._parent is not None:
+            self._parent._children.remove(self)
+
+        # Disconnect ourselves and all children
+        self._disconnect()
+
+        for s in self.inputs.values() + self.outputs.values():
+            assert len(s.partners) == 0, "Cannot clean up this operator: It is still providing data to downstream operators!"
+
+        # Work with a copy of the child list
+        # (since it will be modified with each iteration)
+        children = set(self._children)
+        for child in children:
+            child.cleanUp()
 
     """
     This method is called when an output of another operator on which
@@ -1669,7 +1688,7 @@ class OperatorWrapper(Operator):
             for islot in self.inputs.values():
                 islot.removeSlot(index, length)
     
-            op.disconnect()
+            op.cleanUp()
             length = len(self.innerOperators)
 
     def _setupOutputs(self):
