@@ -143,10 +143,9 @@ class PixelClassificationSerializer(AppletSerializer):
                 forest.writeHDF5( cachePath, 'ClassifierForests/Forest{:04d}'.format(i) )
             
             # Open the temp file and copy to our project group
-            cacheFile = h5py.File(cachePath, 'r')
-            topGroup.copy(cacheFile['ClassifierForests'], 'ClassifierForests')
+            with h5py.File(cachePath, 'r') as cacheFile:
+                topGroup.copy(cacheFile['ClassifierForests'], 'ClassifierForests')
             
-            cacheFile.close()
             os.remove(cachePath)
             os.removedirs(tmpDir)
 
@@ -275,9 +274,8 @@ class PixelClassificationSerializer(AppletSerializer):
                 # Instead, we'll copy the classfier data to a temporary file and give it to vigra.
                 tmpDir = tempfile.mkdtemp()
                 cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
-                cacheFile = h5py.File(cachePath, 'w')
-                cacheFile.copy(classifierGroup, 'ClassifierForests')
-                cacheFile.close()
+                with h5py.File(cachePath, 'w') as cacheFile:
+                    cacheFile.copy(classifierGroup, 'ClassifierForests')
         
                 forests = []
                 for name, forestGroup in sorted( classifierGroup.items() ):
