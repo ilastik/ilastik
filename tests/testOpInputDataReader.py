@@ -73,18 +73,10 @@ class TestOpInputDataReader(object):
     def test_h5(self):
         # Create HDF5 test data
         import h5py
-        f = h5py.File(self.testH5FileName)
-        f.create_group('volume')
-        shape = (1,2,3,4,5)
-        f['volume'].create_dataset('data', shape)
-
-        for i in range(0,shape[0]):
-            for j in range(0,shape[1]):
-                for k in range(0,shape[2]):
-                    for l in range(0,shape[3]):
-                        for m in range(0,shape[4]):
-                            f['volume/data'][i,j,k,l,m] = i + j + k + l + m
-        f.close()
+        with h5py.File(self.testH5FileName) as f:
+            f.create_group('volume')
+            shape = (1,2,3,4,5)
+            f['volume'].create_dataset('data', data=numpy.indices(shape).sum(0).astype(numpy.float32))
 
         # Read the entire HDF5 file and verify the contents
         h5Reader = OpInputDataReader(graph=self.graph)
@@ -100,6 +92,10 @@ class TestOpInputDataReader(object):
             for l in range(0,shape[3]):
                 for m in range(0,shape[4]):
                     assert h5Data[0,0,k,l,m] == k + l + m
+
+        # Call cleanUp() to close the file that this operator opened        
+        h5Reader.cleanUp()
+        assert not h5Reader._file # Whitebox assertion...
 
 if __name__ == "__main__":
     import sys
