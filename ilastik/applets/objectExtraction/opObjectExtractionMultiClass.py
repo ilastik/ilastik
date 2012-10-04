@@ -71,7 +71,7 @@ class OpObjectExtractionMultiClass(Operator):
         start = (len(self.Images.meta.shape) - 1) * [0,] + [backgroundlabel,]   
         print "WARNING: number of time frames restricted to 2 for debugging purposes"      
 #        stop = list(self.Images.meta.shape[0:-1]) + [backgroundlabel + 1,]
-        stop = [1,] + list(self.Images.meta.shape[1:-1]) + [backgroundlabel + 1,]                
+        stop = [2,] + list(self.Images.meta.shape[1:-1]) + [backgroundlabel + 1,]                
         self._opSubRegionBgImage.inputs["Start"].setValue(tuple(start))        
         self._opSubRegionBgImage.inputs["Stop"].setValue(tuple(stop)) 
         
@@ -124,25 +124,18 @@ class OpClassExtraction(Operator):
         pass
     
     def execute(self, slot, subindex, roi, result):
-        # initialize prob dict with 1.0 for all bg labels
-        # get both labelimages (roi)
-        # for all div labels
-            # lookup bg-label for the current div label
-            # lookup bg-volume for this bg-label
-            # lookup div-volume for this bg-label
-            # prob[bg-label] = ratio, 1-ratio
-        # return the dict (do not use result!)
-        def extract( labelImageBg, labelImageDiv, regionFeaturesBg, regionFeaturesDiv ): 
+        def extract( labelImageBg, labelImageDiv, regionFeaturesBg, regionFeaturesDiv ):
             prob = [[1,0]] * (len(regionFeaturesBg[0]['Count']) - 1)    
             for labelDiv, volDiv in enumerate(regionFeaturesDiv[0]['Count']):
-                # skip the first label, since label 0 is not used in vigra
+                # skip the first label, since label 0 is not used in connected components
                 if labelDiv == 0:
-                    continue                
-                print 'labelDiv = ' + str(labelDiv) + ', volDiv = ' + str(volDiv)
-                
-                # TODO: might be terribly slow, is there a faster way to look up the coordinates of the labels???
-                labelBg = labelImageBg[labelImageDiv == labelDiv][0]
+                    continue
+                coordDiv = regionFeaturesDiv[0]['Coord<Maximum>'][labelDiv]
+                labelBg = labelImageBg[tuple(coordDiv)]
+                assert labelBg != 0
+                assert volDiv > 0
                 volBg = regionFeaturesBg[0]['Count'][labelBg]
+                assert volBg > 0
                 p = volDiv / float(volBg) 
                 prob[labelBg] = [1-p, p]  # [ P(non-division), P(division) ]
             return prob

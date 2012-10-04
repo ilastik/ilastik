@@ -161,6 +161,8 @@ class ObjectExtractionGui( QWidget ):
             self.curOp.LabelImage.setDirty(roi)
         except:
             print "TODO: set LabelImage dirty to update the result for the current view"
+        
+        print 'Label Segmentation: done.'
 
 
     def _onExtractObjectsButtonPressed( self ):
@@ -191,6 +193,9 @@ class ObjectExtractionGui( QWidget ):
         
         self.curOp._opObjectExtractionBg.ObjectCenterImage.setDirty( SubRegion(self.curOp._opObjectExtractionBg.ObjectCenterImage))
         self.curOp._opObjectExtractionDiv.ObjectCenterImage.setDirty( SubRegion(self.curOp._opObjectExtractionDiv.ObjectCenterImage))
+        
+        print 'Object Extraction: done.'
+
 
     def _onMergeSegmentationsButtonPressed(self):
         m = self.curOp.LabelImage.meta
@@ -214,4 +219,6 @@ class ObjectExtractionGui( QWidget ):
                 req.wait()
         
         self.curOp._opClassExtraction.fixed = True
-        progress.setValue(maxt)        
+        progress.setValue(maxt)
+        
+        print 'Merge Segmentation: done.'        

@@ -46,7 +46,7 @@ class OpRegionFeatures( Operator ):
             def extract( a ):
                 labels = numpy.asarray(a, dtype=numpy.uint32)
                 data = numpy.asarray(a, dtype=numpy.float32)
-                feats = vigra.analysis.extractRegionFeatures(data, labels, features=['RegionCenter', 'Count'], ignoreLabel=0)
+                feats = vigra.analysis.extractRegionFeatures(data, labels, features=['RegionCenter', 'Count', 'Coord<Maximum>'], ignoreLabel=0)
                 return feats
                 centers = numpy.asarray(feats['RegionCenter'], dtype=numpy.uint16)
                 centers = centers[1:,:]
