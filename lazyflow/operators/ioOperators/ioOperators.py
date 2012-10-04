@@ -36,6 +36,7 @@ class OpH5Writer(Operator):
             #create H5File and DataSet
             f = h5py.File(filename, 'w')
         except:
+            assert False
             return
         g = f
 
