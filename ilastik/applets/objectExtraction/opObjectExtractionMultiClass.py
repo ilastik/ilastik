@@ -26,7 +26,7 @@ class OpObjectExtractionMultiClass(Operator):
         super(OpObjectExtractionMultiClass, self).__init__(parent=parent, graph=graph)
         print "OpObjectExtractionMultiClass::init"
 
-        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
+#        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
         
         self._opThresholding = OpThresholding(graph=graph)
         self._opThresholding.Threshold.setValue(0.5)

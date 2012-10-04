@@ -130,6 +130,7 @@ class ObjectExtractionGui( QWidget ):
         self._drawer.labelImageButton.pressed.connect(self._onLabelImageButtonPressed)
         self._drawer.extractObjectsButton.pressed.connect(self._onExtractObjectsButtonPressed)
         self._drawer.mergeSegmentationsButton.pressed.connect(self._onMergeSegmentationsButtonPressed)
+        self._drawer.doAllButton.pressed.connect(self._onDoAllButtonPressed)
 
     def _initViewerControlUi( self ):
         p = os.path.split(__file__)[0]+'/'
@@ -221,4 +222,12 @@ class ObjectExtractionGui( QWidget ):
         self.curOp._opClassExtraction.fixed = True
         progress.setValue(maxt)
         
-        print 'Merge Segmentation: done.'        
+        print 'Merge Segmentation: done.'
+        
+        
+    def _onDoAllButtonPressed(self):    
+        self._onLabelImageButtonPressed()
+        self._onExtractObjectsButtonPressed()
+        self._onMergeSegmentationsButtonPressed()
+        
+        
