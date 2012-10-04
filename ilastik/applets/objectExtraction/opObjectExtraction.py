@@ -126,6 +126,7 @@ class OpObjectExtraction( Operator ):
 
     #RawData = InputSlot()
     BinaryImage = InputSlot()
+    BackgroundLabel = InputSlot()
     #FeatureNames = InputSlot( stype=Opaque )
 
     LabelImage = OutputSlot()
@@ -147,24 +148,23 @@ class OpObjectExtraction( Operator ):
 
         self._opRegFeats = OpRegionFeatures( graph = graph )
         self._opRegFeats.LabelImage.connect( self.LabelImage )
-
+        
     
     def __del__( self ):
         self._mem_h5.close()
 
-    def setupOutputs(self):
+    def setupOutputs(self):        
         self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
-        m = self.LabelImage.meta
+        m = self.LabelImage.meta        
         self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )
 
-        self._reg_cents = dict.fromkeys(xrange(m.shape[0]), numpy.asarray([], dtype=numpy.uint16))
-        
+        self._reg_cents = dict.fromkeys(xrange(m.shape[0]), numpy.asarray([], dtype=numpy.uint16))        
         self.ObjectCenterImage.meta.assignFrom(self.BinaryImage.meta)
     
-    def execute(self, slot, subindex, roi, result):
+    def execute(self, slot, subindex, roi, result):        
         if slot is self.ObjectCenterImage:
             return self._execute_ObjectCenterImage( roi, result )
-        if slot is self.LabelImage:
+        if slot is self.LabelImage:                        
             result = self._mem_h5['LabelImage'][roi.toSlice()]
             return result
         if slot is self.RegionCenters:
@@ -178,11 +178,11 @@ class OpObjectExtraction( Operator ):
         raise NotImplementedError
 
     def updateLabelImage( self ):
-        m = self.LabelImage.meta
+        m = self.LabelImage.meta        
         for t in range(m.shape[0]):
             print "Calculating LabelImage at", t
             start = [t,] + (len(m.shape) - 1) * [0,]
-            stop = [t+1,] + list(m.shape[1:])
+            stop = [t+1,] + list(m.shape[1:])            
             a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()
             a = a[0,...,0]
             self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a )
@@ -190,13 +190,13 @@ class OpObjectExtraction( Operator ):
         self.LabelImage.setDirty(roi)
 
     def updateLabelImageAt( self, t ):
-        m = self.LabelImage.meta
+        m = self.LabelImage.meta        
         print "Calculating LabelImage at", t
         start = [t,] + (len(m.shape) - 1) * [0,]
-        stop = [t+1,] + list(m.shape[1:])
-        a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()
-        a = a[0,...,0]
-        self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a )
+        stop = [t+1,] + list(m.shape[1:])        
+        a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()        
+        a = a[0,...,0]        
+        self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a, background_value = self.BackgroundLabel.value )
 
     def __contained_in_subregion( self, roi, coords ):
         b = True

@@ -20,6 +20,7 @@ class OpObjectExtractionMultiClass(Operator):
     RegionFeatures = OutputSlot(stype=Opaque, rtype=List)
     ClassMapping = OutputSlot(stype=Opaque, rtype=List)
     BinaryImage = OutputSlot()
+    
 
     def __init__(self, parent=None, graph=None):        
         super(OpObjectExtractionMultiClass, self).__init__(parent=parent, graph=graph)
@@ -36,14 +37,17 @@ class OpObjectExtractionMultiClass(Operator):
         self._opSubRegionBgImage = OpSubRegion(graph=graph)        
         self._opSubRegionBgImage.inputs["Input"].connect(self._opThresholding.BinaryImage)
                 
-        self._opSubRegionDivImage = OpSubRegion(graph=graph)        
+        self._opSubRegionDivImage = OpSubRegion(graph=graph)
         self._opSubRegionDivImage.inputs["Input"].connect(self._opThresholding.BinaryImage)        
         
         self._opObjectExtractionBg = OpObjectExtraction(graph=graph)
         self._opObjectExtractionBg.BinaryImage.connect(self._opSubRegionBgImage.outputs["Output"])
+        # TODO: is this background label really needed or does the operator read the background label from 0,0,0,0?
+        self._opObjectExtractionBg.BackgroundLabel.setValue(1)
         
         self._opObjectExtractionDiv = OpObjectExtraction(graph=graph)
         self._opObjectExtractionDiv.BinaryImage.connect(self._opSubRegionDivImage.outputs["Output"])
+        self._opObjectExtractionDiv.BackgroundLabel.setValue(0)
         
         self.LabelImage.connect(self._opObjectExtractionBg.LabelImage)
         self.ObjectCenterImage.connect(self._opObjectExtractionBg.ObjectCenterImage)
@@ -60,28 +64,45 @@ class OpObjectExtractionMultiClass(Operator):
         
 
     def setupOutputs(self):
+        print "setupOutputs: Inputs.shape " + str(self.Images.meta.shape)
         # TODO: set values to channel 0 (if label 0 == bg)
-        # assumes that background == label 0, assumes t,x,y,z,c
+        # assumes that background == label 0, assumes t,x,y,z,c        
         backgroundlabel = 0
-        start = (len(self.Images.meta.shape) - 1) * [0,] + [backgroundlabel,]         
-        stop = list(self.Images.meta.shape[0:-1]) + [backgroundlabel + 1,]        
+        start = (len(self.Images.meta.shape) - 1) * [0,] + [backgroundlabel,]   
+        print "WARNING: number of time frames restricted to 2 for debugging purposes"      
+#        stop = list(self.Images.meta.shape[0:-1]) + [backgroundlabel + 1,]
+        stop = [1,] + list(self.Images.meta.shape[1:-1]) + [backgroundlabel + 1,]                
         self._opSubRegionBgImage.inputs["Start"].setValue(tuple(start))        
         self._opSubRegionBgImage.inputs["Stop"].setValue(tuple(stop)) 
         
         # assumes that division == label 2, assumes t,x,y,z,c
         divisionlabel = 2
-        start[-1] = divisionlabel
+        start[-1] = divisionlabel        
         stop[-1] = divisionlabel + 1                
         self._opSubRegionDivImage.inputs["Start"].setValue(tuple(start))        
-        self._opSubRegionDivImage.inputs["Stop"].setValue(tuple(stop))
+        self._opSubRegionDivImage.inputs["Stop"].setValue(tuple(stop))        
+        
+#        # TODO: why do I have to call this explicitly?? -> because the output hasn't been pulled yet, 
+#        # other than the one of the bgOperator, since that's connected to the LabelImage
+#        print "setting up div object extraction"
+#        self._opObjectExtractionDiv.setupOutputs()
     
-    def execute(self, slot, subindex, roi, result):        
+    def execute(self, slot, subindex, roi, result):
         pass
 
     def propagateDirty(self, inputSlot, roi):
-        pass
+        raise NotImplementedError
 
-
+    def updateLabelImageAt( self, t, c ):        
+        if c == 0: 
+            print 'updating labels for background binary image'
+            self._opObjectExtractionBg.updateLabelImageAt(t)
+        elif c == 2:
+            print 'updating labels for division binary image'
+            self._opObjectExtractionDiv.updateLabelImageAt(t)
+        else:
+            raise Exception, 'invalid channel'
+        
 
 class OpClassExtraction(Operator):    
     name = "Class Extraction"
@@ -120,7 +141,7 @@ class OpThresholding(Operator):
     
     maximum = None
     def setupOutputs(self):
-        self.BinaryImage.meta.dtype = numpy.bool
+        self.BinaryImage.meta.dtype = numpy.uint8
         self.BinaryImage.meta.shape = self.Input.meta.shape
         self.BinaryImage.meta.axistags = self.Input.meta.axistags
     

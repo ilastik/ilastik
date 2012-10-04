@@ -129,6 +129,7 @@ class ObjectExtractionGui( QWidget ):
 
         self._drawer.labelImageButton.pressed.connect(self._onLabelImageButtonPressed)
         self._drawer.extractObjectsButton.pressed.connect(self._onExtractObjectsButtonPressed)
+        self._drawer.mergeSegmentationsButton.pressed.connect(self._onMergeSegmentationsButtonPressed)
 
     def _initViewerControlUi( self ):
         p = os.path.split(__file__)[0]+'/'
@@ -138,21 +139,29 @@ class ObjectExtractionGui( QWidget ):
     def _onLabelImageButtonPressed( self ):
         m = self.curOp.LabelImage.meta
         maxt = m.shape[0]
-        progress = QProgressDialog("Labelling Binary Image...", "Stop", 0, maxt)
+        progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt * 2)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())
         progress.forceShow()
 
-        for t in range(maxt):
-            progress.setValue(t)
-            if progress.wasCanceled():
-                break
-            else:
-                self.curOp.updateLabelImageAt( t )
-        progress.setValue(maxt)                
+        # LabelImage for background/non-background (channel 0) and division/non-division (channel 2)
+        # TODO: run multi-threaded??? see _onExtractObjectsButtonPressed!
+        for idx,c in enumerate([0,2]):
+            for t in range(maxt):
+                progress.setValue(idx * maxt + t * (idx+1))
+                if progress.wasCanceled():
+                    break
+                else:
+                    self.curOp.updateLabelImageAt( t, c )
+        progress.setValue(maxt * 2)
         roi = SubRegion(self.curOp.LabelImage, start=5*(0,), stop=m.shape)
-        self.curOp.LabelImage.setDirty(roi)
+        # TODO: set LabelImage dirty to update the result for the current view!
+        try:         
+            self.curOp.LabelImage.setDirty(roi)
+        except:
+            print "TODO: set LabelImage dirty to update the result for the current view"
+
 
     def _onExtractObjectsButtonPressed( self ):
         maxt = self.curOp.LabelImage.meta.shape[0]
@@ -162,9 +171,12 @@ class ObjectExtractionGui( QWidget ):
         progress.setCancelButtonText(QString())
 
         reqs = []
-        self.curOp._opRegFeats.fixed = False
+        self.curOp._opObjectExtractionBg._opRegFeats.fixed = False
+        self.curOp._opObjectExtractionDiv._opRegFeats.fixed = False
         for t in range(maxt):
-            reqs.append(self.curOp.RegionFeatures([t]))
+            reqs.append(self.curOp._opObjectExtractionBg.RegionFeatures([t]))
+            reqs[-1].submit()
+            reqs.append(self.curOp._opObjectExtractionDiv.RegionFeatures([t]))
             reqs[-1].submit()
         for i, req in enumerate(reqs):
             progress.setValue(i)
@@ -173,6 +185,34 @@ class ObjectExtractionGui( QWidget ):
             else:
                 req.wait()
                 
-        self.curOp._opRegFeats.fixed = True 
+        self.curOp._opObjectExtractionBg._opRegFeats.fixed = True 
+        self.curOp._opObjectExtractionDiv._opRegFeats.fixed = True
         progress.setValue(maxt)
-        self.curOp.ObjectCenterImage.setDirty( SubRegion(self.curOp.ObjectCenterImage))
+        self.curOp._opObjectExtractionBg.ObjectCenterImage.setDirty( SubRegion(self.curOp._opObjectExtractionBg.ObjectCenterImage))
+        self.curOp._opObjectExtractionDiv.ObjectCenterImage.setDirty( SubRegion(self.curOp._opObjectExtractionDiv.ObjectCenterImage))
+
+    def _onMergeSegmentationsButtonPressed(self):
+        m = self.curOp.LabelImage.meta
+        maxt = m.shape[0]
+        progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt * 2)
+        progress.setWindowModality(Qt.ApplicationModal)
+        progress.setMinimumDuration(0)
+        progress.setCancelButtonText(QString())
+        progress.forceShow()
+
+        # LabelImage for background/non-background (channel 0) and division/non-division (channel 2)
+        # TODO: run multi-threaded??? see _onExtractObjectsButtonPressed!
+        for idx,c in enumerate([0,2]):
+            for t in range(maxt):
+                progress.setValue(idx * maxt + t * (idx+1))
+                if progress.wasCanceled():
+                    break
+                else:
+                    self.curOp.updateLabelImageAt( t, c )
+        progress.setValue(maxt * 2)
+        roi = SubRegion(self.curOp.LabelImage, start=5*(0,), stop=m.shape)
+        # TODO: set LabelImage dirty to update the result for the current view!
+        try:         
+            self.curOp.LabelImage.setDirty(roi)
+        except:
+            print "TODO: set LabelImage dirty to update the result for the current view"
