@@ -61,8 +61,8 @@ class OpPixelClassification( Operator ):
         self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph )
 
         # NOT wrapped
-        self.opMaxLabel = OpMaxValue(graph=self.graph)
-        self.opTrain = OpTrainRandomForestBlocked( graph=self.graph )
+        self.opMaxLabel = OpMaxValue( parent=self, graph=self.graph)
+        self.opTrain = OpTrainRandomForestBlocked( parent=self, graph=self.graph )
 
         # Set up label cache shape input
         self.opInputShapeReader.Input.connect( self.InputImages )
@@ -91,7 +91,7 @@ class OpPixelClassification( Operator ):
         self.opTrain.inputs['fixClassifier'].setValue(False)
 
         # The classifier is cached here to allow serializers to force in a pre-calculated classifier...
-        self.classifier_cache = OpValueCache( graph=self.graph )
+        self.classifier_cache = OpValueCache( parent=self, graph=self.graph )
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
         ##

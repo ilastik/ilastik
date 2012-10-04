@@ -33,7 +33,7 @@ class OpLabeling( Operator ):
         self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray, parent=self, graph=self.graph )
 
         # NOT wrapped
-        self.opMaxLabel = OpMaxValue(graph=self.graph)
+        self.opMaxLabel = OpMaxValue(parent=self, graph=self.graph)
 
         # Set up label cache shape input
         self.opInputShapeReader.Input.connect( self.InputImages )
