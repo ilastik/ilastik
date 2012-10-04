@@ -1419,7 +1419,11 @@ class Operator(object):
         self._disconnect()
 
         for s in self.inputs.values() + self.outputs.values():
-            assert len(s.partners) == 0, "Cannot clean up this operator: It is still providing data to downstream operators!"
+            if len(s.partners) > 0:
+                msg = "Cannot clean up this operator: Slot '{}' is still providing data to downstream operators!\n".format(s.name)
+                for i,p in enumerate(s.partners):
+                    msg += "Downstream Partner {}: {}.{}".format(i, p.getRealOperator().name, p.name)
+                raise RuntimeError(msg)
 
         # Work with a copy of the child list
         # (since it will be modified with each iteration)
