@@ -1,6 +1,6 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
-from lazyflow.rtype import List
+from lazyflow.rtype import List, SubRegion
 from lazyflow.operators.obsolete.generic import OpSubRegion
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 import numpy
@@ -114,6 +114,12 @@ class OpClassExtraction(Operator):
     
     ClassMapping = OutputSlot(stype=Opaque, rtype=List)
     
+    def __init__( self, parent=None, graph=None ):
+        super(OpClassExtraction, self).__init__(parent=parent,
+                                              graph=graph)
+        self._cache = {}
+        self.fixed = True
+    
     def setupOutputs(self):
         pass
     
@@ -126,7 +132,43 @@ class OpClassExtraction(Operator):
             # lookup div-volume for this bg-label
             # prob[bg-label] = ratio, 1-ratio
         # return the dict (do not use result!)
-        pass
+        def extract( labelImageBg, labelImageDiv, regionFeaturesBg, regionFeaturesDiv ): 
+            prob = [[1,0]] * (len(regionFeaturesBg[0]['Count']) - 1)    
+            for labelDiv, volDiv in enumerate(regionFeaturesDiv[0]['Count']):
+                # skip the first label, since label 0 is not used in vigra
+                if labelDiv == 0:
+                    continue                
+                print 'labelDiv = ' + str(labelDiv) + ', volDiv = ' + str(volDiv)
+                
+                # TODO: might be terribly slow, is there a faster way to look up the coordinates of the labels???
+                labelBg = labelImageBg[labelImageDiv == labelDiv][0]
+                volBg = regionFeaturesBg[0]['Count'][labelBg]
+                p = volDiv / float(volBg) 
+                prob[labelBg] = [1-p, p]  # [ P(non-division), P(division) ]
+            return prob
+            
+        probs = {}
+        for t in roi:
+            print "Class Extraction at", t
+            if t in self._cache:
+                probs_at = self._cache[t]
+            elif self.fixed:
+                probs_at = numpy.asarray([])
+            else:
+                troi = SubRegion( self.LabelImageBg, start = [t,] + (len(self.LabelImageBg.meta.shape) - 1) * [0,], stop = [t+1,] + list(self.LabelImageBg.meta.shape[1:]))
+                liBg = self.LabelImageBg.get(troi).wait()
+                liBg = liBg[0,...,0] # assumes t,x,y,z,c
+                rfBg = self.RegionFeaturesBg.get([t]).wait()
+                
+                liDiv = self.LabelImageDiv.get(troi).wait()
+                liDiv = liDiv[0,...,0] # assumes t,x,y,z,c
+                rfDiv = self.RegionFeaturesDiv.get([t]).wait()
+                probs_at = extract(liBg, liDiv, rfBg, rfDiv)
+                self._cache[t] = probs_at
+            probs[t] = probs_at
+
+        return probs
+    
     
     def propagateDirty(self, slot, subindex, roi):
         pass

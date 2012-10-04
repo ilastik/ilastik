@@ -188,31 +188,30 @@ class ObjectExtractionGui( QWidget ):
         self.curOp._opObjectExtractionBg._opRegFeats.fixed = True 
         self.curOp._opObjectExtractionDiv._opRegFeats.fixed = True
         progress.setValue(maxt)
+        
         self.curOp._opObjectExtractionBg.ObjectCenterImage.setDirty( SubRegion(self.curOp._opObjectExtractionBg.ObjectCenterImage))
         self.curOp._opObjectExtractionDiv.ObjectCenterImage.setDirty( SubRegion(self.curOp._opObjectExtractionDiv.ObjectCenterImage))
 
     def _onMergeSegmentationsButtonPressed(self):
         m = self.curOp.LabelImage.meta
         maxt = m.shape[0]
-        progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt * 2)
+        progress = QProgressDialog("Merging Background and Division Segmentations...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())
         progress.forceShow()
 
-        # LabelImage for background/non-background (channel 0) and division/non-division (channel 2)
-        # TODO: run multi-threaded??? see _onExtractObjectsButtonPressed!
-        for idx,c in enumerate([0,2]):
-            for t in range(maxt):
-                progress.setValue(idx * maxt + t * (idx+1))
-                if progress.wasCanceled():
-                    break
-                else:
-                    self.curOp.updateLabelImageAt( t, c )
-        progress.setValue(maxt * 2)
-        roi = SubRegion(self.curOp.LabelImage, start=5*(0,), stop=m.shape)
-        # TODO: set LabelImage dirty to update the result for the current view!
-        try:         
-            self.curOp.LabelImage.setDirty(roi)
-        except:
-            print "TODO: set LabelImage dirty to update the result for the current view"
+        reqs = []
+        self.curOp._opClassExtraction.fixed = False
+        for t in range(maxt):
+            reqs.append(self.curOp._opClassExtraction.ClassMapping([t]))
+            reqs[-1].submit()
+        for i, req in enumerate(reqs):
+            progress.setValue(i)
+            if progress.wasCanceled():
+                req.cancel()
+            else:
+                req.wait()
+        
+        self.curOp._opClassExtraction.fixed = True
+        progress.setValue(maxt)        
