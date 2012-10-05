@@ -132,7 +132,7 @@ class OpClassExtraction(Operator):
                     continue
                 coordDiv = regionFeaturesDiv[0]['Coord<Maximum>'][labelDiv]
                 labelBg = labelImageBg[tuple(coordDiv)]
-                assert labelBg != 0
+                assert labelBg != 0, str(labelDiv) + ', ' + str(coordDiv)+ ', ' + str(labelImageBg.shape) + ', ' +  str(labelDiv) + ', ' + str(labelBg)
                 assert volDiv > 0
                 volBg = regionFeaturesBg[0]['Count'][labelBg]
                 assert volBg > 0
