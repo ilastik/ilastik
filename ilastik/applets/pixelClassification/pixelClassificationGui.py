@@ -7,7 +7,7 @@ import threading
 # Third-party
 import numpy
 from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor
+from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence
 
 # HCI
 from lazyflow.tracer import Tracer, traceLogged
@@ -15,6 +15,7 @@ from volumina.api import LazyflowSource, AlphaModulatedLayer
 
 # ilastik
 from ilastik.utility import bind
+from ilastik.utility.gui import ShortcutManager
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 
@@ -84,6 +85,26 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkShowPredictions.nextCheckState = nextCheckState
         
         self.pipeline.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
+        
+        self._initShortcuts()
+
+    def _initShortcuts(self):
+        mgr = ShortcutManager()
+        shortcutGroupName = "Predictions"
+
+        togglePredictions = QShortcut( QKeySequence("p"), self, member=self.labelingDrawerUi.checkShowPredictions.click )
+        mgr.register( shortcutGroupName,
+                      "Toggle Prediction Layer Visibility",
+                      togglePredictions,
+                      self.labelingDrawerUi.checkShowPredictions )        
+
+        toggleLivePredict = QShortcut( QKeySequence("l"), self, member=self.labelingDrawerUi.checkInteractive.click )
+        mgr.register( shortcutGroupName,
+                      "Toggle Live Prediction Mode",
+                      toggleLivePredict,
+                      self.labelingDrawerUi.checkInteractive )
+        
+        
 
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):

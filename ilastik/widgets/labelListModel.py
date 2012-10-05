@@ -52,6 +52,7 @@ class LabelListModel(QAbstractTableModel):
         self._selectionModel.selectionChanged.connect(onSelectionChanged)
         
         self._allowRemove = True
+        self._toolTipSuffixes = {}
     
     def __len__(self):
         return len(self._labels)
@@ -78,6 +79,36 @@ class LabelListModel(QAbstractTableModel):
     def columnCount(self, parent):
         return 3
 
+    def _getToolTipSuffix(self, row):
+        """
+        Get the middle column tooltip suffix
+        """
+        suffix = "; Click to select"
+        if row in self._toolTipSuffixes:
+            suffix = self._toolTipSuffixes[row]
+        return suffix
+    
+    def _setToolTipSuffix(self, row, text):
+        """
+        Set the middle column tooltip suffix
+        """
+        self._toolTipSuffixes[row] = text
+        index = self.createIndex(row, 1)
+        self.dataChanged.emit(index, index)
+
+    class EntryToolTipAdapter(object):
+        """
+        This class can be used to make each row look like a separate widget with its own tooltip.
+        In this case, the "tooltip" is the suffix appended to the tooltip of the middle column.
+        """
+        def __init__(self, table, row):
+            self._row = row
+            self._table = table
+        def toolTip(self):
+            return self._table._getToolTipSuffix(self._row)
+        def setToolTip(self, text):
+            self._table._setToolTipSuffix(self._row, text)
+
     def data(self, index, role):
         if role == Qt.EditRole and index.column() == 0:
             return self._labels[index.row()].color
@@ -87,7 +118,8 @@ class LabelListModel(QAbstractTableModel):
         if role == Qt.ToolTipRole and index.column() == 0:
             return "Hex code : " + self._labels[index.row()].color.name() + "\n DoubleClick to change"
         if role == Qt.ToolTipRole and index.column() == 1:
-            return self._labels[index.row()].name + "\n DoubleClick to rename"
+            suffix = self._getToolTipSuffix(index.row())
+            return self._labels[index.row()].name + "\n DoubleClick to rename" + suffix
         if role == Qt.ToolTipRole and index.column() == 2:
             return "Delete " + self._labels[index.row()].name
         
@@ -149,6 +181,7 @@ class LabelListModel(QAbstractTableModel):
             self._labels[row].name = str(name.toString())
             self.dataChanged.emit(index, index)
             return True
+        
         return False
 
     def insertRow(self, position, object, parent = QModelIndex()):

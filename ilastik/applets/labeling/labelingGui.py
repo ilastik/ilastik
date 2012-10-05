@@ -3,12 +3,13 @@ import os
 import re
 import logging
 import itertools
+from functools import partial
 
 # Third-party
 import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import QRectF, Qt
-from PyQt4.QtGui import *
+from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence
 
 # HCI
 from lazyflow.tracer import traceLogged
@@ -18,6 +19,7 @@ from ilastik.widgets.labelListModel import LabelListModel
 
 # ilastik
 from ilastik.utility import bind
+from ilastik.utility.gui import ShortcutManager
 from ilastik.utility.gui import ThunkEventHandler
 from ilastik.applets.layerViewer import LayerViewerGui
 
@@ -146,6 +148,8 @@ class LabelingGui(LayerViewerGui):
         self.initLabelUic(drawerUiPath)
         
         self.changeInteractionMode(Tool.Navigation)
+        
+        self.__initShortcuts()
 
     @traceLogged(traceLogger)
     def initLabelUic(self, drawerUiPath):
@@ -232,6 +236,60 @@ class LabelingGui(LayerViewerGui):
         self.paintBrushSizeIndex = 0
         self.eraserSizeIndex = 4
         
+    def __initShortcuts(self):
+        mgr = ShortcutManager()
+        shortcutGroupName = "Labeling"
+
+        addLabel = QShortcut( QKeySequence("a"), self, member=self.labelingDrawerUi.AddLabelButton.click )
+        mgr.register( shortcutGroupName,
+                      "Add New Label Class",
+                      addLabel,
+                      self.labelingDrawerUi.AddLabelButton )
+
+        navMode = QShortcut( QKeySequence("n"), self, member=self.labelingDrawerUi.arrowToolButton.click )
+        mgr.register( shortcutGroupName,
+                      "Navigation Cursor",
+                      navMode,
+                      self.labelingDrawerUi.arrowToolButton )
+
+        brushMode = QShortcut( QKeySequence("b"), self, member=self.labelingDrawerUi.paintToolButton.click )
+        mgr.register( shortcutGroupName,
+                      "Brush Cursor",
+                      brushMode,
+                      self.labelingDrawerUi.paintToolButton )
+
+        eraserMode = QShortcut( QKeySequence("e"), self, member=self.labelingDrawerUi.eraserToolButton.click )
+        mgr.register( shortcutGroupName,
+                      "Eraser Cursor",
+                      eraserMode,
+                      self.labelingDrawerUi.eraserToolButton )
+
+        changeBrushSize = QShortcut( QKeySequence("c"), self, member=self.labelingDrawerUi.brushSizeComboBox.showPopup )
+        mgr.register( shortcutGroupName,
+                      "Change Brush Size",
+                      changeBrushSize,
+                      self.labelingDrawerUi.brushSizeComboBox )
+
+
+        self._labelShortcuts = []
+
+    def _updateLabelShortcuts(self):
+        numShortcuts = len(self._labelShortcuts)
+        numRows = len(self._labelControlUi.labelListModel)
+
+        # Go ahead and create shortcuts for at least the first 5 rows, even if 5 rows don't exist yet
+        # Extra shortcuts for non-existent rows don't hurt here.
+        numRows = max(numRows, 5)
+
+        # Add any shortcuts we don't have yet.
+        for i in range(numShortcuts,numRows):
+            shortcut = QShortcut( QKeySequence(str(i+1)),
+                                  self,
+                                  member=partial(self._labelControlUi.labelListView.selectRow, i) )
+            self._labelShortcuts.append(shortcut)
+            toolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, i)
+            ShortcutManager().register("Labeling", "", shortcut, toolTipObject)
+
     @traceLogged(traceLogger)
     def handleToolButtonClicked(self, checked, toolId):
         """
@@ -413,6 +471,8 @@ class LabelingGui(LayerViewerGui):
         # Make the new label selected
         selectedRow = nlabels-1
         self._labelControlUi.labelListModel.select(selectedRow)
+        
+        self._updateLabelShortcuts()
 
     def getNextLabelName(self):
         maxNum = 0
@@ -431,6 +491,7 @@ class LabelingGui(LayerViewerGui):
         numRows = self._labelControlUi.labelListModel.rowCount()
         # This will trigger the signal that calls onLabelRemoved()
         self._labelControlUi.labelListModel.removeRow(numRows-1)
+        self._updateLabelShortcuts()
     
         self._programmaticallyRemovingLabels = False
     

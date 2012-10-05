@@ -1,6 +1,5 @@
 from PyQt4 import uic
-from PyQt4 import Qt
-from PyQt4.QtCore import pyqtSignal, QObject, QEvent
+from PyQt4.QtCore import pyqtSignal, QObject, QEvent, Qt
 from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QMenuBar, QFrame, QLabel, QStackedLayout, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
@@ -140,6 +139,8 @@ class IlastikShell( QMainWindow ):
         self._applets = []
         self.appletBarMapping = {}
 
+        self.setAttribute(Qt.WA_AlwaysShowToolTips)
+        
         if 'Ubuntu' in platform.platform():
             # Native menus are prettier, but aren't working on Ubuntu at this time (Qt 4.7, Ubuntu 11)
             self.menuBar().setNativeMenuBar(False)
