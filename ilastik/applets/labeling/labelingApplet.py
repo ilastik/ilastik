@@ -1,6 +1,6 @@
 from ilastik.applets.base.applet import Applet
 from opLabeling import OpLabeling
-#from labelingSerializer import LabelingSerializer
+from labelingSerializer import LabelingSerializer
 
 class LabelingApplet( Applet ):
     """
@@ -10,7 +10,7 @@ class LabelingApplet( Applet ):
         Applet.__init__( self, "Generic Labeling" )
 
         self._topLevelOperator = OpLabeling(graph=graph)
-        self._serializableItems = []
+        self._serializableItems = [ LabelingSerializer( self._topLevelOperator, projectFileGroupName ) ]
         self._gui = None
             
     @property
@@ -34,6 +34,6 @@ class LabelingApplet( Applet ):
             labelingSlots.maxLabelValue = self.topLevelOperator.MaxLabelValue
             labelingSlots.labelsAllowed = self.topLevelOperator.LabelsAllowedFlags
             
-            self._gui = LabelingGui( labelingSlots, [], rawInputSlot=self.topLevelOperator.InputImages )
+            self._gui = LabelingGui( labelingSlots, self.topLevelOperator, rawInputSlot=self.topLevelOperator.InputImages )
         return self._gui
 

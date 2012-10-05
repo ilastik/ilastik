@@ -129,7 +129,6 @@ class IlastikShell( QMainWindow ):
 
     def __init__( self, workflow = [], parent = None, flags = QtCore.Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
         QMainWindow.__init__(self, parent = parent, flags = flags )
-
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
 
@@ -181,20 +180,23 @@ class IlastikShell( QMainWindow ):
 
         # Menu item: New Project
         shellActions.newProjectAction = menu.addAction("&New Project...")
+        shellActions.newProjectAction.setShortcuts( QKeySequence.New )
         shellActions.newProjectAction.triggered.connect(self.onNewProjectActionTriggered)
 
         # Menu item: Open Project 
         shellActions.openProjectAction = menu.addAction("&Open Project...")
+        shellActions.openProjectAction.setShortcuts( QKeySequence.Open )
         shellActions.openProjectAction.triggered.connect(self.onOpenProjectActionTriggered)
 
         # Menu item: Save Project
         shellActions.saveProjectAction = menu.addAction("&Save Project...")
+        shellActions.openProjectAction.setShortcuts( QKeySequence.Save )
         shellActions.saveProjectAction.triggered.connect(self.onSaveProjectActionTriggered)
         # Can't save until a project is loaded for the first time
         shellActions.saveProjectAction.setEnabled(False)
 
         # Menu item: Save Project Snapshot
-        shellActions.saveProjectSnapshotAction = menu.addAction("&Save and Take Snapshot...")
+        shellActions.saveProjectSnapshotAction = menu.addAction("&Take Snapshot...")
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
         # Can't save until a project is loaded for the first time
         shellActions.saveProjectSnapshotAction.setEnabled(False)
@@ -205,6 +207,7 @@ class IlastikShell( QMainWindow ):
 
         # Menu item: Quit
         shellActions.quitAction = menu.addAction("&Quit")
+        shellActions.quitAction.setShortcuts( QKeySequence.Quit )
         shellActions.quitAction.triggered.connect(self.onQuitActionTriggered)
         shellActions.quitAction.setShortcut( QKeySequence.Quit )
         
@@ -217,10 +220,18 @@ class IlastikShell( QMainWindow ):
         super(IlastikShell, self).show()
         self.enableWorkflow = (self.projectManager.currentProjectFile is not None)
         self.updateAppletControlStates()
+        self.updateWindowTitle()
         if self._sideSplitterSizePolicy == SideSplitterSizePolicy.Manual:
             self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoLargestDrawer )
         else:
             self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoCurrentDrawer )
+
+    def updateWindowTitle(self):
+        projectPath = self.projectManager.currentProjectPath
+        if projectPath is None:
+            self.setWindowTitle("ilastik - No Project Loaded")
+        else:
+            self.setWindowTitle("ilastik - " + projectPath)
 
     def setImageNameListSlot(self, multiSlot):
         assert multiSlot.level == 1
@@ -461,6 +472,7 @@ class IlastikShell( QMainWindow ):
         self.projectManager.closeCurrentProject()
         self.enableWorkflow = False
         self.updateAppletControlStates()
+        self.updateWindowTitle()
     
     def onNewProjectActionTriggered(self):
         logger.debug("New Project action triggered")
@@ -600,6 +612,8 @@ class IlastikShell( QMainWindow ):
             self._shellActions.saveProjectAction.setEnabled(True)
             self._shellActions.saveProjectSnapshotAction.setEnabled(True)
     
+            self.updateWindowTitle()
+    
             # Enable all the applet controls
             self.enableWorkflow = True
             self.updateAppletControlStates()
@@ -623,28 +637,49 @@ class IlastikShell( QMainWindow ):
         if snapshotPath is not None:
             self.projectManager.saveProjectSnapshot(snapshotPath)
 
-    def onQuitActionTriggered(self, force=False):
+    def closeEvent(self, closeEvent):
+        """
+        Reimplemented from QWidget.  Ignore the close event if the user has unsaved data and changes his mind.
+        """
+        if self.confirmQuit():
+            self.closeAndQuit()
+        else:
+            closeEvent.ignore()
+    
+    def onQuitActionTriggered(self, force=False, quitApp=True):
         """
         The user wants to quit the application.
         Check his project for unsaved data and ask if he really means it.
+        Args:
+            force - Don't check the project for unsaved data.
+            quitApp - For testing purposes, set this to False if you just want to close the main window without quitting the app.
         """
         logger.info("Quit Action Triggered")
         
-        if not force and self.projectManager.isProjectDataDirty():
+        if force or self.confirmQuit():
+            self.closeAndQuit(quitApp)
+        
+    def confirmQuit(self):
+        if self.projectManager.isProjectDataDirty():
             message = "Your project has unsaved data.  Are you sure you want to discard your changes and quit?"
             buttons = QMessageBox.Discard | QMessageBox.Cancel
             response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
             if response == QMessageBox.Cancel:
-                return
+                return False
+        return True
 
+    def closeAndQuit(self, quitApp=True):
         self.projectManager.closeCurrentProject()
 
         # Stop the thread that checks for log config changes.
         ilastik.ilastik_logging.stopUpdates()
+        
+        if quitApp:
+            qApp.quit()
+        else:
+            # Just close the window
+            self.close()        
 
-        qApp.quit()
-
-    
     def updateAppletControlStates(self):
         """
         Enable or disable all controls of all applets according to their disable count.

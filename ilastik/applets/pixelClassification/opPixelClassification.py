@@ -1,4 +1,5 @@
 import numpy
+import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
@@ -37,6 +38,8 @@ class OpPixelClassification( Operator ):
 
     CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via a cache)
 
+    UncertaintyEstimate = OutputSlot(level=1)
+
     def __init__( self, graph ):
         """
         Instantiate all internal operators and connect them together.
@@ -58,8 +61,8 @@ class OpPixelClassification( Operator ):
         self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph )
 
         # NOT wrapped
-        self.opMaxLabel = OpMaxValue(graph=self.graph)
-        self.opTrain = OpTrainRandomForestBlocked( graph=self.graph )
+        self.opMaxLabel = OpMaxValue( parent=self, graph=self.graph)
+        self.opTrain = OpTrainRandomForestBlocked( parent=self, graph=self.graph )
 
         # Set up label cache shape input
         self.opInputShapeReader.Input.connect( self.InputImages )
@@ -88,7 +91,7 @@ class OpPixelClassification( Operator ):
         self.opTrain.inputs['fixClassifier'].setValue(False)
 
         # The classifier is cached here to allow serializers to force in a pre-calculated classifier...
-        self.classifier_cache = OpValueCache( graph=self.graph )
+        self.classifier_cache = OpValueCache( parent=self, graph=self.graph )
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
 
         ##
@@ -150,6 +153,17 @@ class OpPixelClassification( Operator ):
         self.opSegmentationSlicer.Input.connect( self.opSegementor.Output )
         self.opSegmentationSlicer.AxisFlag.setValue('c')
         self.SegmentationChannels.connect( self.opSegmentationSlicer.Slices )
+
+        # Create a layer for uncertainty estimate
+        self.opUncertaintyEstimator = OperatorWrapper( OpEnsembleMargin, parent=self, graph=self.graph )
+        self.opUncertaintyEstimator.Input.connect( self.precomputed_predictions_gui.Output )
+
+        # Cache the uncertainty so we get zeros for uncomputed points
+        self.opUncertaintyCache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
+        self.opUncertaintyCache.Input.connect( self.opUncertaintyEstimator.Output )
+        self.opUncertaintyCache.fixAtCurrent.connect( self.FreezePredictions )
+
+        self.UncertaintyEstimate.connect( self.opUncertaintyCache.Output )
 
         def handleNewInputImage( multislot, index, *args ):
             def handleInputReady(slot):
@@ -220,6 +234,9 @@ class OpPixelClassification( Operator ):
 
         self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+
+        self.opUncertaintyCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+        self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
@@ -299,4 +316,66 @@ class OpMaxValue(Operator):
                     maxValue = max(maxValue, inputSubSlot.value)
 
         self._output = maxValue
+
+class OpEnsembleMargin(Operator):
+    """
+    Produces a pixelwise measure of the uncertainty of the pixelwise predictions.
+    """
+    Input = InputSlot()
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
+
+        taggedShape = self.Input.meta.getTaggedShape()
+        taggedShape['c'] = 1
+        self.Output.meta.shape = taggedShape.values()
+
+    def execute(self, slot, subindex, roi, result):
+        taggedShape = self.Input.meta.getTaggedShape()
+        chanAxis = self.Input.meta.axistags.index('c')
+        roi.start[chanAxis] = 0
+        roi.stop[chanAxis] = taggedShape['c']
+        pmap = self.Input.get(roi).wait()
+        
+        pmap_sort = numpy.sort(pmap, axis=self.Input.meta.axistags.index('c')).view(vigra.VigraArray)
+        pmap_sort.axistags = self.Input.meta.axistags
+
+        res = pmap_sort.bindAxis('c', -1) - pmap_sort.bindAxis('c', -2)
+        res = res.withAxes( *taggedShape.keys() ).view(numpy.ndarray)
+        return (1-res)
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        chanAxis = self.Input.meta.axistags.index('c')
+        roi.start[chanAxis] = 0
+        roi.stop[chanAxis] = 1
+        self.Output.setDirty( roi )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

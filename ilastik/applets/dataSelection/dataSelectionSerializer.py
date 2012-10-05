@@ -30,6 +30,8 @@ class DataSelectionSerializer( AppletSerializer ):
         self.mainOperator = mainOperator
         self._dirty = False
         
+        self._projectFilePath = None
+        
         def handleDirty():
             self._dirty = True
         self.mainOperator.ProjectFile.notifyDirty( bind(handleDirty) )
@@ -84,9 +86,12 @@ class DataSelectionSerializer( AppletSerializer ):
                     del localDataGroup[datasetName]
     
             if wroteInternalData:
-                # Force the operator to setupOutputs() again so it gets data from the project, not external files
-                firstInfo = self.mainOperator.Dataset[0].value
-                self.mainOperator.Dataset[0].setValue(firstInfo, False)
+                # We can only re-configure the operator if we're not saving a snapshot
+                # We know we're saving a snapshot if the project file isn't the one we deserialized with.
+                if self._projectFilePath is None or self._projectFilePath == projectFilePath:
+                    # Force the operator to setupOutputs() again so it gets data from the project, not external files
+                    firstInfo = self.mainOperator.Dataset[0].value
+                    self.mainOperator.Dataset[0].setValue(firstInfo, False)
 
             # Access the info group
             infoDir = self.getOrCreateGroup(topGroup, 'infos')
@@ -148,6 +153,7 @@ class DataSelectionSerializer( AppletSerializer ):
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         with Tracer(traceLogger):
+            self._projectFilePath = projectFilePath
             self.initWithoutTopGroup(hdf5File, projectFilePath)
 
             infoDir = topGroup['infos']

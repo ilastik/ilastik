@@ -2,11 +2,13 @@ import nose
 import threading
 import platform
 import traceback
+import atexit
 from functools import partial
-from ilastik.shell.gui.startShellGui import startShellGui
+from ilastik.shell.gui.startShellGui import launchShell
+from ilastik.utility.gui.threadRouter import ThreadRouter
 
-from PyQt4.QtCore import Qt, QEvent, QPoint
-from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap
+from PyQt4.QtCore import Qt, QEvent, QPoint, QTimer, Qt
+from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
 
 def run_shell_nosetest(filename):
     """
@@ -33,6 +35,10 @@ def run_shell_nosetest(filename):
         # Linux: Run this test like usual (as if we're running from the command line)
         run_nose()
 
+@atexit.register
+def quitApp():
+    qApp.quit()
+
 class ShellGuiTestCaseBase(object):
     """
     This is a base class for test cases that need to run their tests from within the ilastik shell.
@@ -43,6 +49,9 @@ class ShellGuiTestCaseBase(object):
     - Subclasses may access the shell and workflow via the shell and workflow class members.
     """
     
+    guiThread = None
+    mainThreadEvent = threading.Event()
+
     @classmethod
     def setupClass(cls):
         """
@@ -55,9 +64,25 @@ class ShellGuiTestCaseBase(object):
             cls.workflow = workflow
             init_complete.set()
 
-        # This partial starts up the gui.
-        startGui = partial(startShellGui, cls.workflowClass(), initTest)
+        appCreationEvent = threading.Event()
+        def createApp():
+            # Create the application in the current thread.
+            # The current thread is now the application main thread.
+            ShellGuiTestCaseBase.app = QApplication([])
+            app = ShellGuiTestCaseBase.app
+            
+            # Don't auto-quit the app when the window closes.  We want to re-use it for the next test.
+            app.setQuitOnLastWindowClosed(False)
+            
+            # Create a threadRouter object that allows us to send work to the app from other threads.
+            ShellGuiTestCaseBase.threadRouter = ThreadRouter(app)
+            
+            # Set the appCreationEvent so the tests can proceed after the app's event loop has started 
+            QTimer.singleShot(0, appCreationEvent.set )
 
+            # Start the event loop
+            app.exec_()
+        
         # If nose was run from the main thread, start the gui in a separate thread.
         # If nose is running in a non-main thread, we assume the main thread is available to launch the gui.
         # This is a workaround for Mac OS, in which the gui MUST be started from the main thread 
@@ -67,16 +92,26 @@ class ShellGuiTestCaseBase(object):
                 # On Mac, we can't run the gui in a non-main thread.
                 raise nose.SkipTest
             else:
-                # Start the gui in a separate thread.  Workflow is provided by our subclass.
-                cls.guiThread = threading.Thread( target=startGui )
-                cls.guiThread.start()
+                    
+                if ShellGuiTestCaseBase.guiThread is None:
+                    # QT gives a lot of errors if you try to make more than one app, 
+                    #  even if the apps are created sequentially in the same thread.
+                    # We'll just create a single app and re-use it for subsequent tests.
+                    ShellGuiTestCaseBase.guiThread = threading.Thread( target=createApp )
+                    ShellGuiTestCaseBase.guiThread.daemon = True
+                    ShellGuiTestCaseBase.guiThread.start()
+                    appCreationEvent.wait()
+                    assert not ShellGuiTestCaseBase.app.thread().isFinished()
         else:
                 # We're currently running in a non-main thread.
                 # Start the gui IN THE MAIN THREAD.  Workflow is provided by our subclass.
                 from tests.helpers.mainThreadHelpers import run_in_main_thread
-                run_in_main_thread( startGui )
-                cls.guiThread = None
+                run_in_main_thread( createApp() )
+                ShellGuiTestCaseBase.guiThread = None
+                appCreationEvent.wait()
 
+        # Use the thread router to launch the shell in the app thread
+        ShellGuiTestCaseBase.threadRouter.routeToParent.emit( partial(launchShell, cls.workflowClass(), initTest ) )
         init_complete.wait()
 
     @classmethod
@@ -84,18 +119,15 @@ class ShellGuiTestCaseBase(object):
         """
         Force the shell to quit (without a save prompt), and wait for the app to exit.
         """
-        def teardown_impl():
-            cls.shell.onQuitActionTriggered(True)
-        cls.shell.thunkEventHandler.post(teardown_impl)
-
         # Make sure the app has finished quitting before continuing        
+        def teardown_impl():
+            cls.shell.onQuitActionTriggered(force=True, quitApp=False)
+
+        # Wait for the shell to really be finish shutting down before we finish the test
         finished = threading.Event()
+        cls.shell.thunkEventHandler.post(teardown_impl)
         cls.shell.thunkEventHandler.post(finished.set)
         finished.wait()
-        
-        if cls.guiThread is not None:
-            cls.guiThread.join()
-        
 
     @classmethod
     def exec_in_shell(cls, func):
@@ -135,8 +167,6 @@ class ShellGuiTestCaseBase(object):
         """
         raise NotImplementedError
 
-
-    
     ###
     ### Convenience functions for subclasses to use during testing.
     ###

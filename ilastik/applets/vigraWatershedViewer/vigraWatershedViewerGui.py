@@ -37,12 +37,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
     def __init__(self, mainOperator):
         """
         """
-        super(VigraWatershedViewerGui, self).__init__( [ mainOperator.RawImage,
-                                                         mainOperator.InputImage,
-                                                         mainOperator.SelectedInputChannels,
-                                                         mainOperator.ColoredPixels,
-                                                         mainOperator.SummedInput,
-                                                         mainOperator.ColoredSeeds ] )
+        super(VigraWatershedViewerGui, self).__init__( mainOperator )
         self.mainOperator = mainOperator
         
         self.mainOperator.FreezeCache.setValue(True)

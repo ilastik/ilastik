@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, numpy, threading, time
+import os, numpy, threading, time, copy
 from collections import defaultdict
 
 from PyQt4.QtCore import QTimer
@@ -19,13 +19,13 @@ from ilastik.applets.labeling import OpLabeling
 from ilastik.applets.base.appletSerializer import AppletSerializer
 
 from lazyflow.roi import roiToSlice
-from lazyflow.graph import Graph, Operator, OperatorWrapper, OperatorFactory, InputSlot, OutputSlot
+from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot
 from lazyflow.operators import OpAttributeSelector
 from lazyflow.stype import Opaque
 
 from volumina.pixelpipeline.datasources import RelabelingArraySource, LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
-from volumina import adaptors
+from volumina.adaptors import Op5ifyer
 
 from cylemon.segmentation import MSTSegmentor
 
@@ -38,12 +38,16 @@ class OpCarvingTopLevel(Operator):
 
     def __init__(self, carvingGraphFile, *args, **kwargs):
         super(OpCarvingTopLevel, self).__init__(*args, **kwargs)
+
+        # Convert data to 5d before giving it to the real operators
+        op5 = OperatorWrapper( Op5ifyer, parent=self, graph=self.graph )
+        op5.input.connect( self.RawData )
         
         self.opLabeling = OpLabeling(graph=self.graph, parent=self)
-        self.opCarving = OperatorWrapper( OperatorFactory(OpCarving, carvingGraphFile), graph=self.graph )
+        self.opCarving = OperatorWrapper( OpCarving, operator_args=[carvingGraphFile], graph=self.graph, parent=self )
         
-        self.opLabeling.InputImages.connect( self.RawData )
-        self.opCarving.RawData.connect( self.RawData )
+        self.opLabeling.InputImages.connect( op5.output )
+        self.opCarving.RawData.connect( op5.output )
         
         self.opCarving.WriteSeeds.connect(self.opLabeling.LabelInputs)
         
@@ -53,17 +57,16 @@ class OpCarvingTopLevel(Operator):
 
     def hasCurrentObject(self, imageIndex):
         return self.opCarving.innerOperators[imageIndex].hasCurrentObject()
+    
+    def currentObjectName(self, imageIndex):
+        return self.opCarving.innerOperators[imageIndex].currentObjectName()
 
     def saveCurrentObject(self, imageIndex):  
         assert self.hasCurrentObject(imageIndex)
-        self.opCarving.innerOperators[imageIndex].saveCurrentObject()
-        
-        # Sparse label array automatically shifts label values down 1
-        self._clear()
-        # trigger a re-computation
-        self.opCarving.innerOperators[imageIndex].Trigger.setDirty(slice(None))
-       
-        self._dirtyObjects[imageIndex].add(name)
+        name = self.currentObjectName(imageIndex) 
+        assert name
+        self.saveObjectAs(name, imageIndex)
+        return name
     
     def clearCurrentLabeling(self, imageIndex):
         self._clear()
@@ -92,8 +95,8 @@ class OpCarvingTopLevel(Operator):
                 a = self.opLabeling.LabelImages[imageIndex][sl].wait()
                 w1 = numpy.where(a == 1)
                 w2 = numpy.where(a == 2)
-                w1 = [w1[i] + sl[i].start for i in range(3)]
-                w2 = [w2[i] + sl[i].start for i in range(3)]
+                w1 = [w1[i] + sl[i].start for i in range(1,4)]
+                w2 = [w2[i] + sl[i].start for i in range(1,4)]
                 for i in range(3):
                     coors1[i].append( w1[i] )
                     coors2[i].append( w2[i] )
@@ -135,9 +138,9 @@ class OpCarvingTopLevel(Operator):
         shape = self.opLabeling.LabelImages[imageIndex].meta.shape
         dtype = self.opLabeling.LabelImages[imageIndex].meta.dtype
         z = numpy.zeros(shape, dtype=dtype)
-        z[fgVoxels] = 2
-        z[bgVoxels] = 1
-        self.opLabeling.LabelInputs[imageIndex][:] = z[:]
+        z[0][fgVoxels] = 2
+        z[0][bgVoxels] = 1
+        self.opLabeling.LabelInputs[imageIndex][0:1, :shape[1],:shape[2],:shape[3]] = z[:,:,:]
         
         #restore the correct parameter values 
         o=self.opCarving
@@ -206,6 +209,7 @@ class OpCarving(Operator):
     Segmentation = OutputSlot()
     Supervoxels  = OutputSlot()
     DoneObjects  = OutputSlot()
+    DoneSegmentation = OutputSlot()
     
     CurrentObjectName = OutputSlot(stype=Opaque)
     HasSegmentation   = OutputSlot(stype=Opaque)
@@ -223,6 +227,7 @@ class OpCarving(Operator):
         
         #supervoxels of finished and saved objects 
         self._done_lut = None
+        self._done_seg_lut = None
        
         self._setCurrObjectName("")
         self.HasSegmentation.setValue(False)
@@ -233,12 +238,15 @@ class OpCarving(Operator):
    
     def _buildDone(self):
         self._done_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32) 
+        self._done_seg_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32) 
         print "building done" 
-        for name, objectSupervoxels in self._mst.object_lut.iteritems(): 
+        for i, (name, objectSupervoxels) in enumerate(self._mst.object_lut.iteritems()): 
             if name == self._currObjectName:
                 continue
-            print "  object '%s'" % name
+            print name,
             self._done_lut[objectSupervoxels] += 1
+            self._done_seg_lut[objectSupervoxels] = i+1
+        print ""
    
     def executeLocked(func): 
         """decorator which makes sure that no threads are running the execute() method anymore
@@ -254,12 +262,17 @@ class OpCarving(Operator):
         self.Segmentation.meta.assignFrom(self.RawData.meta)
         self.Supervoxels.meta.assignFrom(self.RawData.meta)
         self.DoneObjects.meta.assignFrom(self.RawData.meta)
+        self.DoneSegmentation.meta.assignFrom(self.RawData.meta)
         
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
         
     @executeLocked
     def hasCurrentObject(self):
+        return self._currObjectName
+    
+    @executeLocked
+    def currentObjectName(self):
         return self._currObjectName
     
     @executeLocked
@@ -373,8 +386,11 @@ class OpCarving(Operator):
     @executeLocked
     def saveCurrentObject(self):  
         if self._currObjectName:
+            name = copy.copy(self._currObjectName)
             print "saving object %s" % self._currObjectName
             self.saveObjectAs(self._currObjectName)
+            return name
+        return ""
     
     @executeLocked
     def saveObjectAs(self, name): 
@@ -399,14 +415,12 @@ class OpCarving(Operator):
         lut_objects[:] = numpy.where(lut_segmentation == seed, objNr, lut_objects)
         
         objectSupervoxels = numpy.where(lut_segmentation == seed)
-        print "supervoxels = %r" % objectSupervoxels
         self._mst.object_lut[name] = objectSupervoxels
 
         #save object name with objNr
         self._mst.object_names[name] = objNr
 
         lut_seeds = self._mst.seeds.lut[:]
-        print  "nonzero fg seeds shape: ",numpy.where(lut_seeds == seed)[0].shape
   
         # save object seeds
         self._mst.object_seeds_fg[name] = numpy.where(lut_seeds == seed)[0]
@@ -451,6 +465,14 @@ class OpCarving(Operator):
             else:
                 temp = self._done_lut[self._mst.regionVol[sl[1:4]]]
                 temp.shape = (1,) + temp.shape + (1,)
+        elif slot  == self.DoneSegmentation:
+            #avoid data being copied
+            if self._done_seg_lut is None:
+                result[0,:,:,:,0] = 0
+                return result
+            else:
+                temp = self._done_seg_lut[self._mst.regionVol[sl[1:4]]]
+                temp.shape = (1,) + temp.shape + (1,)
         else:
             raise RuntimeError("unknown slot")
         
@@ -474,7 +496,7 @@ class OpCarving(Operator):
             value = numpy.where(value == 100, 255, value[:])
             
             if hasattr(key, '__len__'):
-                self._mst.seeds[key[0:3]] = value
+                self._mst.seeds[key[1:4]] = value
             else:
                 self._mst.seeds[key] = value
                 
@@ -535,7 +557,6 @@ class CarvingSerializer( AppletSerializer ):
         imageIndex = 0 #FIXME
         
         mst = self._o.opCarving.innerOperators[imageIndex]._mst 
-            
         for name in self._o._dirtyObjects[imageIndex]:
             print "[CarvingSerializer] serializing %s" % name
            
@@ -720,21 +741,20 @@ class CarvingGui(LabelingGui):
         def layerIndexForName(name): 
             return self.layerstack.findMatchingIndex(lambda x: x.name == name)
         
-        def toggleDone():
-            row = layerIndexForName("done")
-            self.layerstack.selectRow(row)
-            layer = self.layerstack[row]
-            layer.visible = not layer.visible
-            self.viewerControlWidget().layerWidget.setFocus()
-        QShortcut(QKeySequence("d"), self, member=toggleDone, ambiguousMember=toggleDone)
+        def addLayerToggleShortcut(layername, shortcut): 
+            def toggle():
+                row = layerIndexForName(layername)
+                self.layerstack.selectRow(row)
+                layer = self.layerstack[row]
+                layer.visible = not layer.visible
+                self.viewerControlWidget().layerWidget.setFocus()
+            QShortcut(QKeySequence(shortcut), self, member=toggle, ambiguousMember=toggle)
         
-        def toggleSegmentation():
-            row = layerIndexForName("segmentation")
-            self.layerstack.selectRow(row)
-            layer = self.layerstack[row]
-            layer.visible = not layer.visible
-            self.viewerControlWidget().layerWidget.setFocus()
-        QShortcut(QKeySequence("s"), self, member=toggleSegmentation, ambiguousMember=toggleSegmentation)
+        addLayerToggleShortcut("done", "d")
+        addLayerToggleShortcut("segmentation", "s")
+        addLayerToggleShortcut("raw", "r")
+        addLayerToggleShortcut("pmap", "v")
+        addLayerToggleShortcut("done seg", "b")
         
         def updateLayerTimings():
             s = "Layer timings:\n"
@@ -745,6 +765,20 @@ class CarvingGui(LabelingGui):
         t.setInterval(1*1000) # 10 seconds
         t.start()
         t.timeout.connect(updateLayerTimings)
+        
+        def makeColortable():
+            self._doneSegmentationColortable = [QColor(0,0,0,0).rgba()]
+            for i in range(254):
+                r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
+                self._doneSegmentationColortable.append(QColor(r,g,b).rgba())
+        makeColortable()
+        self._doneSegmentationLayer = None
+        def onRandomizeColors():
+            if self._doneSegmentationLayer is not None:
+                print "randomizing colors ..."
+                makeColortable()
+                self._doneSegmentationLayer.colorTable = self._doneSegmentationColortable
+        self.labelingDrawerUi.randomizeColors.clicked.connect(onRandomizeColors)
         
     def handleEditorRightClick(self, currentImageIndex, position5d, globalWindowCoordinate):
         names = self._carvingApplet.topLevelOperator.doneObjectNamesForPosition(position5d[1:4], currentImageIndex)
@@ -757,7 +791,7 @@ class CarvingGui(LabelingGui):
             
         act = m.exec_(globalWindowCoordinate) 
         for n in names:
-            if act.text() == "edit %s" %n:
+            if act is not None and act.text() == "edit %s" %n:
                 self._carvingApplet.topLevelOperator.loadObject(n, self.imageIndex)
         
     def getNextLabelName(self):
@@ -829,6 +863,15 @@ class CarvingGui(LabelingGui):
             layer.opacity = 0.5
             layers.append(layer)
             
+        doneSeg = self._carvingApplet.topLevelOperator.opCarving.DoneSegmentation[currentImageIndex]
+        if doneSeg.ready(): 
+            layer = ColortableLayer(LazyflowSource(doneSeg), self._doneSegmentationColortable, direct=True)
+            layer.name = "done seg"
+            layer.visible = False
+            layer.opacity = 0.5
+            self._doneSegmentationLayer = layer
+            layers.append(layer)
+            
         #supervoxel
         sv = self._carvingApplet.topLevelOperator.opCarving.Supervoxels[currentImageIndex]
         if sv.ready():
@@ -841,6 +884,22 @@ class CarvingGui(LabelingGui):
             layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
+        
+        #
+        # load additional layer: features / probability map
+        #
+        '''
+        from segmentation.h5utils import rH5data
+        from segmentation import normalize
+        pmap = rH5data("pmap.h5/data", verbose=True)
+        pmap.shape = (1,) + pmap.shape + (1,)
+        pmap = normalize(-pmap)
+        layer = GrayscaleLayer(ArraySource(pmap), direct=True)
+        layer.name = "pmap"
+        layer.visible = False
+        layer.opacity = 1.0
+        layers.append(layer)
+        '''
         
         #
         # here we load the actual raw data from an ArraySource rather than from a LazyflowSource for speed reasons
@@ -861,35 +920,16 @@ class CarvingGui(LabelingGui):
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class CarvingApplet(LabelingApplet):
-    def __init__(self, graph, projectFileGroupName, raw, carvingGraphFile):
+    def __init__(self, graph, projectFileGroupName, carvingGraphFile):
         super(CarvingApplet, self).__init__(graph, projectFileGroupName)
 
-        self._raw = raw
-       
-        #
-        # raw data
-        # 
-        o = OperatorWrapper( adaptors.Op5ifyer, graph=graph )
-        o.order.setValue('txyzc')
-        o.input.connect(self._raw)
-        self._inputImage = o.output
-
         self._topLevelOperator = OpCarvingTopLevel( carvingGraphFile, graph=graph )
-        self._topLevelOperator.opCarving.RawData.connect(self._inputImage)
         self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
         self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
-        #self.opCarving.CarvingGraphFile.setValue(carvingGraphFile)
-
-        o = OperatorWrapper( adaptors.Op5ifyer, graph=graph )
-        o.order.setValue('txyzc')
-        o.input.connect(self._topLevelOperator.opCarving.Segmentation)
-        self._segmentation5D = o.output
-        assert self._segmentation5D is not None
 
     @property
     def dataSerializers(self):
         return [ CarvingSerializer(self._topLevelOperator, "carving", 0.1) ]
-        #return []
 
     @property
     def gui(self):
@@ -903,7 +943,10 @@ class CarvingApplet(LabelingApplet):
             labelingSlots.maxLabelValue = self.topLevelOperator.opLabeling.MaxLabelValue
             labelingSlots.labelsAllowed = self.topLevelOperator.opLabeling.LabelsAllowedFlags
             
-            self._gui = CarvingGui( labelingSlots, [self._segmentation5D, self._inputImage], rawInputSlot=self._raw, carvingApplet=self )
+            self._gui = CarvingGui( labelingSlots,
+                                    self.topLevelOperator,
+                                    rawInputSlot=self.topLevelOperator.opCarving.RawData,
+                                    carvingApplet=self )
         return self._gui
 
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -921,7 +964,7 @@ class CarvingWorkflow(Workflow):
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
 
-        self.carvingApplet = CarvingApplet(graph, "xxx", self.dataSelectionApplet.topLevelOperator.Image, carvingGraphFile)
+        self.carvingApplet = CarvingApplet(graph, "xxx", carvingGraphFile)
         self.carvingApplet.topLevelOperator.RawData.connect( self.dataSelectionApplet.topLevelOperator.Image )
         self.carvingApplet.topLevelOperator.opLabeling.LabelsAllowedFlags.connect( self.dataSelectionApplet.topLevelOperator.AllowLabels )
         self.carvingApplet.gui.minLabelNumber = 2
@@ -972,9 +1015,9 @@ if __name__ == "__main__":
     usage = "%prog [options] <carving graph filename> <project filename to be created>"
     parser = OptionParser(usage)
 
-    #import sys
-    #sys.argv.append("/Users/bergs/Documents/workspace/applet-workflows/denk.h5")
-    #sys.argv.append("test.ilp")
+#    import sys
+#    sys.argv.append("/magnetic/denk.h5")
+#    sys.argv.append("/magnetic/carving_test.ilp")
 
     (options, args) = parser.parse_args()
     

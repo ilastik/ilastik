@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>512</height>
+    <height>545</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -115,6 +115,13 @@
       </widget>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QPushButton" name="randomizeColors">
+     <property name="text">
+      <string>randomize colors</string>
+     </property>
+    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -254,7 +261,7 @@
   <customwidget>
    <class>LabelListView</class>
    <extends>QTableView</extends>
-   <header>igms.labelListView</header>
+   <header>ilastik.widgets.labelListView</header>
   </customwidget>
  </customwidgets>
  <resources/>

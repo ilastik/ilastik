@@ -24,6 +24,9 @@ install:
    - git clone http://github.com/Ilastik/widgets /tmp/widgets
    - git clone http://github.com/Ilastik/lazyflow /tmp/lazyflow
    - sudo sh requirements/build_drtile.sh $VIRTUAL_ENV /tmp/lazyflow
+   - mkdir ~/.lazyflow
+   - echo "[verbosity]" > ~/.lazyflow/config
+   - echo "deprecation_warnings = false" >> ~/.lazyflow/config
 before_script:
    - "export DISPLAY=:99.0"
    - "sh -e /etc/init.d/xvfb start"

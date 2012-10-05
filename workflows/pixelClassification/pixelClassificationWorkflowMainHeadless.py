@@ -195,17 +195,15 @@ def convertStacksToH5(filePaths):
 
             # Generate the hdf5 if it doesn't already exist
             if not os.path.exists(stackPath):
-                f = h5py.File(stackPath)
-    
-                # Configure the conversion operator
-                opWriter = OpStackToH5Writer( graph=Graph() )
-                opWriter.hdf5Group.setValue(f)
-                opWriter.hdf5Path.setValue("volume/data")
-                opWriter.GlobString.setValue(globstring)
-                
-                # Initiate the write
-                success = opWriter.WriteImage.value
-                f.close()
+                with h5py.File(stackPath) as f:
+                    # Configure the conversion operator
+                    opWriter = OpStackToH5Writer( graph=Graph() )
+                    opWriter.hdf5Group.setValue(f)
+                    opWriter.hdf5Path.setValue("volume/data")
+                    opWriter.GlobString.setValue(globstring)
+                    
+                    # Initiate the write
+                    success = opWriter.WriteImage.value
         
     return filePaths
 

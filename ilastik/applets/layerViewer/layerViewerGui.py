@@ -57,12 +57,18 @@ class LayerViewerGui(QMainWindow):
     def reset(self):
         # Remove all layers
         self.layerstack.clear()
+    
+    ###########################################
+    ###########################################
 
-    ###########################################
-    ###########################################
+    def operatorForCurrentImage(self):
+        try:
+            return self.topLevelOperator[self.imageIndex]
+        except IndexError:
+            return None
 
     @traceLogged(traceLogger)
-    def __init__(self, observedSlots):
+    def __init__(self, topLevelOperator):
         """
         Args:
             observedSlots   - A list of slots that we'll listen for changes on.
@@ -73,8 +79,15 @@ class LayerViewerGui(QMainWindow):
 
         self.threadRouter = ThreadRouter(self) # For using @threadRouted
 
-        self.observedSlots = []
+        self.topLevelOperator = topLevelOperator
 
+        observedSlots = []
+
+        for slot in topLevelOperator.inputs.values() + topLevelOperator.outputs.values():
+            if slot.level == 1 or slot.level == 2:
+                observedSlots.append(slot)
+        
+        self.observedSlots = []        
         for slot in observedSlots:
             if slot.level == 1:
                 # The user gave us a slot that is indexed as slot[image]
@@ -123,14 +136,14 @@ class LayerViewerGui(QMainWindow):
 
     def setupLayers( self, currentImageIndex ):
         layers = []
-        for slotLevel2 in self.observedSlots:
-            for i, slotLevel1 in enumerate(slotLevel2):
-                for j, slot in enumerate(slotLevel1):
+        for multiImageSlot in self.observedSlots:
+            if 0 <= currentImageIndex < len(multiImageSlot):
+                multiLayerSlot = multiImageSlot[currentImageIndex]
+                for j, slot in enumerate(multiLayerSlot):
                     if slot.ready():
                         layer = self.createStandardLayerFromSlot(slot)
-                        layer.name = slotLevel2.name + " " + str(j)
-                        layers.append(layer)
-        
+                        layer.name = multiImageSlot.name + " " + str(j)
+                        layers.append(layer)        
         return layers
 
     @traceLogged(traceLogger)
@@ -159,8 +172,9 @@ class LayerViewerGui(QMainWindow):
         
         # Make sure we're notified if a layer is inserted in the future so we can subscribe to its ready notifications
         for provider in self.observedSlots:
-            provider[self.imageIndex].notifyInserted( bind(self.handleLayerInsertion) )
-            provider[self.imageIndex].notifyRemoved( bind(self.handleLayerRemoval) )
+            if self.imageIndex < len(provider):
+                provider[self.imageIndex].notifyInserted( bind(self.handleLayerInsertion) )
+                provider[self.imageIndex].notifyRemoved( bind(self.handleLayerRemoval) )
 
     def handleLayerInsertion(self, slot, slotIndex):
         """
@@ -258,6 +272,10 @@ class LayerViewerGui(QMainWindow):
 
     @traceLogged(traceLogger)
     def areProvidersInSync(self):
+        """
+        When an image is appended to the workflow, not all slots are resized simultaneously.
+        We should avoid calling setupLayers() until all the slots have been resized with the new image.
+        """
         try:
             numImages = len(self.observedSlots[0])
         except IndexError: # observedSlots is empty
@@ -265,9 +283,15 @@ class LayerViewerGui(QMainWindow):
 
         inSync = True
         for slot in self.observedSlots:
-            inSync &= (  len(slot) == numImages
-                      or ( slot._optional and slot.partner is None ) )
-
+            # Check each slot for out-of-sync status except:
+            # - slots that are optional and unconnected
+            # - slots that are not images (e.g. a classifier or other object)
+            if not (slot._optional and slot.partner is None):
+                if len(slot) == 0:
+                    inSync = False
+                    break
+                elif len(slot[0]) > 0 and slot[0][0].meta.axistags is not None:
+                    inSync &= (len(slot) == numImages)
         return inSync
 
     @traceLogged(traceLogger)
@@ -286,7 +310,10 @@ class LayerViewerGui(QMainWindow):
             
         newNames = set(l.name for l in newGuiLayers)
         if len(newNames) != len(newGuiLayers):
-            raise RuntimeError("All layers must have unique names.")
+            msg = "All layers must have unique names.\n"
+            msg += "You're attempting to use these layer names:\n"
+            msg += [l.name for l in newGuiLayers]
+            raise RuntimeError()
 
         # Copy the old visibilities and opacities
         if self.imageIndex != self.lastUpdateImageIndex:
@@ -314,6 +341,13 @@ class LayerViewerGui(QMainWindow):
             
             # Start in the center of the volume
             self.editor.posModel.slicingPos = midpos3d
+            
+            # If one of the xyz dimensions is 1, the data is 2d.
+            singletonDims = filter( lambda (i,dim): dim == 1, enumerate(newDataShape[1:4]) )
+            if len(singletonDims) == 1:
+                # Maximize the slicing view for this axis
+                axis = singletonDims[0][0]
+                self.volumeEditorWidget.quadview.ensureMaximized(axis)
 
         # Old layers are deleted if
         # (1) They are not in the new set or
@@ -354,16 +388,17 @@ class LayerViewerGui(QMainWindow):
 
         newDataShape = None
         for provider in self.observedSlots:
-            for i, slot in enumerate(provider[self.imageIndex]):
-                if newDataShape is None and slot.ready() and slot.meta.axistags is not None:
-                    # Use an Op5ifyer adapter to transpose the shape for us.
-                    op5 = Op5ifyer( graph=slot.graph )
-                    op5.input.connect( slot )
-                    newDataShape = op5.output.meta.shape
-
-                    # We just needed the operator to determine the transposed shape.
-                    # Disconnect it so it can be garbage collected.
-                    op5.input.disconnect()
+            if self.imageIndex < len(provider):
+                for i, slot in enumerate(provider[self.imageIndex]):
+                    if newDataShape is None and slot.ready() and slot.meta.axistags is not None:
+                        # Use an Op5ifyer adapter to transpose the shape for us.
+                        op5 = Op5ifyer( graph=slot.graph )
+                        op5.input.connect( slot )
+                        newDataShape = op5.output.meta.shape
+    
+                        # We just needed the operator to determine the transposed shape.
+                        # Disconnect it so it can be garbage collected.
+                        op5.input.disconnect()
 
         if newDataShape is not None:
             # For now, this base class combines multi-channel images into a single layer,
