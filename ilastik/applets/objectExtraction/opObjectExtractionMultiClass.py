@@ -126,19 +126,19 @@ class OpClassExtraction(Operator):
     def execute(self, slot, subindex, roi, result):
         def extract( labelImageBg, labelImageDiv, regionFeaturesBg, regionFeaturesDiv ):
             try:
-                prob = [[1,0]] * (len(regionFeaturesBg[0]['Count']) - 1)
+                prob = [[1,0]] * (len(regionFeaturesBg['Count']) - 1)
             except:
-                print                        
-            for labelDiv, volDiv in enumerate(regionFeaturesDiv[0]['Count']):
+                raise
+            for labelDiv, volDiv in enumerate(regionFeaturesDiv['Count']):
                 # skip the first label, since label 0 is not used in connected components
                 if labelDiv == 0:
                     continue
-                coordDiv = regionFeaturesDiv[0]['Coord<ArgMaxWeight>'][labelDiv]
+                coordDiv = regionFeaturesDiv['Coord<ArgMaxWeight>'][labelDiv]
                 labelBg = labelImageBg[tuple(coordDiv)]
                 assert labelBg != 0, str(labelDiv) + ', ' + str(coordDiv)+ ', ' + str(labelImageBg.shape) + ', ' +  str(labelDiv) + ', ' + str(labelBg) 
                 #+ ', ' + str(labelImageBg[tuple(regionFeaturesDiv[0]['Coord<Minimum>'][labelDiv])])+ ', ' + str(labelImageBg[tuple(regionFeaturesDiv[0]['Coord<ArgMaxWeight>'][labelDiv])])+ ', ' + str(labelImageBg[tuple(regionFeaturesDiv[0]['Coord<ArgMinWeight>'][labelDiv])])
                 assert volDiv > 0
-                volBg = regionFeaturesBg[0]['Count'][labelBg]
+                volBg = regionFeaturesBg['Count'][labelBg]
                 assert volBg > 0
                 p = volDiv / float(volBg) 
                 prob[labelBg] = [1-p, p]  # [ P(non-division), P(division) ]
@@ -161,10 +161,11 @@ class OpClassExtraction(Operator):
                 liBg = self.LabelImageBg.get(troi).wait()
                 liBg = liBg[0,...,0] # assumes t,x,y,z,c
                 rfBg = self.RegionFeaturesBg.get([t]).wait()
-                
+                rfBg = rfBg[t]                
                 liDiv = self.LabelImageDiv.get(troi).wait()
                 liDiv = liDiv[0,...,0] # assumes t,x,y,z,c
                 rfDiv = self.RegionFeaturesDiv.get([t]).wait()
+                rfDiv = rfDiv[t]
                 probs_at = extract(liBg, liDiv, rfBg, rfDiv)
                 self._cache[t] = probs_at
             probs[t] = probs_at

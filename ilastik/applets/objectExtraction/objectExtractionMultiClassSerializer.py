@@ -53,7 +53,7 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
                 if 'Count' in topGroup["samples"][t].keys():                    
                     cache[int(t)]['Count'] = topGroup["samples"][t]['Count'].value
                 if 'CoordArgMaxWeight' in topGroup["samples"][t].keys():
-                    cache[int(t)]['Coord<ArgMaxWeight>'] = topGroup["samples"][t]['Coord<ArgMaxWeight>'].value            
+                    cache[int(t)]['Coord<ArgMaxWeight>'] = topGroup["samples"][t]['CoordArgMaxWeight'].value            
             self.mainOperator.innerOperators[0]._opObjectExtractionBg._opRegFeats._cache = cache
         
         print "objectExtraction multi class: loading class probabilities"        
@@ -66,7 +66,8 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
 
     def isDirty(self):
         return True
-
+    
+    
     def unload(self):
         print "ObjExtraction.unload not implemented" 
 
