@@ -103,8 +103,6 @@ class PixelClassificationGui(LabelingGui):
                       "Toggle Live Prediction Mode",
                       toggleLivePredict,
                       self.labelingDrawerUi.checkInteractive )
-        
-        
 
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
@@ -128,6 +126,11 @@ class PixelClassificationGui(LabelingGui):
             uncertaintyLayer.name = "Uncertainty"
             uncertaintyLayer.visible = False
             uncertaintyLayer.opacity = 1.0
+            uncertaintyLayer.shortcutRegistration = (
+                "Prediction Layers",
+                "Show/Hide Uncertainty",
+                QShortcut( QKeySequence("u"), self.viewerControlWidget(), uncertaintyLayer.toggleVisible ),
+                uncertaintyLayer )
             layers.append(uncertaintyLayer)
 
         # Add each of the predictions
@@ -185,6 +188,20 @@ class PixelClassificationGui(LabelingGui):
             inputLayer.name = "Input Data"
             inputLayer.visible = True
             inputLayer.opacity = 1.0
+            
+            def toggleTopToBottom():
+                index = self.layerstack.layerIndex( inputLayer )
+                self.layerstack.selectRow( index )
+                if index == 0:
+                    self.layerstack.moveSelectedToBottom()
+                else:
+                    self.layerstack.moveSelectedToTop()
+
+            inputLayer.shortcutRegistration = (
+                "Prediction Layers",
+                "Bring Input To Top/Bottom",
+                QShortcut( QKeySequence("i"), self.viewerControlWidget(), toggleTopToBottom),
+                inputLayer )
             layers.append(inputLayer)
         
         return layers
