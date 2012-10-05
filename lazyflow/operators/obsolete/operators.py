@@ -1292,6 +1292,9 @@ class OpBlockedArrayCache(Operator):
                 for op in self._opSub_list.values():
                     op.cleanUp()
 
+                self._opSub_list = {}
+                self._cache_list = {}
+
                 self._configured = True
 
                 if notifyOutputDirty:
@@ -1451,6 +1454,7 @@ class OpSlicedBlockedArrayCache(Operator):
         self._outerShapes = self.inputs["outerBlockShape"].value
         self._innerShapes = self.inputs["innerBlockShape"].value
 
+        # FIXME: This is wrong: Shouldn't it actually compare the new inner block shape with the old one?
         if len(self._innerShapes) != len(self._innerOps):
             # Clean up previous inner operators
             for slot in self.InnerOutputs:
