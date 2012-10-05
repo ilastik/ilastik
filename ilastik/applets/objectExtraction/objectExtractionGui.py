@@ -139,7 +139,7 @@ class ObjectExtractionGui( QWidget ):
 
     def _onLabelImageButtonPressed( self ):
         m = self.curOp.LabelImage.meta
-        maxt = m.shape[0]
+        maxt = m.shape[0] - 1 # the last time frame will be dropped
         progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt * 2)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
@@ -167,7 +167,7 @@ class ObjectExtractionGui( QWidget ):
 
 
     def _onExtractObjectsButtonPressed( self ):
-        maxt = self.curOp.LabelImage.meta.shape[0]
+        maxt = self.curOp.LabelImage.meta.shape[0] - 1 # the last time frame will be dropped
         progress = QProgressDialog("Extracting objects...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
@@ -200,7 +200,7 @@ class ObjectExtractionGui( QWidget ):
 
     def _onMergeSegmentationsButtonPressed(self):
         m = self.curOp.LabelImage.meta
-        maxt = m.shape[0]
+        maxt = m.shape[0] -1 # the last time frame will be dropped
         progress = QProgressDialog("Merging Background and Division Segmentations...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
@@ -208,7 +208,7 @@ class ObjectExtractionGui( QWidget ):
         progress.forceShow()
 
         reqs = []
-        self.curOp._opClassExtraction.fixed = False
+#        self.curOp._opClassExtraction.fixed = False
         for t in range(maxt):
             reqs.append(self.curOp._opClassExtraction.ClassMapping([t]))
             reqs[-1].submit()
@@ -219,7 +219,7 @@ class ObjectExtractionGui( QWidget ):
             else:
                 req.wait()
         
-        self.curOp._opClassExtraction.fixed = True
+#        self.curOp._opClassExtraction.fixed = True
         progress.setValue(maxt)
         
         print 'Merge Segmentation: done.'

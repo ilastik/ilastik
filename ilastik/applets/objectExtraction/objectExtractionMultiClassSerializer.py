@@ -17,17 +17,20 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         self.deleteIfPresent( topGroup, "LabelImage")
         src.copy('/LabelImage', topGroup) 
 
-        print "object extraction multi class: saving region centers"
+        print "object extraction multi class: saving region features"
         self.deleteIfPresent( topGroup, "samples")
         samples_gr = self.getOrCreateGroup( topGroup, "samples" )
-        for t in op._opRegFeats._cache.keys():
+        for t in op._opObjectExtractionBg._opRegFeats._cache.keys():
             t_gr = samples_gr.create_group(str(t))
-            t_gr.create_dataset(name="RegionCenter", data=op._opRegFeats._cache[t]['RegionCenter'])
-            t_gr.create_dataset(name="Count", data=op._opRegFeats._cache[t]['Count'])
+            t_gr.create_dataset(name="RegionCenter", data=op._opObjectExtractionBg._opRegFeats._cache[t]['RegionCenter'])
+            t_gr.create_dataset(name="Count", data=op._opObjectExtractionBg._opRegFeats._cache[t]['Count'])
+            t_gr.create_dataset(name="CoordArgMaxWeight", data=op._opObjectExtractionBg._opRegFeats._cache[t]['Coord<ArgMaxWeight>'])
 
         print "object extraction multi class: class probabilities"
         self.deleteIfPresent(topGroup, "ClassProbabilities")
-        op._opClassExtraction._cache.copy('/ClassProbabilities', topGroup)
+        classprob_gr = self.getOrCreateGroup(topGroup, "ClassProbabilities")
+        for t in op._opClassExtraction._cache.keys():
+            classprob_gr.create_dataset(name=str(t), data=op._opClassExtraction._cache[t])        
         
         
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
@@ -39,7 +42,7 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         del dest['LabelImage']
         topGroup.copy('LabelImage', dest)
 
-        print "objectExtraction multi class: loading region centers"
+        print "objectExtraction multi class: loading region features"
         if "samples" in topGroup.keys():
             cache = {}
 
@@ -48,12 +51,17 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
                 if 'RegionCenter' in topGroup["samples"][t].keys():
                     cache[int(t)]['RegionCenter'] = topGroup["samples"][t]['RegionCenter'].value
                 if 'Count' in topGroup["samples"][t].keys():                    
-                    cache[int(t)]['Count'] = topGroup["samples"][t]['Count'].value                
-            self.mainOperator.innerOperators[0]._opRegFeats._cache = cache
+                    cache[int(t)]['Count'] = topGroup["samples"][t]['Count'].value
+                if 'CoordArgMaxWeight' in topGroup["samples"][t].keys():
+                    cache[int(t)]['Coord<ArgMaxWeight>'] = topGroup["samples"][t]['Coord<ArgMaxWeight>'].value            
+            self.mainOperator.innerOperators[0]._opObjectExtractionBg._opRegFeats._cache = cache
         
-        print "objectExtraction multi class: loading class probabilities"
-        dest = self.mainOperator.innerOperators[0]._opClassExtraction._cache
-        topGroup.copy('ClassProbabilities', dest)
+        print "objectExtraction multi class: loading class probabilities"        
+        if "ClassProbabilities" in topGroup.keys():
+            cache = {}
+            for t in topGroup["ClassProbabilities"].keys():
+                cache[int(t)] = topGroup["ClassProbabilities"][t].value                
+        self.mainOperator.innerOperators[0]._opClassExtraction._cache = cache
         
 
     def isDirty(self):

@@ -46,7 +46,7 @@ class OpRegionFeatures( Operator ):
             def extract( a ):
                 labels = numpy.asarray(a, dtype=numpy.uint32)
                 data = numpy.asarray(a, dtype=numpy.float32)
-                feats = vigra.analysis.extractRegionFeatures(data, labels, features=['RegionCenter', 'Count', 'Coord<Maximum>'], ignoreLabel=0)
+                feats = vigra.analysis.extractRegionFeatures(data, labels, features=['RegionCenter', 'Count', 'Coord<ArgMaxWeight>'], ignoreLabel=0)
                 return feats
                 centers = numpy.asarray(feats['RegionCenter'], dtype=numpy.uint16)
                 centers = centers[1:,:]
@@ -56,10 +56,13 @@ class OpRegionFeatures( Operator ):
             for t in roi:
                 print "RegionFeatures at", t
                 if t in self._cache:
+                    print 'returning features from cache, t= ' + str(t) + ', keys = ' + str(self._cache.keys()) 
                     feats_at = self._cache[t]
-                elif self.fixed:
-                    feats_at = { 'RegionCenter': numpy.asarray([]), 'Count': numpy.asarray([]) }
+                elif self.fixed:                    
+                    feats_at = { 'RegionCenter': numpy.asarray([]), 'Count': numpy.asarray([]), 'Coord<ArgMaxWeight>': numpy.asarray([]) }
+                    print 'returning feature from fixed, feats_at = ' + str(feats_at)
                 else:
+                    print 'returning just calculated features'
                     troi = SubRegion( self.LabelImage, start = [t,] + (len(self.LabelImage.meta.shape) - 1) * [0,], stop = [t+1,] + list(self.LabelImage.meta.shape[1:]))
                     a = self.LabelImage.get(troi).wait()
                     a = a[0,...,0] # assumes t,x,y,z,c

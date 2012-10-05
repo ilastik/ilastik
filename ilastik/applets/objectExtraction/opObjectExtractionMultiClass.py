@@ -69,9 +69,9 @@ class OpObjectExtractionMultiClass(Operator):
         # assumes that background == label 0, assumes t,x,y,z,c        
         backgroundlabel = 0
         start = (len(self.Images.meta.shape) - 1) * [0,] + [backgroundlabel,]   
-        print "WARNING: number of time frames restricted to 2 for debugging purposes"      
+        print "WARNING: number of time frames restricted to 3 for debugging purposes"      
 #        stop = list(self.Images.meta.shape[0:-1]) + [backgroundlabel + 1,]
-        stop = [2,] + list(self.Images.meta.shape[1:-1]) + [backgroundlabel + 1,]                
+        stop = [3,] + list(self.Images.meta.shape[1:-1]) + [backgroundlabel + 1,]                
         self._opSubRegionBgImage.inputs["Start"].setValue(tuple(start))        
         self._opSubRegionBgImage.inputs["Stop"].setValue(tuple(stop)) 
         
@@ -118,21 +118,25 @@ class OpClassExtraction(Operator):
         super(OpClassExtraction, self).__init__(parent=parent,
                                               graph=graph)
         self._cache = {}
-        self.fixed = True
+#        self.fixed = True
     
     def setupOutputs(self):
         pass
     
     def execute(self, slot, subindex, roi, result):
         def extract( labelImageBg, labelImageDiv, regionFeaturesBg, regionFeaturesDiv ):
-            prob = [[1,0]] * (len(regionFeaturesBg[0]['Count']) - 1)    
+            try:
+                prob = [[1,0]] * (len(regionFeaturesBg[0]['Count']) - 1)
+            except:
+                print                        
             for labelDiv, volDiv in enumerate(regionFeaturesDiv[0]['Count']):
                 # skip the first label, since label 0 is not used in connected components
                 if labelDiv == 0:
                     continue
-                coordDiv = regionFeaturesDiv[0]['Coord<Maximum>'][labelDiv]
+                coordDiv = regionFeaturesDiv[0]['Coord<ArgMaxWeight>'][labelDiv]
                 labelBg = labelImageBg[tuple(coordDiv)]
-                assert labelBg != 0, str(labelDiv) + ', ' + str(coordDiv)+ ', ' + str(labelImageBg.shape) + ', ' +  str(labelDiv) + ', ' + str(labelBg)
+                assert labelBg != 0, str(labelDiv) + ', ' + str(coordDiv)+ ', ' + str(labelImageBg.shape) + ', ' +  str(labelDiv) + ', ' + str(labelBg) 
+                #+ ', ' + str(labelImageBg[tuple(regionFeaturesDiv[0]['Coord<Minimum>'][labelDiv])])+ ', ' + str(labelImageBg[tuple(regionFeaturesDiv[0]['Coord<ArgMaxWeight>'][labelDiv])])+ ', ' + str(labelImageBg[tuple(regionFeaturesDiv[0]['Coord<ArgMinWeight>'][labelDiv])])
                 assert volDiv > 0
                 volBg = regionFeaturesBg[0]['Count'][labelBg]
                 assert volBg > 0
@@ -145,8 +149,13 @@ class OpClassExtraction(Operator):
             print "Class Extraction at", t
             if t in self._cache:
                 probs_at = self._cache[t]
-            elif self.fixed:
-                probs_at = numpy.asarray([])
+#            elif self.fixed:
+#                probs_at = numpy.asarray([])
+            elif t == self.LabelImageBg.meta.shape[0] - 1:
+                rfBg = self.RegionFeaturesBg.get([t]).wait()
+                prob = [[1,0]] * (len(rfBg[0]['Count']) - 1)            
+                probs_at = prob 
+                self._cache[t] = probs_at
             else:
                 troi = SubRegion( self.LabelImageBg, start = [t,] + (len(self.LabelImageBg.meta.shape) - 1) * [0,], stop = [t+1,] + list(self.LabelImageBg.meta.shape[1:]))
                 liBg = self.LabelImageBg.get(troi).wait()
