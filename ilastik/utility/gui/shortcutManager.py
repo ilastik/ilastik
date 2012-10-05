@@ -2,6 +2,8 @@ import re
 import abc
 import collections
 
+from PyQt4.QtGui import QDialog, QVBoxLayout, QGroupBox, QGridLayout, QLabel
+
 from ilastik.utility import Singleton
 
 def _has_attribute( cls, attr ):
@@ -42,6 +44,10 @@ class ShortcutManager(object):
     If an object is provided when the shortcut is registered, the object's tooltip is updated to show the shortcut keys.
     """
     __metaclass__ = Singleton
+
+    @property
+    def shortcuts(self):
+        return self._shortcuts
 
     def __init__(self):
         self._shortcuts = collections.OrderedDict()
@@ -103,4 +109,74 @@ class ShortcutManager(object):
             newText = re.sub("\[.*\]", newKeyText, oldText)
         
         objectWithToolTip.setToolTip( newText )
+
+class ShortcutManagerDlg(QDialog):
+    def __init__(self, *args, **kwargs):
+        super(ShortcutManagerDlg, self).__init__(*args, **kwargs)
+        self.setModal(True)
+        self.setWindowTitle("Shortcut Preferences")
+        self.setMinimumWidth(500)
+
+        mgr = ShortcutManager() # Singleton
+        
+        tempLayout = QVBoxLayout()
+        
+        for group, shortcutDict in mgr.shortcuts.items():
+            grpBox = QGroupBox(group)
+            l = QGridLayout(self)
+            for i, (shortcut, (desc, obj)) in enumerate(shortcutDict.items()):
+                l.addWidget(QLabel(desc), i,0)
+                l.addWidget(QLabel(str(shortcut.key().toString())), i,1)
+            grpBox.setLayout(l)
+            tempLayout.addWidget(grpBox)
+        
+        self.setLayout(tempLayout)
+        self.show()
+
+if __name__ == "__main__":
+    from PyQt4.QtGui import QShortcut, QKeySequence
+    from functools import partial
+
+    from PyQt4.QtGui import QApplication, QPushButton, QWidget
+    app = QApplication([])
+
+    mainWindow = QWidget()
+
+    def showShortcuts():
+        mgrDlg = ShortcutManagerDlg(mainWindow)
+
+    mainLayout = QVBoxLayout()
+    btn = QPushButton("Show shortcuts")
+    btn.clicked.connect( showShortcuts )
+    mainLayout.addWidget(btn)
+    mainWindow.setLayout(mainLayout)
+    mainWindow.show()    
+
+    def trigger(name):
+        print "Shortcut triggered:",name
+    
+    mgr = ShortcutManager()
+
+    scA = QShortcut( QKeySequence("1"), mainWindow, member=partial(trigger, "A") )
+    mgr.register( "Group 1",
+                  "Shortcut 1A",
+                  scA,
+                  None )        
+
+    scB = QShortcut( QKeySequence("2"), mainWindow, member=partial(trigger, "B") )
+    mgr.register( "Group 1",
+                  "Shortcut 1B",
+                  scB,
+                  None )        
+
+    scC = QShortcut( QKeySequence("3"), mainWindow, member=partial(trigger, "C") )
+    mgr.register( "Group 2",
+                  "Shortcut 2C",
+                  scC,
+                  None )        
+
+    
+    app.exec_()
+
+
 
