@@ -560,7 +560,6 @@ class LabelingGui(LayerViewerGui):
         colors.append( QColor( Qt.lightGray ) )
 
         # Additional colors
-        colors.append( QColor( Qt.cyan ) )
         colors.append( QColor(255, 105, 180) ) #hot pink
         colors.append( QColor(102, 205, 170) ) #dark aquamarine
         colors.append( QColor(165,  42,  42) ) #brown        
@@ -568,10 +567,11 @@ class LabelingGui(LayerViewerGui):
         colors.append( QColor(255, 165, 0) )   #orange
         colors.append( QColor(173, 255,  47) ) #green-yellow
         colors.append( QColor(128,0, 128) )    #purple
+        colors.append( QColor(240, 230, 140) ) #khaki
 
 #        colors.append( QColor(192, 192, 192) ) #silver
-#        colors.append( QColor(240, 230, 140) ) #khaki
 #        colors.append( QColor(69, 69, 69) )    # dark grey
+#        colors.append( QColor( Qt.cyan ) )
 
         assert len(colors) == 16
 

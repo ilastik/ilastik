@@ -44,7 +44,7 @@ class OpCarvingTopLevel(Operator):
         op5.input.connect( self.RawData )
         
         self.opLabeling = OpLabeling(graph=self.graph, parent=self)
-        self.opCarving = OperatorWrapper( OpCarving, operator_args=[carvingGraphFile], graph=self.graph )
+        self.opCarving = OperatorWrapper( OpCarving, operator_args=[carvingGraphFile], graph=self.graph, parent=self )
         
         self.opLabeling.InputImages.connect( op5.output )
         self.opCarving.RawData.connect( op5.output )

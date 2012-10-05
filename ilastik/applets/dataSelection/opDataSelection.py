@@ -58,6 +58,10 @@ class OpDataSelection(Operator):
     Image = OutputSlot()
     AllowLabels = OutputSlot(stype='bool')
     
+    def __init__(self, *args, **kwargs):
+        super(OpDataSelection, self).__init__(*args, **kwargs)
+        self._opReader = None
+    
     def setupOutputs(self):
         datasetInfo = self.Dataset.value
         internalPath = self.ProjectDataGroup.value + '/' + datasetInfo.datasetId
@@ -66,21 +70,25 @@ class OpDataSelection(Operator):
         datasetInProject = (datasetInfo.location == DatasetInfo.Location.ProjectInternal)
         datasetInProject &= self.ProjectFile.connected() and \
                             internalPath in self.ProjectFile.value
+
+        if self._opReader is not None:
+            self.Image.disconnect()
+            self._opReader.cleanUp()
         
         # If we should find the data in the project file, use a dataset reader
         if datasetInProject:
-            reader = OpStreamingHdf5Reader(graph=self.graph)
-            reader.Hdf5File.setValue(self.ProjectFile.value)
-            reader.InternalPath.setValue(internalPath)
-            providerSlot = reader.OutputImage
+            self._opReader = OpStreamingHdf5Reader(parent=self)
+            self._opReader.Hdf5File.setValue(self.ProjectFile.value)
+            self._opReader.InternalPath.setValue(internalPath)
+            providerSlot = self._opReader.OutputImage
         else:
             # Use a normal (filesystem) reader
-            reader = OpInputDataReader(graph=self.graph)
+            self._opReader = OpInputDataReader(parent=self)
             if datasetInfo.axisorder is not None:
-                reader.DefaultAxisOrder.setValue( datasetInfo.axisorder )
-            reader.WorkingDirectory.connect( self.WorkingDirectory )
-            reader.FilePath.setValue(datasetInfo.filePath)
-            providerSlot = reader.Output        
+                self._opReader.DefaultAxisOrder.setValue( datasetInfo.axisorder )
+            self._opReader.WorkingDirectory.connect( self.WorkingDirectory )
+            self._opReader.FilePath.setValue(datasetInfo.filePath)
+            providerSlot = self._opReader.Output        
         
         # Connect our external outputs to the internal operators we chose
         self.Image.connect(providerSlot)

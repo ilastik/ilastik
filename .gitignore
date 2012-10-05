@@ -11,3 +11,4 @@ build/
 dist/
 ilastik.egg-info/
 
+.settings
