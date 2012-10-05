@@ -277,10 +277,6 @@ class LabelingGui(LayerViewerGui):
         numShortcuts = len(self._labelShortcuts)
         numRows = len(self._labelControlUi.labelListModel)
 
-        # Go ahead and create shortcuts for at least the first 5 rows, even if 5 rows don't exist yet
-        # Extra shortcuts for non-existent rows don't hurt here.
-        numRows = max(numRows, 5)
-
         # Add any shortcuts we don't have yet.
         for i in range(numShortcuts,numRows):
             shortcut = QShortcut( QKeySequence(str(i+1)),
@@ -289,6 +285,12 @@ class LabelingGui(LayerViewerGui):
             self._labelShortcuts.append(shortcut)
             toolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, i)
             ShortcutManager().register("Labeling", "", shortcut, toolTipObject)
+
+        # Make sure that all shortcuts have an appropriate description
+        for i in range(numRows):
+            shortcut = self._labelShortcuts[i]
+            description = "Select " + self._labelControlUi.labelListModel[i].name
+            ShortcutManager().setDescription(shortcut, description)
 
     @traceLogged(traceLogger)
     def handleToolButtonClicked(self, checked, toolId):
@@ -464,8 +466,9 @@ class LabelingGui(LayerViewerGui):
         color = QColor()
         color.setRgba(self._colorTable16[numLabels+1]) # First entry is transparent (for zero label)
 
-        self._labelControlUi.labelListModel.insertRow(self._labelControlUi.labelListModel.rowCount(),
-                                                      Label(self.getNextLabelName(), color))
+        label = Label(self.getNextLabelName(), color)
+        label.nameChanged.connect(self._updateLabelShortcuts)
+        self._labelControlUi.labelListModel.insertRow( self._labelControlUi.labelListModel.rowCount(), label )
         nlabels = self._labelControlUi.labelListModel.rowCount()
 
         # Make the new label selected
