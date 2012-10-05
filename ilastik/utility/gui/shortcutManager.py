@@ -2,7 +2,8 @@ import re
 import abc
 import collections
 
-from PyQt4.QtGui import QDialog, QVBoxLayout, QGroupBox, QGridLayout, QLabel
+from PyQt4.QtGui import QDialog, QHBoxLayout, QVBoxLayout, QGroupBox, QGridLayout, \
+                        QLabel, QLineEdit, QPushButton, QSpacerItem, QKeySequence
 
 from ilastik.utility import Singleton
 
@@ -79,6 +80,13 @@ class ShortcutManager(object):
                 del self._shortcuts[group][shortcut]
                 break
 
+    def setDescription(self, shortcut, description):
+        for group in self._shortcuts:
+            if shortcut in self._shortcuts[group]:
+                (oldDescription, objectWithToolTip) = self._shortcuts[group][shortcut]
+                self._shortcuts[group][shortcut] = (description, objectWithToolTip)
+                self.updateToolTip(shortcut)
+
     def updateToolTip(self, shortcut):
         """
         If this shortcut is associated with an object with tooltip text, 
@@ -113,25 +121,57 @@ class ShortcutManager(object):
 class ShortcutManagerDlg(QDialog):
     def __init__(self, *args, **kwargs):
         super(ShortcutManagerDlg, self).__init__(*args, **kwargs)
-        self.setModal(True)
         self.setWindowTitle("Shortcut Preferences")
         self.setMinimumWidth(500)
 
         mgr = ShortcutManager() # Singleton
         
         tempLayout = QVBoxLayout()
-        
+
+        # Create a LineEdit for each shortcut,
+        # and keep track of them in a dict
+        shortcutEdits = dict()
         for group, shortcutDict in mgr.shortcuts.items():
             grpBox = QGroupBox(group)
             l = QGridLayout(self)
             for i, (shortcut, (desc, obj)) in enumerate(shortcutDict.items()):
                 l.addWidget(QLabel(desc), i,0)
-                l.addWidget(QLabel(str(shortcut.key().toString())), i,1)
+                edit = QLineEdit(str(shortcut.key().toString()))
+                l.addWidget(edit, i,1)
+                shortcutEdits[shortcut] = edit
             grpBox.setLayout(l)
             tempLayout.addWidget(grpBox)
+
+        # Add ok and cancel buttons
+        buttonLayout = QHBoxLayout()
+        cancelButton = QPushButton("Cancel")
+        cancelButton.clicked.connect( self.reject )
+        okButton = QPushButton("OK")
+        okButton.clicked.connect( self.accept )
+        okButton.setDefault(True)
+        buttonLayout.addSpacerItem(QSpacerItem(10, 0))
+        buttonLayout.addWidget(cancelButton)
+        buttonLayout.addWidget(okButton)
+        tempLayout.addLayout(buttonLayout)
         
         self.setLayout(tempLayout)
-        self.show()
+        
+        # Show the window
+        result = self.exec_()
+        
+        # If the user didn't hit "cancel", apply his changes to the manager's shortcuts
+        if result == QDialog.Accepted:
+            for shortcut, edit in shortcutEdits.items():
+                oldKey = shortcut.key()
+                newKey = str(edit.text())
+                shortcut.setKey( QKeySequence(newKey) )
+                
+                # If the user typed an invalid shortcut, then keep the old value
+                if shortcut.key().isEmpty():
+                    shortcut.setKey(oldKey)
+                
+                # Make sure the tooltips get updated.
+                mgr.updateToolTip(shortcut)
 
 if __name__ == "__main__":
     from PyQt4.QtGui import QShortcut, QKeySequence
@@ -144,6 +184,11 @@ if __name__ == "__main__":
 
     def showShortcuts():
         mgrDlg = ShortcutManagerDlg(mainWindow)
+        
+        for group, shortcutDict in mgr.shortcuts.items():
+            print group + ":"
+            for i, (shortcut, (desc, obj)) in enumerate(shortcutDict.items()):
+                print desc + " : " + str(shortcut.key().toString())
 
     mainLayout = QVBoxLayout()
     btn = QPushButton("Show shortcuts")
@@ -173,9 +218,7 @@ if __name__ == "__main__":
     mgr.register( "Group 2",
                   "Shortcut 2C",
                   scC,
-                  None )        
-
-    
+                  None )
     app.exec_()
 
 
