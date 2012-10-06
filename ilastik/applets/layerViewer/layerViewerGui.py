@@ -377,7 +377,6 @@ class LayerViewerGui(QMainWindow):
                 
                 # If this layer has an associated shortcut, register it with the shortcut manager
                 if hasattr(layer, 'shortcutRegistration'):
-                    print "Registering shortcut for layer:",layer.name
                     ShortcutManager().register( *layer.shortcutRegistration )
             else:
                 # Clean up the layer instance that the client just gave us.
