@@ -114,7 +114,7 @@ class BatchIoGui(QMainWindow):
             self.drawer.deleteAllButton.clicked.connect( self.deleteAllResults )
             
             for i, formatInfo in sorted(SupportedFormats.items()):
-                self.drawer.exportFormatCombo.addItem( formatInfo.name + ' (.' + formatInfo.extension + ')' )
+                self.drawer.exportFormatCombo.addItem( formatInfo.name + ' (' + formatInfo.extension + ')' )
             self.drawer.exportFormatCombo.currentIndexChanged.connect( partial(self.handleExportFormatChanged) )
 
     def initCentralUic(self):
@@ -214,6 +214,7 @@ class BatchIoGui(QMainWindow):
             self.tableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( outputDataPath ) )
     
             exportNowButton = QPushButton("Export")
+            exportNowButton.setToolTip("Generate individual batch output dataset.")
             exportNowButton.clicked.connect( bind(self.exportResultsForSlot, self.mainOperator.ExportResult[row], self.mainOperator.ProgressSignal[row] ) )
             self.tableWidget.setCellWidget( row, Column.Action, exportNowButton )
 

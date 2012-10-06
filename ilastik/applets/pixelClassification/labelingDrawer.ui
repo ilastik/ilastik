@@ -36,7 +36,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>261</width>
+     <width>268</width>
      <height>321</height>
     </rect>
    </property>
@@ -109,6 +109,9 @@
     </item>
     <item>
      <widget class="QPushButton" name="savePredictionsButton">
+      <property name="toolTip">
+       <string>Comput predictions for your entire dataset (all images) and save the project</string>
+      </property>
       <property name="text">
        <string>Save Predictions Now</string>
       </property>
