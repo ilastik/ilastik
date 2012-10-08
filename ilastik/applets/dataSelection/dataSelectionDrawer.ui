@@ -19,12 +19,15 @@
      <x>4</x>
      <y>9</y>
      <width>181</width>
-     <height>91</height>
+     <height>100</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
      <widget class="QPushButton" name="addFileButton">
+      <property name="toolTip">
+       <string>Add a single volume or image</string>
+      </property>
       <property name="text">
        <string>Add</string>
       </property>
@@ -43,7 +46,7 @@
     <item>
      <widget class="QPushButton" name="addStackButton">
       <property name="toolTip">
-       <string>This allows to create a 3D volume from files stored in a folder.</string>
+       <string>Create a single 3D dataset in your project from a directory of images files</string>
       </property>
       <property name="text">
        <string>Add Stack</string>
@@ -58,6 +61,9 @@
     </item>
     <item>
      <widget class="QPushButton" name="removeFileButton">
+      <property name="toolTip">
+       <string>Remove the selected dataset from your project</string>
+      </property>
       <property name="text">
        <string>Remove</string>
       </property>

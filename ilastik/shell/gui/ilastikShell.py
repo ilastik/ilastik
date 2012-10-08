@@ -1,6 +1,5 @@
 from PyQt4 import uic
-from PyQt4 import Qt
-from PyQt4.QtCore import pyqtSignal, QObject, QEvent
+from PyQt4.QtCore import pyqtSignal, QObject, QEvent, Qt
 from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QMenuBar, QFrame, QLabel, QStackedLayout, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
@@ -15,7 +14,7 @@ from functools import partial
 
 from ilastik.versionManager import VersionManager
 from ilastik.utility import bind
-from ilastik.utility.gui import ThunkEvent, ThunkEventHandler
+from ilastik.utility.gui import ThunkEvent, ThunkEventHandler, ShortcutManagerDlg
 
 import sys
 import logging
@@ -140,13 +139,17 @@ class IlastikShell( QMainWindow ):
         self._applets = []
         self.appletBarMapping = {}
 
+        self.setAttribute(Qt.WA_AlwaysShowToolTips)
+        
         if 'Ubuntu' in platform.platform():
             # Native menus are prettier, but aren't working on Ubuntu at this time (Qt 4.7, Ubuntu 11)
             self.menuBar().setNativeMenuBar(False)
 
         (self._projectMenu, self._shellActions) = self._createProjectMenu()
-        self.menuBar().addMenu(self._projectMenu)
-
+        self._settingsMenu = self._createSettingsMenu()
+        self.menuBar().addMenu( self._projectMenu )
+        self.menuBar().addMenu( self._settingsMenu )
+        
         self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
 
         for applet in workflow:
@@ -174,7 +177,7 @@ class IlastikShell( QMainWindow ):
         
     def _createProjectMenu(self):
         # Create a menu for "General" (non-applet) actions
-        menu = QMenu("Project", self)
+        menu = QMenu("&Project", self)
 
         shellActions = ShellActions()
 
@@ -212,6 +215,17 @@ class IlastikShell( QMainWindow ):
         shellActions.quitAction.setShortcut( QKeySequence.Quit )
         
         return (menu, shellActions)
+    
+    def _createSettingsMenu(self):
+        menu = QMenu("&Settings", self)
+        # Menu item: Keyboard Shortcuts
+
+        def editShortcuts():
+            mgrDlg = ShortcutManagerDlg(self)
+        shortcutsAction = menu.addAction("&Keyboard Shortcuts")
+        shortcutsAction.triggered.connect(editShortcuts)
+        
+        return menu
     
     def show(self):
         """
@@ -306,6 +320,7 @@ class IlastikShell( QMainWindow ):
                 self.viewerControlStack.setCurrentIndex(applet_index)
                 self.menuBar().clear()
                 self.menuBar().addMenu(self._projectMenu)
+                self.menuBar().addMenu(self._settingsMenu)
                 for m in self._applets[applet_index].gui.menus():
                     self.menuBar().addMenu(m)
                 
