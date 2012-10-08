@@ -125,6 +125,7 @@ class DataSelectionGui(QMainWindow):
             # Set up our handlers
             self.drawer.addFileButton.clicked.connect(self.handleAddFileButtonClicked)
             self.drawer.addStackButton.clicked.connect(self.handleAddStackButtonClicked)
+            self.drawer.addStackFilesButton.clicked.connect(self.handleAddStackFilesButtonClicked)
             self.drawer.removeFileButton.clicked.connect(self.handleRemoveButtonClicked)
     
     def initCentralUic(self):
@@ -176,32 +177,53 @@ class DataSelectionGui(QMainWindow):
     
     def handleAddStackButtonClicked(self):
         """
-        The user clicked the "Add Stack" button.
-        Ask him to choose a file (or several) and add them to both 
-          the GUI table and the top-level operator inputs.
+        The user clicked the "Import Stack Directory" button.
         """
-        with Tracer(traceLogger):
-            # Launch the "Open File" dialog
-            directoryName = QFileDialog.getExistingDirectory(self, "Image Stack Directory", os.path.abspath(__file__))
-    
-            # If the user didn't cancel        
-            if not directoryName.isNull():
-                globString = self.getGlobString( str(directoryName) )                
-                if globString is not None:
-                    info = DatasetInfo()
-                    info.filePath = globString
-                    
-                    # Allow labels by default if this gui isn't being used for batch data.
-                    info.allowLabels = ( self.guiMode == GuiMode.Normal )
-                    
-                    def importStack():
-                        self.guiControlSignal.emit( ControlCommand.DisableAll )
-                        # Serializer will update the operator for us, which will propagate to the GUI.
-                        self.serializer.importStackAsLocalDataset( info )
-                        self.guiControlSignal.emit( ControlCommand.Pop )
+        # Launch the "Open File" dialog
+        directoryName = QFileDialog.getExistingDirectory(self, "Image Stack Directory", os.path.abspath(__file__))
 
-                    importThread = threading.Thread( target=importStack )
-                    importThread.start()
+        # If the user didn't cancel        
+        if not directoryName.isNull():
+            globString = self.getGlobString( str(directoryName) )                
+            if globString is not None:
+                self.importStackFromGlobString( globString )
+
+    def handleAddStackFilesButtonClicked(self):
+        """
+        The user clicked the "Import Stack Files" button.
+        """
+        # Launch the "Open File" dialog
+        extensions = OpDataSelection.SupportedExtensions
+        filter = "Image files " + ' '.join('*.' + x for x in extensions)
+        fileNames = QFileDialog.getOpenFileNames(self, "Select Images", os.path.abspath(__file__), filter)
+
+        # Convert from QtString to python str
+        fileNames = [str(s) for s in fileNames]
+
+        # If the user didn't cancel        
+        if len(fileNames) > 0:
+            # Convert into one big string, which is accepted by the stack loading operator
+            bigString = "//".join( fileNames )
+            self.importStackFromGlobString(bigString)
+
+    def importStackFromGlobString(self, globString):
+        """
+        The word 'glob' is used loosely here.  See the OpStackLoader operator for details.
+        """
+        info = DatasetInfo()
+        info.filePath = globString
+        
+        # Allow labels by default if this gui isn't being used for batch data.
+        info.allowLabels = ( self.guiMode == GuiMode.Normal )
+        
+        def importStack():
+            self.guiControlSignal.emit( ControlCommand.DisableAll )
+            # Serializer will update the operator for us, which will propagate to the GUI.
+            self.serializer.importStackAsLocalDataset( info )
+            self.guiControlSignal.emit( ControlCommand.Pop )
+
+        importThread = threading.Thread( target=importStack )
+        importThread.start()
 
 
     def getGlobString(self, directory):
