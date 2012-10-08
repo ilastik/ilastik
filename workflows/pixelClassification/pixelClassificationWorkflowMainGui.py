@@ -83,19 +83,19 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
 
     # Start the GUI
-#    if len(args) == 1:
-#        def loadProject(shell, workflow):
-#            shell.openProjectFile(args[0])
-#        startShellGui( PixelClassificationWorkflow, loadProject )
-#    elif len(args) == 0:
-#        startShellGui( PixelClassificationWorkflow )
-#    else:
-#        parser.error("incorrect number of arguments")
+    if len(args) == 1:
+        def loadProject(shell, workflow):
+            shell.openProjectFile(args[0])
+        startShellGui( PixelClassificationWorkflow, loadProject )
+    elif len(args) == 0:
+        startShellGui( PixelClassificationWorkflow )
+    else:
+        parser.error("incorrect number of arguments")
 
     # Start the GUI with a debug project    
     #startShellGui( PixelClassificationWorkflow )    
     #startShellGui( PixelClassificationWorkflow, debug_with_existing )
-    startShellGui( PixelClassificationWorkflow, debug_with_new )
+#    startShellGui( PixelClassificationWorkflow, debug_with_new )
 
     # Test special transpose-on-import feature
     #startShellGui( PixelClassificationWorkflow, debug_with_imported )

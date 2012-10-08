@@ -69,9 +69,7 @@ class OpObjectExtractionMultiClass(Operator):
         # assumes that background == label 0, assumes t,x,y,z,c        
         backgroundlabel = 0
         start = (len(self.Images.meta.shape) - 1) * [0,] + [backgroundlabel,]   
-        print "WARNING: number of time frames restricted to 3 for debugging purposes"      
-#        stop = list(self.Images.meta.shape[0:-1]) + [backgroundlabel + 1,]
-        stop = [3,] + list(self.Images.meta.shape[1:-1]) + [backgroundlabel + 1,]                
+        stop = list(self.Images.meta.shape[0:-1]) + [backgroundlabel + 1,]                
         self._opSubRegionBgImage.inputs["Start"].setValue(tuple(start))        
         self._opSubRegionBgImage.inputs["Stop"].setValue(tuple(stop)) 
         
@@ -140,8 +138,13 @@ class OpClassExtraction(Operator):
                 assert volDiv > 0
                 volBg = regionFeaturesBg['Count'][labelBg]
                 assert volBg > 0
-                p = volDiv / float(volBg) 
-                prob[labelBg] = [1-p, p]  # [ P(non-division), P(division) ]
+                p = volDiv / float(volBg)
+                if prob[labelBg][0] != 1:
+                    print 'updating prob[labelBg] from ' + str(prob[labelBg][1]) + ' to ' + str(prob[labelBg][1]+p)
+                    prob[labelBg][1] += p 
+                    prob[labelBg][0] = 1-prob[labelBg][1]
+                else:  
+                    prob[labelBg] = [1-p, p]  # [ P(non-division), P(division) ]
             return prob
             
         probs = {}

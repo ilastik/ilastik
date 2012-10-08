@@ -44,6 +44,7 @@ class TrackingWorkflowNN( Workflow ):
 
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
+        opTracking.ClassMapping.connect( opObjExtraction.ClassMapping )
 
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.objectExtractionApplet)

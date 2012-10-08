@@ -67,8 +67,8 @@ class TrackingGui( QWidget ):
             maxz = mainOperator.LabelImage.meta.shape[3]            
             self._drawer.from_time.setRange(0,maxt-1)
             self._drawer.from_time.setValue(0)
-            self._drawer.to_time.setRange(0,maxt-1)
-            self._drawer.to_time.setValue(maxt-1)       
+            self._drawer.to_time.setRange(0,maxt-2)
+            self._drawer.to_time.setValue(maxt-2)       
 
             self._drawer.from_x.setRange(0,maxx-1)
             self._drawer.from_x.setValue(0)
@@ -120,8 +120,8 @@ class TrackingGui( QWidget ):
                 maxt = slot.meta.shape[0]
                 self._drawer.from_time.setRange(0,maxt-1)
                 self._drawer.from_time.setValue(0)
-                self._drawer.to_time.setRange(0,maxt-1)
-                self._drawer.to_time.setValue(maxt-1)       
+                self._drawer.to_time.setRange(0,maxt-2)
+                self._drawer.to_time.setValue(maxt-2)       
 
     def _initEditor(self):
         """
@@ -163,15 +163,8 @@ class TrackingGui( QWidget ):
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
     def _onTrackButtonPressed( self ):
-        app = self._drawer.appSpinBox.value()
-        dis = self._drawer.disSpinBox.value()
-        opp = self._drawer.oppSpinBox.value()
-        noiserate = self._drawer.noiseRateSpinBox.value()
-        noiseweight = self._drawer.noiseWeightSpinBox.value()
-        epGap = self._drawer.epGapSpinBox.value()
-
-        det = noiseweight*(-1)*math.log(1-noiserate)
-        mdet = noiseweight*(-1)*math.log(noiserate)
+        divDist = self._drawer.divDistBox.value()
+        movDist = self._drawer.movDistBox.value()        
         
         from_t = self._drawer.from_time.value()
         to_t = self._drawer.to_time.value()
@@ -193,12 +186,9 @@ class TrackingGui( QWidget ):
             x_scale = self._drawer.x_scale.value(),
             y_scale = self._drawer.y_scale.value(),
             z_scale = self._drawer.z_scale.value(),
-                                                  app=app,
-                                                  dis=dis,
-                                                  opp=opp,
-                                                  det=det,
-                                                  mdet=mdet,
-                                                  ep_gap=epGap)
+            divDist=divDist,
+            movDist=movDist
+            )
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):

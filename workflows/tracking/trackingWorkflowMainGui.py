@@ -25,7 +25,7 @@ if debug_testing:
         #opDataSelection = workflow.dataSelectionApplet.topLevelOperator
         #opDataSelection.Dataset.resize(1)
         #opDataSelection.Dataset[0].setValue(info)
-        shell.setSelectedAppletDrawer(1)
+        shell.setSelectedAppletDrawer(2)
         
     startShellGui( TrackingWorkflowNN, test )
 
