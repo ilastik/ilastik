@@ -215,9 +215,16 @@ class DataSelectionGui(QMainWindow):
     
             # Assign values to the new inputs we just allocated.
             # The GUI will be updated by callbacks that are listening to slot changes
-            for i in range(0, len(fileNames)):
+            for i, filePath in enumerate(fileNames):
                 datasetInfo = DatasetInfo()
-                datasetInfo.filePath = fileNames[i]
+                cwd = self.mainOperator.WorkingDirectory.value
+                absPath, relPath = getPathVariants(filePath, cwd)
+
+                # Relative by default, unless the file is in a totally different tree from the working directory.
+                if len(os.path.commonprefix([cwd, absPath])) > 1: 
+                   datasetInfo.filePath = relPath
+                else:
+                   datasetInfo.filePath = absPath
                 
                 # Allow labels by default if this gui isn't being used for batch data.
                 datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
@@ -303,15 +310,16 @@ class DataSelectionGui(QMainWindow):
         with Tracer(traceLogger):
             # Determine the relative path to this file
             absPath, relPath = getPathVariants(filePath, self.mainOperator.WorkingDirectory.value)
-            # Add a prefix to make it clear that it's a relative path
-            relPath = "<project dir>/" + relPath
+            # Add a prefixes to make the options clear
+            absPath = "Absolute Link: " + absPath
+            relPath = "Relative Link: <project directory>/" + relPath
             
             combo = QComboBox()
             options = {} # combo data -> combo text
             options[ LocationOptions.AbsolutePath ] = absPath
             options[ LocationOptions.RelativePath ] = relPath
             
-            options[ LocationOptions.Project ] = "<project>"
+            options[ LocationOptions.Project ] = "Store in Project File"
                     
             for option, text in sorted(options.items()):
                 # Add to the combo, storing the option as the item data

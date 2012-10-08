@@ -191,7 +191,7 @@ class DataSelectionSerializer( AppletSerializer ):
     
                 # If the data is supposed to exist outside the project, make sure it really does.
                 if datasetInfo.location == DatasetInfo.Location.FileSystem:
-                    filePath = PathComponents(datasetInfo.filePath).externalPath
+                    filePath = PathComponents( datasetInfo.filePath, os.path.split(projectFilePath)[0] ).externalPath
                     if not os.path.exists(filePath):
                         raise RuntimeError("Could not find external data: " + filePath)
     
