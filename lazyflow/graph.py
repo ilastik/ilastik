@@ -773,7 +773,9 @@ class Slot(object):
                     return self._subSlots[key[0]][key[1:]]
             return self._subSlots[key]
         else:
-            assert self.meta.shape is not None, "OutputSlot.__getitem__: self.meta.shape is None !!! (operator %r [self=%r] slot: %s, key=%r" % (self.operator.name, self.operator, self.name, key)
+            if self.meta.shape is None:
+                assert self.ready(), "This slot ({}.{}) isn't ready yet, which means you can't ask for its data.  Is it connected?".format(self.getRealOperator().name, self.name)
+                assert self.meta.shape is not None, "Can't ask for slices of this slot yet: self.meta.shape is None !!! (operator %r [self=%r] slot: %s, key=%r" % (self.operator.name, self.operator, self.name, key)
             return self(pslice=key)
 
 
