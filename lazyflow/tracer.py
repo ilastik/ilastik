@@ -54,6 +54,7 @@ def traceLogged(logger, level=logging.DEBUG, msg='', caller_name=''):
         def wrapper(*args, **kwargs):
             with Tracer(logger, level=level, msg=msg, determine_caller=False, caller_name=name):
                 return func(*args, **kwargs)
+        wrapper.__wrapped__ = func # Emulate python 3 behavior of @wraps
         return wrapper
     return decorator
 
