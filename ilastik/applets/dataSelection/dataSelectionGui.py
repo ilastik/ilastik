@@ -8,9 +8,14 @@ from functools import partial
 import os
 import copy
 import glob
+import threading
 import h5py
+
 from ilastik.utility import bind
+from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.utility.pathHelpers import getPathVariants
+
+from ilastik.applets.base.applet import ControlCommand
 
 import vigra
 
@@ -72,7 +77,7 @@ class DataSelectionGui(QMainWindow):
     ###########################################
     ###########################################
 
-    def __init__(self, dataSelectionOperator, serializer, guiMode=GuiMode.Normal):
+    def __init__(self, dataSelectionOperator, serializer, guiControlSignal, guiMode=GuiMode.Normal):
         with Tracer(traceLogger):
             super(DataSelectionGui, self).__init__()
     
@@ -80,6 +85,8 @@ class DataSelectionGui(QMainWindow):
             self.mainOperator = dataSelectionOperator
             self.guiMode = guiMode
             self.serializer = serializer
+            self.guiControlSignal = guiControlSignal
+            self.threadRouter = ThreadRouter(self)
             
             self.initAppletDrawerUic()
             self.initCentralUic()
@@ -92,7 +99,7 @@ class DataSelectionGui(QMainWindow):
                     
                     # Update the table row data when this slot has new data
                     # We can't bind in the row here because the row may change in the meantime.
-                    self.mainOperator.Dataset[index].notifyDirty( bind( self.updateTableForSlot ) )
+                    self.mainOperator.Dataset[index].notifyDirty( self.updateTableForSlot )
     
             self.mainOperator.Dataset.notifyInserted( bind( handleNewDataset ) )
         
@@ -186,9 +193,16 @@ class DataSelectionGui(QMainWindow):
                     
                     # Allow labels by default if this gui isn't being used for batch data.
                     info.allowLabels = ( self.guiMode == GuiMode.Normal )
+                    
+                    def importStack():
+                        self.guiControlSignal.emit( ControlCommand.DisableAll )
+                        # Serializer will update the operator for us, which will propagate to the GUI.
+                        self.serializer.importStackAsLocalDataset( info )
+                        self.guiControlSignal.emit( ControlCommand.Pop )
 
-                    # Serializer will update the operator for us, which will propagate to the GUI.
-                    self.serializer.importStackAsLocalDataset( info )
+                    importThread = threading.Thread( target=importStack )
+                    importThread.start()
+
 
     def getGlobString(self, directory):
         exts = vigra.impex.listExtensions().split()
@@ -231,7 +245,8 @@ class DataSelectionGui(QMainWindow):
 
                 self.mainOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
 
-    def updateTableForSlot(self, slot):
+    @threadRouted
+    def updateTableForSlot(self, slot, *args):
         """
         Update the given rows using the top-level operator parameters
         """
@@ -401,7 +416,8 @@ class DataSelectionGui(QMainWindow):
             
             if needUpdate:
                 self.updateFilePath(row)
-    
+
+    @threadRouted    
     def updateFilePath(self, index):
         """
         Update the operator's filePath input to match the gui
