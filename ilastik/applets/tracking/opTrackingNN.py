@@ -80,12 +80,15 @@ class OpTrackingNN(Operator):
             y_scale = 1.0,
             z_scale = 1.0,
             divDist = 30,
-            movDist = 10):
-
+            movDist = 10,
+            distanceFeatures = ["com"]):
         
-
+        distFeatureVector = ctracking.VectorOfString();
+        for d in distanceFeatures:
+            distFeatureVector.append(d) 
+                
         ts, filtered_labels = self._generate_traxelstore( time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale )
-        tracker = ctracking.NNTracking(divDist,movDist)
+        tracker = ctracking.NNTracking(float(divDist),float(movDist),distFeatureVector)
         
         self.events = tracker(ts)
         label2color = []
@@ -199,7 +202,9 @@ class OpTrackingNN(Operator):
                 for i,v in enumerate(rc[idx]):
                     tr.set_feature_value('com', i, float(v))
                 tr.add_feature_array("divProb", 1)                    
-                tr.set_feature_value("divProb", 0, divProbs[t][idx][1])
+                tr.set_feature_value("divProb", 0, divProbs[t][idx][1])                
+                tr.add_feature_array("count", 1)
+                tr.set_feature_value("count", 0, size)                
                 ts.add(tr)
             print "at timestep ", t, count, "traxels passed filter"
         return ts, filtered_labels

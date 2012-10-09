@@ -175,7 +175,16 @@ class TrackingGui( QWidget ):
         from_z = self._drawer.from_z.value()
         to_z = self._drawer.to_z.value()        
         from_size = self._drawer.from_size.value()
-        to_size = self._drawer.to_size.value()        
+        to_size = self._drawer.to_size.value()
+        distanceFeatures = []
+        if self._drawer.comCheckBox.isChecked():
+            distanceFeatures.append("com")
+        if self._drawer.volCheckBox.isChecked():
+            distanceFeatures.append("count")
+        
+        if len(distanceFeatures) == 0:
+            self._drawer.comCheckBox.setChecked(True)
+            distanceFeatures.append("com")
 
         self.mainOperator.innerOperators[0].track(
             time_range = range(from_t, to_t + 1),
@@ -187,7 +196,8 @@ class TrackingGui( QWidget ):
             y_scale = self._drawer.y_scale.value(),
             z_scale = self._drawer.z_scale.value(),
             divDist=divDist,
-            movDist=movDist
+            movDist=movDist,
+            distanceFeatures=distanceFeatures
             )
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
