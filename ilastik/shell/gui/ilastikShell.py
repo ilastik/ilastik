@@ -134,6 +134,8 @@ class IlastikShell( QMainWindow ):
         self.thunkEventHandler = ThunkEventHandler(self)
 
         self._sideSplitterSizePolicy = sideSplitterSizePolicy
+
+        self.projectManager = ProjectManager()
         
         import inspect, os
         ilastikShellFilePath = os.path.dirname(inspect.getfile(inspect.currentframe()))
@@ -151,6 +153,8 @@ class IlastikShell( QMainWindow ):
         self._settingsMenu = self._createSettingsMenu()
         self.menuBar().addMenu( self._projectMenu )
         self.menuBar().addMenu( self._settingsMenu )
+
+        self.updateShellProjectDisplay()
         
         self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
 
@@ -166,7 +170,6 @@ class IlastikShell( QMainWindow ):
         
         self.currentAppletIndex = 0
 
-        self.projectManager = ProjectManager()
         self.currentImageIndex = -1
         self.populatingImageSelectionCombo = False
         self.imageSelectionCombo.currentIndexChanged.connect( self.changeCurrentInputImageIndex )
@@ -197,21 +200,15 @@ class IlastikShell( QMainWindow ):
         shellActions.saveProjectAction = menu.addAction("&Save Project...")
         shellActions.saveProjectAction.setShortcuts( QKeySequence.Save )
         shellActions.saveProjectAction.triggered.connect(self.onSaveProjectActionTriggered)
-        # Can't save until a project is loaded for the first time
-        shellActions.saveProjectAction.setEnabled(False)
 
         # Menu item: Save Project As
         shellActions.saveProjectAsAction = menu.addAction("&Save Project As...")
         shellActions.saveProjectAsAction.setShortcuts( QKeySequence.SaveAs )
         shellActions.saveProjectAsAction.triggered.connect(self.onSaveProjectAsActionTriggered)
-        # Can't save until a project is loaded for the first time
-        shellActions.saveProjectAsAction.setEnabled(False)
 
         # Menu item: Save Project Snapshot
         shellActions.saveProjectSnapshotAction = menu.addAction("&Take Snapshot...")
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
-        # Can't save until a project is loaded for the first time
-        shellActions.saveProjectSnapshotAction.setEnabled(False)
 
         # Menu item: Import Project
         shellActions.importProjectAction = menu.addAction("&Import Project...")
@@ -243,18 +240,37 @@ class IlastikShell( QMainWindow ):
         super(IlastikShell, self).show()
         self.enableWorkflow = (self.projectManager.currentProjectFile is not None)
         self.updateAppletControlStates()
-        self.updateWindowTitle()
+        self.updateShellProjectDisplay()
         if self._sideSplitterSizePolicy == SideSplitterSizePolicy.Manual:
             self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoLargestDrawer )
         else:
             self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoCurrentDrawer )
 
-    def updateWindowTitle(self):
+    def updateShellProjectDisplay(self):
+        """
+        Update the title bar and allowable shell actions based on the state of the currently loaded project.
+        """
+        windowTitle = "ilastik - "
         projectPath = self.projectManager.currentProjectPath
         if projectPath is None:
-            self.setWindowTitle("ilastik - No Project Loaded")
+            windowTitle += "No Project Loaded"
         else:
-            self.setWindowTitle("ilastik - " + projectPath)
+            windowTitle += projectPath
+
+        readOnly = self.projectManager.currentProjectIsReadOnly
+        if readOnly:
+            windowTitle += " [Read Only]"
+
+        self.setWindowTitle(windowTitle)        
+
+        # Enable/Disable menu items
+        projectIsOpen = self.projectManager.currentProjectFile is not None
+        self._shellActions.saveProjectAction.setEnabled(projectIsOpen and not readOnly)
+        self._shellActions.saveProjectSnapshotAction.setEnabled(projectIsOpen)
+        
+        # Currently, the "Save As" feature is implemented 
+        #  as "Rename, then Save", so it can't be used for read-only projects
+        self._shellActions.saveProjectAsAction.setEnabled(projectIsOpen and not readOnly)
 
     def setImageNameListSlot(self, multiSlot):
         assert multiSlot.level == 1
@@ -496,7 +512,7 @@ class IlastikShell( QMainWindow ):
         self.projectManager.closeCurrentProject()
         self.enableWorkflow = False
         self.updateAppletControlStates()
-        self.updateWindowTitle()
+        self.updateShellProjectDisplay()
     
     def onNewProjectActionTriggered(self):
         logger.debug("New Project action triggered")
@@ -512,7 +528,7 @@ class IlastikShell( QMainWindow ):
 
     def createAndLoadNewProject(self, newProjectFilePath):
         newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
-        self.loadProject(newProjectFile, newProjectFilePath)
+        self.loadProject(newProjectFile, newProjectFilePath, False)
     
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
@@ -575,10 +591,7 @@ class IlastikShell( QMainWindow ):
         newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
         self.projectManager.importProject(originalPath, newProjectFile, newProjectFilePath)
 
-        # Now that a project is loaded, the user is allowed to save
-        self._shellActions.saveProjectAction.setEnabled(True)
-        self._shellActions.saveProjectAsAction.setEnabled(True)
-        self._shellActions.saveProjectSnapshotAction.setEnabled(True)
+        self.updateShellProjectDisplay()
 
         # Enable all the applet controls
         self.enableWorkflow = True
@@ -613,7 +626,7 @@ class IlastikShell( QMainWindow ):
     
     def openProjectFile(self, projectFilePath):
         try:
-            hdf5File = self.projectManager.openProjectFile(projectFilePath)
+            hdf5File, readOnly = self.projectManager.openProjectFile(projectFilePath)
         except ProjectManager.ProjectVersionError,e:
             QMessageBox.warning(self, "Old Project", "Could not load old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
         except ProjectManager.FileMissingError:
@@ -622,23 +635,18 @@ class IlastikShell( QMainWindow ):
             logger.error( traceback.format_exc() )
             QMessageBox.warning(self, "Corrupted Project", "Unable to open project file: " + projectFilePath)
         else:
-            self.loadProject(hdf5File, projectFilePath)
+            self.loadProject(hdf5File, projectFilePath, readOnly)
     
-    def loadProject(self, hdf5File, projectFilePath):
+    def loadProject(self, hdf5File, projectFilePath, readOnly):
         """
         Load the data from the given hdf5File (which should already be open).
         """
         try:
-            self.projectManager.loadProject(hdf5File, projectFilePath)
+            self.projectManager.loadProject(hdf5File, projectFilePath, readOnly)
         except Exception, e:
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
         else:
-            # Now that a project is loaded, the user is allowed to save
-            self._shellActions.saveProjectAction.setEnabled(True)
-            self._shellActions.saveProjectAsAction.setEnabled(True)
-            self._shellActions.saveProjectSnapshotAction.setEnabled(True)
-    
-            self.updateWindowTitle()
+            self.updateShellProjectDisplay()
     
             # Enable all the applet controls
             self.enableWorkflow = True
@@ -684,7 +692,7 @@ class IlastikShell( QMainWindow ):
                     self.projectManager.saveProjectAs( newPath )
                 except ProjectManager.SaveError, err:
                     self.thunkEventHandler.post( partial( QMessageBox.warning, self, "Error Attempting Save", str(err) ) ) 
-                self.updateWindowTitle()
+                self.updateShellProjectDisplay()
                 self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.Pop ) )
 
             saveThread = threading.Thread( target=saveAs )

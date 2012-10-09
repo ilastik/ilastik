@@ -53,7 +53,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         # Create a blank project file and load it.
         newProjectFilePath = cls.PROJECT_FILE
         newProjectFile = shell.projectManager.createBlankProjectFile(newProjectFilePath)
-        shell.projectManager.loadProject(newProjectFile, newProjectFilePath)
+        shell.projectManager.loadProject(newProjectFile, newProjectFilePath, False)
         
         # Add a file
         from ilastik.applets.dataSelection.opDataSelection import DatasetInfo

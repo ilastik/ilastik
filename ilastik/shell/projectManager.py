@@ -25,6 +25,7 @@ class ProjectManager(object):
     def __init__(self):
         self.currentProjectFile = None
         self.currentProjectPath = None
+        self.currentProjectIsReadOnly = False
         self._applets = []
 
     def addApplet(self, app):
@@ -46,8 +47,15 @@ class ProjectManager(object):
         if not os.path.exists(projectFilePath):
             raise ProjectManager.FileMissingError()
 
+
         # Open the file as an HDF5 file
-        hdf5File = h5py.File(projectFilePath)
+        try:
+            hdf5File = h5py.File(projectFilePath)
+            readOnly = False
+        except IOError:
+            # Maybe the project is read-only
+            hdf5File = h5py.File(projectFilePath, 'r')
+            readOnly = True
 
         projectVersion = 0.5
         if "ilastikVersion" in hdf5File.keys():
@@ -57,9 +65,9 @@ class ProjectManager(object):
             # Must use importProject() for old project files.
             raise ProjectManager.ProjectVersionError(projectVersion, VersionManager.CurrentIlastikVersion)
         
-        return hdf5File
+        return (hdf5File, readOnly)
 
-    def loadProject(self, hdf5File, projectFilePath):
+    def loadProject(self, hdf5File, projectFilePath, readOnly):
         """
         Load the data from the given hdf5File (which should already be open).
         """
@@ -75,6 +83,7 @@ class ProjectManager(object):
         # Save this as the current project
         self.currentProjectFile = hdf5File
         self.currentProjectPath = projectFilePath
+        self.currentProjectIsReadOnly = readOnly
         try:
             # Applet serializable items are given the whole file (root group)
             for aplt in self._applets:
@@ -84,7 +93,6 @@ class ProjectManager(object):
         except Exception, e:
             logger.error("Project Open Action failed due to the following exception:")
             traceback.print_exc()
-            
             logger.error("Aborting Project Open Action")
             self.closeCurrentProject()
 
@@ -214,7 +222,7 @@ class ProjectManager(object):
             logger.error("Error opening file: " + importedFilePath)
             raise
 
-        self.loadProject(importedFile, importedFilePath)
+        self.loadProject(importedFile, importedFilePath, True)
         
         # Export the current workflow state to the new file.
         # (Somewhat hacky: We temporarily swap the new file object as our current one during the save.)
@@ -228,7 +236,7 @@ class ProjectManager(object):
         self.closeCurrentProject()
 
         # Reload the workflow from the new file
-        self.loadProject(newProjectFile, newProjectFilePath)
+        self.loadProject(newProjectFile, newProjectFilePath, False)
 
     def closeCurrentProject(self):
         self.unloadAllApplets()
@@ -236,6 +244,7 @@ class ProjectManager(object):
             self.currentProjectFile.close()
             self.currentProjectFile = None
             self.currentProjectPath = None
+            self.currentProjectIsReadOnly = False
 
     def unloadAllApplets(self):
         """
