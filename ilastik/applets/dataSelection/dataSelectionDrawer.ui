@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>189</width>
-    <height>103</height>
+    <width>210</width>
+    <height>172</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,8 +18,8 @@
     <rect>
      <x>4</x>
      <y>9</y>
-     <width>181</width>
-     <height>100</height>
+     <width>204</width>
+     <height>150</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -29,7 +29,7 @@
        <string>Add a single volume or image</string>
       </property>
       <property name="text">
-       <string>Add</string>
+       <string>Add File</string>
       </property>
       <property name="icon">
        <iconset>
@@ -49,13 +49,23 @@
        <string>Create a single 3D dataset in your project from a directory of images files</string>
       </property>
       <property name="text">
-       <string>Add Stack</string>
+       <string>Import Stack Directory</string>
       </property>
       <property name="default">
        <bool>true</bool>
       </property>
       <property name="flat">
        <bool>false</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="addStackFilesButton">
+      <property name="toolTip">
+       <string>Select several files to create a single 3D stack</string>
+      </property>
+      <property name="text">
+       <string>Import Stack Files...</string>
       </property>
      </widget>
     </item>

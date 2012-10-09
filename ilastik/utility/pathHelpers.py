@@ -4,11 +4,16 @@ class PathComponents(object):
     """
     Provides a convenient access to path components of a combined external/internal path to a dataset.
     """
-    def __init__(self, totalPath):
+    def __init__(self, totalPath, cwd=None):
         # For hdf5 paths, split into external, extension, and internal paths
         h5Exts = ['.ilp', '.h5', '.hdf5']
         ext = None
         extIndex = -1
+        
+        if cwd is not None:
+            absPath, relPath = getPathVariants( totalPath, cwd )
+            totalPath = absPath
+        
         for x in h5Exts:
             if totalPath.find(x) > extIndex:
                 extIndex = totalPath.find(x)

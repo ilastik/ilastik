@@ -1,5 +1,11 @@
 import inspect
 
+def getRootArgSpec(f):
+    if hasattr( f, '__wrapped__' ):
+        return getRootArgSpec(f.__wrapped__)
+    else:
+        return inspect.getargspec(f)
+
 class bind(object):
     """
     Inspired by boost::bind (C++).
@@ -9,7 +15,7 @@ class bind(object):
     def __init__(self, f, *args):
         self.f = f
         self.bound_args = args
-        expected_args = inspect.getargspec(self.f).args
+        expected_args = getRootArgSpec(f).args
         self.numUnboundArgs = len(expected_args) - len(self.bound_args)
         if len(expected_args) > 0 and expected_args[0] == 'self':
             self.numUnboundArgs -= 1

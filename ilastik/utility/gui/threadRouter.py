@@ -23,6 +23,7 @@ def threadRouted(func):
         assert len(args) > 0
         obj = args[0]
         assert isinstance(obj, QObject)
+        assert hasattr(obj, 'threadRouter'), "Can't use the @threadRouted decorator unless your object has a member called self.threadRouter"
 
         # If we're already in the parent thread, then we can call the function directly
         if obj.threadRouter.ident == threading.current_thread().ident:
@@ -32,7 +33,8 @@ def threadRouted(func):
         #  signal behavior to transfer the call to the parent thread. 
         else:
             obj.threadRouter.routeToParent.emit( partial(func, *args, **kwargs) )
-                        
+                 
+    routed.__wrapped__ = func # Emulate python 3 behavior of @wraps
     return routed
             
 if __name__ == "__main__":

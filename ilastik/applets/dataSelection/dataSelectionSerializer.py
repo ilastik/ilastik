@@ -120,23 +120,32 @@ class DataSelectionSerializer( AppletSerializer ):
         Create a datainfo and append it to our operator.
         """
         with Tracer(traceLogger):
-            projectFileHdf5 = self.mainOperator.ProjectFile.value
-            topGroup = self.getOrCreateGroup(projectFileHdf5, self.topGroupName)
-            localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
 
-            globstring = info.filePath
-            info.location = DatasetInfo.Location.ProjectInternal
-            
-            opWriter = OpStackToH5Writer(graph=self.mainOperator.graph)
-            opWriter.hdf5Group.setValue(localDataGroup)
-            opWriter.hdf5Path.setValue(info.datasetId)
-            opWriter.GlobString.setValue(globstring)
-            
-            success = opWriter.WriteImage.value
-            
-            numDatasets = len(self.mainOperator.Dataset)
-            self.mainOperator.Dataset.resize( numDatasets + 1 )
-            self.mainOperator.Dataset[numDatasets].setValue(info)
+            try:
+                self.progressSignal.emit(0)
+                
+                projectFileHdf5 = self.mainOperator.ProjectFile.value
+                topGroup = self.getOrCreateGroup(projectFileHdf5, self.topGroupName)
+                localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
+    
+                globstring = info.filePath
+                info.location = DatasetInfo.Location.ProjectInternal
+                
+                opWriter = OpStackToH5Writer(graph=self.mainOperator.graph)
+                opWriter.hdf5Group.setValue(localDataGroup)
+                opWriter.hdf5Path.setValue(info.datasetId)
+                opWriter.GlobString.setValue(globstring)
+
+                # Forward progress from the writer directly to our applet                
+                opWriter.progressSignal.subscribe( self.progressSignal.emit )
+                
+                success = opWriter.WriteImage.value
+                
+                numDatasets = len(self.mainOperator.Dataset)
+                self.mainOperator.Dataset.resize( numDatasets + 1 )
+                self.mainOperator.Dataset[numDatasets].setValue(info)
+            finally:
+                self.progressSignal.emit(100)
 
             return success
 
@@ -191,7 +200,7 @@ class DataSelectionSerializer( AppletSerializer ):
     
                 # If the data is supposed to exist outside the project, make sure it really does.
                 if datasetInfo.location == DatasetInfo.Location.FileSystem:
-                    filePath = PathComponents(datasetInfo.filePath).externalPath
+                    filePath = PathComponents( datasetInfo.filePath, os.path.split(projectFilePath)[0] ).externalPath
                     if not os.path.exists(filePath):
                         raise RuntimeError("Could not find external data: " + filePath)
     

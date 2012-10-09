@@ -20,7 +20,7 @@ from ilastik.widgets.labelListModel import LabelListModel
 # ilastik
 from ilastik.utility import bind
 from ilastik.utility.gui import ShortcutManager
-from ilastik.utility.gui import ThunkEventHandler
+from ilastik.utility.gui import ThunkEventHandler, threadRouted
 from ilastik.applets.layerViewer import LayerViewerGui
 
 # Loggers    
@@ -305,6 +305,7 @@ class LabelingGui(LayerViewerGui):
             # If the user is checking a new button
             self.changeInteractionMode( toolId )
 
+    @threadRouted
     @traceLogged(traceLogger)
     def changeInteractionMode( self, toolId ):
         """

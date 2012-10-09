@@ -8,9 +8,14 @@ from functools import partial
 import os
 import copy
 import glob
+import threading
 import h5py
+
 from ilastik.utility import bind
+from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.utility.pathHelpers import getPathVariants
+
+from ilastik.applets.base.applet import ControlCommand
 
 import vigra
 
@@ -72,7 +77,7 @@ class DataSelectionGui(QMainWindow):
     ###########################################
     ###########################################
 
-    def __init__(self, dataSelectionOperator, serializer, guiMode=GuiMode.Normal):
+    def __init__(self, dataSelectionOperator, serializer, guiControlSignal, guiMode=GuiMode.Normal):
         with Tracer(traceLogger):
             super(DataSelectionGui, self).__init__()
     
@@ -80,6 +85,8 @@ class DataSelectionGui(QMainWindow):
             self.mainOperator = dataSelectionOperator
             self.guiMode = guiMode
             self.serializer = serializer
+            self.guiControlSignal = guiControlSignal
+            self.threadRouter = ThreadRouter(self)
             
             self.initAppletDrawerUic()
             self.initCentralUic()
@@ -92,7 +99,7 @@ class DataSelectionGui(QMainWindow):
                     
                     # Update the table row data when this slot has new data
                     # We can't bind in the row here because the row may change in the meantime.
-                    self.mainOperator.Dataset[index].notifyDirty( bind( self.updateTableForSlot ) )
+                    self.mainOperator.Dataset[index].notifyDirty( self.updateTableForSlot )
     
             self.mainOperator.Dataset.notifyInserted( bind( handleNewDataset ) )
         
@@ -118,6 +125,7 @@ class DataSelectionGui(QMainWindow):
             # Set up our handlers
             self.drawer.addFileButton.clicked.connect(self.handleAddFileButtonClicked)
             self.drawer.addStackButton.clicked.connect(self.handleAddStackButtonClicked)
+            self.drawer.addStackFilesButton.clicked.connect(self.handleAddStackFilesButtonClicked)
             self.drawer.removeFileButton.clicked.connect(self.handleRemoveButtonClicked)
     
     def initCentralUic(self):
@@ -169,26 +177,54 @@ class DataSelectionGui(QMainWindow):
     
     def handleAddStackButtonClicked(self):
         """
-        The user clicked the "Add Stack" button.
-        Ask him to choose a file (or several) and add them to both 
-          the GUI table and the top-level operator inputs.
+        The user clicked the "Import Stack Directory" button.
         """
-        with Tracer(traceLogger):
-            # Launch the "Open File" dialog
-            directoryName = QFileDialog.getExistingDirectory(self, "Image Stack Directory", os.path.abspath(__file__))
-    
-            # If the user didn't cancel        
-            if not directoryName.isNull():
-                globString = self.getGlobString( str(directoryName) )                
-                if globString is not None:
-                    info = DatasetInfo()
-                    info.filePath = globString
-                    
-                    # Allow labels by default if this gui isn't being used for batch data.
-                    info.allowLabels = ( self.guiMode == GuiMode.Normal )
+        # Launch the "Open File" dialog
+        directoryName = QFileDialog.getExistingDirectory(self, "Image Stack Directory", os.path.abspath(__file__))
 
-                    # Serializer will update the operator for us, which will propagate to the GUI.
-                    self.serializer.importStackAsLocalDataset( info )
+        # If the user didn't cancel        
+        if not directoryName.isNull():
+            globString = self.getGlobString( str(directoryName) )                
+            if globString is not None:
+                self.importStackFromGlobString( globString )
+
+    def handleAddStackFilesButtonClicked(self):
+        """
+        The user clicked the "Import Stack Files" button.
+        """
+        # Launch the "Open File" dialog
+        extensions = OpDataSelection.SupportedExtensions
+        filter = "Image files " + ' '.join('*.' + x for x in extensions)
+        fileNames = QFileDialog.getOpenFileNames(self, "Select Images", os.path.abspath(__file__), filter)
+
+        # Convert from QtString to python str
+        fileNames = [str(s) for s in fileNames]
+
+        # If the user didn't cancel        
+        if len(fileNames) > 0:
+            # Convert into one big string, which is accepted by the stack loading operator
+            bigString = "//".join( fileNames )
+            self.importStackFromGlobString(bigString)
+
+    def importStackFromGlobString(self, globString):
+        """
+        The word 'glob' is used loosely here.  See the OpStackLoader operator for details.
+        """
+        info = DatasetInfo()
+        info.filePath = globString
+        
+        # Allow labels by default if this gui isn't being used for batch data.
+        info.allowLabels = ( self.guiMode == GuiMode.Normal )
+        
+        def importStack():
+            self.guiControlSignal.emit( ControlCommand.DisableAll )
+            # Serializer will update the operator for us, which will propagate to the GUI.
+            self.serializer.importStackAsLocalDataset( info )
+            self.guiControlSignal.emit( ControlCommand.Pop )
+
+        importThread = threading.Thread( target=importStack )
+        importThread.start()
+
 
     def getGlobString(self, directory):
         exts = vigra.impex.listExtensions().split()
@@ -215,16 +251,24 @@ class DataSelectionGui(QMainWindow):
     
             # Assign values to the new inputs we just allocated.
             # The GUI will be updated by callbacks that are listening to slot changes
-            for i in range(0, len(fileNames)):
+            for i, filePath in enumerate(fileNames):
                 datasetInfo = DatasetInfo()
-                datasetInfo.filePath = fileNames[i]
+                cwd = self.mainOperator.WorkingDirectory.value
+                absPath, relPath = getPathVariants(filePath, cwd)
+
+                # Relative by default, unless the file is in a totally different tree from the working directory.
+                if len(os.path.commonprefix([cwd, absPath])) > 1: 
+                   datasetInfo.filePath = relPath
+                else:
+                   datasetInfo.filePath = absPath
                 
                 # Allow labels by default if this gui isn't being used for batch data.
                 datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
 
                 self.mainOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
 
-    def updateTableForSlot(self, slot):
+    @threadRouted
+    def updateTableForSlot(self, slot, *args):
         """
         Update the given rows using the top-level operator parameters
         """
@@ -303,15 +347,16 @@ class DataSelectionGui(QMainWindow):
         with Tracer(traceLogger):
             # Determine the relative path to this file
             absPath, relPath = getPathVariants(filePath, self.mainOperator.WorkingDirectory.value)
-            # Add a prefix to make it clear that it's a relative path
-            relPath = "<project dir>/" + relPath
+            # Add a prefixes to make the options clear
+            absPath = "Absolute Link: " + absPath
+            relPath = "Relative Link: <project directory>/" + relPath
             
             combo = QComboBox()
             options = {} # combo data -> combo text
             options[ LocationOptions.AbsolutePath ] = absPath
             options[ LocationOptions.RelativePath ] = relPath
             
-            options[ LocationOptions.Project ] = "<project>"
+            options[ LocationOptions.Project ] = "Store in Project File"
                     
             for option, text in sorted(options.items()):
                 # Add to the combo, storing the option as the item data
@@ -393,7 +438,8 @@ class DataSelectionGui(QMainWindow):
             
             if needUpdate:
                 self.updateFilePath(row)
-    
+
+    @threadRouted    
     def updateFilePath(self, index):
         """
         Update the operator's filePath input to match the gui
