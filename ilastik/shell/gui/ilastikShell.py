@@ -7,6 +7,7 @@ from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QBrush, QColor, QAbstractItemView, QProgressBar, QApplication
 from PyQt4 import QtCore
 
+import re
 import h5py
 import traceback
 import os
@@ -42,6 +43,7 @@ class ShellActions(object):
     def __init__(self):
         self.openProjectAction = None
         self.saveProjectAction = None
+        self.saveProjectAsAction = None
         self.saveProjectSnapshotAction = None
         self.importProjectAction = None
         self.QuitAction = None
@@ -193,10 +195,17 @@ class IlastikShell( QMainWindow ):
 
         # Menu item: Save Project
         shellActions.saveProjectAction = menu.addAction("&Save Project...")
-        shellActions.openProjectAction.setShortcuts( QKeySequence.Save )
+        shellActions.saveProjectAction.setShortcuts( QKeySequence.Save )
         shellActions.saveProjectAction.triggered.connect(self.onSaveProjectActionTriggered)
         # Can't save until a project is loaded for the first time
         shellActions.saveProjectAction.setEnabled(False)
+
+        # Menu item: Save Project As
+        shellActions.saveProjectAsAction = menu.addAction("&Save Project As...")
+        shellActions.saveProjectAsAction.setShortcuts( QKeySequence.SaveAs )
+        shellActions.saveProjectAsAction.triggered.connect(self.onSaveProjectAsActionTriggered)
+        # Can't save until a project is loaded for the first time
+        shellActions.saveProjectAsAction.setEnabled(False)
 
         # Menu item: Save Project Snapshot
         shellActions.saveProjectSnapshotAction = menu.addAction("&Take Snapshot...")
@@ -568,6 +577,7 @@ class IlastikShell( QMainWindow ):
 
         # Now that a project is loaded, the user is allowed to save
         self._shellActions.saveProjectAction.setEnabled(True)
+        self._shellActions.saveProjectAsAction.setEnabled(True)
         self._shellActions.saveProjectSnapshotAction.setEnabled(True)
 
         # Enable all the applet controls
@@ -625,6 +635,7 @@ class IlastikShell( QMainWindow ):
         else:
             # Now that a project is loaded, the user is allowed to save
             self._shellActions.saveProjectAction.setEnabled(True)
+            self._shellActions.saveProjectAsAction.setEnabled(True)
             self._shellActions.saveProjectSnapshotAction.setEnabled(True)
     
             self.updateWindowTitle()
@@ -637,11 +648,47 @@ class IlastikShell( QMainWindow ):
         logger.debug("Save Project action triggered")
         def save():
             self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.DisableAll ) )
-            self.projectManager.saveProject()
+            try:
+                self.projectManager.saveProject()
+            except ProjectManager.SaveError, err:
+                self.thunkEventHandler.post( partial( QMessageBox.warning, self, "Error Attempting Save", str(err) ) ) 
             self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.Pop ) )
         
         saveThread = threading.Thread( target=save )
         saveThread.start()
+
+    def onSaveProjectAsActionTriggered(self):
+        logger.debug("SaveAs Project action triggered")
+        
+        # Try to guess a good default project name, e.g. MyProject2.ilp 
+        currentPath, ext = os.path.splitext(self.projectManager.currentProjectPath)
+        m = re.match("(.*)_(\d+)", currentPath)
+        if m:
+            baseName = m.groups()[0]
+            projectNum = int(m.groups()[1]) + 1
+        else:
+            baseName = currentPath
+            projectNum = 2
+        
+        defaultNewPath = "{}_{}{}".format(baseName, projectNum, ext)
+
+        newPath = self.getProjectPathToCreate(defaultNewPath, caption="Select New Project Name")
+        if newPath == self.projectManager.currentProjectPath:
+            # If the new path is the same as the old one, then just do a regular save
+            self.onSaveProjectActionTriggered()
+        elif newPath is not None:
+            def saveAs():
+                self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.DisableAll ) )
+                
+                try:
+                    self.projectManager.saveProjectAs( newPath )
+                except ProjectManager.SaveError, err:
+                    self.thunkEventHandler.post( partial( QMessageBox.warning, self, "Error Attempting Save", str(err) ) ) 
+                self.updateWindowTitle()
+                self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.Pop ) )
+
+            saveThread = threading.Thread( target=saveAs )
+            saveThread.start()
 
     def onSaveProjectSnapshotActionTriggered(self):
         logger.debug("Saving Snapshot")
@@ -650,7 +697,10 @@ class IlastikShell( QMainWindow ):
         
         snapshotPath = self.getProjectPathToCreate(defaultSnapshot, caption="Create Project Snapshot")
         if snapshotPath is not None:
-            self.projectManager.saveProjectSnapshot(snapshotPath)
+            try:
+                self.projectManager.saveProjectSnapshot(snapshotPath)
+            except ProjectManager.SaveError, err:
+                QMessageBox.warning( self, "Error Attempting Save Snapshot", str(err) )
 
     def closeEvent(self, closeEvent):
         """

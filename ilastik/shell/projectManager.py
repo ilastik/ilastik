@@ -18,6 +18,9 @@ class ProjectManager(object):
     
     class FileMissingError(RuntimeError):
         pass
+
+    class SaveError(RuntimeError):
+        pass
     
     def __init__(self):
         self.currentProjectFile = None
@@ -108,9 +111,10 @@ class ProjectManager(object):
                     assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
                     if item.isDirty():
                         item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
-        except:
+        except Exception, err:
             logger.error("Project Save Action failed due to the following exception:")
             traceback.print_exc()
+            raise ProjectManager.SaveError( str(err) )
         finally:
             # Flush any changes we made to disk, but don't close the file.
             self.currentProjectFile.flush()
@@ -146,15 +150,52 @@ class ProjectManager(object):
                             # Use a COPY of the serializer, so the original serializer doesn't forget it's dirty state
                             itemCopy = copy.copy(item)
                             itemCopy.serializeToHdf5(snapshotFile, snapshotPath)
-            except:
+            except Exception, err:
                 logger.error("Project Save Snapshot Action failed due to the following exception:")
                 traceback.print_exc()
+                raise ProjectManager.SaveError(str(err))
             finally:
                 # Flush any changes we made to disk, but don't close the file.
                 snapshotFile.flush()
                 
                 for applet in self._applets:
                     applet.progressSignal.emit(100)
+                    
+    def saveProjectAs(self, newPath):
+        """
+        Implement "Save As"
+        Equivalent to the following (but done without closing the current project file):
+        1) rename Old.ilp -> New.ilp
+        2) touch Old.ilp
+        3) copycontents New.ilp -> Old.ilp
+        4) Save current applet state to current project (New.ilp)
+        
+        Postconditions: - Original project state is saved to a new file with the original name.
+                        - Current project file is still open, but has a new name.
+                        - Current project file has been saved (it is in sync with the applet states)
+        """
+        oldPath = self.currentProjectPath
+        try:
+            os.rename( oldPath, newPath )
+        except OSError, err:
+            msg = 'Could not rename your project file to:\n'
+            msg += newPath + '\n'
+            msg += 'One common cause for this is that the new location is on a different disk.\n'
+            msg += 'Please try "Take Snapshot" instead.'
+            msg += '(Error was: ' + str(err) + ')'
+            logger.error(msg)
+            raise ProjectManager.SaveError(msg)
+
+        # The file has been renamed
+        self.currentProjectPath = newPath
+
+        # Copy the contents of the current project file to a newly-created file (with the old name)        
+        with h5py.File(oldPath, 'w') as oldFile:
+            for key in self.currentProjectFile.keys():
+                oldFile.copy(self.currentProjectFile[key], key)
+
+        # Save the current project state
+        self.saveProject()
 
     def importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
         """
