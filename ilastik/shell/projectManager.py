@@ -105,6 +105,7 @@ class ProjectManager(object):
         logger.debug("Save Project triggered")
         assert self.currentProjectFile != None
         assert self.currentProjectPath != None
+        assert not self.currentProjectIsReadOnly, "Can't save a read-only project"
 
         # Minor GUI nicety: Pre-activate the progress signals for dirty applets so
         #  the progress manager treats these tasks as a group instead of several sequential jobs.
@@ -182,6 +183,12 @@ class ProjectManager(object):
                         - Current project file is still open, but has a new name.
                         - Current project file has been saved (it is in sync with the applet states)
         """
+        # If our project is read-only, we can't be efficient.
+        # We have to take a snapshot, then close our current project and open the snapshot
+        if self.currentProjectIsReadOnly:
+            self.takeSnapshotAndLoadIt(newPath)
+            return
+
         oldPath = self.currentProjectPath
         try:
             os.rename( oldPath, newPath )
@@ -204,6 +211,15 @@ class ProjectManager(object):
 
         # Save the current project state
         self.saveProject()
+        
+    def takeSnapshotAndLoadIt(self, newPath):
+        """
+        This is effectively a "save as", but is slower because the operators are totally re-loaded.
+        All caches, etc. will be lost.
+        """
+        self.saveProjectSnapshot( newPath )
+        hdf5File, readOnly = self.openProjectFile( newPath )
+        self.loadProject(hdf5File, newPath, readOnly)
 
     def importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
         """
@@ -229,6 +245,7 @@ class ProjectManager(object):
         origProjectFile = self.currentProjectFile
         self.currentProjectFile = newProjectFile
         self.currentProjectPath = newProjectFilePath
+        self.currentProjectIsReadOnly = False
         self.saveProject()
         self.currentProjectFile = origProjectFile
 

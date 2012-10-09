@@ -265,12 +265,9 @@ class IlastikShell( QMainWindow ):
 
         # Enable/Disable menu items
         projectIsOpen = self.projectManager.currentProjectFile is not None
-        self._shellActions.saveProjectAction.setEnabled(projectIsOpen and not readOnly)
+        self._shellActions.saveProjectAction.setEnabled(projectIsOpen and not readOnly) # Can't save a read-only project
+        self._shellActions.saveProjectAsAction.setEnabled(projectIsOpen)
         self._shellActions.saveProjectSnapshotAction.setEnabled(projectIsOpen)
-        
-        # Currently, the "Save As" feature is implemented 
-        #  as "Rename, then Save", so it can't be used for read-only projects
-        self._shellActions.saveProjectAsAction.setEnabled(projectIsOpen and not readOnly)
 
     def setImageNameListSlot(self, multiSlot):
         assert multiSlot.level == 1
