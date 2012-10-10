@@ -247,7 +247,7 @@ class FeatureSelectionGui(LayerViewerGui):
             self.featureDlg.selectedFeatureBoolMatrix = reorderedMatrix
         
         # Now open the feature selection dialog
-        self.featureDlg.show()
+        self.featureDlg.exec_()
 
     def onNewFeaturesFromFeatureDlg(self):
         opFeatureSelection = self.operatorForCurrentImage()
