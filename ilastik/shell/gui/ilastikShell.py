@@ -583,7 +583,7 @@ class IlastikShell( QMainWindow ):
         # Select the paths to the ilp to import and the name of the new one we'll create
         importedFilePath = self.getProjectPathToOpen(defaultDirectory)
         if importedFilePath is not None:
-            PreferencesManager().set('shell', 'recently opened', importedFilePath)
+            PreferencesManager().set('shell', 'recently imported', importedFilePath)
             defaultFile, ext = os.path.splitext(importedFilePath)
             defaultFile += "_imported"
             defaultFile += ext
