@@ -363,6 +363,7 @@ class LayerViewerGui(QMainWindow):
                 layer = self.layerstack[index]
                 if hasattr(layer, 'shortcutRegistration'):
                     obsoleteShortcut = layer.shortcutRegistration[2]
+                    obsoleteShortcut.setEnabled(False)
                     ShortcutManager().unregister( obsoleteShortcut )
                 self.layerstack.selectRow(index)
                 self.layerstack.deleteSelected()
