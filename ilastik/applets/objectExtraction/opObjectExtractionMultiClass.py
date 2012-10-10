@@ -123,24 +123,33 @@ class OpClassExtraction(Operator):
     
     def execute(self, slot, subindex, roi, result):
         def extract( labelImageBg, labelImageDiv, regionFeaturesBg, regionFeaturesDiv ):
-            try:
-                prob = [[1,0]] * (len(regionFeaturesBg['Count']) - 1)
-            except:
-                raise
+            # label 0 is not used
+            prob = [[0,0]] + [[1,0]] * len(regionFeaturesBg['Count'] - 1 )
             for labelDiv, volDiv in enumerate(regionFeaturesDiv['Count']):
                 # skip the first label, since label 0 is not used in connected components
                 if labelDiv == 0:
                     continue
                 coordDiv = regionFeaturesDiv['Coord<ArgMaxWeight>'][labelDiv]
                 labelBg = labelImageBg[tuple(coordDiv)]
-                assert labelBg != 0, str(labelDiv) + ', ' + str(coordDiv)+ ', ' + str(labelImageBg.shape) + ', ' +  str(labelDiv) + ', ' + str(labelBg) 
-                #+ ', ' + str(labelImageBg[tuple(regionFeaturesDiv[0]['Coord<Minimum>'][labelDiv])])+ ', ' + str(labelImageBg[tuple(regionFeaturesDiv[0]['Coord<ArgMaxWeight>'][labelDiv])])+ ', ' + str(labelImageBg[tuple(regionFeaturesDiv[0]['Coord<ArgMinWeight>'][labelDiv])])
+                assert labelBg != 0, str(labelDiv) + ', ' + str(coordDiv)+ ', ' + str(labelImageBg.shape) + ', ' +  str(labelDiv) + ', ' + str(labelBg)
+                assert labelBg < len(regionFeaturesBg['Count']), str(labelDiv) + ', ' + str(coordDiv)+ ', ' + str(labelImageBg.shape) + ', ' +  str(labelDiv) + ', ' + str(labelBg)                 
                 assert volDiv > 0
                 volBg = regionFeaturesBg['Count'][labelBg]
                 assert volBg > 0
                 p = volDiv / float(volBg)
+                try:
+                    assert prob[labelBg][0] > 0
+                except:
+                    print str(len(prob))
+                    print str(labelBg)
+                    print str(len(regionFeaturesBg['Count']))
+                    print str(coordDiv)
+                    print str(volBg)
+                    print str(p)
+                    print str(prob[labelBg])
+                    print str(prob[labelBg][1])
                 if prob[labelBg][0] != 1:
-                    print 'updating prob[labelBg] from ' + str(prob[labelBg][1]) + ' to ' + str(prob[labelBg][1]+p)
+                    print 'updating prob[' + str(labelBg) + '] from ' + str(prob[labelBg][1]) + ' to ' + str(prob[labelBg][1]+p)
                     prob[labelBg][1] += p 
                     prob[labelBg][0] = 1-prob[labelBg][1]
                 else:  

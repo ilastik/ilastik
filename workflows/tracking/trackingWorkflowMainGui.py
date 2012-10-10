@@ -12,7 +12,8 @@ if debug_testing:
 
         #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
         #projFilePath = '/home/bkausler/withLabelImageAndRegionCenters.ilp'
-        projFilePath = '/home/mschiegg/hufnagel2012-08-03/375-386_classification.ilp'        
+        #projFilePath = '/home/mschiegg/hufnagel2012-08-03/375-386_classification.ilp'        
+        projFilePath = '/home/mschiegg/hufnagel2012-08-03/segmentation/375-386_tracking.ilp'
         
         #shell.createAndLoadNewProject(projFilePath)
         shell.openProjectFile(projFilePath)        

@@ -40,7 +40,7 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         dest = self.mainOperator.innerOperators[0]._opObjectExtractionBg._mem_h5        
 
         del dest['LabelImage']
-        topGroup.copy('LabelImage', dest)
+        topGroup.copy('LabelImage', dest)            
 
         print "objectExtraction multi class: loading region features"
         if "samples" in topGroup.keys():
