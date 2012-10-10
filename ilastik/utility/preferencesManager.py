@@ -4,6 +4,12 @@ import cPickle as pickle
 from ilastik.utility import Singleton
 
 class PreferencesManager():
+    # TODO: Maybe this should be a wrapper API around QSettings (but with pickle strings)
+    #       Pros:
+    #         - Settings would be stored in standard locations for each platform
+    #       Cons:
+    #         - QT dependency (currently there are no non-gui preferences, but maybe someday)
+    
     __metaclass__ = Singleton
 
     def get(self, group, setting, default=None):
