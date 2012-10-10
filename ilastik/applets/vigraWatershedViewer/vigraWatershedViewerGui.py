@@ -275,12 +275,17 @@ class VigraWatershedViewerGui(LayerViewerGui):
         self.mainOperator.CacheBlockShape.setValue( (width, depth) )
     
     def onInputSelectionsChanged(self):
-        channels = []
-        for i, checkbox in enumerate( self._inputChannelCheckboxes ):
-            if checkbox.isChecked():
-                channels.append(i)
-        
-        self.mainOperator.InputChannelIndexes.setValue( channels )
+        if 0 <= self.imageIndex < len(self.mainOperator.InputImage):
+            inputImageSlot = self.mainOperator.InputImage[self.imageIndex]
+            if inputImageSlot.ready():
+                channelAxis = inputImageSlot.meta.axistags.channelIndex
+                numInputChannels = inputImageSlot.meta.shape[channelAxis]
+            channels = []
+            for i, checkbox in enumerate( self._inputChannelCheckboxes[0:numInputChannels] ):
+                if checkbox.isChecked():
+                    channels.append(i)
+            
+            self.mainOperator.InputChannelIndexes.setValue( channels )
     
     def onUseSeedsToggled(self):
         self.updateSeeds()
@@ -336,8 +341,8 @@ class VigraWatershedViewerGui(LayerViewerGui):
                 channelAxis = inputImageSlot.meta.axistags.channelIndex
                 numChannels = inputImageSlot.meta.shape[channelAxis]
         for i, checkbox in enumerate(self._inputChannelCheckboxes):
-            if i >= numChannels:
-                checkbox.setChecked(False)
+#            if i >= numChannels:
+#                checkbox.setChecked(False)
             checkbox.setVisible( i < numChannels )
 
         # Make sure the correct boxes are checked
