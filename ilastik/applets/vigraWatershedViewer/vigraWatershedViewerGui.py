@@ -1,5 +1,6 @@
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSlot
+from PyQt4.QtGui import QShortcut, QKeySequence
 
 import os
 import time
@@ -8,7 +9,7 @@ import threading
 from functools import partial
 
 from ilastik.applets.layerViewer import LayerViewerGui
-from ilastik.utility import bind
+from ilastik.utility import bind, PreferencesManager
 
 from volumina.slicingtools import index2slice
 
@@ -48,14 +49,16 @@ class VigraWatershedViewerGui(LayerViewerGui):
         self.mainOperator.SeedThresholdValue.setValue( 0.0 )
         self.mainOperator.MinSeedSize.setValue( 0 )
 
-        # Init padding gui updates        
+        # Init padding gui updates
+        blockPadding = PreferencesManager().get( 'vigra watershed viewer', 'block padding', 10)
         self.mainOperator.WatershedPadding.notifyDirty( self.updatePaddingGui )
-        self.mainOperator.WatershedPadding.setValue(10)
+        self.mainOperator.WatershedPadding.setValue(blockPadding)
         self.updatePaddingGui()
         
         # Init block shape gui updates
+        cacheBlockShape = PreferencesManager().get( 'vigra watershed viewer', 'cache block shape', (256, 10))
         self.mainOperator.CacheBlockShape.notifyDirty( self.updateCacheBlockGui )
-        self.mainOperator.CacheBlockShape.setValue( (256, 10) )
+        self.mainOperator.CacheBlockShape.setValue( cacheBlockShape )
         self.updateCacheBlockGui()
 
         # Init seeds gui updates
@@ -113,6 +116,16 @@ class VigraWatershedViewerGui(LayerViewerGui):
     def getAppletDrawerUi(self):
         return self._drawer
     
+    def hideEvent(self, event):
+        """
+        This GUI is being hidden because the user selected another applet or the window is closing.
+        Save all preferences.
+        """
+        with PreferencesManager() as prefsMgr:
+            prefsMgr.set( 'vigra watershed viewer', 'cache block shape', self.mainOperator.CacheBlockShape.value )
+            prefsMgr.set( 'vigra watershed viewer', 'block padding', self.mainOperator.WatershedPadding.value )
+        super( VigraWatershedViewerGui, self ).hideEvent(event)
+    
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
         layers = []
@@ -126,6 +139,11 @@ class VigraWatershedViewerGui(LayerViewerGui):
             outputLayer.name = "Watershed"
             outputLayer.visible = True
             outputLayer.opacity = 0.5
+            outputLayer.shortcutRegistration = (
+                "Watershed Layers",
+                "Show/Hide Watershed",
+                QShortcut( QKeySequence("w"), self.viewerControlWidget(), outputLayer.toggleVisible ),
+                outputLayer )
             layers.append(outputLayer)
         
         # Show the watershed seeds
@@ -135,20 +153,26 @@ class VigraWatershedViewerGui(LayerViewerGui):
             seedLayer.name = "Watershed Seeds"
             seedLayer.visible = True
             seedLayer.opacity = 0.5
+            seedLayer.shortcutRegistration = (
+                "Watershed Layers",
+                "Show/Hide Watershed Seeds",
+                QShortcut( QKeySequence("s"), self.viewerControlWidget(), seedLayer.toggleVisible ),
+                seedLayer )
             layers.append(seedLayer)
-        
-        # Show the summed input 
-        summedSlot = self.mainOperator.SummedInput[ currentImageIndex ]
-        if summedSlot.ready():
-            sumLayer = self.createStandardLayerFromSlot( summedSlot )
-            sumLayer.name = "Summed Input"
-            sumLayer.visible = True
-            sumLayer.opacity = 1.0
-            layers.append(sumLayer)
 
-        # Show selected input channels
         selectedInputImageSlot = self.mainOperator.SelectedInputChannels[ currentImageIndex ]
         if selectedInputImageSlot.ready():
+            # Show the summed input if there's more than one input channel 
+            if len(selectedInputImageSlot) > 1:
+                summedSlot = self.mainOperator.SummedInput[ currentImageIndex ]
+                if summedSlot.ready():
+                    sumLayer = self.createStandardLayerFromSlot( summedSlot )
+                    sumLayer.name = "Summed Input"
+                    sumLayer.visible = True
+                    sumLayer.opacity = 1.0
+                    layers.append(sumLayer)
+
+            # Show selected input channels
             inputChannelIndexes = self.mainOperator.InputChannelIndexes.value
             for channel, slot in enumerate(selectedInputImageSlot):
                 inputLayer = self.createStandardLayerFromSlot( slot )
@@ -164,6 +188,20 @@ class VigraWatershedViewerGui(LayerViewerGui):
             rawLayer.name = "Raw Image"
             rawLayer.visible = True
             rawLayer.opacity = 1.0
+
+            def toggleTopToBottom():
+                index = self.layerstack.layerIndex( rawLayer )
+                self.layerstack.selectRow( index )
+                if index == 0:
+                    self.layerstack.moveSelectedToBottom()
+                else:
+                    self.layerstack.moveSelectedToTop()
+
+            rawLayer.shortcutRegistration = (
+                "Watershed Layers",
+                "Bring Raw Data To Top/Bottom",
+                QShortcut( QKeySequence("i"), self.viewerControlWidget(), toggleTopToBottom),
+                rawLayer )
             layers.append(rawLayer)
 
         return layers
