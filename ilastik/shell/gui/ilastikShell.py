@@ -197,7 +197,7 @@ class IlastikShell( QMainWindow ):
         shellActions.openProjectAction.triggered.connect(self.onOpenProjectActionTriggered)
 
         # Menu item: Save Project
-        shellActions.saveProjectAction = menu.addAction("&Save Project...")
+        shellActions.saveProjectAction = menu.addAction("&Save Project")
         shellActions.saveProjectAction.setShortcuts( QKeySequence.Save )
         shellActions.saveProjectAction.triggered.connect(self.onSaveProjectActionTriggered)
 
