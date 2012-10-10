@@ -162,25 +162,23 @@ class DataSelectionGui(QMainWindow):
         Ask him to choose a file (or several) and add them to both 
           the GUI table and the top-level operator inputs.
         """
-        with Tracer(traceLogger):
-            # Launch the "Open File" dialog
-            extensions = OpDataSelection.SupportedExtensions
-            filter = "Image files " + ' '.join('*.' + x for x in extensions)
-            fileNames = QFileDialog.getOpenFileNames(self, "Select Image", os.path.abspath(__file__), filter)
-            
-            # Convert from QtString to python str
-            fileNames = [str(s) for s in fileNames]
-    
-            # If the user didn't cancel        
-            if len(fileNames) > 0:
-                self.addFileNames(fileNames)
+        # Launch the "Open File" dialog
+        fileNames = self.getImageFileNamesToOpen()
+
+        # If the user didn't cancel        
+        if len(fileNames) > 0:
+            self.addFileNames(fileNames)
     
     def handleAddStackButtonClicked(self):
         """
         The user clicked the "Import Stack Directory" button.
         """
         # Launch the "Open File" dialog
-        directoryName = QFileDialog.getExistingDirectory(self, "Image Stack Directory", os.path.abspath(__file__))
+        defaultPath = os.path.expanduser("~")
+        directoryName = QFileDialog.getExistingDirectory(self,
+                                                         "Image Stack Directory",
+                                                         defaultPath,
+                                                         options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
         # If the user didn't cancel        
         if not directoryName.isNull():
@@ -193,18 +191,34 @@ class DataSelectionGui(QMainWindow):
         The user clicked the "Import Stack Files" button.
         """
         # Launch the "Open File" dialog
-        extensions = OpDataSelection.SupportedExtensions
-        filter = "Image files " + ' '.join('*.' + x for x in extensions)
-        fileNames = QFileDialog.getOpenFileNames(self, "Select Images", os.path.abspath(__file__), filter)
-
-        # Convert from QtString to python str
-        fileNames = [str(s) for s in fileNames]
+        fileNames = self.getImageFileNamesToOpen()
 
         # If the user didn't cancel        
         if len(fileNames) > 0:
             # Convert into one big string, which is accepted by the stack loading operator
             bigString = "//".join( fileNames )
             self.importStackFromGlobString(bigString)
+
+    def getImageFileNamesToOpen(self):
+        """
+        Launch an "Open File" dialog to ask the user for one or more image files.
+        """
+        extensions = OpDataSelection.SupportedExtensions
+        filter = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
+        defaultPath = os.path.expanduser("~")
+        dlg = QFileDialog( self, "Select Images", defaultPath, filter )
+        dlg.setOption( QFileDialog.HideNameFilterDetails, False )
+        dlg.setOption( QFileDialog.DontUseNativeDialog, False )
+        dlg.setViewMode( QFileDialog.Detail )
+        
+        if dlg.exec_():
+            fileNames = dlg.selectedFiles()
+        else:
+            fileNames = []        
+
+        # Convert from QtString to python str
+        fileNames = [str(s) for s in fileNames]
+        return fileNames
 
     def importStackFromGlobString(self, globString):
         """
