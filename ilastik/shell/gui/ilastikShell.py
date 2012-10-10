@@ -758,12 +758,13 @@ class IlastikShell( QMainWindow ):
 
         # Stop the thread that checks for log config changes.
         ilastik.ilastik_logging.stopUpdates()
+
+        # Close the window first, so applets can reimplement hideEvent() and such.
+        self.close()
         
+        # For testing purposes, sometimes this function is called even though we don't want to really quit.
         if quitApp:
             qApp.quit()
-        else:
-            # Just close the window
-            self.close()        
 
     def updateAppletControlStates(self):
         """
