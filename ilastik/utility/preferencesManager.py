@@ -6,16 +6,18 @@ from ilastik.utility import Singleton
 class PreferencesManager():
     __metaclass__ = Singleton
 
-    def get(self, group, setting):
+    def get(self, group, setting, default=None):
         try:
             return self._prefs[group][setting]
         except KeyError:
-            return None
+            return default
 
     def set(self, group, setting, value):
         if group not in self._prefs:
             self._prefs[group] = {}
-        self._prefs[group][setting] = value
+        if setting not in self._prefs[group] or self._prefs[group][setting] != value:
+            self._prefs[group][setting] = value
+            self._dirty = True
         if not self._poolingSave:
             self._save()
 
@@ -24,6 +26,7 @@ class PreferencesManager():
         self._lock = threading.Lock()
         self._prefs = self._load()
         self._poolingSave = False
+        self._dirty = False
 
     def _load(self):
         with self._lock:
@@ -34,9 +37,11 @@ class PreferencesManager():
                     return pickle.load(f)
         
     def _save(self):
-        with self._lock:
-            with open(self._filePath, 'w') as f:
-                pickle.dump(self._prefs, f)
+        if self._dirty:
+            with self._lock:
+                with open(self._filePath, 'w') as f:
+                    pickle.dump(self._prefs, f)
+                self._dirty = False
 
     # We support the 'with' keyword, in which case a sequence of settings can be set,
     # and the preferences file won't be updated until the __exit__ function is called.
