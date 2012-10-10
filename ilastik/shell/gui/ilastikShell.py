@@ -14,7 +14,7 @@ import os
 from functools import partial
 
 from ilastik.versionManager import VersionManager
-from ilastik.utility import bind
+from ilastik.utility import bind, PreferencesManager
 from ilastik.utility.gui import ThunkEvent, ThunkEventHandler, ShortcutManagerDlg
 
 import sys
@@ -573,9 +573,17 @@ class IlastikShell( QMainWindow ):
         if not self.ensureNoCurrentProject():
             return
 
+        # Find the directory of the most recently *imported* project
+        mostRecentImportPath = PreferencesManager().get( 'shell', 'recently imported' )
+        if mostRecentImportPath is not None:
+            defaultDirectory = os.path.split(mostRecentImportPath)[0]
+        else:
+            defaultDirectory = os.path.expanduser('~')
+
         # Select the paths to the ilp to import and the name of the new one we'll create
-        importedFilePath = self.getProjectPathToOpen()
+        importedFilePath = self.getProjectPathToOpen(defaultDirectory)
         if importedFilePath is not None:
+            PreferencesManager().set('shell', 'recently opened', importedFilePath)
             defaultFile, ext = os.path.splitext(importedFilePath)
             defaultFile += "_imported"
             defaultFile += ext
@@ -595,15 +603,12 @@ class IlastikShell( QMainWindow ):
         self.enableWorkflow = True
         self.updateAppletControlStates()
         
-    def getProjectPathToOpen(self):
+    def getProjectPathToOpen(self, defaultDirectory):
         """
         Return the path of the project the user wants to open (or None if he cancels).
         """
-
-        defaultPath = os.path.expanduser("~")
-
         projectFilePath = QFileDialog.getOpenFileName(
-           self, "Open Ilastik Project", defaultPath, "Ilastik project files (*.ilp)",
+           self, "Open Ilastik Project", defaultDirectory, "Ilastik project files (*.ilp)",
            options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
         # If the user canceled, stop now        
@@ -619,8 +624,16 @@ class IlastikShell( QMainWindow ):
         if not self.ensureNoCurrentProject():
             return
 
-        projectFilePath = self.getProjectPathToOpen()
+        # Find the directory of the most recently opened project
+        mostRecentProjectPath = PreferencesManager().get( 'shell', 'recently opened' )
+        if mostRecentProjectPath is not None:
+            defaultDirectory = os.path.split(mostRecentProjectPath)[0]
+        else:
+            defaultDirectory = os.path.expanduser('~')
+
+        projectFilePath = self.getProjectPathToOpen(defaultDirectory)
         if projectFilePath is not None:
+            PreferencesManager().set('shell', 'recently opened', projectFilePath)
             self.openProjectFile(projectFilePath)
     
     def openProjectFile(self, projectFilePath):
