@@ -16,11 +16,14 @@ class PreferencesManager():
         if group not in self._prefs:
             self._prefs[group] = {}
         self._prefs[group][setting] = value
+        if not self._poolingSave:
+            self._save()
 
     def __init__(self):
         self._filePath = os.path.expanduser('~/.ilastik_preferences')
         self._lock = threading.Lock()
         self._prefs = self._load()
+        self._poolingSave = False
 
     def _load(self):
         with self._lock:
@@ -34,11 +37,17 @@ class PreferencesManager():
         with self._lock:
             with open(self._filePath, 'w') as f:
                 pickle.dump(self._prefs, f)
+
+    # We support the 'with' keyword, in which case a sequence of settings can be set,
+    # and the preferences file won't be updated until the __exit__ function is called.
+    # (Otherwise, each call to set() triggers a new save.)
         
     def __enter__(self):
+        self._poolingSave = True
         return self
         
     def __exit__(self, *args):
+        self._poolingSave = False
         self._save()
 
 if __name__ == "__main__":
