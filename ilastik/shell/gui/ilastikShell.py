@@ -537,7 +537,8 @@ class IlastikShell( QMainWindow ):
         fileSelected = False
         while not fileSelected:
             projectFilePath = QFileDialog.getSaveFileName(
-               self, caption, defaultPath, "Ilastik project files (*.ilp)")
+               self, caption, defaultPath, "Ilastik project files (*.ilp)",
+               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
             
             # If the user cancelled, stop now
             if projectFilePath.isNull():
@@ -602,7 +603,8 @@ class IlastikShell( QMainWindow ):
         defaultPath = os.path.expanduser("~")
 
         projectFilePath = QFileDialog.getOpenFileName(
-           self, "Open Ilastik Project", defaultPath, "Ilastik project files (*.ilp)")
+           self, "Open Ilastik Project", defaultPath, "Ilastik project files (*.ilp)",
+           options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
         # If the user canceled, stop now        
         if projectFilePath.isNull():
