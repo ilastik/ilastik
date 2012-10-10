@@ -33,7 +33,7 @@ class FeatureSelectionGui(LayerViewerGui):
 #                   'HessianOfGaussianEigenvalues' ]
 
     # Map feature groups to lists of feature IDs
-    FeatureGroups = [ ( "Color",   [ "GaussianSmoothing" ] ),
+    FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),
                       ( "Edge",    [ "LaplacianOfGaussian", "GaussianGradientMagnitude", "DifferenceOfGaussians" ] ),
                       ( "Texture", [ "StructureTensorEigenvalues", "HessianOfGaussianEigenvalues" ] ) ]
 
