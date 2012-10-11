@@ -186,7 +186,8 @@ class TrackingGui( QWidget ):
         if len(distanceFeatures) == 0:
             self._drawer.comCheckBox.setChecked(True)
             distanceFeatures.append("com")
-
+        splitterHandling = self._drawer.splitterHandlingBox.isChecked()
+        
         self.mainOperator.innerOperators[0].track(
             time_range = range(from_t, to_t + 1),
             x_range = (from_x, to_x + 1),
@@ -199,7 +200,8 @@ class TrackingGui( QWidget ):
             divDist=divDist,
             movDist=movDist,
             distanceFeatures=distanceFeatures,
-            divThreshold=divThreshold
+            divThreshold=divThreshold,
+            splitterHandling=splitterHandling
             )
                 
                 

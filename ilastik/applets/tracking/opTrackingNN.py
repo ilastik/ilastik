@@ -89,7 +89,8 @@ class OpTrackingNN(Operator):
             divDist=30,
             movDist=10,
             divThreshold=0.5,
-            distanceFeatures=["com"]):
+            distanceFeatures=["com"],
+            splitterHandling=True):
         
         distFeatureVector = ctracking.VectorOfString();
         for d in distanceFeatures:
@@ -99,7 +100,7 @@ class OpTrackingNN(Operator):
         if empty_frame:
             print 'cannot track frames with 0 objects, abort.'
             return
-        tracker = ctracking.NNTracking(float(divDist), float(movDist), distFeatureVector, float(divThreshold))
+        tracker = ctracking.NNTracking(float(divDist), float(movDist), distFeatureVector, float(divThreshold), splitterHandling)
         
         self.events = tracker(ts)
         label2color = []
