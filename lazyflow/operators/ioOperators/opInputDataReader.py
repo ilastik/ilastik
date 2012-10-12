@@ -103,8 +103,8 @@ class OpInputDataReader(Operator):
                 h5Reader.Hdf5File.setValue(h5File)
 
                 # Can't set the internal path yet if we don't have one
-                if internalPath != '':
-                    h5Reader.InternalPath.setValue(internalPath)
+                assert internalPath != '', "When using hdf5, you must append the hdf5 internal path to the data set to your filename, e.g. myfile.h5/volume/data"
+                h5Reader.InternalPath.setValue(internalPath)
 
                 self.internalOperator = h5Reader
                 self.internalOutput = h5Reader.OutputImage
