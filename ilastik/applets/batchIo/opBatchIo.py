@@ -79,7 +79,7 @@ class OpBatchIo(Operator):
             outputPath = inputPathComponents.externalDirectory
         else:
             outputPath = self.ExportDirectory.value
-        outputPath += '/' + inputPathComponents.filenameBase + self.Suffix.value + ext 
+        outputPath = os.path.join(outputPath, inputPathComponents.filenameBase + self.Suffix.value + ext) 
         
         # Set up the path for H5 export
         if formatId == ExportFormat.H5:
