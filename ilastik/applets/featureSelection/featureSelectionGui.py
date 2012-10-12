@@ -33,7 +33,7 @@ class FeatureSelectionGui(LayerViewerGui):
 #                   'HessianOfGaussianEigenvalues' ]
 
     # Map feature groups to lists of feature IDs
-    FeatureGroups = [ ( "Color",   [ "GaussianSmoothing" ] ),
+    FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),
                       ( "Edge",    [ "LaplacianOfGaussian", "GaussianGradientMagnitude", "DifferenceOfGaussians" ] ),
                       ( "Texture", [ "StructureTensorEigenvalues", "HessianOfGaussianEigenvalues" ] ),
                       ( "Time",   [ "BlurredTempDifference" ] ) ]
@@ -249,7 +249,7 @@ class FeatureSelectionGui(LayerViewerGui):
             self.featureDlg.selectedFeatureBoolMatrix = reorderedMatrix
         
         # Now open the feature selection dialog
-        self.featureDlg.show()
+        self.featureDlg.exec_()
 
     def onNewFeaturesFromFeatureDlg(self):
         opFeatureSelection = self.operatorForCurrentImage()

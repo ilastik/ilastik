@@ -28,8 +28,8 @@ class HeadlessShell(object):
 
     def openProjectPath(self, projectFilePath):
         try:
-            hdf5File = self.projectManager.openProjectFile(projectFilePath)
-            self.projectManager.loadProject(hdf5File, projectFilePath)
+            hdf5File, readOnly = self.projectManager.openProjectFile(projectFilePath)
+            self.projectManager.loadProject(hdf5File, projectFilePath, readOnly)
         except ProjectManager.ProjectVersionError:
             # Couldn't open project.  Try importing it.
             oldProjectFilePath = projectFilePath

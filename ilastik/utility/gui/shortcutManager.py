@@ -5,7 +5,7 @@ import collections
 from PyQt4.QtGui import QDialog, QHBoxLayout, QVBoxLayout, QGroupBox, QGridLayout, \
                         QLabel, QLineEdit, QPushButton, QSpacerItem, QKeySequence
 
-from ilastik.utility import Singleton
+from ilastik.utility import Singleton, PreferencesManager
 
 def _has_attribute( cls, attr ):
     return any(attr in B.__dict__ for B in cls.__mro__)
@@ -45,6 +45,8 @@ class ShortcutManager(object):
     If an object is provided when the shortcut is registered, the object's tooltip is updated to show the shortcut keys.
     """
     __metaclass__ = Singleton
+    
+    PreferencesGroup = "Keyboard Shortcuts"
 
     @property
     def shortcuts(self):
@@ -68,6 +70,13 @@ class ShortcutManager(object):
         if not group in self._shortcuts:
             self._shortcuts[group] = collections.OrderedDict()
         self._shortcuts[group][shortcut] = (description, objectWithToolTip)
+        
+        # If we've got user preferences for this shortcut, apply them now.
+        groupKeys = PreferencesManager().get( self.PreferencesGroup, group )
+        if groupKeys is not None and description in groupKeys:
+            keyseq = groupKeys[description]
+            shortcut.setKey( keyseq )
+        
         self.updateToolTip( shortcut )
 
     def unregister(self, shortcut):
@@ -101,7 +110,7 @@ class ShortcutManager(object):
                 (description, objectWithToolTip) = self._shortcuts[group][shortcut]
                 break
             
-        assert description is not None, "Coundn't find the shortcut you're trying to update."
+        assert description is not None, "Couldn't find the shortcut you're trying to update."
         if objectWithToolTip is None:
             return
 
@@ -117,6 +126,15 @@ class ShortcutManager(object):
             newText = re.sub("\[.*\]", newKeyText, oldText)
         
         objectWithToolTip.setToolTip( newText )
+    
+    def storeToPreferences(self):
+        # Auto-save after we're done setting prefs
+        with PreferencesManager() as prefsMgr:
+            for group, shortcutDict in self.shortcuts.items():
+                groupKeys = {}
+                for shortcut, (desc, obj) in shortcutDict.items():
+                    groupKeys[desc] = shortcut.key() # QKeySequence is pickle-able
+                prefsMgr.set( self.PreferencesGroup, group, groupKeys )
 
 class ShortcutManagerDlg(QDialog):
     def __init__(self, *args, **kwargs):
@@ -172,6 +190,9 @@ class ShortcutManagerDlg(QDialog):
                 
                 # Make sure the tooltips get updated.
                 mgr.updateToolTip(shortcut)
+                
+            mgr.storeToPreferences()
+                
 
 if __name__ == "__main__":
     from PyQt4.QtGui import QShortcut, QKeySequence
@@ -200,26 +221,62 @@ if __name__ == "__main__":
     def trigger(name):
         print "Shortcut triggered:",name
     
+    def registerShortcuts(mgr):
+        scA = QShortcut( QKeySequence("1"), mainWindow, member=partial(trigger, "A") )
+        mgr.register( "Group 1",
+                      "Shortcut 1A",
+                      scA,
+                      None )        
+    
+        scB = QShortcut( QKeySequence("2"), mainWindow, member=partial(trigger, "B") )
+        mgr.register( "Group 1",
+                      "Shortcut 1B",
+                      scB,
+                      None )        
+    
+        scC = QShortcut( QKeySequence("3"), mainWindow, member=partial(trigger, "C") )
+        mgr.register( "Group 2",
+                      "Shortcut 2C",
+                      scC,
+                      None )
+
     mgr = ShortcutManager()
+    registerShortcuts(mgr)
 
-    scA = QShortcut( QKeySequence("1"), mainWindow, member=partial(trigger, "A") )
-    mgr.register( "Group 1",
-                  "Shortcut 1A",
-                  scA,
-                  None )        
-
-    scB = QShortcut( QKeySequence("2"), mainWindow, member=partial(trigger, "B") )
-    mgr.register( "Group 1",
-                  "Shortcut 1B",
-                  scB,
-                  None )        
-
-    scC = QShortcut( QKeySequence("3"), mainWindow, member=partial(trigger, "C") )
-    mgr.register( "Group 2",
-                  "Shortcut 2C",
-                  scC,
-                  None )
     app.exec_()
+    
+    
+    # Simulate a new session by making a new instance of the manager
+    ShortcutManager.instance = None # Force the singleton to reset
+    mgr2 = ShortcutManager()
+    assert id(mgr) != id(mgr2), "Why didn't the singleton reset?"
+
+    registerShortcuts(mgr2)
+
+    # Check to make sure the shortcuts loaded from disc match those from the first "session"
+    
+    for group, shortcutDict in mgr.shortcuts.items():
+        assert group in mgr2.shortcuts
+
+    descriptionToKeys_1 = {}
+    for group, shortcutDict in mgr.shortcuts.items():
+        for shortcut, (desc, obj) in shortcutDict.items():
+            descriptionToKeys_1[desc] = shortcut.key().toString()
+
+    descriptionToKeys_2 = {}
+    for group, shortcutDict in mgr2.shortcuts.items():
+        for shortcut, (desc, obj) in shortcutDict.items():
+            descriptionToKeys_2[desc] = shortcut.key().toString()
+    
+    assert descriptionToKeys_1 == descriptionToKeys_2
+    print descriptionToKeys_1
+    print descriptionToKeys_2
+
+
+
+
+
+
 
 
 

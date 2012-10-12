@@ -11,7 +11,7 @@ import glob
 import threading
 import h5py
 
-from ilastik.utility import bind
+from ilastik.utility import bind, PreferencesManager
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.utility.pathHelpers import getPathVariants
 
@@ -162,28 +162,41 @@ class DataSelectionGui(QMainWindow):
         Ask him to choose a file (or several) and add them to both 
           the GUI table and the top-level operator inputs.
         """
-        with Tracer(traceLogger):
-            # Launch the "Open File" dialog
-            extensions = OpDataSelection.SupportedExtensions
-            filter = "Image files " + ' '.join('*.' + x for x in extensions)
-            fileNames = QFileDialog.getOpenFileNames(self, "Select Image", os.path.abspath(__file__), filter)
-            
-            # Convert from QtString to python str
-            fileNames = [str(s) for s in fileNames]
-    
-            # If the user didn't cancel        
-            if len(fileNames) > 0:
-                self.addFileNames(fileNames)
+        # Find the directory of the most recently opened image file
+        mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
+        if mostRecentImageFile is not None:
+            defaultDirectory = os.path.split(mostRecentImageFile)[0]
+        else:
+            defaultDirectory = os.path.expanduser('~')
+
+        # Launch the "Open File" dialog
+        fileNames = self.getImageFileNamesToOpen(defaultDirectory)
+
+        # If the user didn't cancel        
+        if len(fileNames) > 0:
+            PreferencesManager().set('DataSelection', 'recent image', fileNames[0])
+            self.addFileNames(fileNames)
     
     def handleAddStackButtonClicked(self):
         """
         The user clicked the "Import Stack Directory" button.
         """
+        # Find the directory of the most recently opened image file
+        mostRecentStackDirectory = PreferencesManager().get( 'DataSelection', 'recent stack directory' )
+        if mostRecentStackDirectory is not None:
+            defaultDirectory = os.path.split(mostRecentStackDirectory)[0]
+        else:
+            defaultDirectory = os.path.expanduser('~')
+
         # Launch the "Open File" dialog
-        directoryName = QFileDialog.getExistingDirectory(self, "Image Stack Directory", os.path.abspath(__file__))
+        directoryName = QFileDialog.getExistingDirectory(self,
+                                                         "Image Stack Directory",
+                                                         defaultDirectory,
+                                                         options=QFileDialog.Options(QFileDialog.DontUseNativeDialog | QFileDialog.ShowDirsOnly))
 
         # If the user didn't cancel        
         if not directoryName.isNull():
+            PreferencesManager().set('DataSelection', 'recent stack directory', str(directoryName))
             globString = self.getGlobString( str(directoryName) )                
             if globString is not None:
                 self.importStackFromGlobString( globString )
@@ -192,19 +205,43 @@ class DataSelectionGui(QMainWindow):
         """
         The user clicked the "Import Stack Files" button.
         """
-        # Launch the "Open File" dialog
-        extensions = OpDataSelection.SupportedExtensions
-        filter = "Image files " + ' '.join('*.' + x for x in extensions)
-        fileNames = QFileDialog.getOpenFileNames(self, "Select Images", os.path.abspath(__file__), filter)
+        # Find the directory of the most recently opened image file
+        mostRecentStackImageFile = PreferencesManager().get( 'DataSelection', 'recent stack image' )
+        if mostRecentStackImageFile is not None:
+            defaultDirectory = os.path.split(mostRecentStackImageFile)[0]
+        else:
+            defaultDirectory = os.path.expanduser('~')
 
-        # Convert from QtString to python str
-        fileNames = [str(s) for s in fileNames]
+        # Launch the "Open File" dialog
+        fileNames = self.getImageFileNamesToOpen(defaultDirectory)
 
         # If the user didn't cancel        
         if len(fileNames) > 0:
+            PreferencesManager().set('DataSelection', 'recent stack image', fileNames[0])
             # Convert into one big string, which is accepted by the stack loading operator
             bigString = "//".join( fileNames )
             self.importStackFromGlobString(bigString)
+
+    def getImageFileNamesToOpen(self, defaultDirectory):
+        """
+        Launch an "Open File" dialog to ask the user for one or more image files.
+        """
+        extensions = OpDataSelection.SupportedExtensions
+        filter = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
+        dlg = QFileDialog( self, "Select Images", defaultDirectory, filter )
+        dlg.setOption( QFileDialog.HideNameFilterDetails, False )
+        dlg.setOption( QFileDialog.DontUseNativeDialog, False )
+        dlg.setViewMode( QFileDialog.Detail )
+        dlg.setFileMode( QFileDialog.ExistingFiles )
+        
+        if dlg.exec_():
+            fileNames = dlg.selectedFiles()
+        else:
+            fileNames = []        
+
+        # Convert from QtString to python str
+        fileNames = [str(s) for s in fileNames]
+        return fileNames
 
     def importStackFromGlobString(self, globString):
         """

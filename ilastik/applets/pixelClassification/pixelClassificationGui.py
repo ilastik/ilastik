@@ -8,7 +8,7 @@ from functools import partial
 # Third-party
 import numpy
 from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence
+from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget
 
 # HCI
 from lazyflow.tracer import Tracer, traceLogged
@@ -52,7 +52,7 @@ class PixelClassificationGui(LabelingGui):
     ###########################################
 
     @traceLogged(traceLogger)
-    def __init__(self, pipeline, shellRequestSignal, predictionSerializer ):
+    def __init__(self, pipeline, shellRequestSignal, guiControlSignal, predictionSerializer ):
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = pipeline.LabelInputs
@@ -70,6 +70,7 @@ class PixelClassificationGui(LabelingGui):
         
         self.pipeline = pipeline
         self.shellRequestSignal = shellRequestSignal
+        self.guiControlSignal = guiControlSignal
         self.predictionSerializer = predictionSerializer
         
         self.interactiveModeActive = False
@@ -368,23 +369,52 @@ class PixelClassificationGui(LabelingGui):
             originalButtonText = "Save Predictions Now"
             self.labelingDrawerUi.savePredictionsButton.setText("Cancel Save")
 
+            @traceLogged(traceLogger)
             def saveThreadFunc():
-                with Tracer(traceLogger):
-                    # First, do a regular save.
-                    # During a regular save, predictions are not saved to the project file.
-                    # (It takes too much time if the user only needs the classifier.)
-                    self.shellRequestSignal.emit( ShellRequest.RequestSave )
-                    
-                    # Enable prediction storage and ask the shell to save the project again.
-                    # (This way the second save will occupy the whole progress bar.)
-                    self.predictionSerializer.predictionStorageEnabled = True
-                    self.shellRequestSignal.emit( ShellRequest.RequestSave )
-                    self.predictionSerializer.predictionStorageEnabled = False
-    
-                    # Restore original states (must use events for UI calls)
-                    self.thunkEventHandler.post(self.labelingDrawerUi.savePredictionsButton.setText, originalButtonText)
-                    self.pipeline.FreezePredictions.setValue(predictionsFrozen)
-                    self._currentlySavingPredictions = False
+                # Disable all other applets                    
+                self.guiControlSignal.emit( ControlCommand.DisableUpstream )
+                self.guiControlSignal.emit( ControlCommand.DisableDownstream )
+
+                def disableAllInWidgetButName(widget, exceptName):
+                    for child in widget.children():
+                        if child.findChild( QPushButton, exceptName) is None:
+                            child.setEnabled(False)
+                        else:
+                            disableAllInWidgetButName(child, exceptName)
+                        
+                # Disable everything in our drawer *except* the cancel button
+                disableAllInWidgetButName(self.labelingDrawerUi, "savePredictionsButton")
+
+                # But allow the user to cancel the save
+                self.labelingDrawerUi.savePredictionsButton.setEnabled(True)
+
+                # First, do a regular save.
+                # During a regular save, predictions are not saved to the project file.
+                # (It takes too much time if the user only needs the classifier.)
+                self.shellRequestSignal.emit( ShellRequest.RequestSave )
+                
+                # Enable prediction storage and ask the shell to save the project again.
+                # (This way the second save will occupy the whole progress bar.)
+                self.predictionSerializer.predictionStorageEnabled = True
+                self.shellRequestSignal.emit( ShellRequest.RequestSave )
+                self.predictionSerializer.predictionStorageEnabled = False
+
+                # Restore original states (must use events for UI calls)
+                self.thunkEventHandler.post(self.labelingDrawerUi.savePredictionsButton.setText, originalButtonText)
+                self.pipeline.FreezePredictions.setValue(predictionsFrozen)
+                self._currentlySavingPredictions = False
+
+                # Re-enable our controls
+                def enableAll(widget):
+                    for child in widget.children():
+                        if isinstance( child, QWidget ):
+                            child.setEnabled(True)
+                            enableAll(child)
+                enableAll(self.labelingDrawerUi)
+
+                # Re-enable all other applets
+                self.guiControlSignal.emit( ControlCommand.Pop )
+                self.guiControlSignal.emit( ControlCommand.Pop )
 
             saveThread = threading.Thread(target=saveThreadFunc)
             saveThread.start()

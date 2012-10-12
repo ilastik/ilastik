@@ -18,7 +18,7 @@ from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
 
 # ilastik
-from ilastik.utility import bind
+from ilastik.utility import bind, PreferencesManager
 from ilastik.utility.gui import ShortcutManager
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
 from ilastik.applets.layerViewer import LayerViewerGui
@@ -233,8 +233,9 @@ class LabelingGui(LayerViewerGui):
             _labelControlUi.brushSizeComboBox.addItem( str(size) + " " + name )
         
         _labelControlUi.brushSizeComboBox.currentIndexChanged.connect(self.onBrushSizeChange)
-        self.paintBrushSizeIndex = 0
-        self.eraserSizeIndex = 4
+
+        self.paintBrushSizeIndex = PreferencesManager().get( 'labeling', 'paint brush size', default=0 )
+        self.eraserSizeIndex = PreferencesManager().get( 'labeling', 'eraser brush size', default=4 )
         
     def __initShortcuts(self):
         mgr = ShortcutManager()
@@ -291,6 +292,16 @@ class LabelingGui(LayerViewerGui):
             shortcut = self._labelShortcuts[i]
             description = "Select " + self._labelControlUi.labelListModel[i].name
             ShortcutManager().setDescription(shortcut, description)
+
+    def hideEvent(self, event):
+        """
+        The user has selected another applet or is closing the whole app.
+        Save all preferences.
+        """
+        with PreferencesManager() as prefsMgr:
+            prefsMgr.set('labeling', 'paint brush size', self.paintBrushSizeIndex)
+            prefsMgr.set('labeling', 'eraser brush size', self.eraserSizeIndex)
+        super(LabelingGui, self).hideEvent(event)
 
     @traceLogged(traceLogger)
     def handleToolButtonClicked(self, checked, toolId):
