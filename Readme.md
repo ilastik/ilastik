@@ -21,7 +21,7 @@ Python Dependencies
 * PyQt4
 * argparse
 * numpy
-* h5py 2.1 (not yet released)
+* h5py 2.1
 * psutil
 * greenlet
 * blist
@@ -39,8 +39,6 @@ Development Dependencies
 ========================
 * CMake
 * python-distribute
-* mercurial (for building h5py 2.1-beta)
-* cython (also for building h5py 2.1-beta)
 
 Testing Dependencies
 ====================
