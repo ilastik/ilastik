@@ -33,7 +33,6 @@ Ilastik Sub-project Dependencies
 ================================
 * lazyflow (with drtile)
 * volumina
-* widgets
 
 Development Dependencies
 ========================
