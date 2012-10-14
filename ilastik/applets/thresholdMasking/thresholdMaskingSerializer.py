@@ -29,12 +29,15 @@ class ThresholdMaskingSerializer(AppletSerializer):
         self._dirty = False
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
-        minValue = topGroup['MinValue'][()]
-        maxValue = topGroup['MaxValue'][()]
-        
-        self.mainOperator.MinValue.setValue( minValue )
-        self.mainOperator.MaxValue.setValue( maxValue )
-        self._dirty = False
+        try:
+            minValue = topGroup['MinValue'][()]
+            maxValue = topGroup['MaxValue'][()]
+        except KeyError:
+            return
+        else:
+            self.mainOperator.MinValue.setValue( minValue )
+            self.mainOperator.MaxValue.setValue( maxValue )
+            self._dirty = False
 
     def isDirty(self):
         return self._dirty
