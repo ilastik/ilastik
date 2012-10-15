@@ -1,3 +1,4 @@
+import sys
 import nose
 import threading
 import platform
@@ -8,7 +9,7 @@ from ilastik.shell.gui.startShellGui import launchShell
 from ilastik.utility.gui.threadRouter import ThreadRouter
 from tests.helpers.mainThreadHelpers import wait_for_main_func, run_in_main_thread
 
-from PyQt4.QtCore import Qt, QEvent, QPoint, QTimer, Qt, QCoreApplication
+from PyQt4.QtCore import Qt, QEvent, QPoint, QTimer
 from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
 
 @atexit.register
