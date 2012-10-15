@@ -103,9 +103,9 @@ class TestPixelClassificationHeadless(unittest.TestCase):
     def test(self):
         args = "ilastik_headless"
         args += " --project=" + self.PROJECT_FILE
-        args += " " + self.SAMPLE_DATA
         args += " --batch_output_dataset_name=/volume/pred_volume"
         args += " --sys_tmp_dir=/tmp"
+        args += " " + self.SAMPLE_DATA
 
         argv = args.split()
         return_code = pcMainHeadless.main(argv)
