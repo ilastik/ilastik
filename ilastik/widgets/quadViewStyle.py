@@ -631,9 +631,9 @@ class VolumeEditorStyleTest(QWidget):
                 view.setVisible(True) 
                 
         
-
-app = QApplication(sys.argv)
-ex = VolumeEditorStyleTest()
-ex.show()
-ex.raise_()
-sys.exit(app.exec_())
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    ex = VolumeEditorStyleTest()
+    ex.show()
+    ex.raise_()
+    sys.exit(app.exec_())
