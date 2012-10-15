@@ -224,9 +224,9 @@ class OpTrackingNN(Operator):
                     tr.set_feature_value('com', i, float(v))
                 tr.add_feature_array("divProb", 1)
                 # idx+1 because rc and ct start from 1, divProbs starts from 0
-                tr.set_feature_value("divProb", 0, divProbs[t][idx+1][1])                
+                tr.set_feature_value("divProb", 0, float(divProbs[t][idx+1][1]))                
                 tr.add_feature_array("count", 1)
-                tr.set_feature_value("count", 0, size)                
+                tr.set_feature_value("count", 0, float(size))                
                 ts.add(tr)            
             print "at timestep ", t, count, "traxels passed filter"
             if count == 0:
