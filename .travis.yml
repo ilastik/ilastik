@@ -32,7 +32,7 @@ before_script:
    - "sh -e /etc/init.d/xvfb start"
    - "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH"
    - "export PYTHONPATH=/tmp/volumina:/tmp/widgets:/tmp/lazyflow:$PYTHONPATH"
-   - echo 'for f in `find . -iname "*test*.py"`; do echo "Running $f"; nosetests --nologcapture $f; RETVAL=$?; [ $RETVAL -ne 0 ] && exit $RETVAL; done' > ~/testeach.sh
+   - echo 'for f in `find tests -iname "*test*.py"`; do echo "Running $f"; python tests/nose_single.py --nologcapture $f; RETVAL=$?; [ $RETVAL -ne 0 ] && exit $RETVAL; done' > ~/testeach.sh
    - chmod +x ~/testeach.sh
 script:
    - ~/testeach.sh

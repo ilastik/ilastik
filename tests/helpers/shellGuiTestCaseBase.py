@@ -6,38 +6,33 @@ import atexit
 from functools import partial
 from ilastik.shell.gui.startShellGui import launchShell
 from ilastik.utility.gui.threadRouter import ThreadRouter
+from tests.helpers.mainThreadHelpers import wait_for_main_func, run_in_main_thread
 
-from PyQt4.QtCore import Qt, QEvent, QPoint, QTimer, Qt
+from PyQt4.QtCore import Qt, QEvent, QPoint, QTimer, Qt, QCoreApplication
 from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
+
+@atexit.register
+def quitApp():
+    qApp.quit()
 
 def run_shell_nosetest(filename):
     """
-    Special helper function for starting shell GUI tests from main (NOT from nosetests).
-    On linux, simply runs the test like any other nose test.
-    On Mac, starts nose in a separate thread and executes the GUI in the main thread.
+    Launch nosetests from a separate thread, and pause this thread while the test runs the GUI in it.
     """
+    # This only works from the main thread.
+    assert threading.current_thread() == threading.enumerate()[0]
+
     def run_nose():
         import sys
         sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
         sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
         nose.run(defaultTest=filename)
 
-    # On darwin, we must run nose in a separate thread and let the gui run in the main thread.
-    # (This means we can't run this test using the nose command line tool.)
-    if "Darwin" in platform.platform():
-        noseThread = threading.Thread(target=run_nose)
-        noseThread.start()
+    noseThread = threading.Thread(target=run_nose)
+    noseThread.start()
 
-        from tests.helpers.mainThreadHelpers import wait_for_main_func
-        wait_for_main_func()
-        noseThread.join()
-    else:
-        # Linux: Run this test like usual (as if we're running from the command line)
-        run_nose()
-
-@atexit.register
-def quitApp():
-    qApp.quit()
+    wait_for_main_func()
+    noseThread.join()
 
 class ShellGuiTestCaseBase(object):
     """
@@ -48,8 +43,6 @@ class ShellGuiTestCaseBase(object):
     - Subclasses must specify the workflow they are testing by overriding the workflowClass() classmethod. 
     - Subclasses may access the shell and workflow via the shell and workflow class members.
     """
-    
-    guiThread = None
     mainThreadEvent = threading.Event()
 
     @classmethod
@@ -68,6 +61,7 @@ class ShellGuiTestCaseBase(object):
         def createApp():
             # Create the application in the current thread.
             # The current thread is now the application main thread.
+            assert threading.current_thread() == threading.enumerate()[0], "Error: app must be created in the main thread."
             ShellGuiTestCaseBase.app = QApplication([])
             app = ShellGuiTestCaseBase.app
             
@@ -83,32 +77,17 @@ class ShellGuiTestCaseBase(object):
             # Start the event loop
             app.exec_()
         
-        # If nose was run from the main thread, start the gui in a separate thread.
+        # If nose was run from the main thread, exit now.
         # If nose is running in a non-main thread, we assume the main thread is available to launch the gui.
-        # This is a workaround for Mac OS, in which the gui MUST be started from the main thread 
-        #  (which means we've got to run nose from a separate thread.)
         if threading.current_thread() == threading.enumerate()[0]:
-            if "Darwin" in platform.platform():
-                # On Mac, we can't run the gui in a non-main thread.
-                raise nose.SkipTest
-            else:
-                    
-                if ShellGuiTestCaseBase.guiThread is None:
-                    # QT gives a lot of errors if you try to make more than one app, 
-                    #  even if the apps are created sequentially in the same thread.
-                    # We'll just create a single app and re-use it for subsequent tests.
-                    ShellGuiTestCaseBase.guiThread = threading.Thread( target=createApp )
-                    ShellGuiTestCaseBase.guiThread.daemon = True
-                    ShellGuiTestCaseBase.guiThread.start()
-                    appCreationEvent.wait()
-                    assert not ShellGuiTestCaseBase.app.thread().isFinished()
+            # Don't run GUI tests in the main thread.
+            sys.stderr.write( "NOSE WAS RUN FROM THE MAIN THREAD.  SKIPPING GUI TEST\n" )
+            raise nose.SkipTest
         else:
-                # We're currently running in a non-main thread.
-                # Start the gui IN THE MAIN THREAD.  Workflow is provided by our subclass.
-                from tests.helpers.mainThreadHelpers import run_in_main_thread
-                run_in_main_thread( createApp )
-                ShellGuiTestCaseBase.guiThread = None
-                appCreationEvent.wait()
+            # We're currently running in a non-main thread.
+            # Start the gui IN THE MAIN THREAD.  Workflow is provided by our subclass.
+            run_in_main_thread( createApp )
+            appCreationEvent.wait()
 
         # Use the thread router to launch the shell in the app thread
         ShellGuiTestCaseBase.threadRouter.routeToParent.emit( partial(launchShell, cls.workflowClass(), initTest ) )
