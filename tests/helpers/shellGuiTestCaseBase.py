@@ -106,7 +106,7 @@ class ShellGuiTestCaseBase(object):
                 # We're currently running in a non-main thread.
                 # Start the gui IN THE MAIN THREAD.  Workflow is provided by our subclass.
                 from tests.helpers.mainThreadHelpers import run_in_main_thread
-                run_in_main_thread( createApp() )
+                run_in_main_thread( createApp )
                 ShellGuiTestCaseBase.guiThread = None
                 appCreationEvent.wait()
 
