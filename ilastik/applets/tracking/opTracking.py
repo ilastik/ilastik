@@ -28,8 +28,10 @@ class OpTracking(Operator):
 
     LabelImage = InputSlot()
     ObjectFeatures = InputSlot( stype=Opaque, rtype=List )
-
+    ClassMapping = InputSlot(stype=Opaque, rtype=List)
+    
     Output = OutputSlot()
+        
 
     def __init__( self, parent = None, graph = None ):
         super(OpTracking, self).__init__(parent=parent,graph=graph)

@@ -40,10 +40,13 @@ class TrackingWorkflow( Workflow ):
         opTracking = self.trackingApplet.topLevelOperator
         
         ## Connect operators ##
-        opObjExtraction.BinaryImage.connect( opData.Image )
+#        opObjExtraction.BinaryImage.connect( opData.Image )
+        opObjExtraction.Images.connect( opData.Image )                
+        
 
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
+        opTracking.ClassMapping.connect( opObjExtraction.ClassMapping )
 
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.objectExtractionApplet)

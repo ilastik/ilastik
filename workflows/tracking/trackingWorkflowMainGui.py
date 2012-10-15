@@ -6,6 +6,9 @@ from trackingWorkflowNN import TrackingWorkflowNN
 
 
 debug_testing = True
+method = 'chaingraph'
+#method = 'nearest_neighbor'
+
 if debug_testing:
     def test(shell, workflow):
         import h5py
@@ -27,8 +30,14 @@ if debug_testing:
         #opDataSelection.Dataset.resize(1)
         #opDataSelection.Dataset[0].setValue(info)
         shell.setSelectedAppletDrawer(2)
-        
-    startShellGui( TrackingWorkflowNN, test )
+    
+    if method == 'nearest_neighbor':
+        startShellGui( TrackingWorkflowNN, test )
+    elif method == 'chaingraph':
+        startShellGui( TrackingWorkflow, test )
 
 else:
-    startShellGui( TrackingWorkflowNN )
+    if method == 'nearest_neighbor':
+        startShellGui( TrackingWorkflowNN )
+    elif method == 'chaingraph':
+        startShellGui( TrackingWorkflow )

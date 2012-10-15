@@ -5,7 +5,7 @@ from PyQt4 import uic
 import os
 
 import logging
-from ilastik.applets.tracking.trackingGui import TrackingGui
+from ilastik.applets.tracking.trackingGuiNN import TrackingGuiNN
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 from lazyflow.tracer import Tracer
@@ -47,7 +47,7 @@ class TrackingTabsGui( QTabWidget ):
         
 #        self._projectMetadata = projectMetadata
         self.mainOperator = mainOperator
-        self.trackingGui = TrackingGui(self.mainOperator)
+        self.trackingGui = TrackingGuiNN(self.mainOperator)
 
         
         self.initMainUi()

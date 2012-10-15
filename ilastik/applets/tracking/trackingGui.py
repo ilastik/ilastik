@@ -26,7 +26,7 @@ class TrackingGui( QWidget ):
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
     def centralWidget( self ):
-        return self.volumeEditorWidget        
+        return self.volumeEditorWidget
 
     def appletDrawers( self ):
         return [ ("Tracking", self._drawer ) ]
@@ -65,10 +65,13 @@ class TrackingGui( QWidget ):
             maxx = mainOperator.LabelImage.meta.shape[1]
             maxy = mainOperator.LabelImage.meta.shape[2]
             maxz = mainOperator.LabelImage.meta.shape[3]            
-            self._drawer.from_time.setRange(0,maxt-1)
+#            self._drawer.from_time.setRange(0,maxt-1)
+            self._drawer.from_time.setRange(0,maxt-2)
             self._drawer.from_time.setValue(0)
+#            self._drawer.to_time.setRange(0,maxt-1)
             self._drawer.to_time.setRange(0,maxt-2)
             self._drawer.to_time.setValue(maxt-2)       
+#            self._drawer.to_time.setValue(maxt-1)
 
             self._drawer.from_x.setRange(0,maxx-1)
             self._drawer.from_x.setValue(0)
@@ -120,8 +123,10 @@ class TrackingGui( QWidget ):
                 maxt = slot.meta.shape[0]
                 self._drawer.from_time.setRange(0,maxt-1)
                 self._drawer.from_time.setValue(0)
+#                self._drawer.to_time.setRange(0,maxt-1)
                 self._drawer.to_time.setRange(0,maxt-2)
-                self._drawer.to_time.setValue(maxt-2)       
+#                self._drawer.to_time.setValue(maxt-1)       
+                self._drawer.to_time.setValue(maxt-2)
 
     def _initEditor(self):
         """
@@ -133,13 +138,13 @@ class TrackingGui( QWidget ):
         #self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
         #self.editor.setInteractionMode( 'navigation' )
         self.volumeEditorWidget = VolumeEditorWidget()
-        self.volumeEditorWidget.init(self.editor)                
-        
+        self.volumeEditorWidget.init(self.editor)
+
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
         model.canMoveSelectedUp.connect(self._viewerControlWidget.UpButton.setEnabled)
         model.canMoveSelectedDown.connect(self._viewerControlWidget.DownButton.setEnabled)
-        model.canDeleteSelected.connect(self._viewerControlWidget.DeleteButton.setEnabled)
+        model.canDeleteSelected.connect(self._viewerControlWidget.DeleteButton.setEnabled)     
 
         # Connect our layer movement buttons to the appropriate layerstack actions
         self._viewerControlWidget.layerWidget.init(model)
@@ -163,9 +168,15 @@ class TrackingGui( QWidget ):
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
     def _onTrackButtonPressed( self ):
-        divDist = self._drawer.divDistBox.value()
-        movDist = self._drawer.movDistBox.value()        
-        divThreshold = self._drawer.divThreshBox.value()
+        app = self._drawer.appSpinBox.value()
+        dis = self._drawer.disSpinBox.value()
+        opp = self._drawer.oppSpinBox.value()
+        noiserate = self._drawer.noiseRateSpinBox.value()
+        noiseweight = self._drawer.noiseWeightSpinBox.value()
+        epGap = self._drawer.epGapSpinBox.value()
+
+        det = noiseweight*(-1)*math.log(1-noiserate)
+        mdet = noiseweight*(-1)*math.log(noiserate)
         
         from_t = self._drawer.from_time.value()
         to_t = self._drawer.to_time.value()
@@ -176,18 +187,8 @@ class TrackingGui( QWidget ):
         from_z = self._drawer.from_z.value()
         to_z = self._drawer.to_z.value()        
         from_size = self._drawer.from_size.value()
-        to_size = self._drawer.to_size.value()
-        distanceFeatures = []
-        if self._drawer.comCheckBox.isChecked():
-            distanceFeatures.append("com")
-        if self._drawer.volCheckBox.isChecked():
-            distanceFeatures.append("count")
-        
-        if len(distanceFeatures) == 0:
-            self._drawer.comCheckBox.setChecked(True)
-            distanceFeatures.append("com")
-        splitterHandling = self._drawer.splitterHandlingBox.isChecked()
-        
+        to_size = self._drawer.to_size.value()        
+
         self.mainOperator.innerOperators[0].track(
             time_range = range(from_t, to_t + 1),
             x_range = (from_x, to_x + 1),
@@ -197,13 +198,12 @@ class TrackingGui( QWidget ):
             x_scale = self._drawer.x_scale.value(),
             y_scale = self._drawer.y_scale.value(),
             z_scale = self._drawer.z_scale.value(),
-            divDist=divDist,
-            movDist=movDist,
-            distanceFeatures=distanceFeatures,
-            divThreshold=divThreshold,
-            splitterHandling=splitterHandling
-            )
-                
+                                                  app=app,
+                                                  dis=dis,
+                                                  opp=opp,
+                                                  det=det,
+                                                  mdet=mdet,
+                                                  ep_gap=epGap)
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):
@@ -244,10 +244,6 @@ class TrackingGui( QWidget ):
     
             return layers
 
-
-    def handleEditorRightClick(self, currentImageIndex, position5d, globalWindowCoordinate):
-        print 'position5d = ' + str(position5d)
-        print 'currentImageIndex = ' + str(currentImageIndex)
 
 
 

@@ -29,7 +29,7 @@ def debug_with_new(shell, workflow):
     from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
     info = DatasetInfo()
     #info.filePath = '/magnetic/gigacube.h5'
-    info.filePath = '/home/mschiegg/hufnagel2012-08-03/derived/raw/000-004.h5'
+    info.filePath = '/home/mschiegg/hufnagel2012-08-03/derived/raw/375-386.h5'
     #info.filePath = '/magnetic/synapse_small.npy'
     #info.filePath = '/magnetic/singleslice.h5'
     opDataSelection = workflow.dataSelectionApplet.topLevelOperator
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     (options, args) = parser.parse_args()
 
-    # Start the GUI
+#    # Start the GUI
     if len(args) == 1:
         def loadProject(shell, workflow):
             shell.openProjectFile(args[0])

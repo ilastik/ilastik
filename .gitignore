@@ -12,3 +12,5 @@ dist/
 ilastik.egg-info/
 
 .settings
+
+test.svg
