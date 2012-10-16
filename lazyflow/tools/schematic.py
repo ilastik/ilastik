@@ -77,13 +77,17 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
 
         # Draw each subslot, separated by some padding
         for slot in self.subslots:
-            lowerRight = slot.drawAt(canvas, (x,y))
+            slot.drawAt(canvas, (x,y))
+            lowerRight = (x + slot.size()[0], y + slot.size()[1])
             y = lowerRight[1]
             # No padding between level-0 subslots
             if self.level > 1:
                 y += self.Padding
 
-        lowerRight = (lowerRight[0] + self.Padding, y + self.Padding )
+        if len(self.subslots) == 0:
+            lowerRight = (x + 2*SvgSlot.Radius + self.Padding, y + self.Padding )
+        else:
+            lowerRight = (lowerRight[0] + self.Padding, y + self.Padding )
 
         # Draw our outer rectangle
         width = lowerRight[0] - upperLeft[0]
@@ -346,7 +350,7 @@ if __name__ == "__main__":
     opTest.FilePath.resize(2)
     opTest.FilePath[0].setValue("/magnetic/synapse_small.npy")
     opTest.FilePath[1].setValue("/magnetic/gigacube.h5/volume/data")
-    
+
     svgOp = SvgOperator(opTest)
     
     block = partial(svg.tagblock, canvas)
