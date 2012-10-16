@@ -48,7 +48,7 @@ class OpInputDataReader(Operator):
         TODO: Handle datasets of non-standard (non-5d) dimensions.
         """
         filePath = self.FilePath.value
-        assert type(filePath) == str
+        assert type(filePath) == str, "Error: filePath is not of type str.  It's of type {}".format(type(filePath))
 
         # Does this look like a relative path?
         useRelativePath = not os.path.isabs(filePath)
