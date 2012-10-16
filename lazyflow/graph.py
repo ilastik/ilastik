@@ -1313,10 +1313,6 @@ class Operator(object):
         self._settingUp = False
 
         self._instantiate_slots()
-        
-        self.children = []
-        if parent is not None:
-            parent.children.append(self)
 
     # continue initialization, when user overrides __init__
     def _after_init(self):
