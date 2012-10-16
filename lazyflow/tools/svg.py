@@ -14,7 +14,13 @@ def format_attrs(attrs):
     # Use str.format to generate a big format string
     attr_txt = ''
     for attr in attrs.keys():
-        attr_name = attr.replace('__', ':')
+        attr_name = attr
+        # Trailing underscores are added if the attr would otherwise be a python reserved word (e.g. 'class', 'id')
+        if [-1] == '_':
+            attr_name = attr_name[:-1]
+        # Double-underscore maps to colon
+        attr_name = attr_name.replace('__', ':')
+        # All remaining underscores map to dashes
         attr_name = attr_name.replace('_', '-')
         attr_txt += ' {attr_name}="{attr_var}"'.format(attr_name=attr_name, attr_var='{' + attr + '}' )
 
@@ -72,6 +78,7 @@ path = TagFormatter('path', True, ['d'])
 text = TagFormatter('text', False)
 textPath = TagFormatter('textPath', False)
 tspan = TagFormatter('tspan', False, ['x', 'y'])
+group = TagFormatter('g', False, ['class_', 'transform'])
 
 import contextlib
 @contextlib.contextmanager
@@ -109,6 +116,15 @@ class IndentingStringIO(StringIO):
     def __iadd__(self, s):
         self.write(s)
         return self
+    
+    def __getitem__(self, i):
+        return self.getvalue()[i]
+    
+    def __len__(self):
+        return self.getvalue().__len__()
+
+    def __iter__(self):
+        return self.getvalue().__iter__()
 
 class SvgCanvas(IndentingStringIO):
     def __init__(self, *args, **kwargs):
