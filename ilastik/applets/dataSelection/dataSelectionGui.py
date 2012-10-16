@@ -303,7 +303,7 @@ class DataSelectionGui(QMainWindow):
                 if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
                     datasetNames = self.getPossibleInternalPaths( absPath )
                     if len(datasetNames) > 0:
-                        datasetInfo.filePath += datasetNames
+                        datasetInfo.filePath += str(datasetNames[0])
                     else:
                         raise RuntimeError("HDF5 file has no image datasets")
                 
