@@ -4,6 +4,9 @@ import numpy
 from functools import partial
 
 def createSvgSlot(slot):
+    """
+    Factory for creating a single-slot or multi-slot.
+    """
     if slot.level > 0:
         return SvgMultiSlot(slot)
     else:
@@ -14,6 +17,7 @@ class SvgSlot(DrawableABC, ConnectableABC):
 
     def __init__(self, slot):
         self.name = slot.name 
+        self._slot = slot
 
     def size(self):
         return self.drawAt("", (0,0))
@@ -22,7 +26,7 @@ class SvgSlot(DrawableABC, ConnectableABC):
         x,y = upperLeft
         cx = x + self.Radius
         cy = y + self.Radius
-        canvas += svg.circle(cx=cx, cy=cy, r=self.Radius, fill='white', stroke='black')
+        canvas += svg.circle(cx=cx, cy=cy, r=self.Radius, fill='white', stroke='black', class_=self.name)
         
         lowerRight = (x + 2*self.Radius, y + 2 * self.Radius)
         return lowerRight
@@ -41,6 +45,9 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
         self.subslots = []
         for i, slot in enumerate(mslot):
             self.subslots.append( createSvgSlot(slot) )
+        
+        self._size = self._generate_code()
+        self.mslot = mslot
 
     def __getitem__(self, i):
         return self.subslots[i]
@@ -49,9 +56,19 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
         return len(self.subslots)
     
     def size(self):
-        return self.drawAt("", (0,0))
+        return self._size
     
     def drawAt(self, canvas, upperLeft):
+        block = partial(svg.tagblock, canvas)
+        with block( svg.group, class_=self.mslot.name, transform="translate({},{})".format(*upperLeft) ):
+            canvas += self._code
+
+    def _generate_code(self):
+        """
+        Generate the text for drawing this multislot at (0,0)
+        """        
+        canvas = svg.IndentingStringIO("")
+        upperLeft = (0,0)
         x,y = upperLeft
         y += self.Padding
         x += self.Padding
@@ -73,6 +90,7 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
         height = lowerRight[1] - upperLeft[1]
         canvas += svg.rect(x=upperLeft[0], y=upperLeft[1], width=width, height=height, stroke='black', fill='transparent')
 
+        self._code = canvas
         return lowerRight
         
     def inputPointOffset(self):
@@ -148,9 +166,11 @@ class SvgOperator( DrawableABC ):
         self.outputs = {}
         for key, slot in enumerate(self.op.outputs.values()):
             self.outputs[key] = createSvgSlot( slot )
+            
+        self._size = self._generate_code()
 
     def size(self):
-        return self.drawAt("", (0,0))
+        return self._size
 
     def getInputSize(self):
         inputWidth = 0
@@ -171,17 +191,24 @@ class SvgOperator( DrawableABC ):
         return (outputWidth, outputHeight)
 
     def drawAt(self, canvas, upperLeft):
+        block = partial(svg.tagblock, canvas)
+        with block( svg.group, class_=self.op.name, transform="translate({},{})".format(*upperLeft) ):
+            canvas += self._code
+
+    def _generate_code(self):
+        upperLeft = (0,0)
+        canvas = svg.IndentingStringIO("")
         x, y = upperLeft
 
         inputSize = self.getInputSize()
         outputSize = self.getOutputSize()
 
         child_ordering = {}
-        if len(self.op.children) > 0:
+        if len(self.op._children) > 0:
             # Draw child operators
-            sorted_children = sorted( self.op.children, cmp=partial(streamPos, self) )
+            sorted_children = sorted( self.op._children, cmp=partial(streamPos, self) )
             #sorted_children = sorted( reversed(sorted_children), cmp=partial(streamPos, self) )
-            #sorted_children = sortByPos(self.op.children, self)
+            #sorted_children = sortByPos(self.op._children, self)
     
             child_ordering[0] = [sorted_children[0]]
             col_index = 0
@@ -206,7 +233,8 @@ class SvgOperator( DrawableABC ):
         for col_index, col_children in sorted( child_ordering.items() ):
             for child in col_children:
                 svgChild = SvgOperator(child)
-                lowerRight = svgChild.drawAt(canvas, (child_x, child_y) )
+                svgChild.drawAt(canvas, (child_x, child_y) )
+                lowerRight = (svgChild.size()[0] + child_x, svgChild.size()[1] + child_y)
                 max_child_x = max(lowerRight[0], max_child_x)
                 child_y = lowerRight[1] + self.PaddingBetweenInternalOps
             
@@ -253,6 +281,8 @@ class SvgOperator( DrawableABC ):
         
         lowerRight_x = upperLeft[0] + rect_width + inputSize[0] + outputSize[0]
         lowerRight_y = upperLeft[1] + rect_height
+
+        self._code = canvas
         return (lowerRight_x, lowerRight_y)
             
     def getRectWidth(self):

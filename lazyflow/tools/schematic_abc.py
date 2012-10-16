@@ -15,6 +15,9 @@ class DrawableABC:
 
     @abstractmethod
     def drawAt(self, canvas, upperLeft):
+        """
+        Return the svg text for this item, starting at the given point.
+        """
         raise NotImplementedError
 
     @classmethod
