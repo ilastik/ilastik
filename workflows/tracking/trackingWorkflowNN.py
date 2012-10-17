@@ -13,6 +13,7 @@ from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
 from ilastik.applets.tracking.opTracking import *
 import ctracking
 from lazyflow.operators.obsolete.valueProviders import OpAttributeSelector
+from ilastik.applets.tracking.trackingAppletNN import TrackingAppletNN
 
 class TrackingWorkflowNN( Workflow ):
     def __init__( self ):
@@ -32,7 +33,7 @@ class TrackingWorkflowNN( Workflow ):
         self.dataSelectionApplet = DataSelectionApplet(graph, "Input Segmentation", "Input Segmentation", batchDataGui=False)
 
         self.objectExtractionApplet = ObjectExtractionApplet( graph )
-        self.trackingApplet = TrackingApplet( graph )
+        self.trackingApplet = TrackingAppletNN( graph )
 
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator

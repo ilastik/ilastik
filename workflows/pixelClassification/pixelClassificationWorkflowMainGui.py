@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     (options, args) = parser.parse_args()
 
-#    # Start the GUI
+    # Start the GUI
     if len(args) == 1:
         def loadProject(shell, workflow):
             shell.openProjectFile(args[0])

@@ -6,8 +6,8 @@ from trackingWorkflowNN import TrackingWorkflowNN
 
 
 debug_testing = True
-method = 'chaingraph'
-#method = 'nearest_neighbor'
+#method = 'chaingraph'
+method = 'nearest_neighbor'
 
 if debug_testing:
     def test(shell, workflow):
