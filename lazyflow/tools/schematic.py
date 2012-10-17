@@ -48,6 +48,7 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
         
         self._size = self._generate_code()
         self.mslot = mslot
+        self.name = self.mslot.name
 
     def __getitem__(self, i):
         return self.subslots[i]
@@ -92,7 +93,7 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
         # Draw our outer rectangle
         width = lowerRight[0] - upperLeft[0]
         height = lowerRight[1] - upperLeft[1]
-        canvas += svg.rect(x=upperLeft[0], y=upperLeft[1], width=width, height=height, stroke='black', fill='transparent')
+        canvas += svg.rect(x=upperLeft[0], y=upperLeft[1], width=width, height=height, stroke='black', stroke_width=1, style='fill-opacity:0')
 
         self._code = canvas
         return lowerRight
@@ -157,8 +158,9 @@ def sortByPos(l, parent):
 
 class SvgOperator( DrawableABC ):
     TitleHeight = 15
-    PaddingBetweenSlots = 5
+    MinPaddingBetweenSlots = 10
     PaddingBetweenInternalOps = 10
+    PaddingForSlotName = 100
         
     def __init__(self, op):
         self.op = op
@@ -178,7 +180,7 @@ class SvgOperator( DrawableABC ):
 
     def getInputSize(self):
         inputWidth = 0
-        inputHeight = self.PaddingBetweenSlots * (len(self.inputs)+1)
+        inputHeight = self.MinPaddingBetweenSlots * (len(self.inputs)+1)
         for svgSlot in self.inputs.values():
             slotSize = svgSlot.size()
             inputWidth = max(inputWidth, slotSize[0])
@@ -187,7 +189,7 @@ class SvgOperator( DrawableABC ):
 
     def getOutputSize(self):
         outputWidth = 0
-        outputHeight = self.PaddingBetweenSlots * (len(self.outputs)+1)
+        outputHeight = self.MinPaddingBetweenSlots * (len(self.outputs)+1)
         for svgSlot in self.outputs.values():
             slotSize = svgSlot.size()
             outputWidth = max(outputWidth, slotSize[0])
@@ -230,10 +232,10 @@ class SvgOperator( DrawableABC ):
         rect_x = upperLeft[0] + inputSize[0]
         rect_y = upperLeft[1]
 
-        child_x = rect_x + r
+        child_x = rect_x + r + self.PaddingForSlotName + self.PaddingBetweenInternalOps
         child_y = rect_y + 2*r
         max_child_y = child_y
-        max_child_x = child_x + self.PaddingBetweenInternalOps
+        max_child_x = child_x 
         for col_index, col_children in sorted( child_ordering.items() ):
             for child in col_children:
                 svgChild = SvgOperator(child)
@@ -246,6 +248,8 @@ class SvgOperator( DrawableABC ):
             max_child_y = max(max_child_y, child_y)
             child_x = max_child_x
             child_y = rect_y + 2*r
+
+        max_child_x += self.PaddingForSlotName + self.PaddingBetweenInternalOps
 
         rect_width = max_child_x - rect_x
         rect_width = max( rect_width, 2*self.PaddingBetweenInternalOps )
@@ -267,21 +271,36 @@ class SvgOperator( DrawableABC ):
         with block(svg.text, x=rect_x+rect_width/2, y=rect_y+r, text_anchor='middle'):
             canvas += self.op.name + '\n'
 
+        # Add extra padding between input slots if there's room (i.e. spread out the inputs to cover the entire left side)
+        inputSlotPadding = (rect_height - self.getInputSize()[1]) / (len(self.inputs)+1)
+        
         # Draw inputs
-        y += self.TitleHeight
+        y += 1.5*self.TitleHeight + inputSlotPadding
         for slot in self.inputs.values():
             size = slot.size()
-            slot.drawAt( canvas, (x+(inputSize[0]-size[0]),y) )
-            y += size[1] + self.PaddingBetweenSlots
+            slot_x, slot_y = (x+(inputSize[0]-size[0]),y)
+            slot.drawAt( canvas, (slot_x, slot_y) )
+            y += size[1] + inputSlotPadding
+
+            text_x, text_y = (slot_x + size[0] + 5, slot_y + size[1]/2)
+            with block(svg.text, x=text_x, y=text_y, text_anchor='start'):
+                canvas += slot.name + '\n'
+
+        # Add extra padding between output slots if there's room (i.e. spread out the inputs to cover the entire right side)
+        outputSlotPadding = (rect_height - self.getOutputSize()[1]) / (len(self.outputs)+1)
 
         # Draw outputs
         x, y = upperLeft
         x += rect_width + inputSize[0]
-        y += self.TitleHeight
+        y += 1.5*self.TitleHeight + outputSlotPadding
         for slot in self.outputs.values():
             size = slot.size()
+            text_x, text_y = (x - 5, y + size[1]/2)
             slot.drawAt( canvas, (x,y) )
-            y += size[1] + self.PaddingBetweenSlots
+            y += size[1] + outputSlotPadding
+
+            with block(svg.text, x=text_x, y=text_y, text_anchor='end'):
+                canvas += slot.name + '\n'
         
         lowerRight_x = upperLeft[0] + rect_width + inputSize[0] + outputSize[0]
         lowerRight_y = upperLeft[1] + rect_height
@@ -289,9 +308,6 @@ class SvgOperator( DrawableABC ):
         self._code = canvas
         return (lowerRight_x, lowerRight_y)
             
-    def getRectWidth(self):
-        return 100
-         
 if __name__ == "__main__":
     canvas = svg.SvgCanvas("")
 
