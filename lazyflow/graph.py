@@ -1447,6 +1447,29 @@ class Operator(object):
     def propagateDirty(self, slot, subindex, roi):
         raise NotImplementedError(".propagateDirty() of Operator %r is not implemented !" % (self.name))
 
+    @staticmethod
+    def forbidParallelExecute(func):
+        """
+        Use this decorator with functions that must not be run in parallel with the execute() function.
+        - Your function won't start until no threads are in execute().
+        - Calls to execute() will wait until your function is complete.
+        This is better than using a simple lock in execute() because it allows execute() to be run in parallel with itself.
+        """
+        @functools.wraps(func)
+        def wrapper( self, *args, **kwargs ):
+            with self._condition:
+                while self._executionCount > 0:
+                    self._condition.wait()
+                self._settingUp = True
+
+                try:
+                    return func(self, *args, **kwargs)
+                finally:
+                    self._settingUp = False
+                    self._condition.notifyAll()
+        wrapper.__wrapped__ = func # Emulate python 3 behavior of @wraps
+        return wrapper
+
     def _setupOutputs(self):
         with Tracer(self.traceLogger, msg=self.name):
             # Don't setup this operator if there are currently requests on it.
@@ -1535,7 +1558,7 @@ class Operator(object):
         raise NotImplementedError("Can't use __setitem__ with Operator {} because it doesn't implement setInSlot()".format(self.name))
 
 class OperatorWrapper(Operator):
-    name = ""
+    name = "OperatorWrapper"
 
     loggerName = __name__ + '.OperatorWrapper'
     logger = logging.getLogger(loggerName)
@@ -1649,7 +1672,11 @@ class OperatorWrapper(Operator):
         with Tracer(self.traceLogger, msg=self.name):
             if len(self.innerOperators) >= length:
                 return self.innerOperators[index]
-            op = self._createInnerOperator()            
+            op = self._createInnerOperator()
+            
+            # Update our name
+            self.name = "Wrapped " + op.name
+
             # If anyone calls setValue() on one of these slots, forward the setValue 
             #  call to the slot's partner (the outer slot on the operator wrapper)
             for slot in op.inputs.values():
