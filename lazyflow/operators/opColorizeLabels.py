@@ -40,7 +40,7 @@ class OpColorizeLabels(Operator):
         self.overrideColors = {}        
 
         # Pre-generate the table of data
-        self.colortable = self.generateColortable(2**18)
+        self.colortable = self.generateColortable(2**22)
         
     def setupOutputs(self):
         inputTags = self.Input.meta.axistags
