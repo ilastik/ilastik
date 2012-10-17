@@ -16,7 +16,7 @@ def format_attrs(attrs):
     for attr in attrs.keys():
         attr_name = attr
         # Trailing underscores are added if the attr would otherwise be a python reserved word (e.g. 'class', 'id')
-        if [-1] == '_':
+        if attr_name[-1] == '_':
             attr_name = attr_name[:-1]
         # Double-underscore maps to colon
         attr_name = attr_name.replace('__', ':')
