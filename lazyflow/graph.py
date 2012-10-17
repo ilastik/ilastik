@@ -699,7 +699,7 @@ class Slot(object):
             elif result_op is not None:
                 # FIXME: this should be moved to a isCompatible check in stypes.py
                 if hasattr(result_op, "shape"):
-                    assert result_op.shape == destination.shape, " ERROR: Operator %r has failed to provide a result of correct shape. result shape is %r vs %r." % (self.operator,result_op.shape, destination.shape)
+                    assert result_op.shape == destination.shape, " ERROR: Operator %r has failed to provide a result of correct shape. result shape is %r vs %r.  roi was %r" % (self.operator,result_op.shape, destination.shape, str(roi) )
                 destination = result_op
                 
             # Decrement the execution count
