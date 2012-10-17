@@ -992,6 +992,23 @@ class OpImageReader(Operator):
             oslot.meta.shape = info.getShape()
             oslot.meta.dtype = info.getDtype()
             oslot.meta.axistags = info.getAxisTags()
+            
+            numImages = vigra.impex.numberImages(filename)
+            if numImages > 1:
+                taggedShape = oslot.meta.getTaggedShape()
+                assert 'z' not in taggedShape.keys(), "Didn't expect to find a z-axis in this image."
+                # Convert from OrderedDict to list
+                taggedShape = [(key, dim) for key, dim in taggedShape.items()]
+
+                # Insert z-shape
+                taggedShape.insert(-1, ('z', numImages))
+
+                # Insert z-tag
+                tags = oslot.meta.axistags
+                tags.insert(-1, vigra.defaultAxistags('z')[0])
+
+                oslot.meta.shape = tuple(dim for (key, dim) in taggedShape)
+                oslot.meta.axistags = tags
         else:
             oslot = self.outputs["Image"]
             oslot.meta.shape = None
@@ -1001,7 +1018,24 @@ class OpImageReader(Operator):
     def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
         filename = self.inputs["Filename"].value
-        temp = vigra.impex.readImage(filename)
+        index = 0
+        taggedShape = self.Image.meta.getTaggedShape()
+        if 'z' in taggedShape.keys():
+            zIndex = taggedShape.keys().index('z')
+            tempShape = list(self.Image.meta.shape)
+            tempShape[zIndex] = rroi.stop[zIndex] - rroi.start[zIndex]
+            temp = numpy.ndarray( tempShape, dtype=self.Image.meta.dtype )
+            
+            for i,z in enumerate(range(rroi.start[zIndex], rroi.stop[zIndex])):
+                tempKey = list(key)
+                tempKey[zIndex] = i
+                temp[tempKey] = vigra.impex.readImage(filename, index=z)
+
+            key = list(key)
+            key[zIndex] = slice(0, rroi.stop[zIndex] - rroi.start[zIndex] )
+            key = tuple(key)
+        else:
+            temp = vigra.impex.readImage(filename)
 
         return temp[key]
 
