@@ -1,5 +1,5 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpImageReader, OpArrayCache
+from lazyflow.operators import OpImageReader, OpBlockedArrayCache
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import OpStackLoader
@@ -128,9 +128,21 @@ class OpInputDataReader(Operator):
                 vigraReader.Filename.setValue(filePath)
 
                 # Cache the image instead of reading the hard disk for every access.
-                imageCache = OpArrayCache(parent=self, graph=self.graph)
+                imageCache = OpBlockedArrayCache(parent=self, graph=self.graph)
                 imageCache.Input.connect(vigraReader.Image)
-                imageCache.blockShape.setValue( vigraReader.Image.meta.shape ) # Just one block for the whole image
+                
+                # 2D: Just one block for the whole image
+                cacheBlockShape = vigraReader.Image.meta.shape
+                
+                taggedShape = vigraReader.Image.meta.getTaggedShape()
+                if 'z' in taggedShape.keys():
+                    # 3D: blocksize is one slice.
+                    taggedShape['z'] = 1
+                    cacheBlockShape = tuple(taggedShape.values())
+                
+                imageCache.fixAtCurrent.setValue( False ) 
+                imageCache.innerBlockShape.setValue( cacheBlockShape ) 
+                imageCache.outerBlockShape.setValue( cacheBlockShape ) 
                 assert imageCache.Output.ready()
                 
                 self.internalOperator = imageCache
