@@ -237,8 +237,6 @@ class Slot(object):
         self._stypeType = stype       # the slot type class
         self.stype = stype(self)      # the slot type instance
 
-        self._currentGraphState = None # Not initialized until the slot is ready
-
         self._sig_changed = OrderedSignal()
         self._sig_ready = OrderedSignal()
         self._sig_unready = OrderedSignal()
@@ -251,8 +249,6 @@ class Slot(object):
         self._sig_removed = OrderedSignal()
         self._sig_inserted = OrderedSignal()
         
-        self._sig_newGraphState = OrderedSignal()
-
         self._resizing = False
         
         self._executionCount = 0
@@ -1013,7 +1009,6 @@ class Slot(object):
         oldMeta = self.meta
         if self.partner is not None and self.meta != self.partner.meta:
             self.meta = self.partner.meta.copy()
-            self._currentGraphState = self.partner._currentGraphState
 
         if self._type == "output":
             for o in self._subSlots:
