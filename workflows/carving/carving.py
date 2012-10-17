@@ -3,6 +3,11 @@
 import os, numpy, threading, time, copy
 from collections import defaultdict
 
+def normalize(x):
+    m = x.min()
+    M = x.max()
+    return (255*(x-m)/float(M-m)).astype(numpy.uint8)
+
 from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QShortcut, QKeySequence
 from PyQt4.QtGui import QColor, QMenu
@@ -80,13 +85,40 @@ class OpCarvingTopLevel(Operator):
         self.opLabeling.LabelDelete.setValue(1)
         self.opLabeling.LabelDelete.setValue(-1)
         
+    def isStorable(self,imageIndex):
+        #TODO: this code is duplicated, also it could be reduced
+        w1 = [[]]
+        w2 = [[]]
+        nonzeroSlicings = self.opLabeling.NonzeroLabelBlocks[imageIndex][:].wait()[0]
+        if len(nonzeroSlicings) == 0:
+            return False
+        coors1 = [[], [], []]
+        coors2 = [[], [], []]
+        for sl in nonzeroSlicings:
+            a = self.opLabeling.LabelImages[imageIndex][sl].wait()
+            w1 = numpy.where(a == 1)
+            w2 = numpy.where(a == 2)
+            w1 = [w1[i] + sl[i].start for i in range(3)]
+            w2 = [w2[i] + sl[i].start for i in range(3)]
+            for i in range(3):
+                coors1[i].append( w1[i] )
+                coors2[i].append( w2[i] )
+        for i in range(3):
+            coors1[i] = numpy.concatenate(coors1[i])
+            coors2[i] = numpy.concatenate(coors2[i])
+        
+        if len(coors1[0]) == 0 or len(coors2[0]) == 0:
+            return False 
+        
+        return True
+        
     def saveObjectAs(self, name, imageIndex):
         # first, save the object under "name"
         self.opCarving.innerOperators[imageIndex].saveObjectAs(name)
         # Sparse label array automatically shifts label values down 1
         
         nonzeroSlicings = self.opLabeling.NonzeroLabelBlocks[imageIndex][:].wait()[0]
-      
+        
         #the voxel coordinates of fg and bg labels
         def coordinateList(): 
             coors1 = [[], [], []]
@@ -100,7 +132,7 @@ class OpCarvingTopLevel(Operator):
                 for i in range(3):
                     coors1[i].append( w1[i] )
                     coors2[i].append( w2[i] )
-                    
+            
             for i in range(3):
                 coors1[i] = numpy.concatenate(coors1[i])
                 coors2[i] = numpy.concatenate(coors2[i])
@@ -556,6 +588,7 @@ class CarvingSerializer( AppletSerializer ):
         
         imageIndex = 0 #FIXME
         
+        
         mst = self._o.opCarving.innerOperators[imageIndex]._mst 
         for name in self._o._dirtyObjects[imageIndex]:
             print "[CarvingSerializer] serializing %s" % name
@@ -584,12 +617,10 @@ class CarvingSerializer( AppletSerializer ):
             v = [v[i][:,numpy.newaxis] for i in range(3)]
             v = numpy.concatenate(v, axis=1)
             g.create_dataset("fg_voxels", data=v)
-            
             v = mst.object_seeds_bg_voxels[name]
             v = [v[i][:,numpy.newaxis] for i in range(3)]
             v = numpy.concatenate(v, axis=1)
             g.create_dataset("bg_voxels", data=v)
-            
             g.create_dataset("sv", data=mst.object_lut[name])
             
             d1 = numpy.asarray(mst.bg_priority[name], dtype=numpy.float32)
@@ -608,26 +639,30 @@ class CarvingSerializer( AppletSerializer ):
         opCarving = self._o.opCarving.innerOperators[imageIndex] 
         
         for name in obj:
-            g = obj[name]
-            fg_voxels = g["fg_voxels"]
-            bg_voxels = g["bg_voxels"]
-            fg_voxels = [fg_voxels[:,i] for i in range(3)]
-            bg_voxels = [bg_voxels[:,i] for i in range(3)]
-            
-            sv = g["sv"].value
-            
-            mst.object_seeds_fg_voxels[name] = fg_voxels
-            mst.object_seeds_bg_voxels[name] = bg_voxels
-            mst.object_lut[name]             = sv
-            mst.bg_priority[name]            = g["bg_prio"].value
-            mst.no_bias_below[name]          = g["no_bias_below"].value
-            
-            print "[CarvingSerializer] de-serializing %s, with opCarving=%d, mst=%d" % (name, id(opCarving), id(mst))
-            print "  %d voxels labeled with green seed" % fg_voxels[0].shape[0] 
-            print "  %d voxels labeled with red seed" % bg_voxels[0].shape[0] 
-            print "  object is made up of %d supervoxels" % sv.size
-            print "  bg priority = %f" % mst.bg_priority[name]
-            print "  no bias below = %d" % mst.no_bias_below[name]
+            print " loading object with name='%s'" % name
+            try:
+                g = obj[name]
+                fg_voxels = g["fg_voxels"]
+                bg_voxels = g["bg_voxels"]
+                fg_voxels = [fg_voxels[:,i] for i in range(3)]
+                bg_voxels = [bg_voxels[:,i] for i in range(3)]
+                
+                sv = g["sv"].value
+                
+                mst.object_seeds_fg_voxels[name] = fg_voxels
+                mst.object_seeds_bg_voxels[name] = bg_voxels
+                mst.object_lut[name]             = sv
+                mst.bg_priority[name]            = g["bg_prio"].value
+                mst.no_bias_below[name]          = g["no_bias_below"].value
+                
+                print "[CarvingSerializer] de-serializing %s, with opCarving=%d, mst=%d" % (name, id(opCarving), id(mst))
+                print "  %d voxels labeled with green seed" % fg_voxels[0].shape[0] 
+                print "  %d voxels labeled with red seed" % bg_voxels[0].shape[0] 
+                print "  object is made up of %d supervoxels" % sv.size
+                print "  bg priority = %f" % mst.bg_priority[name]
+                print "  no bias below = %d" % mst.no_bias_below[name]
+            except Exception as e:
+                print 'object %s couldnt be loaded due to exception: %s'% (name,e)
             
         opCarving._buildDone()
            
@@ -683,12 +718,21 @@ class CarvingGui(LabelingGui):
         
         def onSaveAsButton():
             print "save object as?"
-            name, ok = QInputDialog.getText(self, 'Save Object As', 'object name') 
-            name = str(name)
-            print "save object as %s" % name
-            if not ok:
-                return
-            self._carvingApplet.topLevelOperator.saveObjectAs(name, self.imageIndex)
+            if self._carvingApplet.topLevelOperator.isStorable(self.imageIndex):
+                name, ok = QInputDialog.getText(self, 'Save Object As', 'object name') 
+                name = str(name)
+                if not ok:
+                    return
+                self._carvingApplet.topLevelOperator.saveObjectAs(name, self.imageIndex)
+                print "save object as %s" % name
+            else:
+                msgBox = QMessageBox(self)
+                msgBox.setText("The data does no seem fit to be stored.")
+                msgBox.setWindowTitle("Lousy Data")
+                msgBox.setIcon(2)
+                msgBox.exec_()
+                print "object not saved due to faulty data."
+
         self.labelingDrawerUi.saveAs.clicked.connect(onSaveAsButton)
             
         def onDeleteButton():
@@ -793,6 +837,8 @@ class CarvingGui(LabelingGui):
         for n in names:
             if act is not None and act.text() == "edit %s" %n:
                 self._carvingApplet.topLevelOperator.loadObject(n, self.imageIndex)
+            elif act is not None and act.text() =="delete %s" % n:
+                self._carvingApplet.topLevelOperator.deleteObject(n,self.imageIndex) 
         
     def getNextLabelName(self):
         l = len(self._labelControlUi.labelListModel)
@@ -815,8 +861,9 @@ class CarvingGui(LabelingGui):
             self.labelingDrawerUi.currentObjectLabel.setText("current object: %s" % currObj)
             self.labelingDrawerUi.save.setEnabled(currObj != "" and hasSeg)
             self.labelingDrawerUi.saveAs.setEnabled(currObj == "" and hasSeg)
-            self.labelingDrawerUi.segment.setEnabled(len(nzLB) > 0)
-            self.labelingDrawerUi.clear.setEnabled(len(nzLB) > 0)
+            #rethink this
+            #self.labelingDrawerUi.segment.setEnabled(len(nzLB) > 0)
+            #self.labelingDrawerUi.clear.setEnabled(len(nzLB) > 0)
         self._carvingApplet.topLevelOperator.opCarving[currentImageIndex].CurrentObjectName.notifyDirty(onButtonsEnabled)
         self._carvingApplet.topLevelOperator.opCarving[currentImageIndex].HasSegmentation.notifyDirty(onButtonsEnabled)
         self._carvingApplet.topLevelOperator.opLabeling.NonzeroLabelBlocks[currentImageIndex].notifyDirty(onButtonsEnabled)
@@ -888,18 +935,9 @@ class CarvingGui(LabelingGui):
         #
         # load additional layer: features / probability map
         #
-        '''
-        from segmentation.h5utils import rH5data
-        from segmentation import normalize
-        pmap = rH5data("pmap.h5/data", verbose=True)
-        pmap.shape = (1,) + pmap.shape + (1,)
-        pmap = normalize(-pmap)
-        layer = GrayscaleLayer(ArraySource(pmap), direct=True)
-        layer.name = "pmap"
-        layer.visible = False
-        layer.opacity = 1.0
-        layers.append(layer)
-        '''
+        import h5py
+        f = h5py.File("pmap.h5")
+        pmap = f["data"].value
         
         #
         # here we load the actual raw data from an ArraySource rather than from a LazyflowSource for speed reasons

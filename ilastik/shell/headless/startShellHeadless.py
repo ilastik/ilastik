@@ -1,13 +1,14 @@
-#make the program quit on Ctrl+C
-import signal
-signal.signal(signal.SIGINT, signal.SIG_DFL)
-
 # Logging configuration
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
 
 from ilastik.shell.headless.headlessShell import HeadlessShell
+
+if __name__ == "__main__":
+    #make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 def startShellHeadless(workflowClass):
     """

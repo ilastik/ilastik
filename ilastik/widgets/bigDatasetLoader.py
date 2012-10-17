@@ -38,9 +38,8 @@ class Main(QMainWindow):
          QMainWindow.__init__(self)
          self.initUic()
          
-     def initUic(self):
-         
-        self.g=g=Graph() 
+     def initUic(self):         
+        self.g=g=Graph()
          
         #get the absolute path of the 'ilastik' module
         uic.loadUi("designerElements/MainWindow.ui", self) 
@@ -82,10 +81,10 @@ class Main(QMainWindow):
         
         
         
-        
-     
-app = QApplication(sys.argv)        
-t = Main(False, [])
-t.show()
 
-app.exec_()
+if __name__ == "__main__":
+    app = QApplication(sys.argv)        
+    t = Main(False, [])
+    t.show()
+    
+    app.exec_()

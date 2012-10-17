@@ -298,6 +298,14 @@ class DataSelectionGui(QMainWindow):
                    datasetInfo.filePath = relPath
                 else:
                    datasetInfo.filePath = absPath
+
+                h5Exts = ['.ilp', '.h5', '.hdf5']
+                if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
+                    datasetNames = self.getPossibleInternalPaths( absPath )
+                    if len(datasetNames) > 0:
+                        datasetInfo.filePath += str(datasetNames[0])
+                    else:
+                        raise RuntimeError("HDF5 file has no image datasets")
                 
                 # Allow labels by default if this gui isn't being used for batch data.
                 datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
@@ -427,18 +435,8 @@ class DataSelectionGui(QMainWindow):
             ext = os.path.splitext(absPath)[1]
             h5Exts = ['.ilp', '.h5', '.hdf5']
             if ext in h5Exts:
-                # Open the file as a read-only so we can get a list of the internal paths
-                f = h5py.File(absPath, 'r')
-                
-                # Define a closure to collect all of the dataset names in the file.
-                def accumulateDatasetPaths(name, val):
-                    if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
-                        datasetNames.append( '/' + name )
-    
-                # Visit every group/dataset in the file            
-                f.visititems(accumulateDatasetPaths)
-                f.close()
-    
+                datasetNames = self.getPossibleInternalPaths(absPath)
+
             # Add each dataset option to the combo            
             for path in datasetNames:
                 combo.addItem( path )
@@ -455,7 +453,19 @@ class DataSelectionGui(QMainWindow):
             
             # Since we just selected a new internal path, call the handler 
             #self.handleComboSelectionChanged(combo, combo.currentIndex())
-    
+
+    def getPossibleInternalPaths(self, absPath):
+        datasetNames = []
+        # Open the file as a read-only so we can get a list of the internal paths
+        with h5py.File(absPath, 'r') as f:
+            # Define a closure to collect all of the dataset names in the file.
+            def accumulateDatasetPaths(name, val):
+                if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
+                    datasetNames.append( '/' + name )    
+            # Visit every group/dataset in the file            
+            f.visititems(accumulateDatasetPaths)        
+        return datasetNames
+
     def handleRowDataChange(self, changedItem ):
         """
         The user manually edited a file name in the table.
