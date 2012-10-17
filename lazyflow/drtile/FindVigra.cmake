@@ -1,5 +1,5 @@
 #
-# (c) Bernhard X. Kausler, 2010
+# (c) Bernhard X. Kausler, 2012
 # (c) Thorben Kröger, 2010
 #
 # This module finds an installed Vigra package.
@@ -17,7 +17,8 @@ FIND_LIBRARY(VIGRA_IMPEX_LIBRARY vigraimpex PATHS $ENV{VIGRA_ROOT}/src/impex $EN
 GET_FILENAME_COMPONENT(VIGRA_IMPEX_LIBRARY_PATH ${VIGRA_IMPEX_LIBRARY} PATH)
 SET( VIGRA_IMPEX_LIBRARY_DIR ${VIGRA_IMPEX_LIBRARY_PATH} CACHE PATH "Path to Vigra impex library.")
 
-FIND_FILE(VIGRA_NUMPY_CORE_LIBRARY vigranumpycore.so PATHS ENV PYTHONPATH PATH_SUFFIXES vigra)
+EXECUTE_PROCESS ( COMMAND python -c "from distutils.sysconfig import get_python_lib; print get_python_lib()" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
+FIND_FILE(VIGRA_NUMPY_CORE_LIBRARY vigranumpycore.so PATHS ${PYTHON_SITE_PACKAGES} ENV PYTHONPATH PATH_SUFFIXES vigra)
 
 # handle the QUIETLY and REQUIRED arguments and set VIGRA_FOUND to TRUE if 
 # all listed variables are TRUE
