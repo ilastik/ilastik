@@ -31,16 +31,20 @@ class OpColorizeLabels(Operator):
     Input = InputSlot()
     OverrideColors = InputSlot(stype='object', value={0 : (0,0,0,0)} )  # dict of { label : (R,G,B,A) }
                                                                         # By default, label 0 is black and transparent
-
     Output = OutputSlot() # 4 channels: RGBA
-    
+
+    colortable = None
+        
     def __init__(self, *args, **kwargs):
         super(OpColorizeLabels, self).__init__(*args, **kwargs)
 
-        self.overrideColors = {}        
+        self.overrideColors = {}
+
+        if OpColorizeLabels.colortable is None:
+            OpColorizeLabels.colortable = OpColorizeLabels.generateColortable(2**20)
 
         # Pre-generate the table of data
-        self.colortable = self.generateColortable(2**22)
+        self.colortable = copy.copy(OpColorizeLabels.colortable)
         
     def setupOutputs(self):
         inputTags = self.Input.meta.axistags
@@ -78,17 +82,19 @@ class OpColorizeLabels(Operator):
         channellessInput = inputData[dropChannelKey]
 
         # Advanced indexing with colortable applies the relabeling from labels to colors.
-        # If we get an error here, we may need to expand the colortable (currently supports only 2**18 labels.)
+        # If we get an error here, we may need to expand the colortable (currently supports only 2**20 labels.)
         channelSlice = getElement(self.Input.meta.axistags, 'c', fullKey)
         return self.colortable[:, channelSlice][channellessInput]
 
-    def generateColortable(self, size):
+    @staticmethod
+    def generateColortable(size):
         table = numpy.zeros((size,4), dtype=numpy.uint8)
         for index in range( size ):
-            table[index] = self.getRandomColor(index)
+            table[index] = OpColorizeLabels.getRandomColor(index)
         return table
 
-    def getRandomColor(self, label):
+    @staticmethod
+    def getRandomColor(label):
         color = numpy.zeros(4, dtype=numpy.uint8)
         # RGB
         for channel in range(3):
