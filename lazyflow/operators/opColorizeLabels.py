@@ -1,9 +1,15 @@
 import zlib
 import copy
 import numpy
+import os
 from functools import partial
 
+import numpy
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+import logging
+logger = logging.getLogger(__file__)
 
 def applyToElement(axistags, tagkey, tup, f):
     """
@@ -41,7 +47,7 @@ class OpColorizeLabels(Operator):
         self.overrideColors = {}
 
         if OpColorizeLabels.colortable is None:
-            OpColorizeLabels.colortable = OpColorizeLabels.generateColortable(2**20)
+            OpColorizeLabels.colortable = OpColorizeLabels.generateColortable(2**22)
 
         # Pre-generate the table of data
         self.colortable = copy.copy(OpColorizeLabels.colortable)
@@ -88,9 +94,43 @@ class OpColorizeLabels(Operator):
 
     @staticmethod
     def generateColortable(size):
-        table = numpy.zeros((size,4), dtype=numpy.uint8)
-        for index in range( size ):
-            table[index] = OpColorizeLabels.getRandomColor(index)
+        # If possible, load the table from disk
+        lazyflowSettingsDir = os.path.expanduser('~/.lazyflow')
+        cachedColortablePath = os.path.join(lazyflowSettingsDir, 'random_color_table.npy')
+
+        loadedTable = False
+        if os.path.exists( cachedColortablePath ):
+            table = numpy.load(cachedColortablePath)
+            if table.shape[0] == size:
+                loadedTable = True
+            else:
+                table = None
+
+        if not loadedTable:
+            table = numpy.zeros((size,4), dtype=numpy.uint8)
+            for index in range( size ):
+                table[index] = OpColorizeLabels.getRandomColor(index)
+
+            # Save it for next session
+            saved = False
+            ex = None
+            try:
+                if not os.path.exists( lazyflowSettingsDir ):
+                    os.makedirs( lazyflowSettingsDir )
+            except Exception, ex:
+                pass
+            else:
+                try:
+                    numpy.save(cachedColortablePath, table)
+                    saved = True
+                except Exception, ex:
+                    pass
+
+            if not saved:
+                # It's not worth crashing if the table can't be cached.
+                logger.warn( "Wasn't able to create cache file: " + cachedColortablePath )
+                logger.warn( "Caught exception: " + str(ex) )
+                    
         return table
 
     @staticmethod
