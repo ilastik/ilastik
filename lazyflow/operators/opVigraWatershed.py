@@ -3,6 +3,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 import numpy
 import vigra
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,21 @@ class OpVigraWatershed(Operator):
     SeedImage = InputSlot(optional=True)
     
     Output = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super(OpVigraWatershed, self).__init__(*args, **kwargs)
+        
+        # Keep a dict of roi : max label
+        self._maxLabels = {}
+        self._lock = threading.Lock()
+    
+    @property
+    def maxLabels(self):
+        return self._maxLabels
+    
+    def clearMaxLabels(self):
+        with self._lock:
+            self._maxLabels = {}
     
     def setupOutputs(self):
         self.Output.meta.assignFrom( self.InputImage.meta )
@@ -111,6 +127,11 @@ class OpVigraWatershed(Operator):
         watershed = watershed.withAxes( *[tag.key for tag in tags] )
         logger.debug( "watershed 5D shape: {}".format(watershed.shape) )
         logger.debug( "watershed axistags: {}".format(watershed.axistags) )
+
+        with self._lock:
+            start = tuple(s.start for s in paddedSlices)
+            stop = tuple(s.stop for s in paddedSlices)
+            self._maxLabels[ (start, stop) ] = maxLabel
         
         #print numpy.unique(watershed[outputSlices]).shape
         # Return only the region the user requested
