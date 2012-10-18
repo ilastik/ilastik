@@ -7,9 +7,9 @@ from ilastik.widgets.featureDlg import FeatureDlg
 import os
 import numpy
 from ilastik.utility import bind
-from lazyflow.operators import OpSubRegion
 
 import logging
+from lazyflow.operators.obsolete.generic import OpSubRegion
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -36,7 +36,7 @@ class FeatureSelectionGui(LayerViewerGui):
     FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),
                       ( "Edge",    [ "LaplacianOfGaussian", "GaussianGradientMagnitude", "DifferenceOfGaussians" ] ),
                       ( "Texture", [ "StructureTensorEigenvalues", "HessianOfGaussianEigenvalues" ] ),
-                      ( "Time",   [ "BlurredTempDifference" ] ) ]
+                      ( "Time",   [ "BlurredTempDifference", "BlurredCrossCorrelation" ] ) ]
 
     # Map feature IDs to feature names
     FeatureNames = { 'GaussianSmoothing' : 'Gaussian Smoothing',
@@ -45,7 +45,8 @@ class FeatureSelectionGui(LayerViewerGui):
                      'DifferenceOfGaussians' : "Difference of Gaussians",
                      'StructureTensorEigenvalues' : "Structure Tensor EigenValues",
                      'HessianOfGaussianEigenvalues' : "Hessian of Gaussian Eigenvalues",
-                     'BlurredTempDifference' : "Blurred Temporal Difference" }
+                     'BlurredTempDifference' : "Blurred Temporal Difference",
+                     'BlurredCrossCorrelation' : "Blurred Cross Correlation" }
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###

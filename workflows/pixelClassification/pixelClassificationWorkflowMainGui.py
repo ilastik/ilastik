@@ -29,7 +29,7 @@ def debug_with_new(shell, workflow):
     from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
     info = DatasetInfo()
     #info.filePath = '/magnetic/gigacube.h5'
-    info.filePath = '/home/mschiegg/hufnagel2012-08-03/derived/raw/375-386.h5'
+    info.filePath = '/home/mschiegg/hufnagel2012-08-03/derived/raw/375-386.h5/volume/data'
     #info.filePath = '/magnetic/synapse_small.npy'
     #info.filePath = '/magnetic/singleslice.h5'
     opDataSelection = workflow.dataSelectionApplet.topLevelOperator
@@ -47,11 +47,12 @@ def debug_with_new(shell, workflow):
                                [False, False, False, False, False, False, False],
                                [False, False, False, False, False, False, False],
                                [False, False, False, False, False, False, False],
-                               [True, False, False, False, True, False, False]] )
+                               [True, False, False, False, True, False, False],   # tempDiff
+                               [True, False, False, False, True, False, False]] ) # crossCorr
     opFeatures.SelectionMatrix.setValue(selections)
 
     # Select the feature drawer
-    shell.setSelectedAppletDrawer(3)
+    shell.setSelectedAppletDrawer(2)
 
     # Save the project
     shell.onSaveProjectActionTriggered()
@@ -83,19 +84,19 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
 
     # Start the GUI
-    if len(args) == 1:
-        def loadProject(shell, workflow):
-            shell.openProjectFile(args[0])
-        startShellGui( PixelClassificationWorkflow, loadProject )
-    elif len(args) == 0:
-        startShellGui( PixelClassificationWorkflow )
-    else:
-        parser.error("incorrect number of arguments")
+#    if len(args) == 1:
+#        def loadProject(shell, workflow):
+#            shell.openProjectFile(args[0])
+#        startShellGui( PixelClassificationWorkflow, loadProject )
+#    elif len(args) == 0:
+#        startShellGui( PixelClassificationWorkflow )
+#    else:
+#        parser.error("incorrect number of arguments")
 
     # Start the GUI with a debug project    
     #startShellGui( PixelClassificationWorkflow )    
     #startShellGui( PixelClassificationWorkflow, debug_with_existing )
-#    startShellGui( PixelClassificationWorkflow, debug_with_new )
+    startShellGui( PixelClassificationWorkflow, debug_with_new )
 
     # Test special transpose-on-import feature
     #startShellGui( PixelClassificationWorkflow, debug_with_imported )
