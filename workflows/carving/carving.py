@@ -3,11 +3,6 @@
 import os, numpy, threading, time, copy
 from collections import defaultdict
 
-def normalize(x):
-    m = x.min()
-    M = x.max()
-    return (255*(x-m)/float(M-m)).astype(numpy.uint8)
-
 from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QShortcut, QKeySequence
 from PyQt4.QtGui import QColor, QMenu
@@ -114,7 +109,7 @@ class OpCarvingTopLevel(Operator):
         
     def saveObjectAs(self, name, imageIndex):
         # first, save the object under "name"
-        self.opCarving.innerOperators[imageIndex].saveObjectAs(name)
+        self.opCarving.innerOperators[imageIndex].saveCurrentObjectAs(name)
         # Sparse label array automatically shifts label values down 1
         
         nonzeroSlicings = self.opLabeling.NonzeroLabelBlocks[imageIndex][:].wait()[0]
@@ -238,24 +233,28 @@ class OpCarving(Operator):
     
     # O u t p u t s #
     
+    #current object + background
     Segmentation = OutputSlot()
+    
     Supervoxels  = OutputSlot()
+    
+    #contains an array with the object labels done so far, one label for each 
+    #object
     DoneObjects  = OutputSlot()
+    
+    #contains an array with where all objects done so far are labeled the same
     DoneSegmentation = OutputSlot()
     
     CurrentObjectName = OutputSlot(stype=Opaque)
+    
+    #current object has an actual segmentation
     HasSegmentation   = OutputSlot(stype=Opaque)
     
     def __init__(self, carvingGraphFilename, *args, **kwargs):
         super(OpCarving, self).__init__(*args, **kwargs)
         print "[Carving id=%d] CONSTRUCTOR" % id(self) 
         
-        #
-        # FIXME: this operator has state
-        #
         self._mst = MSTSegmentor.loadH5(carvingGraphFilename,  "graph")
-        self._nExecutingThreads = 0
-        self._cond = threading.Condition()
         
         #supervoxels of finished and saved objects 
         self._done_lut = None
@@ -265,13 +264,20 @@ class OpCarving(Operator):
         self.HasSegmentation.setValue(False)
         
     def _setCurrObjectName(self, n):
+        """
+        Sets the current object name to n.
+        """
         self._currObjectName = n
         self.CurrentObjectName.setValue(n)
    
     def _buildDone(self):
+        """
+        Builds the done segmentation anew, for example after saving an object or
+        deleting an object.
+        """
         self._done_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32) 
-        self._done_seg_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32) 
-        print "building done" 
+        self._done_seg_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
+        print "building done"
         for i, (name, objectSupervoxels) in enumerate(self._mst.object_lut.iteritems()): 
             if name == self._currObjectName:
                 continue
@@ -280,16 +286,6 @@ class OpCarving(Operator):
             self._done_seg_lut[objectSupervoxels] = i+1
         print ""
    
-    def executeLocked(func): 
-        """decorator which makes sure that no threads are running the execute() method anymore
-           before running the decorated method"""
-        def ret(self, *args, **kwargs):
-        #    with self._cond:
-        #        while self._nExecutingThreads > 0:
-        #            self._cond.wait()
-            return func(self, *args, **kwargs)
-        return ret
-    
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.RawData.meta)
         self.Supervoxels.meta.assignFrom(self.RawData.meta)
@@ -299,20 +295,29 @@ class OpCarving(Operator):
         self.Trigger.meta.shape = (1,)
         self.Trigger.meta.dtype = numpy.uint8
         
-    @executeLocked
     def hasCurrentObject(self):
+        """
+        Returns current object name. None if it is not set.
+        """
         return self._currObjectName
     
-    @executeLocked
     def currentObjectName(self):
+        """
+        Returns current object name. None if it is not set.
+        """
         return self._currObjectName
     
-    @executeLocked
     def hasObjectWithName(self, name):
+        """
+        Returns True if object with name is existent. False otherwise.
+        """ 
         return name in self._mst.object_lut
     
-    @executeLocked
     def doneObjectNamesForPosition(self, position3d):
+        """
+        Returns a list of names of objects which occupy a specific 3D position.
+        List is empty if there are no objects present.
+        """
         assert len(position3d) == 3
           
         #find the supervoxel that was clicked 
@@ -323,14 +328,20 @@ class OpCarving(Operator):
                 names.append(name)
         print "click on %r, supervoxel=%d: %r" % (position3d, sv, names)
         return names
-        
-    @executeLocked
+    
+    @Operator.forbidParallelExecute
     def attachVoxelLabelsToObject(self, name, fgVoxels, bgVoxels):
+        """
+        Attaches Voxellabes to an object called name.
+        """
         self._mst.object_seeds_fg_voxels[name] = fgVoxels
         self._mst.object_seeds_bg_voxels[name] = bgVoxels
   
-    @executeLocked
-    def clearCurrentLabeling(self): 
+    @Operator.forbidParallelExecute
+    def clearCurrentLabeling(self):
+        """
+        Clears the current labeling.
+        """
         self._mst.seeds[:] = 0
         lut_segmentation = self._mst.segmentation.lut[:]
         lut_segmentation[:] = 0
@@ -338,8 +349,11 @@ class OpCarving(Operator):
         lut_seeds[:] = 0
         self.HasSegmentation.setValue(False)
                 
-    @executeLocked
-    def loadObject(self, name):      
+    def loadObject(self, name):
+        """
+        Loads a single object called name to be the currently edited object. Its
+        not part of the done segmentation anymore. 
+        """
         assert self._mst is not None
         print "[OpCarving] load object %s (opCarving=%d, mst=%d)" % (name, id(self), id(self._mst)) 
         
@@ -349,10 +363,6 @@ class OpCarving(Operator):
         assert name in self._mst.bg_priority
         assert name in self._mst.no_bias_below
             
-        #old way of doing things:    
-        #objNr = self._mst.object_names[name]
-        #print "   --> Loading object %r from nr %r" % (name, objNr)
-
         lut_segmentation = self._mst.segmentation.lut[:]
         lut_objects = self._mst.objects.lut[:]
         lut_seeds = self._mst.seeds.lut[:]
@@ -363,21 +373,11 @@ class OpCarving(Operator):
         fgVoxels = self._mst.object_seeds_fg_voxels[name]
         bgVoxels = self._mst.object_seeds_bg_voxels[name]
        
-        #supervoxelize seeds: 
-        #obj_seeds_fg = self._mst.object_seeds_fg[name]
-        #obj_seeds_bg = self._mst.object_seeds_bg[name]
-        #lut_seeds[obj_seeds_fg] = 2
-        #lut_seeds[obj_seeds_bg] = 1
-        
         #user-drawn seeds:
         self._mst.seeds[:] = 0
         self._mst.seeds[fgVoxels] = 2
         self._mst.seeds[bgVoxels] = 1
 
-        #old way of setting current segmentation
-        # set current segmentation
-        #lut_segmentation[:] = numpy.where( lut_objects == objNr, 2, 1)
-       
         newSegmentation = numpy.ones(len(lut_objects), dtype=numpy.int32) 
         newSegmentation[ self._mst.object_lut[name] ] = 2
         lut_segmentation[:] = newSegmentation
@@ -389,8 +389,11 @@ class OpCarving(Operator):
         self._buildDone()
         return (fgVoxels, bgVoxels)
     
-    @executeLocked
+    @Operator.forbidParallelExecute
     def deleteObject(self, name):
+        """
+        Deletes an object called name.
+        """
         lut_seeds = self._mst.seeds.lut[:]
         # clean seeds
         lut_seeds[:] = 0
@@ -406,27 +409,24 @@ class OpCarving(Operator):
         
         #now that 'name' has been deleted, rebuild the done overlay 
         self._buildDone()
-        
-    @executeLocked
-    def _deleteObjectInternal(self, name):
-        del self._mst.object_lut[name]
-        del self._mst.object_seeds_fg_voxels[name]
-        del self._mst.object_seeds_bg_voxels[name]
-        del self._mst.bg_priority[name]
-        del self._mst.no_bias_below[name]
     
-    @executeLocked
-    def saveCurrentObject(self):  
+    @Operator.forbidParallelExecute
+    def saveCurrentObject(self):
+        """
+        Saves the objects which is currently edited.
+        """ 
         if self._currObjectName:
             name = copy.copy(self._currObjectName)
             print "saving object %s" % self._currObjectName
-            self.saveObjectAs(self._currObjectName)
+            self.saveCurrentObjectAs(self._currObjectName)
             return name
         return ""
     
-    @executeLocked
-    def saveObjectAs(self, name): 
-                
+    @Operator.forbidParallelExecute
+    def saveCurrentObjectAs(self, name):
+        """
+        Saves current object as name.
+        """
         seed = 2
         print "   --> Saving object %r from seed %r" % (name, seed)
         if self._mst.object_names.has_key(name):
@@ -474,9 +474,6 @@ class OpCarving(Operator):
     
     def execute(self, slot, subindex, roi, result):
         start = time.time()
-        #with self._cond:
-        #    self._nExecutingThreads += 1
-        #    self._cond.notify()
         
         if self._mst is None:
             return
@@ -508,23 +505,13 @@ class OpCarving(Operator):
         else:
             raise RuntimeError("unknown slot")
         
-        #with self._cond:
-        #    self._nExecutingThreads -= 1
-        #    self._cond.notify()
-        
         return temp #avoid copying data
-    
-    def propagateDirty(self, slot, subindex, roi):
-        pass
     
     def setInSlot(self, slot, subindex, roi, value):
         key = roi.toSlice()
         if slot == self.WriteSeeds: 
             assert self._mst is not None
         
-            #FIXME: Somehow, the labelingGui sends a value of 100 for the eraser,
-            #       but the cython part of carving expects 255.
-            #       Fix it here so that erasing of labels works.
             value = numpy.where(value == 100, 255, value[:])
             
             if hasattr(key, '__len__'):
@@ -565,8 +552,9 @@ class OpCarving(Operator):
             
         elif slot == self.CarvingGraphFile:
             if self._mst is not None:
-                #FIXME
-                return
+                #if the carving graph file is not valid, all outputs must be invalid
+                for output in self.outputs.values():
+                    output.setDirty(slice(0,None))
             
             fname = self.CarvingGraphFile.value
             self._mst = MSTSegmentor.loadH5(fname,  "graph")
