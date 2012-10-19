@@ -80,33 +80,6 @@ class OpCarvingTopLevel(Operator):
         self.opLabeling.LabelDelete.setValue(1)
         self.opLabeling.LabelDelete.setValue(-1)
         
-    def isStorable(self,imageIndex):
-        #TODO: this code is duplicated, also it could be reduced
-        w1 = [[]]
-        w2 = [[]]
-        nonzeroSlicings = self.opLabeling.NonzeroLabelBlocks[imageIndex][:].wait()[0]
-        if len(nonzeroSlicings) == 0:
-            return False
-        coors1 = [[], [], []]
-        coors2 = [[], [], []]
-        for sl in nonzeroSlicings:
-            a = self.opLabeling.LabelImages[imageIndex][sl].wait()
-            w1 = numpy.where(a == 1)
-            w2 = numpy.where(a == 2)
-            w1 = [w1[i] + sl[i].start for i in range(3)]
-            w2 = [w2[i] + sl[i].start for i in range(3)]
-            for i in range(3):
-                coors1[i].append( w1[i] )
-                coors2[i].append( w2[i] )
-        for i in range(3):
-            coors1[i] = numpy.concatenate(coors1[i])
-            coors2[i] = numpy.concatenate(coors2[i])
-        
-        if len(coors1[0]) == 0 or len(coors2[0]) == 0:
-            return False 
-        
-        return True
-        
     def saveObjectAs(self, name, imageIndex):
         # first, save the object under "name"
         self.opCarving.innerOperators[imageIndex].saveCurrentObjectAs(name)
@@ -286,6 +259,17 @@ class OpCarving(Operator):
             self._done_seg_lut[objectSupervoxels] = i+1
         print ""
    
+    def dataIsStorable(self):
+        seed = 2
+        lut_seeds = self._mst.seeds.lut[:]
+        fg_seedNum = len(numpy.where(lut_seeds == 2)[0])
+        bg_seedNum = len(numpy.where(lut_seeds == 1)[0])
+        print fg_seedNum,bg_seedNum, '3ir2232r230u9r23h2h'
+        if not (fg_seedNum > 0 and bg_seedNum > 0):
+            return False
+        else:
+            return True
+   
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.RawData.meta)
         self.Supervoxels.meta.assignFrom(self.RawData.meta)
@@ -414,7 +398,7 @@ class OpCarving(Operator):
     def saveCurrentObject(self):
         """
         Saves the objects which is currently edited.
-        """ 
+        """
         if self._currObjectName:
             name = copy.copy(self._currObjectName)
             print "saving object %s" % self._currObjectName
@@ -576,7 +560,6 @@ class CarvingSerializer( AppletSerializer ):
         
         imageIndex = 0 #FIXME
         
-        
         mst = self._o.opCarving.innerOperators[imageIndex]._mst 
         for name in self._o._dirtyObjects[imageIndex]:
             print "[CarvingSerializer] serializing %s" % name
@@ -706,7 +689,7 @@ class CarvingGui(LabelingGui):
         
         def onSaveAsButton():
             print "save object as?"
-            if self._carvingApplet.topLevelOperator.isStorable(self.imageIndex):
+            if self._carvingApplet.topLevelOperator.opCarving[self.imageIndex].dataIsStorable():
                 name, ok = QInputDialog.getText(self, 'Save Object As', 'object name') 
                 name = str(name)
                 if not ok:
@@ -736,10 +719,18 @@ class CarvingGui(LabelingGui):
         self.labelingDrawerUi.deleteObject.clicked.connect(onDeleteButton)
         
         def onSaveButton():
-            if self._carvingApplet.topLevelOperator.hasCurrentObject(self.imageIndex):
-                self._carvingApplet.topLevelOperator.saveCurrentObject(self.imageIndex)
+            if self._carvingApplet.topLevelOperator.opCarving[self.imageIndex].dataIsStorable():
+                if self._carvingApplet.topLevelOperator.hasCurrentObject(self.imageIndex):
+                    self._carvingApplet.topLevelOperator.saveCurrentObject(self.imageIndex)
+                else:
+                    onSaveAsButton()
             else:
-                onSaveAsButton()
+                msgBox = QMessageBox(self)
+                msgBox.setText("The data does no seem fit to be stored.")
+                msgBox.setWindowTitle("Lousy Data")
+                msgBox.setIcon(2)
+                msgBox.exec_()
+                print "object not saved due to faulty data."
         self.labelingDrawerUi.save.clicked.connect(onSaveButton)
         self.labelingDrawerUi.save.setEnabled(False) #initially, the user need to use "Save As"
         
