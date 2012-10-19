@@ -1123,9 +1123,9 @@ class Slot(object):
     
     def setShapeAtAxisTo(self,axis,size):
         tmpshape = list(self.meta.shape)
-        tmpshape[self.axistags.index(axis)] = size
+        tmpshape[self.meta.axistags.index(axis)] = size
         self.meta.shape = tuple(tmpshape)
-    
+
     def __str__(self):
         if self.meta.axistags is None:
             axisStr = 'Axistags \tNone\n'

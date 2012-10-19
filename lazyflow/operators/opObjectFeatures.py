@@ -1,5 +1,4 @@
 from lazyflow.graph import Operator,InputSlot,OutputSlot
-from lazyflow.helpers import AxisIterator
 from lazyflow.stype import ArrayLike, Opaque
 import numpy,vigra
 
