@@ -4,6 +4,7 @@ import multiprocessing
 import threading
 import atexit
 from functools import partial
+import itertools
 
 import sys
 import logging
@@ -33,6 +34,9 @@ class SimpleSignal(object):
         """Emit the signal."""
         for f in self.callbacks:
             f(*args, **kwargs)
+        
+    def clean(self):
+        self.callbacks = set()
 
 class Worker(threading.Thread):
     """
@@ -281,6 +285,11 @@ class Request( object ):
         
         # FIXME: Can't auto-submit here because the writeInto() function gets called AFTER request construction.
         #self.submit()
+
+    def clean(self):
+        self._sig_cancelled.clean()
+        self._sig_finished.clean()
+        self.result = None
         
     def set_assigned_worker(self, worker):
         """
@@ -563,6 +572,128 @@ class Request( object ):
 
 
 
+class Pool(object):
+    """
+    Request pool class for handling many requests jointly
+
+    THIS CLASS IS NOT THREAD SAFE. I.e. the class should only be
+    accessed from a single thread.
+    """
+
+    def __init__(self):
+        self.requests = []
+        self.callbacks_finish = []
+
+        self.running = False
+        self.finished = False
+
+        self.counter = itertools.count()
+        self.count_finished = self.counter.next()
+        self.must_finish = 0
+
+    def request(self, func, **kwargs):
+        """
+        generate a request object which is added to the pool.
+
+        returns the generaded request.
+        """
+        if not self.running and not self.finished:
+            req = Request(func, **kwargs)
+            self.requests.append(req)
+            self.must_finish += 1
+        return req
+
+    def add(self, req):
+        """
+        add an already existing request object to the pool
+
+        returns the request object.
+        """
+        if not self.running and not self.finished and not req in self.requests:
+            self.requests.append(req)
+            self.must_finish += 1
+        return req
+
+    def submit(self):
+        """
+        Start processing of the requests
+        """
+        if not self.running and not self.finished:
+            self.running = True
+            # catch the case of an empty pool
+            if self.must_finish == 0:
+                self._finalize()
+            for r in self.requests:
+                r.submit()
+                r.onFinish(self._req_finished)
+
+    def wait(self):
+        """
+        Start processing of the requests and blocking wait for their completion.
+        """
+        if self.must_finish == 1:
+            self.requests[0].wait()
+            self._finalize()
+        else:
+            self.submit()
+            
+            # Just wait for them all
+            for req in self.requests:
+                req.wait()
+
+#            #print "submitting", self
+#            if not self.finished:
+#                cur_tr = threading.current_thread()
+#                if isinstance(cur_tr, Worker):
+#                    finished_lock = Lock() # special Worker compatible non-blocking lock
+#                else:
+#                    finished_lock = threading.Lock() # normal lock
+#                #print "waiting", self, self.must_finish, self.count_finished
+#                finished_lock.acquire()
+#                self.onFinish(self._release_lock, lock = finished_lock)
+#                finished_lock.acquire()
+#                #print "finished", self
+            
+
+
+    def onFinish(self, func, **kwargs):
+        """
+        Register a callback function which is executed once all requests in the
+        pool are completed.
+        """
+        if not self.finished:
+            self.callbacks_finish.append((func,kwargs)) 
+        else:
+            func(**kwargs)
+
+    def clean(self):
+        """
+        Clean all the requests and the pool.
+        """
+        for r in self.requests:
+            r.clean()
+        self.requests = []
+        self.callbacks_finish = []
+    
+    def _finalize(self):
+        self.running = False
+        self.finished = True
+        callbacks_finish = self.callbacks_finish
+        self.finished_callbacks = []
+        for f, kwargs in callbacks_finish:
+            f(**kwargs)
+
+    def _req_finished(self, req):
+        self.count_finished = self.counter.next()
+        if self.count_finished >= self.must_finish:
+            self._finalize()
+
+
+    def __len__(self):
+        return self.must_finish
+            
+    def _release_lock(self, lock):
+        lock.release()
 
 
 
