@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class RequestGreenlet(greenlet.greenlet):
     def __init__(self, owning_request, fn):
         super(RequestGreenlet, self).__init__(fn)
-        self.owning_request = owning_request
+        self.owning_requests = [owning_request]
 
 class SimpleSignal(object):
     """
@@ -260,6 +260,7 @@ class Request( object ):
         self.uncancellable = False
         self.finished = False
         self.finished_event = threading.Event()
+        self.exception = None
 
         # Execution
         self.greenlet = None # Not created until assignment to a worker
@@ -280,6 +281,7 @@ class Request( object ):
         self._lock = threading.Lock()
         self._sig_finished = SimpleSignal()
         self._sig_cancelled = SimpleSignal()
+        self._sig_failed = SimpleSignal()
         
         self.logger.debug("Created request")
         
@@ -289,6 +291,7 @@ class Request( object ):
     def clean(self):
         self._sig_cancelled.clean()
         self._sig_finished.clean()
+        self._sig_failed.clean()
         self.result = None
         
     def set_assigned_worker(self, worker):
@@ -316,20 +319,26 @@ class Request( object ):
                 # Don't propagate cancellations back to the worker thread,
                 # even if the user didn't catch them.
                 pass
+            except Exception as ex:
+                # Save this exception
+                self.exception = ex
 
         with self._lock:
             self.finished = True
 
-        # Notify callbacks (one or the other, not both)
-        if self.cancelled:
-            self._sig_cancelled()
-        else:
-            self._sig_finished(self.result)
-
-        # Notify non-request-based threads
-        self.finished_event.set()
-
-        self.logger.debug("Finished")
+        try:
+            # Notify callbacks (one or the other, not both)
+            if self.cancelled:
+                self._sig_cancelled()
+            elif self.exception is not None:
+                self._sig_failed( self.exception )
+            else:
+                self._sig_finished(self.result)
+        finally:
+            # Notify non-request-based threads
+            self.finished_event.set()
+    
+            self.logger.debug("Finished")
     
     def submit(self):
         """
@@ -364,8 +373,6 @@ class Request( object ):
         """
         Start this request if necessary, then wait for it to complete.  Return the request's result.
         """
-        self.submit()
-        
         # Identify the request that is waiting for us (the current context)
         current_request = Request.current_request()
 
@@ -373,12 +380,29 @@ class Request( object ):
             # Don't allow this request to be cancelled, since a real thread is waiting for it.
             self.uncancellable = True
 
+            with self._lock:
+                direct_execute_needed = not self.started
+                if direct_execute_needed:
+                    # This request hasn't been started yet
+                    # We can execute it directly in the current greenlet instead of creating a new greenlet (big optimization)
+                    # Mark it as 'started' so that no other greenlet can claim it
+                    self.started = True
+
+            if direct_execute_needed:
+                self.execute()
+            else:
+                self.submit()
+
             # This is a non-worker thread, so just block the old-fashioned way
             self.finished_event.wait()
             
             # It turns out this request was already cancelled.
             if self.cancelled:
                 raise Request.InvalidRequestException()
+            
+            if self.exception is not None:
+                raise self.exception
+            
         else:
             # We're running in the context of a request.
             # If we have to wait, suspend the current request instead of blocking the thread.
@@ -387,29 +411,58 @@ class Request( object ):
             if current_request.cancelled:
                 raise Request.CancellationException()
 
-            with self._lock:                
+
+            with self._lock:
                 # If the current request isn't cancelled but we are,
                 # then the current request is trying to wait for a request (i.e. self) that was spawned elsewhere and already cancelled.
                 # If they really want it, they'll have to spawn it themselves.
                 if self.cancelled:
                     raise Request.InvalidRequestException()
+                
+                if self.exception is not None:
+                    # This request was already started and already failed.
+                    # Simply raise the exception back to the current request.
+                    raise self.exception
 
-                suspend_needed = not self.finished
-                if suspend_needed:
+                direct_execute_needed = not self.started
+                suspend_needed = self.started and not self.finished
+                if direct_execute_needed or suspend_needed:
                     current_request.blocking_requests.add(self)
                     self.pending_requests.add(current_request)
+                
+                if direct_execute_needed:
+                    # This request hasn't been started yet
+                    # We can execute it directly in the current greenlet instead of creating a new greenlet (big optimization)
+                    # Mark it as 'started' so that no other greenlet can claim it
+                    self.started = True
+                elif suspend_needed:
+                    # This request is already started in some other greenlet.
+                    # We must suspend the current greenlet while we wait for this request to complete.
+                    # Here, we set up the callbacks so we'll wake up once this request is complete.
                     # No matter what, we need to be notified when this request stops.
                     # (Exactly one of these callback signals will fire.)
                     self._notify_finished_unlocked( partial(current_request._handle_finished_request, self) )
                     self._notify_cancelled_unlocked( partial(current_request._handle_finished_request, self) )
+                    self._notify_failed_unlocked( partial(current_request._handle_finished_request, self) )
 
             if suspend_needed:
                 current_request._suspend()
+            elif direct_execute_needed:
+                self.greenlet = current_request.greenlet
+                self.greenlet.owning_requests.append(self)
+                self.assigned_worker = current_request.assigned_worker
+                self.execute()
+                assert self.greenlet.owning_requests.pop() == self
+                current_request.blocking_requests.remove(self)
 
-                # Now we're back (no longer suspended)
-                # Were we cancelled in the meantime?
-                if current_request.cancelled:
-                    raise Request.CancellationException()    
+            # Now we're back (no longer suspended)
+            # Was the current request cancelled while it was waiting for us?
+            if current_request.cancelled:
+                raise Request.CancellationException()
+            
+            # Are we back because we failed?
+            if self.exception is not None:
+                raise self.exception
 
         assert self.finished
         return self.result
@@ -487,6 +540,42 @@ class Request( object ):
             # Call immediately
             fn()
         
+    def notify_failed(self, fn):
+        """
+        Register a callback function to be called when this request is finished due to failure (an exception was thrown).
+        If we're already failed, call it now.
+        
+        This function obtains the lock.
+        """
+        with self._lock:
+            finished = self.finished
+            failed = self.exception is not None
+            if not finished:
+                # Call when we eventually finish
+                self._sig_failed.subscribe(fn)
+
+        if finished and failed:
+            # Call immediately
+            fn(self.exception)
+
+    def _notify_failed_unlocked(self, fn):
+        """
+        Register a callback function to be called when this request is finished due to failure (an exception was thrown).
+        If we're already finished and cancelled, call it now.
+        
+        This version does NOT obtain the lock.  It should be owned already by the calling function.
+        """
+        finished = self.finished
+        failed = self.exception is not None
+        if not finished:
+            # Call when we eventually finish
+            self._sig_failed.subscribe(fn)
+
+        if finished and failed:
+            # Call immediately
+            fn(self.exception)
+    
+    
     def cancel(self):
         # We can only be cancelled if: 
         # (1) There are no foreign threads blocking for us (flagged via self.uncancellable) AND
@@ -516,8 +605,8 @@ class Request( object ):
         """
         current_greenlet = greenlet.getcurrent()
         # Greenlets in worker threads have a monkey-patched 'owning-request' member
-        if hasattr(current_greenlet, 'owning_request'):
-            return current_greenlet.owning_request
+        if hasattr(current_greenlet, 'owning_requests'):
+            return current_greenlet.owning_requests[-1]
         else:
             # There is no request associated with this greenlet.
             # It must be a regular (foreign) thread.

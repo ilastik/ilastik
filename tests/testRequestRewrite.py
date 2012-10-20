@@ -162,7 +162,7 @@ class TestRequest(object):
                 for r in requests:
                     workcounter[0] += r.wait()
                 
-                assert False, "This test is designed so that big_workload should be cancelled before it finishes all its work"
+                assert False, "Shouldn't get to this line.  This test is designed so that big_workload should be cancelled before it finishes all its work"
                 for r in requests:
                     assert not r.cancelled
             except Request.CancellationException:
@@ -300,6 +300,82 @@ class TestRequest(object):
         
         t.join()
     
+    def test_failed_request(self):
+        """
+        A request is "failed" if it throws an exception while executing.
+        The exception should be forwarded to ALL waiting requests.
+        """
+        
+        def impossible_workload():
+            raise RuntimeError("Can't service your request")
+        
+        req = Request(impossible_workload)
+        
+        try:
+            req.wait()
+        except RuntimeError:
+            pass
+        else:
+            assert False, "Expected an exception from that request, but didn't get it."
+    
+    def test_failed_request2(self):
+        """
+        A request is "failed" if it throws an exception while executing.
+        The exception should be forwarded to ALL waiting requests, which should re-raise it.
+        """
+
+        class CustomRuntimeError(RuntimeError):
+            pass
+        
+        def impossible_workload():
+            time.sleep(0.2)
+            raise CustomRuntimeError("Can't service your request")
+        
+        impossible_req = Request(impossible_workload)
+
+        def wait_for_impossible():
+            # This request will fail...
+            impossible_req.wait()
+
+            # Since there are some exception guards in the code we're testing, 
+            #  spit something out to stderr just to be sure this error 
+            #  isn't getting swallowed accidentally.
+            sys.stderr.write("ERROR: Shouldn't get here.")
+            assert False, "Shouldn't get here."
+
+        req1 = Request(wait_for_impossible)
+        req2 = Request(wait_for_impossible)
+        
+        failed_ids = []
+        lock = threading.Lock()
+        def handle_failed_req(req_id, failure_exc):
+            assert isinstance(failure_exc, CustomRuntimeError)
+            with lock:
+                failed_ids.append(req_id)
+        
+        req1.notify_failed( partial(handle_failed_req, 1) )
+        req2.notify_failed( partial(handle_failed_req, 2) )
+        
+        req1.submit()
+        req2.submit()
+
+        try:
+            req1.wait()
+        except RuntimeError:
+            pass
+        else:
+            assert False, "Expected an exception from that request, but didn't get it."
+
+        try:
+            req2.wait()
+        except RuntimeError:
+            pass
+        else:
+            assert False, "Expected an exception from that request, but didn't get it."
+
+        assert 1 in failed_ids
+        assert 2 in failed_ids
+
     def test_old_api_support(self):
         """
         For now, the request_rewrite supports the old interface, too.
