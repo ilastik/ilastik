@@ -659,7 +659,7 @@ class Slot(object):
             self.destination = destination
 
         def __call__(self, destination=None):
-            # store wether the user wants the results in a given destination area
+            # store whether the user wants the results in a given destination area
             destination_given = False if (destination is None) else True
 
             if destination is None:
@@ -668,14 +668,13 @@ class Slot(object):
             if destination is None:
                 destination = self.slot.stype.allocateDestination(self.roi)
 
-
             # We are executing the operator.
             # Incremement the execution count to protect against simultaneous setupOutputs() calls.
             self._incrementOperatorExecutionCount()
 
             try:
                 # Execute the workload, which might not ever return (if we get cancelled).
-                result_op = self.operator.execute(self.slot, (), roi, destination)
+                result_op = self.operator.execute(self.slot, (), self.roi, destination)
             
                 # copy data from result_op to destination, if destinatino was actually given by the user, and the returned result_op is different from destination. (but don't copy if result_op is None, this means legacy op which wrote into destination anyway)
                 if destination_given and result_op is not None and id(result_op) != id(destination):
