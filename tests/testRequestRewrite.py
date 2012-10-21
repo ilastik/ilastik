@@ -5,18 +5,28 @@ import numpy
 import h5py
 from functools import partial
 
+from lazyflow.tracer import traceLogged
+
 import threading
 import sys
 import logging
 logger = logging.getLogger(__name__)
-#logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 #handler = logging.StreamHandler(sys.stdout)
 #formatter = logging.Formatter('%(levelname)s %(name)s %(message)s')
 #handler.setFormatter(formatter)
 #logger.addHandler(handler)
 
+traceLogger = logging.getLogger("TRACE." + __name__)
+#traceLogger.addHandler(handler)
+
 class TestRequest(object):
 
+    @classmethod
+    def setupClass(cls):
+        traceLogger.setLevel(logging.INFO)
+
+    @traceLogged(traceLogger)
     def test_basic(self):
         """
         Fire a couple requests and check the answer they give.
@@ -24,7 +34,7 @@ class TestRequest(object):
         def someWork():
             time.sleep(0.001)
             return "Hello,"
-
+        
         callback_result = ['']
         def callback(result):
             callback_result[0] = result
@@ -52,6 +62,7 @@ class TestRequest(object):
         for r in requests:
             r.wait()
 
+    @traceLogged(traceLogger)
     def test_callWaitDuringCallback(self):
         """
         When using request.notify_finished(...) to handle request completions, the handler should be allowed to call request.wait() on the request that it's handling.
@@ -67,6 +78,7 @@ class TestRequest(object):
         req.notify_finished( partial(handler, req) )
         req.wait()
     
+    @traceLogged(traceLogger)
     def test_block_during_calback(self):
         """
         It is valid for request finish handlers to fire off and wait for requests.
@@ -87,6 +99,7 @@ class TestRequest(object):
         assert total_result[0] == 2
         
 
+    @traceLogged(traceLogger)
     def test_lotsOfSmallRequests(self):
         """
         Fire off some reasonably large random number of nested requests.
@@ -141,6 +154,7 @@ class TestRequest(object):
 
         logger.info("waited for all subrequests")
     
+    @traceLogged(traceLogger)
     def test_cancel_basic(self):
         """
         Start a workload and cancel it.  Verify that it was actually cancelled before all the work was finished.
@@ -189,6 +203,7 @@ class TestRequest(object):
         assert workcounter[0] != 0
         assert workcounter[0] != 100
 
+    @traceLogged(traceLogger)
     def test_dont_cancel_shared_request(self):
         """
         Test that a request isn't cancelled if it has requests pending for it.
@@ -253,6 +268,7 @@ class TestRequest(object):
         assert 3 in cancelled_requests
 
         
+    @traceLogged(traceLogger)
     def test_early_cancel(self):
         """
         If you try to wait for a request after it's already been cancelled, you get a InvalidRequestException.
@@ -268,6 +284,7 @@ class TestRequest(object):
         else:
             assert False, "Expected a Request.InvalidRequestException because we're waiting for a request that's already been cancelled."
 
+    @traceLogged(traceLogger)
     def test_uncancellable(self):
         """
         If a request is being waited on by a regular thread, it can't be cancelled.
@@ -300,6 +317,7 @@ class TestRequest(object):
         
         t.join()
     
+    @traceLogged(traceLogger)
     def test_failed_request(self):
         """
         A request is "failed" if it throws an exception while executing.
@@ -318,6 +336,7 @@ class TestRequest(object):
         else:
             assert False, "Expected an exception from that request, but didn't get it."
     
+    @traceLogged(traceLogger)
     def test_failed_request2(self):
         """
         A request is "failed" if it throws an exception while executing.
@@ -376,6 +395,7 @@ class TestRequest(object):
         assert 1 in failed_ids
         assert 2 in failed_ids
 
+    @traceLogged(traceLogger)
     def test_old_api_support(self):
         """
         For now, the request_rewrite supports the old interface, too.
