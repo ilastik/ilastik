@@ -6,15 +6,6 @@ import atexit
 from functools import partial
 import itertools
 
-import sys
-import logging
-logger = logging.getLogger(__name__)
-#logger.setLevel(logging.DEBUG)
-#handler = logging.StreamHandler(sys.stdout)
-#formatter = logging.Formatter('%(levelname)s %(name)s %(message)s')
-#handler.setFormatter(formatter)
-#logger.addHandler(handler)
-
 class RequestGreenlet(greenlet.greenlet):
     def __init__(self, owning_request, fn):
         super(RequestGreenlet, self).__init__(fn)
@@ -52,10 +43,6 @@ class Worker(threading.Thread):
         self.job_queue_condition = threading.Condition()
         self.job_queue = deque() # Threadsafe for append/pop
         
-        loggerName = __name__ + '.Worker{}'.format(index)
-        self.logger = logging.getLogger(loggerName)
-        self.logger.debug("Created.")
-    
     def run(self):
         """
         Keep executing available jobs (requests) until we're stopped.
@@ -105,16 +92,12 @@ class Worker(threading.Thread):
 
             while next_request is None and not self.stopped:
                 # Wait for work to become available
-                self.logger.debug("Waiting for work...")
                 self.job_queue_condition.wait()
                 next_request = self._pop_job()
 
         if not self.stopped:
             assert next_request is not None
             assert next_request.assigned_worker is self
-        
-        if not self.stopped:
-            self.logger.debug("Got work.")
 
         return next_request
     
@@ -179,7 +162,6 @@ class ThreadPool(object):
         else:
             self.unassigned_requests.append(request)
             # Notify all currently waiting workers that there's new work
-            logger.debug("Notifying workers of new work")
             self._notify_all_workers()
 
     def stop(self):
@@ -202,7 +184,6 @@ class ThreadPool(object):
             w = Worker(self, i)
             workers.add( w )
             w.start()
-            logger.debug("Started " + w.name)
         return workers
 
     def _notify_all_workers(self):
@@ -221,8 +202,6 @@ def stop_thread_pool():
 
 class Request( object ):
     
-    logger = logging.getLogger(__name__ + '.Request')
-
     class CancellationException(Exception):
         """
         This is thrown when the whole request has been cancelled.
@@ -273,6 +252,7 @@ class Request( object ):
         
         current_request = Request.current_request()
         self.parent_request = current_request
+        # We must ensure that we get the same cancelled status as our parent.
         if current_request is not None:
             with current_request._lock:
                 current_request.child_requests.add(self)
@@ -287,8 +267,6 @@ class Request( object ):
         self.notify_finished = partial( self._locked_notify_finished, self._lock, True )
         self.notify_cancelled = partial( self._locked_notify_cancelled, self._lock )
         self.notify_failed = partial( self._locked_notify_failed, self._lock )
-        
-        self.logger.debug("Created request")
         
         # FIXME: Can't auto-submit here because the writeInto() function gets called AFTER request construction.
         #self.submit()
@@ -313,7 +291,6 @@ class Request( object ):
         """
         Do the real work of this request.
         """
-        self.logger.debug("Executing in " + threading.current_thread().name)
 
         # Did someone cancel us before we even started?
         if not self.cancelled:
@@ -325,11 +302,11 @@ class Request( object ):
                 # even if the user didn't catch them.
                 pass
             except Exception as ex:
-                # Save this exception
+                # The workload raised an exception.
+                # Save it so we can raise it in any requests that are waiting for us.
                 self.exception = ex
 
-        with self._lock:
-            self.finished = True
+        self.finished = True
 
         try:
             # Notify callbacks (one or the other, not both)
@@ -342,8 +319,6 @@ class Request( object ):
         finally:
             # Notify non-request-based threads
             self.finished_event.set()
-    
-            self.logger.debug("Finished")
     
     def submit(self):
         """
@@ -358,7 +333,6 @@ class Request( object ):
         """
         Resume this request's execution (put it back on the worker's job queue).
         """
-        self.logger.debug("Waking up")
         global_thread_pool.wake_up(self)
  
     def switch_to(self):
@@ -377,7 +351,16 @@ class Request( object ):
     def wait(self):
         """
         Start this request if necessary, then wait for it to complete.  Return the request's result.
-        """
+        """        
+        # Quick shortcut:
+        # If there's no need to wait, just return immediately.
+        # This avoids some function calls and locks.
+        # (If we didn't do this, the code below would still do the right thing.)
+        # Note that this is only possible because self.finished is set to True 
+        #  AFTER self.cancelled and self.exception have their final values.  See execute().
+        if self.finished and not self.cancelled and self.exception is None:
+            return self.result
+        
         # Identify the request that is waiting for us (the current context)
         current_request = Request.current_request()
 
@@ -416,7 +399,6 @@ class Request( object ):
             if current_request.cancelled:
                 raise Request.CancellationException()
 
-
             with self._lock:
                 # If the current request isn't cancelled but we are,
                 # then the current request is trying to wait for a request (i.e. self) that was spawned elsewhere and already cancelled.
@@ -453,6 +435,7 @@ class Request( object ):
             if suspend_needed:
                 current_request._suspend()
             elif direct_execute_needed:
+                # Optimization: Don't start a new greenlet.  Directly run this request in the current greenlet.
                 self.greenlet = current_request.greenlet
                 self.greenlet.owning_requests.append(self)
                 self.assigned_worker = current_request.assigned_worker
@@ -484,6 +467,7 @@ class Request( object ):
                 self._wake_up()
 
     class FakeLock(object):
+        """Stand-in object that looks like a Lock, but does nothing."""
         def donothing(self, *args):
             pass
         __enter__ = donothing
