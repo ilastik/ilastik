@@ -4,15 +4,13 @@ from lazyflow.rtype import List, SubRegion
 from lazyflow.operators.obsolete.generic import OpSubRegion
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 import numpy
-import h5py
-#from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 
 
 class OpObjectExtractionMultiClass(Operator):
     name = "Object Extraction Multi-Class"
     
     # not necessarily a binary image (will be thresholded in the first step)
-    Images = InputSlot()   
+    Images = InputSlot()
 
     LabelImage = OutputSlot()
     ObjectCenterImage = OutputSlot()
@@ -24,9 +22,6 @@ class OpObjectExtractionMultiClass(Operator):
 
     def __init__(self, parent=None, graph=None):        
         super(OpObjectExtractionMultiClass, self).__init__(parent=parent, graph=graph)
-        print "OpObjectExtractionMultiClass::init"
-
-#        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
         
         self._opThresholding = OpThresholding(graph=graph)
         self._opThresholding.Threshold.setValue(0.5)
@@ -41,8 +36,7 @@ class OpObjectExtractionMultiClass(Operator):
         self._opSubRegionDivImage.inputs["Input"].connect(self._opThresholding.BinaryImage)        
         
         self._opObjectExtractionBg = OpObjectExtraction(graph=graph)
-        self._opObjectExtractionBg.BinaryImage.connect(self._opSubRegionBgImage.outputs["Output"])
-        # TODO: is this background label really needed or does the operator read the background label from 0,0,0,0?
+        self._opObjectExtractionBg.BinaryImage.connect(self._opSubRegionBgImage.outputs["Output"])    
         self._opObjectExtractionBg.BackgroundLabel.setValue(1)
         
         self._opObjectExtractionDiv = OpObjectExtraction(graph=graph)
@@ -80,10 +74,6 @@ class OpObjectExtractionMultiClass(Operator):
         self._opSubRegionDivImage.inputs["Start"].setValue(tuple(start))        
         self._opSubRegionDivImage.inputs["Stop"].setValue(tuple(stop))        
         
-#        # TODO: why do I have to call this explicitly?? -> because the output hasn't been pulled yet, 
-#        # other than the one of the bgOperator, since that's connected to the LabelImage
-#        print "setting up div object extraction"
-#        self._opObjectExtractionDiv.setupOutputs()
     
     def execute(self, slot, subindex, roi, result):
         pass
@@ -91,15 +81,15 @@ class OpObjectExtractionMultiClass(Operator):
     def propagateDirty(self, inputSlot, roi):
         raise NotImplementedError
 
-    def updateLabelImageAt( self, t, c ):        
-        if c == 0: 
-            print 'updating labels for background binary image'
-            self._opObjectExtractionBg.updateLabelImageAt(t)
-        elif c == 2:
-            print 'updating labels for division binary image'
-            self._opObjectExtractionDiv.updateLabelImageAt(t)
-        else:
-            raise Exception, 'invalid channel'
+#    def updateLabelImageAt( self, t, c ):        
+#        if c == 0: 
+#            print 'updating labels for background binary image'
+#            return self._opObjectExtractionBg.updateLabelImageAt(t)
+#        elif c == 2:
+#            print 'updating labels for division binary image'
+#            return self._opObjectExtractionDiv.updateLabelImageAt(t)
+#        else:
+#            raise Exception, 'invalid channel'
         
 
 class OpClassExtraction(Operator):    
@@ -137,17 +127,7 @@ class OpClassExtraction(Operator):
                 volBg = regionFeaturesBg['Count'][labelBg]
                 assert volBg > 0
                 p = volDiv / float(volBg)
-                try:
-                    assert prob[labelBg][0] > 0
-                except:
-                    print str(len(prob))
-                    print str(labelBg)
-                    print str(len(regionFeaturesBg['Count']))
-                    print str(coordDiv)
-                    print str(volBg)
-                    print str(p)
-                    print str(prob[labelBg])
-                    print str(prob[labelBg][1])
+
                 if prob[labelBg][0] != 1:
                     print 'updating prob[' + str(labelBg) + '] from ' + str(prob[labelBg][1]) + ' to ' + str(prob[labelBg][1]+p)
                     prob[labelBg][1] += p 

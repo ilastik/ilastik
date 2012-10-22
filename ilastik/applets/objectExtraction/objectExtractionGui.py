@@ -12,6 +12,7 @@ import volumina.colortables as colortables
 
 
 import logging
+from lazyflow.roi import sliceToRoi
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 from lazyflow.tracer import Tracer
@@ -146,16 +147,35 @@ class ObjectExtractionGui( QWidget ):
         progress.setCancelButtonText(QString())
         progress.forceShow()
 
-        # LabelImage for background/non-background (channel 0) and division/non-division (channel 2)
-        # TODO: run multi-threaded??? see _onExtractObjectsButtonPressed!
-        for idx,c in enumerate([0,2]):
-            for t in range(maxt):
-                progress.setValue(idx * maxt + t * (idx+1))
-                if progress.wasCanceled():
-                    break
-                else:
-                    self.curOp.updateLabelImageAt( t, c )
+        # LabelImage for background/non-background (channel 0) and division/non-division (channel 2)        
+#        for idx,c in enumerate([0,2]):
+#            for t in range(maxt):
+#                progress.setValue(idx * maxt + t * (idx+1))
+#                if progress.wasCanceled():
+#                    break
+#                else:
+#                    self.curOp.updateLabelImageAt( t, c )
+        reqs = []
+        self.curOp._opObjectExtractionBg._opLabelImage._fixed = False
+        self.curOp._opObjectExtractionDiv._opLabelImage._fixed = False
+
+        for t in range(maxt):            
+            reqs.append(self.curOp._opObjectExtractionBg._opLabelImage.LabelImage([t]))
+            reqs[-1].submit()
+
+            reqs.append(self.curOp._opObjectExtractionDiv._opLabelImage.LabelImage([t]))
+            reqs[-1].submit()
+
+                        
+        for i, req in enumerate(reqs):
+            progress.setValue(i)
+            if progress.wasCanceled():
+                req.cancel()
+            else:
+                req.wait()
+                
         progress.setValue(maxt * 2)
+        
         roi = SubRegion(self.curOp.LabelImage, start=5*(0,), stop=m.shape)
         # TODO: set LabelImage dirty to update the result for the current view!
         try:         

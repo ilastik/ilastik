@@ -13,7 +13,7 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         op = self.mainOperator.innerOperators[0]
         print "object extraction multi class: serializeToHdf5", topGroup, hdf5File, projectFilePath
         print "object extraction multi class: saving label image"
-        src = op._opObjectExtractionBg._mem_h5
+        src = op._opObjectExtractionBg._opLabelImage._mem_h5
         self.deleteIfPresent( topGroup, "LabelImage")
         src.copy('/LabelImage', topGroup) 
 
@@ -37,7 +37,7 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         print "objectExtraction multi class: deserializeFromHdf5", topGroup, groupVersion, hdf5File, projectFilePath
 
         print "objectExtraction multi class: loading label image"
-        dest = self.mainOperator.innerOperators[0]._opObjectExtractionBg._mem_h5        
+        dest = self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._mem_h5        
 
         del dest['LabelImage']
         topGroup.copy('LabelImage', dest)            

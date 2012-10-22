@@ -5,7 +5,7 @@ from trackingWorkflow import TrackingWorkflow
 from trackingWorkflowNN import TrackingWorkflowNN
 
 
-debug_testing = True
+debug_testing = False
 #method = 'chaingraph'
 method = 'nearest_neighbor'
 

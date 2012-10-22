@@ -1,6 +1,5 @@
 import numpy
 import h5py
-import vigra
 import vigra.analysis
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -9,23 +8,74 @@ from lazyflow.rtype import Everything, SubRegion, List
 from lazyflow.operators.ioOperators.opStreamingHdf5Reader import OpStreamingHdf5Reader
 
 import ctracking
+from lazyflow.roi import roiToSlice
+import os
+import tempfile
 
 
 class OpLabelImage( Operator ):
     BinaryImage = InputSlot()
-    LabelImageWithBackground = OutputSlot()
+    BackgroundLabel = InputSlot()
+    
+    LabelImage = OutputSlot()
 
+    def __init__(self, parent=None, graph=None):
+        super(OpLabelImage, self).__init__(parent=parent,graph=graph)
+        print "OpLabelImage::__init__"
+        self._mem_h5 = h5py.File(self._unique_file("LabelImage.h5"), backing_store=False)
+#        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
+        self._processedTimeSteps = []
+        self._fixed = True
+        
     def setupOutputs( self ):
-        self.LabelImageWithBackground.meta.assignFrom( self.BinaryImage.meta )
+        print 'OpLabelImage::setupOutputs'
+        self.LabelImage.meta.assignFrom( self.BinaryImage.meta )
+        print 'OptLabelImage::setupOutputs: LabelImage.meta = ' + str(self.LabelImage.meta)
+        m = self.LabelImage.meta        
+        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )        
+        
 
+    def __del__( self ):
+        self._mem_h5.close()
+        
     def execute( self, slot, subindex, roi, destination ):
-        if slot is self.LabelImageWithBackground:
-            a = self.BinaryImage.get(roi).wait()
-            assert(a.shape[0] == 1)
-            assert(a.shape[-1] == 1)
-            destination[0,...,0] = vigra.analysis.labelVolumeWithBackground( a[0,...,0] )
-            return destination
+        print 'OpLabelImage::execute'
+        
+        if slot is self.LabelImage:
+#            a = self.BinaryImage.get(roi).wait()
+#            assert(a.shape[0] == 1)
+#            assert(a.shape[-1] == 1)
+#            destination[0,...,0] = vigra.analysis.labelVolumeWithBackground( a[0,...,0] )
+#            return destination
+        
+            if self._fixed:
+                destination[:] = 0
+                return destination
+            
+            # assumes t,x,y,z,c
+            for t in range(roi.start[0],roi.stop[0]):
+                if t not in self._processedTimeSteps:
+                    print "Calculating LabelImage at", t
+                    start = roi.start
+                    stop = roi.stop
+                    start[0] = t
+                    stop[0] = t+1
+                    print 'OpLabelImage::execute: start = ' + str(start) + ', stop = ' + str(stop)
+                    a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()        
+                    a = a[0,...,0]        
+                    self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a, background_value = self.BackgroundLabel.value )
+                    self._processedTimeSteps.append(t)
+                                        
+            
+            result = self._mem_h5['LabelImage'][roi.toSlice()]
+            return result
 
+    def _unique_file(self, file_name):
+        dirname, filename = os.path.split(file_name)
+        prefix, suffix = os.path.splitext(filename)
+    
+        fd, filename = tempfile.mkstemp(suffix, prefix+"_", dirname)
+        return filename
 
 
 class OpRegionFeatures( Operator ):
@@ -137,12 +187,14 @@ class OpObjectExtraction( Operator ):
     def __init__( self, parent = None, graph = None ):
         super(OpObjectExtraction, self).__init__(parent=parent,graph=graph)
 
-        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
+#        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
         self._reg_cents = {}
 
         self._opLabelImage = OpLabelImage( graph = graph )
         self._opLabelImage.BinaryImage.connect( self.BinaryImage )
-
+        self._opLabelImage.BackgroundLabel.connect( self.BackgroundLabel)
+        self.LabelImage.connect(self._opLabelImage.LabelImage)
+        
         self._opRegCent = OpRegionCenters( graph = graph )
         self._opRegCent.LabelImage.connect( self.LabelImage )
 
@@ -150,13 +202,16 @@ class OpObjectExtraction( Operator ):
         self._opRegFeats.LabelImage.connect( self.LabelImage )
         
     
-    def __del__( self ):
-        self._mem_h5.close()
+#    def __del__( self ):
+#        self._mem_h5.close()
 
     def setupOutputs(self):        
-        self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
-        m = self.LabelImage.meta        
-        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )
+        print 'OpObjectExtraction::setupOutputs'
+#        self._opLabelImage.setupOutputs()
+#        self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
+#        m = self.LabelImage.meta
+        m = self.BinaryImage.meta
+#        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )
 
         self._reg_cents = dict.fromkeys(xrange(m.shape[0]), numpy.asarray([], dtype=numpy.uint16))        
         self.ObjectCenterImage.meta.assignFrom(self.BinaryImage.meta)
@@ -164,9 +219,9 @@ class OpObjectExtraction( Operator ):
     def execute(self, slot, subindex, roi, result):        
         if slot is self.ObjectCenterImage:
             return self._execute_ObjectCenterImage( roi, result )
-        if slot is self.LabelImage:                        
-            result = self._mem_h5['LabelImage'][roi.toSlice()]
-            return result
+#        if slot is self.LabelImage:
+#            result = self._mem_h5['LabelImage'][roi.toSlice()]
+#            return result
         if slot is self.RegionCenters:
             res = self._opRegCent.Output.get( roi ).wait()
             return res
@@ -177,26 +232,26 @@ class OpObjectExtraction( Operator ):
     def propagateDirty(self, inputSlot, roi):
         raise NotImplementedError
 
-    def updateLabelImage( self ):
-        m = self.LabelImage.meta        
-        for t in range(m.shape[0]):
-            print "Calculating LabelImage at", t
-            start = [t,] + (len(m.shape) - 1) * [0,]
-            stop = [t+1,] + list(m.shape[1:])            
-            a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()
-            a = a[0,...,0]
-            self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a )
-        roi = SubRegion(self.LabelImage, start=5*(0,), stop=m.shape)
-        self.LabelImage.setDirty(roi)
-
-    def updateLabelImageAt( self, t ):
-        m = self.LabelImage.meta        
-        print "Calculating LabelImage at", t
-        start = [t,] + (len(m.shape) - 1) * [0,]
-        stop = [t+1,] + list(m.shape[1:])        
-        a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()        
-        a = a[0,...,0]        
-        self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a, background_value = self.BackgroundLabel.value )
+#    def updateLabelImage( self ):
+#        m = self.LabelImage.meta        
+#        for t in range(m.shape[0]):
+#            print "Calculating LabelImage at", t
+#            start = [t,] + (len(m.shape) - 1) * [0,]
+#            stop = [t+1,] + list(m.shape[1:])            
+#            a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()
+#            a = a[0,...,0]
+#            self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a )
+#        roi = SubRegion(self.LabelImage, start=5*(0,), stop=m.shape)
+#        self.LabelImage.setDirty(roi)
+#
+#    def updateLabelImageAt( self, t ):
+#        m = self.LabelImage.meta        
+#        print "Calculating LabelImage at", t
+#        start = [t,] + (len(m.shape) - 1) * [0,]
+#        stop = [t+1,] + list(m.shape[1:])        
+#        a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()        
+#        a = a[0,...,0]        
+#        self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a, background_value = self.BackgroundLabel.value )
 
     def __contained_in_subregion( self, roi, coords ):
         b = True
