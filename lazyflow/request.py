@@ -192,7 +192,10 @@ class ThreadPool(object):
         self.requests1 = deque()
         self.workers = set()
         self.freeWorkers = set()
-        self.numThreads = detectCPUs()
+        if os.environ.has_key("LAZYFLOW_THREAD_COUNT"):
+            self.numThreads = int(os.environ["LAZYFLOW_THREAD_COUNT"])
+        else:
+            self.numThreads = detectCPUs()
         self.lastWorker = None
         for i in range(self.numThreads):
             w = Worker(self)
