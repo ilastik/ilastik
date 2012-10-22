@@ -1,10 +1,12 @@
 import yappi
 import threading
 import time
+import vigra
 import lazyflow
 from lazyflow.graph import *
 from lazyflow import operators
 from lazyflow.request import Request, Pool
+import functools
 
 doProfile = False
 if doProfile:
@@ -68,6 +70,8 @@ p = operators.OpArrayPiper(graph=g)
 
 
 arr = numpy.ndarray((100,100,100,1),numpy.uint8)
+arr = arr.view(vigra.VigraArray)
+arr.axistags = vigra.defaultAxistags('xyzc')
 
 cache.inputs["Input"].setValue(arr)
 p.Input.connect(cache.outputs["Output"])
@@ -179,6 +183,9 @@ for i in range(0,mcountf):
     requests.append(r)
 
 for r in requests:
+    r.submit()
+
+for r in requests:
     r.wait()
 t2 = time.time()
 print "\n\n"
@@ -192,20 +199,25 @@ if doProfile:
 
 
 
-
 def empty_func(b):
     a = 7 + b
     a = "lksejhkl JSFLAJSSDFJH   AKDHAJKSDH ADKJADHK AJHSKA AKJ KAJSDH AKDAJHSKAJHD KASHDAKDJH".split(" ")
 
 t1 = time.time()
 
-requests = []
-for i in range(50000):
-    req = Request(empty_func, b = 11)
-    req.submit()
+def lots_of_work():
+    requests = []
+    for i in range(mcount):
+        req = Request(functools.partial(empty_func, b = 11))
+        req.submit()
 
-for r in requests:
-    r.wait()
+    for r in requests:
+        r.wait()
+
+# Make sure this test occurs entirely within greenlets.
+req = Request( functools.partial( lots_of_work ) )
+req.submit()
+req.wait()
 
 t2 = time.time()
 print "\n\n"
@@ -218,7 +230,7 @@ t1 = time.time()
 pool = Pool()
 
 for i in range(50000):
-    pool.request(empty_func, b = 11)
+    pool.request(functools.partial(empty_func, b = 11))
 
 pool.wait()
 
@@ -226,4 +238,3 @@ t2 = time.time()
 print "\n\n"
 print "LAZYFLOW POOL WAIT:   %f seconds for %d iterations" % (t2-t1,mcount)
 print "                                %0.3fms latency" % ((t2-t1)*1e3/mcount,)
-
