@@ -264,7 +264,6 @@ class OpCarving(Operator):
         lut_seeds = self._mst.seeds.lut[:]
         fg_seedNum = len(numpy.where(lut_seeds == 2)[0])
         bg_seedNum = len(numpy.where(lut_seeds == 1)[0])
-        print fg_seedNum,bg_seedNum, '3ir2232r230u9r23h2h'
         if not (fg_seedNum > 0 and bg_seedNum > 0):
             return False
         else:
@@ -283,6 +282,8 @@ class OpCarving(Operator):
         """
         Returns current object name. None if it is not set.
         """
+        #FIXME: This is misleading. Having a current object and that object having
+        #a name is not the same thing.
         return self._currObjectName
     
     def currentObjectName(self):
@@ -641,8 +642,10 @@ class CarvingSerializer( AppletSerializer ):
         imageIndex = 0 #FIXME
         return len(self._o._dirtyObjects[imageIndex]) > 0
     
-    def unload(self): 
+    #this is present only for the serializer AppletInterface
+    def unload(self):
         pass
+    
 
 class CarvingGui(LabelingGui):
     def __init__(self, labelingSlots, observedSlots, drawerUiPath=None, rawInputSlot=None,
