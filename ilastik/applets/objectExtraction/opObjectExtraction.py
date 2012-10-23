@@ -31,10 +31,9 @@ class OpLabelImage( Operator ):
         print 'OpLabelImage::setupOutputs'
         self.LabelImage.meta.assignFrom( self.BinaryImage.meta )
         self.LabelImage.meta.dtype = numpy.uint32
-        print 'OptLabelImage::setupOutputs: LabelImage.meta = ' + str(self.LabelImage.meta)
+        print 'OpLabelImage::setupOutputs: LabelImage.meta = ' + str(self.LabelImage.meta)
         m = self.LabelImage.meta        
-        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=4 )        
-#        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )
+        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )        
         
 
     def __del__( self ):
@@ -43,14 +42,9 @@ class OpLabelImage( Operator ):
     def execute( self, slot, subindex, roi, destination ):
         print 'OpLabelImage::execute'
         
-        if slot is self.LabelImage:
-#            a = self.BinaryImage.get(roi).wait()
-#            assert(a.shape[0] == 1)
-#            assert(a.shape[-1] == 1)
-#            destination[0,...,0] = vigra.analysis.labelVolumeWithBackground( a[0,...,0] )
-#            return destination
-        
+        if slot is self.LabelImage:        
             if self._fixed:
+                print 'OpLabelImage::execute: fixed'
                 destination[:] = 0
                 return destination
             
@@ -65,14 +59,12 @@ class OpLabelImage( Operator ):
                     print 'OpLabelImage::execute: start = ' + str(start) + ', stop = ' + str(stop)
                     a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()        
                     a = a[0,...,0]        
-                    r = vigra.analysis.labelVolumeWithBackground( a, background_value = self.BackgroundLabel.value )
-                    self._mem_h5['LabelImage'][t,...,0] = r
-                    del r
+                    self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a, background_value = self.BackgroundLabel.value )                     
                     self._processedTimeSteps.append(t)
                                         
             
-            result = self._mem_h5['LabelImage'][roi.toSlice()]
-            return result
+            destination = self._mem_h5['LabelImage'][roi.toSlice()]
+            return destination
 
 #    def _unique_file(self, file_name):
 #        dirname, filename = os.path.split(file_name)

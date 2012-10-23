@@ -35,12 +35,16 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         print "objectExtraction multi class: deserializeFromHdf5", topGroup, groupVersion, hdf5File, projectFilePath
-
+        
         print "objectExtraction multi class: loading label image"
         dest = self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._mem_h5        
-
+        
         del dest['LabelImage']
-        topGroup.copy('LabelImage', dest)            
+        topGroup.copy('LabelImage', dest)
+        
+        self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._fixed = False
+        print str(topGroup['LabelImage'].shape[0])
+        self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._processedTimeSteps = range(topGroup['LabelImage'].shape[0])            
 
         print "objectExtraction multi class: loading region features"
         if "samples" in topGroup.keys():
