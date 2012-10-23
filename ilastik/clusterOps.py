@@ -121,6 +121,9 @@ class OpClusterize(Operator):
             commandArgs.append( "--scratch_directory=" + self.ScratchDirectory.value )
             commandArgs.append( "--_node_work_=\"" + Roi.dumps( taskInfo.subregion ) + "\"" )
             
+            # Check the command format string: We need to know where to put our args...
+            assert commandFormat.find("{}") != -1
+            
             allArgs = " " + " ".join(commandArgs) + " "
             taskInfo.command = commandFormat.format( allArgs )
             taskInfo.statusFilePath = statusFilePath
@@ -135,7 +138,7 @@ class OpClusterize(Operator):
             
             # Spawn the task
             logger.info("Launching node task: " + taskInfo.command )
-            th = threading.Thread( target=partial(subprocess.call, taskInfo.command.split(' ') ) )
+            th = threading.Thread( target=partial(subprocess.call, taskInfo.command  ) )
             th.start()
             #subprocess.call( taskInfo.command.split(' ') )
 
