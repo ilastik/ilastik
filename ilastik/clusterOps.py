@@ -119,7 +119,7 @@ class OpClusterize(Operator):
             commandArgs = []
             commandArgs.append( "--project=" + self.ProjectFilePath.value )
             commandArgs.append( "--scratch_directory=" + self.ScratchDirectory.value )
-            commandArgs.append( "--_node_work_=" + Roi.dumps( taskInfo.subregion ) )
+            commandArgs.append( "--_node_work_=\"" + Roi.dumps( taskInfo.subregion ) + "\"" )
             
             allArgs = " " + " ".join(commandArgs) + " "
             taskInfo.command = commandFormat.format( allArgs )
