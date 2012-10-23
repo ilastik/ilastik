@@ -4,13 +4,8 @@ import vigra.analysis
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
-from lazyflow.rtype import Everything, SubRegion, List
-from lazyflow.operators.ioOperators.opStreamingHdf5Reader import OpStreamingHdf5Reader
+from lazyflow.rtype import SubRegion, List
 
-import ctracking
-from lazyflow.roi import roiToSlice
-import os
-import tempfile
 
 
 class OpLabelImage( Operator ):
