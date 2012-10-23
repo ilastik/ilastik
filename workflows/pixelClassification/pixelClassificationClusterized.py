@@ -46,7 +46,7 @@ def main(argv):
 
 def getArgParser():
     parser = argparse.ArgumentParser(description="Pixel Classification Prediction Workflow")
-    parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=False)
+    parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
     parser.add_argument('--scratch_directory', help='Scratch directory for intermediate files', required=False)
     parser.add_argument('--command_format', help='Format string for spawned tasks.  Replace argument list with a single {}', required=False)
     parser.add_argument('--num_jobs', type=int, help='Number of jobs', required=False)
