@@ -69,7 +69,7 @@ class OpRegionFeatures( Operator ):
 
             return feats
         
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         if slot is self.LabelImage:
             self.Output.setDirty(List(self.Output, range(roi.start[0], roi.stop[0]))) 
 
@@ -117,7 +117,7 @@ class OpRegionCenters( Operator ):
 
             return centers
         
-    def propagateDirty(self, slot, roi):
+    def propagateDirty(self, slot, subindex, roi):
         if slot is self.LabelImage:
             self.Output.setDirty(List(self.Output, range(roi.start[0], roi.stop[0]))) 
 
@@ -174,7 +174,7 @@ class OpObjectExtraction( Operator ):
             res = self._opRegFeats.Output.get( roi ).wait()
             return res
 
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):
         raise NotImplementedError
 
     def updateLabelImage( self ):
