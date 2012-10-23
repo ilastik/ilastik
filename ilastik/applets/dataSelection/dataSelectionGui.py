@@ -8,9 +8,14 @@ from functools import partial
 import os
 import copy
 import glob
+import threading
 import h5py
-from ilastik.utility import bind
+
+from ilastik.utility import bind, PreferencesManager
+from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.utility.pathHelpers import getPathVariants
+
+from ilastik.applets.base.applet import ControlCommand
 
 import vigra
 
@@ -72,7 +77,7 @@ class DataSelectionGui(QMainWindow):
     ###########################################
     ###########################################
 
-    def __init__(self, dataSelectionOperator, serializer, guiMode=GuiMode.Normal):
+    def __init__(self, dataSelectionOperator, serializer, guiControlSignal, guiMode=GuiMode.Normal):
         with Tracer(traceLogger):
             super(DataSelectionGui, self).__init__()
     
@@ -80,6 +85,8 @@ class DataSelectionGui(QMainWindow):
             self.mainOperator = dataSelectionOperator
             self.guiMode = guiMode
             self.serializer = serializer
+            self.guiControlSignal = guiControlSignal
+            self.threadRouter = ThreadRouter(self)
             
             self.initAppletDrawerUic()
             self.initCentralUic()
@@ -92,7 +99,7 @@ class DataSelectionGui(QMainWindow):
                     
                     # Update the table row data when this slot has new data
                     # We can't bind in the row here because the row may change in the meantime.
-                    self.mainOperator.Dataset[index].notifyDirty( bind( self.updateTableForSlot ) )
+                    self.mainOperator.Dataset[index].notifyDirty( self.updateTableForSlot )
     
             self.mainOperator.Dataset.notifyInserted( bind( handleNewDataset ) )
         
@@ -118,6 +125,7 @@ class DataSelectionGui(QMainWindow):
             # Set up our handlers
             self.drawer.addFileButton.clicked.connect(self.handleAddFileButtonClicked)
             self.drawer.addStackButton.clicked.connect(self.handleAddStackButtonClicked)
+            self.drawer.addStackFilesButton.clicked.connect(self.handleAddStackFilesButtonClicked)
             self.drawer.removeFileButton.clicked.connect(self.handleRemoveButtonClicked)
     
     def initCentralUic(self):
@@ -154,41 +162,106 @@ class DataSelectionGui(QMainWindow):
         Ask him to choose a file (or several) and add them to both 
           the GUI table and the top-level operator inputs.
         """
-        with Tracer(traceLogger):
-            # Launch the "Open File" dialog
-            extensions = OpDataSelection.SupportedExtensions
-            filter = "Image files " + ' '.join('*.' + x for x in extensions)
-            fileNames = QFileDialog.getOpenFileNames(self, "Select Image", os.path.abspath(__file__), filter)
-            
-            # Convert from QtString to python str
-            fileNames = [str(s) for s in fileNames]
-    
-            # If the user didn't cancel        
-            if len(fileNames) > 0:
-                self.addFileNames(fileNames)
+        # Find the directory of the most recently opened image file
+        mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
+        if mostRecentImageFile is not None:
+            defaultDirectory = os.path.split(mostRecentImageFile)[0]
+        else:
+            defaultDirectory = os.path.expanduser('~')
+
+        # Launch the "Open File" dialog
+        fileNames = self.getImageFileNamesToOpen(defaultDirectory)
+
+        # If the user didn't cancel        
+        if len(fileNames) > 0:
+            PreferencesManager().set('DataSelection', 'recent image', fileNames[0])
+            self.addFileNames(fileNames)
     
     def handleAddStackButtonClicked(self):
         """
-        The user clicked the "Add Stack" button.
-        Ask him to choose a file (or several) and add them to both 
-          the GUI table and the top-level operator inputs.
+        The user clicked the "Import Stack Directory" button.
         """
-        with Tracer(traceLogger):
-            # Launch the "Open File" dialog
-            directoryName = QFileDialog.getExistingDirectory(self, "Image Stack Directory", os.path.abspath(__file__))
-    
-            # If the user didn't cancel        
-            if not directoryName.isNull():
-                globString = self.getGlobString( str(directoryName) )                
-                if globString is not None:
-                    info = DatasetInfo()
-                    info.filePath = globString
-                    
-                    # Allow labels by default if this gui isn't being used for batch data.
-                    info.allowLabels = ( self.guiMode == GuiMode.Normal )
+        # Find the directory of the most recently opened image file
+        mostRecentStackDirectory = PreferencesManager().get( 'DataSelection', 'recent stack directory' )
+        if mostRecentStackDirectory is not None:
+            defaultDirectory = os.path.split(mostRecentStackDirectory)[0]
+        else:
+            defaultDirectory = os.path.expanduser('~')
 
-                    # Serializer will update the operator for us, which will propagate to the GUI.
-                    self.serializer.importStackAsLocalDataset( info )
+        # Launch the "Open File" dialog
+        directoryName = QFileDialog.getExistingDirectory(self,
+                                                         "Image Stack Directory",
+                                                         defaultDirectory,
+                                                         options=QFileDialog.Options(QFileDialog.DontUseNativeDialog | QFileDialog.ShowDirsOnly))
+
+        # If the user didn't cancel        
+        if not directoryName.isNull():
+            PreferencesManager().set('DataSelection', 'recent stack directory', str(directoryName))
+            globString = self.getGlobString( str(directoryName) )                
+            if globString is not None:
+                self.importStackFromGlobString( globString )
+
+    def handleAddStackFilesButtonClicked(self):
+        """
+        The user clicked the "Import Stack Files" button.
+        """
+        # Find the directory of the most recently opened image file
+        mostRecentStackImageFile = PreferencesManager().get( 'DataSelection', 'recent stack image' )
+        if mostRecentStackImageFile is not None:
+            defaultDirectory = os.path.split(mostRecentStackImageFile)[0]
+        else:
+            defaultDirectory = os.path.expanduser('~')
+
+        # Launch the "Open File" dialog
+        fileNames = self.getImageFileNamesToOpen(defaultDirectory)
+
+        # If the user didn't cancel        
+        if len(fileNames) > 0:
+            PreferencesManager().set('DataSelection', 'recent stack image', fileNames[0])
+            # Convert into one big string, which is accepted by the stack loading operator
+            bigString = "//".join( fileNames )
+            self.importStackFromGlobString(bigString)
+
+    def getImageFileNamesToOpen(self, defaultDirectory):
+        """
+        Launch an "Open File" dialog to ask the user for one or more image files.
+        """
+        extensions = OpDataSelection.SupportedExtensions
+        filter = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
+        dlg = QFileDialog( self, "Select Images", defaultDirectory, filter )
+        dlg.setOption( QFileDialog.HideNameFilterDetails, False )
+        dlg.setOption( QFileDialog.DontUseNativeDialog, False )
+        dlg.setViewMode( QFileDialog.Detail )
+        dlg.setFileMode( QFileDialog.ExistingFiles )
+        
+        if dlg.exec_():
+            fileNames = dlg.selectedFiles()
+        else:
+            fileNames = []        
+
+        # Convert from QtString to python str
+        fileNames = [str(s) for s in fileNames]
+        return fileNames
+
+    def importStackFromGlobString(self, globString):
+        """
+        The word 'glob' is used loosely here.  See the OpStackLoader operator for details.
+        """
+        info = DatasetInfo()
+        info.filePath = globString
+        
+        # Allow labels by default if this gui isn't being used for batch data.
+        info.allowLabels = ( self.guiMode == GuiMode.Normal )
+        
+        def importStack():
+            self.guiControlSignal.emit( ControlCommand.DisableAll )
+            # Serializer will update the operator for us, which will propagate to the GUI.
+            self.serializer.importStackAsLocalDataset( info )
+            self.guiControlSignal.emit( ControlCommand.Pop )
+
+        importThread = threading.Thread( target=importStack )
+        importThread.start()
+
 
     def getGlobString(self, directory):
         exts = vigra.impex.listExtensions().split()
@@ -215,16 +288,32 @@ class DataSelectionGui(QMainWindow):
     
             # Assign values to the new inputs we just allocated.
             # The GUI will be updated by callbacks that are listening to slot changes
-            for i in range(0, len(fileNames)):
+            for i, filePath in enumerate(fileNames):
                 datasetInfo = DatasetInfo()
-                datasetInfo.filePath = fileNames[i]
+                cwd = self.mainOperator.WorkingDirectory.value
+                absPath, relPath = getPathVariants(filePath, cwd)
+
+                # Relative by default, unless the file is in a totally different tree from the working directory.
+                if len(os.path.commonprefix([cwd, absPath])) > 1: 
+                   datasetInfo.filePath = relPath
+                else:
+                   datasetInfo.filePath = absPath
+
+                h5Exts = ['.ilp', '.h5', '.hdf5']
+                if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
+                    datasetNames = self.getPossibleInternalPaths( absPath )
+                    if len(datasetNames) > 0:
+                        datasetInfo.filePath += str(datasetNames[0])
+                    else:
+                        raise RuntimeError("HDF5 file has no image datasets")
                 
                 # Allow labels by default if this gui isn't being used for batch data.
                 datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
 
                 self.mainOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
 
-    def updateTableForSlot(self, slot):
+    @threadRouted
+    def updateTableForSlot(self, slot, *args):
         """
         Update the given rows using the top-level operator parameters
         """
@@ -303,15 +392,16 @@ class DataSelectionGui(QMainWindow):
         with Tracer(traceLogger):
             # Determine the relative path to this file
             absPath, relPath = getPathVariants(filePath, self.mainOperator.WorkingDirectory.value)
-            # Add a prefix to make it clear that it's a relative path
-            relPath = "<project dir>/" + relPath
+            # Add a prefixes to make the options clear
+            absPath = "Absolute Link: " + absPath
+            relPath = "Relative Link: <project directory>/" + relPath
             
             combo = QComboBox()
             options = {} # combo data -> combo text
             options[ LocationOptions.AbsolutePath ] = absPath
             options[ LocationOptions.RelativePath ] = relPath
             
-            options[ LocationOptions.Project ] = "<project>"
+            options[ LocationOptions.Project ] = "Store in Project File"
                     
             for option, text in sorted(options.items()):
                 # Add to the combo, storing the option as the item data
@@ -345,18 +435,8 @@ class DataSelectionGui(QMainWindow):
             ext = os.path.splitext(absPath)[1]
             h5Exts = ['.ilp', '.h5', '.hdf5']
             if ext in h5Exts:
-                # Open the file as a read-only so we can get a list of the internal paths
-                f = h5py.File(absPath, 'r')
-                
-                # Define a closure to collect all of the dataset names in the file.
-                def accumulateDatasetPaths(name, val):
-                    if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
-                        datasetNames.append( '/' + name )
-    
-                # Visit every group/dataset in the file            
-                f.visititems(accumulateDatasetPaths)
-                f.close()
-    
+                datasetNames = self.getPossibleInternalPaths(absPath)
+
             # Add each dataset option to the combo            
             for path in datasetNames:
                 combo.addItem( path )
@@ -373,7 +453,19 @@ class DataSelectionGui(QMainWindow):
             
             # Since we just selected a new internal path, call the handler 
             #self.handleComboSelectionChanged(combo, combo.currentIndex())
-    
+
+    def getPossibleInternalPaths(self, absPath):
+        datasetNames = []
+        # Open the file as a read-only so we can get a list of the internal paths
+        with h5py.File(absPath, 'r') as f:
+            # Define a closure to collect all of the dataset names in the file.
+            def accumulateDatasetPaths(name, val):
+                if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
+                    datasetNames.append( '/' + name )    
+            # Visit every group/dataset in the file            
+            f.visititems(accumulateDatasetPaths)        
+        return datasetNames
+
     def handleRowDataChange(self, changedItem ):
         """
         The user manually edited a file name in the table.
@@ -393,7 +485,8 @@ class DataSelectionGui(QMainWindow):
             
             if needUpdate:
                 self.updateFilePath(row)
-    
+
+    @threadRouted    
     def updateFilePath(self, index):
         """
         Update the operator's filePath input to match the gui

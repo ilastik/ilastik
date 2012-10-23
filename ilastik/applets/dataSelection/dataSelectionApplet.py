@@ -34,7 +34,7 @@ class DataSelectionApplet( Applet ):
         if self._gui is None:
             from dataSelectionGui import DataSelectionGui, GuiMode
             guiMode = { True: GuiMode.Batch, False: GuiMode.Normal }[self.batchDataGui]
-            self._gui = DataSelectionGui( self._topLevelOperator, self._serializableItems[0], guiMode )
+            self._gui = DataSelectionGui( self._topLevelOperator, self._serializableItems[0], self.guiControlSignal, guiMode )
         return self._gui
 
     @property

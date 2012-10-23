@@ -47,6 +47,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="input_ch0">
+       <property name="toolTip">
+        <string>Channel 0</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -54,6 +57,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="input_ch1">
+       <property name="toolTip">
+        <string>Channel 1</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -61,6 +67,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="input_ch2">
+       <property name="toolTip">
+        <string>Channel 2</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -68,6 +77,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="input_ch3">
+       <property name="toolTip">
+        <string>Channel 3</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -75,6 +87,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="input_ch4">
+       <property name="toolTip">
+        <string>Channel 4</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -82,6 +97,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="input_ch5">
+       <property name="toolTip">
+        <string>Channel 5</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -89,6 +107,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="input_ch6">
+       <property name="toolTip">
+        <string>Channel 6</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -96,6 +117,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="input_ch7">
+       <property name="toolTip">
+        <string>Channel 7</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -103,6 +127,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="input_ch8">
+       <property name="toolTip">
+        <string>Channel 8</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -110,6 +137,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="input_ch9">
+       <property name="toolTip">
+        <string>Channel 9</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -121,6 +151,9 @@
     <layout class="QHBoxLayout" name="seed_layout">
      <item>
       <widget class="QCheckBox" name="useSeedsCheckbox">
+       <property name="toolTip">
+        <string>Use a thresholded version of the input image to seed the watershed</string>
+       </property>
        <property name="text">
         <string>Seed with Threshold:</string>
        </property>
@@ -141,6 +174,9 @@
      </item>
      <item>
       <widget class="QDoubleSpinBox" name="seedThresholdSpinBox">
+       <property name="toolTip">
+        <string>Threshold Value</string>
+       </property>
        <property name="maximum">
         <double>1.000000000000000</double>
        </property>
@@ -175,6 +211,9 @@
      </item>
      <item>
       <widget class="QSpinBox" name="seedSizeSpinBox">
+       <property name="toolTip">
+        <string>Minimum seed size (voxels)</string>
+       </property>
        <property name="maximum">
         <number>1000</number>
        </property>
@@ -193,6 +232,9 @@
      </item>
      <item>
       <widget class="QSpinBox" name="blockWidthSpinBox">
+       <property name="toolTip">
+        <string>Watershed block size (pixels)</string>
+       </property>
        <property name="minimum">
         <number>64</number>
        </property>
@@ -229,6 +271,9 @@
      </item>
      <item>
       <widget class="QSpinBox" name="blockDepthSpinBox">
+       <property name="toolTip">
+        <string>Watershed block depth (slices)</string>
+       </property>
        <property name="minimum">
         <number>1</number>
        </property>
@@ -262,6 +307,9 @@
      </item>
      <item>
       <widget class="QSlider" name="paddingSlider">
+       <property name="toolTip">
+        <string>Size of halo for watershed computations (in all dimensions)</string>
+       </property>
        <property name="maximum">
         <number>500</number>
        </property>
@@ -272,6 +320,9 @@
      </item>
      <item>
       <widget class="QSpinBox" name="paddingSpinBox">
+       <property name="toolTip">
+        <string>Size of halo for watershed computations (in all dimensions)</string>
+       </property>
        <property name="maximum">
         <number>1000</number>
        </property>
@@ -284,6 +335,9 @@
    </item>
    <item>
     <widget class="QPushButton" name="updateWatershedsButton">
+     <property name="toolTip">
+      <string>Recompute watershed blocks</string>
+     </property>
      <property name="text">
       <string>Update Watersheds</string>
      </property>

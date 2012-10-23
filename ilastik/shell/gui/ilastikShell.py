@@ -1,6 +1,5 @@
 from PyQt4 import uic
-from PyQt4 import Qt
-from PyQt4.QtCore import pyqtSignal, QObject, QEvent
+from PyQt4.QtCore import pyqtSignal, QObject, QEvent, Qt
 from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QMenuBar, QFrame, QLabel, QStackedLayout, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
@@ -8,14 +7,15 @@ from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QBrush, QColor, QAbstractItemView, QProgressBar, QApplication
 from PyQt4 import QtCore
 
+import re
 import h5py
 import traceback
 import os
 from functools import partial
 
 from ilastik.versionManager import VersionManager
-from ilastik.utility import bind
-from ilastik.utility.gui import ThunkEvent, ThunkEventHandler
+from ilastik.utility import bind, PreferencesManager
+from ilastik.utility.gui import ThunkEvent, ThunkEventHandler, ShortcutManagerDlg
 
 import sys
 import logging
@@ -43,6 +43,7 @@ class ShellActions(object):
     def __init__(self):
         self.openProjectAction = None
         self.saveProjectAction = None
+        self.saveProjectAsAction = None
         self.saveProjectSnapshotAction = None
         self.importProjectAction = None
         self.QuitAction = None
@@ -133,6 +134,8 @@ class IlastikShell( QMainWindow ):
         self.thunkEventHandler = ThunkEventHandler(self)
 
         self._sideSplitterSizePolicy = sideSplitterSizePolicy
+
+        self.projectManager = ProjectManager()
         
         import inspect, os
         ilastikShellFilePath = os.path.dirname(inspect.getfile(inspect.currentframe()))
@@ -140,13 +143,19 @@ class IlastikShell( QMainWindow ):
         self._applets = []
         self.appletBarMapping = {}
 
+        self.setAttribute(Qt.WA_AlwaysShowToolTips)
+        
         if 'Ubuntu' in platform.platform():
             # Native menus are prettier, but aren't working on Ubuntu at this time (Qt 4.7, Ubuntu 11)
             self.menuBar().setNativeMenuBar(False)
 
         (self._projectMenu, self._shellActions) = self._createProjectMenu()
-        self.menuBar().addMenu(self._projectMenu)
+        self._settingsMenu = self._createSettingsMenu()
+        self.menuBar().addMenu( self._projectMenu )
+        self.menuBar().addMenu( self._settingsMenu )
 
+        self.updateShellProjectDisplay()
+        
         self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
 
         for applet in workflow:
@@ -161,7 +170,6 @@ class IlastikShell( QMainWindow ):
         
         self.currentAppletIndex = 0
 
-        self.projectManager = ProjectManager()
         self.currentImageIndex = -1
         self.populatingImageSelectionCombo = False
         self.imageSelectionCombo.currentIndexChanged.connect( self.changeCurrentInputImageIndex )
@@ -174,7 +182,7 @@ class IlastikShell( QMainWindow ):
         
     def _createProjectMenu(self):
         # Create a menu for "General" (non-applet) actions
-        menu = QMenu("Project", self)
+        menu = QMenu("&Project", self)
 
         shellActions = ShellActions()
 
@@ -189,17 +197,18 @@ class IlastikShell( QMainWindow ):
         shellActions.openProjectAction.triggered.connect(self.onOpenProjectActionTriggered)
 
         # Menu item: Save Project
-        shellActions.saveProjectAction = menu.addAction("&Save Project...")
-        shellActions.openProjectAction.setShortcuts( QKeySequence.Save )
+        shellActions.saveProjectAction = menu.addAction("&Save Project")
+        shellActions.saveProjectAction.setShortcuts( QKeySequence.Save )
         shellActions.saveProjectAction.triggered.connect(self.onSaveProjectActionTriggered)
-        # Can't save until a project is loaded for the first time
-        shellActions.saveProjectAction.setEnabled(False)
+
+        # Menu item: Save Project As
+        shellActions.saveProjectAsAction = menu.addAction("&Save Project As...")
+        shellActions.saveProjectAsAction.setShortcuts( QKeySequence.SaveAs )
+        shellActions.saveProjectAsAction.triggered.connect(self.onSaveProjectAsActionTriggered)
 
         # Menu item: Save Project Snapshot
         shellActions.saveProjectSnapshotAction = menu.addAction("&Take Snapshot...")
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
-        # Can't save until a project is loaded for the first time
-        shellActions.saveProjectSnapshotAction.setEnabled(False)
 
         # Menu item: Import Project
         shellActions.importProjectAction = menu.addAction("&Import Project...")
@@ -213,6 +222,17 @@ class IlastikShell( QMainWindow ):
         
         return (menu, shellActions)
     
+    def _createSettingsMenu(self):
+        menu = QMenu("&Settings", self)
+        # Menu item: Keyboard Shortcuts
+
+        def editShortcuts():
+            mgrDlg = ShortcutManagerDlg(self)
+        shortcutsAction = menu.addAction("&Keyboard Shortcuts")
+        shortcutsAction.triggered.connect(editShortcuts)
+        
+        return menu
+    
     def show(self):
         """
         Show the window, and enable/disable controls depending on whether or not a project file present.
@@ -220,18 +240,34 @@ class IlastikShell( QMainWindow ):
         super(IlastikShell, self).show()
         self.enableWorkflow = (self.projectManager.currentProjectFile is not None)
         self.updateAppletControlStates()
-        self.updateWindowTitle()
+        self.updateShellProjectDisplay()
         if self._sideSplitterSizePolicy == SideSplitterSizePolicy.Manual:
             self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoLargestDrawer )
         else:
             self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoCurrentDrawer )
 
-    def updateWindowTitle(self):
+    def updateShellProjectDisplay(self):
+        """
+        Update the title bar and allowable shell actions based on the state of the currently loaded project.
+        """
+        windowTitle = "ilastik - "
         projectPath = self.projectManager.currentProjectPath
         if projectPath is None:
-            self.setWindowTitle("ilastik - No Project Loaded")
+            windowTitle += "No Project Loaded"
         else:
-            self.setWindowTitle("ilastik - " + projectPath)
+            windowTitle += projectPath
+
+        readOnly = self.projectManager.currentProjectIsReadOnly
+        if readOnly:
+            windowTitle += " [Read Only]"
+
+        self.setWindowTitle(windowTitle)        
+
+        # Enable/Disable menu items
+        projectIsOpen = self.projectManager.currentProjectFile is not None
+        self._shellActions.saveProjectAction.setEnabled(projectIsOpen and not readOnly) # Can't save a read-only project
+        self._shellActions.saveProjectAsAction.setEnabled(projectIsOpen)
+        self._shellActions.saveProjectSnapshotAction.setEnabled(projectIsOpen)
 
     def setImageNameListSlot(self, multiSlot):
         assert multiSlot.level == 1
@@ -306,6 +342,7 @@ class IlastikShell( QMainWindow ):
                 self.viewerControlStack.setCurrentIndex(applet_index)
                 self.menuBar().clear()
                 self.menuBar().addMenu(self._projectMenu)
+                self.menuBar().addMenu(self._settingsMenu)
                 for m in self._applets[applet_index].gui.menus():
                     self.menuBar().addMenu(m)
                 
@@ -472,7 +509,7 @@ class IlastikShell( QMainWindow ):
         self.projectManager.closeCurrentProject()
         self.enableWorkflow = False
         self.updateAppletControlStates()
-        self.updateWindowTitle()
+        self.updateShellProjectDisplay()
     
     def onNewProjectActionTriggered(self):
         logger.debug("New Project action triggered")
@@ -488,7 +525,7 @@ class IlastikShell( QMainWindow ):
 
     def createAndLoadNewProject(self, newProjectFilePath):
         newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
-        self.loadProject(newProjectFile, newProjectFilePath)
+        self.loadProject(newProjectFile, newProjectFilePath, False)
     
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
@@ -500,7 +537,8 @@ class IlastikShell( QMainWindow ):
         fileSelected = False
         while not fileSelected:
             projectFilePath = QFileDialog.getSaveFileName(
-               self, caption, defaultPath, "Ilastik project files (*.ilp)")
+               self, caption, defaultPath, "Ilastik project files (*.ilp)",
+               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
             
             # If the user cancelled, stop now
             if projectFilePath.isNull():
@@ -535,9 +573,17 @@ class IlastikShell( QMainWindow ):
         if not self.ensureNoCurrentProject():
             return
 
+        # Find the directory of the most recently *imported* project
+        mostRecentImportPath = PreferencesManager().get( 'shell', 'recently imported' )
+        if mostRecentImportPath is not None:
+            defaultDirectory = os.path.split(mostRecentImportPath)[0]
+        else:
+            defaultDirectory = os.path.expanduser('~')
+
         # Select the paths to the ilp to import and the name of the new one we'll create
-        importedFilePath = self.getProjectPathToOpen()
+        importedFilePath = self.getProjectPathToOpen(defaultDirectory)
         if importedFilePath is not None:
+            PreferencesManager().set('shell', 'recently imported', importedFilePath)
             defaultFile, ext = os.path.splitext(importedFilePath)
             defaultFile += "_imported"
             defaultFile += ext
@@ -551,23 +597,19 @@ class IlastikShell( QMainWindow ):
         newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
         self.projectManager.importProject(originalPath, newProjectFile, newProjectFilePath)
 
-        # Now that a project is loaded, the user is allowed to save
-        self._shellActions.saveProjectAction.setEnabled(True)
-        self._shellActions.saveProjectSnapshotAction.setEnabled(True)
+        self.updateShellProjectDisplay()
 
         # Enable all the applet controls
         self.enableWorkflow = True
         self.updateAppletControlStates()
         
-    def getProjectPathToOpen(self):
+    def getProjectPathToOpen(self, defaultDirectory):
         """
         Return the path of the project the user wants to open (or None if he cancels).
         """
-
-        defaultPath = os.path.expanduser("~")
-
         projectFilePath = QFileDialog.getOpenFileName(
-           self, "Open Ilastik Project", defaultPath, "Ilastik project files (*.ilp)")
+           self, "Open Ilastik Project", defaultDirectory, "Ilastik project files (*.ilp)",
+           options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
         # If the user canceled, stop now        
         if projectFilePath.isNull():
@@ -582,13 +624,21 @@ class IlastikShell( QMainWindow ):
         if not self.ensureNoCurrentProject():
             return
 
-        projectFilePath = self.getProjectPathToOpen()
+        # Find the directory of the most recently opened project
+        mostRecentProjectPath = PreferencesManager().get( 'shell', 'recently opened' )
+        if mostRecentProjectPath is not None:
+            defaultDirectory = os.path.split(mostRecentProjectPath)[0]
+        else:
+            defaultDirectory = os.path.expanduser('~')
+
+        projectFilePath = self.getProjectPathToOpen(defaultDirectory)
         if projectFilePath is not None:
+            PreferencesManager().set('shell', 'recently opened', projectFilePath)
             self.openProjectFile(projectFilePath)
     
     def openProjectFile(self, projectFilePath):
         try:
-            hdf5File = self.projectManager.openProjectFile(projectFilePath)
+            hdf5File, readOnly = self.projectManager.openProjectFile(projectFilePath)
         except ProjectManager.ProjectVersionError,e:
             QMessageBox.warning(self, "Old Project", "Could not load old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
         except ProjectManager.FileMissingError:
@@ -597,22 +647,18 @@ class IlastikShell( QMainWindow ):
             logger.error( traceback.format_exc() )
             QMessageBox.warning(self, "Corrupted Project", "Unable to open project file: " + projectFilePath)
         else:
-            self.loadProject(hdf5File, projectFilePath)
+            self.loadProject(hdf5File, projectFilePath, readOnly)
     
-    def loadProject(self, hdf5File, projectFilePath):
+    def loadProject(self, hdf5File, projectFilePath, readOnly):
         """
         Load the data from the given hdf5File (which should already be open).
         """
         try:
-            self.projectManager.loadProject(hdf5File, projectFilePath)
+            self.projectManager.loadProject(hdf5File, projectFilePath, readOnly)
         except Exception, e:
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
         else:
-            # Now that a project is loaded, the user is allowed to save
-            self._shellActions.saveProjectAction.setEnabled(True)
-            self._shellActions.saveProjectSnapshotAction.setEnabled(True)
-    
-            self.updateWindowTitle()
+            self.updateShellProjectDisplay()
     
             # Enable all the applet controls
             self.enableWorkflow = True
@@ -622,11 +668,47 @@ class IlastikShell( QMainWindow ):
         logger.debug("Save Project action triggered")
         def save():
             self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.DisableAll ) )
-            self.projectManager.saveProject()
+            try:
+                self.projectManager.saveProject()
+            except ProjectManager.SaveError, err:
+                self.thunkEventHandler.post( partial( QMessageBox.warning, self, "Error Attempting Save", str(err) ) ) 
             self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.Pop ) )
         
         saveThread = threading.Thread( target=save )
         saveThread.start()
+
+    def onSaveProjectAsActionTriggered(self):
+        logger.debug("SaveAs Project action triggered")
+        
+        # Try to guess a good default project name, e.g. MyProject2.ilp 
+        currentPath, ext = os.path.splitext(self.projectManager.currentProjectPath)
+        m = re.match("(.*)_(\d+)", currentPath)
+        if m:
+            baseName = m.groups()[0]
+            projectNum = int(m.groups()[1]) + 1
+        else:
+            baseName = currentPath
+            projectNum = 2
+        
+        defaultNewPath = "{}_{}{}".format(baseName, projectNum, ext)
+
+        newPath = self.getProjectPathToCreate(defaultNewPath, caption="Select New Project Name")
+        if newPath == self.projectManager.currentProjectPath:
+            # If the new path is the same as the old one, then just do a regular save
+            self.onSaveProjectActionTriggered()
+        elif newPath is not None:
+            def saveAs():
+                self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.DisableAll ) )
+                
+                try:
+                    self.projectManager.saveProjectAs( newPath )
+                except ProjectManager.SaveError, err:
+                    self.thunkEventHandler.post( partial( QMessageBox.warning, self, "Error Attempting Save", str(err) ) ) 
+                self.updateShellProjectDisplay()
+                self.thunkEventHandler.post( partial(self.handleAppletGuiControlSignal, 0, ControlCommand.Pop ) )
+
+            saveThread = threading.Thread( target=saveAs )
+            saveThread.start()
 
     def onSaveProjectSnapshotActionTriggered(self):
         logger.debug("Saving Snapshot")
@@ -635,7 +717,10 @@ class IlastikShell( QMainWindow ):
         
         snapshotPath = self.getProjectPathToCreate(defaultSnapshot, caption="Create Project Snapshot")
         if snapshotPath is not None:
-            self.projectManager.saveProjectSnapshot(snapshotPath)
+            try:
+                self.projectManager.saveProjectSnapshot(snapshotPath)
+            except ProjectManager.SaveError, err:
+                QMessageBox.warning( self, "Error Attempting Save Snapshot", str(err) )
 
     def closeEvent(self, closeEvent):
         """
@@ -673,12 +758,13 @@ class IlastikShell( QMainWindow ):
 
         # Stop the thread that checks for log config changes.
         ilastik.ilastik_logging.stopUpdates()
+
+        # Close the window first, so applets can reimplement hideEvent() and such.
+        self.close()
         
+        # For testing purposes, sometimes this function is called even though we don't want to really quit.
         if quitApp:
             qApp.quit()
-        else:
-            # Just close the window
-            self.close()        
 
     def updateAppletControlStates(self):
         """

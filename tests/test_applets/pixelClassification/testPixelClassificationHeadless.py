@@ -53,7 +53,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         # Create a blank project file and load it.
         newProjectFilePath = cls.PROJECT_FILE
         newProjectFile = shell.projectManager.createBlankProjectFile(newProjectFilePath)
-        shell.projectManager.loadProject(newProjectFile, newProjectFilePath)
+        shell.projectManager.loadProject(newProjectFile, newProjectFilePath, False)
         
         # Add a file
         from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
@@ -103,9 +103,9 @@ class TestPixelClassificationHeadless(unittest.TestCase):
     def test(self):
         args = "ilastik_headless"
         args += " --project=" + self.PROJECT_FILE
-        args += " " + self.SAMPLE_DATA
         args += " --batch_output_dataset_name=/volume/pred_volume"
         args += " --sys_tmp_dir=/tmp"
+        args += " " + self.SAMPLE_DATA
 
         argv = args.split()
         return_code = pcMainHeadless.main(argv)

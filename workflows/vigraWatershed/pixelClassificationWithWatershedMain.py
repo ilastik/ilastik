@@ -20,7 +20,7 @@ def debug_with_new(shell, workflow):
     """
     (Function for debug and testing.)
     """
-    projFilePath = "/magnetic/test_watershed_project.ilp"
+    projFilePath = "/magnetic/test_project.ilp"
 
     # New project
     shell.createAndLoadNewProject(projFilePath)
@@ -28,16 +28,31 @@ def debug_with_new(shell, workflow):
     # Add a file
     from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
     info = DatasetInfo()
-    info.filePath = '/magnetic/gigacube.h5'
-    #info.filePath = '/magnetic/synapse_small.npy'
-    #info.filePath = '/magnetic/synapse_small.npy_results.h5'
+    #info.filePath = '/magnetic/gigacube.h5'
+    info.filePath = '/magnetic/synapse_small.npy'
     #info.filePath = '/magnetic/singleslice.h5'
     opDataSelection = workflow.dataSelectionApplet.topLevelOperator
     opDataSelection.Dataset.resize(1)
     opDataSelection.Dataset[0].setValue(info)
+    
+    # Set some features
+    import numpy
+    featApplet = workflow.applets[2]
+    featureGui = featApplet.gui
+    opFeatures = featApplet.topLevelOperator
+    #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
+    selections = numpy.array( [[True, False, False,  False, False, False, False],
+                               [False, False, False, False, False, False, False],
+                               [False, False, False, False, False, False, False], # ST EVs
+                               [False, False, False, False, False, False, False],
+                               [False, False, False, False, False, False, False],  # GGM
+                               [False, False, False, False, False, False, False]] )
+    opFeatures.SelectionMatrix.setValue(selections)
+    opFeatures.Scales.setValue( featureGui.ScalesList )
+    opFeatures.FeatureIds.setValue( featureGui.FeatureIds )
 
-    # Select the watershed drawer
-    shell.setSelectedAppletDrawer(1)
+    # Select the labeling drawer
+    shell.setSelectedAppletDrawer(3)
 
     # Save the project
     shell.onSaveProjectActionTriggered()

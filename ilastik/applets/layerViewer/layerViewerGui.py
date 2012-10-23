@@ -12,7 +12,7 @@ from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
 
 import os
 from ilastik.utility import bind
-from ilastik.utility.gui import ThreadRouter, threadRouted
+from ilastik.utility.gui import ThreadRouter, threadRouted, ShortcutManager
 
 from volumina.adaptors import Op5ifyer
 
@@ -341,6 +341,7 @@ class LayerViewerGui(QMainWindow):
             
             # Start in the center of the volume
             self.editor.posModel.slicingPos = midpos3d
+            self.editor.navCtrl.panSlicingViews( midpos3d, [0,1,2] )
             
             # If one of the xyz dimensions is 1, the data is 2d.
             singletonDims = filter( lambda (i,dim): dim == 1, enumerate(newDataShape[1:4]) )
@@ -351,15 +352,20 @@ class LayerViewerGui(QMainWindow):
 
         # Old layers are deleted if
         # (1) They are not in the new set or
-        # (2) They're data has changed
+        # (2) Their data has changed
         for index, oldLayer in reversed(list(enumerate(self.layerstack))):
             if oldLayer.name not in newNames:
                 needDelete = True
             else:
                 newLayer = filter(lambda l: l.name == oldLayer.name, newGuiLayers)[0]
                 needDelete = (newLayer.datasources != oldLayer.datasources)
-                                
+
             if needDelete:
+                layer = self.layerstack[index]
+                if hasattr(layer, 'shortcutRegistration'):
+                    obsoleteShortcut = layer.shortcutRegistration[2]
+                    obsoleteShortcut.setEnabled(False)
+                    ShortcutManager().unregister( obsoleteShortcut )
                 self.layerstack.selectRow(index)
                 self.layerstack.deleteSelected()
 
@@ -370,7 +376,17 @@ class LayerViewerGui(QMainWindow):
             if layer.name not in existingNames:
                 # Insert new
                 self.layerstack.insert( index, layer )
+                
+                # If this layer has an associated shortcut, register it with the shortcut manager
+                if hasattr(layer, 'shortcutRegistration'):
+                    ShortcutManager().register( *layer.shortcutRegistration )
             else:
+                # Clean up the layer instance that the client just gave us.
+                # We don't want to use it.
+                if hasattr(layer, 'shortcutRegistration'):
+                    shortcut = layer.shortcutRegistration[2]
+                    shortcut.setEnabled(False)
+
                 # Move existing layer to the correct positon
                 stackIndex = self.layerstack.findMatchingIndex(lambda l: l.name == layer.name)
                 self.layerstack.selectRow(stackIndex)

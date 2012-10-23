@@ -19,9 +19,11 @@ class ExportFormat():
         self.name = name
         self.extension = extension    
 
-SupportedFormats = { ExportFormat.H5   : ExportFormat("Hdf5", '.h5'),
-                     ExportFormat.Npy  : ExportFormat("Numpy", '.npy'),
-                     ExportFormat.Tiff : ExportFormat("Tiff", '.tiff') }
+SupportedFormats = { ExportFormat.H5   : ExportFormat("Hdf5", '.h5') }
+
+#SupportedFormats = { ExportFormat.H5   : ExportFormat("Hdf5", '.h5'),
+#                     ExportFormat.Npy  : ExportFormat("Numpy", '.npy'),
+#                     ExportFormat.Tiff : ExportFormat("Tiff", '.tiff') }
 
 class OpBatchIo(Operator):
     """
@@ -77,7 +79,7 @@ class OpBatchIo(Operator):
             outputPath = inputPathComponents.externalDirectory
         else:
             outputPath = self.ExportDirectory.value
-        outputPath += '/' + inputPathComponents.filenameBase + self.Suffix.value + ext 
+        outputPath = os.path.join(outputPath, inputPathComponents.filenameBase + self.Suffix.value + ext) 
         
         # Set up the path for H5 export
         if formatId == ExportFormat.H5:
@@ -152,10 +154,12 @@ class OpBatchIo(Operator):
 
                 opH5Writer.cleanUp()
 
-            elif exportFormat == ExportFormat.Npy:
-                assert False # TODO
-            elif exportFormat == ExportFormat.Npy:
-                assert False # TODO
+#            elif exportFormat == ExportFormat.Npy:
+#                assert False # TODO
+#            elif exportFormat == ExportFormat.Npy:
+#                assert False # TODO
+            else:
+                assert False, "Unknown export format"
 
             result[0] = not self.Dirty.value
 

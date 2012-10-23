@@ -3,11 +3,12 @@ import os
 import logging
 import warnings
 import threading
+from functools import partial
 
 # Third-party
 import numpy
 from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor
+from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget
 
 # HCI
 from lazyflow.tracer import Tracer, traceLogged
@@ -15,6 +16,7 @@ from volumina.api import LazyflowSource, AlphaModulatedLayer
 
 # ilastik
 from ilastik.utility import bind
+from ilastik.utility.gui import ShortcutManager
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 
@@ -48,7 +50,7 @@ class PixelClassificationGui(LabelingGui):
     ###########################################
 
     @traceLogged(traceLogger)
-    def __init__(self, pipeline, shellRequestSignal, predictionSerializer ):
+    def __init__(self, pipeline, shellRequestSignal, guiControlSignal, predictionSerializer ):
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = pipeline.LabelInputs
@@ -66,6 +68,7 @@ class PixelClassificationGui(LabelingGui):
         
         self.pipeline = pipeline
         self.shellRequestSignal = shellRequestSignal
+        self.guiControlSignal = guiControlSignal
         self.predictionSerializer = predictionSerializer
         
         self.interactiveModeActive = False
@@ -76,14 +79,41 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.savePredictionsButton.clicked.connect(self.onSavePredictionsButtonClicked)
 
         self.labelingDrawerUi.checkShowPredictions.clicked.connect(self.handleShowPredictionsClicked)
-        def nextCheckState():
-            if not self.labelingDrawerUi.checkShowPredictions.isChecked():
-                self.labelingDrawerUi.checkShowPredictions.setChecked(True)
+        self.labelingDrawerUi.checkShowSegmentation.clicked.connect(self.handleShowSegmentationClicked)
+        
+        def nextCheckState(checkbox):
+            if not checkbox.isChecked():
+                checkbox.setChecked(True)
             else:
-                self.labelingDrawerUi.checkShowPredictions.setChecked(False)
-        self.labelingDrawerUi.checkShowPredictions.nextCheckState = nextCheckState
+                checkbox.setChecked(False)
+        self.labelingDrawerUi.checkShowPredictions.nextCheckState = partial(nextCheckState, self.labelingDrawerUi.checkShowPredictions) 
+        self.labelingDrawerUi.checkShowSegmentation.nextCheckState = partial(nextCheckState, self.labelingDrawerUi.checkShowSegmentation) 
         
         self.pipeline.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
+        
+        self._initShortcuts()
+
+    def _initShortcuts(self):
+        mgr = ShortcutManager()
+        shortcutGroupName = "Predictions"
+
+        togglePredictions = QShortcut( QKeySequence("p"), self, member=self.labelingDrawerUi.checkShowPredictions.click )
+        mgr.register( shortcutGroupName,
+                      "Toggle Prediction Layer Visibility",
+                      togglePredictions,
+                      self.labelingDrawerUi.checkShowPredictions )        
+
+        toggleSegmentation = QShortcut( QKeySequence("s"), self, member=self.labelingDrawerUi.checkShowSegmentation.click )
+        mgr.register( shortcutGroupName,
+                      "Toggle Segmentaton Layer Visibility",
+                      toggleSegmentation,
+                      self.labelingDrawerUi.checkShowSegmentation )        
+
+        toggleLivePredict = QShortcut( QKeySequence("l"), self, member=self.labelingDrawerUi.checkInteractive.click )
+        mgr.register( shortcutGroupName,
+                      "Toggle Live Prediction Mode",
+                      toggleLivePredict,
+                      self.labelingDrawerUi.checkInteractive )
 
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
@@ -107,6 +137,11 @@ class PixelClassificationGui(LabelingGui):
             uncertaintyLayer.name = "Uncertainty"
             uncertaintyLayer.visible = False
             uncertaintyLayer.opacity = 1.0
+            uncertaintyLayer.shortcutRegistration = (
+                "Prediction Layers",
+                "Show/Hide Uncertainty",
+                QShortcut( QKeySequence("u"), self.viewerControlWidget(), uncertaintyLayer.toggleVisible ),
+                uncertaintyLayer )
             layers.append(uncertaintyLayer)
 
         # Add each of the predictions
@@ -144,7 +179,7 @@ class PixelClassificationGui(LabelingGui):
                                                 normalize=(0.0, 1.0) )
                 segLayer.opacity = 1
                 segLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
-                segLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
+                segLayer.visibleChanged.connect(self.updateShowSegmentationCheckbox)
 
                 def setLayerColor(c):
                     segLayer.tintColor = c
@@ -164,6 +199,20 @@ class PixelClassificationGui(LabelingGui):
             inputLayer.name = "Input Data"
             inputLayer.visible = True
             inputLayer.opacity = 1.0
+            
+            def toggleTopToBottom():
+                index = self.layerstack.layerIndex( inputLayer )
+                self.layerstack.selectRow( index )
+                if index == 0:
+                    self.layerstack.moveSelectedToBottom()
+                else:
+                    self.layerstack.moveSelectedToTop()
+
+            inputLayer.shortcutRegistration = (
+                "Prediction Layers",
+                "Bring Input To Top/Bottom",
+                QShortcut( QKeySequence("i"), self.viewerControlWidget(), toggleTopToBottom),
+                inputLayer )
             layers.append(inputLayer)
         
         return layers
@@ -217,6 +266,14 @@ class PixelClassificationGui(LabelingGui):
 
     @pyqtSlot()
     @traceLogged(traceLogger)
+    def handleShowSegmentationClicked(self):
+        checked = self.labelingDrawerUi.checkShowSegmentation.isChecked()
+        for layer in self.layerstack:
+            if "Segmentation" in layer.name:
+                layer.visible = checked
+
+    @pyqtSlot()
+    @traceLogged(traceLogger)
     def updateShowPredictionCheckbox(self):
         predictLayerCount = 0
         visibleCount = 0
@@ -235,6 +292,24 @@ class PixelClassificationGui(LabelingGui):
 
     @pyqtSlot()
     @traceLogged(traceLogger)
+    def updateShowSegmentationCheckbox(self):
+        segLayerCount = 0
+        visibleCount = 0
+        for layer in self.layerstack:
+            if "Segmentation" in layer.name:
+                segLayerCount += 1
+                if layer.visible:
+                    visibleCount += 1
+
+        if visibleCount == 0:
+            self.labelingDrawerUi.checkShowSegmentation.setCheckState(Qt.Unchecked)
+        elif segLayerCount == visibleCount:
+            self.labelingDrawerUi.checkShowSegmentation.setCheckState(Qt.Checked)
+        else:
+            self.labelingDrawerUi.checkShowSegmentation.setCheckState(Qt.PartiallyChecked)
+
+    @pyqtSlot()
+    @traceLogged(traceLogger)
     def handleLabelSelectionChange(self):
         enabled = False
         if self.pipeline.MaxLabelValue.ready():
@@ -245,6 +320,7 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
         self.labelingDrawerUi.checkInteractive.setEnabled(enabled)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(enabled)
+        self.labelingDrawerUi.checkShowSegmentation.setEnabled(enabled)
     
     @pyqtSlot()
     @traceLogged(traceLogger)
@@ -265,23 +341,52 @@ class PixelClassificationGui(LabelingGui):
             originalButtonText = "Save Predictions Now"
             self.labelingDrawerUi.savePredictionsButton.setText("Cancel Save")
 
+            @traceLogged(traceLogger)
             def saveThreadFunc():
-                with Tracer(traceLogger):
-                    # First, do a regular save.
-                    # During a regular save, predictions are not saved to the project file.
-                    # (It takes too much time if the user only needs the classifier.)
-                    self.shellRequestSignal.emit( ShellRequest.RequestSave )
-                    
-                    # Enable prediction storage and ask the shell to save the project again.
-                    # (This way the second save will occupy the whole progress bar.)
-                    self.predictionSerializer.predictionStorageEnabled = True
-                    self.shellRequestSignal.emit( ShellRequest.RequestSave )
-                    self.predictionSerializer.predictionStorageEnabled = False
-    
-                    # Restore original states (must use events for UI calls)
-                    self.thunkEventHandler.post(self.labelingDrawerUi.savePredictionsButton.setText, originalButtonText)
-                    self.pipeline.FreezePredictions.setValue(predictionsFrozen)
-                    self._currentlySavingPredictions = False
+                # Disable all other applets                    
+                self.guiControlSignal.emit( ControlCommand.DisableUpstream )
+                self.guiControlSignal.emit( ControlCommand.DisableDownstream )
+
+                def disableAllInWidgetButName(widget, exceptName):
+                    for child in widget.children():
+                        if child.findChild( QPushButton, exceptName) is None:
+                            child.setEnabled(False)
+                        else:
+                            disableAllInWidgetButName(child, exceptName)
+                        
+                # Disable everything in our drawer *except* the cancel button
+                disableAllInWidgetButName(self.labelingDrawerUi, "savePredictionsButton")
+
+                # But allow the user to cancel the save
+                self.labelingDrawerUi.savePredictionsButton.setEnabled(True)
+
+                # First, do a regular save.
+                # During a regular save, predictions are not saved to the project file.
+                # (It takes too much time if the user only needs the classifier.)
+                self.shellRequestSignal.emit( ShellRequest.RequestSave )
+                
+                # Enable prediction storage and ask the shell to save the project again.
+                # (This way the second save will occupy the whole progress bar.)
+                self.predictionSerializer.predictionStorageEnabled = True
+                self.shellRequestSignal.emit( ShellRequest.RequestSave )
+                self.predictionSerializer.predictionStorageEnabled = False
+
+                # Restore original states (must use events for UI calls)
+                self.thunkEventHandler.post(self.labelingDrawerUi.savePredictionsButton.setText, originalButtonText)
+                self.pipeline.FreezePredictions.setValue(predictionsFrozen)
+                self._currentlySavingPredictions = False
+
+                # Re-enable our controls
+                def enableAll(widget):
+                    for child in widget.children():
+                        if isinstance( child, QWidget ):
+                            child.setEnabled(True)
+                            enableAll(child)
+                enableAll(self.labelingDrawerUi)
+
+                # Re-enable all other applets
+                self.guiControlSignal.emit( ControlCommand.Pop )
+                self.guiControlSignal.emit( ControlCommand.Pop )
 
             saveThread = threading.Thread(target=saveThreadFunc)
             saveThread.start()

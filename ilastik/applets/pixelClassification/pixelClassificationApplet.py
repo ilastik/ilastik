@@ -40,5 +40,5 @@ class PixelClassificationApplet( Applet ):
     def gui(self):
         if self._gui is None:
             from pixelClassificationGui import PixelClassificationGui
-            self._gui = PixelClassificationGui( self._topLevelOperator, self.shellRequestSignal, self.predictionSerializer )        
+            self._gui = PixelClassificationGui( self._topLevelOperator, self.shellRequestSignal, self.guiControlSignal, self.predictionSerializer )        
         return self._gui
