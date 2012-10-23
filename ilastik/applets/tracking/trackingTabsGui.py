@@ -1,5 +1,4 @@
-from PyQt4.QtCore import pyqtSignal, QTimer, QRectF, Qt, SIGNAL, QObject
-from PyQt4.QtGui import *
+from PyQt4.QtGui import QTabWidget, QWidget, QLabel, QPushButton, QVBoxLayout
 
 from PyQt4 import uic
 import os

@@ -1,12 +1,7 @@
 from ilastik.applets.base.applet import Applet
-
-from opTrackingNN import OpTrackingNN
-from trackingGuiNN import TrackingGuiNN
 from trackingSerializerNN import TrackingSerializerNN
-
 from lazyflow.graph import OperatorWrapper
 from ilastik.applets.tracking.opTrackingNN import OpTrackingNN
-from ilastik.applets.tracking.trackingTabsGui import TrackingTabsGui
 
 class TrackingAppletNN( Applet ):
     """
@@ -18,7 +13,8 @@ class TrackingAppletNN( Applet ):
         # Wrap the top-level operator, since the GUI supports multiple images
         self._topLevelOperator = OperatorWrapper(OpTrackingNN, graph=graph)
 
-        self._gui = TrackingTabsGui(self._topLevelOperator)
+#        self._gui = TrackingTabsGui(self._topLevelOperator)
+        self._gui = None
         
         self._serializableItems = [ TrackingSerializerNN(self._topLevelOperator, projectFileGroupName) ]
 
@@ -36,4 +32,7 @@ class TrackingAppletNN( Applet ):
 
     @property
     def gui(self):
+        if self._gui is None:
+            from ilastik.applets.tracking.trackingTabsGui import TrackingTabsGui
+            self._gui = TrackingTabsGui(self._topLevelOperator)        
         return self._gui

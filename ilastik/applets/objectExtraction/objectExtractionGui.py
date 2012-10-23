@@ -174,7 +174,7 @@ class ObjectExtractionGui( QWidget ):
             else:
                 req.wait()
                 
-        progress.setValue(maxt * 2)
+        progress.setValue(maxt * 2)        
         
         roi = SubRegion(self.curOp.LabelImage, start=5*(0,), stop=m.shape)
         # TODO: set LabelImage dirty to update the result for the current view!

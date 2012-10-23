@@ -1,22 +1,10 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion, List
 from lazyflow.stype import Opaque
-from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
 
-import h5py
-import numpy
 import numpy as np
 import ctracking
-import vigra
-from ete2 import Tree, NodeStyle, TreeStyle, faces, AttrFace, TextFace
-from PyQt4.QtGui import (QFont, QGraphicsSimpleTextItem, QPen, QColor,
-                         QGraphicsRectItem, QTransform, QBrush)
-from PyQt4.QtCore import Qt
-from ete2.treeview.qt4_render import get_tree_img_map, render
-from ete2.treeview.drawer import init_scene, _QApp
-from ete2.treeview.main import save
-from PyQt4 import QtSvg, QtCore, QtGui
-from ete2.treeview.qt4_gui import _GUI
+
 
 def relabel(volume, replace):
     mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
@@ -235,6 +223,8 @@ class OpTrackingNN(Operator):
 
 
     def _createLineageTrees(self):
+        from ete2 import Tree
+                
         tree = Tree()
         
         initialFrame = 0
@@ -277,6 +267,8 @@ class OpTrackingNN(Operator):
         return tree
     
     def _getNodeStyle(self, line_width=1, branch_type=0, node_color='DimGray', node_size=6, node_shape='circle'):
+        from ete2 import NodeStyle
+    
         style = NodeStyle()        
         style["hz_line_width"] = line_width
         style["vt_line_width"] = line_width
@@ -295,6 +287,8 @@ class OpTrackingNN(Operator):
     
      
     def _addLineage(self, tree, events, initialFrame, rootFrame, rootLabel):
+        from ete2 import NodeStyle, faces, AttrFace
+        
         print '_addLineage ' + str(initialFrame) + ' ' + str(rootFrame) + ' ' + str(rootLabel) 
         text_rotated = False 
         initialFrame = 0
@@ -432,7 +426,12 @@ class OpTrackingNN(Operator):
 #        return tree
     def _plotTree(self, tree, out_fn=None, rotation=90, show_leaf_name=False, 
                   show_branch_length=False, circularTree=False, show_division_nodes=True, 
-                  distance_between_branches=4, show_border=False, width=1024):              
+                  distance_between_branches=4, show_border=False, width=1024):            
+        from ete2 import TreeStyle        
+        from ete2.treeview.qt4_render import render
+        from ete2.treeview.drawer import init_scene
+        from PyQt4 import QtSvg, QtCore, QtGui
+          
         ts = TreeStyle()   
         ts.show_scale = False
         ts.show_border = show_border
@@ -499,21 +498,22 @@ class OpTrackingNN(Operator):
             
 
 
-
-class RotatedTextItem(QGraphicsRectItem):
-    def __init__(self, text, size, color, rotation=90):
-            QGraphicsRectItem.__init__(self)
-            self.text_item = QGraphicsSimpleTextItem(text)
-            self.text_item.setParentItem(self)
-            self.text_item.setFont(QFont("arial", size))
-            self.text_item.setBrush(QBrush(QColor(color)))
-            self.rotate(rotation)
-            self.setRect(self.text_item.boundingRect())
-            self.setPen(QPen(Qt.NoPen))
-           
-    def rotate(self, rotation):
-            "rotates item over its own center"
-            rect = self.text_item.boundingRect()
-            x =  rect.width()/2.
-            y =  rect.height()/2.
-            self.text_item.setTransform(QTransform().translate(x, y).rotate(rotation).translate(-x, -y))
+   
+                
+#class RotatedTextItem(QGraphicsRectItem): 
+#    def __init__(self, text, size, color, rotation=90):
+#            QGraphicsRectItem.__init__(self)
+#            self.text_item = QGraphicsSimpleTextItem(text)
+#            self.text_item.setParentItem(self)
+#            self.text_item.setFont(QFont("arial", size))
+#            self.text_item.setBrush(QBrush(QColor(color)))
+#            self.rotate(rotation)
+#            self.setRect(self.text_item.boundingRect())
+#            self.setPen(QPen(Qt.NoPen))
+#           
+#    def rotate(self, rotation):
+#            "rotates item over its own center"
+#            rect = self.text_item.boundingRect()
+#            x =  rect.width()/2.
+#            y =  rect.height()/2.
+#            self.text_item.setTransform(QTransform().translate(x, y).rotate(rotation).translate(-x, -y))

@@ -1,17 +1,10 @@
-from lazyflow.graph import Graph, Operator, OperatorWrapper
+from lazyflow.graph import Graph, OperatorWrapper
 
 from ilastik.workflow import Workflow
 
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
-from ilastik.applets.tracking import TrackingApplet
 
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.stype import Opaque
-from lazyflow.operators.ioOperators.opInputDataReader import OpInputDataReader
-from ilastik.applets.tracking.opTracking import *
-import ctracking
 from lazyflow.operators.obsolete.valueProviders import OpAttributeSelector
 from ilastik.applets.tracking.trackingAppletNN import TrackingAppletNN
 

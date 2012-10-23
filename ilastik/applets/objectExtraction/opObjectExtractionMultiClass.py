@@ -58,7 +58,7 @@ class OpObjectExtractionMultiClass(Operator):
         
 
     def setupOutputs(self):
-        print "setupOutputs: Inputs.shape " + str(self.Images.meta.shape)
+        print "OpObjectExtractionMultiClass::setupOutputs: Inputs.shape " + str(self.Images.meta.shape)
         # TODO: set values to channel 0 (if label 0 == bg)
         # assumes that background == label 0, assumes t,x,y,z,c        
         backgroundlabel = 0
