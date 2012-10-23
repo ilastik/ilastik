@@ -8,6 +8,8 @@ import itertools
 import cPickle as pickle
 import h5py
 import time
+import threading
+from functools import partial
 
 from lazyflow.operators import OpH5WriterBigDataset, OpSubRegion
 
@@ -41,36 +43,26 @@ class OpTaskWorker(Operator):
         outputFilePath = os.path.join( self.ScratchDirectory.value, outputFileName )
 
         # Create the output file
-        outputFile = h5py.File( outputFilePath, 'w' )
-        #dataShape = numpy.subtract(roi.stop, roi.start)
-        #dataset = outputFile.create_dataset( 'node_result', shape=dataShape, dtype=self.Input.meta.dtype )
-
-
-        assert self.Input.ready()
-
-        # Extract sub-region
-        opSubRegion = OpSubRegion(parent=self, graph=self.graph)
-        opSubRegion.Input.connect( self.Input )
-        opSubRegion.Start.setValue( tuple(roi.start) )
-        opSubRegion.Stop.setValue( tuple(roi.stop) )
-
-        print "roi start", roi.start
-        print "roi stop", roi.stop
-
-        for slot in opSubRegion.inputs.values():
-            print slot.name, slot.ready()
-        
-        assert opSubRegion.Output.ready()
-
-        # Set up the write operator
-        opH5Writer = OpH5WriterBigDataset(parent=self, graph=self.graph)
-        opH5Writer.hdf5File.setValue( outputFile )
-        opH5Writer.hdf5Path.setValue( 'node_result' )
-        opH5Writer.Image.connect( opSubRegion.Output )
-
-        assert opH5Writer.WriteImage.ready()
-
-        result[0] = opH5Writer.WriteImage.value
+        with h5py.File( outputFilePath, 'w' ) as outputFile:
+            assert self.Input.ready()
+    
+            # Extract sub-region
+            opSubRegion = OpSubRegion(parent=self, graph=self.graph)
+            opSubRegion.Input.connect( self.Input )
+            opSubRegion.Start.setValue( tuple(roi.start) )
+            opSubRegion.Stop.setValue( tuple(roi.stop) )
+    
+            assert opSubRegion.Output.ready()
+    
+            # Set up the write operator
+            opH5Writer = OpH5WriterBigDataset(parent=self, graph=self.graph)
+            opH5Writer.hdf5File.setValue( outputFile )
+            opH5Writer.hdf5Path.setValue( 'node_result' )
+            opH5Writer.Image.connect( opSubRegion.Output )
+    
+            assert opH5Writer.WriteImage.ready()
+    
+            result[0] = opH5Writer.WriteImage.value
         
         # Now create the status file to show that we're finished.
         statusFile = file(statusFilePath, 'w')
@@ -143,7 +135,9 @@ class OpClusterize(Operator):
             
             # Spawn the task
             logger.info("Launching node task: " + taskInfo.command )
-            subprocess.call( taskInfo.command.split(' ') )
+            th = threading.Thread( target=partial(subprocess.call, taskInfo.command.split(' ') ) )
+            th.start()
+            #subprocess.call( taskInfo.command.split(' ') )
 
         # When each task completes, it creates a status file.
         while len(taskInfos) > 0:
@@ -155,7 +149,7 @@ class OpClusterize(Operator):
             destinationFile = None
             for roi, taskInfo in taskInfos.items():
                 # Has the task completed yet?
-                print "Checking file: {}".format( taskInfo.statusFilePath )
+                logger.debug( "Checking file: {}".format( taskInfo.statusFilePath ) )
                 if not os.path.exists( taskInfo.statusFilePath ):
                     continue
 
@@ -181,7 +175,7 @@ class OpClusterize(Operator):
                 key = taskInfo.subregion.toSlice()
                 destinationFile['cluster_result'][key] = f['node_result'][:]
 
-                print "Got data for roi {}".format(roi)                    
+                logging.debug( "Got data for roi {}".format(roi) )                    
                 finished_rois.append(roi)
 
             # For now, we close the file after every pass in case something goes horribly wrong...
@@ -190,10 +184,8 @@ class OpClusterize(Operator):
 
             # Remove the finished tasks
             for roi in finished_rois:
-                print "Removing roi {}".format(roi)
                 del taskInfos[roi]
 
-        print "FINISHED ALL NODES"
         result[0] = True
         return result
     
@@ -208,8 +200,6 @@ class OpClusterize(Operator):
         numJobsPerSpaceDim = math.pow(numJobs, 1.0/len(spaceDims))
         numJobsPerSpaceDim = int(numJobsPerSpaceDim)
 
-        print "space dims:", spaceDims
-        
         roiShape = []
         for key, dim in taggedShape.items():
             if key in [key for key, value in spaceDims]:
@@ -218,7 +208,6 @@ class OpClusterize(Operator):
                 roiShape.append(dim)
 
         roiShape = numpy.array(roiShape)
-        print "RoiShape:", roiShape
         
         rois = []
         for indices in itertools.product( *[ range(0, stop, step) for stop,step in zip(inputShape, roiShape) ] ):
