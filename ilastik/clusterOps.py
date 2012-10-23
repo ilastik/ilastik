@@ -2,7 +2,7 @@ import os
 import math
 import numpy
 import subprocess
-from lazyflow.rtype import SubRegion
+from lazyflow.rtype import Roi, SubRegion
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 import itertools
 import cPickle as pickle
@@ -33,7 +33,7 @@ class OpTaskWorker(Operator):
     
     def execute(self, slot, subindex, roi, result):
         roiString = self.RoiString.value
-        roi = pickle.loads(roiString)
+        roi = Roi.loads(roiString)
         logger.info( "Executing for roi: {}".format(roi) )
         roituple = ( tuple(roi.start), tuple(roi.stop) )
         statusFileName = STATUS_FILE_NAME_FORMAT.format( str(roituple) )
@@ -119,9 +119,9 @@ class OpClusterize(Operator):
             commandArgs = []
             commandArgs.append( "--project=" + self.ProjectFilePath.value )
             commandArgs.append( "--scratch_directory=" + self.ScratchDirectory.value )
-            commandArgs.append( "--_node_work_=" + pickle.dumps( taskInfo.subregion ) )
+            commandArgs.append( "--_node_work_=" + Roi.dumps( taskInfo.subregion ) )
             
-            allArgs = " ".join(commandArgs)
+            allArgs = " " + " ".join(commandArgs) + " "
             taskInfo.command = commandFormat.format( allArgs )
             taskInfo.statusFilePath = statusFilePath
             taskInfo.outputFilePath = outputFilePath
