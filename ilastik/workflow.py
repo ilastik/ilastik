@@ -26,6 +26,10 @@ class Workflow( Operator ):
         """
         return None
 
+    @property
+    def finalOutputSlot(self):
+        return None
+
     @abstractmethod
     def connectLane(self, laneIndex):
         """

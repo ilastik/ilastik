@@ -106,3 +106,8 @@ class PixelClassificationWorkflow(Workflow):
         opBatchFeatures.InputImage.connect( opBatchInputs.Image )
         opBatchPredictor.Image.connect( opBatchFeatures.OutputImage )
         opBatchResults.ImageToExport.connect( opBatchPredictor.PMaps )
+
+
+    @property
+    def finalOutputSlot(self):
+        return self.pcApplet.topLevelOperator.PredictionProbabilities
