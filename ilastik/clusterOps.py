@@ -138,7 +138,7 @@ class OpClusterize(Operator):
             
             # Spawn the task
             logger.info("Launching node task: " + taskInfo.command )
-            th = threading.Thread( target=partial(subprocess.call, taskInfo.command  ) )
+            th = threading.Thread( target=partial(subprocess.call, taskInfo.command, shell=True  ) )
             th.start()
             #subprocess.call( taskInfo.command.split(' ') )
 
@@ -152,7 +152,7 @@ class OpClusterize(Operator):
             destinationFile = None
             for roi, taskInfo in taskInfos.items():
                 # Has the task completed yet?
-                logger.debug( "Checking file: {}".format( taskInfo.statusFilePath ) )
+                logger.debug( "Checking for file: {}".format( taskInfo.statusFilePath ) )
                 if not os.path.exists( taskInfo.statusFilePath ):
                     continue
 
@@ -178,7 +178,7 @@ class OpClusterize(Operator):
                 key = taskInfo.subregion.toSlice()
                 destinationFile['cluster_result'][key] = f['node_result'][:]
 
-                logging.debug( "Got data for roi {}".format(roi) )                    
+                logger.debug( "Finished with roi: {}".format(roi) )
                 finished_rois.append(roi)
 
             # For now, we close the file after every pass in case something goes horribly wrong...
