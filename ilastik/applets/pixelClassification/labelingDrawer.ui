@@ -221,6 +221,13 @@
      </layout>
     </item>
     <item>
+     <widget class="QPushButton" name="svgButton">
+      <property name="text">
+       <string>SVG</string>
+      </property>
+     </widget>
+    </item>
+    <item>
      <layout class="QHBoxLayout" name="horizontalLayout_2"/>
     </item>
    </layout>
