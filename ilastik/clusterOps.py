@@ -6,19 +6,22 @@ from lazyflow.rtype import SubRegion
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 import itertools
 import cPickle as pickle
-
 import h5py
+import time
+
+from lazyflow.operators import OpH5WriterBigDataset, OpSubRegion
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-STATUS_FILE_NAME_FORMAT = "node status {} {}.txt"
-OUTPUT_FILE_NAME_FORMAT = "node output {} {}.txt"
+STATUS_FILE_NAME_FORMAT = "node status {}.txt"
+OUTPUT_FILE_NAME_FORMAT = "node output {}.h5"
 
 class OpTaskWorker(Operator):
     ScratchDirectory = InputSlot(stype='filestring')
     Input = InputSlot()
+    RoiString = InputSlot(stype='string')
     
     ReturnCode = OutputSlot()
 
@@ -27,26 +30,52 @@ class OpTaskWorker(Operator):
         self.ReturnCode.meta.shape = (1,)
     
     def execute(self, slot, subindex, roi, result):
-        statusFileName = STATUS_FILE_NAME_FORMAT.format(projectFileName, str(roi) )
-        outputFileName = OUTPUT_FILE_NAME_FORMAT.format(projectFileName, str(roi) )
+        roiString = self.RoiString.value
+        roi = pickle.loads(roiString)
+        logger.info( "Executing for roi: {}".format(roi) )
+        roituple = ( tuple(roi.start), tuple(roi.stop) )
+        statusFileName = STATUS_FILE_NAME_FORMAT.format( str(roituple) )
+        outputFileName = OUTPUT_FILE_NAME_FORMAT.format( str(roituple) )
 
         statusFilePath = os.path.join( self.ScratchDirectory.value, statusFileName )
         outputFilePath = os.path.join( self.ScratchDirectory.value, outputFileName )
 
         # Create the output file
-        outputFile = h5py.File( self.OutputFile.value, 'w' )
-        dataShape = numpy.subtract(roi.stop, roi.start)
-        dataset = outputFile.create_dataset( 'node_result', shape=dataShape, dtype=self.Input.meta.dtype )
+        outputFile = h5py.File( outputFilePath, 'w' )
+        #dataShape = numpy.subtract(roi.stop, roi.start)
+        #dataset = outputFile.create_dataset( 'node_result', shape=dataShape, dtype=self.Input.meta.dtype )
 
-        # Get the result and write it to the file
-        req = self.Input(roi).writeInto(dataset)
-        req.wait()
+
+        assert self.Input.ready()
+
+        # Extract sub-region
+        opSubRegion = OpSubRegion(parent=self, graph=self.graph)
+        opSubRegion.Input.connect( self.Input )
+        opSubRegion.Start.setValue( tuple(roi.start) )
+        opSubRegion.Stop.setValue( tuple(roi.stop) )
+
+        print "roi start", roi.start
+        print "roi stop", roi.stop
+
+        for slot in opSubRegion.inputs.values():
+            print slot.name, slot.ready()
+        
+        assert opSubRegion.Output.ready()
+
+        # Set up the write operator
+        opH5Writer = OpH5WriterBigDataset(parent=self, graph=self.graph)
+        opH5Writer.hdf5File.setValue( outputFile )
+        opH5Writer.hdf5Path.setValue( 'node_result' )
+        opH5Writer.Image.connect( opSubRegion.Output )
+
+        assert opH5Writer.WriteImage.ready()
+
+        result[0] = opH5Writer.WriteImage.value
         
         # Now create the status file to show that we're finished.
         statusFile = file(statusFilePath, 'w')
         statusFile.write('Yay!')
         
-        result[0] = 1
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -89,17 +118,16 @@ class OpClusterize(Operator):
             taskInfo = TaskInfo()
             taskInfo.subregion = SubRegion( None, start=roi[0], stop=roi[1] )
             
-            statusFileName = STATUS_FILE_NAME_FORMAT.format(projectFileName, str(roi) )
-            outputFileName = OUTPUT_FILE_NAME_FORMAT.format(projectFileName, str(roi) )
+            statusFileName = STATUS_FILE_NAME_FORMAT.format( str(roi) )
+            outputFileName = OUTPUT_FILE_NAME_FORMAT.format( str(roi) )
 
             statusFilePath = os.path.join( self.ScratchDirectory.value, statusFileName )
             outputFilePath = os.path.join( self.ScratchDirectory.value, outputFileName )
 
             commandArgs = []
             commandArgs.append( "--project=" + self.ProjectFilePath.value )
-            commandArgs.append( "--_node_work_=" + pickle.dumps( taskInfo.subregion ) )
             commandArgs.append( "--scratch_directory=" + self.ScratchDirectory.value )
-            
+            commandArgs.append( "--_node_work_=" + pickle.dumps( taskInfo.subregion ) )
             
             allArgs = " ".join(commandArgs)
             taskInfo.command = commandFormat.format( allArgs )
@@ -115,7 +143,7 @@ class OpClusterize(Operator):
             
             # Spawn the task
             logger.info("Launching node task: " + taskInfo.command )
-            subprocess.call(taskInfo.command)
+            subprocess.call( taskInfo.command.split(' ') )
 
         # When each task completes, it creates a status file.
         while len(taskInfos) > 0:
@@ -127,30 +155,34 @@ class OpClusterize(Operator):
             destinationFile = None
             for roi, taskInfo in taskInfos.items():
                 # Has the task completed yet?
-                if os.path.exists( taskInfo.statusFilePath ):
-                    if not os.path.exists( taskInfo.outputFilePath ):
-                        raise RuntimeError( "Error: Could not locate output file from spawned task: " + taskInfo.outputFilePath )
+                print "Checking file: {}".format( taskInfo.statusFilePath )
+                if not os.path.exists( taskInfo.statusFilePath ):
+                    continue
 
-                    # Open the file
-                    f = h5py.File( taskInfo.outputFilePath, 'r' )
+                if not os.path.exists( taskInfo.outputFilePath ):
+                    raise RuntimeError( "Error: Could not locate output file from spawned task: " + taskInfo.outputFilePath )
 
-                    # Check the result
-                    assert 'node_result' in f.keys()
-                    assert f['node_result'].shape == numpy.subtract(roi[1], roi[0])
-                    assert f['node_result'].dtype == self.Input.meta.dtype
-                    assert f['node_result'].attrs['axistags'] == self.Input.meta.axistags.toJSON()
+                # Open the file
+                f = h5py.File( taskInfo.outputFilePath, 'r' )
 
-                    # Open the destination file if necessary
-                    if destinationFile is None:
-                        destinationFile = h5py.File( self.OutputFile.value )
-                        if 'cluster_result' not in destinationFile.keys():
-                            destinationFile.create_dataset('cluster_result', shape=self.Input.meta.shape, dtype=self.Input.meta.dtype)
+                # Check the result
+                assert 'node_result' in f.keys()
+                assert numpy.all(f['node_result'].shape == numpy.subtract(roi[1], roi[0]))
+                assert f['node_result'].dtype == self.Input.meta.dtype
+                assert f['node_result'].attrs['axistags'] == self.Input.meta.axistags.toJSON()
 
-                    # Copy the data into our result (which might be an h5py dataset...)
-                    key = taskInfo.subregion.toSlice()
-                    destinationFile['cluster_result'][key] = f['node_result'][:]
-                    
-                    finished_rois = roi
+                # Open the destination file if necessary
+                if destinationFile is None:
+                    destinationFile = h5py.File( self.OutputFilePath.value )
+                    if 'cluster_result' not in destinationFile.keys():
+                        destinationFile.create_dataset('cluster_result', shape=self.Input.meta.shape, dtype=self.Input.meta.dtype)
+
+                # Copy the data into our result (which might be an h5py dataset...)
+                key = taskInfo.subregion.toSlice()
+                destinationFile['cluster_result'][key] = f['node_result'][:]
+
+                print "Got data for roi {}".format(roi)                    
+                finished_rois.append(roi)
 
             # For now, we close the file after every pass in case something goes horribly wrong...
             if destinationFile is not None:
@@ -158,10 +190,12 @@ class OpClusterize(Operator):
 
             # Remove the finished tasks
             for roi in finished_rois:
+                print "Removing roi {}".format(roi)
                 del taskInfos[roi]
 
-            result[0] = True
-            return result
+        print "FINISHED ALL NODES"
+        result[0] = True
+        return result
     
     def getRoiList(self):
         inputShape = self.Input.meta.shape

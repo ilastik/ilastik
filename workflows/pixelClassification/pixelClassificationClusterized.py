@@ -29,6 +29,7 @@ from lazyflow.graph import OperatorWrapper
 logger = logging.getLogger(__name__)
 
 def main(argv):
+    logger.info( "Launching with sys.argv: {}".format(sys.argv) )
     parser = getArgParser()
     parsed_args = parser.parse_args(argv[1:])
 
@@ -72,6 +73,7 @@ def runWorkflow(parsed_args):
         # We're doing node work
         opClusterTaskWorker = OperatorWrapper( OpTaskWorker, graph=finalOutputSlot.graph )
         opClusterTaskWorker.ScratchDirectory.setValue( args.scratch_directory )
+        opClusterTaskWorker.RoiString.setValue( args._node_work_ )
         opClusterTaskWorker.Input.connect( workflow.finalOutputSlot )
         resultSlot = opClusterTaskWorker.ReturnCode
     else:
@@ -134,6 +136,8 @@ if __name__ == "__main__":
 
 #        sys.argv += args
 
+    if False:
+        sys.argv += ['--project=/magnetic/synapse_small.ilp', "--_node_work_=ccopy_reg\n_reconstructor\np1\n(clazyflow.rtype\nSubRegion\np2\nc__builtin__\nobject\np3\nNtRp4\n(dp5\nS'slot'\np6\nNsS'start'\np7\ng1\n(clazyflow.roi\nTinyVector\np8\nc__builtin__\nlist\np9\n(lp10\ncnumpy.core.multiarray\nscalar\np11\n(cnumpy\ndtype\np12\n(S'i8'\nI0\nI1\ntRp13\n(I3\nS'<'\nNNNI-1\nI-1\nI0\ntbS'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp14\nag11\n(g13\nS'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp15\nag11\n(g13\nS'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp16\nag11\n(g13\nS'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp17\nag11\n(g13\nS'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp18\natRp19\nsS'stop'\np20\ng1\n(g8\ng9\n(lp21\ng11\n(g13\nS'\\x01\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp22\nag11\n(g13\nS'\\x90\\x01\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp23\nag11\n(g13\nS'\\x90\\x01\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp24\nag11\n(g13\nS'2\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp25\nag11\n(g13\nS'\\x02\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp26\natRp27\nsS'dim'\np28\nI5\nsb.", '--scratch_directory=/magnetic/scratch']
     # MAIN
     sys.exit( main(sys.argv) )
 
