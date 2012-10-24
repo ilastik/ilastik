@@ -14,10 +14,13 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         print "object extraction multi class: serializeToHdf5", topGroup, hdf5File, projectFilePath
         
         if len(self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._processedTimeSteps) > 0:
-            print "object extraction multi class: saving label image"        
-            src = op._opObjectExtractionBg._opLabelImage._mem_h5
+            print "object extraction multi class: saving label image"
             self.deleteIfPresent( topGroup, "LabelImage")
-            src.copy('/LabelImage', topGroup) 
+            labelImage_gr = self.getOrCreateGroup(topGroup, "LabelImage")        
+            src = op._opObjectExtractionBg._opLabelImage._mem_h5
+            for t in range(len(op._opObjectExtractionBg._opLabelImage._mem_h5)):
+                t_gr = labelImage_gr.create_dataset(name=str(t), data=src[t])            
+#            src.copy('/LabelImage', topGroup) 
 
         print "object extraction multi class: saving region features"
         self.deleteIfPresent( topGroup, "samples")
@@ -42,8 +45,11 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         dest = self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._mem_h5        
         
         if 'LabelImage' in topGroup.keys():            
-            del dest['LabelImage']
-            topGroup.copy('LabelImage', dest)
+#            del dest['LabelImage']
+#            topGroup.copy('LabelImage', dest)
+            for t in topGroup["LabelImage"].keys():
+                del dest[t]['LabelImage']
+                topGroup["LabelImage"][t].copy('LabelImage', dest[t])
         
             self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._fixed = False        
             self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._processedTimeSteps = range(topGroup['LabelImage'].shape[0])            
