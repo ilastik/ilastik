@@ -77,6 +77,7 @@ class OpClusterize(Operator):
     ProjectFilePath = InputSlot(stype='filestring')
     ScratchDirectory = InputSlot(stype='filestring')
     CommandFormat = InputSlot(stype='string') # Format string for spawning a node task.
+    WorkflowTypeName = InputSlot(stype='string')
     NumJobs = InputSlot()
     Input = InputSlot()
 
@@ -92,10 +93,6 @@ class OpClusterize(Operator):
         # Divide up the workload into large pieces
         rois = self.getRoiList()
                 
-        #fullProjectFileName = self.ProjectFilePath.value.replace("/", "_").replace("\\", "_")
-        # Fow now, just use the last part of the filename, without extension.
-        # Later, use the fully qualified filename, in case two projects with identical names are run at the same time...
-        projectFileName = os.path.split( os.path.splitext(self.ProjectFilePath.value )[0])[0]
         commandFormat = self.CommandFormat.value
 
         class TaskInfo():
@@ -117,6 +114,7 @@ class OpClusterize(Operator):
             outputFilePath = os.path.join( self.ScratchDirectory.value, outputFileName )
 
             commandArgs = []
+            commandArgs.append( "--workflow_type=" + self.WorkflowTypeName.value )
             commandArgs.append( "--project=" + self.ProjectFilePath.value )
             commandArgs.append( "--scratch_directory=" + self.ScratchDirectory.value )
             commandArgs.append( "--_node_work_=\"" + Roi.dumps( taskInfo.subregion ) + "\"" )

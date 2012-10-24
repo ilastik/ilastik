@@ -83,6 +83,7 @@ def runWorkflow(parsed_args):
         # We're the master
         opClusterizeMaster = OperatorWrapper( OpClusterize, graph=finalOutputSlot.graph )
         opClusterizeMaster.ProjectFilePath.setValue( args.project )
+        opClusterizeMaster.WorkflowTypeName.setValue( args.workflow_type )
         opClusterizeMaster.ScratchDirectory.setValue( args.scratch_directory )
         opClusterizeMaster.OutputFilePath.setValue( args.output_file )
         opClusterizeMaster.CommandFormat.setValue( args.command_format )
