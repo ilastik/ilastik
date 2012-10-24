@@ -129,7 +129,6 @@ class OpClassExtraction(Operator):
                 p = volDiv / float(volBg)
 
                 if prob[labelBg][0] != 1:
-                    print 'updating prob[' + str(labelBg) + '] from ' + str(prob[labelBg][1]) + ' to ' + str(prob[labelBg][1]+p)
                     prob[labelBg][1] += p 
                     prob[labelBg][0] = 1-prob[labelBg][1]
                 else:  
