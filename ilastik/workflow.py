@@ -1,11 +1,16 @@
 from abc import abstractproperty, abstractmethod
 from lazyflow.graph import Operator
+from ilastik.utility.subclassRegistry import SubclassRegistryMeta
+
+class WorkflowMeta(SubclassRegistryMeta):
+    pass
 
 class Workflow( Operator ):
     """
     Base class for all workflows.
     """
-    
+    __metaclass__ = WorkflowMeta # Provides Workflow.all_subclasses member
+
     ###############################
     # Abstract methods/properties #
     ###############################
@@ -39,6 +44,15 @@ class Workflow( Operator ):
         2) Ask the subclass to hook up the new image lane by calling this function.
         """
         raise NotImplementedError
+
+    @classmethod
+    def getSubclass(cls, name):
+        for subcls in cls.all_subclasses:
+            if subcls.__name__ == name:
+                return subcls
+        raise RuntimeError("No known workflow class has name " + name)
+
+
 
     ##################
     # Public methods #

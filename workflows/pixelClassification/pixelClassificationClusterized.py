@@ -15,13 +15,15 @@ from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackToH5Writer
 
 # ilastik
+from ilastik.workflow import Workflow
 import ilastik.utility.monkey_patches
 from ilastik.shell.headless.startShellHeadless import startShellHeadless
-from pixelClassificationWorkflow import PixelClassificationWorkflow
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.applets.batchIo.opBatchIo import ExportFormat
 from ilastik.utility import PathComponents
 import ilastik.utility.globals
+
+import workflows # Load all known workflow modules
 
 from ilastik.clusterOps import OpClusterize, OpTaskWorker
 from lazyflow.graph import OperatorWrapper
@@ -47,6 +49,7 @@ def main(argv):
 def getArgParser():
     parser = argparse.ArgumentParser(description="Pixel Classification Prediction Workflow")
     parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
+    parser.add_argument('--workflow_type', help='The name of the workflow class to load with this project', required=True)
     parser.add_argument('--scratch_directory', help='Scratch directory for intermediate files', required=False)
     parser.add_argument('--command_format', help='Format string for spawned tasks.  Replace argument list with a single {}', required=False)
     parser.add_argument('--num_jobs', type=int, help='Number of jobs', required=False)
@@ -62,7 +65,7 @@ def runWorkflow(parsed_args):
         raise RuntimeError("Project file '" + args.project + "' does not exist.")
 
     # Instantiate 'shell'
-    shell, workflow = startShellHeadless( PixelClassificationWorkflow )
+    shell, workflow = startShellHeadless( Workflow.getSubclass(args.workflow_type) )
     
     assert workflow.finalOutputSlot is not None
         
