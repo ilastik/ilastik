@@ -12,10 +12,12 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         op = self.mainOperator.innerOperators[0]
         print "object extraction multi class: serializeToHdf5", topGroup, hdf5File, projectFilePath
-        print "object extraction multi class: saving label image"
-        src = op._opObjectExtractionBg._opLabelImage._mem_h5
-        self.deleteIfPresent( topGroup, "LabelImage")
-        src.copy('/LabelImage', topGroup) 
+        
+        if len(self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._processedTimeSteps) > 0:
+            print "object extraction multi class: saving label image"        
+            src = op._opObjectExtractionBg._opLabelImage._mem_h5
+            self.deleteIfPresent( topGroup, "LabelImage")
+            src.copy('/LabelImage', topGroup) 
 
         print "object extraction multi class: saving region features"
         self.deleteIfPresent( topGroup, "samples")
@@ -39,12 +41,13 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         print "objectExtraction multi class: loading label image"
         dest = self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._mem_h5        
         
-        del dest['LabelImage']
-        topGroup.copy('LabelImage', dest)
+        if 'LabelImage' in topGroup.keys():            
+            del dest['LabelImage']
+            topGroup.copy('LabelImage', dest)
         
-        self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._fixed = False
-        print str(topGroup['LabelImage'].shape[0])
-        self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._processedTimeSteps = range(topGroup['LabelImage'].shape[0])            
+            self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._fixed = False        
+            self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._processedTimeSteps = range(topGroup['LabelImage'].shape[0])            
+
 
         print "objectExtraction multi class: loading region features"
         if "samples" in topGroup.keys():

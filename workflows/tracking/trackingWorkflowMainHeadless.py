@@ -113,8 +113,12 @@ def _onLabelImageButtonPressed( curOp ):
 
             reqs.append(curOp._opObjectExtractionDiv._opLabelImage.LabelImage([t]))
             reqs[-1].submit()
-            
+            logger.info('submitted requests for t = ' + str(t))
+        
+        logger.info('all requests submitted.')
+        
         for i, req in enumerate(reqs):
+            logger.info('wait for ' + str(i))
             req.wait()
         roi = SubRegion(curOp.LabelImage, start=5*(0,), stop=m.shape)        
         
@@ -122,7 +126,7 @@ def _onLabelImageButtonPressed( curOp ):
             curOp.LabelImage.setDirty(roi)
         except:
             print "TODO: set LabelImage dirty to update the result for the current view"        
-        print 'Label Segmentation: done.'
+        logger.info('Label Segmentation: done.')
 
 
 def _onExtractObjectsButtonPressed( curOp ):
@@ -141,7 +145,7 @@ def _onExtractObjectsButtonPressed( curOp ):
         curOp._opObjectExtractionDiv._opRegFeats.fixed = True        
         curOp._opObjectExtractionBg.ObjectCenterImage.setDirty( SubRegion(curOp._opObjectExtractionBg.ObjectCenterImage))
         curOp._opObjectExtractionDiv.ObjectCenterImage.setDirty( SubRegion(curOp._opObjectExtractionDiv.ObjectCenterImage))        
-        print 'Object Extraction: done.'
+        logger.info('Object Extraction: done.')
         
 def _onMergeSegmentationsButtonPressed(curOp):
         m = curOp.LabelImage.meta
@@ -153,7 +157,7 @@ def _onMergeSegmentationsButtonPressed(curOp):
             reqs[-1].submit()
         for i, req in enumerate(reqs):
             req.wait()        
-        print 'Merge Segmentation: done.'
+        logger.info('Merge Segmentation: done.')
 
 
 
