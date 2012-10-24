@@ -5,7 +5,6 @@ import vigra.analysis
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
-import time
 
 
 
@@ -18,8 +17,8 @@ class OpLabelImage( Operator ):
     def __init__(self, parent=None, graph=None):
         super(OpLabelImage, self).__init__(parent=parent,graph=graph)
         print "OpLabelImage::__init__"
-#        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
-        self._mem_h5 = []        
+#        self._mem_h5 = h5py.File(self._unique_file("LabelImage.h5"), backing_store=False)
+        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)        
         self._processedTimeSteps = []
         self._fixed = True
         
@@ -28,13 +27,8 @@ class OpLabelImage( Operator ):
         self.LabelImage.meta.assignFrom( self.BinaryImage.meta )
         self.LabelImage.meta.dtype = numpy.uint32
         print 'OpLabelImage::setupOutputs: LabelImage.meta = ' + str(self.LabelImage.meta)
-        m = self.LabelImage.meta
-        shape = (1,) + m.shape[1:]        
-        for idx in range(self.LabelImage.meta.shape[0]):
-            fd = h5py.File(str(id(self)) + str(idx), driver='core', backing_store=False)
-            fd.create_dataset( 'LabelImage', shape=shape, dtype=numpy.uint32, compression=1 )
-            self._mem_h5.append(fd)            
-#        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )        
+        m = self.LabelImage.meta        
+        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )        
         
 
     def __del__( self ):
@@ -50,7 +44,7 @@ class OpLabelImage( Operator ):
                 return destination
             
             # assumes t,x,y,z,c
-            for idx, t in enumerate(range(roi.start[0],roi.stop[0])):
+            for t in range(roi.start[0],roi.stop[0]):
                 if t not in self._processedTimeSteps:
                     print "Calculating LabelImage at", t
                     start = roi.start
@@ -58,28 +52,13 @@ class OpLabelImage( Operator ):
                     start[0] = t
                     stop[0] = t+1
                     print 'OpLabelImage::execute: start = ' + str(start) + ', stop = ' + str(stop)
-                    timestart = time.time()
-                    a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()
-                    print 'a=BinaryImage (' + str(start) + '): time = ' + str(time.time()-timestart)
-                    timestart = time.time()        
-                    a = a[0,...,0] 
-                    print 'a=a[0,...,0] (' + str(start) + '): time = ' + str(time.time()-timestart)
-                    timestart = time.time()
-                    b = vigra.analysis.labelVolumeWithBackground( a, background_value = self.BackgroundLabel.value )
-                    print 'b=vigra.... (' + str(start) + '): time = ' + str(time.time()-timestart)
-                    timestart = time.time()
-#                    self._mem_h5['LabelImage'][t,...,0] = b
-                    self._mem_h5[t]['LabelImage'][0,...,0] = b
-                    print 'self._mem_h5[...] = b (' + str(start) + '): time = ' + str(time.time()-timestart)
+                    a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()        
+                    a = a[0,...,0]        
+                    self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a, background_value = self.BackgroundLabel.value )                     
                     self._processedTimeSteps.append(t)
                                         
-            tstart = roi.start[0]
-            tstop = roi.stop[0]            
-            sl = roi.toSlice()
-            sl.start[0] = 0
-            sl.stop[0] = 1
-            destination = self._mem_h5[tstart:tstop]['LabelImage'][sl]
-                        
+            
+            destination = self._mem_h5['LabelImage'][roi.toSlice()]
             return destination
 
 #    def _unique_file(self, file_name):
