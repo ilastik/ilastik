@@ -145,6 +145,8 @@ if __name__ == "__main__":
     # MAIN
     sys.exit( main(sys.argv) )
 
+# Command-line example usage:
+# ./ilastik_clusterized --workflow_type=PixelClassificationWorkflow --project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp --scratch_directory=/groups/flyem/data/bergs_scratch/tmp_files --output_file=/groups/flyem/data/bergs_scratch/results_files/gigacube_predictions.h5 --command_format="qsub -pe batch 8 -l short=true -N gigacube_cluster_job -j y -b y -cwd -V '/home/bergs/clusterstuff/ilastik06/ilastik_clusterized{}'" --num_jobs=64
 
 
 
