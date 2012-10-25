@@ -1,5 +1,5 @@
 from PyQt4.QtGui import QWidget, QColor, QVBoxLayout, QFileDialog
-from PyQt4 import uic
+from PyQt4 import uic, QtCore
 
 import os
 import math
@@ -15,6 +15,8 @@ import logging
 import os.path as path
 from lazyflow.operators.obsolete.generic import axisTagsToString
 from lazyflow.rtype import SubRegion
+import time
+from os import getenv
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 from lazyflow.tracer import Tracer
@@ -163,6 +165,7 @@ class TrackingGuiNN( QWidget ):
 
         self._drawer.TrackButton.pressed.connect(self._onTrackButtonPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
+        self._drawer.lineageTreeButton.pressed.connect(self._onLineageTreeButtonPressed)
 
     def _initViewerControlUi( self ):
         p = os.path.split(__file__)[0]+'/'
@@ -171,7 +174,7 @@ class TrackingGuiNN( QWidget ):
 
 
     def _onExportButtonPressed(self):
-        directory = QFileDialog.getExistingDirectory(self, 'Select Directory', '/home')      
+        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
         
         if directory is None:
             print "cancelled."
@@ -187,6 +190,21 @@ class TrackingGuiNN( QWidget ):
         for i, events_at in enumerate(events):
             self._write_events(events_at, str(directory), i+1)
 
+                    
+        
+    def _onLineageTreeButtonPressed(self):
+        fn = QFileDialog.getSaveFileName(self, 'Save Lineage Trees', os.getenv('HOME'))      
+        
+        if fn is None:
+            print "cancelled."
+            return        
+        
+        print "Computing Lineage Trees..."
+        
+        self._createLineageTrees(str(fn))
+        
+        print 'Lineage Trees saved.'
+        
         
         
     def _onTrackButtonPressed( self ):
@@ -234,6 +252,7 @@ class TrackingGuiNN( QWidget ):
             )
         
         self._drawer.exportButton.setEnabled(True)
+        self._drawer.lineageTreeButton.setEnabled(True)
                 
                 
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
@@ -326,7 +345,7 @@ class TrackingGuiNN( QWidget ):
             
             seg = f_curr.create_group("segmentation")            
             # write label image
-            seg.create_dataset("labels", data = labelImage[0,...,0], dtype=np.uint16)
+            seg.create_dataset("labels", data = labelImage[0,...,0], dtype=np.uint32, compression=1)
             
             # delete old tracking
             if "tracking" in f_curr.keys():
@@ -336,39 +355,215 @@ class TrackingGuiNN( QWidget ):
             
             # write associations
             if len(app):
-                ds = tg.create_dataset("Appearances", data=app[:, :-1], dtype=np.int32)
-                ds.attrs["Format"] = "cell label appeared in current file"
-    
-                ds = tg.create_dataset("Appearances-Energy", data=app[:, -1], dtype=np.double)
-                ds.attrs["Format"] = "lower energy -> higher confidence"
-    
+                ds = tg.create_dataset("Appearances", data=app[:, :-1], dtype=np.uint32, compression=1)
+                ds.attrs["Format"] = "cell label appeared in current file"    
+                ds = tg.create_dataset("Appearances-Energy", data=app[:, -1], dtype=np.double, compression=1)
+                ds.attrs["Format"] = "lower energy -> higher confidence"    
             if len(dis):
-                ds = tg.create_dataset("Disappearances", data=dis[:, :-1], dtype=np.int32)
+                ds = tg.create_dataset("Disappearances", data=dis[:, :-1], dtype=np.uint32, compression=1)
                 ds.attrs["Format"] = "cell label disappeared in current file"
-    
-                ds = tg.create_dataset("Disappearances-Energy", data=dis[:, -1], dtype=np.double)
-                ds.attrs["Format"] = "lower energy -> higher confidence"
-    
-    
+                ds = tg.create_dataset("Disappearances-Energy", data=dis[:, -1], dtype=np.double, compression=1)
+                ds.attrs["Format"] = "lower energy -> higher confidence"    
             if len(mov):
-                ds = tg.create_dataset("Moves", data=mov[:, :-1], dtype=np.int32)
-                ds.attrs["Format"] = "from (previous file), to (current file)"
-    
-                ds = tg.create_dataset("Moves-Energy", data=mov[:, -1], dtype=np.double)
-                ds.attrs["Format"] = "lower energy -> higher confidence"
-    
-                
+                ds = tg.create_dataset("Moves", data=mov[:, :-1], dtype=np.uint32, compression=1)
+                ds.attrs["Format"] = "from (previous file), to (current file)"    
+                ds = tg.create_dataset("Moves-Energy", data=mov[:, -1], dtype=np.double, compression=1)
+                ds.attrs["Format"] = "lower energy -> higher confidence"                
             if len(div):
-                ds = tg.create_dataset("Splits", data=div[:, :-1], dtype=np.int32)
-                ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"
-    
-                ds = tg.create_dataset("Splits-Energy", data=div[:, -1], dtype=np.double)
+                ds = tg.create_dataset("Splits", data=div[:, :-1], dtype=np.uint32, compression=1)
+                ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"    
+                ds = tg.create_dataset("Splits-Energy", data=div[:, -1], dtype=np.double, compression=1)
                 ds.attrs["Format"] = "lower energy -> higher confidence"
     
         print "-> results successfully written"
 
 
+    def _createLineageTrees(self, fn=None):
+        from ete2 import Tree, NodeStyle, AttrFace
+                
+        tree = Tree()
+        
+        text_rotated = False 
+        
+        style = self._getNodeStyle()
+        divisionStyle = self._getNodeStyle()
+        
+        invisibleNodeStyle = NodeStyle()
+        invisibleNodeStyle["hz_line_color"] = "white"
+        invisibleNodeStyle["vt_line_color"] = "white"
+        invisibleNodeStyle["fgcolor"] = "white"
+        
+        distanceFromRoot = 0
+        
+        nodeMap = {}
+        branchSize = {}
+        
+        # add all nodes which appear in the first frame
+        for event in self.mainOperator.innerOperators[0].events[0]:
+            if event.type != ctracking.EventType.Appearance:
+                label = event.traxel_ids[0]
+                appNode = tree.add_child(name=self._getNodeName(0, label), dist=distanceFromRoot )
+                nodeMap[str(self._getNodeName(0, label))] = appNode
+                branchSize[str(self._getNodeName(0, label))] = 0                    
+                # making the branches to the root node invisible
+                n = appNode
+                while n:
+                    n.set_style(invisibleNodeStyle)
+                    n = n.up
+                appNode.set_style(invisibleNodeStyle)
+                name = AttrFace("name")
+                name.fsize = 6
+        
+        # add all lineages
+        for t, events_at in enumerate(self.mainOperator.innerOperators[0].events):
+            t = t+1            
+            for event in events_at:
+                if event.type == ctracking.EventType.Appearance:
+                    label = event.traxel_ids[0]
+                    appNode = tree.add_child(name=self._getNodeName(t, label), dist=distanceFromRoot + t)
+                    nodeMap[str(self._getNodeName(t, label))] = appNode
+                    branchSize[str(self._getNodeName(t, label))] = 0                    
+                    # making the branches to the root node invisible
+                    n = appNode
+                    while n:
+                        n.set_style(invisibleNodeStyle)
+                        n = n.up
+                    appNode.set_style(invisibleNodeStyle)
+                    name = AttrFace("name")
+                    name.fsize = 6
+#                    if text_rotated is False:
+#                        appNode.add_face(name, column=0, position="branch-top")
+#                    else:
+#                        rot_text = faces.StaticItemFace(RotatedTextItem(rootNode.name, 7, "black", 270))
+#                        appNode.add_face(rot_text, column=0, position="branch-top")
+            
+                elif event.type == ctracking.EventType.Disappearance:
+                    label = event.traxel_ids[0]                    
+                    newNode = nodeMap[str(self._getNodeName(t-1,str(label)))].add_child(
+                        name = self._getNodeName(t-1,str(label)),dist = branchSize[str(self._getNodeName(t-1,str(label)))])                     
+                    newNode.set_style(style)
+                    del nodeMap[str(self._getNodeName(t-1,str(label)))]
+                    del branchSize[str(self._getNodeName(t-1,str(label)))]
+                    
+                elif event.type == ctracking.EventType.Division:
+                    labelOld = event.traxel_ids[0]
+                    labelNew1 = event.traxel_ids[1]
+                    labelNew2 = event.traxel_ids[2]                    
+                    newNode = nodeMap[str(self._getNodeName(t-1,str(labelOld)))].add_child(
+                            name = self._getNodeName(t-1,str(self._getNodeName(t-1,str(labelOld)))),
+                            dist = branchSize[str(self._getNodeName(t-1,str(labelOld)))] )
+                    del nodeMap[str(self._getNodeName(t-1,str(labelOld)))]
+                    del branchSize[str(self._getNodeName(t-1,str(labelOld)))]
+                    newNode.set_style(divisionStyle)
+                    nodeMap[str(self._getNodeName(t,str(labelNew1)))] = newNode
+                    nodeMap[str(self._getNodeName(t,str(labelNew2)))] = newNode
+                    branchSize[str(self._getNodeName(t,str(labelNew1)))] = 1
+                    branchSize[str(self._getNodeName(t,str(labelNew2)))] = 1                    
+                    
+                elif event.type == ctracking.EventType.Move:
+                    labelOld = event.traxel_ids[0]
+                    labelNew = event.traxel_ids[1]                    
+                    nodeMap[str(self._getNodeName(t,str(labelNew)))] = nodeMap[str(self._getNodeName(t-1,str(labelOld)))]
+                    del nodeMap[str(self._getNodeName(t-1,str(labelOld)))]
+                    branchSize[str(self._getNodeName(t,str(labelNew)))] = branchSize[str(self._getNodeName(t-1,str(labelOld)))] + 1 
+                    del branchSize[str(self._getNodeName(t-1,str(labelOld)))]
 
+        for label in nodeMap.keys():
+            # TODO: label(t) = label(t+1) ?!?!
+            newNode = nodeMap[label].add_child(name = label,dist = branchSize[label])
+        
+        
+        self._plotTree(tree, out_fn=fn, rotation=270, show_leaf_name=False, 
+                  show_branch_length=False, circularTree=False, show_division_nodes=False, 
+                  distance_between_branches=4, height=800)
+
+
+    def _getNodeStyle(self, line_width=1, branch_type=0, node_color='DimGray', node_size=6, node_shape='circle'):
+        from ete2 import NodeStyle
+    
+        style = NodeStyle()        
+        style["hz_line_width"] = line_width
+        style["vt_line_width"] = line_width
+        # line type : 0 - solid, 1 - dashed, 2 - dotted
+        style["hz_line_type"] = branch_type
+        style["vt_line_type"] = branch_type
+        style["fgcolor"] = node_color
+        style["size"] = node_size
+        # node shape: circle, sphere, square
+        style["shape"] = node_shape
+    
+    def _getNodeName(self, frame, label):        
+        name = "%s/%s" %(frame,label)     
+        return name
+
+    def _plotTree(self, tree, out_fn=None, rotation=270, show_leaf_name=False, 
+                  show_branch_length=False, circularTree=False, show_division_nodes=True, 
+                  distance_between_branches=4, show_border=False, width=None, height=None):            
+        from ete2 import TreeStyle        
+        from PyQt4 import QtSvg, QtCore, QtGui
+        from ete2.treeview import qt4_render, drawer, main
+        
+          
+        ts = TreeStyle()   
+        ts.show_scale = False
+        ts.show_border = show_border
+        ts.orientation = 1 # 0, tree is drawn from left-to-right. 1, tree is drawn from right-to-left
+        ts.rotation = rotation
+        ts.show_leaf_name = show_leaf_name
+        ts.show_branch_length = show_branch_length
+        if circularTree:
+            ts.mode = 'c'
+        else:
+            ts.mode = 'r'
+        ts.branch_vertical_margin = distance_between_branches
+        
+        
+        def hideInternalNodesLayout(node):
+            if not node.is_leaf():
+                node.img_style["size"] = 0
+        
+        if show_division_nodes is False:
+            ts.layout_fn = hideInternalNodesLayout
+        
+        if out_fn is not None:        
+#            scene, img = init_scene(tree, None, ts)
+            scene  = qt4_render._TreeScene()
+            img = ts
+            
+            tree_item, n2i, n2f = qt4_render.render(tree, img)
+            scene.init_data(tree, img, n2i, n2f)
+            tree_item.setParentItem(scene.master_item)
+            scene.master_item.setPos(0,0)
+            scene.addItem(scene.master_item)      
+            main.save(scene, out_fn, w=width, h=height, dpi=600)    
+              
+        else:
+            scene, img = drawer.init_scene(tree, None, ts)
+            tree_item, n2i, n2f = qt4_render.render(tree, img)
+            scene.init_data(tree, img, n2i, n2f)
+        
+            tree_item.setParentItem(scene.master_item)
+            scene.addItem(scene.master_item)
+        
+            size = tree_item.rect()
+            w, h = size.width(), size.height()
+        
+            svg = QtSvg.QSvgGenerator()
+            svg.setFileName("test.svg")
+            svg.setSize(QtCore.QSize(w, h))
+            svg.setViewBox(size)
+            pp = QtGui.QPainter()
+            pp.begin(svg)
+            #pp.setRenderHint(QtGui.QPainter.Antialiasing)
+            #pp.setRenderHint(QtGui.QPainter.TextAntialiasing)
+            #pp.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+            scene.render(pp, tree_item.rect(), tree_item.rect(), QtCore.Qt.KeepAspectRatio)
+    #            pp.end()
+    #            img = QtSvg.QGraphicsSvgItem("test.svg")
+    #            #img.setParentItem(scene.master_item)
+    #            #scene.removeItem(tree_item)
+    #            #tree_item.
+        return
 
 
 
@@ -556,111 +751,6 @@ class LineageH5( h5py.File ):
         labelcontent = features_group["labelcontent"].value
         valid_labels = (np.arange(len(labelcontent))+1)[labelcontent==1]
         return valid_labels
-        
-#    def Tracklets( self , timestep=None, position='mean', add_features_as_meta=True):
-#        valid_labels = self.get_ids()
-#        features_group = self[self.feat_gn]
-#        tracklets = _ts.Tracklets([tracklet_from_labelgroup( features_group[str(label)], timestep=timestep, add_features_as_meta = add_features_as_meta, position=position ) for label in valid_labels])
-#        return tracklets
 
     def Traxels( self , timestep=None, position='mean', add_features_as_meta=True):
         return self.Tracklets( timestep, position, add_features_as_meta )
-
-#    def cTraxels( self, as_python_list=False, prediction_threshold=None ):
-#        if prediction_threshold:
-#            print "LineageH5::cTraxels: predicition threshold %f" % prediction_threshold
-#        # probe for objects group (higher io performance than features group)
-#        if 'objects' in self.keys():
-#            return self._cTraxels_from_objects_group( as_python_list, prediction_threshold )
-#        # use old 'features' format for traxels
-#        else:
-#            raise Exception("objects group not found")
-#            #if as_python_list or prediction_threshold:
-#            #    raise Exception("LineageH5::cTraxels: old format: requested options not implemented")
-#            #return self._cTraxels_from_features_group()
-#
-#    def _cTraxels_from_objects_group( self , as_python_list = False, prediction_threshold=None):
-#        objects_g = self["objects"]
-#        features_g = self["objects/features"]
-#        ids = objects_g["meta/id"].value
-#        valid = objects_g["meta/valid"].value
-#        prediction = None
-#        if "prediction" in objects_g["meta"]:
-#            prediction = objects_g["meta/prediction"]
-#        elif prediction_threshold:
-#            raise Exception("prediction_threshold set, but no prediction dataset found")
-#        features = {}
-#        for name in features_g.keys():
-#            features[name] = features_g[name].value
-#
-#        if as_python_list:
-#            ts = list()
-#        else:
-#            ts = ctracking.cTraxels()
-#        for idx, is_valid in enumerate(valid):
-#            if prediction_threshold:
-#                if prediction[idx] < prediction_threshold:
-#                    is_valid = False
-#            if is_valid:
-#                tr = ctracking.cTraxel()
-#                #tr.set_intmaxpos_locator()
-#                tr.set_x_scale(self._x_scale)
-#                tr.set_y_scale(self._y_scale)
-#                tr.set_z_scale(self._z_scale)
-#                tr.Id = int(ids[idx])
-#                tr.Timestep = self.timestep
-#                for name_value in features.items():
-#                    tr.add_feature_array(str(name_value[0]), len(name_value[1][idx]))
-#                    for i,v in enumerate(name_value[1][idx]):
-#                        tr.set_feature_value(str(name_value[0]), i, float(v))
-#                if as_python_list:
-#                    ts.append(tr)
-#                else:
-#                    ts.add_traxel(tr)
-#        return ts
-#
-#    def _cTraxels_from_features_group( self ):
-#        features_group = self[self.feat_gn]
-#        labelcontent = features_group["labelcontent"].value
-#        invalid_labels = (np.arange(len(labelcontent))+1)[labelcontent==0]
-#
-#        # note, that we used the ctracklet_from_labelgroup() here before, but had
-#        # to replace it by the following code due to bad performance
-#
-#        ts = ctracking.cTraxels()
-#        # state machine for parsing features group
-#        class Harvester( object ):
-#            def __init__( self, invalid_labels=[], timestep=0):
-#                self.current_ctracklet = None
-#                self.timestep = timestep
-#                self.invalid_labels = map(int, invalid_labels )
-#                
-#            def __call__(self, name, obj):
-#                # name is the full path inside feature group
-#                # entering a new label group...
-#                if name.isdigit():
-#                    # store away the last cTraxel
-#                    if self.current_ctracklet != None:
-#                        ts.add_traxel(self.current_ctracklet)
-#                    if int(name) in self.invalid_labels:
-#                        self.current_ctracklet = None
-#                        print "invalid!"
-#                    else:
-#                        self.current_ctracklet = ctracking.cTraxel()
-#                        self.current_ctracklet.Id = int(name)
-#                        self.current_ctracklet.Timestep = self.timestep
-#                elif name == 'featurecontent' or name == 'labelcontent' or name == 'labelcount':
-#                    pass
-#                else:
-#                    feature_name = path.basename(name)
-#                    self.current_ctracklet.add_feature_array(str(feature_name), len(obj.value))
-#                    for i,v in enumerate(obj.value):
-#                        self.current_ctracklet.set_feature_value(str(feature_name), i, float(v))
-#        harvest = Harvester(invalid_labels, self.timestep)
-#        features_group.visititems(harvest)
-#
-#        return ts
-#
-#
-#
-#

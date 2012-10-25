@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>631</height>
+    <height>664</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -160,6 +160,16 @@
        </property>
        <property name="text">
         <string>Export Results ...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="lineageTreeButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Save Lineage Trees ...</string>
        </property>
       </widget>
      </item>
