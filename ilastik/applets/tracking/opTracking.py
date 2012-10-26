@@ -176,6 +176,7 @@ class OpTracking(Operator):
         print "filling traxelstore"
         ts = ctracking.TraxelStore()
         filtered_labels = {}
+        
         for t in feats.keys():
             rc = feats[t]['RegionCenter']
             if rc.size:

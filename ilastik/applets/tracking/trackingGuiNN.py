@@ -1,13 +1,9 @@
-from PyQt4.QtGui import QWidget, QColor, QVBoxLayout, QFileDialog
-from PyQt4 import uic, QtCore
+from PyQt4.QtGui import QWidget, QColor, QFileDialog
+from PyQt4 import uic
 
 import os
-import math
 
-from ilastik.applets.layerViewer import LayerViewerGui
-from volumina.widgets.thresholdingWidget import ThresholdingWidget
-from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
-                         AlphaModulatedLayer, LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
+from volumina.api import LazyflowSource, LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
 import volumina.colortables as colortables
 
 
@@ -15,16 +11,15 @@ import logging
 import os.path as path
 from lazyflow.operators.obsolete.generic import axisTagsToString
 from lazyflow.rtype import SubRegion
-import time
-from os import getenv
+from lazyflow.roi import sliceToRoi
+from ilastik.applets.tracking.opTrackingNN import relabel
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 from lazyflow.tracer import Tracer
 import ctracking
 import numpy as np
 import h5py
-
-from ilastik.utility import bind
+import vigra
 
 class TrackingGuiNN( QWidget ):
     """
@@ -165,6 +160,7 @@ class TrackingGuiNN( QWidget ):
 
         self._drawer.TrackButton.pressed.connect(self._onTrackButtonPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
+        self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.lineageTreeButton.pressed.connect(self._onLineageTreeButtonPressed)
 
     def _initViewerControlUi( self ):
@@ -189,7 +185,31 @@ class TrackingGuiNN( QWidget ):
         
         for i, events_at in enumerate(events):
             self._write_events(events_at, str(directory), i+1)
-
+            
+    def _onExportTifButtonPressed(self):
+        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
+        
+        if directory is None:
+            print "cancelled."
+            return
+        
+        print 'Saving results as tiffs...'
+        
+        label2color = self.mainOperator.innerOperators[0].label2color
+        lshape = list(self.mainOperator.innerOperators[0].LabelImage.meta.shape)
+    
+        for t, label2color_at in enumerate(label2color):
+            print 'exporting tiffs for t = ' + str(t)            
+            
+            roi = SubRegion(self.mainOperator.innerOperators[0].LabelImage, start=[t,] + 4*[0,], stop=[t+1,] + list(lshape[1:]))
+            labelImage = self.mainOperator.innerOperators[0].LabelImage.get(roi).wait()
+            relabeled = relabel(labelImage[0,...,0],label2color_at)
+            for i in range(relabeled.shape[2]):
+                out_im = relabeled[:,:,i]
+                out_fn = str(directory) + '/vis_' + str(t).zfill(4) + '_' + str(i).zfill(4) + '.tif'
+                vigra.impex.writeImage(np.asarray(out_im,dtype=np.uint8), out_fn)
+        
+        print 'Tiffs exported.'
                     
         
     def _onLineageTreeButtonPressed(self):
@@ -232,6 +252,7 @@ class TrackingGuiNN( QWidget ):
             self._drawer.comCheckBox.setChecked(True)
             distanceFeatures.append("com")
         splitterHandling = self._drawer.splitterHandlingBox.isChecked()
+        mergerHandling = self._drawer.mergerHandlingBox.isChecked()
         
         self.time_range =  range(from_t, to_t + 1)
         
@@ -248,10 +269,12 @@ class TrackingGuiNN( QWidget ):
             movDist=movDist,
             distanceFeatures=distanceFeatures,
             divThreshold=divThreshold,
-            splitterHandling=splitterHandling
+            splitterHandling=splitterHandling,
+            mergerHandling=mergerHandling
             )
         
         self._drawer.exportButton.setEnabled(True)
+        self._drawer.exportTifButton.setEnabled(True)
         self._drawer.lineageTreeButton.setEnabled(True)
                 
                 

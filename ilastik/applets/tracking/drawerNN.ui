@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>664</height>
+    <height>724</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -144,6 +144,16 @@
       </widget>
      </item>
      <item>
+      <widget class="QCheckBox" name="mergerHandlingBox">
+       <property name="text">
+        <string>Enable Merger Postprocessing</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="TrackButton">
        <property name="styleSheet">
         <string notr="true"/>
@@ -159,7 +169,17 @@
         <bool>false</bool>
        </property>
        <property name="text">
-        <string>Export Results ...</string>
+        <string>Export Results as h5 ...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exportTifButton">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Export Results as tif ...</string>
        </property>
       </widget>
      </item>

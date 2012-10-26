@@ -16,17 +16,14 @@ class OpLabelImage( Operator ):
 
     def __init__(self, parent=None, graph=None):
         super(OpLabelImage, self).__init__(parent=parent,graph=graph)
-        print "OpLabelImage::__init__"
 #        self._mem_h5 = h5py.File(self._unique_file("LabelImage.h5"), backing_store=False)
         self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)        
         self._processedTimeSteps = []
         self._fixed = True
         
     def setupOutputs( self ):
-        print 'OpLabelImage::setupOutputs'
         self.LabelImage.meta.assignFrom( self.BinaryImage.meta )
-        self.LabelImage.meta.dtype = numpy.uint32
-        print 'OpLabelImage::setupOutputs: LabelImage.meta = ' + str(self.LabelImage.meta)
+        self.LabelImage.meta.dtype = numpy.uint32        
         m = self.LabelImage.meta        
         self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )        
         
@@ -34,12 +31,9 @@ class OpLabelImage( Operator ):
     def __del__( self ):
         self._mem_h5.close()
         
-    def execute( self, slot, subindex, roi, destination ):
-        print 'OpLabelImage::execute'
-        
+    def execute( self, slot, subindex, roi, destination ):        
         if slot is self.LabelImage:        
-            if self._fixed:
-                print 'OpLabelImage::execute: fixed'
+            if self._fixed:                
                 destination[:] = 0
                 return destination
             
@@ -57,16 +51,8 @@ class OpLabelImage( Operator ):
                     self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a, background_value = self.BackgroundLabel.value )                     
                     self._processedTimeSteps.append(t)
                                         
-            
             destination = self._mem_h5['LabelImage'][roi.toSlice()]
             return destination
-
-#    def _unique_file(self, file_name):
-#        dirname, filename = os.path.split(file_name)
-#        prefix, suffix = os.path.splitext(filename)
-#    
-#        fd, filename = tempfile.mkstemp(suffix, prefix+"_", dirname)
-#        return filename
 
 
 class OpRegionFeatures( Operator ):

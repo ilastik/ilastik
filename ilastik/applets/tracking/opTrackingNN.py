@@ -14,9 +14,9 @@ def relabel(volume, replace):
             try:
                 r = replace[label]
                 mp[label] = r
-            except:
+            except:                
                 pass
-    #mp[replace.keys()] = replace.values()
+#    mp[replace.keys()] = replace.values()
     return mp[volume]
 
 class OpTrackingNN(Operator):
@@ -77,17 +77,18 @@ class OpTrackingNN(Operator):
             movDist=10,
             divThreshold=0.5,
             distanceFeatures=["com"],
-            splitterHandling=True):
+            splitterHandling=True,
+            mergerHandling=True):
         
         distFeatureVector = ctracking.VectorOfString();
         for d in distanceFeatures:
             distFeatureVector.append(d) 
                 
-        ts, filtered_labels, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
+        ts, filtered_labels, empty_frame, max_traxel_id_at = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
         if empty_frame:
             print 'cannot track frames with 0 objects, abort.'
             return
-        tracker = ctracking.NNTracking(float(divDist), float(movDist), distFeatureVector, float(divThreshold), splitterHandling)
+        tracker = ctracking.NNTracking(float(divDist), float(movDist), distFeatureVector, float(divThreshold), splitterHandling, mergerHandling, max_traxel_id_at)
         
         self.events = tracker(ts)
         label2color = []
@@ -102,6 +103,7 @@ class OpTrackingNN(Operator):
             app = []
             div = []
             mov = []
+            splitNodes = []
             for event in events_at:
                 if event.type == ctracking.EventType.Appearance:
                     app.append((event.traxel_ids[0], event.energy))
@@ -111,11 +113,14 @@ class OpTrackingNN(Operator):
                     div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
                 if event.type == ctracking.EventType.Move:
                     mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+                if event.type == ctracking.EventType.SplitNodes:
+                    splitNodes.append(event.traxel_ids[1])                    
 
             print len(dis), "dis at", i + time_range[0]
             print len(app), "app at", i + time_range[0]
             print len(div), "div at", i + time_range[0]
             print len(mov), "mov at", i + time_range[0]            
+            print len(splitNodes), "splitNodes at", i + time_range[0]
             print
             label2color.append({})
             #for e in dis:
@@ -124,7 +129,7 @@ class OpTrackingNN(Operator):
             for e in app:
                 label2color[-1][e[0]] = np.random.randint(1, 255)
 
-            for e in mov:
+            for e in mov:                
                 if not label2color[-2].has_key(e[0]):
                     label2color[-2][e[0]] = np.random.randint(1, 255)
                 label2color[-1][e[1]] = label2color[-2][e[0]]
@@ -169,6 +174,7 @@ class OpTrackingNN(Operator):
         
         print "filling traxelstore"
         ts = ctracking.TraxelStore()
+        max_traxel_id_at = ctracking.VectorOfInt();
         filtered_labels = {}
         empty_frame = False
         for t in feats.keys():
@@ -209,10 +215,11 @@ class OpTrackingNN(Operator):
                 tr.add_feature_array("count", 1)
                 tr.set_feature_value("count", 0, float(size))                
                 ts.add(tr)            
-            print "at timestep ", t, count, "traxels passed filter"
+            print "at timestep ", t, count, "traxels passed filter"            
+            max_traxel_id_at.append(int(rc.shape[0]))
             if count == 0:
                 empty_frame = True
-        return ts, filtered_labels, empty_frame
+        return ts, filtered_labels, empty_frame, max_traxel_id_at
 
         
     
