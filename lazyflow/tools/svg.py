@@ -1,8 +1,7 @@
 import textwrap
 def header():
     header = """\
-             <?xml version="1.0" standalone="no"?>
-             <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/REC-SVG- 20010904/DTD/svg10.dtd">
+             <?xml version="1.0" encoding="UTF-8" standalone="no"?>
              """
     return textwrap.dedent(header)
 
@@ -55,14 +54,23 @@ class TagFormatter(object):
                     These become the first arguments to the function.
                     In the output tag text, these attributes are listed first.
     """
-    def __init__(self, tag, atomic, standard_attrs={}):
+    def __init__(self, tag, atomic, standard_attrs=[], **default_attr_values):
         self.tag = tag
         self.atomic = atomic
         self.standard_attrs = standard_attrs
+        self.default_attr_values = default_attr_values
 
     def __call__(self, *args, **kwargs ):
         attrs = []
         assert len(args) <= len(self.standard_attrs)
+        
+        defaults = dict(self.default_attr_values)
+        for key, value in kwargs.items():
+            if key in defaults:
+                del defaults[key]
+        
+        kwargs.update(defaults)
+        
         for i, attr_name in enumerate(self.standard_attrs):
             if i < len(args):
                 attrs.append( (attr_name, args[i]) )
@@ -71,7 +79,7 @@ class TagFormatter(object):
                 del kwargs[attr_name]
         return format_tag(self.tag, self.atomic, OrderedDict(attrs), kwargs)
 
-svg = TagFormatter('svg', False)
+svg = TagFormatter('svg', False, ['x', 'y', 'width', 'height'], xmlns__inkscape="http://www.inkscape.org/namespaces/inkscape" )
 rect = TagFormatter('rect', True, ['x', 'y', 'width', 'height']) # Signature: rect(x, y, width, height, **optional_attrs)
 circle = TagFormatter('circle', True, ['cx', 'cy', 'r'])
 path = TagFormatter('path', True, ['d'])
@@ -79,7 +87,16 @@ text = TagFormatter('text', False)
 textPath = TagFormatter('textPath', False)
 tspan = TagFormatter('tspan', False, ['x', 'y'])
 group = TagFormatter('g', False, ['class_', 'transform'])
-
+connector_path = TagFormatter('path', True,
+                              [ 'inkscape__connection_start',
+                                'inkscape__connection_end' ],
+                              style='fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1',
+                              d="m 0, 0 1000,1000",
+                              inkscape__connector_type="polyline",
+                              inkscape__connector_curvature='0',
+                              inkscape__connection_end_point="d4",
+                              inkscape__connection_start_point="d4"
+                              )
 import contextlib
 @contextlib.contextmanager
 def tagblock(stream, formatter, *args, **kwargs):
