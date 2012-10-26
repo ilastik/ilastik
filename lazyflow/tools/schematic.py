@@ -33,7 +33,7 @@ class SvgSlot(DrawableABC, ConnectableABC):
         cx = x + self.Radius
         cy = y + self.Radius
         canvas += svg.circle(cx=cx, cy=cy, r=self.Radius, 
-                             fill='white', stroke='black', class_=self.name, id_=hex(id(self._slot)))
+                             fill='white', stroke='black', class_=self.name, id_=self.key())
         
         lowerRight = (x + 2*self.Radius, y + 2 * self.Radius)
         return lowerRight
@@ -88,9 +88,9 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
 
     def drawConnectionToPartner(self, canvas):
         if self.mslot.partner in slot_registry:
-            myIdStr = '#' + hex(id(self.mslot))
-            partnerIdStr = '#' + hex(id(self.partnerKey()))
-            pathName = "pathTo" + hex(id(self.mslot))
+            myIdStr = '#' + self.key()
+            partnerIdStr = '#' + self.partnerKey()
+            pathName = "pathTo" + self.key()
             canvas += svg.connector_path( id_=pathName, inkscape__connection_start=partnerIdStr, inkscape__connection_end=myIdStr )
         else:
             # Try subslot connections
@@ -127,71 +127,20 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
         width = lowerRight[0] - upperLeft[0]
         height = lowerRight[1] - upperLeft[1]
         canvas += svg.rect(x=upperLeft[0], y=upperLeft[1], width=width, height=height, 
-                           stroke='black', stroke_width=1, style='fill-opacity:0', id_=hex(id(self.mslot)) )
+                           stroke='black', stroke_width=1, style='fill-opacity:0', id_=self.key() )
 
         self._code = canvas
         return lowerRight
-        
-def hasAncestor(x, parent):
-    if x.parent == parent:
-        return True
-    elif x.parent is None:
-        return False
-    else:
-        return hasAncestor(x.parent, parent)
-
-def isDownStream(op1, op2, parent):
-    for islot in op1.inputs.values():
-        if islot.partner is None:
-            continue
-        upStreamOp = islot.partner.getRealOperator()
-        if upStreamOp is op2:
-            return True # A is downstream from B
-        elif hasAncestor(upStreamOp, parent):
-            if isDownStream(upStreamOp, op2, parent):
-                return True
-    return False
-
-def streamPos(parent, a,b):
-    # A and B must both be owned by the parent, otherwise they aren't comparable
-    if not hasAncestor(a, parent) or not hasAncestor(b, parent):
-        return 0
-    if isDownStream(a, b, parent):
-        return 1
-    if isDownStream(b, a, parent):
-        return -1
-    return 0
-
-def sortByPos(l, parent):
-    sorted_l = []
-    for nextOp in l:
-        i = 0
-        for i, op in enumerate(sorted_l):
-            pos = streamPos(parent, nextOp, op)
-            if pos == 1:
-                break
-        sorted_l.insert(i, nextOp)
-    
-#    sorted_l2 = []
-#    for nextOp in sorted_l:
-#        i = 0
-#        for i, op in enumerate(sorted_l2):
-#            pos = streamPos(parent, nextOp, op)
-#            if pos == -1:
-#                break
-#        sorted_l2.insert(i, nextOp)
-
-    return sorted_l
-
 
 class SvgOperator( DrawableABC ):
     TitleHeight = 15
     MinPaddingBetweenSlots = 10
-    PaddingBetweenInternalOps = 10
+    PaddingBetweenInternalOps = 50
     PaddingForSlotName = 100
         
-    def __init__(self, op):
+    def __init__(self, op, max_child_depth):
         self.op = op
+        self.max_child_depth = max_child_depth
 
         self.inputs = {}
         for key, slot in enumerate(self.op.inputs.values()):
@@ -236,35 +185,26 @@ class SvgOperator( DrawableABC ):
             slot_registry[slot].drawConnectionToPartner(canvas)
         
         for child in self.op._children:
-            op_registry[child].drawConnections(canvas)
+            if child in op_registry:
+                op_registry[child].drawConnections(canvas)
 
     def _generate_code(self):
         upperLeft = (0,0)
         canvas = svg.IndentingStringIO("")
         x, y = upperLeft
 
+        title_text = self.op.name
+
         inputSize = self.getInputSize()
         outputSize = self.getOutputSize()
 
         child_ordering = {}
-        if len(self.op._children) > 0:
-            # Draw child operators
-            sorted_children = sorted( self.op._children, cmp=partial(streamPos, self) )
-            #sorted_children = sorted( reversed(sorted_children), cmp=partial(streamPos, self) )
-            #sorted_children = sortByPos(self.op._children, self)
+        for child in self.op._children:
+            col = get_column_within_parent(child)
+            if col not in child_ordering:
+                child_ordering[col] = []
+            child_ordering[col].append(child)
     
-            child_ordering[0] = [sorted_children[0]]
-            col_index = 0
-            for child, next_child in zip(sorted_children[0:-1], sorted_children[1:]):
-                if isDownStream(next_child, child, self):
-                    col_index += 1
-                    child_ordering[col_index] = []
-                child_ordering[col_index].append(next_child)
-    
-            print [child.name for child in sorted_children]
-            for col in sorted(child_ordering.keys()):
-                print col, ":", [child.name for child in child_ordering[col]]
-        
         r = self.TitleHeight - 2
         rect_x = upperLeft[0] + inputSize[0]
         rect_y = upperLeft[1]
@@ -273,20 +213,24 @@ class SvgOperator( DrawableABC ):
         child_y = rect_y + 2*r
         max_child_y = child_y
         max_child_x = child_x 
-        for col_index, col_children in sorted( child_ordering.items() ):
-            for child in col_children:
-                svgChild = SvgOperator(child)
-                svgChild.drawAt(canvas, (child_x, child_y) )
-                lowerRight = (svgChild.size()[0] + child_x, svgChild.size()[1] + child_y)
-                max_child_x = max(lowerRight[0], max_child_x)
-                child_y = lowerRight[1] + self.PaddingBetweenInternalOps
-            
-            max_child_x += self.PaddingBetweenInternalOps
-            max_child_y = max(max_child_y, child_y)
-            child_x = max_child_x
-            child_y = rect_y + 2*r
-
-        max_child_x += self.PaddingForSlotName + self.PaddingBetweenInternalOps
+        if len(self.op._children) > 0:
+            if self.max_child_depth == 0:
+                title_text += '*' # Asterisk in the title indicates that this operator has children that are not shown
+            else:
+                for col_index, col_children in sorted( child_ordering.items() ):
+                    for child in col_children:
+                        svgChild = SvgOperator(child, self.max_child_depth-1)
+                        svgChild.drawAt(canvas, (child_x, child_y) )
+                        lowerRight = (svgChild.size()[0] + child_x, svgChild.size()[1] + child_y)
+                        max_child_x = max(lowerRight[0], max_child_x)
+                        child_y = lowerRight[1] + self.PaddingBetweenInternalOps
+                    
+                    max_child_x += self.PaddingBetweenInternalOps
+                    max_child_y = max(max_child_y, child_y)
+                    child_x = max_child_x
+                    child_y = rect_y + 2*r
+        
+                max_child_x += self.PaddingForSlotName + self.PaddingBetweenInternalOps
 
         rect_width = max_child_x - rect_x
         rect_width = max( rect_width, 2*self.PaddingBetweenInternalOps )
@@ -300,13 +244,14 @@ class SvgOperator( DrawableABC ):
         rect_height = max( rect_height, 50 )
 
         # Draw outer rectangle
-        canvas += svg.rect(x=rect_x, y=rect_y, width=rect_width, height=rect_height, rx=r, ry=r, stroke='black', stroke_width=2, style='fill-opacity:0' )
+        canvas += svg.rect(x=rect_x, y=rect_y, width=rect_width, height=rect_height, rx=r, ry=r, 
+                           inkscape__connector_avoid="false", stroke='black', stroke_width=2, style='fill-opacity:0' )
         path_d = 'M {startx} {y} L {endx} {y} Z'.format(startx=rect_x, y=rect_y+r+2, endx=rect_x+rect_width)
         canvas += svg.path(d=path_d, stroke='black', stroke_width=1)
 
         block = partial(svg.tagblock, canvas)
         with block(svg.text, x=rect_x+rect_width/2, y=rect_y+r, text_anchor='middle'):
-            canvas += self.op.name + '\n'
+            canvas += title_text + '\n'
 
         # Add extra padding between input slots if there's room (i.e. spread out the inputs to cover the entire left side)
         inputSlotPadding = (rect_height - self.getInputSize()[1]) / (len(self.inputs)+1)
@@ -345,6 +290,25 @@ class SvgOperator( DrawableABC ):
         self._code = canvas
         return (lowerRight_x, lowerRight_y)
             
+
+memoized_columns = {}
+def get_column_within_parent( op ):
+    assert op.parent is not None
+    if op in memoized_columns:
+        return memoized_columns[op]
+    
+    max_column = 0
+    for slot in op.inputs.values():
+        if slot.partner is None:
+            continue
+        upstream_op = slot.partner.getRealOperator()
+        if upstream_op is not op.parent:
+            assert upstream_op.parent is op.parent
+            max_column = max( max_column, get_column_within_parent(upstream_op)+1 )
+
+    memoized_columns[op] = max_column
+    return max_column
+
 if __name__ == "__main__":
     canvas = svg.SvgCanvas("")
 
@@ -388,8 +352,7 @@ if __name__ == "__main__":
 #            assert isDownStream(self.internal2, self.internal1, self)
 #            #assert isDownStream(self.internal1, self.internal0, self)
 #            assert isDownStream(self.internal3, self.internal1, self)
-    
-    
+
     graph=Graph()
 #    opTest = OpTest(graph=graph)
 #    opTest.InputB.resize(3)
@@ -404,10 +367,11 @@ if __name__ == "__main__":
     opTest.FilePath[0].setValue("/magnetic/synapse_small.npy")
     opTest.FilePath[1].setValue("/magnetic/gigacube.h5/volume/data")
 
-    svgOp = SvgOperator(opTest)
+    svgOp = SvgOperator(opTest, max_child_depth=1)
     
     block = partial(svg.tagblock, canvas)
     with block( svg.svg, x=0, y=0, width=1000, height=1000 ):
+        canvas += svg.inkscapeDefinitions()
         svgOp.drawAt(canvas, (10, 10) )
         svgOp.drawConnections(canvas)
 #        slot = SvgMultiSlot(3)
