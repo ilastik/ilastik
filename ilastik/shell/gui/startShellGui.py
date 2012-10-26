@@ -40,10 +40,8 @@ def launchShell(workflowClass, testFunc = None, windowTitle="ilastikShell", work
     workflow = workflowClass(**workflowKwargs)
     
     # Create the shell and populate it
-    shell = IlastikShell(sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
+    shell = IlastikShell(workflow=workflow, sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
     shell.setWindowTitle(windowTitle)
-    for app in workflow.applets:
-        shell.addApplet(app)
     shell.setImageNameListSlot( workflow.imageNameListSlot )
     
     # Start the shell GUI.

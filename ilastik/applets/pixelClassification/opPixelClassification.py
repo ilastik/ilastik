@@ -40,11 +40,11 @@ class OpPixelClassification( Operator ):
 
     UncertaintyEstimate = OutputSlot(level=1)
 
-    def __init__( self, graph ):
+    def __init__( self, *args, **kwargs ):
         """
         Instantiate all internal operators and connect them together.
         """
-        super(OpPixelClassification, self).__init__(graph=graph)
+        super(OpPixelClassification, self).__init__(*args, **kwargs)
 
         self.FreezePredictions.setValue(True) # Default
         
@@ -253,13 +253,15 @@ class OpPixelClassification( Operator ):
         import lazyflow.tools.svg as svg
         from lazyflow.tools.schematic import SvgOperator
     
-        svgOp = SvgOperator(self)
+        svgOp = SvgOperator(self, max_child_depth=2)
     
         canvas = svg.SvgCanvas("")
         block = partial(svg.tagblock, canvas)
-        with block( svg.svg, x=0, y=0, width=3000, height=3000 ):
+        with block( svg.svg, x=0, y=0, width=7000, height=2000 ):
+            canvas += svg.inkscapeDefinitions()
             svgOp.drawAt(canvas, (10, 10) )
-        with file("/Users/bergs/Documents/svgfiles/opPixelClassification.html", 'w') as f:
+            svgOp.drawConnections(canvas)
+        with file("/Users/bergs/Documents/svgfiles/opPixelClassification.svg", 'w') as f:
             f.write( canvas.getvalue() )
 
 
