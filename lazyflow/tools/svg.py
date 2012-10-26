@@ -5,6 +5,53 @@ def header():
              """
     return textwrap.dedent(header)
 
+def inkscapeDefinitions():
+    defs = """\
+              <defs
+                id="defs31674">
+                <marker
+                   inkscape:stockid="Arrow2Lstart"
+                   orient="auto"
+                   refY="0.0"
+                   refX="0.0"
+                   id="Arrow2Lstart"
+                   style="overflow:visible">
+                  <path
+                     id="path26427"
+                     style="font-size:12.0;fill-rule:evenodd;stroke-width:0.62500000;stroke-linejoin:round"
+                     d="M 8.7185878,4.0337352 L -2.2072895,0.016013256 L 8.7185884,-4.0017078 C 6.9730900,-1.6296469 6.9831476,1.6157441 8.7185878,4.0337352 z "
+                     transform="scale(1.1) translate(1,0)" />
+                </marker>
+                <marker
+                   inkscape:stockid="Arrow1Mend"
+                   orient="auto"
+                   refY="0.0"
+                   refX="0.0"
+                   id="Arrow1Mend"
+                   style="overflow:visible;">
+                  <path
+                     id="path26418"
+                     d="M 0.0,0.0 L 5.0,-5.0 L -12.5,0.0 L 5.0,5.0 L 0.0,0.0 z "
+                     style="fill-rule:evenodd;stroke:#000000;stroke-width:1.0pt;marker-start:none;"
+                     transform="scale(0.4) rotate(180) translate(10,0)" />
+                </marker>
+                <marker
+                   inkscape:stockid="Arrow1Lend"
+                   orient="auto"
+                   refY="0.0"
+                   refX="0.0"
+                   id="Arrow1Lend"
+                   style="overflow:visible;">
+                  <path
+                     id="path26412"
+                     d="M 0.0,0.0 L 5.0,-5.0 L -12.5,0.0 L 5.0,5.0 L 0.0,0.0 z "
+                     style="fill-rule:evenodd;stroke:#000000;stroke-width:1.0pt;marker-start:none;"
+                     transform="scale(0.8) rotate(180) translate(12.5,0)" />
+                </marker>
+              </defs>
+           """
+    return textwrap.dedent(defs)
+
 def format_attrs(attrs):
     """
     Convert the given dictionary into a string of svg attributes.
@@ -90,7 +137,15 @@ group = TagFormatter('g', False, ['class_', 'transform'])
 connector_path = TagFormatter('path', True,
                               [ 'inkscape__connection_start',
                                 'inkscape__connection_end' ],
-                              style='fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1',
+                              style=textwrap.dedent('''\
+                                                    fill:none;
+                                                    stroke:#000000;
+                                                    stroke-width:1px;
+                                                    stroke-linecap:butt;
+                                                    stroke-linejoin:miter;
+                                                    stroke-opacity:1;
+                                                    marker-end:url(#Arrow1Mend)
+                                                    '''),
                               d="m 0, 0 1000,1000",
                               inkscape__connector_type="polyline",
                               inkscape__connector_curvature='0',
