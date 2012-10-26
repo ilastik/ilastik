@@ -1218,10 +1218,11 @@ class OutputDict(dict):
             raise Exception("Operator %s (class: %s) has no output slot named '%s'. available output slots are: %r" %(self.operator.name, self.operator.__class__, key, self.keys()))
 
 
-class OperatorMetaClass(type):
+from abc import ABCMeta
+class OperatorMetaClass(ABCMeta):
 
     def __new__(cls,name,bases,classDict):
-        cls = type.__new__(cls,name,bases,classDict)
+        cls = ABCMeta.__new__(cls,name,bases,classDict)
 
         setattr(cls,"inputSlots", list(cls.inputSlots))
         setattr(cls,"outputSlots", list(cls.outputSlots))
@@ -1238,7 +1239,7 @@ class OperatorMetaClass(type):
 
     def __call__(cls,*args,**kwargs):
         # type.__call__ calls instance.__init__ internally
-        instance = type.__call__(cls,*args,**kwargs)
+        instance = ABCMeta.__call__(cls,*args,**kwargs)
         instance._after_init()
         return instance
 
@@ -1302,6 +1303,7 @@ class Operator(object):
         
         self.graph = graph
         self._children = collections.OrderedDict()
+        self._parent = None
         if parent is not None:
             parent._add_child(self)
         
@@ -1321,7 +1323,7 @@ class Operator(object):
         # We're just using an OrderedDict for O(1) lookup with in-order iteration
         # but we don't actually store any values
         assert child.parent is None
-        self._children[self] = None
+        self._children[child] = None
         child._parent = self
 
     # continue initialization, when user overrides __init__
@@ -1584,8 +1586,8 @@ class OperatorWrapper(Operator):
         If the promotedSlotNames argument is not provided (i.e. promotedSlotNames=None), the default behavior is to promote ALL replicated slots.
         Note: Outputslots are always promoted, regardless of whether or not they appear in the promotedSlotNames argument.
         """
-        self.inputs = InputDict(self)
-        self.outputs = OutputDict(self)
+        # Base class init
+        super(OperatorWrapper, self).__init__(parent=parent, graph=graph)
         if operator_args == None:
             operator_args = ()
         if operator_kwargs == None:
@@ -1643,9 +1645,6 @@ class OperatorWrapper(Operator):
         for s in self.outputs.values():
             s.notifyInserted(self._callbackInserted)
             s.notifyRemoved(self._callbackRemove)
-
-        # Base class init
-        super(OperatorWrapper, self).__init__(parent=parent, graph=graph)
 
         for s in self.inputs.values():
             assert len(s) == 0
