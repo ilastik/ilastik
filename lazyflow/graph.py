@@ -1300,13 +1300,10 @@ class Operator(object):
             assert parent is not None
             graph=parent.graph
         
-        self._parent = parent
         self.graph = graph
         self._children = collections.OrderedDict()
         if parent is not None:
-            # We're just using an OrderedDict for O(1) lookup with in-order iteration
-            # but we don't actually store any values
-            parent._children[self] = None
+            parent._add_child(self)
         
         self._initialized = False
 
@@ -1319,6 +1316,13 @@ class Operator(object):
     @property
     def children(self):
         return list( self._children.keys() )
+
+    def _add_child(self, child):
+        # We're just using an OrderedDict for O(1) lookup with in-order iteration
+        # but we don't actually store any values
+        assert child.parent is None
+        self._children[self] = None
+        child._parent = self
 
     # continue initialization, when user overrides __init__
     def _after_init(self):
