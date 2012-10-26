@@ -1302,9 +1302,11 @@ class Operator(object):
         
         self._parent = parent
         self.graph = graph
-        self._children = set()
+        self._children = collections.OrderedDict()
         if parent is not None:
-            parent._children.add(self)
+            # We're just using an OrderedDict for O(1) lookup with in-order iteration
+            # but we don't actually store any values
+            parent._children[self] = None
         
         self._initialized = False
 
@@ -1313,6 +1315,10 @@ class Operator(object):
         self._settingUp = False
 
         self._instantiate_slots()
+
+    @property
+    def children(self):
+        return list( self._children.keys() )
 
     # continue initialization, when user overrides __init__
     def _after_init(self):
@@ -1405,12 +1411,12 @@ class Operator(object):
         for s in self.inputs.values() + self.outputs.values():
             s.disconnect()
 
-        for child in self._children:
+        for child in self._children.keys():
             child._disconnect()
 
     def cleanUp(self):
         if self._parent is not None:
-            self._parent._children.remove(self)
+            del self._parent._children[self]
 
         # Disconnect ourselves and all children
         self._disconnect()
@@ -1424,7 +1430,7 @@ class Operator(object):
 
         # Work with a copy of the child list
         # (since it will be modified with each iteration)
-        children = set(self._children)
+        children = set(self._children.keys())
         for child in children:
             child.cleanUp()
 
