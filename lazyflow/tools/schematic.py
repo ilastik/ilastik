@@ -184,7 +184,7 @@ class SvgOperator( DrawableABC ):
             assert slot in slot_registry
             slot_registry[slot].drawConnectionToPartner(canvas)
         
-        for child in self.op._children:
+        for child in self.op.children:
             if child in op_registry:
                 op_registry[child].drawConnections(canvas)
 
@@ -199,7 +199,7 @@ class SvgOperator( DrawableABC ):
         outputSize = self.getOutputSize()
 
         child_ordering = {}
-        for child in self.op._children:
+        for child in self.op.children:
             col = get_column_within_parent(child)
             if col not in child_ordering:
                 child_ordering[col] = []
@@ -213,18 +213,36 @@ class SvgOperator( DrawableABC ):
         child_y = rect_y + 2*r
         max_child_y = child_y
         max_child_x = child_x 
-        if len(self.op._children) > 0:
+        if len(self.op.children) > 0:
             if self.max_child_depth == 0:
                 title_text += '*' # Asterisk in the title indicates that this operator has children that are not shown
             else:
+                svgChildren = {}
+                columnHeights = []
                 for col_index, col_children in sorted( child_ordering.items() ):
+                    columnHeights.append(0)
+                    svgChildren[col_index] = []
                     for child in col_children:
                         svgChild = SvgOperator(child, self.max_child_depth-1)
-                        svgChild.drawAt(canvas, (child_x, child_y) )
+                        columnHeights[col_index] += svgChild.size()[1]
+                        svgChildren[col_index].append(svgChild)
+
+                maxColumnHeight = max(columnHeights)
+
+                columnExtraPadding = []
+                for col_index, col_svg_children in sorted( svgChildren.items() ):
+                    columnExtraPadding.append( maxColumnHeight )
+                    for svgChild in col_svg_children:
+                        columnExtraPadding[col_index] -= svgChild.size()[1]
+
+                for col_index, col_children in sorted( svgChildren.items() ):
+                    for svgChild in col_children:
+                        child_y += (self.PaddingBetweenInternalOps + columnExtraPadding[col_index]/len(col_children)) / 2
+                        svgChild.drawAt( canvas, (child_x, child_y) )
                         lowerRight = (svgChild.size()[0] + child_x, svgChild.size()[1] + child_y)
                         max_child_x = max(lowerRight[0], max_child_x)
-                        child_y = lowerRight[1] + self.PaddingBetweenInternalOps
-                    
+                        child_y = lowerRight[1] + self.PaddingBetweenInternalOps + columnExtraPadding[col_index]/len(col_children)
+
                     max_child_x += self.PaddingBetweenInternalOps
                     max_child_y = max(max_child_y, child_y)
                     child_x = max_child_x
