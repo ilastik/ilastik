@@ -8,6 +8,25 @@ import itertools
 slot_registry = {}
 op_registry = {}
 
+def generateSvgFileForOperator(svgPath, op, detail):
+    global slot_registry
+    global op_registry
+
+    slot_registry = {}
+    op_registry = {}
+    
+    svgOp = SvgOperator(op, max_child_depth=detail)
+    
+    canvas = svg.SvgCanvas("")
+    block = partial(svg.tagblock, canvas)
+    with block( svg.svg, x=0, y=0, width=7000, height=2000 ):
+        canvas += svg.inkscapeDefinitions()
+        svgOp.drawAt(canvas, (10, 10) )
+        svgOp.drawConnections(canvas)
+    
+    with file(str(svgPath), 'w') as f:
+        f.write( canvas.getvalue() )
+
 def createSvgSlot(slot):
     """
     Factory for creating a single-slot or multi-slot.
