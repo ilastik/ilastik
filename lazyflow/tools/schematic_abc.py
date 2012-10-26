@@ -30,22 +30,15 @@ class ConnectableABC:
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def inputPointOffset(self):
+    def key(self):
         return NotImplemented
-
+    
     @abstractmethod
-    def outputPointOffset(self):
+    def partnerKey(self):
         return NotImplemented
 
     @classmethod
     def __subclasshook__(cls, C):
         if cls is DrawableABC:
-            return True if _has_attributes(C, ['inputPointOffset', 'outputPointOffset']) else False
-        return NotImplemented
-
-class ConnectionABC:
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def draw(self, outputPoint, inputPoint):
+            return True if _has_attributes(C, ['key', 'partnerKey']) else False
         return NotImplemented

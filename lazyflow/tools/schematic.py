@@ -1,7 +1,12 @@
-from schematic_abc import DrawableABC, ConnectableABC, ConnectionABC
+from schematic_abc import DrawableABC, ConnectableABC
 import svg
 import numpy
 from functools import partial
+import itertools
+
+# Reverse lookup of lazyflow slots to svg slots
+slot_registry = {}
+op_registry = {}
 
 def createSvgSlot(slot):
     """
@@ -18,7 +23,8 @@ class SvgSlot(DrawableABC, ConnectableABC):
     def __init__(self, slot):
         self.name = slot.name 
         self._slot = slot
-
+        slot_registry[self._slot] = self
+        
     def size(self):
         return self.drawAt("", (0,0))
     
@@ -26,16 +32,24 @@ class SvgSlot(DrawableABC, ConnectableABC):
         x,y = upperLeft
         cx = x + self.Radius
         cy = y + self.Radius
-        canvas += svg.circle(cx=cx, cy=cy, r=self.Radius, fill='white', stroke='black', class_=self.name)
+        canvas += svg.circle(cx=cx, cy=cy, r=self.Radius, 
+                             fill='white', stroke='black', class_=self.name, id_=hex(id(self._slot)))
         
         lowerRight = (x + 2*self.Radius, y + 2 * self.Radius)
         return lowerRight
     
-    def inputPointOffset(self):
-        return (0, self.Radius)
+    def key(self):
+        return hex(id(self._slot))
     
-    def outputPointOffset(self):
-        return (2*self.Radius, self.Radius)
+    def partnerKey(self):
+        return hex(id(self._slot.partner))
+
+    def drawConnectionToPartner(self, canvas):
+        if self._slot.partner in slot_registry:
+            myIdStr = '#' + self.key()
+            partnerIdStr = '#' + self.partnerKey()
+            pathName = "pathTo" + self.key()
+            canvas += svg.connector_path( id_=pathName, inkscape__connection_start=partnerIdStr, inkscape__connection_end=myIdStr )
 
 class SvgMultiSlot(DrawableABC, ConnectableABC):
     Padding = 3 # Padding between subslots (unless subslots are level 0)
@@ -46,9 +60,17 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
         for i, slot in enumerate(mslot):
             self.subslots.append( createSvgSlot(slot) )
         
-        self._size = self._generate_code()
         self.mslot = mslot
+        self._size = self._generate_code()
         self.name = self.mslot.name
+
+        slot_registry[self.mslot] = self
+
+    def key(self):
+        return hex(id(self.mslot))
+
+    def partnerKey(self):
+        return hex(id(self.mslot.partner))
 
     def __getitem__(self, i):
         return self.subslots[i]
@@ -63,6 +85,17 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
         block = partial(svg.tagblock, canvas)
         with block( svg.group, class_=self.mslot.name, transform="translate({},{})".format(*upperLeft) ):
             canvas += self._code
+
+    def drawConnectionToPartner(self, canvas):
+        if self.mslot.partner in slot_registry:
+            myIdStr = '#' + hex(id(self.mslot))
+            partnerIdStr = '#' + hex(id(self.partnerKey()))
+            pathName = "pathTo" + hex(id(self.mslot))
+            canvas += svg.connector_path( id_=pathName, inkscape__connection_start=partnerIdStr, inkscape__connection_end=myIdStr )
+        else:
+            # Try subslot connections
+            for slot in self.subslots:
+                slot.drawConnectionToPartner(canvas)
 
     def _generate_code(self):
         """
@@ -93,17 +126,12 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
         # Draw our outer rectangle
         width = lowerRight[0] - upperLeft[0]
         height = lowerRight[1] - upperLeft[1]
-        canvas += svg.rect(x=upperLeft[0], y=upperLeft[1], width=width, height=height, stroke='black', stroke_width=1, style='fill-opacity:0')
+        canvas += svg.rect(x=upperLeft[0], y=upperLeft[1], width=width, height=height, 
+                           stroke='black', stroke_width=1, style='fill-opacity:0', id_=hex(id(self.mslot)) )
 
         self._code = canvas
         return lowerRight
         
-    def inputPointOffset(self):
-        return ( 0, self.size()[1]/2 )
-    
-    def outputPointOffset(self):
-        return ( self.size()[0], self.size()[1]/2 )
-
 def hasAncestor(x, parent):
     if x.parent == parent:
         return True
@@ -174,6 +202,7 @@ class SvgOperator( DrawableABC ):
             self.outputs[key] = createSvgSlot( slot )
             
         self._size = self._generate_code()
+        op_registry[self.op] = self
 
     def size(self):
         return self._size
@@ -200,6 +229,14 @@ class SvgOperator( DrawableABC ):
         block = partial(svg.tagblock, canvas)
         with block( svg.group, class_=self.op.name, transform="translate({},{})".format(*upperLeft) ):
             canvas += self._code
+
+    def drawConnections(self, canvas):
+        for slot in self.op.inputs.values() + self.op.outputs.values():
+            assert slot in slot_registry
+            slot_registry[slot].drawConnectionToPartner(canvas)
+        
+        for child in self.op._children:
+            op_registry[child].drawConnections(canvas)
 
     def _generate_code(self):
         upperLeft = (0,0)
@@ -372,6 +409,7 @@ if __name__ == "__main__":
     block = partial(svg.tagblock, canvas)
     with block( svg.svg, x=0, y=0, width=1000, height=1000 ):
         svgOp.drawAt(canvas, (10, 10) )
+        svgOp.drawConnections(canvas)
 #        slot = SvgMultiSlot(3)
 #        
 #        slot.resize(3)
@@ -382,6 +420,6 @@ if __name__ == "__main__":
 #            slot.drawAt(canvas, (0,0) )
     
     #print canvas.getvalue()
-    f = file("/Users/bergs/Documents/svgfiles/canvas.html", 'w')
+    f = file("/Users/bergs/Documents/svgfiles/canvas.svg", 'w')
     f.write( canvas.getvalue() )
     f.close()
