@@ -339,7 +339,7 @@ def get_column_within_parent( op ):
         if slot.partner is None:
             continue
         upstream_op = slot.partner.getRealOperator()
-        if upstream_op is not op.parent:
+        if upstream_op is not op.parent and upstream_op is not op:
             assert upstream_op.parent is op.parent
             max_column = max( max_column, get_column_within_parent(upstream_op)+1 )
 
