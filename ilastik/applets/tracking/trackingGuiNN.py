@@ -162,6 +162,8 @@ class TrackingGuiNN( QWidget ):
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.lineageTreeButton.pressed.connect(self._onLineageTreeButtonPressed)
+        self._drawer.lineageFileNameButton.pressed.connect(self._onLineageFileNameButton)
+        self._drawer.lineageFileNameEdit.setText(os.getenv('HOME') + '/lineage.png')
 
     def _initViewerControlUi( self ):
         p = os.path.split(__file__)[0]+'/'
@@ -211,18 +213,27 @@ class TrackingGuiNN( QWidget ):
         
         print 'Tiffs exported.'
                     
-        
-    def _onLineageTreeButtonPressed(self):
-        fn = QFileDialog.getSaveFileName(self, 'Save Lineage Trees', os.getenv('HOME'))      
-        
+    def _onLineageFileNameButton(self):
+        fn = QFileDialog.getSaveFileName(self, 'Save Lineage Trees', os.getenv('HOME'))
         if fn is None:
             print "cancelled."
             return        
+        self._drawer.lineageFileNameEdit.setText(str(fn))
+        
+    def _onLineageTreeButtonPressed(self):
+        fn = self._drawer.lineageFileNameEdit.text()
+        
+        width = self._drawer.widthBox.value()
+        height = self._drawer.heightBox.value()
+        if width == 0:
+            width = None
+        if height == 0:
+            height = None
+        circular = self._drawer.circularBox.isChecked()
+        withAppearing = self._drawer.withAppearingBox.isChecked()
         
         print "Computing Lineage Trees..."
-        
-        self._createLineageTrees(str(fn))
-        
+        self._createLineageTrees(str(fn), width=width, height=height, circular=circular, withAppearing=withAppearing)
         print 'Lineage Trees saved.'
         
         
@@ -401,7 +412,7 @@ class TrackingGuiNN( QWidget ):
         print "-> results successfully written"
 
 
-    def _createLineageTrees(self, fn=None):
+    def _createLineageTrees(self, fn=None, width=None, height=None, circular=False, withAppearing=True):
         from ete2 import Tree, NodeStyle, AttrFace
                 
         tree = Tree()
@@ -441,7 +452,7 @@ class TrackingGuiNN( QWidget ):
         for t, events_at in enumerate(self.mainOperator.innerOperators[0].events):
             t = t+1            
             for event in events_at:
-                if event.type == ctracking.EventType.Appearance:
+                if event.type == ctracking.EventType.Appearance and withAppearing:
                     label = event.traxel_ids[0]
                     appNode = tree.add_child(name=self._getNodeName(t, label), dist=distanceFromRoot + t)
                     nodeMap[str(self._getNodeName(t, label))] = appNode
@@ -461,7 +472,9 @@ class TrackingGuiNN( QWidget ):
 #                        appNode.add_face(rot_text, column=0, position="branch-top")
             
                 elif event.type == ctracking.EventType.Disappearance:
-                    label = event.traxel_ids[0]                    
+                    label = event.traxel_ids[0]
+                    if str(self._getNodeName(t-1,str(label))) not in nodeMap.keys():
+                        continue                    
                     newNode = nodeMap[str(self._getNodeName(t-1,str(label)))].add_child(
                         name = self._getNodeName(t-1,str(label)),dist = branchSize[str(self._getNodeName(t-1,str(label)))])                     
                     newNode.set_style(style)
@@ -472,6 +485,8 @@ class TrackingGuiNN( QWidget ):
                     labelOld = event.traxel_ids[0]
                     labelNew1 = event.traxel_ids[1]
                     labelNew2 = event.traxel_ids[2]                    
+                    if str(self._getNodeName(t-1,str(labelOld))) not in nodeMap.keys():
+                        continue
                     newNode = nodeMap[str(self._getNodeName(t-1,str(labelOld)))].add_child(
                             name = self._getNodeName(t-1,str(self._getNodeName(t-1,str(labelOld)))),
                             dist = branchSize[str(self._getNodeName(t-1,str(labelOld)))] )
@@ -485,7 +500,9 @@ class TrackingGuiNN( QWidget ):
                     
                 elif event.type == ctracking.EventType.Move:
                     labelOld = event.traxel_ids[0]
-                    labelNew = event.traxel_ids[1]                    
+                    labelNew = event.traxel_ids[1]
+                    if str(self._getNodeName(t-1,str(labelOld))) not in nodeMap.keys():
+                        continue
                     nodeMap[str(self._getNodeName(t,str(labelNew)))] = nodeMap[str(self._getNodeName(t-1,str(labelOld)))]
                     del nodeMap[str(self._getNodeName(t-1,str(labelOld)))]
                     branchSize[str(self._getNodeName(t,str(labelNew)))] = branchSize[str(self._getNodeName(t-1,str(labelOld)))] + 1 
@@ -497,8 +514,8 @@ class TrackingGuiNN( QWidget ):
         
         
         self._plotTree(tree, out_fn=fn, rotation=270, show_leaf_name=False, 
-                  show_branch_length=False, circularTree=False, show_division_nodes=False, 
-                  distance_between_branches=4, height=800)
+                  show_branch_length=False, circularTree=circular, show_division_nodes=False, 
+                  distance_between_branches=4, width=width, height=height)
 
 
     def _getNodeStyle(self, line_width=1, branch_type=0, node_color='DimGray', node_size=6, node_shape='circle'):
