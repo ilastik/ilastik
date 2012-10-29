@@ -71,7 +71,7 @@ class TrackingGuiNN( QWidget ):
             self._drawer.from_time.setRange(0,maxt-1)
             self._drawer.from_time.setValue(0)
             self._drawer.to_time.setRange(0,maxt-2)
-            self._drawer.to_time.setValue(maxt-2)       
+            self._drawer.to_time.setValue(maxt-2)   
 
             self._drawer.from_x.setRange(0,maxx-1)
             self._drawer.from_x.setValue(0)
@@ -86,7 +86,12 @@ class TrackingGuiNN( QWidget ):
             self._drawer.from_z.setRange(0,maxz-1)
             self._drawer.from_z.setValue(0)
             self._drawer.to_z.setRange(0,maxz-1)
-            self._drawer.to_z.setValue(maxz-1)       
+            self._drawer.to_z.setValue(maxz-1)
+            
+            self._drawer.lineageFromBox.setRange(0,maxt-1)
+            self._drawer.lineageFromBox.setValue(0)
+            self._drawer.lineageToBox.setRange(0,maxt-2)
+            self._drawer.lineageToBox.setValue(maxt-2)       
 
     def reset( self ):
         print "TrackinGui.reset(): not implemented"
@@ -124,7 +129,11 @@ class TrackingGuiNN( QWidget ):
                 self._drawer.from_time.setRange(0,maxt-1)
                 self._drawer.from_time.setValue(0)
                 self._drawer.to_time.setRange(0,maxt-2)
-                self._drawer.to_time.setValue(maxt-2)       
+                self._drawer.to_time.setValue(maxt-2)
+                self._drawer.lineageFromBox.setRange(0,maxt-1)
+                self._drawer.lineageToBox.setRange(0,maxt-2)
+                self._drawer.lineageFromBox.setValue(0)
+                self._drawer.lineageToBox.setValue(maxt-2)
 
     def _initEditor(self):
         """
@@ -232,8 +241,11 @@ class TrackingGuiNN( QWidget ):
         circular = self._drawer.circularBox.isChecked()
         withAppearing = self._drawer.withAppearingBox.isChecked()
         
+        from_t = self._drawer.lineageFromBox.value()
+        to_t = self._drawer.lineageToBox.value()
+        
         print "Computing Lineage Trees..."
-        self._createLineageTrees(str(fn), width=width, height=height, circular=circular, withAppearing=withAppearing)
+        self._createLineageTrees(str(fn), width=width, height=height, circular=circular, withAppearing=withAppearing, from_t=from_t, to_t=to_t)
         print 'Lineage Trees saved.'
         
         
@@ -412,7 +424,7 @@ class TrackingGuiNN( QWidget ):
         print "-> results successfully written"
 
 
-    def _createLineageTrees(self, fn=None, width=None, height=None, circular=False, withAppearing=True):
+    def _createLineageTrees(self, fn=None, width=None, height=None, circular=False, withAppearing=True, from_t=0, to_t=0):
         from ete2 import Tree, NodeStyle, AttrFace
                 
         tree = Tree()
@@ -433,7 +445,7 @@ class TrackingGuiNN( QWidget ):
         branchSize = {}
         
         # add all nodes which appear in the first frame
-        for event in self.mainOperator.innerOperators[0].events[0]:
+        for event in self.mainOperator.innerOperators[0].events[from_t]:
             if event.type != ctracking.EventType.Appearance:
                 label = event.traxel_ids[0]
                 appNode = tree.add_child(name=self._getNodeName(0, label), dist=distanceFromRoot )
@@ -449,7 +461,7 @@ class TrackingGuiNN( QWidget ):
                 name.fsize = 6
         
         # add all lineages
-        for t, events_at in enumerate(self.mainOperator.innerOperators[0].events):
+        for t, events_at in enumerate(self.mainOperator.innerOperators[0].events[from_t:to_t+1]):
             t = t+1            
             for event in events_at:
                 if event.type == ctracking.EventType.Appearance and withAppearing:
@@ -474,7 +486,11 @@ class TrackingGuiNN( QWidget ):
                 elif event.type == ctracking.EventType.Disappearance:
                     label = event.traxel_ids[0]
                     if str(self._getNodeName(t-1,str(label))) not in nodeMap.keys():
-                        continue                    
+                        continue
+                    if branchSize[str(self._getNodeName(t-1,str(label)))] == 0:
+                        del nodeMap[str(self._getNodeName(t-1,str(label)))]
+                        del branchSize[str(self._getNodeName(t-1,str(label)))]
+                        continue
                     newNode = nodeMap[str(self._getNodeName(t-1,str(label)))].add_child(
                         name = self._getNodeName(t-1,str(label)),dist = branchSize[str(self._getNodeName(t-1,str(label)))])                     
                     newNode.set_style(style)
