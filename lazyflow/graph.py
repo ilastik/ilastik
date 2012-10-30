@@ -34,6 +34,7 @@ import copy
 import psutil
 import functools
 import collections
+import itertools
 
 if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".")[1]) < 3:
     print "Lazyflow: Please install a psutil python module version of at least >= 0.3.0"
@@ -201,6 +202,8 @@ class Slot(object):
     logger = logging.getLogger(loggerName)
     traceLogger = logging.getLogger('TRACE.' + loggerName)
 
+    _global_counter = itertools.count() # Allow slots to be sorted by their order of creation for debug output and diagramming purposes.
+
     @property
     def graph(self):
         return self.operator.graph
@@ -254,6 +257,8 @@ class Slot(object):
         self._executionCount = 0
         self._settingUp = False
         self._condition = threading.Condition()
+        
+        self._global_slot_id = Slot._global_counter.next() # Allow slots to be sorted by their order of creation for debug output and diagramming purposes.
 
     #
     #
@@ -1181,18 +1186,19 @@ class OutputSlot(Slot):
         totalIndex = (self._subSlots.index(slot),) + subindex
         return self.operator.execute(self, totalIndex, roi, result)
 
-class InputDict(dict):
+class InputDict(collections.OrderedDict):
 
     def __init__(self, operator):
+        super(InputDict, self).__init__()
         self.operator = operator
 
 
     def __setitem__(self, key, value):
         assert isinstance(value, InputSlot), "ERROR: all elements of .inputs must be of type InputSlot you provided %r !" % (value,)
-        return dict.__setitem__(self, key, value)
+        return super(InputDict, self).__setitem__(key, value)
     def __getitem__(self, key):
         if self.has_key(key):
-            return dict.__getitem__(self,key)
+            return super(InputDict, self).__getitem__(key)
         elif hasattr(self.operator,key):
             return getattr(self.operator, key)
         else:
@@ -1200,18 +1206,19 @@ class InputDict(dict):
 
 
 
-class OutputDict(dict):
+class OutputDict(collections.OrderedDict):
 
     def __init__(self, operator):
+        super(OutputDict, self).__init__()
         self.operator = operator
 
 
     def __setitem__(self, key, value):
         assert isinstance(value, OutputSlot), "ERROR: all elements of .outputs must be of type OutputSlot you provided %r !" % (value,)
-        return dict.__setitem__(self, key, value)
+        return super(OutputDict, self).__setitem__(key, value)
     def __getitem__(self, key):
         if self.has_key(key):
-            return dict.__getitem__(self,key)
+            return super(OutputDict, self).__getitem__(key)
         elif hasattr(self.operator,key):
             return getattr(self.operator, key)
         else:
@@ -1361,7 +1368,7 @@ class Operator(object):
     def _instantiate_slots(self):
         # replicate input slot connections
         # defined for the operator for the instance
-        for i in self.inputSlots:
+        for i in sorted(self.inputSlots, key=lambda s: s._global_slot_id):
             if not self.inputs.has_key(i.name):
                 ii = i._getInstance(self)
                 ii.connect(i.partner)
@@ -1372,7 +1379,7 @@ class Operator(object):
 
         # relicate output slots
         # defined for the operator for the instance
-        for o in self.outputSlots:
+        for o in sorted(self.outputSlots, key=lambda s: s._global_slot_id):
             if not self.outputs.has_key(o.name):
                 oo = o._getInstance(self)
                 self.outputs[o.name] = oo
