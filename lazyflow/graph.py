@@ -1605,7 +1605,10 @@ class OperatorWrapper(Operator):
 
         self._initialized = False
 
-        self.name = "Wrapped " + operatorClass.name
+        if operatorClass.name == "":
+            self.name = "Wrapped " + operatorClass.__name__
+        else:
+            self.name = "Wrapped " + operatorClass.name
 
         if promotedSlotNames is None:
             # No slots specified: All original slots are promoted by default
@@ -1626,7 +1629,7 @@ class OperatorWrapper(Operator):
         self.logger.log(msgLevel, "wrapping operator '%s'" % (operatorClass.name))
 
         # replicate input slot definitions
-        for innerSlot in operatorClass.inputSlots:
+        for innerSlot in sorted(operatorClass.inputSlots, key=lambda s: s._global_slot_id):
             level = innerSlot.level
             if innerSlot.name in self.promotedSlotNames:
                 level += 1
@@ -1635,7 +1638,7 @@ class OperatorWrapper(Operator):
             setattr(self,outerSlot.name,outerSlot)
 
         # replicate output slot definitions
-        for innerSlot in operatorClass.outputSlots:
+        for innerSlot in sorted(operatorClass.outputSlots, key=lambda s: s._global_slot_id):
             level = innerSlot.level + 1
             outerSlot = innerSlot._getInstance(self, level = level)
             self.outputs[outerSlot.name] = outerSlot
