@@ -269,9 +269,19 @@ class SvgOperator( DrawableABC ):
         
                 max_child_x += self.PaddingForSlotName + self.PaddingBetweenInternalOps
 
+        def max_slot_name_length(slots):
+            m = 0
+            for slot in slots:
+                m = max(m, len(slot.name))
+            return m
+        
+        max_input_name = max_slot_name_length(self.op.inputs.values())
+        max_output_name = max_slot_name_length(self.op.outputs.values())
+
         rect_width = max_child_x - rect_x
         rect_width = max( rect_width, 2*self.PaddingBetweenInternalOps )
         rect_width = max( rect_width, 9*len(self.op.name) ) # Correct width depends on font...
+        rect_width = max( rect_width, 9*(max_input_name + max_output_name) )
         rect_width += r
 
         rect_height = max_child_y - rect_y
@@ -394,21 +404,153 @@ if __name__ == "__main__":
 #    opTest = OpTest(graph=graph)
 #    opTest.InputB.resize(3)
 
-    from lazyflow.graph import OperatorWrapper
-    from lazyflow.operators.ioOperators import OpInputDataReader
-    opInput = OpInputDataReader(graph=graph)
-    opInput.FilePath.setValue("/magnetic/synapse_small.npy")
+#    from lazyflow.graph import OperatorWrapper
+#    from lazyflow.operators.ioOperators import OpInputDataReader
+#    opInput = OpInputDataReader(graph=graph)
+#    opInput.FilePath.setValue("/magnetic/synapse_small.npy")
+#
+#    opTest = OperatorWrapper( OpInputDataReader, graph=graph )
+#    opTest.FilePath.resize(2)
+#    opTest.FilePath[0].setValue("/magnetic/synapse_small.npy")
+#    opTest.FilePath[1].setValue("/magnetic/gigacube.h5/volume/data")
+#
+#    svgOp = SvgOperator(opTest, max_child_depth=1)
 
-    opTest = OperatorWrapper( OpInputDataReader, graph=graph )
-    opTest.FilePath.resize(2)
-    opTest.FilePath[0].setValue("/magnetic/synapse_small.npy")
-    opTest.FilePath[1].setValue("/magnetic/gigacube.h5/volume/data")
-
-    svgOp = SvgOperator(opTest, max_child_depth=1)
+    class OpSum(Operator):
+        InputA = InputSlot()
+        InputB = InputSlot()
+        
+        Output = OutputSlot()
     
+        def setupOutputs(self):
+            assert self.InputA.meta.shape == self.InputB.meta.shape, "Can't add images of different shapes!"
+            self.Output.meta.assignFrom(self.InputA.meta)
+    
+        def execute(self, slot, subindex, roi, result):
+            a = self.InputA.get(roi).wait()
+            b = self.InputB.get(roi).wait()
+            result[...] = a+b
+            return result
+
+    class OpMultiSum(Operator):
+        Inputs = InputSlot(level=1)
+        Output = OutputSlot()
+    
+        def setupOutputs(self):
+            expectedShape = self.Inputs[0].meta.shape
+            for slot in self.Inputs:
+                assert slot.meta.shape == expectedShape, "Can't add images of different shapes!"
+            self.Output.meta.assignFrom(self.Inputs[0].meta)
+    
+        def execute(self, slot, subindex, roi, result):
+            result[...] = numpy.zeros(result.shape)
+            for slot in self.Inputs:
+                result[...] += slot.get(roi).wait()
+            return result
+
+    from lazyflow.operators import OpArrayPiper
+    from lazyflow.graph import OperatorWrapper
+    opGenericMultiOut = OperatorWrapper( OpArrayPiper, graph=graph )
+    opGenericMultiOut.Input.resize(3)
+    opGenericMultiOut.name = "OpSomeProvider"
+    svgOp1 = SvgOperator(opGenericMultiOut, max_child_depth=0)
+
+    opSum = OpMultiSum(graph=graph)
+    opSum.Inputs.resize(3)
+    svgOp = SvgOperator(opSum, max_child_depth=1)
+
+    class OpThreshold(Operator):
+        ThresholdLevel = InputSlot()
+        Input = InputSlot()
+        Output = OutputSlot()
+        
+        def setupOutputs(self):
+            self.Output.meta.assignFrom(self.Input.meta)
+            self.Output.meta.dtype = numpy.uint8
+
+        def execute(self, slot, subindex, roi, result):
+            thresholdLevel = self.ThresholdLevel.value
+            inputData = self.Input.get(roi).wait()
+            result[...] = inputData > thresholdLevel
+            return result
+
+        def propagateDirty(self, slot, subindex, roi):
+            pass
+
+    opThreshold = OpThreshold(graph=graph)
+    svgOp = SvgOperator(opThreshold, max_child_depth=1)    
+    
+#    class OpMultiThreshold(Operator):
+#        ThresholdLevel = InputSlot()
+#        Inputs = InputSlot(level=1)
+#        Outputs = OutputSlot(level=1)
+#        
+#        def setupOutputs(self):
+#            self.Output.meta.assignFrom(self.Input.meta)
+#            self.Output.meta.dtype = numpy.uint8
+#
+#        def execute(self, slot, subindex, roi, result):
+#            thresholdLevel = self.ThresholdLevel.value
+#            inputData = self.Input.get(roi).wait()
+#            result[...] = inputData > thresholdLevel
+#            return result
+#
+#    opMultiThreshold = OpMultiThreshold(graph=graph)
+#    opMultiThreshold.Inputs.resize(3)
+#    opMultiThreshold.Outputs.resize(3)
+#    svgOp = SvgOperator(opMultiThreshold, max_child_depth=1)    
+
+#    class OpMultiThreshold(Operator):
+#        ThresholdLevel = InputSlot()
+#        Inputs = InputSlot(level=1)
+#        Outputs = OutputSlot(level=1)
+#        
+#        def __init__(self, *args, **kwargs):
+#            # Initialize base class
+#            super(OpMultiThreshold, self).__init__(*args, **kwargs)
+#            # Initialize our list of internal operators
+#            self.internalOps = []
+#        
+#        def setupOutputs(self):
+#            # Clean up any previously created internal operators
+#            for slot in self.Outputs:
+#                slot.disconnect()
+#            for op in self.internalOps:
+#                op.cleanUp()
+#
+#            self.internalOps = []
+#            self.Outputs.resize( len(self.Inputs) )
+#
+#            # Create an internal thresholding operator for each input image
+#            for i in range( len(self.Inputs) ):
+#                singleImageOp = OpThreshold( parent=self )
+#                singleImageOp.ThresholdLevel.connect( self.ThresholdLevel )
+#                singleImageOp.Input.connect( self.Inputs[i] )
+#                self.Outputs[i].connect( singleImageOp.Output )
+#                
+#                self.internalOps.append( singleImageOp )
+#
+#        def execute(self, slot, subindex, roi, result):
+#            pass # Nothing to do here: our output will forward all requests to the internal operators
+#
+#        def propagateDirty(self, slot, subindex, roi):
+#            pass # Nothing to do here: our internal operators handle dirty propagation on their own
+#
+#    opMultiThreshold = OpMultiThreshold(graph=graph)
+#    opMultiThreshold.ThresholdLevel.setValue(3)
+#    opMultiThreshold.Inputs.resize(3)
+#    for slot in opMultiThreshold.inputs.values():
+#        slot.setValue(1)
+#    svgOp = SvgOperator(opMultiThreshold, max_child_depth=1)    
+
+    opMultiThreshold = OperatorWrapper( OpThreshold, graph=graph, promotedSlotNames=['Input'] )
+    opMultiThreshold.Input.resize(2)
+    svgOp = SvgOperator(opMultiThreshold, max_child_depth=1)    
+
     block = partial(svg.tagblock, canvas)
     with block( svg.svg, x=0, y=0, width=1000, height=1000 ):
         canvas += svg.inkscapeDefinitions()
+#        svgOp1.drawAt(canvas, (10, 10) )
         svgOp.drawAt(canvas, (10, 10) )
         svgOp.drawConnections(canvas)
 #        slot = SvgMultiSlot(3)
