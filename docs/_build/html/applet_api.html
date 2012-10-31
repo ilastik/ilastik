@@ -1,0 +1,476 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Applet API &mdash; applet-workflows 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="applet-workflows 0.6.0 documentation" href="index.html" />
+    <link rel="next" title="Applet Library" href="applet_library.html" />
+    <link rel="prev" title="Workflow Design" href="workflow_design.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="applet_library.html" title="Applet Library"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="workflow_design.html" title="Workflow Design"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="applet-api">
+<h1>Applet API<a class="headerlink" href="#applet-api" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="applets">
+<h2>Applets<a class="headerlink" href="#applets" title="Permalink to this headline">¶</a></h2>
+<p>Applet classes do not have much functionality, but instead serve as a container for the main components of an applet:</p>
+<ul class="simple">
+<li>Top-level Operator</li>
+<li>GUI</li>
+<li>Serializer(s)</li>
+</ul>
+<p>Applets must inherit from the Applet abstract base class.  Subclasses should override the appropriate properties.
+The base class provides a few signals, which applets can use to communicate with the shell.</p>
+<dl class="class">
+<dt id="ilastik.applets.base.applet.Applet">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.base.applet.</tt><tt class="descname">Applet</tt><big>(</big><em>name</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/applet.html#Applet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.applet.Applet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for all applets.</p>
+<dl class="method">
+<dt id="ilastik.applets.base.applet.Applet.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>name</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/applet.html#Applet.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.applet.Applet.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.  Subclasses must call this base implementation in their own __init__ methods.  If they fail to do so, the shell raises an exception.</p>
+<p><em>name</em>: The applet&#8217;s name, used for debugging purposes.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.Applet.progressSignal">
+<tt class="descname">progressSignal</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.applets.base.applet.Applet.progressSignal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Progress signal.
+When the applet is doing something time-consuming, this signal tells the shell to show a progress bar.
+Signature: <tt class="docutils literal"><span class="pre">emit(percentComplete,</span> <span class="pre">canceled=false)</span></tt></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.Applet.guiControlSignal">
+<tt class="descname">guiControlSignal</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.applets.base.applet.Applet.guiControlSignal" title="Permalink to this definition">¶</a></dt>
+<dd><p>GUI control signal
+When an applet wants other applets in the shell to be disabled, he fires this signal.
+The applet must fire it again with ControlState.EnableAll as the parameter to re-enable the other applets.
+Signature: <tt class="docutils literal"><span class="pre">emit(controlState=ControlState.DisableAll)</span></tt></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.Applet.shellRequestSignal">
+<tt class="descname">shellRequestSignal</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.applets.base.applet.Applet.shellRequestSignal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shell request signal is used to trigger certain shell requests.
+Signature: <tt class="docutils literal"><span class="pre">emit(request)</span></tt></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.Applet.topLevelOperator">
+<tt class="descname">topLevelOperator</tt><a class="reference internal" href="_modules/ilastik/applets/base/applet.html#Applet.topLevelOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.applet.Applet.topLevelOperator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract property.
+The applet&#8217;s Top Level Operator, which is a single operator for all computation performed by the applet.
+Each applet has exactly one top-level operator for performing computations.
+Workflow managers can connect the top-level operator of one applet to others.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.Applet.gui">
+<tt class="descname">gui</tt><a class="reference internal" href="_modules/ilastik/applets/base/applet.html#Applet.gui"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.applet.Applet.gui" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract property.
+Provides the applet&#8217;s GUI, which must be an instance of AppletGuiInterface.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.Applet.dataSerializers">
+<tt class="descname">dataSerializers</tt><a class="reference internal" href="_modules/ilastik/applets/base/applet.html#Applet.dataSerializers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.applet.Applet.dataSerializers" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list of dataSerializer objects for loading/saving any project data the applet is responsible for.
+Subclasses should override this property.  By default, returns [].</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="top-level-operator">
+<h2>Top-level Operator<a class="headerlink" href="#top-level-operator" title="Permalink to this headline">¶</a></h2>
+<p>Everything an applet does is centered around the applet&#8217;s top-level operator.  It is typically the keeper of all state associated with the applet.
+It should expose its image outputs as multi-slots, which are indexed according to the index of the currently loaded image.  See <a class="reference internal" href="workflow_design.html#basic-workflows"><em>Basic Workflows</em></a> for details.</p>
+<p>The applet GUI and the applet serializers both make changes to the top-level operator and listen for changes made to the top-level operator.
+Here&#8217;s an example timeline, showing a typical sequence of interactions.</p>
+<ol class="arabic">
+<li><dl class="first docutils">
+<dt>The shell is launched with a blank workflow</dt>
+<dd><ul class="first last simple">
+<li>All slots are connected, but none have any data</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>The shell loads a project file</dt>
+<dd><ul class="first last simple">
+<li>Calls each serializer to read settings from the project file and apply them to the appropriate slots of the top-level operator</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>The GUI responds to the changes made to the top-level operator by updating the GUI appearance.</dt>
+<dd><ul class="first last simple">
+<li>Widgets in the applet drawer(s) for the applet are updated with the current operator slot values.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>The user changes a setting in the GUI, which in turn changes a slot value on the applet&#8217;s top-level operator.</dt>
+<dd><ul class="first last simple">
+<li>The changes are propagated downstream from the top-level operator, possibly resulting in an update in the central widget.</li>
+<li>The applet serializer also notices the change, and makes a note that the serializer is &#8220;dirty&#8221;.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p class="first">Step 4 is repeated as the user experiments with the workflow options.</p>
+</li>
+<li><dl class="first docutils">
+<dt>The user selects &#8220;Save Project&#8221;</dt>
+<dd><ul class="first last simple">
+<li>The shell determines which serializers have work to do by calling isDirty()</li>
+<li>The shell calls serializeToHdf5 on the dirty serializers, causing them to save the current state of the corresponding top-level operators to the project file.</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p class="first">Repeat step 4 as the user experiments with more workflow options.</p>
+</li>
+<li><dl class="first docutils">
+<dt>The user attempts to close the project.</dt>
+<dd><ul class="first last simple">
+<li>The shell determines if any serializers have work to do by calling isDirty().  If any declare themselves dirty, the user is asked to confirm his decision to close the project.</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+</div>
+<div class="section" id="applet-guis">
+<h2>Applet GUIs<a class="headerlink" href="#applet-guis" title="Permalink to this headline">¶</a></h2>
+<p>An applet&#8217;s GUI object is responsible for providing the widgets that the shell displays when this applet is selected by the user.</p>
+<p>Here&#8217;s a screenshot of the ilastik-shell gui:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/ilastik-shell.png"><img alt="ilastik-shell screenshot" src="_images/ilastik-shell.png" style="width: 1027.0px; height: 784.0px;" /></a>
+</div>
+<p>In the following figure, the areas of the GUI are labeled according to the terminology used in the applet-workflows code base:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/ilastik-shell-gui-areas.png"><img alt="ilastik-shell screenshot" src="_images/ilastik-shell-gui-areas.png" style="width: 1027.0px; height: 784.0px;" /></a>
+</div>
+<p>An applet GUI is responsible for providing the widgets for each of the areas labeled above except for the &#8220;Current Image Menu&#8221;, which is
+created by the shell.  Additionally, Applet GUIs provide any menu items that should be shown when an applet is being viewed by the user.</p>
+<dl class="class">
+<dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.base.appletGuiInterface.</tt><tt class="descname">AppletGuiInterface</tt><a class="reference internal" href="_modules/ilastik/applets/base/appletGuiInterface.html#AppletGuiInterface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is the abstract interface to which all applet GUI classes should adhere.</p>
+<dl class="method">
+<dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface.centralWidget">
+<tt class="descname">centralWidget</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletGuiInterface.html#AppletGuiInterface.centralWidget"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.centralWidget" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract method.  Return the widget that will be displayed in the main viewer area.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface.appletDrawers">
+<tt class="descname">appletDrawers</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletGuiInterface.html#AppletGuiInterface.appletDrawers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.appletDrawers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract method.  Return a list of (drawer title, drawer widget) pairs for this applet.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface.menus">
+<tt class="descname">menus</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletGuiInterface.html#AppletGuiInterface.menus"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.menus" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract method.  Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface.viewerControlWidget">
+<tt class="descname">viewerControlWidget</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletGuiInterface.html#AppletGuiInterface.viewerControlWidget"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.viewerControlWidget" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract method.
+Return the widget that controls how the content of the central widget is displayed.
+Typically this consists of a layer list control.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface.setImageIndex">
+<tt class="descname">setImageIndex</tt><big>(</big><em>imageIndex</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletGuiInterface.html#AppletGuiInterface.setImageIndex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.setImageIndex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract method.
+Called by the shell when the user has switched the input image he wants to view.
+The GUI should respond by updating the content of the central widget.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletGuiInterface.AppletGuiInterface.reset">
+<tt class="descname">reset</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletGuiInterface.html#AppletGuiInterface.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract method.
+Called by the shell when the current project has been unloaded.
+The GUI should reset itself to its initial state, whatever that is.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="applet-serializers">
+<h2>Applet Serializers<a class="headerlink" href="#applet-serializers" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.base.appletSerializer.</tt><tt class="descname">AppletSerializer</tt><big>(</big><em>topGroupName</em>, <em>version</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for all AppletSerializers.</p>
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer._serializeToHdf5">
+<tt class="descname">_serializeToHdf5</tt><big>(</big><em>topGroup</em>, <em>hdf5File</em>, <em>projectFilePath</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer._serializeToHdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer._serializeToHdf5" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract Method.
+Write the applet&#8217;s data to hdf5.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>topGroup</strong> &#8211; The hdf5Group object this serializer is responsible for</li>
+<li><strong>hdf5File</strong> &#8211; An hdf5File object (already open)</li>
+<li><strong>projectFilePath</strong> &#8211; The path to the project file (a string)                                (Most serializers don&#8217;t need to use this parameter)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer._deserializeFromHdf5">
+<tt class="descname">_deserializeFromHdf5</tt><big>(</big><em>topGroup</em>, <em>groupVersion</em>, <em>hdf5File</em>, <em>projectFilePath</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer._deserializeFromHdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer._deserializeFromHdf5" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract Method.
+Read the applet&#8217;s data from hdf5.
+:param topGroup: The hdf5Group object this serializer is responsible for
+:param hdf5File: An hdf5File object (already open)
+:param projectFilePath: The path to the project file (a string)                                (Most serializers don&#8217;t need to use this parameter)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.isDirty">
+<tt class="descname">isDirty</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.isDirty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.isDirty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract Method.
+Return true if the current state of this item 
+(in memory) does not match the state of the HDF5 group on disk.
+SerializableItems are responsible for tracking their own dirty/notdirty state</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.unload">
+<tt class="descname">unload</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.unload"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.unload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Abstract Method.
+Called if either
+(1) the user closed the project or
+(2) the project opening process needs to be aborted for some reason             (e.g. not all items could be deserialized properly due to a corrupted ilp)
+This way we can avoid invalid state due to a partially loaded project.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.serializeToHdf5">
+<tt class="descname">serializeToHdf5</tt><big>(</big><em>hdf5File</em>, <em>projectFilePath</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.serializeToHdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.serializeToHdf5" title="Permalink to this definition">¶</a></dt>
+<dd><p>Serialize the current applet state to the given hdf5 file.
+Subclasses should <strong>not</strong> override this method.  Instead, subclasses override the &#8216;private&#8217; version, <em>_serializetoHdf5</em></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>hdf5File</strong> &#8211; An h5py.File handle to the project file, which should already be open</li>
+<li><strong>projectFilePath</strong> &#8211; The path to the given file handle.  (Most serializers do not use this parameter.)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.deserializeFromHdf5">
+<tt class="descname">deserializeFromHdf5</tt><big>(</big><em>hdf5File</em>, <em>projectFilePath</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.deserializeFromHdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.deserializeFromHdf5" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read the the current applet state from the given hdf5File handle, which should already be open.
+Subclasses should <strong>not</strong> override this method.  Instead, subclasses override the &#8216;private&#8217; version, <em>_deserializeFromHdf5</em></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>hdf5File</strong> &#8211; An h5py.File handle to the project file, which should already be open</li>
+<li><strong>projectFilePath</strong> &#8211; The path to the given file handle.  (Most serializers do not use this parameter.)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.initWithoutTopGroup">
+<tt class="descname">initWithoutTopGroup</tt><big>(</big><em>hdf5File</em>, <em>projectFilePath</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.initWithoutTopGroup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.initWithoutTopGroup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Optional override for subclasses.
+Called when there is no top group to deserialize
+Gives the applet a chance to inspect the hdf5File or project path, even though no top group is present in the file.
+Parameters as the same as in serializeToHdf5()</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.getOrCreateGroup">
+<em class="property">classmethod </em><tt class="descname">getOrCreateGroup</tt><big>(</big><em>parentGroup</em>, <em>groupName</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.getOrCreateGroup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.getOrCreateGroup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience helper.
+Returns parentGorup[groupName], creating first it if necessary.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.deleteIfPresent">
+<em class="property">classmethod </em><tt class="descname">deleteIfPresent</tt><big>(</big><em>parentGroup</em>, <em>name</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.deleteIfPresent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.deleteIfPresent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience helper.
+Deletes parentGorup[groupName], if it exists.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.version">
+<tt class="descname">version</tt><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.version"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the version of the serializer itself.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.base_initialized">
+<tt class="descname">base_initialized</tt><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.base_initialized"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.base_initialized" title="Permalink to this definition">¶</a></dt>
+<dd><p>Do not override this property.
+Used by the shell to ensure that Applet.__init__ was called by your subclass.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="applet-library">
+<h2>Applet Library<a class="headerlink" href="#applet-library" title="Permalink to this headline">¶</a></h2>
+<p>Finally, the applet-workflows project serves as a library of applets that are useful for many workflows.
+In particular, the <a class="reference internal" href="applet_library.html#layer-viewer"><em>Layer Viewer</em></a> applet is a base class that implements simple display of arbitrary slots from your top-level operator.
+It is intended to be used as a base class for almost all user-defined applets.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="applet_library.html">Applet Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#project-metadata">Project Metadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#data-selection">Data Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#layer-viewer">Layer Viewer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#labeling">Labeling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#batch-output">Batch Output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#threshold-masking">Threshold Masking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#feature-selection">Feature Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#pixel-classification">Pixel Classification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#watershed-viewer">Watershed Viewer</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Applet API</a><ul>
+<li><a class="reference internal" href="#applets">Applets</a></li>
+<li><a class="reference internal" href="#top-level-operator">Top-level Operator</a></li>
+<li><a class="reference internal" href="#applet-guis">Applet GUIs</a></li>
+<li><a class="reference internal" href="#applet-serializers">Applet Serializers</a></li>
+<li><a class="reference internal" href="#applet-library">Applet Library</a><ul>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="workflow_design.html"
+                        title="previous chapter">Workflow Design</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="applet_library.html"
+                        title="next chapter">Applet Library</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/applet_api.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="applet_library.html" title="Applet Library"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="workflow_design.html" title="Workflow Design"
+             >previous</a> |</li>
+        <li><a href="index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
