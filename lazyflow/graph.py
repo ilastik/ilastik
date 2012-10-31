@@ -1606,9 +1606,11 @@ class OperatorWrapper(Operator):
         self._initialized = False
 
         if operatorClass.name == "":
-            self.name = "Wrapped " + operatorClass.__name__
+            self._name = "Wrapped " + operatorClass.__name__
         else:
-            self.name = "Wrapped " + operatorClass.name
+            self._name = "Wrapped " + operatorClass.name
+        
+        self._customName = False
 
         if promotedSlotNames is None:
             # No slots specified: All original slots are promoted by default
@@ -1661,6 +1663,15 @@ class OperatorWrapper(Operator):
         for s in self.outputs.values():
             assert len(s) == 0
 
+    @property
+    def name(self):
+        return self._name
+    
+    @name.setter
+    def name(self, name):
+        self._name = name
+        self._customName = True
+
     def __getitem__(self, key):
         return self.innerOperators[key]
 
@@ -1688,8 +1699,9 @@ class OperatorWrapper(Operator):
                 return self.innerOperators[index]
             op = self._createInnerOperator()
             
-            # Update our name
-            self.name = "Wrapped " + op.name
+            # Update our name (if the client didn't already give us a special one)
+            if self._customName is False:
+                self._name = "Wrapped " + op.name
 
             # If anyone calls setValue() on one of these slots, forward the setValue 
             #  call to the slot's partner (the outer slot on the operator wrapper)
