@@ -1,0 +1,168 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.applets.base.applet &mdash; applet-workflows 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="top" title="applet-workflows 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for ilastik.applets.base.applet</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">ilastik.utility.simpleSignal</span> <span class="kn">import</span> <span class="n">SimpleSignal</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABCMeta</span><span class="p">,</span> <span class="n">abstractproperty</span>
+
+<span class="k">class</span> <span class="nc">ControlCommand</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="c"># An enum of commands that applets can use to request that other applet GUIs become disabled</span>
+    <span class="n">Pop</span> <span class="o">=</span> <span class="mi">0</span>                 <span class="c"># Undo the most recent command that the issuing applet sent</span>
+    <span class="n">DisableAll</span> <span class="o">=</span> <span class="mi">1</span>          <span class="c"># Disable all applets in the workflow</span>
+    <span class="n">DisableUpstream</span> <span class="o">=</span> <span class="mi">2</span>     <span class="c"># Disable applets that come before the applet that is issuing the command</span>
+    <span class="n">DisableDownstream</span> <span class="o">=</span> <span class="mi">3</span>   <span class="c"># Disable applets that come after the applet that is issuing the command</span>
+    <span class="n">DisableSelf</span> <span class="o">=</span> <span class="mi">4</span>         <span class="c"># Disable the applet that is issuing the command</span>
+
+<span class="k">class</span> <span class="nc">ShellRequest</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="c"># These are the things an applet can ask the shell to do via the shellRequestSignal</span>
+    <span class="n">RequestSave</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="Applet"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet">[docs]</a><span class="k">class</span> <span class="nc">Applet</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    
+    <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">ABCMeta</span> <span class="c"># Force subclasses to override abstract methods and properties</span>
+
+    <span class="n">_base_initialized</span> <span class="o">=</span> <span class="bp">False</span>
+    
+<div class="viewcode-block" id="Applet.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">name</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+        <span class="c"># Status signal.</span>
+        <span class="c"># Shell uses it for the status bar.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">statusSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span> <span class="c"># Signature: emit(statusText)</span>
+        
+        <span class="c"># Progress signal.</span>
+        <span class="c"># When the applet is doing something time-consuming, this signal tells the shell.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span> <span class="c"># Signature: emit(percentComplete, canceled=false)</span>
+        
+        <span class="c"># GUI control signal</span>
+        <span class="c"># When an applet wants other applets in the shell to be disabled, he fires this signal.</span>
+        <span class="c"># The applet must fire it again with ControlState.EnableAll as the parameter to re-enable the other applets. </span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">guiControlSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span> <span class="c"># Signature: emit(controlState=ControlState.DisableAll)</span>
+
+        <span class="c"># Shell request signal is used to trigger certain shell requests.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shellRequestSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span> <span class="c"># Signature:emit(request)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_base_initialized</span> <span class="o">=</span> <span class="bp">True</span>
+</div>
+    <span class="nd">@abstractproperty</span>
+<div class="viewcode-block" id="Applet.topLevelOperator"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet.topLevelOperator">[docs]</a>    <span class="k">def</span> <span class="nf">topLevelOperator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the applet&#39;s Top Level Operator, which is a single operator for all computation performed by the applet.</span>
+<span class="sd">        Each applet has exactly one top-level operator for performing computations.</span>
+<span class="sd">        Workflow managers can connect the top-level operator of one applet to others.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">None</span>
+</div>
+    <span class="nd">@abstractproperty</span>
+<div class="viewcode-block" id="Applet.gui"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet.gui">[docs]</a>    <span class="k">def</span> <span class="nf">gui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Applet.dataSerializers"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet.dataSerializers">[docs]</a>    <span class="k">def</span> <span class="nf">dataSerializers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a list of dataSerializer objects for loading/saving any project data the applet is responsible for.</span>
+<span class="sd">        &quot;&quot;&quot;</span> 
+        <span class="k">return</span> <span class="p">[]</span>
+    </div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Applet.appletPreferencesManager"><a class="viewcode-back" href="../../../../overview.html#ilastik.applets.base.applet.Applet.appletPreferencesManager">[docs]</a>    <span class="k">def</span> <span class="nf">appletPreferencesManager</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the applet&#39;s preferences manager (if any).</span>
+<span class="sd">        </span>
+<span class="sd">        Applets with preferences or &quot;last state&quot; items that are independent </span>
+<span class="sd">        of project saved data may save/load that information via a preferences manager.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">None</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Applet.base_initialized"><a class="viewcode-back" href="../../../../overview.html#ilastik.applets.base.applet.Applet.base_initialized">[docs]</a>    <span class="k">def</span> <span class="nf">base_initialized</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Do not override this property.</span>
+<span class="sd">        Used by the shell to ensure that Applet.__init__ was called by your subclass.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_initialized</span>
+</pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+*.pyc
+*.pyo
+*.kdev4
+.DS_Store
+
+.project
+*.h5
+.pydevproject
+.settings
