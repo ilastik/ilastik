@@ -9,14 +9,16 @@ class VigraWatershedViewerApplet( Applet ):
     """
     Viewer for watershed results, with minimal configuration controls.
     """
-    def __init__( self, graph, guiName, projectFileGroupName ):
+    def __init__( self, workflow, guiName, projectFileGroupName ):
         super(VigraWatershedViewerApplet, self).__init__(guiName)
 
         # Wrap the top-level operator, since the GUI supports multiple images
         self._topLevelOperator = OperatorWrapper( OpVigraWatershedViewer,
-                                                  graph=graph,
+                                                  parent=workflow,
                                                   promotedSlotNames=['RawImage', 'InputImage', 'OverrideLabels'] )
 
+        self._topLevelOperator.name = "VigraWatershedViewer Top-Level Operator"
+        
         self._gui = None # Created on first access
         
         self._serializableItems = []

@@ -36,27 +36,24 @@ class DatasetInfo(object):
 
 class OpDataSelection(Operator):
     """
-    The top-level operator for the data selection applet.
-    This implementation supports single images.
-    Use an OperatorWrapper to enable multi-image support.
+    The top-level operator for the data selection applet, implemented as a single-image operator.
+    The applet uses an OperatorWrapper to make it suitable for use in a workflow.
     """
     name = "OpDataSelection"
     category = "Top-level"
     
     SupportedExtensions = OpInputDataReader.SupportedExtensions
-    
-    ProjectFile = InputSlot(stype='object') # The project hdf5 File object (already opened)
-    ProjectDataGroup = InputSlot(stype='string') # The internal path to the hdf5 group where project-local
-                                                 #  datasets are stored within the project file
-    WorkingDirectory = InputSlot(stype='filestring') # The filesystem directory where the project file is located
 
-    # A dataset info object
-    Dataset = InputSlot(stype='object')
+    # Inputs    
+    ProjectFile = InputSlot(stype='object') #: The project hdf5 File object (already opened)
+    ProjectDataGroup = InputSlot(stype='string') #: The internal path to the hdf5 group where project-local datasets are stored within the project file
+    WorkingDirectory = InputSlot(stype='filestring') #: The filesystem directory where the project file is located
+    Dataset = InputSlot(stype='object') #: A DatasetInfo object
 
-    # Output data
-    ImageName = OutputSlot(stype='string')
-    Image = OutputSlot()
-    AllowLabels = OutputSlot(stype='bool')
+    # Outputs
+    ImageName = OutputSlot(stype='string') #: The name of the output image
+    Image = OutputSlot() #: The output image
+    AllowLabels = OutputSlot(stype='bool') #: A bool indicating whether or not this image can be used for training
     
     def __init__(self, *args, **kwargs):
         super(OpDataSelection, self).__init__(*args, **kwargs)

@@ -15,7 +15,8 @@ class BatchIoApplet( Applet ):
         super(BatchIoApplet, self).__init__(title)
 
         self._topLevelOperator = OperatorWrapper( OpBatchIo, parent=workflow, promotedSlotNames=set(['DatasetPath', 'ImageToExport']) )
-        
+        self._topLevelOperator.name = "BatchOutput Top-Level Operator"
+                
         # Ensure the operator has no length yet.
         # FIXME: Why is this necessary??!?! Shouldn't it be zero anyway?
         assert len(self._topLevelOperator.ImageToExport) == 0

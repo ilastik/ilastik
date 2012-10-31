@@ -4,12 +4,15 @@ from opLayerViewer import OpLayerViewer
 
 class LayerViewerApplet( Applet ):
     """
-    This is a simple viewer applet
+    This applet can be used as a simple viewer of raw image data.  
+    Its main purpose is to provide a simple example of how to use the LayerViewerGui, 
+    which is intended to be used as a base class for most other applet GUIs.
     """
-    def __init__( self, graph ):
+    def __init__( self, workflow ):
         super(LayerViewerApplet, self).__init__("layer Viewer")
 
-        self._topLevelOperator = OperatorWrapper( OpLayerViewer, graph=graph, promotedSlotNames=set(['RawInput']) )
+        self._topLevelOperator = OperatorWrapper( OpLayerViewer, parent=workflow, promotedSlotNames=set(['RawInput']) )
+        self._topLevelOperator.name = "LayerViewer Top-Level Operator"
         self._preferencesManager = None
         self._serializableItems = []
         self._gui = None

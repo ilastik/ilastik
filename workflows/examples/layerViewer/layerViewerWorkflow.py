@@ -7,15 +7,14 @@ from ilastik.applets.layerViewer import LayerViewerApplet
 
 class LayerViewerWorkflow(Workflow):
     def __init__(self):
-        super(LayerViewerWorkflow, self).__init__()
-        self._applets = []
-
         # Create a graph to be shared by all operators
         graph = Graph()
+        super(LayerViewerWorkflow, self).__init__(graph=graph)
+        self._applets = []
 
         # Create applets 
-        self.dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
-        self.viewerApplet = LayerViewerApplet(graph)
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        self.viewerApplet = LayerViewerApplet(self)
 
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.viewerApplet )

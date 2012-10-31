@@ -4,12 +4,13 @@ from labelingSerializer import LabelingSerializer
 
 class LabelingApplet( Applet ):
     """
-    Implements the pixel classification "applet", which allows the ilastik shell to use it.
+    This applet demonstrates how to use the LabelingGui base class, which serves as a reusable base class for other applet GUIs that need a labeling UI.  
     """
-    def __init__( self, graph, projectFileGroupName ):
+    def __init__( self, workflow, projectFileGroupName ):
         Applet.__init__( self, "Generic Labeling" )
 
-        self._topLevelOperator = OpLabeling(graph=graph)
+        self._topLevelOperator = OpLabeling(parent=workflow)
+        self._topLevelOperator.name = "Labeling Top-Level Operator"
         self._serializableItems = [ LabelingSerializer( self._topLevelOperator, projectFileGroupName ) ]
         self._gui = None
             

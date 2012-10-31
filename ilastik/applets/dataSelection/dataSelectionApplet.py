@@ -19,6 +19,7 @@ class DataSelectionApplet( Applet ):
         # All inputs are common to all inputs except for the 'Dataset' input, which is unique for each image.
         # Hence, 'Dataset' is the only 'promoted' slot.
         self._topLevelOperator = OperatorWrapper( OpDataSelection, parent=workflow, promotedSlotNames=set(['Dataset']) )
+        self._topLevelOperator.name = "DataSelection Top-level Operator"
 
         self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator, projectFileGroupName) ]
         if supportIlastik05Import:
