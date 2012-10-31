@@ -20,8 +20,8 @@ The base class provides a few signals, which applets can use to communicate with
    
    .. automethod:: __init__
 
-Top-level Operator
-==================
+Top-level Operators
+===================
 
 Everything an applet does is centered around the applet's top-level operator.  It is typically the keeper of all state associated with the applet.
 It should expose its image outputs as multi-slots, which are indexed according to the index of the currently loaded image.  See :ref:`basic-workflows` for details.

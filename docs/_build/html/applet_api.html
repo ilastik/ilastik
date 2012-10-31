@@ -124,8 +124,8 @@ Subclasses should override this property.  By default, returns [].</p>
 </dd></dl>
 
 </div>
-<div class="section" id="top-level-operator">
-<h2>Top-level Operator<a class="headerlink" href="#top-level-operator" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="top-level-operators">
+<h2>Top-level Operators<a class="headerlink" href="#top-level-operators" title="Permalink to this headline">¶</a></h2>
 <p>Everything an applet does is centered around the applet&#8217;s top-level operator.  It is typically the keeper of all state associated with the applet.
 It should expose its image outputs as multi-slots, which are indexed according to the index of the currently loaded image.  See <a class="reference internal" href="workflow_design.html#basic-workflows"><em>Basic Workflows</em></a> for details.</p>
 <p>The applet GUI and the applet serializers both make changes to the top-level operator and listen for changes made to the top-level operator.
@@ -279,10 +279,20 @@ Write the applet&#8217;s data to hdf5.</p>
 <dt id="ilastik.applets.base.appletSerializer.AppletSerializer._deserializeFromHdf5">
 <tt class="descname">_deserializeFromHdf5</tt><big>(</big><em>topGroup</em>, <em>groupVersion</em>, <em>hdf5File</em>, <em>projectFilePath</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer._deserializeFromHdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer._deserializeFromHdf5" title="Permalink to this definition">¶</a></dt>
 <dd><p>Abstract Method.
-Read the applet&#8217;s data from hdf5.
-:param topGroup: The hdf5Group object this serializer is responsible for
-:param hdf5File: An hdf5File object (already open)
-:param projectFilePath: The path to the project file (a string)                                (Most serializers don&#8217;t need to use this parameter)</p>
+Read the applet&#8217;s data from hdf5.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>topGroup</strong> &#8211; The hdf5Group object this serializer is responsible for</li>
+<li><strong>hdf5File</strong> &#8211; An hdf5File object (already open)</li>
+<li><strong>projectFilePath</strong> &#8211; The path to the project file (a string)                                (Most serializers don&#8217;t need to use this parameter)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -415,7 +425,7 @@ It is intended to be used as a base class for almost all user-defined applets.</
   <ul>
 <li><a class="reference internal" href="#">Applet API</a><ul>
 <li><a class="reference internal" href="#applets">Applets</a></li>
-<li><a class="reference internal" href="#top-level-operator">Top-level Operator</a></li>
+<li><a class="reference internal" href="#top-level-operators">Top-level Operators</a></li>
 <li><a class="reference internal" href="#applet-guis">Applet GUIs</a></li>
 <li><a class="reference internal" href="#applet-serializers">Applet Serializers</a></li>
 <li><a class="reference internal" href="#applet-library">Applet Library</a><ul>

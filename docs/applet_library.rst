@@ -38,6 +38,10 @@ Layer Viewer
 .. autoclass:: LayerViewerApplet
    :members:
 
+.. currentmodule:: ilastik.applets.layerViewer.opLayerViewer
+.. autoclass:: OpLayerViewer
+   :members:
+   
 .. currentmodule:: ilastik.applets.layerViewer.layerViewerGui
 .. autoclass:: LayerViewerGui
    :members:

@@ -32,6 +32,7 @@ class AppletSerializer(object):
         """
         Abstract Method.
         Read the applet's data from hdf5.
+        
         :param topGroup: The hdf5Group object this serializer is responsible for
         :param hdf5File: An hdf5File object (already open)
         :param projectFilePath: The path to the project file (a string) \
