@@ -17,7 +17,6 @@ install:
    - ln -s /usr/lib/python2.7/dist-packages/sipconfig_nd.py $VIRTUAL_ENV/lib/python2.7/site-packages/
    - pip install -r requirements/development-stage1.txt --use-mirrors
    - pip install -r requirements/development-stage2.txt --use-mirrors
-   - sudo apt-get install -y mercurial
    - sudo sh requirements/install_vigra.sh
    - git clone http://github.com/Ilastik/volumina /tmp/volumina
    - git clone http://github.com/Ilastik/lazyflow /tmp/lazyflow
