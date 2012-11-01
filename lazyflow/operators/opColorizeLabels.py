@@ -7,6 +7,7 @@ from functools import partial
 import numpy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.roi import TinyVector
 
 import logging
 logger = logging.getLogger(__file__)
@@ -77,9 +78,18 @@ class OpColorizeLabels(Operator):
 
         self.overrideColors = newOverrideColors
     
+    def setStartToZero(self,start,stop):
+        start = [0]*len(start)
+        stop = [end-begin for begin,end in zip(start,stop)]
+        start = TinyVector(start)
+        stop = TinyVector(stop)
+        return start,stop
+    
     def execute(self, slot, subindex, roi, result):
         fullKey = roi.toSlice()
-        resultKey = copy.copy(roi).setStartToZero().toSlice()
+        roiCopy = copy.copy(roi)
+        roiCopy.start, roiCopy.stop = self.setStartToZero(roi.start, roi.stop)
+        resultKey = roiCopy.toSlice()
         
         # Input has only one channel
         thinKey = applyToElement(self.Input.meta.axistags, 'c', fullKey, slice(0,1))
