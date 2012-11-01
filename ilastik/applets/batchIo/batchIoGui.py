@@ -74,7 +74,7 @@ class BatchIoGui(QMainWindow):
             
             def handleNewDataset( multislot, index ):
                 # Make room in the GUI table
-                self.tableWidget.insertRow( index )
+                self.batchOutputTableWidget.insertRow( index )
                 
                 # Update the table row data when this slot has new data
                 # We can't bind in the row here because the row may change in the meantime.
@@ -84,7 +84,7 @@ class BatchIoGui(QMainWindow):
             
             def handleDatasetRemoved( multislot, index ):
                 # Simply remove the row we don't need any more
-                self.tableWidget.removeRow( index )
+                self.batchOutputTableWidget.removeRow( index )
     
             self.mainOperator.OutputDataPath.notifyRemove( bind( handleDatasetRemoved ) )
             
@@ -126,20 +126,20 @@ class BatchIoGui(QMainWindow):
             localDir = os.path.split(__file__)[0]
             uic.loadUi(localDir+"/batchIo.ui", self)
     
-            self.tableWidget.resizeRowsToContents()
-            self.tableWidget.resizeColumnsToContents()
-            self.tableWidget.setAlternatingRowColors(True)
-            self.tableWidget.setShowGrid(False)
-            self.tableWidget.horizontalHeader().setResizeMode(0, QHeaderView.Interactive)
+            self.batchOutputTableWidget.resizeRowsToContents()
+            self.batchOutputTableWidget.resizeColumnsToContents()
+            self.batchOutputTableWidget.setAlternatingRowColors(True)
+            self.batchOutputTableWidget.setShowGrid(False)
+            self.batchOutputTableWidget.horizontalHeader().setResizeMode(0, QHeaderView.Interactive)
             
-            self.tableWidget.horizontalHeader().resizeSection(Column.Dataset, 200)
-            self.tableWidget.horizontalHeader().resizeSection(Column.ExportLocation, 250)
-            self.tableWidget.horizontalHeader().resizeSection(Column.Action, 100)
+            self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.Dataset, 200)
+            self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.ExportLocation, 250)
+            self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.Action, 100)
     
-            self.tableWidget.verticalHeader().hide()
+            self.batchOutputTableWidget.verticalHeader().hide()
     
             # Set up handlers
-            self.tableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
+            self.batchOutputTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
         
     def handleExportLocationOptionChanged(self):
         """
@@ -210,13 +210,13 @@ class BatchIoGui(QMainWindow):
             datasetPath = self.mainOperator.DatasetPath[row].value
             outputDataPath = self.mainOperator.OutputDataPath[row].value
                     
-            self.tableWidget.setItem( row, Column.Dataset, QTableWidgetItem(datasetPath) )
-            self.tableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( outputDataPath ) )
+            self.batchOutputTableWidget.setItem( row, Column.Dataset, QTableWidgetItem(datasetPath) )
+            self.batchOutputTableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( outputDataPath ) )
     
             exportNowButton = QPushButton("Export")
             exportNowButton.setToolTip("Generate individual batch output dataset.")
             exportNowButton.clicked.connect( bind(self.exportResultsForSlot, self.mainOperator.ExportResult[row], self.mainOperator.ProgressSignal[row] ) )
-            self.tableWidget.setCellWidget( row, Column.Action, exportNowButton )
+            self.batchOutputTableWidget.setCellWidget( row, Column.Action, exportNowButton )
 
     def updateDrawerGuiFromOperatorSettings(self, *args):
         with Tracer(traceLogger):
@@ -241,18 +241,18 @@ class BatchIoGui(QMainWindow):
         with Tracer(traceLogger):
             # Figure out which dataset to remove
             selectedItemRows = set()
-            selectedRanges = self.tableWidget.selectedRanges()
+            selectedRanges = self.batchOutputTableWidget.selectedRanges()
             for rng in selectedRanges:
                 for row in range(rng.topRow(), rng.bottomRow()+1):
                     selectedItemRows.add(row)
             
             # Disconnect from selection change notifications while we do this
-            self.tableWidget.itemSelectionChanged.disconnect(self.handleTableSelectionChange)
+            self.batchOutputTableWidget.itemSelectionChanged.disconnect(self.handleTableSelectionChange)
             for row in selectedItemRows:
-                self.tableWidget.selectRow(row)
+                self.batchOutputTableWidget.selectRow(row)
                 
             # Reconnect now that we're finished
-            self.tableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
+            self.batchOutputTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
         
     def exportSlots(self, slotList, progressSignalSlotList ):
         with Tracer(traceLogger):
