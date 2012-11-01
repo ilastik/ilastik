@@ -18,8 +18,8 @@ install:
    - pip install -r requirements/development-stage1.txt --use-mirrors
    - pip install -r requirements/development-stage2.txt --use-mirrors
    - sudo sh requirements/install_vigra.sh
-   - git clone http://github.com/Ilastik/volumina /tmp/volumina
-   - git clone http://github.com/Ilastik/lazyflow /tmp/lazyflow
+   - git clone http://github.com/ilastik/volumina /tmp/volumina
+   - git clone http://github.com/ilastik/lazyflow /tmp/lazyflow
    - sudo sh requirements/build_drtile.sh $VIRTUAL_ENV /tmp/lazyflow
    - mkdir ~/.lazyflow
    - echo "[verbosity]" > ~/.lazyflow/config
