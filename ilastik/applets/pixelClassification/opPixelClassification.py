@@ -248,23 +248,6 @@ class OpPixelClassification( Operator ):
         #  internal operators that handle their own dirty propagation.
         pass
 
-    def outputSvg(self):
-        from functools import partial
-        import lazyflow.tools.svg as svg
-        from lazyflow.tools.schematic import SvgOperator
-    
-        svgOp = SvgOperator(self, max_child_depth=2)
-    
-        canvas = svg.SvgCanvas("")
-        block = partial(svg.tagblock, canvas)
-        with block( svg.svg, x=0, y=0, width=7000, height=2000 ):
-            canvas += svg.inkscapeDefinitions()
-            svgOp.drawAt(canvas, (10, 10) )
-            svgOp.drawConnections(canvas)
-        with file("/Users/bergs/Documents/svgfiles/opPixelClassification.svg", 'w') as f:
-            f.write( canvas.getvalue() )
-
-
 class OpShapeReader(Operator):
     """
     This operator outputs the shape of its input image, except the number of channels is set to 1.
