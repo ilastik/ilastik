@@ -91,7 +91,6 @@ class PixelClassificationGui(LabelingGui):
         Called by our base class when one of our data slots has changed.
         This function creates a layer for each slot we want displayed in the volume editor.
         """
-        
         # Base class provides the label layer.
         layers = super(PixelClassificationGui, self).setupLayers(currentImageIndex)
         

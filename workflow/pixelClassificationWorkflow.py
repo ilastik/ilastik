@@ -17,12 +17,9 @@ from context.applets.pixelClassification import AutocontextClassificationApplet
 class PixelClassificationWorkflow(Workflow):
     
     def __init__(self):
-        super(PixelClassificationWorkflow, self).__init__()
-        self._applets = []
-
-        # Create a graph to be shared by all operators
         graph = Graph()
-        self._graph = graph
+        super(PixelClassificationWorkflow, self).__init__( graph=graph )
+        self._applets = []
 
         ######################
         # Interactive workflow
@@ -30,13 +27,13 @@ class PixelClassificationWorkflow(Workflow):
         
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
-        self.dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
-        opData = self.dataSelectionApplet.topLevelOperator
-        self.featureSelectionApplet = FeatureSelectionAutocontextApplet(graph, "Feature Selection", "FeatureSelections")
-        opTrainingFeatures = self.featureSelectionApplet.topLevelOperator
-        self.pcApplet = AutocontextClassificationApplet(graph, "PixelClassification")
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        self.featureSelectionApplet = FeatureSelectionAutocontextApplet(self, "Feature Selection", "FeatureSelections")
+        self.pcApplet = AutocontextClassificationApplet(self, "PixelClassification")
 
         ## Access applet operators
+        opData = self.dataSelectionApplet.topLevelOperator
+        opTrainingFeatures = self.featureSelectionApplet.topLevelOperator
         opClassify = self.pcApplet.topLevelOperator
         
         ## Connect operators ##
@@ -58,45 +55,7 @@ class PixelClassificationWorkflow(Workflow):
         ######################
         
         ## Create applets
-        '''
-        self.batchInputApplet = DataSelectionApplet(graph, "Batch Inputs", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
-        self.batchResultsApplet = BatchIoApplet(graph, "Batch Results")
 
-        ## Access applet operators
-        opBatchInputs = self.batchInputApplet.topLevelOperator
-        opBatchInputs.name = 'opBatchInputs'
-        opBatchResults = self.batchResultsApplet.topLevelOperator
-        
-        ## Create additional batch workflow operators
-        opBatchFeatures = OperatorWrapper( OpFeatureSelection(graph=graph), promotedSlotNames=['InputImage'] )
-        opBatchFeatures.name = "opBatchFeatures"
-        opBatchPredictor = OperatorWrapper( OpPredictRandomForest(graph=graph), promotedSlotNames=['Image'])
-        opBatchPredictor.name = "opBatchPredictor"
-        opSelectBatchDatasetPath = OperatorWrapper( OpAttributeSelector(graph=graph) )
-        
-        ## Connect Operators ## 
-        
-        # Provide dataset paths from data selection applet to the batch export applet via an attribute selector
-        opSelectBatchDatasetPath.InputObject.connect( opBatchInputs.Dataset )
-        opSelectBatchDatasetPath.AttributeName.setValue( 'filePath' )
-        opBatchResults.DatasetPath.connect( opSelectBatchDatasetPath.Result )
-        
-        # Connect (clone) the feature operator inputs from 
-        #  the interactive workflow's features operator (which gets them from the GUI)
-        opBatchFeatures.Scales.connect( opTrainingFeatures.Scales )
-        opBatchFeatures.FeatureIds.connect( opTrainingFeatures.FeatureIds )
-        opBatchFeatures.SelectionMatrix.connect( opTrainingFeatures.SelectionMatrix )
-        
-        # Classifier and LabelsCount are provided by the interactive workflow
-        opBatchPredictor.Classifier.connect( opClassify.Classifier )
-        opBatchPredictor.LabelsCount.connect( opClassify.MaxLabelValue )
-        
-        # Connect Image pathway:
-        # Input Image -> Features Op -> Prediction Op -> Export
-        opBatchFeatures.InputImage.connect( opBatchInputs.Image )
-        opBatchPredictor.Image.connect( opBatchFeatures.OutputImage )
-        opBatchResults.ImageToExport.connect( opBatchPredictor.PMaps )
-        '''
         self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.featureSelectionApplet)
@@ -106,7 +65,7 @@ class PixelClassificationWorkflow(Workflow):
         
         # The shell needs a slot from which he can read the list of image names to switch between.
         # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
-        opSelectFilename = OperatorWrapper( OpAttributeSelector, graph=graph)
+        opSelectFilename = OperatorWrapper( OpAttributeSelector, graph=graph, parent=self)
         opSelectFilename.InputObject.connect( opData.Dataset )
         opSelectFilename.AttributeName.setValue( 'filePath' )
         
@@ -121,7 +80,3 @@ class PixelClassificationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self._imageNameListSlot
     
-    @property
-    def graph( self ):
-        '''the lazyflow graph shared by the applets'''
-        return self._graph

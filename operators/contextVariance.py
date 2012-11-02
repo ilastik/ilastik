@@ -4,7 +4,7 @@ from lazyflow import roi
 from lazyflow.graph import *
 import context
 import collections
-
+import vigra
 
 class OpVarianceContext2DOld(Operator):
     name = "VarianceContext2D"
@@ -84,7 +84,7 @@ class OpContextVariance(Operator):
         #get srcRoi to retrieve necessary source data
         addShape = [maxRadius for dim in inputShape]
         roi_copy = copy.copy(roi)
-        srcRoi = roi.expandByShape(addShape)
+        srcRoi = roi.expandByShape(addShape, tIndex=None, cIndex=axistags.channelIndex)
         #expand only in spatial dimensions
         srcRoi.setDim(axistags.channelIndex, 0, nclasses)
         hasTimeAxis = axistags.axisTypeCount(vigra.AxisType.Time)
