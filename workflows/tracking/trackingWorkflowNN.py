@@ -10,23 +10,24 @@ from ilastik.applets.tracking.trackingAppletNN import TrackingAppletNN
 
 class TrackingWorkflowNN( Workflow ):
     def __init__( self ):
-        super(TrackingWorkflowNN, self).__init__()
-        self._applets = []
-        self._imageNameListSlot = None
-        self._graph = None
-
         # Create a graph to be shared by all operators
         graph = Graph()
+        
+        super(TrackingWorkflowNN, self).__init__(graph=graph)
+        self._applets = []
+        self._imageNameListSlot = None
+#        self._graph = None
+
     
         ######################
         # Interactive workflow
         ######################
         
         ## Create applets 
-        self.dataSelectionApplet = DataSelectionApplet(graph, "Input Segmentation", "Input Segmentation", batchDataGui=False)
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input Segmentation", "Input Segmentation", batchDataGui=False)
 
-        self.objectExtractionApplet = ObjectExtractionApplet( graph )
-        self.trackingApplet = TrackingAppletNN( graph )
+        self.objectExtractionApplet = ObjectExtractionApplet( self )
+        self.trackingApplet = TrackingAppletNN( self )
 
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator
@@ -46,7 +47,7 @@ class TrackingWorkflowNN( Workflow ):
 
         # The shell needs a slot from which he can read the list of image names to switch between.
         # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
-        opSelectFilename = OperatorWrapper( OpAttributeSelector, graph=graph )
+        opSelectFilename = OperatorWrapper( OpAttributeSelector, parent=self )
         opSelectFilename.InputObject.connect( opData.Dataset )
         opSelectFilename.AttributeName.setValue( 'filePath' )
 
