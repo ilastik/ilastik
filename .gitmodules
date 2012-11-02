@@ -6,4 +6,4 @@
 	url = http://github.com/ilastik/volumina.git
 [submodule "ilastik"]
 	path = ilastik
-	url = http://github.com/ilastik/ilastik-0.6.git
+	url = http://github.com/ilastik/ilastik.git
