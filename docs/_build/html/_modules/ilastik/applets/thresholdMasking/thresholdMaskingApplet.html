@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.applets.thresholdMasking.thresholdMaskingApplet &mdash; applet-workflows 0.6.0 documentation</title>
+    <title>ilastik.applets.thresholdMasking.thresholdMaskingApplet &mdash; ilastik 0.6.0 documentation</title>
     
     <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
-    <link rel="top" title="applet-workflows 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
     <link rel="up" title="Module code" href="../../../index.html" /> 
   </head>
   <body>
@@ -35,7 +35,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -57,11 +57,11 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This is a simple thresholding applet</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">guiName</span><span class="p">,</span> <span class="n">projectFileGroupName</span> <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">,</span> <span class="n">guiName</span><span class="p">,</span> <span class="n">projectFileGroupName</span> <span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">ThresholdMaskingApplet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">guiName</span><span class="p">)</span>
 
         <span class="c"># Wrap the top-level operator, since the GUI supports multiple images</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span> <span class="o">=</span> <span class="n">OperatorWrapper</span><span class="p">(</span> <span class="n">OpThresholdMasking</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">,</span> <span class="n">promotedSlotNames</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;InputImage&#39;</span><span class="p">]</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span> <span class="o">=</span> <span class="n">OperatorWrapper</span><span class="p">(</span> <span class="n">OpThresholdMasking</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">workflow</span><span class="p">,</span> <span class="n">promotedSlotNames</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;InputImage&#39;</span><span class="p">]</span> <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span> <span class="o">=</span> <span class="bp">None</span>
         
@@ -74,10 +74,6 @@
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">dataSerializers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">viewerControlWidget</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_centralWidget</span><span class="o">.</span><span class="n">viewerControlWidget</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">gui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -115,7 +111,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>

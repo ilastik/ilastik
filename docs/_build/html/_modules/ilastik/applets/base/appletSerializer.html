@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.applets.base.appletSerializer &mdash; applet-workflows 0.6.0 documentation</title>
+    <title>ilastik.applets.base.appletSerializer &mdash; ilastik 0.6.0 documentation</title>
     
     <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
-    <link rel="top" title="applet-workflows 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
     <link rel="up" title="Module code" href="../../../index.html" /> 
   </head>
   <body>
@@ -35,7 +35,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -67,10 +67,10 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Abstract Method.</span>
 <span class="sd">        Write the applet&#39;s data to hdf5.</span>
-<span class="sd">        Args:</span>
-<span class="sd">            topGroup -- The hdf5Group object this serializer is responsible for</span>
-<span class="sd">            hdf5File -- An hdf5File object (already open)</span>
-<span class="sd">            projectFilePath -- The path to the project file (a string)</span>
+<span class="sd">        </span>
+<span class="sd">        :param topGroup: The hdf5Group object this serializer is responsible for</span>
+<span class="sd">        :param hdf5File: An hdf5File object (already open)</span>
+<span class="sd">        :param projectFilePath: The path to the project file (a string) \</span>
 <span class="sd">                               (Most serializers don&#39;t need to use this parameter)        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
@@ -80,10 +80,10 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Abstract Method.</span>
 <span class="sd">        Read the applet&#39;s data from hdf5.</span>
-<span class="sd">        Args:</span>
-<span class="sd">            topGroup -- The hdf5Group object this serializer is responsible for</span>
-<span class="sd">            hdf5File -- An hdf5File object (already open)</span>
-<span class="sd">            projectFilePath -- The path to the project file (a string)</span>
+<span class="sd">        </span>
+<span class="sd">        :param topGroup: The hdf5Group object this serializer is responsible for</span>
+<span class="sd">        :param hdf5File: An hdf5File object (already open)</span>
+<span class="sd">        :param projectFilePath: The path to the project file (a string) \</span>
 <span class="sd">                               (Most serializers don&#39;t need to use this parameter)        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
@@ -104,11 +104,92 @@
 <span class="sd">        Abstract Method.</span>
 <span class="sd">        Called if either</span>
 <span class="sd">        (1) the user closed the project or</span>
-<span class="sd">        (2) the project opening process needs to be aborted for some reason</span>
+<span class="sd">        (2) the project opening process needs to be aborted for some reason \</span>
 <span class="sd">            (e.g. not all items could be deserialized properly due to a corrupted ilp)</span>
 <span class="sd">        This way we can avoid invalid state due to a partially loaded project.</span>
 <span class="sd">        &quot;&quot;&quot;</span> 
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="c">#############################</span>
+    <span class="c"># Base class implementation #</span>
+    <span class="c">#############################</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroupName</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor.  Subclasses must call this method in their own __init__ functions.  If they fail to do so, the shell raises an exception.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_version</span> <span class="o">=</span> <span class="n">version</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_topGroupName</span> <span class="o">=</span> <span class="n">topGroupName</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span> <span class="c"># Signature: emit(percentComplete)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_base_initialized</span> <span class="o">=</span> <span class="bp">True</span>
+
+<div class="viewcode-block" id="AppletSerializer.serializeToHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.serializeToHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">serializeToHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Serialize the current applet state to the given hdf5 file.</span>
+<span class="sd">        Subclasses should **not** override this method.  Instead, subclasses override the &#39;private&#39; version, *_serializetoHdf5*</span>
+<span class="sd">        </span>
+<span class="sd">        :param hdf5File: An h5py.File handle to the project file, which should already be open</span>
+<span class="sd">        :param projectFilePath: The path to the given file handle.  (Most serializers do not use this parameter.)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># Check the overall file version</span>
+        <span class="n">ilastikVersion</span> <span class="o">=</span> <span class="n">hdf5File</span><span class="p">[</span><span class="s">&quot;ilastikVersion&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="c"># Make sure we can find our way around the project tree</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">VersionManager</span><span class="o">.</span><span class="n">isProjectFileVersionCompatible</span><span class="p">(</span><span class="n">ilastikVersion</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        
+        <span class="n">topGroup</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrCreateGroup</span><span class="p">(</span><span class="n">hdf5File</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">topGroupName</span><span class="p">)</span>
+        
+        <span class="c"># Set the version</span>
+        <span class="k">if</span> <span class="s">&#39;StorageVersion&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">topGroup</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">topGroup</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s">&#39;StorageVersion&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_version</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">topGroup</span><span class="p">[</span><span class="s">&#39;StorageVersion&#39;</span><span class="p">][()]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_version</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c"># Call the subclass to do the actual work</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_serializeToHdf5</span><span class="p">(</span><span class="n">topGroup</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="AppletSerializer.deserializeFromHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.deserializeFromHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">deserializeFromHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read the the current applet state from the given hdf5File handle, which should already be open.</span>
+<span class="sd">        Subclasses should **not** override this method.  Instead, subclasses override the &#39;private&#39; version, *_deserializeFromHdf5*</span>
+
+<span class="sd">        :param hdf5File: An h5py.File handle to the project file, which should already be open</span>
+<span class="sd">        :param projectFilePath: The path to the given file handle.  (Most serializers do not use this parameter.)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># Check the overall file version</span>
+        <span class="n">ilastikVersion</span> <span class="o">=</span> <span class="n">hdf5File</span><span class="p">[</span><span class="s">&quot;ilastikVersion&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="c"># Make sure we can find our way around the project tree</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">VersionManager</span><span class="o">.</span><span class="n">isProjectFileVersionCompatible</span><span class="p">(</span><span class="n">ilastikVersion</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c"># If the top group isn&#39;t there, call initWithoutTopGroup</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">topGroup</span> <span class="o">=</span> <span class="n">hdf5File</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">topGroupName</span><span class="p">]</span>
+            <span class="n">groupVersion</span> <span class="o">=</span> <span class="n">topGroup</span><span class="p">[</span><span class="s">&#39;StorageVersion&#39;</span><span class="p">][()]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">topGroup</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">groupVersion</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">topGroup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="c"># Call the subclass to do the actual work</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_deserializeFromHdf5</span><span class="p">(</span><span class="n">topGroup</span><span class="p">,</span> <span class="n">groupVersion</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">initWithoutTopGroup</span><span class="p">(</span><span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
 
     <span class="c">#######################</span>
     <span class="c"># Optional methods    #</span>
@@ -119,6 +200,7 @@
 <span class="sd">        Optional override for subclasses.</span>
 <span class="sd">        Called when there is no top group to deserialize</span>
 <span class="sd">        Gives the applet a chance to inspect the hdf5File or project path, even though no top group is present in the file.</span>
+<span class="sd">        Parameters as the same as in serializeToHdf5()</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
 
@@ -159,84 +241,6 @@
     <span class="k">def</span> <span class="nf">topGroupName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_topGroupName</span>
 
-    <span class="c">#############################</span>
-    <span class="c"># Base class implementation #</span>
-    <span class="c">#############################</span>
-
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroupName</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Constructor.  Subclasses must call this method in their own __init__ functions.  If they fail to do so, the shell raises an exception.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_version</span> <span class="o">=</span> <span class="n">version</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_topGroupName</span> <span class="o">=</span> <span class="n">topGroupName</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span> <span class="c"># Signature: emit(percentComplete)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_base_initialized</span> <span class="o">=</span> <span class="bp">True</span>
-
-<div class="viewcode-block" id="AppletSerializer.serializeToHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.serializeToHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">serializeToHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Serialize the current applet state to the given hdf5File handle, which should already be open.</span>
-<span class="sd">        *projectFilePath* is the path to the given file handle.  (Most serializers do not use this parameter.)</span>
-
-<span class="sd">        Subclasses should **not** override this method.  Instead, subclasses override the &#39;private&#39; version, *_serializetoHdf5*</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c"># Check the overall file version</span>
-        <span class="n">ilastikVersion</span> <span class="o">=</span> <span class="n">hdf5File</span><span class="p">[</span><span class="s">&quot;ilastikVersion&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
-
-        <span class="c"># Make sure we can find our way around the project tree</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">VersionManager</span><span class="o">.</span><span class="n">isProjectFileVersionCompatible</span><span class="p">(</span><span class="n">ilastikVersion</span><span class="p">):</span>
-            <span class="k">return</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-        
-        <span class="n">topGroup</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrCreateGroup</span><span class="p">(</span><span class="n">hdf5File</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">topGroupName</span><span class="p">)</span>
-        
-        <span class="c"># Set the version</span>
-        <span class="k">if</span> <span class="s">&#39;StorageVersion&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">topGroup</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="n">topGroup</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s">&#39;StorageVersion&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_version</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">topGroup</span><span class="p">[</span><span class="s">&#39;StorageVersion&#39;</span><span class="p">][()]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_version</span>
-
-        <span class="k">try</span><span class="p">:</span>
-            <span class="c"># Call the subclass to do the actual work</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_serializeToHdf5</span><span class="p">(</span><span class="n">topGroup</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">)</span>
-        <span class="k">finally</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
-</div>
-<div class="viewcode-block" id="AppletSerializer.deserializeFromHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.deserializeFromHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">deserializeFromHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Read the the current applet state from the given hdf5File handle, which should already be open.</span>
-<span class="sd">        *projectFilePath* is the path to the given file handle.  (Most serializers do not use this parameter.)</span>
-
-<span class="sd">        Subclasses should **not** override this method.  Instead, subclasses override the &#39;private&#39; version, *_deserializeFromHdf5*</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c"># Check the overall file version</span>
-        <span class="n">ilastikVersion</span> <span class="o">=</span> <span class="n">hdf5File</span><span class="p">[</span><span class="s">&quot;ilastikVersion&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
-
-        <span class="c"># Make sure we can find our way around the project tree</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">VersionManager</span><span class="o">.</span><span class="n">isProjectFileVersionCompatible</span><span class="p">(</span><span class="n">ilastikVersion</span><span class="p">):</span>
-            <span class="k">return</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-
-        <span class="c"># If the top group isn&#39;t there, call initWithoutTopGroup</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">topGroup</span> <span class="o">=</span> <span class="n">hdf5File</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">topGroupName</span><span class="p">]</span>
-            <span class="n">groupVersion</span> <span class="o">=</span> <span class="n">topGroup</span><span class="p">[</span><span class="s">&#39;StorageVersion&#39;</span><span class="p">][()]</span>
-        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-            <span class="n">topGroup</span> <span class="o">=</span> <span class="bp">None</span>
-            <span class="n">groupVersion</span> <span class="o">=</span> <span class="bp">None</span>
-
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">topGroup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-                <span class="c"># Call the subclass to do the actual work</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_deserializeFromHdf5</span><span class="p">(</span><span class="n">topGroup</span><span class="p">,</span> <span class="n">groupVersion</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">initWithoutTopGroup</span><span class="p">(</span><span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">)</span>
-        <span class="k">finally</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
-</div>
     <span class="nd">@property</span>
 <div class="viewcode-block" id="AppletSerializer.base_initialized"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.base_initialized">[docs]</a>    <span class="k">def</span> <span class="nf">base_initialized</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -274,7 +278,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>

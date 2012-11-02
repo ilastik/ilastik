@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Workflow Design &mdash; applet-workflows 0.6.0 documentation</title>
+    <title>Workflow Design &mdash; ilastik 0.6.0 documentation</title>
     
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="applet-workflows 0.6.0 documentation" href="index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
     <link rel="next" title="Applet API" href="applet_api.html" />
     <link rel="prev" title="Overview" href="overview.html" /> 
   </head>
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="overview.html" title="Overview"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -53,7 +53,7 @@
             
   <div class="section" id="workflow-design">
 <span id="id1"></span><h1>Workflow Design<a class="headerlink" href="#workflow-design" title="Permalink to this headline">¶</a></h1>
-<p>The most important component of a GUI based on the applet-workflows framework is the workflow of operators that pass data between applets.
+<p>The most important component of a GUI based on the ilastik framework is the workflow of operators that pass data between applets.
 To be an effective workflow designer, you need to have a solid grasp of lazyflow operators and connections.</p>
 <div class="section" id="prerequisites">
 <h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
@@ -77,6 +77,9 @@ To be an effective workflow designer, you need to have a solid grasp of lazyflow
         <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputB</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
         <span class="n">result</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="o">+</span><span class="n">b</span>
         <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dirtySlot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The operator above can be represented graphically with the following diagram:</p>
@@ -127,6 +130,9 @@ Graphically, we use circles for level-0 slots, and rectangles to represent slots
         <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">Inputs</span><span class="p">:</span>
             <span class="n">result</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">+=</span> <span class="n">slot</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dirtySlot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Graphically, the OpMultiSum operator looks like this:</p>
@@ -173,6 +179,9 @@ When you see two connected multi-slots, you can imagine their subslot connection
         <span class="n">inputData</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
         <span class="n">result</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">inputData</span> <span class="o">&gt;</span> <span class="n">thresholdLevel</span>
         <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dirtySlot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="figure">
@@ -201,6 +210,9 @@ When you see two connected multi-slots, you can imagine their subslot connection
         <span class="n">inputData</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Inputs</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
         <span class="n">result</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">inputData</span> <span class="o">&gt;</span> <span class="n">thresholdLevel</span>
         <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dirtySlot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Outputs</span><span class="p">[</span><span class="n">subindex</span><span class="p">]</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>That doesn&#8217;t look too bad, but it duplicates most of the functionality of the original operator, which leads to big maintenance issues for more complicated operators.</p>
@@ -284,7 +296,7 @@ We specify this by passing a list of slot names to &#8216;promote&#8217; (i.e. l
 </div>
 <div class="section" id="basic-workflows">
 <span id="id2"></span><h2>Basic Workflows<a class="headerlink" href="#basic-workflows" title="Permalink to this headline">¶</a></h2>
-<p>In the applet-workflows framework, each applet has a single &#8216;top-level&#8217; operator.  Any changes to the computation parameters (e.g. from user input) must be propagated exclusively via operator slots.
+<p>In the ilastik framework, each applet has a single &#8216;top-level&#8217; operator.  Any changes to the computation parameters (e.g. from user input) must be propagated exclusively via operator slots.
 The applet GUI should be a thin layer of code that simply configures the applet&#8217;s top-level operator and displays the operator&#8217;s current state.</p>
 <p>The ilastik-shell is designed to handle computation pipelines that handle multiple images at once.  For that reason, it is always expected that applets pass their results via multi-slots (i.e. slots of level &gt;= 1).
 The multi-slot is always indexed by the image index.  As an example, here&#8217;s the diagram for the ThresholdMasking example workflow, shown with two images loaded:</p>
@@ -360,7 +372,7 @@ The figure above omits the internal operators.  Here&#8217;s a more detailed fig
         <li class="right" >
           <a href="overview.html" title="Overview"
              >previous</a> |</li>
-        <li><a href="index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

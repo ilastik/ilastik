@@ -4,7 +4,7 @@
 Workflow Design
 ===============
 
-The most important component of a GUI based on the applet-workflows framework is the workflow of operators that pass data between applets.  
+The most important component of a GUI based on the ilastik framework is the workflow of operators that pass data between applets.  
 To be an effective workflow designer, you need to have a solid grasp of lazyflow operators and connections.
 
 Prerequisites
@@ -32,6 +32,9 @@ Consider this simple example operator::
             b = self.InputB.get(roi).wait()
             result[...] = a+b
             return result
+
+        def propagateDirty(self, dirtySlot, subindex, roi):
+            self.Output.setDirty(roi)
 
 The operator above can be represented graphically with the following diagram:
 
@@ -85,6 +88,9 @@ Let's rewrite the OpSum to use a single "multislot" as its input::
             for slot in self.Inputs:
                 result[...] += slot.get(roi).wait()
             return result
+
+        def propagateDirty(self, dirtySlot, subindex, roi):
+            self.Output.setDirty(roi)
 
 Graphically, the OpMultiSum operator looks like this:
 
@@ -142,6 +148,9 @@ Consider the following simple thresholding operator, which produces a binary ima
             result[...] = inputData > thresholdLevel
             return result
 
+        def propagateDirty(self, dirtySlot, subindex, roi):
+            self.Output.setDirty(roi)
+
 .. figure:: images/opThreshold.svg
    :scale: 100  %
    :alt: Simple Threshold Operator
@@ -172,6 +181,9 @@ A naive approach is to re-implement the original (single-image) operator from sc
             inputData = self.Inputs[index].get(roi).wait()
             result[...] = inputData > thresholdLevel
             return result
+
+        def propagateDirty(self, dirtySlot, subindex, roi):
+            self.Outputs[subindex].setDirty(roi)
 
 That doesn't look too bad, but it duplicates most of the functionality of the original operator, which leads to big maintenance issues for more complicated operators.
 
@@ -267,7 +279,7 @@ Now only the ``Input`` slot has been 'promoted' to a list input.  The other slot
 Basic Workflows
 ===============
 
-In the applet-workflows framework, each applet has a single 'top-level' operator.  Any changes to the computation parameters (e.g. from user input) must be propagated exclusively via operator slots.  
+In the ilastik framework, each applet has a single 'top-level' operator.  Any changes to the computation parameters (e.g. from user input) must be propagated exclusively via operator slots.  
 The applet GUI should be a thin layer of code that simply configures the applet's top-level operator and displays the operator's current state.
 
 The ilastik-shell is designed to handle computation pipelines that handle multiple images at once.  For that reason, it is always expected that applets pass their results via multi-slots (i.e. slots of level >= 1).

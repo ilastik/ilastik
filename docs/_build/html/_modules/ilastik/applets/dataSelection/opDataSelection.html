@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.applets.dataSelection.opDataSelection &mdash; applet-workflows 0.6.0 documentation</title>
+    <title>ilastik.applets.dataSelection.opDataSelection &mdash; ilastik 0.6.0 documentation</title>
     
     <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
-    <link rel="top" title="applet-workflows 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
     <link rel="up" title="Module code" href="../../../index.html" /> 
   </head>
   <body>
@@ -35,7 +35,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -84,27 +84,24 @@
 
 <div class="viewcode-block" id="OpDataSelection"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.dataSelection.opDataSelection.OpDataSelection">[docs]</a><span class="k">class</span> <span class="nc">OpDataSelection</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The top-level operator for the data selection applet.</span>
-<span class="sd">    This implementation supports single images.</span>
-<span class="sd">    Use an OperatorWrapper to enable multi-image support.</span>
+<span class="sd">    The top-level operator for the data selection applet, implemented as a single-image operator.</span>
+<span class="sd">    The applet uses an OperatorWrapper to make it suitable for use in a workflow.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;OpDataSelection&quot;</span>
     <span class="n">category</span> <span class="o">=</span> <span class="s">&quot;Top-level&quot;</span>
     
     <span class="n">SupportedExtensions</span> <span class="o">=</span> <span class="n">OpInputDataReader</span><span class="o">.</span><span class="n">SupportedExtensions</span>
-    
+
+    <span class="c"># Inputs    </span>
     <span class="n">ProjectFile</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;object&#39;</span><span class="p">)</span> <span class="c">#: The project hdf5 File object (already opened)</span>
-    <span class="n">ProjectDataGroup</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;string&#39;</span><span class="p">)</span> <span class="c">#: The internal path to the hdf5 group where project-local \</span>
-                                                 <span class="c">#  datasets are stored within the project file</span>
+    <span class="n">ProjectDataGroup</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;string&#39;</span><span class="p">)</span> <span class="c">#: The internal path to the hdf5 group where project-local datasets are stored within the project file</span>
     <span class="n">WorkingDirectory</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;filestring&#39;</span><span class="p">)</span> <span class="c">#: The filesystem directory where the project file is located</span>
+    <span class="n">Dataset</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;object&#39;</span><span class="p">)</span> <span class="c">#: A DatasetInfo object</span>
 
-    <span class="c"># A dataset info object</span>
-    <span class="n">Dataset</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;object&#39;</span><span class="p">)</span>
-
-    <span class="c"># Output data</span>
-    <span class="n">ImageName</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;string&#39;</span><span class="p">)</span>
-    <span class="n">Image</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
-    <span class="n">AllowLabels</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;bool&#39;</span><span class="p">)</span>
+    <span class="c"># Outputs</span>
+    <span class="n">ImageName</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;string&#39;</span><span class="p">)</span> <span class="c">#: The name of the output image</span>
+    <span class="n">Image</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c">#: The output image</span>
+    <span class="n">AllowLabels</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;bool&#39;</span><span class="p">)</span> <span class="c">#: A bool indicating whether or not this image can be used for training</span>
     
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">OpDataSelection</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -178,7 +175,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
