@@ -9,11 +9,11 @@ class ThresholdMaskingApplet( Applet ):
     """
     This is a simple thresholding applet
     """
-    def __init__( self, graph, guiName, projectFileGroupName ):
+    def __init__( self, workflow, guiName, projectFileGroupName ):
         super(ThresholdMaskingApplet, self).__init__(guiName)
 
         # Wrap the top-level operator, since the GUI supports multiple images
-        self._topLevelOperator = OperatorWrapper( OpThresholdMasking, graph=graph, promotedSlotNames=['InputImage'] )
+        self._topLevelOperator = OperatorWrapper( OpThresholdMasking, parent=workflow, promotedSlotNames=['InputImage'] )
 
         self._gui = None
         
@@ -26,10 +26,6 @@ class ThresholdMaskingApplet( Applet ):
     @property
     def dataSerializers(self):
         return self._serializableItems
-
-    @property
-    def viewerControlWidget(self):
-        return self._centralWidget.viewerControlWidget
 
     @property
     def gui(self):

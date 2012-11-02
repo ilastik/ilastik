@@ -5,22 +5,23 @@ from lazyflow.operators import OpBlockedSparseLabelArray
 class OpLabeling( Operator ):
     """
     Top-level operator for the labeling base class.
+    Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.
     """
     name="OpLabeling"
     category = "Top-level"
-    
-    # Graph inputs
-    
-    InputImages = InputSlot(level=1) # Original input data.
-    LabelsAllowedFlags = InputSlot(stype='bool', level=1) # Specifies which images are permitted to be labeled 
 
-    LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
-    LabelEraserValue = InputSlot()
-    LabelDelete = InputSlot()
+    # Input slots    
+    InputImages = InputSlot(level=1) #: Original input data.
+    LabelInputs = InputSlot(optional = True, level=1) #: Input for providing label data from an external source
+    
+    LabelsAllowedFlags = InputSlot(stype='bool', level=1) #: Specifies which images are permitted to be labeled 
+    LabelEraserValue = InputSlot() #: The label value that signifies the 'eraser', i.e. voxels to clear labels from
+    LabelDelete = InputSlot() #: When this input is set to a value, all labels of that value are deleted from the operator's data.
 
-    MaxLabelValue = OutputSlot()
-    LabelImages = OutputSlot(level=1) # Labels from the user
-    NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
+    # Output slots
+    MaxLabelValue = OutputSlot() #: The highest label value currently stored in the array of labels
+    LabelImages = OutputSlot(level=1) #: Stored labels from the user
+    NonzeroLabelBlocks = OutputSlot(level=1) #: A list if slices that contain non-zero label values
 
     def __init__( self, *args, **kwargs ):
         """

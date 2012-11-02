@@ -26,14 +26,11 @@ from lazyflow.tracer import traceLogged, Tracer
 class LayerViewerGui(QMainWindow):
     """
     Implements an applet GUI whose central widget is a VolumeEditor 
-      and whose layer controls simply contains a layer list widget.
+    and whose layer controls simply contains a layer list widget.
     Intended to be used as a subclass for applet GUI objects.
     
-    Provides: - Central widget (viewer)
-              - View Menu
-              - Layer controls
-              
-    Does NOT provide an applet drawer widget.
+    Provides: Central widget (viewer), View Menu, and Layer controls
+    Provides an EMPTY applet drawer widget.  Subclasses should replace it with their own applet drawer.
     """
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -70,10 +67,11 @@ class LayerViewerGui(QMainWindow):
     @traceLogged(traceLogger)
     def __init__(self, topLevelOperator):
         """
-        Args:
-            observedSlots   - A list of slots that we'll listen for changes on.
-                               Each must be a multislot with level=1 or level=2.
-                               The first index in the multislot is the image index. 
+        Constructor.  **All** slots of the provided *topLevelOperator* will be monitored for changes.
+        Changes include slot resize events, and slot ready/unready status changes.
+        When a change is detected, the `setupLayers()` function is called, and the result is used to update the list of layers shown in the central widget.
+        
+        :param topLevelOperator: The top-level operator for the applet this GUI belongs to.
         """
         super(LayerViewerGui, self).__init__()
 
@@ -103,17 +101,17 @@ class LayerViewerGui(QMainWindow):
         self.layerstack = LayerStackModel()
 
         self.initAppletDrawerUi() # Default implementation loads a blank drawer.
-        self.initCentralUic()
+        self._initCentralUic()
         self.__viewerControlWidget = None
         self.initViewerControlUi()
         
-        self.initEditor()
+        self._initEditor()
         
         self.imageIndex = -1
         self.lastUpdateImageIndex = -1
         
         def handleDatasetInsertion(slot, imageIndex):
-            if self.imageIndex == -1 and self.areProvidersInSync():
+            if self.imageIndex == -1 and self._areProvidersInSync():
                 self.setImageIndex( imageIndex )
         
         for provider in self.observedSlots:
@@ -135,6 +133,13 @@ class LayerViewerGui(QMainWindow):
             provider.notifyRemove( bind( handleDatasetRemoval ) )
 
     def setupLayers( self, currentImageIndex ):
+        """
+        Create a list of layers to be displayed in the central widget.
+        Subclasses should override this method to create the list of layers that can be displayed.
+        For debug and development purposes, the base class implementation simply generates layers for all topLevelOperator slots. 
+        
+        :param currentImageIndex: The index of the shell's currently selected image.
+        """
         layers = []
         for multiImageSlot in self.observedSlots:
             if 0 <= currentImageIndex < len(multiImageSlot):
@@ -151,8 +156,8 @@ class LayerViewerGui(QMainWindow):
         if self.imageIndex != -1:
             for provider in self.observedSlots:
                 # We're switching datasets.  Unsubscribe from the old one's notifications.
-                provider[self.imageIndex].unregisterInserted( bind(self.handleLayerInsertion) )
-                provider[self.imageIndex].unregisterRemove( bind(self.handleLayerRemoval) )
+                provider[self.imageIndex].unregisterInserted( bind(self._handleLayerInsertion) )
+                provider[self.imageIndex].unregisterRemove( bind(self._handleLayerRemoval) )
 
         self.imageIndex = imageIndex
         
@@ -173,10 +178,10 @@ class LayerViewerGui(QMainWindow):
         # Make sure we're notified if a layer is inserted in the future so we can subscribe to its ready notifications
         for provider in self.observedSlots:
             if self.imageIndex < len(provider):
-                provider[self.imageIndex].notifyInserted( bind(self.handleLayerInsertion) )
-                provider[self.imageIndex].notifyRemoved( bind(self.handleLayerRemoval) )
+                provider[self.imageIndex].notifyInserted( bind(self._handleLayerInsertion) )
+                provider[self.imageIndex].notifyRemoved( bind(self._handleLayerRemoval) )
 
-    def handleLayerInsertion(self, slot, slotIndex):
+    def _handleLayerInsertion(self, slot, slotIndex):
         """
         The multislot providing our layers has a new item.
         Make room for it in the layer GUI and subscribe to updates.
@@ -186,7 +191,7 @@ class LayerViewerGui(QMainWindow):
             slot[slotIndex].notifyReady( bind(self.updateAllLayers) )
             slot[slotIndex].notifyUnready( bind(self.updateAllLayers) )
     
-    def handleLayerRemoval(self, slot, slotIndex):
+    def _handleLayerRemoval(self, slot, slotIndex):
         """
         An item is about to be removed from the multislot that is providing our layers.
         Remove the layer from the GUI.
@@ -201,8 +206,16 @@ class LayerViewerGui(QMainWindow):
     @traceLogged(traceLogger)
     def createStandardLayerFromSlot(self, slot, lastChannelIsAlpha=False):
         """
-        Generate a volumina layer using the given slot.
-        Choose between grayscale or RGB depending on the number of channels.
+        Convenience function.
+        Generates a volumina layer using the given slot.
+        Chooses between grayscale or RGB depending on the number of channels in the slot.
+        
+        * If *slot* has 1 channel, a GrayscaleLayer is created.
+        * If *slot* has 2 non-alpha channels, an RGBALayer is created with R and G channels.
+        * If *slot* has 3 non-alpha channels, an RGBALayer is created with R,G, and B channels. 
+        
+        :param slot: The slot to generate a layer from
+        :param lastChannelIsAlpha: If True, the last channel in the slot is assumed to be an alpha channel.
         """
         def getRange(meta):
             if 'drange' in meta:
@@ -271,7 +284,7 @@ class LayerViewerGui(QMainWindow):
         return layer
 
     @traceLogged(traceLogger)
-    def areProvidersInSync(self):
+    def _areProvidersInSync(self):
         """
         When an image is appended to the workflow, not all slots are resized simultaneously.
         We should avoid calling setupLayers() until all the slots have been resized with the new image.
@@ -299,7 +312,7 @@ class LayerViewerGui(QMainWindow):
     def updateAllLayers(self):
         # Check to make sure all layers are in sync
         # (During image insertions, outputs are resized one at a time.)
-        if not self.areProvidersInSync():
+        if not self._areProvidersInSync():
             return
 
         if self.imageIndex >= 0:        
@@ -427,6 +440,7 @@ class LayerViewerGui(QMainWindow):
         """
         Load the viewer controls GUI, which appears below the applet bar.
         In our case, the viewer control GUI consists mainly of a layer list.
+        Subclasses should override this if they provide their own viewer control widget.
         """
         localDir = os.path.split(__file__)[0]
         self.__viewerControlWidget = uic.loadUi(localDir + "/viewerControls.ui")
@@ -445,7 +459,7 @@ class LayerViewerGui(QMainWindow):
         return self._drawer
 
     @traceLogged(traceLogger)
-    def initCentralUic(self):
+    def _initCentralUic(self):
         """
         Load the GUI from the ui file into this class and connect it with event handlers.
         """
@@ -539,7 +553,7 @@ class LayerViewerGui(QMainWindow):
         self.menuGui.actionSetCacheSize.triggered.connect(setCacheSize)
                 
     @traceLogged(traceLogger)
-    def initEditor(self):
+    def _initEditor(self):
         """
         Initialize the Volume Editor GUI.
         """
@@ -551,7 +565,7 @@ class LayerViewerGui(QMainWindow):
         self.clickReporter.rightClickReceived.connect( self._handleEditorRightClick )
         self.clickReporter.leftClickReceived.connect( self._handleEditorLeftClick )
 
-        self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
+        self.editor.newImageView2DFocus.connect(self._setIconToViewMenu)
         self.editor.setInteractionMode( 'navigation' )
         self.volumeEditorWidget.init(self.editor)
         
@@ -572,7 +586,7 @@ class LayerViewerGui(QMainWindow):
         self.editor._lastImageViewFocus = 0
 
     @traceLogged(traceLogger)
-    def setIconToViewMenu(self):
+    def _setIconToViewMenu(self):
         """
         In the "Only for Current View" menu item of the View menu, 
         show the user which axis is the current one by changing the menu item icon.

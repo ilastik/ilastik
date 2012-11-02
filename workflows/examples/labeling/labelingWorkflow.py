@@ -7,15 +7,14 @@ from ilastik.applets.labeling import LabelingApplet
 
 class LabelingWorkflow(Workflow):
     def __init__(self):
-        super(LabelingWorkflow, self).__init__()
-        self._applets = []
-
         # Create a graph to be shared by all operators
         graph = Graph()
+        super(LabelingWorkflow, self).__init__(graph=graph)
+        self._applets = []
 
         # Create applets 
-        self.dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
-        self.labelingApplet = LabelingApplet(graph, "Generic Labeling Data")
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        self.labelingApplet = LabelingApplet(self, "Generic Labeling Data")
 
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.labelingApplet )

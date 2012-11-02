@@ -14,12 +14,10 @@ from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
 class PixelClassificationWorkflow(Workflow):
     
     def __init__(self):
-        super(PixelClassificationWorkflow, self).__init__()
-        self._applets = []
-
         # Create a graph to be shared by all operators
         graph = Graph()
-        self._graph = graph
+        super(PixelClassificationWorkflow, self).__init__( graph=graph )
+        self._applets = []
 
         ######################
         # Interactive workflow
@@ -27,9 +25,9 @@ class PixelClassificationWorkflow(Workflow):
         
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
-        self.dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
-        self.featureSelectionApplet = FeatureSelectionApplet(graph, "Feature Selection", "FeatureSelections")
-        self.pcApplet = PixelClassificationApplet(graph, "PixelClassification")
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
+        self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
 
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator
@@ -55,8 +53,8 @@ class PixelClassificationWorkflow(Workflow):
         ######################
         
         ## Create applets
-        self.batchInputApplet = DataSelectionApplet(graph, "Batch Inputs", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
-        self.batchResultsApplet = BatchIoApplet(graph, "Batch Results")
+        self.batchInputApplet = DataSelectionApplet(self, "Batch Inputs", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
+        self.batchResultsApplet = BatchIoApplet(self, "Batch Results")
 
         ## Access applet operators
         opBatchInputs = self.batchInputApplet.topLevelOperator
@@ -64,11 +62,11 @@ class PixelClassificationWorkflow(Workflow):
         opBatchResults = self.batchResultsApplet.topLevelOperator
         
         ## Create additional batch workflow operators
-        opBatchFeatures = OperatorWrapper( OpFeatureSelection, graph=graph, promotedSlotNames=['InputImage'] )
+        opBatchFeatures = OperatorWrapper( OpFeatureSelection, graph=graph, parent=self, promotedSlotNames=['InputImage'] )
         opBatchFeatures.name = "opBatchFeatures"
-        opBatchPredictor = OperatorWrapper( OpPredictRandomForest, graph=graph, promotedSlotNames=['Image'])
+        opBatchPredictor = OperatorWrapper( OpPredictRandomForest, graph=graph, parent=self, promotedSlotNames=['Image'])
         opBatchPredictor.name = "opBatchPredictor"
-        opSelectBatchDatasetPath = OperatorWrapper( OpAttributeSelector, graph=graph )
+        opSelectBatchDatasetPath = OperatorWrapper( OpAttributeSelector, graph=graph, parent=self )
         
         ## Connect Operators ## 
         
@@ -102,7 +100,7 @@ class PixelClassificationWorkflow(Workflow):
 
         # The shell needs a slot from which he can read the list of image names to switch between.
         # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
-        opSelectFilename = OperatorWrapper( OpAttributeSelector, graph=graph )
+        opSelectFilename = OperatorWrapper( OpAttributeSelector, graph=graph, parent=self )
         opSelectFilename.InputObject.connect( opData.Dataset )
         opSelectFilename.AttributeName.setValue( 'filePath' )
 
@@ -116,8 +114,3 @@ class PixelClassificationWorkflow(Workflow):
     @property
     def imageNameListSlot(self):
         return self._imageNameListSlot
-    
-    @property
-    def graph( self ):
-        '''the lazyflow graph shared by the applets'''
-        return self._graph

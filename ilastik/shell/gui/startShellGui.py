@@ -1,3 +1,5 @@
+import os
+
 #make the program quit on Ctrl+C
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -19,7 +21,19 @@ def startShellGui(workflowClass, testFunc = None, windowTitle="ilastikShell", wo
     """
     app = QApplication([])
     QTimer.singleShot( 0, functools.partial(launchShell, workflowClass, testFunc, windowTitle, workflowKwargs ) )
+    
+    _applyStyleSheet(app)
+
     app.exec_()
+
+def _applyStyleSheet(app):
+    """
+    Apply application-wide style-sheet rules.
+    """
+    styleSheetPath = os.path.join( os.path.split(ilastik.shell.gui.ilastikShell.__file__)[0], 'ilastik-style.qss' )
+    with file( styleSheetPath, 'r' ) as f:
+        styleSheetText = f.read()
+        app.setStyleSheet(styleSheetText)
 
 def launchShell(workflowClass, testFunc = None, windowTitle="ilastikShell", workflowKwargs=None):
     """
@@ -40,10 +54,8 @@ def launchShell(workflowClass, testFunc = None, windowTitle="ilastikShell", work
     workflow = workflowClass(**workflowKwargs)
     
     # Create the shell and populate it
-    shell = IlastikShell(sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
+    shell = IlastikShell(workflow=workflow, sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
     shell.setWindowTitle(windowTitle)
-    for app in workflow.applets:
-        shell.addApplet(app)
     shell.setImageNameListSlot( workflow.imageNameListSlot )
     
     # Start the shell GUI.

@@ -11,11 +11,12 @@ class BatchIoApplet( Applet ):
     This applet allows the user to select sets of input data, 
     which are provided as outputs in the corresponding top-level applet operator.
     """
-    def __init__( self, graph, title ):
+    def __init__( self, workflow, title ):
         super(BatchIoApplet, self).__init__(title)
 
-        self._topLevelOperator = OperatorWrapper( OpBatchIo, graph=graph, promotedSlotNames=set(['DatasetPath', 'ImageToExport']) )
-        
+        self._topLevelOperator = OperatorWrapper( OpBatchIo, parent=workflow, promotedSlotNames=set(['DatasetPath', 'ImageToExport']) )
+        self._topLevelOperator.name = "BatchOutput Top-Level Operator"
+                
         # Ensure the operator has no length yet.
         # FIXME: Why is this necessary??!?! Shouldn't it be zero anyway?
         assert len(self._topLevelOperator.ImageToExport) == 0

@@ -16,27 +16,28 @@ class AppletGuiInterface():
     @abstractmethod
     def centralWidget( self ):
         """
-        Return the widget that will be displayed in the main viewer area.
+        Abstract method.  Return the widget that will be displayed in the main viewer area.
         """
         raise NotImplementedError
 
     @abstractmethod
     def appletDrawers(self):
         """
-        Return a list of (drawer title, drawer widget) pairs for this applet.
+        Abstract method.  Return a list of (drawer title, drawer widget) pairs for this applet.
         """
         raise NotImplementedError
     
     @abstractmethod
     def menus( self ):
         """
-        Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.
+        Abstract method.  Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.
         """
         raise NotImplementedError
 
     @abstractmethod
     def viewerControlWidget(self):
         """
+        Abstract method.
         Return the widget that controls how the content of the central widget is displayed.
         Typically this consists of a layer list control.
         """
@@ -45,6 +46,7 @@ class AppletGuiInterface():
     @abstractmethod
     def setImageIndex(self, imageIndex):
         """
+        Abstract method.
         Called by the shell when the user has switched the input image he wants to view.
         The GUI should respond by updating the content of the central widget.
         """
@@ -53,6 +55,7 @@ class AppletGuiInterface():
     @abstractmethod    
     def reset(self):
         """
+        Abstract method.
         Called by the shell when the current project has been unloaded.
         The GUI should reset itself to its initial state, whatever that is.
         """
