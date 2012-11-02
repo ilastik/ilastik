@@ -33,7 +33,7 @@ package_data={'ilastik': ['ilastik-splash.png',
           'ilastik.applets.projectMetadata': ['*.ui'],
           'ilastik.applets.thresholdMasking': ['*.ui'],
           'ilastik.applets.vigraWatershedViewer': ['*.ui'],
-          'ilastik.shell.gui': ['ui/*.ui'],
+          'ilastik.shell.gui': ['ui/*.ui', '*.qss'],
           'ilastik.ilastik_logging': ['logging_config.json']
               }
 
