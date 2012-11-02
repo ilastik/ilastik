@@ -9,16 +9,15 @@ from lazyflow.operators import OpAttributeSelector
 class VigraWatershedWorkflow(Workflow):
     
     def __init__(self):
-        super(VigraWatershedWorkflow, self).__init__()
-        self._applets = []
-
         # Create a graph to be shared by all operators
         graph = Graph()
-        self._graph = graph
+
+        super(VigraWatershedWorkflow, self).__init__(graph=graph)
+        self._applets = []
 
         # Create applets 
-        self.dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
-        self.watershedApplet = VigraWatershedViewerApplet(graph, "Watershed", "Watershed")
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        self.watershedApplet = VigraWatershedViewerApplet(self, "Watershed", "Watershed")
         
         # Connect top-level operators
         self.watershedApplet.topLevelOperator.InputImage.connect( self.dataSelectionApplet.topLevelOperator.Image )
@@ -41,8 +40,3 @@ class VigraWatershedWorkflow(Workflow):
     @property
     def imageNameListSlot(self):
         return self._imageNameListSlot
-    
-    @property
-    def graph( self ):
-        '''the lazyflow graph shared by the applets'''
-        return self._graph

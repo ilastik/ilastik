@@ -1,0 +1,286 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.applets.base.appletSerializer &mdash; applet-workflows 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="top" title="applet-workflows 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for ilastik.applets.base.appletSerializer</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABCMeta</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">ilastik</span> <span class="kn">import</span> <span class="n">VersionManager</span>
+<span class="kn">from</span> <span class="nn">ilastik.utility.simpleSignal</span> <span class="kn">import</span> <span class="n">SimpleSignal</span>
+
+<div class="viewcode-block" id="AppletSerializer"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer">[docs]</a><span class="k">class</span> <span class="nc">AppletSerializer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for all AppletSerializers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">ABCMeta</span> <span class="c"># Force subclasses to override abstract methods and properties</span>
+    
+    <span class="n">_base_initialized</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="c">####################</span>
+    <span class="c"># Abstract methods #</span>
+    <span class="c">####################</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="AppletSerializer._serializeToHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer._serializeToHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">_serializeToHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroup</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Abstract Method.</span>
+<span class="sd">        Write the applet&#39;s data to hdf5.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            topGroup -- The hdf5Group object this serializer is responsible for</span>
+<span class="sd">            hdf5File -- An hdf5File object (already open)</span>
+<span class="sd">            projectFilePath -- The path to the project file (a string)</span>
+<span class="sd">                               (Most serializers don&#39;t need to use this parameter)        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</div>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="AppletSerializer._deserializeFromHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer._deserializeFromHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">_deserializeFromHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroup</span><span class="p">,</span> <span class="n">groupVersion</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Abstract Method.</span>
+<span class="sd">        Read the applet&#39;s data from hdf5.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            topGroup -- The hdf5Group object this serializer is responsible for</span>
+<span class="sd">            hdf5File -- An hdf5File object (already open)</span>
+<span class="sd">            projectFilePath -- The path to the project file (a string)</span>
+<span class="sd">                               (Most serializers don&#39;t need to use this parameter)        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</div>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="AppletSerializer.isDirty"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.isDirty">[docs]</a>    <span class="k">def</span> <span class="nf">isDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Abstract Method.</span>
+<span class="sd">        Return true if the current state of this item </span>
+<span class="sd">        (in memory) does not match the state of the HDF5 group on disk.</span>
+<span class="sd">        SerializableItems are responsible for tracking their own dirty/notdirty state</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</div>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="AppletSerializer.unload"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.unload">[docs]</a>    <span class="k">def</span> <span class="nf">unload</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Abstract Method.</span>
+<span class="sd">        Called if either</span>
+<span class="sd">        (1) the user closed the project or</span>
+<span class="sd">        (2) the project opening process needs to be aborted for some reason</span>
+<span class="sd">            (e.g. not all items could be deserialized properly due to a corrupted ilp)</span>
+<span class="sd">        This way we can avoid invalid state due to a partially loaded project.</span>
+<span class="sd">        &quot;&quot;&quot;</span> 
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="c">#######################</span>
+    <span class="c"># Optional methods    #</span>
+    <span class="c">#######################</span>
+</div>
+<div class="viewcode-block" id="AppletSerializer.initWithoutTopGroup"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.initWithoutTopGroup">[docs]</a>    <span class="k">def</span> <span class="nf">initWithoutTopGroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Optional override for subclasses.</span>
+<span class="sd">        Called when there is no top group to deserialize</span>
+<span class="sd">        Gives the applet a chance to inspect the hdf5File or project path, even though no top group is present in the file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="c">#######################</span>
+    <span class="c"># Convenience methods #</span>
+    <span class="c">#######################</span>
+</div>
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="AppletSerializer.getOrCreateGroup"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.getOrCreateGroup">[docs]</a>    <span class="k">def</span> <span class="nf">getOrCreateGroup</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">parentGroup</span><span class="p">,</span> <span class="n">groupName</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience helper.</span>
+<span class="sd">        Returns parentGorup[groupName], creating first it if necessary.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">parentGroup</span><span class="p">[</span><span class="n">groupName</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">parentGroup</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">groupName</span><span class="p">)</span>
+</div>
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="AppletSerializer.deleteIfPresent"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.deleteIfPresent">[docs]</a>    <span class="k">def</span> <span class="nf">deleteIfPresent</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">parentGroup</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience helper.</span>
+<span class="sd">        Deletes parentGorup[groupName], if it exists.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">parentGroup</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">pass</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="AppletSerializer.version"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.version">[docs]</a>    <span class="k">def</span> <span class="nf">version</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the version of the serializer itself.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_version</span>
+    </div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">topGroupName</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_topGroupName</span>
+
+    <span class="c">#############################</span>
+    <span class="c"># Base class implementation #</span>
+    <span class="c">#############################</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroupName</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor.  Subclasses must call this method in their own __init__ functions.  If they fail to do so, the shell raises an exception.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_version</span> <span class="o">=</span> <span class="n">version</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_topGroupName</span> <span class="o">=</span> <span class="n">topGroupName</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span> <span class="c"># Signature: emit(percentComplete)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_base_initialized</span> <span class="o">=</span> <span class="bp">True</span>
+
+<div class="viewcode-block" id="AppletSerializer.serializeToHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.serializeToHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">serializeToHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Serialize the current applet state to the given hdf5File handle, which should already be open.</span>
+<span class="sd">        *projectFilePath* is the path to the given file handle.  (Most serializers do not use this parameter.)</span>
+
+<span class="sd">        Subclasses should **not** override this method.  Instead, subclasses override the &#39;private&#39; version, *_serializetoHdf5*</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># Check the overall file version</span>
+        <span class="n">ilastikVersion</span> <span class="o">=</span> <span class="n">hdf5File</span><span class="p">[</span><span class="s">&quot;ilastikVersion&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="c"># Make sure we can find our way around the project tree</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">VersionManager</span><span class="o">.</span><span class="n">isProjectFileVersionCompatible</span><span class="p">(</span><span class="n">ilastikVersion</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        
+        <span class="n">topGroup</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getOrCreateGroup</span><span class="p">(</span><span class="n">hdf5File</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">topGroupName</span><span class="p">)</span>
+        
+        <span class="c"># Set the version</span>
+        <span class="k">if</span> <span class="s">&#39;StorageVersion&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">topGroup</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">topGroup</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s">&#39;StorageVersion&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_version</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">topGroup</span><span class="p">[</span><span class="s">&#39;StorageVersion&#39;</span><span class="p">][()]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_version</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c"># Call the subclass to do the actual work</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_serializeToHdf5</span><span class="p">(</span><span class="n">topGroup</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="AppletSerializer.deserializeFromHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.deserializeFromHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">deserializeFromHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read the the current applet state from the given hdf5File handle, which should already be open.</span>
+<span class="sd">        *projectFilePath* is the path to the given file handle.  (Most serializers do not use this parameter.)</span>
+
+<span class="sd">        Subclasses should **not** override this method.  Instead, subclasses override the &#39;private&#39; version, *_deserializeFromHdf5*</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># Check the overall file version</span>
+        <span class="n">ilastikVersion</span> <span class="o">=</span> <span class="n">hdf5File</span><span class="p">[</span><span class="s">&quot;ilastikVersion&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="c"># Make sure we can find our way around the project tree</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">VersionManager</span><span class="o">.</span><span class="n">isProjectFileVersionCompatible</span><span class="p">(</span><span class="n">ilastikVersion</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c"># If the top group isn&#39;t there, call initWithoutTopGroup</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">topGroup</span> <span class="o">=</span> <span class="n">hdf5File</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">topGroupName</span><span class="p">]</span>
+            <span class="n">groupVersion</span> <span class="o">=</span> <span class="n">topGroup</span><span class="p">[</span><span class="s">&#39;StorageVersion&#39;</span><span class="p">][()]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">topGroup</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">groupVersion</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">topGroup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="c"># Call the subclass to do the actual work</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_deserializeFromHdf5</span><span class="p">(</span><span class="n">topGroup</span><span class="p">,</span> <span class="n">groupVersion</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">initWithoutTopGroup</span><span class="p">(</span><span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="AppletSerializer.base_initialized"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.base_initialized">[docs]</a>    <span class="k">def</span> <span class="nf">base_initialized</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Do not override this property.</span>
+<span class="sd">        Used by the shell to ensure that Applet.__init__ was called by your subclass.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_initialized</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

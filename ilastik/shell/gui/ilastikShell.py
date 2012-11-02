@@ -35,6 +35,9 @@ import numpy
 
 import threading
 
+from lazyflow.graph import Operator
+import lazyflow.tools.schematic
+
 class ShellActions(object):
     """
     The shell provides the applet constructors with access to his GUI actions.
@@ -57,7 +60,6 @@ class ProgressDisplayManager(QObject):
     """
     Manages progress signals from applets and displays them in the status bar.
     """
-    
     # Instead of connecting to applet progress signals directly,
     # we forward them through this qt signal.
     # This way we get the benefits of a queued connection without 
@@ -158,9 +160,6 @@ class IlastikShell( QMainWindow ):
         
         self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
 
-        for applet in workflow:
-            self.addApplet(applet)
-
         self.appletBar.expanded.connect(self.handleAppleBarItemExpanded)
         self.appletBar.clicked.connect(self.handleAppletBarClick)
         self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
@@ -179,6 +178,10 @@ class IlastikShell( QMainWindow ):
         self._disableCounts = []    # Controls for each applet can be disabled by his peers.
                                     # No applet can be enabled unless his disableCount == 0
 
+        # Add all the applets from the workflow
+        for app in workflow.applets:
+            self.addApplet(app)
+        self.workflow = workflow
         
     def _createProjectMenu(self):
         # Create a menu for "General" (non-applet) actions
@@ -230,8 +233,64 @@ class IlastikShell( QMainWindow ):
             mgrDlg = ShortcutManagerDlg(self)
         shortcutsAction = menu.addAction("&Keyboard Shortcuts")
         shortcutsAction.triggered.connect(editShortcuts)
-        
+
+        exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
+        export0 = exportDebugSubmenu.addAction("Lowest Detail")
+        export0.triggered.connect( partial(self.exportCurrentOperatorDiagram, 0) )
+
+        export1 = exportDebugSubmenu.addAction("Some Detail")
+        export1.triggered.connect( partial(self.exportCurrentOperatorDiagram, 1) )
+
+        export2 = exportDebugSubmenu.addAction("More Detail")
+        export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 2) )
+
+        export2 = exportDebugSubmenu.addAction("Even More Detail")
+        export2.triggered.connect( partial(self.exportCurrentOperatorDiagram, 3) )
+
+        export3 = exportDebugSubmenu.addAction("Unlimited Detail")
+        export3.triggered.connect( partial(self.exportCurrentOperatorDiagram, 100) )
+
+        exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
+        exportWorkflow0 = exportWorkflowSubmenu.addAction("Lowest Detail")
+        exportWorkflow0.triggered.connect( partial(self.exportWorkflowDiagram, 0) )
+
+        exportWorkflow1 = exportWorkflowSubmenu.addAction("Some Detail")
+        exportWorkflow1.triggered.connect( partial(self.exportWorkflowDiagram, 1) )
+
+        exportWorkflow2 = exportWorkflowSubmenu.addAction("More Detail")
+        exportWorkflow2.triggered.connect( partial(self.exportWorkflowDiagram, 2) )
+
+        exportWorkflow3 = exportWorkflowSubmenu.addAction("Even More Detail")
+        exportWorkflow3.triggered.connect( partial(self.exportWorkflowDiagram, 3) )
+
+        exportWorkflow4 = exportWorkflowSubmenu.addAction("Unlimited Detail")
+        exportWorkflow4.triggered.connect( partial(self.exportWorkflowDiagram, 100) )
+
         return menu
+
+    def exportCurrentOperatorDiagram(self, detail):        
+        op = self._applets[self.currentAppletIndex].topLevelOperator
+        assert isinstance(op, Operator), "Top-level operator of your applet must be a lazyflow.Operator if you want to export it!"
+        self.exportOperatorDiagram(op, detail)
+        
+    def exportWorkflowDiagram(self, detail):
+        assert isinstance(self.workflow, Operator), "Workflow must be an operator if you want to export it!"
+        self.exportOperatorDiagram(self.workflow, detail)
+    
+    def exportOperatorDiagram(self, op, detail):
+        recentPath = PreferencesManager().get( 'shell', 'recent debug diagram' )
+        if recentPath is None:
+            defaultPath = os.path.join(os.path.expanduser('~'), op.name + '.svg')
+        else:
+            defaultPath = os.path.join(os.path.split(recentPath)[0], op.name + '.svg')
+
+        svgPath = QFileDialog.getSaveFileName(
+           self, "Save operator diagram", defaultPath, "Inkscape Files (*.svg)",
+           options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+
+        if not svgPath.isNull():
+            PreferencesManager().set( 'shell', 'recent debug diagram', str(svgPath) )
+            lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
     
     def show(self):
         """

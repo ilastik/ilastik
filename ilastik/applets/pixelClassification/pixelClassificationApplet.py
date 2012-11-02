@@ -6,10 +6,10 @@ class PixelClassificationApplet( Applet ):
     """
     Implements the pixel classification "applet", which allows the ilastik shell to use it.
     """
-    def __init__( self, graph, projectFileGroupName ):
+    def __init__( self, workflow, projectFileGroupName ):
         Applet.__init__( self, "Pixel Classification" )
 
-        self._topLevelOperator = OpPixelClassification( graph=graph )
+        self._topLevelOperator = OpPixelClassification( parent=workflow )
 
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.

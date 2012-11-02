@@ -64,7 +64,7 @@ class FeatureSelectionGui(LayerViewerGui):
 
         # Why is this necessary?
         # Clearing the layerstack doesn't seem to call the rowsRemoved signal?
-        self._viewerControlWidget.listWidget.clear()
+        self._viewerControlWidget.featureListWidget.clear()
 
     # (Other methods already provided by our base class)
 
@@ -117,7 +117,7 @@ class FeatureSelectionGui(LayerViewerGui):
         """
         self._viewerControlWidget = uic.loadUi(os.path.split(__file__)[0] + "/viewerControls.ui")
         
-        layerListWidget = self._viewerControlWidget.listWidget
+        layerListWidget = self._viewerControlWidget.featureListWidget
 
         # Need to handle data changes because the layerstack model hasn't 
         # updated his data yet by the time he calls the rowsInserted signal

@@ -94,6 +94,11 @@ class PixelClassificationGui(LabelingGui):
         self.pipeline.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
         
         self._initShortcuts()
+        
+        self.labelingDrawerUi.svgButton.clicked.connect(self._output_svg)
+
+    def _output_svg(self):
+        self.pipeline.outputSvg()
 
     def _initShortcuts(self):
         mgr = ShortcutManager()
