@@ -25,17 +25,17 @@ from lazyflow.tracer import traceLogged, Tracer
 
 class LayerViewerGui(QMainWindow):
     """
-    Implements an applet GUI whose central widget is a VolumeEditor 
+    Implements an applet GUI whose central widget is a VolumeEditor
     and whose layer controls simply contains a layer list widget.
     Intended to be used as a subclass for applet GUI objects.
-    
+
     Provides: Central widget (viewer), View Menu, and Layer controls
     Provides an EMPTY applet drawer widget.  Subclasses should replace it with their own applet drawer.
     """
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
-    
+
     def centralWidget( self ):
         return self
 
@@ -50,11 +50,15 @@ class LayerViewerGui(QMainWindow):
 
     def setImageIndex(self, index):
         self._setImageIndex(index)
-        
+
     def reset(self):
         # Remove all layers
         self.layerstack.clear()
-    
+
+        # reset view shapes
+        self.editor._reset()
+
+
     ###########################################
     ###########################################
 
@@ -70,7 +74,7 @@ class LayerViewerGui(QMainWindow):
         Constructor.  **All** slots of the provided *topLevelOperator* will be monitored for changes.
         Changes include slot resize events, and slot ready/unready status changes.
         When a change is detected, the `setupLayers()` function is called, and the result is used to update the list of layers shown in the central widget.
-        
+
         :param topLevelOperator: The top-level operator for the applet this GUI belongs to.
         """
         super(LayerViewerGui, self).__init__()
@@ -84,8 +88,8 @@ class LayerViewerGui(QMainWindow):
         for slot in topLevelOperator.inputs.values() + topLevelOperator.outputs.values():
             if slot.level == 1 or slot.level == 2:
                 observedSlots.append(slot)
-        
-        self.observedSlots = []        
+
+        self.observedSlots = []
         for slot in observedSlots:
             if slot.level == 1:
                 # The user gave us a slot that is indexed as slot[image]
@@ -104,19 +108,19 @@ class LayerViewerGui(QMainWindow):
         self._initCentralUic()
         self.__viewerControlWidget = None
         self.initViewerControlUi()
-        
+
         self._initEditor()
-        
+
         self.imageIndex = -1
         self.lastUpdateImageIndex = -1
-        
+
         def handleDatasetInsertion(slot, imageIndex):
             if self.imageIndex == -1 and self._areProvidersInSync():
                 self.setImageIndex( imageIndex )
-        
+
         for provider in self.observedSlots:
             provider.notifyInserted( bind( handleDatasetInsertion ) )
-        
+
         def handleDatasetRemoval(slot, index, finalsize):
             if finalsize == 0:
                 # Clear everything
@@ -128,7 +132,7 @@ class LayerViewerGui(QMainWindow):
                 if index == newIndex:
                     newIndex = 1
                 self.setImageIndex(newIndex)
-            
+
         for provider in self.observedSlots:
             provider.notifyRemove( bind( handleDatasetRemoval ) )
 
@@ -136,8 +140,8 @@ class LayerViewerGui(QMainWindow):
         """
         Create a list of layers to be displayed in the central widget.
         Subclasses should override this method to create the list of layers that can be displayed.
-        For debug and development purposes, the base class implementation simply generates layers for all topLevelOperator slots. 
-        
+        For debug and development purposes, the base class implementation simply generates layers for all topLevelOperator slots.
+
         :param currentImageIndex: The index of the shell's currently selected image.
         """
         layers = []
@@ -148,7 +152,7 @@ class LayerViewerGui(QMainWindow):
                     if slot.ready():
                         layer = self.createStandardLayerFromSlot(slot)
                         layer.name = multiImageSlot.name + " " + str(j)
-                        layers.append(layer)        
+                        layers.append(layer)
         return layers
 
     @traceLogged(traceLogger)
@@ -160,8 +164,8 @@ class LayerViewerGui(QMainWindow):
                 provider[self.imageIndex].unregisterRemove( bind(self._handleLayerRemoval) )
 
         self.imageIndex = imageIndex
-        
-        # Don't repopulate the GUI if there isn't a current dataset.  Stop now. 
+
+        # Don't repopulate the GUI if there isn't a current dataset.  Stop now.
         if imageIndex is -1:
             self.layerstack.clear()
             return
@@ -174,7 +178,7 @@ class LayerViewerGui(QMainWindow):
             for slotIndex, slot in enumerate(provider):
                 slot.notifyReady( bind(self.updateAllLayers) )
                 slot.notifyUnready( bind(self.updateAllLayers) )
-        
+
         # Make sure we're notified if a layer is inserted in the future so we can subscribe to its ready notifications
         for provider in self.observedSlots:
             if self.imageIndex < len(provider):
@@ -190,7 +194,7 @@ class LayerViewerGui(QMainWindow):
             # When the slot is ready, we'll replace the blank layer with real data
             slot[slotIndex].notifyReady( bind(self.updateAllLayers) )
             slot[slotIndex].notifyUnready( bind(self.updateAllLayers) )
-    
+
     def _handleLayerRemoval(self, slot, slotIndex):
         """
         An item is about to be removed from the multislot that is providing our layers.
@@ -209,11 +213,11 @@ class LayerViewerGui(QMainWindow):
         Convenience function.
         Generates a volumina layer using the given slot.
         Chooses between grayscale or RGB depending on the number of channels in the slot.
-        
+
         * If *slot* has 1 channel, a GrayscaleLayer is created.
         * If *slot* has 2 non-alpha channels, an RGBALayer is created with R and G channels.
-        * If *slot* has 3 non-alpha channels, an RGBALayer is created with R,G, and B channels. 
-        
+        * If *slot* has 3 non-alpha channels, an RGBALayer is created with R,G, and B channels.
+
         :param slot: The slot to generate a layer from
         :param lastChannelIsAlpha: If True, the last channel in the slot is assumed to be an alpha channel.
         """
@@ -239,7 +243,7 @@ class LayerViewerGui(QMainWindow):
             numChannels = shape[channelAxisIndex]
         except:
             numChannels = 1
-        
+
         if lastChannelIsAlpha:
             assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha).  Your image has {} channels.".format(numChannels)
         else:
@@ -257,13 +261,13 @@ class LayerViewerGui(QMainWindow):
         redProvider.Index.setValue( 0 )
         redSource = LazyflowSource( redProvider.Output )
         redNormSource = NormalizingSource( redSource, bounds=normalize )
-        
+
         greenProvider = OpSingleChannelSelector(graph=slot.graph)
         greenProvider.Input.connect(slot)
         greenProvider.Index.setValue( 1 )
         greenSource = LazyflowSource( greenProvider.Output )
         greenNormSource = NormalizingSource( greenSource, bounds=normalize )
-                        
+
         blueNormSource = None
         if numChannels > 3 or (numChannels == 3 and not lastChannelIsAlpha):
             blueProvider = OpSingleChannelSelector(graph=slot.graph)
@@ -279,7 +283,7 @@ class LayerViewerGui(QMainWindow):
             alphaProvider.Index.setValue( numChannels-1 )
             alphaSource = LazyflowSource( alphaProvider.Output )
             alphaNormSource = NormalizingSource( alphaSource, bounds=normalize )
-        
+
         layer = RGBALayer( red=redNormSource, green=greenNormSource, blue=blueNormSource, alpha=alphaNormSource )
         return layer
 
@@ -315,12 +319,12 @@ class LayerViewerGui(QMainWindow):
         if not self._areProvidersInSync():
             return
 
-        if self.imageIndex >= 0:        
+        if self.imageIndex >= 0:
             # Ask the subclass for the updated layer list
             newGuiLayers = self.setupLayers(self.imageIndex)
         else:
             newGuiLayers = []
-            
+
         newNames = set(l.name for l in newGuiLayers)
         if len(newNames) != len(newGuiLayers):
             msg = "All layers must have unique names.\n"
@@ -343,7 +347,7 @@ class LayerViewerGui(QMainWindow):
             # Zoom at a 1-1 scale to avoid loading big datasets entirely...
             for view in self.editor.imageViews:
                 view.doScaleTo(1)
-        
+
         # If the datashape changed, tell the editor
         newDataShape = self.determineDatashape()
         if newDataShape is not None and self.editor.dataShape != newDataShape:
@@ -351,11 +355,11 @@ class LayerViewerGui(QMainWindow):
             # Find the xyz midpoint
             midpos5d = [x/2 for x in newDataShape]
             midpos3d = midpos5d[1:4]
-            
+
             # Start in the center of the volume
             self.editor.posModel.slicingPos = midpos3d
             self.editor.navCtrl.panSlicingViews( midpos3d, [0,1,2] )
-            
+
             # If one of the xyz dimensions is 1, the data is 2d.
             singletonDims = filter( lambda (i,dim): dim == 1, enumerate(newDataShape[1:4]) )
             if len(singletonDims) == 1:
@@ -389,7 +393,7 @@ class LayerViewerGui(QMainWindow):
             if layer.name not in existingNames:
                 # Insert new
                 self.layerstack.insert( index, layer )
-                
+
                 # If this layer has an associated shortcut, register it with the shortcut manager
                 if hasattr(layer, 'shortcutRegistration'):
                     ShortcutManager().register( *layer.shortcutRegistration )
@@ -409,7 +413,7 @@ class LayerViewerGui(QMainWindow):
                 while stackIndex < index:
                     self.layerstack.moveSelectedDown()
                     stackIndex += 1
-                
+
     @traceLogged(traceLogger)
     def determineDatashape(self):
         if self.imageIndex < 0:
@@ -424,14 +428,14 @@ class LayerViewerGui(QMainWindow):
                         op5 = Op5ifyer( graph=slot.graph )
                         op5.input.connect( slot )
                         newDataShape = op5.output.meta.shape
-    
+
                         # We just needed the operator to determine the transposed shape.
                         # Disconnect it so it can be garbage collected.
                         op5.input.disconnect()
 
         if newDataShape is not None:
             # For now, this base class combines multi-channel images into a single layer,
-            # So, we want the volume editor to behave as though there is only one channel 
+            # So, we want the volume editor to behave as though there is only one channel
             newDataShape = newDataShape[:-1] + (1,)
         return newDataShape
 
@@ -454,7 +458,7 @@ class LayerViewerGui(QMainWindow):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
-    
+
     def getAppletDrawerUi(self):
         return self._drawer
 
@@ -471,10 +475,10 @@ class LayerViewerGui(QMainWindow):
         self.menuGui = uic.loadUi(localDir+"/menu.ui") # Save as member so it doesn't get picked up by GC
         self.menuBar = self.menuGui.menuBar
         self.menuView = self.menuGui.menuView
-            
+
         def toggleDebugPatches(show):
             self.editor.showDebugPatches = show
-        
+
         def setCacheSize( cache_size ):
             dlg = QDialog(self)
             layout = QHBoxLayout()
@@ -486,7 +490,7 @@ class LayerViewerGui(QMainWindow):
                     cache_size[0] = int(strSize)
                 except:
                     pass
-                
+
             edit = QLineEdit( str(cache_size[0]), parent=dlg )
             edit.textChanged.connect( parseCacheSize )
             layout.addWidget( edit )
@@ -497,22 +501,22 @@ class LayerViewerGui(QMainWindow):
             dlg.setModal(True)
             dlg.exec_()
             self.editor.cacheSize = cache_size[0]
-        
+
         def fitToScreen():
             shape = self.editor.posModel.shape
             for i, v in enumerate(self.editor.imageViews):
                 s = list(shape)
                 del s[i]
-                v.changeViewPort(v.scene().data2scene.mapRect(QRectF(0,0,*s)))  
-                
+                v.changeViewPort(v.scene().data2scene.mapRect(QRectF(0,0,*s)))
+
         def fitImage():
             if hasattr(self.editor, '_lastImageViewFocus'):
                 self.editor.imageViews[self.editor._lastImageViewFocus].fitImage()
-                
+
         def restoreImageToOriginalSize():
             if hasattr(self.editor, '_lastImageViewFocus'):
                 self.editor.imageViews[self.editor._lastImageViewFocus].doScaleTo()
-                    
+
         def rubberBandZoom():
             if hasattr(self.editor, '_lastImageViewFocus'):
                 if not self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom:
@@ -522,25 +526,25 @@ class LayerViewerGui(QMainWindow):
                 else:
                     self.editor.imageViews[self.editor._lastImageViewFocus]._isRubberBandZoom = False
                     self.editor.imageViews[self.editor._lastImageViewFocus].setCursor(self.editor.imageViews[self.editor._lastImageViewFocus]._cursorBackup)
-                
+
         def hideHud():
             hide = not self.editor.imageViews[0]._hud.isVisible()
             for i, v in enumerate(self.editor.imageViews):
                 v.setHudVisible(hide)
-                
+
         def toggleSelectedHud():
             if hasattr(self.editor, '_lastImageViewFocus'):
                 self.editor.imageViews[self.editor._lastImageViewFocus].toggleHud()
-                
+
         def centerAllImages():
             for i, v in enumerate(self.editor.imageViews):
                 v.centerImage()
-                
+
         def centerImage():
             if hasattr(self.editor, '_lastImageViewFocus'):
                 self.editor.imageViews[self.editor._lastImageViewFocus].centerImage()
                 self.actionOnly_for_current_view.setEnabled(True)
-        
+
         self.menuGui.actionCenterAllImages.triggered.connect(centerAllImages)
         self.menuGui.actionCenterImage.triggered.connect(centerImage)
         self.menuGui.actionToggleAllHuds.triggered.connect(hideHud)
@@ -549,9 +553,9 @@ class LayerViewerGui(QMainWindow):
         self.menuGui.actionFitToScreen.triggered.connect(fitToScreen)
         self.menuGui.actionFitImage.triggered.connect(fitImage)
         self.menuGui.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
-        self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)        
+        self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)
         self.menuGui.actionSetCacheSize.triggered.connect(setCacheSize)
-                
+
     @traceLogged(traceLogger)
     def _initEditor(self):
         """
@@ -568,27 +572,27 @@ class LayerViewerGui(QMainWindow):
         self.editor.newImageView2DFocus.connect(self._setIconToViewMenu)
         self.editor.setInteractionMode( 'navigation' )
         self.volumeEditorWidget.init(self.editor)
-        
+
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
 
         if self.__viewerControlWidget is not None:
             model.canMoveSelectedUp.connect(self.__viewerControlWidget.UpButton.setEnabled)
             model.canMoveSelectedDown.connect(self.__viewerControlWidget.DownButton.setEnabled)
-            model.canDeleteSelected.connect(self.__viewerControlWidget.DeleteButton.setEnabled)     
+            model.canDeleteSelected.connect(self.__viewerControlWidget.DeleteButton.setEnabled)
 
             # Connect our layer movement buttons to the appropriate layerstack actions
             self.__viewerControlWidget.layerWidget.init(model)
             self.__viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
             self.__viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
             self.__viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
-        
+
         self.editor._lastImageViewFocus = 0
 
     @traceLogged(traceLogger)
     def _setIconToViewMenu(self):
         """
-        In the "Only for Current View" menu item of the View menu, 
+        In the "Only for Current View" menu item of the View menu,
         show the user which axis is the current one by changing the menu item icon.
         """
         self.actionOnly_for_current_view.setIcon(QIcon(self.editor.imageViews[self.editor._lastImageViewFocus]._hud.axisLabel.pixmap()))
@@ -596,7 +600,7 @@ class LayerViewerGui(QMainWindow):
     @traceLogged(traceLogger)
     def _convertPositionToDataSpace(self, voluminaPosition):
         taggedPosition = {k:p for k,p in zip('txyzc', voluminaPosition)}
-        
+
         # Find the first lazyflow layer in the stack
         # We assume that all lazyflow layers have the same axistags
         dataTags = None
@@ -613,9 +617,9 @@ class LayerViewerGui(QMainWindow):
         position = ()
         for tag in dataTags:
             position += (taggedPosition[tag.key],)
-            
+
         return position
-    
+
     def _handleEditorRightClick(self, position5d, globalWindowCoordinate):
         dataPosition = self._convertPositionToDataSpace(position5d)
         self.handleEditorRightClick(self.imageIndex, dataPosition, globalWindowCoordinate)
@@ -631,26 +635,3 @@ class LayerViewerGui(QMainWindow):
     def handleEditorLeftClick(self, currentImageIndex, position5d, globalWindowCoordiante):
         # Override me
         pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
