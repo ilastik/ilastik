@@ -23,7 +23,7 @@ from ilastik.utility.gui import ShortcutManager
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
 from ilastik.applets.layerViewer import LayerViewerGui
 
-# Loggers    
+# Loggers
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
@@ -35,7 +35,7 @@ class Tool():
 
 class LabelingGui(LayerViewerGui):
     """
-    Provides all the functionality of a simple layerviewer 
+    Provides all the functionality of a simple layerviewer
     applet with the added functionality of labeling.
     """
     ###########################################
@@ -49,15 +49,17 @@ class LabelingGui(LayerViewerGui):
         return [ ("Label Marking", self._labelControlUi) ]
 
     def reset(self):
+        super(LabelingGui, self).reset()
+
         # Clear the label list GUI
         self._clearLabelListGui()
-        
+
         # Start in navigation mode (not painting)
         self._changeInteractionMode(Tool.Navigation)
 
     def setImageIndex(self, index):
         super(LabelingGui, self).setImageIndex(index)
-        
+
         # Reset the GUI for "labels allowed" status
         self._changeInteractionMode(self._toolId)
 
@@ -84,34 +86,34 @@ class LabelingGui(LayerViewerGui):
     @property
     def labelingDrawerUi(self):
         return self._labelControlUi
-    
+
     @property
     def labelListData(self):
         return self._labelControlUi.labelListModel
-    
+
     def selectLabel(self, labelIndex):
         """Programmatically select the given labelIndex, which start from 0.
            Equivalent to clicking on the (labelIndex+1)'th position in the label widget."""
         self._labelControlUi.labelListModel.select(labelIndex)
-    
+
     class LabelingSlots(object):
         """
-        This class serves as the parameter for the LabelingGui constructor.  
+        This class serves as the parameter for the LabelingGui constructor.
         It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the user's mouse clicks.
         """
         def __init__(self):
             # Label slots are multi (level=1) and accessed as shown.
             # Slot to insert labels onto
             self.labelInput = None # labelInput[image_index].setInSlot(xxx)
-            # Slot to read labels from 
-            self.labelOutput = None # labelOutput[image_index].get(roi)            
+            # Slot to read labels from
+            self.labelOutput = None # labelOutput[image_index].get(roi)
             # Slot that determines which label value corresponds to erased values
-            self.labelEraserValue = None # labelEraserValue.setValue(xxx) 
+            self.labelEraserValue = None # labelEraserValue.setValue(xxx)
             # Slot that is used to request wholesale label deletion
             self.labelDelete = None # labelDelete.setValue(xxx)
             # Slot that contains the maximum label value (for all images)
             self.maxLabelValue = None # maxLabelValue.value
-            
+
             # Slot to specify which images the user is allowed to label.
             self.labelsAllowed = None # labelsAllowed[image_index].value == True
 
@@ -128,12 +130,12 @@ class LabelingGui(LayerViewerGui):
         # Do have have all the slots we need?
         assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
         assert all( [v is not None for v in labelingSlots.__dict__.values()] )
-       
+
         self._minLabelNumber = 0
         self._maxLabelNumber = 99 #100 or 255 is reserved for eraser
 
         self._rawInputSlot = rawInputSlot
-        
+
         # Init base class
         super(LabelingGui, self).__init__( topLevelOperator )
 
@@ -146,14 +148,14 @@ class LabelingGui(LayerViewerGui):
 
         self._colorTable16 = self._createDefault16ColorColorTable()
         self._programmaticallyRemovingLabels = False
-        
+
         if drawerUiPath is None:
             # Default ui file
             drawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
         self._initLabelUic(drawerUiPath)
-        
+
         self._changeInteractionMode(Tool.Navigation)
-        
+
         self.__initShortcuts()
 
     @traceLogged(traceLogger)
@@ -169,16 +171,16 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.labelListModel=model
         _labelControlUi.labelListModel.rowsRemoved.connect(self._onLabelRemoved)
         _labelControlUi.labelListModel.labelSelected.connect(self._onLabelSelected)
-        
+
         @traceLogged(traceLogger)
         def onDataChanged(topLeft, bottomRight):
             """Handle changes to the label list selections."""
             firstRow = topLeft.row()
             lastRow  = bottomRight.row()
-        
+
             firstCol = topLeft.column()
             lastCol  = bottomRight.column()
-            
+
             if lastCol == firstCol == 0:
                 assert(firstRow == lastRow) #only one data item changes at a time
 
@@ -186,10 +188,10 @@ class LabelingGui(LayerViewerGui):
                 color = _labelControlUi.labelListModel[firstRow].color
                 self._colorTable16[firstRow+1] = color.rgba()
                 self.editor.brushingModel.setBrushColor(color)
-                
+
                 # Update the label layer colortable to match the list entry
                 labellayer = self._getLabelLayer()
-                labellayer.colorTable = self._colorTable16                
+                labellayer.colorTable = self._colorTable16
             else:
                 #this column is used for the 'delete' buttons, we don't care
                 #about data changed here
@@ -198,7 +200,7 @@ class LabelingGui(LayerViewerGui):
         # Connect Applet GUI to our event handlers
         _labelControlUi.AddLabelButton.clicked.connect( bind(self._addNewLabel) )
         _labelControlUi.labelListModel.dataChanged.connect(onDataChanged)
-        
+
         # Initialize the arrow tool button with an icon and handler
         iconPath = os.path.split(__file__)[0] + "/icons/arrow.jpg"
         arrowIcon = QIcon(iconPath)
@@ -219,12 +221,12 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.eraserToolButton.setIcon(eraserIcon)
         _labelControlUi.eraserToolButton.setCheckable(True)
         _labelControlUi.eraserToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Erase) )
-        
+
         # This maps tool types to the buttons that enable them
         self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
                              Tool.Paint      : _labelControlUi.paintToolButton,
                              Tool.Erase      : _labelControlUi.eraserToolButton }
-        
+
         self.brushSizes = [ (1,  ""),
                             (3,  "Tiny"),
                             (5,  "Small"),
@@ -236,12 +238,12 @@ class LabelingGui(LayerViewerGui):
 
         for size, name in self.brushSizes:
             _labelControlUi.brushSizeComboBox.addItem( str(size) + " " + name )
-        
+
         _labelControlUi.brushSizeComboBox.currentIndexChanged.connect(self._onBrushSizeChange)
 
         self.paintBrushSizeIndex = PreferencesManager().get( 'labeling', 'paint brush size', default=0 )
         self.eraserSizeIndex = PreferencesManager().get( 'labeling', 'eraser brush size', default=4 )
-        
+
     def __initShortcuts(self):
         mgr = ShortcutManager()
         shortcutGroupName = "Labeling"
@@ -336,7 +338,7 @@ class LabelingGui(LayerViewerGui):
         # If we have no editor, we can't do anything yet
         if self.editor is None:
             return
-        
+
         # The volume editor expects one of two specific names
         modeNames = { Tool.Navigation   : "navigation",
                       Tool.Paint        : "brushing",
@@ -355,7 +357,7 @@ class LabelingGui(LayerViewerGui):
             labelsAllowedSlot = self._labelingSlots.labelsAllowed[self.imageIndex]
             if labelsAllowedSlot.ready():
                 labelsAllowed = labelsAllowedSlot.value
-    
+
                 self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed and self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
                 if labelsAllowed:
                     self._labelControlUi.AddLabelButton.setText("Add Label")
@@ -380,17 +382,17 @@ class LabelingGui(LayerViewerGui):
                 self._labelControlUi.brushSizeCaption.show()
                 self._labelControlUi.brushSizeComboBox.show()
                 self._labelControlUi.brushSizeCaption.setText("Size:")
-                
+
                 # If necessary, tell the brushing model to stop erasing
                 if self.editor.brushingModel.erasing:
                     self.editor.brushingModel.disableErasing()
                 # Set the brushing size
                 brushSize = self.brushSizes[self.paintBrushSizeIndex][0]
                 self.editor.brushingModel.setBrushSize(brushSize)
-    
+
                 # Make sure the GUI reflects the correct size
                 self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.paintBrushSizeIndex)
-                
+
             elif toolId == Tool.Erase:
                 # Make sure the erase button is pressed
                 self._labelControlUi.eraserToolButton.setChecked(True)
@@ -398,14 +400,14 @@ class LabelingGui(LayerViewerGui):
                 self._labelControlUi.brushSizeCaption.show()
                 self._labelControlUi.brushSizeComboBox.show()
                 self._labelControlUi.brushSizeCaption.setText("Size:")
-                
+
                 # If necessary, tell the brushing model to start erasing
                 if not self.editor.brushingModel.erasing:
                     self.editor.brushingModel.setErasing()
                 # Set the brushing size
                 eraserSize = self.brushSizes[self.eraserSizeIndex][0]
                 self.editor.brushingModel.setBrushSize(eraserSize)
-                
+
                 # Make sure the GUI reflects the correct size
                 self._labelControlUi.brushSizeComboBox.setCurrentIndex(self.eraserSizeIndex)
 
@@ -416,9 +418,9 @@ class LabelingGui(LayerViewerGui):
     def _onBrushSizeChange(self, index):
         """
         Handle the user's new brush size selection.
-        Note: The editor's brushing model currently maintains only a single 
-              brush size, which is used for both painting and erasing. 
-              However, we maintain two different sizes for the user and swap 
+        Note: The editor's brushing model currently maintains only a single
+              brush size, which is used for both painting and erasing.
+              However, we maintain two different sizes for the user and swap
               them depending on which tool is selected.
         """
         newSize = self.brushSizes[index][0]
@@ -449,7 +451,7 @@ class LabelingGui(LayerViewerGui):
         else:
             self._changeInteractionMode(Tool.Navigation)
         return True
-    
+
     @traceLogged(traceLogger)
     def _updateLabelList(self):
         """
@@ -465,9 +467,9 @@ class LabelingGui(LayerViewerGui):
         # Add rows until we have the right number
         while self._labelControlUi.labelListModel.rowCount() < numLabels:
             self._addNewLabel()
-       
+
         self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
-    
+
     @traceLogged(traceLogger)
     def _addNewLabel(self):
         """
@@ -492,7 +494,7 @@ class LabelingGui(LayerViewerGui):
         # Make the new label selected
         selectedRow = nlabels-1
         self._labelControlUi.labelListModel.select(selectedRow)
-        
+
         self._updateLabelShortcuts()
 
     def _getNextLabelName(self):
@@ -502,7 +504,7 @@ class LabelingGui(LayerViewerGui):
             for n in nums:
                 maxNum = max(maxNum, int(n))
         return "Label {}".format(maxNum+1)
-    
+
     @traceLogged(traceLogger)
     def _removeLastLabel(self):
         """
@@ -513,9 +515,9 @@ class LabelingGui(LayerViewerGui):
         # This will trigger the signal that calls _onLabelRemoved()
         self._labelControlUi.labelListModel.removeRow(numRows-1)
         self._updateLabelShortcuts()
-    
+
         self._programmaticallyRemovingLabels = False
-    
+
     @traceLogged(traceLogger)
     def _clearLabelListGui(self):
         # Remove rows until we have the right number
@@ -534,9 +536,9 @@ class LabelingGui(LayerViewerGui):
         oldcount = self._labelControlUi.labelListModel.rowCount() + 1
         logger.debug("removing label {} out of {}".format( row, oldcount ))
 
-        # Remove the deleted label's color from the color table so that renumbered labels keep their colors.                
+        # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
         oldColor = self._colorTable16.pop(row+1)
-        
+
         # Recycle the deleted color back into the table (for the next label to be added)
         self._colorTable16.insert(oldcount, oldColor)
 
@@ -552,12 +554,12 @@ class LabelingGui(LayerViewerGui):
         # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
         #  to search through the entire list of labels and delete the entries for the matching label.
         self._labelingSlots.labelDelete.setValue(row+1)
-        
+
         # We need to "reset" the deleteLabel input to -1 when we're finished.
         #  Otherwise, you can never delete the same label twice in a row.
         #  (Only *changes* to the input are acted upon.)
         self._labelingSlots.labelDelete.setValue(-1)
-        
+
     def _getLabelLayer(self):
         # Find the labellayer in the viewer stack
         try:
@@ -580,11 +582,11 @@ class LabelingGui(LayerViewerGui):
             # Add the layer to draw the labels, but don't add any labels
             labelsrc = LazyflowSinkSource( self._labelingSlots.labelOutput[currentImageIndex],
                                            self._labelingSlots.labelInput[currentImageIndex])
-        
+
             labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16, direct=direct )
             labellayer.name = "Labels"
             labellayer.ref_object = None
-            
+
             return labellayer, labelsrc
 
     @traceLogged(traceLogger)
@@ -600,15 +602,15 @@ class LabelingGui(LayerViewerGui):
         labellayer, labelsrc = self.createLabelLayer(currentImageIndex)
         if labellayer is not None:
             layers.append(labellayer)
-        
+
             # Tell the editor where to draw label data
             self.editor.setLabelSink(labelsrc)
 
-        # Side effect 1: We want to guarantee that the label list 
+        # Side effect 1: We want to guarantee that the label list
         #  is up-to-date before our subclass adds his layers
         self._updateLabelList()
-        
-        # Side effect 2: Switch to navigation mode if labels aren't 
+
+        # Side effect 2: Switch to navigation mode if labels aren't
         #  allowed on this image.
         labelsAllowedSlot = self._labelingSlots.labelsAllowed[self.imageIndex]
         if labelsAllowedSlot.ready() and not labelsAllowedSlot.value:
@@ -620,11 +622,11 @@ class LabelingGui(LayerViewerGui):
             layer.name = "Raw Input"
             layer.visible = True
             layer.opacity = 1.0
-            
+
             layers.append(layer)
 
         return layers
-        
+
     @traceLogged(traceLogger)
     def _createDefault16ColorColorTable(self):
         colors = []
@@ -644,7 +646,7 @@ class LabelingGui(LayerViewerGui):
         # Additional colors
         colors.append( QColor(255, 105, 180) ) #hot pink
         colors.append( QColor(102, 205, 170) ) #dark aquamarine
-        colors.append( QColor(165,  42,  42) ) #brown        
+        colors.append( QColor(165,  42,  42) ) #brown
         colors.append( QColor(0, 0, 128) )     #navy
         colors.append( QColor(255, 165, 0) )   #orange
         colors.append( QColor(173, 255,  47) ) #green-yellow
@@ -658,31 +660,3 @@ class LabelingGui(LayerViewerGui):
         assert len(colors) == 16
 
         return [c.rgba() for c in colors]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
