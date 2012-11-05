@@ -20,6 +20,12 @@ The base class provides a few signals, which applets can use to communicate with
    
    .. automethod:: __init__
 
+.. autoclass:: ControlCommand
+   :members:
+
+.. autoclass:: ShellRequest
+   :members:
+
 Top-level Operators
 ===================
 

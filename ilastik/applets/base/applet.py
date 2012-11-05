@@ -2,18 +2,6 @@ from ilastik.utility.simpleSignal import SimpleSignal
 
 from abc import ABCMeta, abstractproperty
 
-class ControlCommand(object):
-    # An enum of commands that applets can use to request that other applet GUIs become disabled
-    Pop = 0                 # Undo the most recent command that the issuing applet sent
-    DisableAll = 1          # Disable all applets in the workflow
-    DisableUpstream = 2     # Disable applets that come before the applet that is issuing the command
-    DisableDownstream = 3   # Disable applets that come after the applet that is issuing the command
-    DisableSelf = 4         # Disable the applet that is issuing the command
-
-class ShellRequest(object):
-    # These are the things an applet can ask the shell to do via the shellRequestSignal
-    RequestSave = 0
-
 class Applet( object ):
     """
     Base class for all applets.
@@ -36,13 +24,14 @@ class Applet( object ):
         self.progressSignal = SimpleSignal()
         
         #: GUI control signal
-        #: When an applet wants other applets in the shell to be disabled, he fires this signal.
-        #: The applet must fire it again with ControlState.EnableAll as the parameter to re-enable the other applets.
-        #: Signature: ``emit(controlState=ControlState.DisableAll)`` 
+        #: See the ControlCommand class (below) for an enumerated list of the commands supported by this signal)
+        #: Signature: ``emit(command=ControlCommand.DisableAll)`` 
         self.guiControlSignal = SimpleSignal()
 
-        #: Shell request signal is used to trigger certain shell requests.
+        #: Shell request signal is used to trigger certain shell actions.
         #: Signature: ``emit(request)``
+        #: where``request`` is an integer corresponding to the action the shell should take.  The allowable actions are enumerated in the ShellRequest class (see below).
+        #: Example: self.shellRequest(ShellRequest.RequestSave)
         self.shellRequestSignal = SimpleSignal()
 
         self._base_initialized = True
@@ -79,6 +68,23 @@ class Applet( object ):
         # Used by the shell to ensure that Applet.__init__ was called by your subclass.
         return self._base_initialized
 
+class ControlCommand(object):
+    """
+    This class enumerates the GUI control commands that applets can ask the shell to perform via the guiControlSignal.
+    Gui control commands are used to prevent the user from altering upstream or downstream applet settings while an applet is performing some long-running task.
+    """
+    Pop = 0                 #: Undo the most recent command that the issuing applet sent
+    DisableAll = 1          #: Disable all applets in the workflow
+    DisableUpstream = 2     #: Disable applets that come before the applet that is issuing the command
+    DisableDownstream = 3   #: Disable applets that come after the applet that is issuing the command
+    DisableSelf = 4         #: Disable the applet that is issuing the command
+
+class ShellRequest(object):
+    """
+    This class enumerates the actions that applets can ask the shell to perform via the shellRequest signal.
+    At the moment, there is only one supported action (save).
+    """
+    RequestSave = 0 #: Request that the shell perform a "save project" action.
 
 
 

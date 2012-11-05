@@ -86,16 +86,17 @@ Signature: <tt class="docutils literal"><span class="pre">emit(percentComplete,<
 <dt id="ilastik.applets.base.applet.Applet.guiControlSignal">
 <tt class="descname">guiControlSignal</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.applets.base.applet.Applet.guiControlSignal" title="Permalink to this definition">¶</a></dt>
 <dd><p>GUI control signal
-When an applet wants other applets in the shell to be disabled, he fires this signal.
-The applet must fire it again with ControlState.EnableAll as the parameter to re-enable the other applets.
-Signature: <tt class="docutils literal"><span class="pre">emit(controlState=ControlState.DisableAll)</span></tt></p>
+See the ControlCommand class (below) for an enumerated list of the commands supported by this signal)
+Signature: <tt class="docutils literal"><span class="pre">emit(command=ControlCommand.DisableAll)</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.applets.base.applet.Applet.shellRequestSignal">
 <tt class="descname">shellRequestSignal</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.applets.base.applet.Applet.shellRequestSignal" title="Permalink to this definition">¶</a></dt>
-<dd><p>Shell request signal is used to trigger certain shell requests.
-Signature: <tt class="docutils literal"><span class="pre">emit(request)</span></tt></p>
+<dd><p>Shell request signal is used to trigger certain shell actions.
+Signature: <tt class="docutils literal"><span class="pre">emit(request)</span></tt>
+where``request`` is an integer corresponding to the action the shell should take.  The allowable actions are enumerated in the ShellRequest class (see below).
+Example: self.shellRequest(ShellRequest.RequestSave)</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -119,6 +120,56 @@ Provides the applet&#8217;s GUI, which must be an instance of AppletGuiInterface
 <tt class="descname">dataSerializers</tt><a class="reference internal" href="_modules/ilastik/applets/base/applet.html#Applet.dataSerializers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.applet.Applet.dataSerializers" title="Permalink to this definition">¶</a></dt>
 <dd><p>A list of dataSerializer objects for loading/saving any project data the applet is responsible for.
 Subclasses should override this property.  By default, returns [].</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.base.applet.ControlCommand">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.base.applet.</tt><tt class="descname">ControlCommand</tt><a class="reference internal" href="_modules/ilastik/applets/base/applet.html#ControlCommand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class enumerates the GUI control commands that applets can ask the shell to perform via the guiControlSignal.
+Gui control commands are used to prevent the user from altering upstream or downstream applet settings while an applet is performing some long-running task.</p>
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.ControlCommand.Pop">
+<tt class="descname">Pop</tt><em class="property"> = 0</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.Pop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Undo the most recent command that the issuing applet sent</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.ControlCommand.DisableAll">
+<tt class="descname">DisableAll</tt><em class="property"> = 1</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableAll" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disable all applets in the workflow</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.ControlCommand.DisableUpstream">
+<tt class="descname">DisableUpstream</tt><em class="property"> = 2</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableUpstream" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disable applets that come before the applet that is issuing the command</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.ControlCommand.DisableDownstream">
+<tt class="descname">DisableDownstream</tt><em class="property"> = 3</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableDownstream" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disable applets that come after the applet that is issuing the command</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.ControlCommand.DisableSelf">
+<tt class="descname">DisableSelf</tt><em class="property"> = 4</em><a class="headerlink" href="#ilastik.applets.base.applet.ControlCommand.DisableSelf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disable the applet that is issuing the command</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.base.applet.ShellRequest">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.base.applet.</tt><tt class="descname">ShellRequest</tt><a class="reference internal" href="_modules/ilastik/applets/base/applet.html#ShellRequest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.applet.ShellRequest" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class enumerates the actions that applets can ask the shell to perform via the shellRequest signal.
+At the moment, there is only one supported action (save).</p>
+<dl class="attribute">
+<dt id="ilastik.applets.base.applet.ShellRequest.RequestSave">
+<tt class="descname">RequestSave</tt><em class="property"> = 0</em><a class="headerlink" href="#ilastik.applets.base.applet.ShellRequest.RequestSave" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request that the shell perform a &#8220;save project&#8221; action.</p>
 </dd></dl>
 
 </dd></dl>

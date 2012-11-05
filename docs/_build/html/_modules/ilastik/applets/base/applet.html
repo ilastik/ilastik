@@ -50,18 +50,18 @@
 
 <span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABCMeta</span><span class="p">,</span> <span class="n">abstractproperty</span>
 
-<span class="k">class</span> <span class="nc">ControlCommand</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="ControlCommand"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.ControlCommand">[docs]</a><span class="k">class</span> <span class="nc">ControlCommand</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="c"># An enum of commands that applets can use to request that other applet GUIs become disabled</span>
     <span class="n">Pop</span> <span class="o">=</span> <span class="mi">0</span>                 <span class="c"># Undo the most recent command that the issuing applet sent</span>
     <span class="n">DisableAll</span> <span class="o">=</span> <span class="mi">1</span>          <span class="c"># Disable all applets in the workflow</span>
     <span class="n">DisableUpstream</span> <span class="o">=</span> <span class="mi">2</span>     <span class="c"># Disable applets that come before the applet that is issuing the command</span>
     <span class="n">DisableDownstream</span> <span class="o">=</span> <span class="mi">3</span>   <span class="c"># Disable applets that come after the applet that is issuing the command</span>
     <span class="n">DisableSelf</span> <span class="o">=</span> <span class="mi">4</span>         <span class="c"># Disable the applet that is issuing the command</span>
-
-<span class="k">class</span> <span class="nc">ShellRequest</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+</div>
+<div class="viewcode-block" id="ShellRequest"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.ShellRequest">[docs]</a><span class="k">class</span> <span class="nc">ShellRequest</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="c"># These are the things an applet can ask the shell to do via the shellRequestSignal</span>
     <span class="n">RequestSave</span> <span class="o">=</span> <span class="mi">0</span>
-
+</div>
 <div class="viewcode-block" id="Applet"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet">[docs]</a><span class="k">class</span> <span class="nc">Applet</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Base class for all applets.</span>
