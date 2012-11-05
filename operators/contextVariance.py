@@ -1,7 +1,7 @@
 from lazyflow.graph import *
 from lazyflow import roi
+from lazyflow.roi import TinyVector
 
-from lazyflow.graph import *
 import context
 import collections
 import vigra
@@ -120,7 +120,13 @@ class OpContextVariance(Operator):
     
     def shrinkToShape(self, maxRadius, srcRoi, roi):
         #print "roi in shrinkToShape:", roi
-        tgtRoi = srcRoi.setStartToZero()
+        start = [0]*len(srcRoi.start)
+        stop = [end-begin for begin,end in zip(srcRoi.start, srcRoi.stop)]
+        tgtRoi = srcRoi
+        tgtRoi.start=TinyVector(start)
+        tgtRoi.stop = TinyVector(stop)
+        
+        #tgtRoi = srcRoi.setStartToZero()
         tgtShape = roi.stop-roi.start
         #print "tgtShape", tgtShape
         tgtRoi.setInputShape(srcRoi.inputShape)
