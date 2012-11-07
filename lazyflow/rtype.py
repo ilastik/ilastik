@@ -121,8 +121,9 @@ class SubRegion(Roi):
         remove the i'th dimension from the SubRegion
         works inplace !
         """
-        self.start.pop(dim)
-        self.stop.pop(dim)
+        if dim is not None:
+            self.start.pop(dim)
+            self.stop.pop(dim)
         return self
 
     def setDim(self, dim , start, stop):
