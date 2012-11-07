@@ -1,6 +1,6 @@
-import os,numpy,copy
+import os,numpy,itertools,copy
 from lazyflow.config import CONFIG
-from lazyflow.roi import TinyVector
+from lazyflow.roi import TinyVector, roiToSlice
 
 def warn_deprecated( msg ):
     warn = True
@@ -113,6 +113,8 @@ def generateRandomRoi(maxShape,minShape = 0,minWidth = 0):
     roi = [TinyVector([x[0] for x in roi]),TinyVector([x[1] for x in roi])]
     return roi
 
+
+
 class newIterator:
     def __init__(self,roi,srcGrid,trgtGrid,timeIndex = None,channelIndex = None):
         #cast list due to TinyVector being strange
@@ -216,4 +218,14 @@ class newIterator:
         retSlice = [(self.toSlice(src,True),self.toSlice(trgt,True),self.toSlice(mask)) \
                     for src,trgt,mask in retRoi]
         return retSlice.__iter__()
-
+ 
+if __name__ == "__main__":
+    
+    class roi:
+        def __init__(self,start,stop):
+            self.start = start
+            self.stop = stop
+    r = roi([16, 22, 35, 8],[34, 36, 36, 22])
+    nIt = newIterator(r,[1,26,13,1],[1,40,40,1],channelIndex=3,timeIndex=0)
+    for i,j,k in nIt:
+        pass

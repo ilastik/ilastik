@@ -7,6 +7,7 @@ import numpy
 import vigra
 from math import sqrt
 from functools import partial
+from lazyflow.roi import roiToSlice
 
 class OpBaseVigraFilter(Operator):
     

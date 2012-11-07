@@ -2,9 +2,8 @@ import unittest
 import itertools
 import vigra
 import numpy
-import lazyflow.operators.obsolete.vigraOperators
 from functools import partial
-from lazyflow.roi import TinyVector
+from lazyflow.roi import TinyVector, roiToSlice
 from lazyflow.graph import Graph
 from lazyflow.operators.imgFilterOperators import OpGaussianSmoothing,\
      OpLaplacianOfGaussian, OpStructureTensorEigenvalues,\
@@ -14,20 +13,12 @@ from lazyflow.operators.obsolete import vigraOperators
 
 
 class TestOpBaseVigraFilter(unittest.TestCase):
+   
     def setUp(self):
-
-        self.testDimensions = ['xyzc','xyc','txyzc','txyc']
+        self.testDimensions = ['xyc','xyzc','txyzc','txyc']
         self.graph = Graph()
-        self.gaugeDim = 100
-        self.gauge = vigra.VigraArray((self.gaugeDim,)*3,axistags=vigra.VigraArray.defaultAxistags('xyc'))
-        for i in range(self.gauge.shape[2]):
-            self.gauge[:,:,i] = i
             
     def expandByShape(self,start,stop,shape,inputShape):
-        """
-        extend a roi by a given in shape
-        """
-        #TODO: Warn if bounds are exceeded
         dim = len(start)
         if type(shape == int):
             tmp = shape
@@ -84,9 +75,13 @@ class TestOpBaseVigraFilter(unittest.TestCase):
             max = 50
             testArray = vigra.VigraArray(numpy.random.rand(*(max,)*len(dim)),axistags=vigra.VigraArray.defaultAxistags(dim))
             op.Input.setValue(testArray)
-            for i in range(100):
+            for i in range(10):
                 start = [numpy.random.randint(0,max-1) for i in range(len(dim))]
                 stop = [numpy.random.randint(start[i]+1,max) for i in range(len(dim))]
+                #adjust rois for structureTensoreEigenvalues
+                if Filter.func.__name__ == "structureTensorEigenvalues":
+                    start[-1] = numpy.random.randint(0,testArray.axistags.axisTypeCount(vigra.AxisType.Space)-1)
+                    stop[-1] = numpy.random.randint(start[-1]+1,testArray.axistags.axisTypeCount(vigra.AxisType.Space))
                 resOp = op.Output(start,stop).wait()
                 cstart,cstop = start.pop(),stop.pop()
                 #handle txyc,txyzc
@@ -95,6 +90,11 @@ class TestOpBaseVigraFilter(unittest.TestCase):
                     resF = numpy.zeros_like(resOp)
                     #cPerC > 1
                     if op.channelsPerChannel() > 1:
+                        if Filter.func.__name__ == "structureTensorEigenvalues":
+                            for j in range(0,tstop-tstart):
+                                resF[(j,)+(slice(0,None),)*(len(dim)-1)] = Filter(testArray[(j+tstart,)+(slice(0,None),)*(len(dim)-1)],roi=(start,stop))[(slice(0,None),)*(len(dim)-2)+(slice(cstart,cstop),)]
+                            self.assertTrue(numpy.allclose(resOp,resF))
+                            continue
                         cPerC = op.channelsPerChannel()
                         if cstop%cPerC == 0:
                             reqCstart,reqCstop = cstart/cPerC,cstop/cPerC
@@ -110,13 +110,25 @@ class TestOpBaseVigraFilter(unittest.TestCase):
                         self.assertTrue(numpy.allclose(resOp,resF))
                     #cPerC = 1
                     else:
-                        for i in range(0,tstop-tstart):
-                            resF[(i,)+(slice(0,None),)*(len(dim)-1)] = Filter(testArray[(i+tstart,)+(slice(0,None),)*(len(dim)-2)+(slice(cstart,cstop),)],roi=(start,stop))
+                        #handle gaussianGradientMagnitude, its special
+                        if Filter.func.__name__ == "gaussianGradientMagnitude":
+                            resF = numpy.zeros_like(resOp)
+                            for j in range(0,tstop-tstart):
+                                for i in range(0,cstop-cstart):
+                                    resF[(j,)+(slice(0,None),)*(len(dim)-2)+(i,)] = Filter(testArray[(tstart+j,)+(slice(0,None),)*(len(dim)-2)+(cstart+i,)],roi=(start,stop))
+                        else:        
+                            for i in range(0,tstop-tstart):
+                                resF[(i,)+(slice(0,None),)*(len(dim)-1)] = Filter(testArray[(i+tstart,)+(slice(0,None),)*(len(dim)-2)+(slice(cstart,cstop),)],roi=(start,stop))
                         self.assertTrue(numpy.allclose(resOp,resF))
                 #handle xyc,xyzc
                 else:
                     #cPerC > 1
                     if op.channelsPerChannel() > 1:
+                        #handle structureTensorEigenvalues
+                        if Filter.func.__name__ == "structureTensorEigenvalues":
+                            resF = Filter(testArray,roi=(start,stop))[(slice(0,None),)*(len(dim)-1)+(slice(cstart,cstop),)]
+                            self.assertTrue(numpy.allclose(resOp,resF))
+                            continue
                         cPerC = op.channelsPerChannel()
                         if cstop%cPerC == 0:
                             reqCstart,reqCstop = cstart/cPerC,cstop/cPerC
@@ -132,11 +144,17 @@ class TestOpBaseVigraFilter(unittest.TestCase):
                         self.assertTrue(numpy.allclose(resOp,resF))
                     #cPerC == 1
                     else:
-                        resF = Filter(testArray[(slice(0,None),)*(len(dim)-1)+(slice(cstart,cstop),)],roi=(start,stop))
+                        #handle gaussianGradientMagnitude, its special
+                        if Filter.func.__name__ == "gaussianGradientMagnitude":
+                            resF = numpy.zeros_like(resOp)
+                            for i in range(0,cstop-cstart):
+                                resF[(slice(0,None),)*(len(dim)-1)+(i,)] = Filter(testArray[(slice(0,None),)*(len(dim)-1)+(cstart+i,)],roi=(start,stop))
+                        else:
+                            resF = Filter(testArray[(slice(0,None),)*(len(dim)-1)+(slice(cstart,cstop),)],roi=(start,stop))
                         self.assertTrue(numpy.allclose(resOp,resF))
 
     def test_GaussianSmoothing(self):
-        opGaussianSmoothing = OpGaussianSmoothing(self.graph)
+        opGaussianSmoothing = OpGaussianSmoothing(graph=self.graph)
         opGaussianSmoothing.Sigma.setValue(2.0)
         def tmpFilter(source,sigma,window_size,roi):
             tmpfilter = vigra.filters.gaussianSmoothing
@@ -147,7 +165,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
         self.compareToFilter(opGaussianSmoothing,gaussianSmoothingFilter)
         
     def test_DifferenceOfGaussians(self):
-        opDifferenceOfGaussians = OpDifferenceOfGaussians(self.graph)
+        opDifferenceOfGaussians = OpDifferenceOfGaussians(graph=self.graph)
         opDifferenceOfGaussians.Sigma.setValue(2.0)
         opDifferenceOfGaussians.Sigma2.setValue(3.0)
         def tmpFilter(source,s0,s1,window_size,roi):
@@ -160,7 +178,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
         self.compareToFilter(opDifferenceOfGaussians,gaussianSmoothingFilter)
 
     def test_LaplacianOfGaussian(self):
-        opLaplacianOfGaussian = OpLaplacianOfGaussian(self.graph)
+        opLaplacianOfGaussian = OpLaplacianOfGaussian(graph=self.graph)
         opLaplacianOfGaussian.Sigma.setValue(2.0)
         def tmpFilter(source,sigma,window_size,roi):
             tmpfilter = vigra.filters.laplacianOfGaussian
@@ -170,33 +188,31 @@ class TestOpBaseVigraFilter(unittest.TestCase):
         self.visualTest(opLaplacianOfGaussian)
         self.compareToFilter(opLaplacianOfGaussian, laplacianofGaussianFilter)
         
-#crazy
-#    def test_GaussianGradientMagnitude(self):
-#        opGaussianGradientMagnitude = OpGaussianGradientMagnitude(self.graph)
-#        opGaussianGradientMagnitude.Sigma.setValue(2.0)
-#        def tmpFilter(source,sigma,window_size,roi):
-#            tmpfilter = vigra.filters.gaussianGradientMagnitude
-#            return tmpfilter(source,sigma=sigma,window_size=window_size,roi=(roi[0],roi[1]))
-#        gaussianGradientMagnitudeFilter = partial(tmpFilter,sigma=2.0,window_size=4)
-#        self.generalOperatorTest(opGaussianGradientMagnitude)
-#        self.visualTest(opGaussianGradientMagnitude)
-#        self.compareToFilter(opGaussianGradientMagnitude, gaussianGradientMagnitudeFilter)
+    def test_GaussianGradientMagnitude(self):
+        opGaussianGradientMagnitude = OpGaussianGradientMagnitude(graph=self.graph)
+        opGaussianGradientMagnitude.Sigma.setValue(2.0)
+        def gaussianGradientMagnitude(source,sigma,window_size,roi):
+            tmpfilter = vigra.filters.gaussianGradientMagnitude
+            return tmpfilter(source,sigma=sigma,window_size=window_size,roi=(roi[0],roi[1]))
+        gaussianGradientMagnitudeFilter = partial(gaussianGradientMagnitude,sigma=2.0,window_size=4)
+        self.generalOperatorTest(opGaussianGradientMagnitude)
+        self.visualTest(opGaussianGradientMagnitude)
+        self.compareToFilter(opGaussianGradientMagnitude, gaussianGradientMagnitudeFilter)
 
-#CRAZY
-#    def test_StructureTensorEigenvalues(self):
-#        opStructureTensorEigenvalues = OpStructureTensorEigenvalues(self.graph)
-#        opStructureTensorEigenvalues.Sigma.setValue(1.5)
-#        opStructureTensorEigenvalues.Sigma2.setValue(2.0)
-#        def tmpFilter(source,innerScale,outerScale,window_size,roi):
-#            tmpfilter = vigra.filters.structureTensorEigenvalues
-#            return tmpfilter(image=source,innerScale=innerScale,outerScale=outerScale,window_size=window_size,roi=(roi[0],roi[1]))
-#        structureTensorEigenvaluesFilter = partial(tmpFilter,innerScale=1.5,outerScale=2.0,window_size=4)
-#        self.compareToFilter(opStructureTensorEigenvalues,structureTensorEigenvaluesFilter)
-#        self.generalOperatorTest(opStructureTensorEigenvalues)
-#        self.visualTest(opStructureTensorEigenvalues)
+    def test_StructureTensorEigenvalues(self):
+        opStructureTensorEigenvalues = OpStructureTensorEigenvalues(graph = self.graph)
+        opStructureTensorEigenvalues.Sigma.setValue(1.5)
+        opStructureTensorEigenvalues.Sigma2.setValue(2.0)
+        def structureTensorEigenvalues(source,innerScale,outerScale,window_size,roi):
+            tmpfilter = vigra.filters.structureTensorEigenvalues
+            return tmpfilter(image=source,innerScale=innerScale,outerScale=outerScale,window_size=window_size,roi=(roi[0],roi[1]))
+        structureTensorEigenvaluesFilter = partial(structureTensorEigenvalues,innerScale=1.5,outerScale=2.0,window_size=4)
+        self.compareToFilter(opStructureTensorEigenvalues,structureTensorEigenvaluesFilter)
+        self.generalOperatorTest(opStructureTensorEigenvalues)
+        self.visualTest(opStructureTensorEigenvalues)   
 
     def test_HessianOfGaussian(self):
-        opHessianOfGaussian = OpHessianOfGaussian(self.graph)
+        opHessianOfGaussian = OpHessianOfGaussian(graph=self.graph)
         opHessianOfGaussian.Sigma.setValue(2.0)
         def hessianOfGaussianFilter(source,sigma,window_size,roi):
             tmpfilter = vigra.filters.hessianOfGaussian
@@ -210,7 +226,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
         self.compareToFilter(opHessianOfGaussian, hessianOfGaussianFilter)
         
     def test_HessianOfGaussianEigenvalues(self):
-        opHessianOfGaussianEigenvalues = OpHessianOfGaussianEigenvalues(self.graph)
+        opHessianOfGaussianEigenvalues = OpHessianOfGaussianEigenvalues(graph=self.graph)
         opHessianOfGaussianEigenvalues.Sigma.setValue(2.0)
         def tmpFilter(source,sigma,window_size,roi):
             tmpfilter = vigra.filters.hessianOfGaussianEigenvalues
@@ -219,76 +235,3 @@ class TestOpBaseVigraFilter(unittest.TestCase):
         self.generalOperatorTest(opHessianOfGaussianEigenvalues)
         self.visualTest(opHessianOfGaussianEigenvalues)
         self.compareToFilter(opHessianOfGaussianEigenvalues,hessianOfGaussianEigenvaluesFilter)
-
-if __name__ == "__main__":
-    from lazyflow.graph import Graph
-    from lazyflow.operators.imgFilterOperators import OpStructureTensorEigenvalues
-    import vigra,numpy
-
-    max = 10
-    dim = 'xyc'
-    testArray = vigra.VigraArray(numpy.random.rand(*(max,)*len(dim))*100,axistags=vigra.defaultAxistags(dim))
-    
-    g = Graph()
-    op = OpGaussianGradientMagnitude(g)
-    op.Sigma.setValue(1.5)
-    op.Input.setValue(testArray)
-    start = [0, 0, 0]
-    stop = [10, 10, 10]
-    resOp = op.Output(start,stop).wait()
-    
-    resOp = vigra.VigraArray(resOp,axistags = vigra.defaultAxistags(dim))
-    
-    cstart,cstop = start.pop(),stop.pop()
-    resF = numpy.zeros_like(resOp)
-    resF[:] = vigra.filters.gaussianGradientMagnitude(testArray[:,:,cstart:cstop],2.0,window_size=4,roi=(start,stop))
-    resF = vigra.VigraArray(resF,axistags=vigra.defaultAxistags(dim))
-    
-    print resOp[0:3,0:3,1]
-    print resF[0:3,0:3,1]
-
-#    cPerC = op.channelsPerChannel()
-#    if cstop%cPerC == 0:
-#        reqCstart,reqCstop = cstart/cPerC,cstop/cPerC
-#    else:
-#        reqCstart,reqCstop = cstart/cPerC,cstop/cPerC+1
-#    resF = numpy.zeros(tuple(resOp.shape[:-1])+((reqCstop-reqCstart)*cPerC,))
-#    for i in range(0,reqCstop-reqCstart):
-#        resF[(slice(0,None),)*(len(dim)-1)+(slice(i*cPerC,(i+1)*cPerC),)] = vigra.filters.structureTensorEigenvalues(testArray[(slice(0,None),)*(len(dim)-1)+(i+reqCstart,)],1.5,2.0,window_size=4,roi=(start,stop))
-#    resF = vigra.VigraArray(resF,axistags=vigra.defaultAxistags(dim))
-#    cstart2 = cstart%cPerC
-#    cstop2 = cstart2+cstop-cstart
-#    resF = resF[(slice(0,None),)*(len(dim)-1)+(slice(cstart2,cstop2),)]
-
-
-#    dim = 'txyzc'
-#    print res.shape
-#    print 'start,stop',start,stop
-#    print 'cPerC',cPerC
-#    cstart,cstop = start.pop(),stop.pop()
-#    tstart,tstop = start.pop(0),stop.pop(0)
-#    if cstop%cPerC == 0:
-#        reqCstart,reqCstop = cstart/cPerC,cstop/cPerC
-#    else:
-#        reqCstart,reqCstop = cstart/cPerC,cstop/cPerC+1
-#    
-#    print 'reqCstart,reqCstop',reqCstart,reqCstop
-#    
-#    resF = numpy.zeros(tuple(res.shape[:-1])+((reqCstop-reqCstart)*cPerC,))
-#    
-#    print 'resF.shape',resF.shape
-#    
-#    for j in range(0,tstop-tstart):
-#        for i in range(0,reqCstop-reqCstart):
-#            print v[j+tstart,:,:,:,i+reqCstart].shape, 'LOL'
-#            resF[j,:,:,:,i*cPerC:(i+1)*cPerC] = vigra.filters.structureTensorEigenvalues(v[j+tstart,:,:,:,i+reqCstart],1.5,2.0,roi=(start,stop),window_size=4)
-#    
-#    resF = vigra.VigraArray(resF,axistags=vigra.defaultAxistags(dim))
-#    cstart2 = cstart%cPerC
-#    cstop2 = cstart2+cstop-cstart
-#    print 'cstart2,cstop2',cstart2,cstop2
-#    resF = resF[:,:,:,:,cstart2:cstop2]
-#    print resF
-#    print '------------------------------------------------------------------'
-#    print res 
-#    print numpy.allclose(res,resF)
