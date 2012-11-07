@@ -89,7 +89,7 @@ class OpContextVariance(Operator):
         srcRoi.setDim(axistags.channelIndex, 0, nclasses)
         hasTimeAxis = axistags.axisTypeCount(vigra.AxisType.Time)
         if hasTimeAxis:
-            t = axistags.index['t']
+            t = axistags.index('t')
             srcRoi.setDim(t, roi.start[t], roi.stop[t])
         
         source = self.inputs["Input"](srcRoi.start,srcRoi.stop).wait()

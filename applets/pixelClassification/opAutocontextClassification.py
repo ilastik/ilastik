@@ -44,7 +44,7 @@ class OpAutocontextClassification( Operator ):
     LabelImages = OutputSlot(level=1) # Labels from the user
     NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
     
-    Classifiers = OutputSlot(level = 1) # Holds the chain 
+    Classifiers = OutputSlot(level=1) # Holds the chain. Level is set to 1, because it's connected to a OpMulti 
 
     CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via a cache)
     CachedPixelPredictionProbabilities = OutputSlot(level=1)
@@ -69,7 +69,7 @@ class OpAutocontextClassification( Operator ):
         self.prediction_caches_gui = []
         
         #FIXME: we should take it from the input slot
-        niter = 3
+        niter = 2
         
         for i in range(niter):
             predict = OperatorWrapper( OpPredictRandomForest, parent=self, graph= self.graph )
@@ -133,14 +133,14 @@ class OpAutocontextClassification( Operator ):
             features = self.createAutocontextFeatureOperators(i)
             self.autocontextFeatures.append(features)
             opMulti = OperatorWrapper( Op50ToMulti, graph = self.graph)
-            opMulti.Input00.resize(0)
+            #opMulti.Input00.resize(0)
             self.autocontextFeaturesMulti.append(opMulti)
             opStacker = OperatorWrapper( OpMultiArrayStacker, graph = self.graph)
             opStacker.inputs["AxisFlag"].setValue("c")
             opStacker.inputs["AxisIndex"].setValue(3)
             self.featureStackers.append(opStacker)
             autocontext_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
-            autocontext_cache.Input.resize(0)
+            #autocontext_cache.Input.resize(0)
             self.autocontext_caches.append(autocontext_cache)
         
         # connect the features to predictors
@@ -189,7 +189,7 @@ class OpAutocontextClassification( Operator ):
             cache.inputs["Input"].connect(self.trainers[i].outputs['Classifier'])
             self.classifier_caches.append(cache)
                         
-        #self.classifiers_cache.forceValue(self.classifiers)
+    
         
         for i in range(niter):        
             #classifier_cache = OpValueCache( graph=self.graph )
@@ -382,7 +382,8 @@ class OpAutocontextClassification( Operator ):
         #ops.append(OperatorWrapper (OpArrayPiper, graph = self.graph))
         
         ops.append(OperatorWrapper(OpContextVariance, parent=self, graph=self.graph))
-        ops[0].inputs["Radii"].setValue([[3, 3, 0], [5, 5, 0], [10, 10, 0]])
+        #ops[0].inputs["Radii"].setValue([[3, 3, 0], [5, 5, 0], [10, 10, 0]])
+        ops[0].inputs["Radii"].setValue([[3,3,0]])
         #ops[0].inputs["LabelsCount"].setValue(2)
         ops.append(OperatorWrapper(OpContextVariance, graph=self.graph))
         #ops[1].inputs["Radii"].setValue([5, 5, 1])

@@ -22,7 +22,7 @@ from ilastik.applets.base.applet import ShellRequest, ControlCommand
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-class PixelClassificationGui(LabelingGui):
+class AutocontextClassificationGui(LabelingGui):
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -32,12 +32,12 @@ class PixelClassificationGui(LabelingGui):
 
     def appletDrawers(self):
         # Get the labeling drawer from the base class
-        labelingDrawer = super(PixelClassificationGui, self).appletDrawers()[0][1]
+        labelingDrawer = super(AutocontextClassificationGui, self).appletDrawers()[0][1]
         return [ ("Training", labelingDrawer) ]
 
     def reset(self):
         # Base class first
-        super(PixelClassificationGui, self).reset()
+        super(AutocontextClassificationGui, self).reset()
 
         # Ensure that we are NOT in interactive mode
         self.labelingDrawerUi.checkInteractive.setChecked(False)
@@ -61,7 +61,7 @@ class PixelClassificationGui(LabelingGui):
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
         
         # Base class init
-        super(PixelClassificationGui, self).__init__( labelSlots, pipeline, labelingDrawerUiPath )
+        super(AutocontextClassificationGui, self).__init__( labelSlots, pipeline, labelingDrawerUiPath )
         
         self.pipeline = pipeline
         self.guiControlSignal = guiControlSignal
@@ -92,7 +92,7 @@ class PixelClassificationGui(LabelingGui):
         This function creates a layer for each slot we want displayed in the volume editor.
         """
         # Base class provides the label layer.
-        layers = super(PixelClassificationGui, self).setupLayers(currentImageIndex)
+        layers = super(AutocontextClassificationGui, self).setupLayers(currentImageIndex)
         
         pixel_pred_layers = self.setupPredictionLayers(currentImageIndex, self.pipeline.PixelOnlyPredictionChannels, "")
         layers.extend(pixel_pred_layers)

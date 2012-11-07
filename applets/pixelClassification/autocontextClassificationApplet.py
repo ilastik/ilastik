@@ -1,6 +1,7 @@
 from ilastik.applets.base.applet import Applet
 from opAutocontextClassification import OpAutocontextClassification
 from pixelClassificationSerializer import PixelClassificationSerializer, Ilastik05ImportDeserializer
+from autocontextClassificationSerializer import AutocontextClassificationSerializer
 
 class AutocontextClassificationApplet( Applet ):
     """
@@ -13,7 +14,7 @@ class AutocontextClassificationApplet( Applet ):
 
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.
-        self._serializableItems = [PixelClassificationSerializer(self._topLevelOperator, projectFileGroupName), # Default serializer for new projects
+        self._serializableItems = [AutocontextClassificationSerializer(self._topLevelOperator, projectFileGroupName), # Default serializer for new projects
                                    Ilastik05ImportDeserializer(self._topLevelOperator)]   # Legacy (v0.5) importer
 
 
@@ -40,6 +41,6 @@ class AutocontextClassificationApplet( Applet ):
     @property
     def gui(self):
         if self._gui is None:
-            from pixelClassificationGui import PixelClassificationGui
-            self._gui = PixelClassificationGui( self._topLevelOperator, self.guiControlSignal, self.shellRequestSignal, self.predictionSerializer )        
+            from autocontextClassificationGui import AutocontextClassificationGui
+            self._gui = AutocontextClassificationGui( self._topLevelOperator, self.guiControlSignal, self.shellRequestSignal, self.predictionSerializer )        
         return self._gui

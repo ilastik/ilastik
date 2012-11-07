@@ -1,7 +1,8 @@
 import os
 #import tempfile
-import vigra
+import numpy
 import h5py
+import vigra
 from ilastik.applets.base.appletSerializer import AppletSerializer
 from ilastik.utility import bind
 from lazyflow.operators import OpH5WriterBigDataset
@@ -18,10 +19,11 @@ from lazyflow.tracer import Tracer
 
 class Section():
     Labels = 0
-    Classifier = 1
+    Classifiers = 1
     Predictions = 2
+    #PixelPredictions = 3
 
-class PixelClassificationSerializer(AppletSerializer):
+class AutocontextClassificationSerializer(AppletSerializer):
     """
     Encapsulate the serialization scheme for pixel classification workflow parameters and datasets.
     """
@@ -29,22 +31,31 @@ class PixelClassificationSerializer(AppletSerializer):
     
     def __init__(self, mainOperator, projectFileGroupName):
         with Tracer(traceLogger):
-            super( PixelClassificationSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
+            super( AutocontextClassificationSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
             self.mainOperator = mainOperator
             self._initDirtyFlags()
    
             # Set up handlers for dirty detection
             def handleDirty(section):
                 self._dirtyFlags[section] = True
+
+            def handleNewClassifier(slot, index):
+                slot[index].notifyDirty( bind(handleDirty, 1))
     
-            self.mainOperator.Classifiers.notifyDirty( bind(handleDirty, Section.Classifier) )
-    
+            #self.mainOperator.Classifiers.notifyDirty( bind(handleDirty, Section.Classifiers) )
+            self.mainOperator.Classifiers.notifyInserted( bind(handleNewClassifier))
+            
             def handleNewImage(section, slot, index):
                 slot[index].notifyDirty( bind(handleDirty, section) )
+                # New label images need to be 'serialized' as an empty group.
+                if section == Section.Labels:
+                    handleDirty(Section.Labels)
     
             # These are multi-slots, so subscribe to dirty callbacks on each of their subslots as they are created
             self.mainOperator.LabelImages.notifyInserted( bind(handleNewImage, Section.Labels) )
             self.mainOperator.PredictionProbabilities.notifyInserted( bind(handleNewImage, Section.Predictions) )
+            #self.mainOperator.PixelOnlyPredictions.notifyInserted( bind(handleNewImage, Section.PixelPredictions) )
+            
 
             self._predictionStorageEnabled = False
             self._predictionStorageRequest = None
@@ -62,12 +73,11 @@ class PixelClassificationSerializer(AppletSerializer):
         
     def _initDirtyFlags(self):
         self._dirtyFlags = { Section.Labels      : False,
-                             Section.Classifier  : False,
+                             Section.Classifiers : False,
                              Section.Predictions : False }
 
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         with Tracer(traceLogger):
-
             numSteps = sum( self._dirtyFlags.values() )
             progress = 0
             if numSteps > 0:
@@ -77,12 +87,12 @@ class PixelClassificationSerializer(AppletSerializer):
                 self._serializeLabels( topGroup )            
                 progress += increment
                 self.progressSignal.emit( progress )
-            
-            if self._dirtyFlags[Section.Classifier]:
+    
+            if self._dirtyFlags[Section.Classifiers]:
                 self._serializeClassifiers( topGroup )
                 progress += increment
                 self.progressSignal.emit( progress )
-            
+
             # Need to call serialize predictions even if it isn't dirty
             # (Since it isn't always stored.)    
             self._serializePredictions( topGroup, progress, progress + increment )
@@ -117,36 +127,40 @@ class PixelClassificationSerializer(AppletSerializer):
     
             self._dirtyFlags[Section.Labels] = False
 
-    def _serializeClassifier(self, topGroup):
+    def _serializeClassifiers(self, topGroup):
         with Tracer(traceLogger):
-            self.deleteIfPresent(topGroup, 'Classifier')
-            self._dirtyFlags[Section.Classifier] = False
+            self.deleteIfPresent(topGroup, 'Classifiers')
+            self._dirtyFlags[Section.Classifiers] = False
     
             if not self.mainOperator.Classifiers.ready():
                 return
-        
-            classifiers = self.mainOperator.Classifiers.value
-            tmpDir = tempfile.mkdtemp()
-            for ic, classifier in enumerate(classifiers):
+
+            
+            classifiers = self.mainOperator.Classifiers
+            topGroup.require_group("Classifiers")
+            for i in range(len(classifiers)):
+                classifier_forests = classifiers[i].value
                 # Classifier can be None if there isn't any training data yet.
-                if classifier is None:
+                if classifier_forests is None:
                     return
+                for forest in classifier_forests:
+                    if forest is None:
+                        return
     
                 # Due to non-shared hdf5 dlls, vigra can't write directly to our open hdf5 group.
                 # Instead, we'll use vigra to write the classifier to a temporary file.
-                cachePath = os.path.join(tmpDir, 'classifier_cache.h5')
-                for i, forest in enumerate(classifier):
-                    forest.writeHDF5( cachePath, 'ClassifierForests/Forest{:04d}'.format(i) )
+                tmpDir = tempfile.mkdtemp()
+                cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
+                for j, forest in enumerate(classifier_forests):
+                    forest.writeHDF5( cachePath, 'ClassifierForests/Forest{:04d}'.format(j) )
                 
                 # Open the temp file and copy to our project group
-                cacheFile = h5py.File(cachePath, 'r')
-                subGroup = topGroup.create_group("Classifier%.2d"%(ic))
+                with h5py.File(cachePath, 'r') as cacheFile:
+                    grouppath = "Classifiers/Classifier%d"%i
+                    topGroup.copy(cacheFile['ClassifierForests'], grouppath)
                 
-                #topGroup.copy(cacheFile['Classifier'], 'Classifier')
-                subGroup.copy(cacheFile['ClassifierForests'], 'ClassifierForests')
-                cacheFile.close()
                 os.remove(cachePath)
-            os.removedirs(tmpDir)
+                os.removedirs(tmpDir)
 
     def _serializePredictions(self, topGroup, startProgress, endProgress):
         """
@@ -185,7 +199,7 @@ class PixelClassificationSerializer(AppletSerializer):
                             progress = [startProgress]
         
                             # Use a big dataset writer to do this in chunks
-                            opWriter = OpH5WriterBigDataset(self.mainOperator.graph)
+                            opWriter = OpH5WriterBigDataset(graph=self.mainOperator.graph)
                             opWriter.hdf5File.setValue( predictionDir )
                             opWriter.hdf5Path.setValue( datasetName )
                             opWriter.Image.connect( self.mainOperator.PredictionProbabilities[imageIndex] )
@@ -265,29 +279,34 @@ class PixelClassificationSerializer(AppletSerializer):
     def _deserializeClassifier(self, topGroup):
         with Tracer(traceLogger):
             try:
-                classifierGroup = topGroup['Classifier']
+                classifiersTop = topGroup['Classifiers']
             except KeyError:
                 pass
             else:
                 # Due to non-shared hdf5 dlls, vigra can't read directly from our open hdf5 group.
                 # Instead, we'll copy the classfier data to a temporary file and give it to vigra.
-                tmpDir = tempfile.mkdtemp()
-                cachePath = os.path.join(tmpDir, 'classifier_cache.h5')
-                cacheFile = h5py.File(cachePath, 'w')
-                cacheFile.copy(classifierGroup, 'Classifier')
-                cacheFile.close()
-        
-                classifier = vigra.learning.RandomForest(cachePath, 'Classifier')
-                os.remove(cachePath)
-                os.removedirs(tmpDir)
-                
-                # Now force the classifier into our classifier cache.
-                # The downstream operators (e.g. the prediction operator) can use the classifier without inducing it to be re-trained.
-                # (This assumes that the classifier we are loading is consistent with the images and labels that we just loaded.
-                #  As soon as training input changes, it will be retrained.)
-                self.mainOperator.classifier_cache.forceValue( classifier )
+                for i, cache in enumerate(self.mainOperator.classifier_caches):
+                    fullpath = "Classifiers/Classifier%d"%i
+                    classifierGroup = topGroup[fullpath]
+                    tmpDir = tempfile.mkdtemp()
+                    cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
+                    with h5py.File(cachePath, 'w') as cacheFile:
+                        cacheFile.copy(classifierGroup, 'ClassifierForests')
+            
+                    forests = []
+                    for name, forestGroup in sorted( classifierGroup.items() ):
+                        forests.append( vigra.learning.RandomForest(cachePath, str('ClassifierForests/' + name)) )
+    
+                    os.remove(cachePath)
+                    os.removedirs(tmpDir)
+                    
+                    # Now force the classifier into our classifier cache.
+                    # The downstream operators (e.g. the prediction operator) can use the classifier without inducing it to be re-trained.
+                    # (This assumes that the classifier we are loading is consistent with the images and labels that we just loaded.
+                    #  As soon as training input changes, it will be retrained.)
+                    cache.forceValue( numpy.array(forests) )
             finally:
-                self._dirtyFlags[Section.Classifier] = False
+                self._dirtyFlags[Section.Classifiers] = False
 
     def _deserializePredictions(self, topGroup):
         self._predictionsPresent = 'Predictions' in topGroup.keys()
@@ -360,7 +379,6 @@ class PixelClassificationSerializer(AppletSerializer):
         self.mainOperator.LabelInputs.resize(0)
         for cache in self.mainOperator.classifier_caches:
             cache.Input.setDirty(slice(None))
-        #self.mainOperator.classifier_cache.Input.setDirty(slice(None))
 
 class Ilastik05ImportDeserializer(AppletSerializer):
     """
@@ -399,7 +417,8 @@ class Ilastik05ImportDeserializer(AppletSerializer):
                     # That's allowed, so we simply continue.
                     pass
                 else:
-                    self.mainOperator.LabelInputs[index][...] = dataset.value[...]
+                    slicing = [slice(0,s) for s in dataset.shape]
+                    self.mainOperator.LabelInputs[index][slicing] = dataset[...]
 
     def importClassifier(self, hdf5File):
         """

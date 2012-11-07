@@ -14,11 +14,11 @@ from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
 from context.applets.featureSelection import FeatureSelectionAutocontextApplet
 from context.applets.pixelClassification import AutocontextClassificationApplet
 
-class PixelClassificationWorkflow(Workflow):
+class AutocontextClassificationWorkflow(Workflow):
     
     def __init__(self):
         graph = Graph()
-        super(PixelClassificationWorkflow, self).__init__( graph=graph )
+        super(AutocontextClassificationWorkflow, self).__init__( graph=graph )
         self._applets = []
 
         ######################
