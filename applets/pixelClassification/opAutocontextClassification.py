@@ -27,8 +27,7 @@ class OpAutocontextClassification( Operator ):
     
     AutocontextFeatureIds = InputSlot()
     AutocontextScales = InputSlot()
-    #AutocontextIterations = InputSlot(value=3)
-    
+    AutocontextIterations = InputSlot()
 
     FreezePredictions = InputSlot(stype='bool')
 
@@ -56,30 +55,27 @@ class OpAutocontextClassification( Operator ):
         """
         super(OpAutocontextClassification, self).__init__(*args, **kwargs)
 
+        self.AutocontextIterations.notifyDirty(self.setupOperators)
+
+    def setupOperators(self, *args, **kwargs):
         self.FreezePredictions.setValue(True) # Default
         
         # Create internal operators
         # Explicitly wrapped:
         self.opInputShapeReader = OperatorWrapper( OpShapeReader, parent=self, graph=self.graph )
-        self.opInputShapeReader.Input.resize(0)
         self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray, parent=self, graph=self.graph  )
-        self.opLabelArray.Input.resize(0)
+
         self.predictors = []
         self.prediction_caches = []
         self.prediction_caches_gui = []
         
         #FIXME: we should take it from the input slot
-        niter = 2
+        niter = self.AutocontextIterations.value
         
         for i in range(niter):
             predict = OperatorWrapper( OpPredictRandomForest, parent=self, graph= self.graph )
-            predict.Image.resize(0)
-            
             prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph ) 
-            prediction_cache.Input.resize(0)
-            
             prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
-            prediction_cache_gui.Input.resize(0)   
             
             self.predictors.append(predict)
             self.prediction_caches.append(prediction_cache)
@@ -88,16 +84,11 @@ class OpAutocontextClassification( Operator ):
         #We only display the last prediction layer
          
         self.precomputed_predictions = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph)
-        self.precomputed_predictions.SlowInput.resize(0)    
         self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph)
-        self.precomputed_predictions_gui.SlowInput.resize(0)   
         
         #Display pixel-only predictions to compare
         self.precomputed_predictions_pixel = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph)
-        self.precomputed_predictions_pixel.SlowInput.resize(0)
-        
         self.precomputed_predictions_pixel_gui = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph) 
-        self.precomputed_predictions_pixel_gui.SlowInput.resize(0)
 
         # NOT wrapped
         self.opMaxLabel = OpMaxValue(graph=self.graph)
@@ -130,17 +121,15 @@ class OpAutocontextClassification( Operator ):
         self.featureStackers = []
         
         for i in range(niter-1):
-            features = self.createAutocontextFeatureOperators(i)
+            features = createAutocontextFeatureOperators(self, True)
             self.autocontextFeatures.append(features)
             opMulti = OperatorWrapper( Op50ToMulti, graph = self.graph)
-            #opMulti.Input00.resize(0)
             self.autocontextFeaturesMulti.append(opMulti)
             opStacker = OperatorWrapper( OpMultiArrayStacker, graph = self.graph)
             opStacker.inputs["AxisFlag"].setValue("c")
             opStacker.inputs["AxisIndex"].setValue(3)
             self.featureStackers.append(opStacker)
             autocontext_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
-            #autocontext_cache.Input.resize(0)
             self.autocontext_caches.append(autocontext_cache)
         
         # connect the features to predictors
@@ -152,8 +141,6 @@ class OpAutocontextClassification( Operator ):
             # connect the pixel features to the same multislot
             print "Multi: Connecting an output", "Input%.2d"%(len(self.autocontextFeatures[i]))
             self.autocontextFeaturesMulti[i].inputs["Input%.2d"%(len(self.autocontextFeatures[i]))].connect(self.CachedFeatureImages)
-            
-            
             # stack the autocontext features with pixel features
             self.featureStackers[i].inputs["Images"].connect(self.autocontextFeaturesMulti[i].outputs["Outputs"])
             # cache the stacks
@@ -183,19 +170,12 @@ class OpAutocontextClassification( Operator ):
         self.classifier_caches = []
         
         for i in range(niter):
-            
             self.classifiers.append(self.trainers[i].outputs['Classifier'])
             cache = OpValueCache(graph = self.graph)
             cache.inputs["Input"].connect(self.trainers[i].outputs['Classifier'])
             self.classifier_caches.append(cache)
-                        
-    
         
         for i in range(niter):        
-            #classifier_cache = OpValueCache( graph=self.graph )
-            #classifier_cache.inputs["Input"].connect(self.trainers[i].outputs['Classifier'])
-            #self.classifier_caches.append(classifier_cache)
-            
             self.predictors[i].inputs['Classifier'].connect(self.classifier_caches[i].outputs["Output"])
             self.predictors[i].inputs['LabelsCount'].connect(self.opMaxLabel.Output)
             
@@ -206,14 +186,11 @@ class OpAutocontextClassification( Operator ):
             self.prediction_caches_gui[i].name = "PredictionCache"
             self.prediction_caches_gui[i].inputs["fixAtCurrent"].connect( self.FreezePredictions )
             self.prediction_caches_gui[i].inputs["Input"].connect(self.predictors[i].PMaps)
-            
-            
         
         self.predictors[0].inputs['Image'].connect(self.CachedFeatureImages)
         for i in range(1, niter):
             self.predictors[i].inputs['Image'].connect(self.autocontext_caches[i-1].outputs["Output"])
             
-        
         # The serializer uses these operators to provide prediction data directly from the project file
         # if the predictions haven't become dirty since the project file was opened.
         self.precomputed_predictions.SlowInput.connect( self.prediction_caches[-1].Output )
@@ -375,17 +352,31 @@ class OpAutocontextClassification( Operator ):
             cache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
 
-    def createAutocontextFeatureOperators(self, iter):
+    
+    
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs that support __setitem__
+        #   are directly connected to internal operators.
+        pass
+
+    def propagateDirty(self, inputSlot, subindex, key):
+        # Nothing to do here: All outputs are directly connected to 
+        #  internal operators that handle their own dirty propagation.
+        pass
+
+def createAutocontextFeatureOperators(oper, wrap):
         #FIXME: just to test, create some array pipers
         ops = []
         #ops.append(OperatorWrapper (OpArrayPiper, graph = self.graph))
         #ops.append(OperatorWrapper (OpArrayPiper, graph = self.graph))
-        
-        ops.append(OperatorWrapper(OpContextVariance, parent=self, graph=self.graph))
+        if wrap is True:
+            ops.append(OperatorWrapper(OpContextVariance, parent=oper, graph=oper.graph))
+        else:
+            ops.append(OpContextVariance(graph=oper.graph))
         #ops[0].inputs["Radii"].setValue([[3, 3, 0], [5, 5, 0], [10, 10, 0]])
         ops[0].inputs["Radii"].setValue([[3,3,0]])
         #ops[0].inputs["LabelsCount"].setValue(2)
-        ops.append(OperatorWrapper(OpContextVariance, graph=self.graph))
+        #ops.append(OperatorWrapper(OpContextVariance, graph=oper.graph))
         #ops[1].inputs["Radii"].setValue([5, 5, 1])
         #ops[1].inputs["LabelsCount"].setValue(2)
         #ops.append(OperatorWrapper(OpContextVariance, graph=self.graph))
@@ -399,16 +390,6 @@ class OpAutocontextClassification( Operator ):
         #for op in ops:
         #    op.inputs["Input"].connect( self.predictors[iter].PMaps)
         return ops
-    
-    def setInSlot(self, slot, subindex, roi, value):
-        # Nothing to do here: All inputs that support __setitem__
-        #   are directly connected to internal operators.
-        pass
-
-    def propagateDirty(self, inputSlot, subindex, key):
-        # Nothing to do here: All outputs are directly connected to 
-        #  internal operators that handle their own dirty propagation.
-        pass
 
 class OpShapeReader(Operator):
     """

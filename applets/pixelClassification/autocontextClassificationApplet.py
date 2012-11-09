@@ -1,7 +1,6 @@
 from ilastik.applets.base.applet import Applet
 from opAutocontextClassification import OpAutocontextClassification
-from pixelClassificationSerializer import PixelClassificationSerializer, Ilastik05ImportDeserializer
-from autocontextClassificationSerializer import AutocontextClassificationSerializer
+from autocontextClassificationSerializer import AutocontextClassificationSerializer, Ilastik05ImportDeserializer
 
 class AutocontextClassificationApplet( Applet ):
     """
