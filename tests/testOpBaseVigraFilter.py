@@ -11,6 +11,8 @@ from lazyflow.operators.imgFilterOperators import OpGaussianSmoothing,\
      OpDifferenceOfGaussians, OpHessianOfGaussian
 from lazyflow.operators.obsolete import vigraOperators
 
+# Change this to view debug output files
+GENERATE_VISUAL_DEBUG_IMAGES = False
 
 class TestOpBaseVigraFilter(unittest.TestCase):
    
@@ -56,19 +58,20 @@ class TestOpBaseVigraFilter(unittest.TestCase):
                 operator.outputs["Output"](start,stop).wait()
             
     def visualTest(self,operator):
-        start,stop  = [200,200,0],[400,400,1]
-        testArray = vigra.VigraArray((400,400,3))
-        roiResult = vigra.VigraArray(tuple([sto-sta for sta,sto in zip(start,stop)]))
-        testArray[100:300,100:300,0] = 1
-        testArray[200:300,200:300,1] = 1
-        testArray[100:200,100:200,2] = 1
-        operator.inputs["Input"].setValue(testArray)
-        wholeResult = operator.outputs["Output"]().wait()
-        wholeResult = wholeResult[:,:,0:3]
-        roiResult[:,:,0:1] = operator.outputs["Output"](start,stop).wait()
-        vigra.impex.writeImage(testArray,operator.name+'before.png')
-        vigra.impex.writeImage(wholeResult,operator.name+'afterWhole.png')
-        vigra.impex.writeImage(roiResult,operator.name+'afterRoi.png')
+        if GENERATE_VISUAL_DEBUG_IMAGES:
+            start,stop  = [200,200,0],[400,400,1]
+            testArray = vigra.VigraArray((400,400,3))
+            roiResult = vigra.VigraArray(tuple([sto-sta for sta,sto in zip(start,stop)]))
+            testArray[100:300,100:300,0] = 1
+            testArray[200:300,200:300,1] = 1
+            testArray[100:200,100:200,2] = 1
+            operator.inputs["Input"].setValue(testArray)
+            wholeResult = operator.outputs["Output"]().wait()
+            wholeResult = wholeResult[:,:,0:3]
+            roiResult[:,:,0:1] = operator.outputs["Output"](start,stop).wait()
+            vigra.impex.writeImage(testArray,operator.name+'before.png')
+            vigra.impex.writeImage(wholeResult,operator.name+'afterWhole.png')
+            vigra.impex.writeImage(roiResult,operator.name+'afterRoi.png')
         
     def compareToFilter(self,op,Filter):
         for dim in self.testDimensions:
