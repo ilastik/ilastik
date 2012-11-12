@@ -346,7 +346,7 @@ class OpArrayCache(OpArrayPiper):
             self._fixed = False
             self._cache = None
             self._lock = Lock()
-            self._cacheLock = request.Lock()#greencall.Lock()
+            self._cacheLock = threading.Lock()#greencall.Lock()
             self._lazyAlloc = True
             self._cacheHits = 0
             self.graph._registerCache(self)
