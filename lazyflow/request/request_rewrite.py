@@ -634,7 +634,83 @@ class Request( object ):
     def __call__(self):
         return self.wait()
 
+class RequestLock(object):
+    """
+    Request-aware lock.  Implements the same interface as threading.Lock.
+    If acquire() is called from a normal thread, the the lock blocks the thread as usual.
+    If acquire() is called from a Request, then the request is suspended so that another Request can be resumed on the thread.
+    
+    Threads and Requests can *share* access to a RequestLock.  They will both be given equal access to the lock.
+    """
+    def __init__(self):
+        self._modelLock = threading.Lock() # This member holds the state of this RequestLock
+        self._selfProtectLock = threading.Lock() # This member protects the _pendingRequests set from corruption
+        self._pendingRequests = deque()
+    
+    def acquire(self, blocking=True):
+        """
+        :param blocking: Same as in threading.Lock 
+        """
+        current_request = Request.current_request()
+        if current_request is None:
+            if blocking:
+                with self._selfProtectLock:
+                    # Append "None" to indicate that a real thread is waiting (not a request)
+                    self._pendingRequests.append(None)
 
+            # Wait for the internal lock to become free
+            got_it = self._modelLock.acquire(blocking)
+            
+            if blocking:
+                with self._selfProtectLock:
+                    # Search for a "None" to pull off the list of pendingRequests.
+                    # Don't take real requests from the queue
+                    r = self._pendingRequests.popleft()
+                    while r is not None:
+                        self._pendingRequests.append(r)
+                        r = self._pendingRequests.popleft()
+            return got_it
+        
+        else: # Running in a Request
+            with self._selfProtectLock:
+                # Try to get it now.
+                got_it = self._modelLock.acquire(False)
+                if not blocking:
+                    return got_it
+                if not got_it:
+                    self._pendingRequests.append(current_request)
+
+            if not got_it:
+                # Suspend the current request.  When it is woken, it owns the _modelLock.
+                current_request._suspend()
+
+            # Guaranteed to own _modelLock now.
+            return True
+
+    def release(self):
+        assert self._modelLock.locked(), "Can't release a RequestLock that isn't already acquired!"
+        with self._selfProtectLock:
+            if len(self._pendingRequests) > 0:
+                # Instead of releasing the modelLock, just wake up a request that was waiting for it.
+                # He assumes that the lock is his when he wakes up.
+                r = self._pendingRequests[0]
+                if r is not None:
+                    self._pendingRequests.popleft()
+                    r._wake_up()
+                else:
+                    # The pending "request" is a real thread.
+                    # Release the lock to wake it up (he'll remove the _pendingRequest entry)
+                    self._modelLock.release()
+            else:
+                # There were no waiting requests or threads, so the lock is free to be acquired again.
+                self._modelLock.release()
+
+    def __enter__(self):
+        self.acquire()
+        return self
+    
+    def __exit__(self, *args):
+        self.release()
 
 class Pool(object):
     """

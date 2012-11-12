@@ -1,4 +1,4 @@
-from lazyflow.request.request_rewrite import Request
+from lazyflow.request.request_rewrite import Request, RequestLock
 import time
 import random
 import numpy
@@ -439,6 +439,58 @@ class TestRequest(object):
 
         for r in requests:
             r.wait()
+    
+    @traceLogged(traceLogger)
+    def testRequestLock(self):
+        """
+        Test the special Request-aware lock.
+        
+        Launch 99 requests and threads that all must fight over access to the same list.
+        The list will eventually be 0,1,2...99, and each request will append a single number to the list.
+        Each request must wait its turn before it can append it's number and finish.
+        """
+        req_lock = RequestLock()
+        l = [0]
+        
+        def append_n(n):
+            #print "Starting append_{}\n".format(n)
+            while True:
+                with req_lock:
+                    if l[-1] == n-1:
+                        #print "***** Appending {}".format(n)
+                        l.append(n)
+                        return
+
+        # Create 50 requests
+        reqs = []
+        for i in range(1,100,2):
+            req = Request( partial(append_n, i) )
+            reqs.append(req)
+
+        # Create 49 threads
+        thrds = []
+        for i in range(2,100,2):
+            thrd = threading.Thread( target=partial(append_n, i) )
+            thrds.append(thrd)
+        
+        # Submit in reverse order to ensure that no request finishes until they have all been started.
+        # This proves that the requests really are being suspended.        
+        for req in reversed(reqs):
+            req.submit()
+
+        # Start all the threads
+        for thrd in reversed(thrds):
+            thrd.start()
+        
+        # All requests must finish
+        for req in reqs:
+            req.wait()
+
+        # All threads should finish
+        for thrd in thrds:
+            thrd.join()
+
+        assert l == list(range(100)), "Requests and/or threads finished in the wrong order!"
 
 if __name__ == "__main__":
     import nose
