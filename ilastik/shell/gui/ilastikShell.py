@@ -13,9 +13,11 @@ import traceback
 import os
 from functools import partial
 
+
+from volumina.utility import PreferencesManager, ShortcutManagerDlg
 from ilastik.versionManager import VersionManager
-from ilastik.utility import bind, PreferencesManager
-from ilastik.utility.gui import ThunkEvent, ThunkEventHandler, ShortcutManagerDlg
+from ilastik.utility import bind
+from ilastik.utility.gui import ThunkEvent, ThunkEventHandler
 
 import sys
 import logging

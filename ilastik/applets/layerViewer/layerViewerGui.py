@@ -11,8 +11,9 @@ from lazyflow.graph import OperatorWrapper
 from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
 
 import os
+from volumina.utility import ShortcutManager
 from ilastik.utility import bind
-from ilastik.utility.gui import ThreadRouter, threadRouted, ShortcutManager
+from ilastik.utility.gui import ThreadRouter, threadRouted
 
 from volumina.adaptors import Op5ifyer
 

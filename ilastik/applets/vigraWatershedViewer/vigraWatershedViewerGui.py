@@ -8,8 +8,9 @@ import copy
 import threading
 from functools import partial
 
+from volumina.utility import PreferencesManager
 from ilastik.applets.layerViewer import LayerViewerGui
-from ilastik.utility import bind, PreferencesManager
+from ilastik.utility import bind
 
 from volumina.slicingtools import index2slice
 

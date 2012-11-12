@@ -11,7 +11,8 @@ import glob
 import threading
 import h5py
 
-from ilastik.utility import bind, PreferencesManager
+from volumina.utility import PreferencesManager
+from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.utility.pathHelpers import getPathVariants
 
