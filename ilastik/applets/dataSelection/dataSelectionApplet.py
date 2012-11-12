@@ -3,7 +3,6 @@ from ilastik.applets.base.applet import Applet
 from opDataSelection import OpDataSelection
 
 from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
-from dataSelectionPreferencesManager import DataSelectionPreferencesManager
 
 from lazyflow.graph import OperatorWrapper
 
@@ -28,8 +27,6 @@ class DataSelectionApplet( Applet ):
         self._gui = None
         self.batchDataGui = batchDataGui
         
-        self._preferencesManager = DataSelectionPreferencesManager()
-    
     @property
     def gui( self ):
         if self._gui is None:
@@ -45,7 +42,3 @@ class DataSelectionApplet( Applet ):
     @property
     def topLevelOperator(self):
         return self._topLevelOperator
-    
-    @property
-    def appletPreferencesManager(self):
-         return self._preferencesManager
