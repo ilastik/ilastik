@@ -40,6 +40,7 @@ class ObjectExtractionGui( QWidget ):
     def setImageIndex( self, imageIndex ):
         mainOperator = self.mainOperator.innerOperators[imageIndex]
         self.curOp = mainOperator
+                
 
         ct = colortables.create_default_8bit()
         self.binaryimages = LazyflowSource( mainOperator.BinaryImage )
@@ -59,6 +60,13 @@ class ObjectExtractionGui( QWidget ):
         layer = RGBALayer( red=ConstantSource(255), alpha=self.centerimagesrc )
         layer.name = "Object Centers"
         self.layerstack.append( layer )
+                
+        self.distanceTransform = LazyflowSource( mainOperator.DistanceTransform )        
+        # FIXME range: magic numbers
+        layer = GrayscaleLayer( self.distanceTransform, range=(0,100), normalize=(0,5) )
+#        layer.set_normalize(self.distanceTransform, [0,10])
+        layer.name = "Distance Transform Image"
+        self.layerstack.append(layer)
 
         if mainOperator.Images.meta.shape:
             self.editor.dataShape = mainOperator.LabelImage.meta.shape
@@ -131,7 +139,10 @@ class ObjectExtractionGui( QWidget ):
         self._drawer.labelImageButton.pressed.connect(self._onLabelImageButtonPressed)
         self._drawer.extractObjectsButton.pressed.connect(self._onExtractObjectsButtonPressed)
         self._drawer.mergeSegmentationsButton.pressed.connect(self._onMergeSegmentationsButtonPressed)
+        self._drawer.distanceTransformButton.pressed.connect(self._onDistanceTransformButtonPressed)
+        
         self._drawer.doAllButton.pressed.connect(self._onDoAllButtonPressed)
+
 
     def _initViewerControlUi( self ):
         p = os.path.split(__file__)[0]+'/'
@@ -148,13 +159,6 @@ class ObjectExtractionGui( QWidget ):
         progress.forceShow()
 
         # LabelImage for background/non-background (channel 0) and division/non-division (channel 2)        
-#        for idx,c in enumerate([0,2]):
-#            for t in range(maxt):
-#                progress.setValue(idx * maxt + t * (idx+1))
-#                if progress.wasCanceled():
-#                    break
-#                else:
-#                    self.curOp.updateLabelImageAt( t, c )
         reqs = []
         self.curOp._opObjectExtractionBg._opLabelImage._fixed = False
         self.curOp._opObjectExtractionDiv._opLabelImage._fixed = False
@@ -214,7 +218,7 @@ class ObjectExtractionGui( QWidget ):
         
         self.curOp._opObjectExtractionBg.ObjectCenterImage.setDirty( SubRegion(self.curOp._opObjectExtractionBg.ObjectCenterImage))
         self.curOp._opObjectExtractionDiv.ObjectCenterImage.setDirty( SubRegion(self.curOp._opObjectExtractionDiv.ObjectCenterImage))
-        
+                
         print 'Object Extraction: done.'
 
 
@@ -244,10 +248,40 @@ class ObjectExtractionGui( QWidget ):
         
         print 'Merge Segmentation: done.'
         
+    def _onDistanceTransformButtonPressed(self):
+        print "_onDistanceTransformButtonPressed"
+        
+        m = self.curOp.LabelImage.meta
+        maxt = m.shape[0] -1 # the last time frame will be dropped
+        progress = QProgressDialog("Computing the distance transform...", "Stop", 0, maxt)
+        progress.setWindowModality(Qt.ApplicationModal)
+        progress.setMinimumDuration(0)
+        progress.setCancelButtonText(QString())
+        progress.forceShow()        
+                
+        reqs = []        
+        for t in range(maxt):
+            reqs.append(self.curOp._opDistanceTransform.DistanceTransformComputation([t]))
+            reqs[-1].submit()
+        for i, req in enumerate(reqs):
+            progress.setValue(i)
+            if progress.wasCanceled():
+                req.cancel()
+            else:
+                req.wait()
+                
+        progress.setValue(maxt)
+        self.curOp._opDistanceTransform._fixed = False
+        
+        roi = SubRegion(self.curOp.DistanceTransform, start=5*(0,), stop=m.shape)
+        self.curOp.DistanceTransform.setDirty(roi)
+        print "Distance Transform: done."
+        
         
     def _onDoAllButtonPressed(self):    
         self._onLabelImageButtonPressed()
         self._onExtractObjectsButtonPressed()
         self._onMergeSegmentationsButtonPressed()
+        self._onDistanceTransformButtonPressed()
         
         

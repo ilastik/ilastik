@@ -24,8 +24,7 @@ class ObjectExtractionSerializer(AppletSerializer):
             t_gr = samples_gr.create_group(str(t))
             t_gr.create_dataset(name="RegionCenter", data=op._opObjectExtractionBg._opRegFeats._cache[t]['RegionCenter'])
             t_gr.create_dataset(name="Count", data=op._opObjectExtractionBg._opRegFeats._cache[t]['Count'])            
-                
-        
+            
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         print "objectExtraction: deserializeFromHdf5", topGroup, groupVersion, hdf5File, projectFilePath

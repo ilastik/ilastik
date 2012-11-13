@@ -4,6 +4,8 @@ from lazyflow.rtype import List, SubRegion
 from lazyflow.operators.obsolete.generic import OpSubRegion
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 import numpy
+import h5py
+import vigra
 
 
 class OpObjectExtractionMultiClass(Operator):
@@ -17,6 +19,7 @@ class OpObjectExtractionMultiClass(Operator):
     RegionCenters = OutputSlot(stype=Opaque, rtype=List)
     RegionFeatures = OutputSlot(stype=Opaque, rtype=List)
     ClassMapping = OutputSlot(stype=Opaque, rtype=List)
+    DistanceTransform = OutputSlot()
     BinaryImage = OutputSlot()
     
 
@@ -43,10 +46,13 @@ class OpObjectExtractionMultiClass(Operator):
         self._opObjectExtractionDiv.BinaryImage.connect(self._opSubRegionDivImage.outputs["Output"])
         self._opObjectExtractionDiv.BackgroundLabel.setValue(0)
         
+        self._opDistanceTransform = OpDistanceTransform3D(graph=graph)
+        self._opDistanceTransform.LabelImage.connect(self._opObjectExtractionBg.LabelImage)        
+        
         self.LabelImage.connect(self._opObjectExtractionBg.LabelImage)
         self.ObjectCenterImage.connect(self._opObjectExtractionBg.ObjectCenterImage)
         self.RegionCenters.connect(self._opObjectExtractionBg.RegionCenters)
-        self.RegionFeatures.connect(self._opObjectExtractionBg.RegionFeatures)
+        self.RegionFeatures.connect(self._opObjectExtractionBg.RegionFeatures)        
         
         self._opClassExtraction = OpClassExtraction(graph=graph)
         self._opClassExtraction.inputs["LabelImageBg"].connect(self._opObjectExtractionBg.LabelImage)
@@ -55,6 +61,7 @@ class OpObjectExtractionMultiClass(Operator):
         self._opClassExtraction.inputs["RegionFeaturesDiv"].connect(self._opObjectExtractionDiv.RegionFeatures)
         
         self.ClassMapping.connect(self._opClassExtraction.outputs["ClassMapping"])        
+        self.DistanceTransform.connect(self._opDistanceTransform.DistanceTransformImage)
         
 
     def setupOutputs(self):
@@ -191,4 +198,57 @@ class OpThresholding(Operator):
     
     def propagateDirty(self, slot, subindex, roi):
         pass
+
+
+class OpDistanceTransform3D( Operator ):
+    LabelImage = InputSlot()    
     
+    DistanceTransformImage = OutputSlot()
+    # Pull the following output slot to compute the distance transform image.
+    # This slot is introduced to allow for a precomputation of the output image and
+    # write the results into a compressed hdf5 virtual file instead of allocating
+    # space for all the requests.
+    DistanceTransformComputation = OutputSlot(stype="float")
+
+    def __init__(self, parent=None, graph=None):
+        super(OpDistanceTransform3D, self).__init__(parent=parent,graph=graph)
+        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)        
+        self._processedTimeSteps = []
+        self._fixed = True
+        
+    def setupOutputs( self ):
+        self.DistanceTransformImage.meta.assignFrom( self.LabelImage.meta )
+        self.DistanceTransformImage.meta.dtype = numpy.float
+        m = self.DistanceTransformImage.meta        
+        self._mem_h5.create_dataset( 'DistanceTransform', shape=m.shape, dtype=numpy.float, compression=1 )
+        self.DistanceTransformComputation.meta.dtype = numpy.float
+        self.DistanceTransformComputation.meta.shape = [0]
+        
+    def __del__( self ):
+        self._mem_h5.close()
+        
+    def execute( self, slot, subindex, roi, destination ):        
+        if slot is self.DistanceTransformImage:
+            if self._fixed:        
+                print 'Distance Transform Image not computed yet.'        
+                destination[:] = 0
+                return destination
+            
+            destination = self._mem_h5['DistanceTransform'][roi.toSlice()]
+            return destination
+        
+        if slot is self.DistanceTransformComputation:
+            # assumes t,x,y,z,c           
+            for t in range(roi.start[0],roi.stop[0]):            
+                if t not in self._processedTimeSteps:
+                    print "Computing Distance Transform Image at", t
+                    sroi = SubRegion(self.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.LabelImage.meta.shape[1:]))   
+                    a = self.LabelImage.get(sroi).wait()
+                    a = a[0,...,0].astype(numpy.float32)                    
+                    self._mem_h5['DistanceTransform'][t,...,0] = vigra.filters.distanceTransform3D( a, background=False)
+                    self._processedTimeSteps.append(t)
+            
+            
+            
+        
+        

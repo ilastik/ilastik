@@ -16,6 +16,7 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         if len(self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._processedTimeSteps) > 0:
             print "object extraction multi class: saving label image"        
             src = op._opObjectExtractionBg._opLabelImage._mem_h5
+            # TODO: only save the label image if all the time steps are processed?
             self.deleteIfPresent( topGroup, "LabelImage")
             src.copy('/LabelImage', topGroup) 
 
@@ -34,17 +35,22 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         for t in op._opClassExtraction._cache.keys():
             classprob_gr.create_dataset(name=str(t), data=op._opClassExtraction._cache[t])        
         
+        if len(self.mainOperator.innerOperators[0]._opDistanceTransform._processedTimeSteps) > 0:
+            print "object extraction multi class: distance transform"
+            src = op._opDistanceTransform._mem_h5
+            self.deleteIfPresent(topGroup, "DistanceTransform")
+            src.copy('/DistanceTransform', topGroup)
+
         
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         print "objectExtraction multi class: deserializeFromHdf5", topGroup, groupVersion, hdf5File, projectFilePath
         
         print "objectExtraction multi class: loading label image"
-        dest = self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._mem_h5        
-        
+        dest = self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._mem_h5                
         if 'LabelImage' in topGroup.keys():            
             del dest['LabelImage']
             topGroup.copy('LabelImage', dest)
-        
+            # TODO: only deserialize the label image if all the time steps are processed?
             self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._fixed = False        
             self.mainOperator.innerOperators[0]._opObjectExtractionBg._opLabelImage._processedTimeSteps = range(topGroup['LabelImage'].shape[0])            
 
@@ -69,6 +75,15 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
             for t in topGroup["ClassProbabilities"].keys():
                 cache[int(t)] = topGroup["ClassProbabilities"][t].value                
         self.mainOperator.innerOperators[0]._opClassExtraction._cache = cache
+        
+        print "objectExtraction multi class: loading distance transform image"
+        dest = self.mainOperator.innerOperators[0]._opDistanceTransform._mem_h5                
+        if 'DistanceTransform' in topGroup.keys():            
+            del dest['DistanceTransform']
+            topGroup.copy('DistanceTransform', dest)
+        
+            self.mainOperator.innerOperators[0]._opDistanceTransform._fixed = False        
+            self.mainOperator.innerOperators[0]._opDistanceTransform._processedTimeSteps = range(topGroup['LabelImage'].shape[0])
         
 
     def isDirty(self):

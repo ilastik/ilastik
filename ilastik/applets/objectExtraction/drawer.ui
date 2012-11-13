@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>122</height>
+    <height>148</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -57,6 +57,13 @@
         <widget class="QPushButton" name="mergeSegmentationsButton">
          <property name="text">
           <string>Merge Segmentations</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="distanceTransformButton">
+         <property name="text">
+          <string>Distance Transform</string>
          </property>
         </widget>
        </item>
