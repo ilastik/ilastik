@@ -13,10 +13,14 @@ class OpLabelImage( Operator ):
     BackgroundLabel = InputSlot()
     
     LabelImage = OutputSlot()
-
+    # Pull the following output slot to compute the label image.
+    # This slot is introduced in order to do a precomputation of the output image and
+    # to write the results into a compressed hdf5 virtual file instead of allocating
+    # space for all the requests.
+    LabelImageComputation = OutputSlot(stype="float")
+    
     def __init__(self, parent=None, graph=None):
         super(OpLabelImage, self).__init__(parent=parent,graph=graph)
-#        self._mem_h5 = h5py.File(self._unique_file("LabelImage.h5"), backing_store=False)
         self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)        
         self._processedTimeSteps = []
         self._fixed = True
@@ -25,9 +29,10 @@ class OpLabelImage( Operator ):
         self.LabelImage.meta.assignFrom( self.BinaryImage.meta )
         self.LabelImage.meta.dtype = numpy.uint32        
         m = self.LabelImage.meta        
-        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )        
+        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )                
+        self.LabelImageComputation.meta.dtype = numpy.float
+        self.LabelImageComputation.meta.shape = [0]
         
-
     def __del__( self ):
         self._mem_h5.close()
         
@@ -36,23 +41,20 @@ class OpLabelImage( Operator ):
             if self._fixed:                
                 destination[:] = 0
                 return destination
-            
+                                        
+            destination = self._mem_h5['LabelImage'][roi.toSlice()]
+            return destination
+        
+        if slot is self.LabelImageComputation:
             # assumes t,x,y,z,c
             for t in range(roi.start[0],roi.stop[0]):
                 if t not in self._processedTimeSteps:
                     print "Calculating LabelImage at", t
-                    start = roi.start
-                    stop = roi.stop
-                    start[0] = t
-                    stop[0] = t+1
-                    print 'OpLabelImage::execute: start = ' + str(start) + ', stop = ' + str(stop)
-                    a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()        
+                    sroi = SubRegion(self.BinaryImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.BinaryImage.meta.shape[1:]))                    
+                    a = self.BinaryImage.get(sroi).wait()        
                     a = a[0,...,0]        
                     self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a, background_value = self.BackgroundLabel.value )                     
                     self._processedTimeSteps.append(t)
-                                        
-            destination = self._mem_h5['LabelImage'][roi.toSlice()]
-            return destination
 
 
 class OpRegionFeatures( Operator ):
