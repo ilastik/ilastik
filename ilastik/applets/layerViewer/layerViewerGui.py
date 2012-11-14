@@ -107,10 +107,9 @@ class LayerViewerGui(QMainWindow):
 
         self.initAppletDrawerUi() # Default implementation loads a blank drawer.
         self._initCentralUic()
-        self.__viewerControlWidget = None
-        self.initViewerControlUi()
-
         self._initEditor()
+        self.__viewerControlWidget = None
+        self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
 
         self.imageIndex = -1
         self.lastUpdateImageIndex = -1
@@ -450,6 +449,21 @@ class LayerViewerGui(QMainWindow):
         localDir = os.path.split(__file__)[0]
         self.__viewerControlWidget = uic.loadUi(localDir + "/viewerControls.ui")
 
+        # The editor's layerstack is in charge of which layer movement buttons are enabled
+        model = self.editor.layerStack
+
+        if self.__viewerControlWidget is not None:
+            model.canMoveSelectedUp.connect(self.__viewerControlWidget.UpButton.setEnabled)
+            model.canMoveSelectedDown.connect(self.__viewerControlWidget.DownButton.setEnabled)
+            model.canDeleteSelected.connect(self.__viewerControlWidget.DeleteButton.setEnabled)
+
+            # Connect our layer movement buttons to the appropriate layerstack actions
+            self.__viewerControlWidget.layerWidget.init(model)
+            self.__viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
+            self.__viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
+            self.__viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
+
+
     @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
         """
@@ -584,20 +598,6 @@ class LayerViewerGui(QMainWindow):
         self.editor.newImageView2DFocus.connect(self._setIconToViewMenu)
         self.editor.setInteractionMode( 'navigation' )
         self.volumeEditorWidget.init(self.editor)
-
-        # The editor's layerstack is in charge of which layer movement buttons are enabled
-        model = self.editor.layerStack
-
-        if self.__viewerControlWidget is not None:
-            model.canMoveSelectedUp.connect(self.__viewerControlWidget.UpButton.setEnabled)
-            model.canMoveSelectedDown.connect(self.__viewerControlWidget.DownButton.setEnabled)
-            model.canDeleteSelected.connect(self.__viewerControlWidget.DeleteButton.setEnabled)
-
-            # Connect our layer movement buttons to the appropriate layerstack actions
-            self.__viewerControlWidget.layerWidget.init(model)
-            self.__viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
-            self.__viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
-            self.__viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
 
         self.editor._lastImageViewFocus = 0
 
