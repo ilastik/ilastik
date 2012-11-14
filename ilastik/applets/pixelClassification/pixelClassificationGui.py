@@ -7,6 +7,7 @@ from functools import partial
 
 # Third-party
 import numpy
+from PyQt4 import uic
 from PyQt4.QtCore import Qt, pyqtSlot
 from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget
 
@@ -43,9 +44,13 @@ class PixelClassificationGui(LabelingGui):
 
         # Ensure that we are NOT in interactive mode
         self.labelingDrawerUi.checkInteractive.setChecked(False)
-        self.labelingDrawerUi.checkShowPredictions.setChecked(False)
+        self._viewerControlUi.checkShowPredictions.setChecked(False)
+        self._viewerControlUi.checkShowSegmentation.setChecked(False)
         self.toggleInteractive(False)
         
+    def viewerControlWidget(self):
+        return self._viewerControlUi
+
     ###########################################
     ###########################################
 
@@ -78,36 +83,51 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkInteractive.toggled.connect(self.toggleInteractive)
         self.labelingDrawerUi.savePredictionsButton.clicked.connect(self.onSavePredictionsButtonClicked)
 
-        self.labelingDrawerUi.checkShowPredictions.clicked.connect(self.handleShowPredictionsClicked)
-        self.labelingDrawerUi.checkShowSegmentation.clicked.connect(self.handleShowSegmentationClicked)
-        
-        def nextCheckState(checkbox):
-            if not checkbox.isChecked():
-                checkbox.setChecked(True)
-            else:
-                checkbox.setChecked(False)
-        self.labelingDrawerUi.checkShowPredictions.nextCheckState = partial(nextCheckState, self.labelingDrawerUi.checkShowPredictions) 
-        self.labelingDrawerUi.checkShowSegmentation.nextCheckState = partial(nextCheckState, self.labelingDrawerUi.checkShowSegmentation) 
-        
         self.pipeline.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
         
         self._initShortcuts()
         
+    @traceLogged(traceLogger)
+    def initViewerControlUi(self):
+        localDir = os.path.split(__file__)[0]
+        self._viewerControlUi = uic.loadUi( os.path.join( localDir, "viewerControls.ui" ) )
+
+        # Connect checkboxes
+        def nextCheckState(checkbox):
+            checkbox.setChecked( not checkbox.isChecked() )
+        self._viewerControlUi.checkShowPredictions.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowPredictions) 
+        self._viewerControlUi.checkShowSegmentation.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowSegmentation) 
+
+        self._viewerControlUi.checkShowPredictions.clicked.connect( self.handleShowPredictionsClicked )
+        self._viewerControlUi.checkShowSegmentation.clicked.connect( self.handleShowSegmentationClicked )
+
+        # The editor's layerstack is in charge of which layer movement buttons are enabled
+        model = self.editor.layerStack
+        model.canMoveSelectedUp.connect(self._viewerControlUi.UpButton.setEnabled)
+        model.canMoveSelectedDown.connect(self._viewerControlUi.DownButton.setEnabled)
+        model.canDeleteSelected.connect(self._viewerControlUi.DeleteButton.setEnabled)
+
+        # Connect our layer movement buttons to the appropriate layerstack actions
+        self._viewerControlUi.layerWidget.init(model)
+        self._viewerControlUi.UpButton.clicked.connect(model.moveSelectedUp)
+        self._viewerControlUi.DownButton.clicked.connect(model.moveSelectedDown)
+        self._viewerControlUi.DeleteButton.clicked.connect(model.deleteSelected)
+
     def _initShortcuts(self):
         mgr = ShortcutManager()
         shortcutGroupName = "Predictions"
 
-        togglePredictions = QShortcut( QKeySequence("p"), self, member=self.labelingDrawerUi.checkShowPredictions.click )
+        togglePredictions = QShortcut( QKeySequence("p"), self, member=self._viewerControlUi.checkShowPredictions.click )
         mgr.register( shortcutGroupName,
                       "Toggle Prediction Layer Visibility",
                       togglePredictions,
-                      self.labelingDrawerUi.checkShowPredictions )        
+                      self._viewerControlUi.checkShowPredictions )        
 
-        toggleSegmentation = QShortcut( QKeySequence("s"), self, member=self.labelingDrawerUi.checkShowSegmentation.click )
+        toggleSegmentation = QShortcut( QKeySequence("s"), self, member=self._viewerControlUi.checkShowSegmentation.click )
         mgr.register( shortcutGroupName,
                       "Toggle Segmentaton Layer Visibility",
                       toggleSegmentation,
-                      self.labelingDrawerUi.checkShowSegmentation )        
+                      self._viewerControlUi.checkShowSegmentation )        
 
         toggleLivePredict = QShortcut( QKeySequence("l"), self, member=self.labelingDrawerUi.checkInteractive.click )
         mgr.register( shortcutGroupName,
@@ -235,7 +255,7 @@ class PixelClassificationGui(LabelingGui):
 
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
-            self.labelingDrawerUi.checkShowPredictions.setChecked( True )
+            self._viewerControlUi.checkShowPredictions.setChecked( True )
             self.handleShowPredictionsClicked()
 
         # If we're changing modes, enable/disable our controls and other applets accordingly
@@ -251,7 +271,7 @@ class PixelClassificationGui(LabelingGui):
     @pyqtSlot()
     @traceLogged(traceLogger)
     def handleShowPredictionsClicked(self):
-        checked = self.labelingDrawerUi.checkShowPredictions.isChecked()
+        checked = self._viewerControlUi.checkShowPredictions.isChecked()
         for layer in self.layerstack:
             if "Prediction" in layer.name:
                 layer.visible = checked
@@ -267,7 +287,7 @@ class PixelClassificationGui(LabelingGui):
     @pyqtSlot()
     @traceLogged(traceLogger)
     def handleShowSegmentationClicked(self):
-        checked = self.labelingDrawerUi.checkShowSegmentation.isChecked()
+        checked = self._viewerControlUi.checkShowSegmentation.isChecked()
         for layer in self.layerstack:
             if "Segmentation" in layer.name:
                 layer.visible = checked
@@ -284,11 +304,11 @@ class PixelClassificationGui(LabelingGui):
                     visibleCount += 1
 
         if visibleCount == 0:
-            self.labelingDrawerUi.checkShowPredictions.setCheckState(Qt.Unchecked)
+            self._viewerControlUi.checkShowPredictions.setCheckState(Qt.Unchecked)
         elif predictLayerCount == visibleCount:
-            self.labelingDrawerUi.checkShowPredictions.setCheckState(Qt.Checked)
+            self._viewerControlUi.checkShowPredictions.setCheckState(Qt.Checked)
         else:
-            self.labelingDrawerUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
+            self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
     @pyqtSlot()
     @traceLogged(traceLogger)
@@ -302,11 +322,11 @@ class PixelClassificationGui(LabelingGui):
                     visibleCount += 1
 
         if visibleCount == 0:
-            self.labelingDrawerUi.checkShowSegmentation.setCheckState(Qt.Unchecked)
+            self._viewerControlUi.checkShowSegmentation.setCheckState(Qt.Unchecked)
         elif segLayerCount == visibleCount:
-            self.labelingDrawerUi.checkShowSegmentation.setCheckState(Qt.Checked)
+            self._viewerControlUi.checkShowSegmentation.setCheckState(Qt.Checked)
         else:
-            self.labelingDrawerUi.checkShowSegmentation.setCheckState(Qt.PartiallyChecked)
+            self._viewerControlUi.checkShowSegmentation.setCheckState(Qt.PartiallyChecked)
 
     @pyqtSlot()
     @traceLogged(traceLogger)
@@ -319,8 +339,8 @@ class PixelClassificationGui(LabelingGui):
         
         self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
         self.labelingDrawerUi.checkInteractive.setEnabled(enabled)
-        self.labelingDrawerUi.checkShowPredictions.setEnabled(enabled)
-        self.labelingDrawerUi.checkShowSegmentation.setEnabled(enabled)
+        self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
+        self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
     
     @pyqtSlot()
     @traceLogged(traceLogger)
@@ -338,8 +358,8 @@ class PixelClassificationGui(LabelingGui):
             self.pipeline.FreezePredictions.setValue(False)
             self._currentlySavingPredictions = True
             
-            originalButtonText = "Save Predictions Now"
-            self.labelingDrawerUi.savePredictionsButton.setText("Cancel Save")
+            originalButtonText = "Full Volume Predict and Save"
+            self.labelingDrawerUi.savePredictionsButton.setText("Cancel Full Predict")
 
             @traceLogged(traceLogger)
             def saveThreadFunc():
