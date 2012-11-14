@@ -58,9 +58,7 @@ class DataSelectionGui(QMainWindow):
         return self
 
     def appletDrawers(self):
-        DrawerNames = { GuiMode.Batch  : 'Batch Inputs',
-                        GuiMode.Normal : 'Input Selection' }        
-        return [ (DrawerNames[self.guiMode], self.drawer) ]
+        return [ (self.title, self.drawer) ]
     
     def menus( self ):
         return []
@@ -78,9 +76,11 @@ class DataSelectionGui(QMainWindow):
     ###########################################
     ###########################################
 
-    def __init__(self, dataSelectionOperator, serializer, guiControlSignal, guiMode=GuiMode.Normal):
+    def __init__(self, dataSelectionOperator, serializer, guiControlSignal, guiMode=GuiMode.Normal, title="Input Selection"):
         with Tracer(traceLogger):
             super(DataSelectionGui, self).__init__()
+            
+            self.title = title
     
             self.drawer = None
             self.mainOperator = dataSelectionOperator
