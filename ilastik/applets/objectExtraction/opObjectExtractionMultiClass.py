@@ -20,6 +20,7 @@ class OpObjectExtractionMultiClass(Operator):
     RegionFeatures = OutputSlot(stype=Opaque, rtype=List)
     ClassMapping = OutputSlot(stype=Opaque, rtype=List)
     DistanceTransform = OutputSlot()
+    MaximumDistanceTransform = OutputSlot()    
     BinaryImage = OutputSlot()
     
 
@@ -47,7 +48,10 @@ class OpObjectExtractionMultiClass(Operator):
         self._opObjectExtractionDiv.BackgroundLabel.setValue(0)
         
         self._opDistanceTransform = OpDistanceTransform3D(graph=graph)
-        self._opDistanceTransform.LabelImage.connect(self._opObjectExtractionBg.LabelImage)        
+        self._opDistanceTransform.LabelImage.connect(self._opObjectExtractionBg.LabelImage)     
+        
+        self._opRegionalMaximum = OpRegionalMaximum(graph=graph)
+        self._opRegionalMaximum.Image.connect(self._opDistanceTransform.Image)   
         
         self.LabelImage.connect(self._opObjectExtractionBg.LabelImage)
         self.ObjectCenterImage.connect(self._opObjectExtractionBg.ObjectCenterImage)
@@ -61,8 +65,8 @@ class OpObjectExtractionMultiClass(Operator):
         self._opClassExtraction.inputs["RegionFeaturesDiv"].connect(self._opObjectExtractionDiv.RegionFeatures)
         
         self.ClassMapping.connect(self._opClassExtraction.outputs["ClassMapping"])        
-        self.DistanceTransform.connect(self._opDistanceTransform.DistanceTransformImage)
-        
+        self.DistanceTransform.connect(self._opDistanceTransform.Image)
+        self.MaximumDistanceTransform.connect(self._opRegionalMaximum.MaximumImage)
 
     def setupOutputs(self):
         print "OpObjectExtractionMultiClass::setupOutputs: Inputs.shape " + str(self.Images.meta.shape)
@@ -81,9 +85,10 @@ class OpObjectExtractionMultiClass(Operator):
         self._opSubRegionDivImage.inputs["Start"].setValue(tuple(start))        
         self._opSubRegionDivImage.inputs["Stop"].setValue(tuple(stop))        
         
+        self.MaximumDistanceTransform.meta.assignFrom(self.DistanceTransform.meta)
     
     def execute(self, slot, subindex, roi, result):
-        pass
+        pass       
 
     def propagateDirty(self, inputSlot, roi):
         raise NotImplementedError
@@ -203,7 +208,7 @@ class OpThresholding(Operator):
 class OpDistanceTransform3D( Operator ):
     LabelImage = InputSlot()    
     
-    DistanceTransformImage = OutputSlot()
+    Image = OutputSlot()
     # Pull the following output slot to compute the distance transform image.
     # This slot is introduced to allow for a precomputation of the output image and
     # write the results into a compressed hdf5 virtual file instead of allocating
@@ -217,9 +222,9 @@ class OpDistanceTransform3D( Operator ):
         self._fixed = True
         
     def setupOutputs( self ):
-        self.DistanceTransformImage.meta.assignFrom( self.LabelImage.meta )
-        self.DistanceTransformImage.meta.dtype = numpy.float
-        m = self.DistanceTransformImage.meta        
+        self.Image.meta.assignFrom( self.LabelImage.meta )
+        self.Image.meta.dtype = numpy.uint8
+        m = self.Image.meta        
         self._mem_h5.create_dataset( 'DistanceTransform', shape=m.shape, dtype=numpy.float, compression=1 )
         self.DistanceTransformComputation.meta.dtype = numpy.float
         self.DistanceTransformComputation.meta.shape = [0]
@@ -228,10 +233,10 @@ class OpDistanceTransform3D( Operator ):
         self._mem_h5.close()
         
     def execute( self, slot, subindex, roi, destination ):        
-        if slot is self.DistanceTransformImage:
+        if slot is self.Image:
             if self._fixed:        
                 print 'Distance Transform Image not computed yet.'        
-                destination[:] = 0
+                destination[:] = 255
                 return destination
             
             destination = self._mem_h5['DistanceTransform'][roi.toSlice()]
@@ -250,5 +255,54 @@ class OpDistanceTransform3D( Operator ):
             
             
             
+class OpRegionalMaximum( Operator ):
+    Image = InputSlot()    
+    
+    MaximumImage = OutputSlot()
+    # Pull the following output slot to compute the distance transform image.
+    # This slot is introduced to allow for a precomputation of the output image and
+    # write the results into a compressed hdf5 virtual file instead of allocating
+    # space for all the requests.
+    MaximumImageComputation = OutputSlot(stype="float")
+    
+
+    def __init__(self, parent=None, graph=None):
+        super(OpRegionalMaximum, self).__init__(parent=parent,graph=graph)
+        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)        
+        self._processedTimeSteps = []
+        self._fixed = True
+        
+    def setupOutputs( self ):
+        self.MaximumImage.meta.assignFrom( self.Image.meta )
+        self.MaximumImage.meta.dtype = numpy.uint8
+        m = self.MaximumImage.meta        
+        self._mem_h5.create_dataset( 'MaximumImage', shape=m.shape, dtype=numpy.float, compression=1 )
+        self.MaximumImageComputation.meta.dtype = numpy.float
+        self.MaximumImageComputation.meta.shape = [0]
+        
+    def __del__( self ):
+        self._mem_h5.close()
+        
+    def execute( self, slot, subindex, roi, destination ):        
+        if slot is self.MaximumImage:            
+            if self._fixed:
+                destination[:] = 255
+                return destination
+                        
+            destination = self._mem_h5['MaximumImage'][roi.toSlice()]
+            return destination
+        
+        if slot is self.MaximumImageComputation:
+            # assumes t,x,y,z,c           
+            for t in range(roi.start[0],roi.stop[0]):            
+                if t not in self._processedTimeSteps:
+                    print "Computing Non Maximum Suppression at", t
+                    sroi = SubRegion(self.Image, start=[t,0,0,0,0], stop=[t+1,] + list(self.Image.meta.shape[1:]))   
+                    a = self.Image.get(sroi).wait()
+                    a = a[0,...,0].astype(numpy.float32)
+                    self._mem_h5['MaximumImage'][t,...,0] = vigra.analysis.extendedLocalMaxima3D(a)
+                    self._processedTimeSteps.append(t)
+        
+        
         
         

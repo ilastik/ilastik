@@ -2,7 +2,7 @@ from PyQt4.QtGui import QWidget, QColor, QVBoxLayout, QProgressDialog
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QString
 
-from lazyflow.rtype import SubRegion
+from lazyflow.rtype import SubRegion, Everything
 
 import os
 
@@ -13,6 +13,8 @@ import volumina.colortables as colortables
 
 import logging
 from lazyflow.roi import sliceToRoi
+import numpy
+import vigra
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 from lazyflow.tracer import Tracer
@@ -59,13 +61,22 @@ class ObjectExtractionGui( QWidget ):
         self.centerimagesrc = LazyflowSource( mainOperator.ObjectCenterImage )
         layer = RGBALayer( red=ConstantSource(255), alpha=self.centerimagesrc )
         layer.name = "Object Centers"
+        layer.visible = False
         self.layerstack.append( layer )
                 
         self.distanceTransform = LazyflowSource( mainOperator.DistanceTransform )        
-        # FIXME range: magic numbers
+        # FIXME range/normalize: magic numbers
         layer = GrayscaleLayer( self.distanceTransform, range=(0,100), normalize=(0,5) )
-#        layer.set_normalize(self.distanceTransform, [0,10])
         layer.name = "Distance Transform Image"
+        self.layerstack.append(layer)
+        
+        self.maxFilterDistanceTransform = LazyflowSource( mainOperator.MaximumDistanceTransform )        
+        # FIXME range: magic number        
+        ct = colortables.create_default_8bit()
+        ct[1] = QColor(0,255,0,0).rgb() # make 1 green
+        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+        layer = ColortableLayer( self.maxFilterDistanceTransform, ct )
+        layer.name = "Maximum Distance Image"
         self.layerstack.append(layer)
 
         if mainOperator.Images.meta.shape:
@@ -140,6 +151,7 @@ class ObjectExtractionGui( QWidget ):
         self._drawer.extractObjectsButton.pressed.connect(self._onExtractObjectsButtonPressed)
         self._drawer.mergeSegmentationsButton.pressed.connect(self._onMergeSegmentationsButtonPressed)
         self._drawer.distanceTransformButton.pressed.connect(self._onDistanceTransformButtonPressed)
+        self._drawer.maximumImageButton.pressed.connect(self._onMaximumImageButtonPressed)
         
         self._drawer.doAllButton.pressed.connect(self._onDoAllButtonPressed)
 
@@ -248,9 +260,7 @@ class ObjectExtractionGui( QWidget ):
         
         print 'Merge Segmentation: done.'
         
-    def _onDistanceTransformButtonPressed(self):
-        print "_onDistanceTransformButtonPressed"
-        
+    def _onDistanceTransformButtonPressed(self):       
         m = self.curOp.LabelImage.meta
         maxt = m.shape[0] -1 # the last time frame will be dropped
         progress = QProgressDialog("Computing the distance transform...", "Stop", 0, maxt)
@@ -276,12 +286,39 @@ class ObjectExtractionGui( QWidget ):
         roi = SubRegion(self.curOp.DistanceTransform, start=5*(0,), stop=m.shape)
         self.curOp.DistanceTransform.setDirty(roi)
         print "Distance Transform: done."
+    
+    def _onMaximumImageButtonPressed(self):
+        m = self.curOp.LabelImage.meta
+        maxt = m.shape[0] -1 # the last time frame will be dropped
+        progress = QProgressDialog("Computing maximum distance transform...", "Stop", 0, maxt)
+        progress.setWindowModality(Qt.ApplicationModal)
+        progress.setMinimumDuration(0)
+        progress.setCancelButtonText(QString())
+        progress.forceShow()        
+                
+        reqs = []        
+        for t in range(maxt):
+            reqs.append(self.curOp._opRegionalMaximum.MaximumImageComputation([t]))
+            reqs[-1].submit()
+        for i, req in enumerate(reqs):
+            progress.setValue(i)
+            if progress.wasCanceled():
+                req.cancel()
+            else:
+                req.wait()
+                
+        progress.setValue(maxt)
+        self.curOp._opRegionalMaximum._fixed = False
         
+        roi = SubRegion(self.curOp.MaximumDistanceTransform, start=5*(0,), stop=m.shape)
+        self.curOp.MaximumDistanceTransform.setDirty(roi)            
+        print 'Maximum image: done'
         
     def _onDoAllButtonPressed(self):    
         self._onLabelImageButtonPressed()
         self._onExtractObjectsButtonPressed()
         self._onMergeSegmentationsButtonPressed()
         self._onDistanceTransformButtonPressed()
+        self._onMaximumImageButtonPressed()
         
         

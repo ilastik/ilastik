@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>148</height>
+    <height>181</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -64,6 +64,13 @@
         <widget class="QPushButton" name="distanceTransformButton">
          <property name="text">
           <string>Distance Transform</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="maximumImageButton">
+         <property name="text">
+          <string>Maximum Image</string>
          </property>
         </widget>
        </item>

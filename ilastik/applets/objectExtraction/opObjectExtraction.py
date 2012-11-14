@@ -85,10 +85,13 @@ class OpRegionFeatures( Operator ):
             for t in roi:
                 print "RegionFeatures at", t
                 if t in self._cache:
+                    print "RegionFeatures from Cache"
                     feats_at = self._cache[t]
                 elif self.fixed:                    
+                    print "RegionFeatures fixed"
                     feats_at = { 'RegionCenter': numpy.asarray([]), 'Count': numpy.asarray([]), 'Coord<ArgMaxWeight>': numpy.asarray([]) }                    
                 else:                    
+                    print "Extracting RegionFeatures"
                     troi = SubRegion( self.LabelImage, start = [t,] + (len(self.LabelImage.meta.shape) - 1) * [0,], stop = [t+1,] + list(self.LabelImage.meta.shape[1:]))
                     a = self.LabelImage.get(troi).wait()
                     a = a[0,...,0] # assumes t,x,y,z,c

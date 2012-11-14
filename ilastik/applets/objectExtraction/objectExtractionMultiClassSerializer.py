@@ -40,6 +40,12 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
             src = op._opDistanceTransform._mem_h5
             self.deleteIfPresent(topGroup, "DistanceTransform")
             src.copy('/DistanceTransform', topGroup)
+        
+        if len(self.mainOperator.innerOperators[0]._opMaximumImage._processedTimeSteps) > 0:
+            print "object extraction multi class: maximum image"
+            src = op._opMaximumImage._mem_h5
+            self.deleteIfPresent(topGroup, "MaximumImage")
+            src.copy('/MaximumImage', topGroup)
 
         
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
@@ -80,10 +86,17 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
         dest = self.mainOperator.innerOperators[0]._opDistanceTransform._mem_h5                
         if 'DistanceTransform' in topGroup.keys():            
             del dest['DistanceTransform']
-            topGroup.copy('DistanceTransform', dest)
-        
+            topGroup.copy('DistanceTransform', dest)        
             self.mainOperator.innerOperators[0]._opDistanceTransform._fixed = False        
-            self.mainOperator.innerOperators[0]._opDistanceTransform._processedTimeSteps = range(topGroup['LabelImage'].shape[0])
+            self.mainOperator.innerOperators[0]._opDistanceTransform._processedTimeSteps = range(topGroup['DistanceTransform'].shape[0])
+        
+        print "objectExtraction multi class: maximum image"
+        dest = self.mainOperator.innerOperators[0]._opRegionalMaximum._mem_h5                
+        if 'MaximumImage' in topGroup.keys():            
+            del dest['MaximumImage']
+            topGroup.copy('MaximumImage', dest)        
+            self.mainOperator.innerOperators[0]._opRegionalMaximum._fixed = False        
+            self.mainOperator.innerOperators[0]._opRegionalMaximum._processedTimeSteps = range(topGroup['MaximumImage'].shape[0])
         
 
     def isDirty(self):

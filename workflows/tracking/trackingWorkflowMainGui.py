@@ -29,7 +29,7 @@ if debug_testing:
         #opDataSelection = workflow.dataSelectionApplet.topLevelOperator
         #opDataSelection.Dataset.resize(1)
         #opDataSelection.Dataset[0].setValue(info)
-        shell.setSelectedAppletDrawer(2)
+        shell.setSelectedAppletDrawer(1)
     
     if method == 'nearest_neighbor':
         startShellGui( TrackingWorkflowNN, test )
