@@ -278,6 +278,7 @@ class OpMultiArrayStacker(Operator):
         axistype = axisType(flag)
         axisindex = self.inputs["AxisIndex"].value
 
+        self.intervals = []
         for inSlot in self.inputs["Images"]:
             inTagKeys = [ax.key for ax in inSlot.meta.axistags]
             if inSlot.partner is not None:
@@ -289,10 +290,13 @@ class OpMultiArrayStacker(Operator):
 
                 if not flag in outTagKeys:
                     self.outputs["Output"].meta.axistags.insert(axisindex, vigra.AxisInfo(flag, axisType(flag)))
+
+                old_c = c
                 if flag in inTagKeys:
                     c += inSlot.meta.shape[inSlot.meta.axistags.index(flag)]
                 else:
                     c += 1
+                self.intervals.append((old_c, c))
 
         if len(self.inputs["Images"]) > 0:
             newshape = list(self.inputs["Images"][0].meta.shape)
@@ -366,6 +370,12 @@ class OpMultiArrayStacker(Operator):
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.AxisFlag or inputSlot == self.AxisIndex:
             self.Output.setDirty( slice(None) )
+        elif inputSlot == self.Images:
+            imageIndex = subindex[0]
+            axisIndex = self.AxisIndex.value
+            roi.start[axisIndex] += self.intervals[imageIndex][0] 
+            roi.stop[axisIndex] += self.intervals[imageIndex][0] 
+            self.Output.setDirty( roi )
         else:
             assert False, "Unknown input slot."
 
