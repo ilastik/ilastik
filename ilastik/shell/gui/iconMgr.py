@@ -36,11 +36,14 @@ import ilastik
 
 class ilastikIcons(object):
     #get the absolute path of the 'ilastik' module
-    ilastikPath = os.path.dirname(ilastik.__file__)
+    ilastikPath = os.path.dirname(__file__)
     
-    iconPath = ilastikPath+'/gui/icons/32x32/'
+    iconPath = ilastikPath+'/icons/32x32/'
+    
     Brush = iconPath + 'actions/edit-clear.png'
+    Clear = iconPath + 'actions/edit-clear.png'
     Play = iconPath + "actions/media-playback-start.png"
+    Pause = iconPath + "actions/media-playback-pause.png"
     View = iconPath + 'emotes/face-glasses.png'
     Segment = iconPath + "actions/my-segment.png" 
     Undo = iconPath + 'actions/edit-undo.png'
