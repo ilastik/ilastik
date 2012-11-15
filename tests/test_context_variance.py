@@ -6,6 +6,7 @@ from lazyflow import graph
 from context.operators.contextVariance import OpContextVariance
 from context.build.contextcpp import varContext2Dmulti, varContext3Dmulti, varContext3Danis
 import lazyflow
+import copy
 
 def testVariance2D():
     print "test variance in 2d"
@@ -215,12 +216,63 @@ def testVarianceOperator():
     print res[0:3, 0:3, 2, 0]
     
     
+def testShrinkToShape():
+    g = graph.Graph()
+    opVar = OpContextVariance(graph = g)
     
+    maxRadius = [3, 3, 2]
+    inputShape = (15, 15, 15, 1)
+    axistags = vigra.VigraArray.defaultAxistags(len(inputShape))
+    print axistags
     
+    #cIndex = 3
+    #first case, nothing is near the border
+    print "far from the border"
+    roi = lazyflow.rtype.SubRegion(None, start=[5, 5, 5, 0], stop=[7, 8, 9, 1])
+    roi.setInputShape(inputShape)
+    createRoisAndShrink(roi, maxRadius, axistags, opVar)
+    
+    #second case, beginning near the border
+    print "start at border"
+    roi = lazyflow.rtype.SubRegion(None, start=[0, 0, 0, 0], stop=[7, 8, 9, 1])
+    roi.setInputShape(inputShape)
+    createRoisAndShrink(roi, maxRadius, axistags, opVar)
+    
+    #third case, ending near the border
+    print "end at border"
+    roi = lazyflow.rtype.SubRegion(None, start=[10, 10, 10, 0], stop=[12, 13, 14, 1])
+    roi.setInputShape(inputShape)
+    createRoisAndShrink(roi, maxRadius, axistags, opVar)
+    
+def createRoisAndShrink(roi, maxRadius, axistags, opVar):
+    hasTimeAxis = axistags.axisTypeCount(vigra.AxisType.Time)
+    print "maxRadius:", maxRadius
+    #addShape = [maxRadius for dim in inputShape]
+    addShape = list(maxRadius)
+    tIndex = None
+    cIndex = axistags.channelIndex
+    print cIndex
+    if hasTimeAxis:
+        tIndex = axistags.index('t')
+        addShape.insert(tIndex, 0)
+    addShape.insert(axistags.channelIndex, 0)
+    
+    print "addShape", addShape, cIndex
+    
+    roi_copy = copy.copy(roi)
+    srcRoi = roi.expandByShape(addShape, cIndex, tIndex)
+    print srcRoi
+    
+    tgtRoi = opVar.shrinkToShape(maxRadius, srcRoi, roi_copy)
+    print tgtRoi
+    newshape = tgtRoi.stop-tgtRoi.start
+    oldshape = roi_copy.stop-roi_copy.start
+    print newshape==oldshape
+    print
     
 
 if __name__=="__main__":
-    testVariance2D();
-    testVariance3D();
-    testVariance3Danis()
-
+    #testVariance2D();
+    #testVariance3D();
+    #testVariance3Danis()
+    testShrinkToShape()

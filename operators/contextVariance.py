@@ -59,7 +59,6 @@ class OpContextVariance(Operator):
         outputSlot.meta.assignFrom(inputSlot.meta)
         #set the correct number of channels
         nclasses = inputSlot.meta.shape[inputSlot.meta.axistags.channelIndex]
-        print "n classes at operator setup:", nclasses
         channelNum = 2*nclasses*len(radii)
         
         outputSlot.setShapeAtAxisTo('c', channelNum)
@@ -68,26 +67,29 @@ class OpContextVariance(Operator):
         axistags = self.inputs["Input"].meta.axistags
         inputShape  = self.inputs["Input"].meta.shape
         outputShape = self.outputs["Output"].meta.shape
+        hasTimeAxis = axistags.axisTypeCount(vigra.AxisType.Time)
         radii = self.inputs["Radii"].value
-        #nclasses=self.inputs["LabelsCount"].value
         nclasses = self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.channelIndex]
         #FIXME: why do we do that? To ensure correct types for C++?
         radii = numpy.array(radii, dtype = numpy.uint32)
-        maxRadius = numpy.max(radii)
-        
-        #print "contextVariance::execute axistags", axistags
-        #print "contextVariance::execute roi", roi
+        maxRadius = numpy.max(radii, 0)
         
         #Set up roi 
         roi.setInputShape(inputShape)
         
         #get srcRoi to retrieve necessary source data
-        addShape = [maxRadius for dim in inputShape]
+        addShape = list(maxRadius)
+        tIndex = None
+        cIndex = axistags.channelIndex
+        if hasTimeAxis:
+            tIndex = axistags.index('t')
+            addShape.insert(tIndex, 0)
+        addShape.insert(axistags.channelIndex, 0)
         roi_copy = copy.copy(roi)
-        srcRoi = roi.expandByShape(addShape, tIndex=None, cIndex=axistags.channelIndex)
+        srcRoi = roi.expandByShape(addShape, tIndex=tIndex, cIndex=cIndex)
         #expand only in spatial dimensions
         srcRoi.setDim(axistags.channelIndex, 0, nclasses)
-        hasTimeAxis = axistags.axisTypeCount(vigra.AxisType.Time)
+        
         if hasTimeAxis:
             t = axistags.index('t')
             srcRoi.setDim(t, roi.start[t], roi.stop[t])
@@ -114,36 +116,35 @@ class OpContextVariance(Operator):
         channelIndex =self.outputs["Output"].meta.axistags.channelIndex
         tgtRoi.setDim(channelIndex, 0, self.outputs["Output"].meta.shape[channelIndex])
         
+        #print "got the output of shape:", temp.shape
+        #print "take out the roi:", tgtRoi
         result[:] = temp[tgtRoi.toSlice()]
         
         return result
     
     def shrinkToShape(self, maxRadius, srcRoi, roi):
-        #print "roi in shrinkToShape:", roi
+        #srcRoi is the roi that was requested from the prediction layers
+        #roi is the roi that was originally passed to the execute function
+        
         start = [0]*len(srcRoi.start)
         stop = [end-begin for begin,end in zip(srcRoi.start, srcRoi.stop)]
-        tgtRoi = srcRoi
+        tgtRoi = copy.copy(srcRoi)
         tgtRoi.start=TinyVector(start)
         tgtRoi.stop = TinyVector(stop)
         
-        #tgtRoi = srcRoi.setStartToZero()
         tgtShape = roi.stop-roi.start
-        #print "tgtShape", tgtShape
         tgtRoi.setInputShape(srcRoi.inputShape)
         for i in range(len(tgtRoi.start)):
             if srcRoi.start[i]!=0:
-                tgtRoi.start[i]+=maxRadius
+                tgtRoi.start[i]+=maxRadius[i]
                 tgtRoi.stop[i]= tgtRoi.start[i]+tgtShape[i]
-                #print "case1", tgtRoi.start, tgtRoi.stop
             elif srcRoi.stop[i]!=srcRoi.inputShape[i]:
-                tgtRoi.stop[i]-=maxRadius
+                tgtRoi.stop[i]-=maxRadius[i]
                 tgtRoi.start[i] = tgtRoi.stop[i]-tgtShape[i]
-                #print "case2", tgtRoi.start, tgtRoi.stop
             else:
                 tgtRoi.start[i] = roi.start[i]
                 tgtRoi.stop[i] = roi.stop[i]
         
-        #print "returning:", tgtRoi
         return tgtRoi
     
     

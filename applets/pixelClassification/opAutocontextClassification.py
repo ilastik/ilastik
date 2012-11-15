@@ -123,9 +123,9 @@ class OpAutocontextClassification( Operator ):
         for i in range(niter-1):
             features = createAutocontextFeatureOperators(self, True)
             self.autocontextFeatures.append(features)
-            opMulti = OperatorWrapper( Op50ToMulti, graph = self.graph)
+            opMulti = OperatorWrapper( Op50ToMulti, parent=self, graph = self.graph)
             self.autocontextFeaturesMulti.append(opMulti)
-            opStacker = OperatorWrapper( OpMultiArrayStacker, graph = self.graph)
+            opStacker = OperatorWrapper( OpMultiArrayStacker, parent=self, graph = self.graph)
             opStacker.inputs["AxisFlag"].setValue("c")
             opStacker.inputs["AxisIndex"].setValue(3)
             self.featureStackers.append(opStacker)
@@ -282,21 +282,23 @@ class OpAutocontextClassification( Operator ):
         blockShape = tuple( blockDims[k] for k in axisOrder )
         self.opLabelArray.blockShape.setValue( blockShape )
 
+        thinCache = 5
+
         ## Pixel Cache blocks
         blockDimsX = { 't' : (1,1),
                        'z' : (128,256),
                        'y' : (128,256),
-                       'x' : (5,5),
+                       'x' : (thinCache,thinCache),
                        'c' : (1000,1000) }
 
         blockDimsY = { 't' : (1,1),
                        'z' : (128,256),
-                       'y' : (5,5),
+                       'y' : (thinCache,thinCache),
                        'x' : (128,256),
                        'c' : (1000,1000) }
 
         blockDimsZ = { 't' : (1,1),
-                       'z' : (5,5),
+                       'z' : (thinCache,thinCache),
                        'y' : (128,256),
                        'x' : (128,256),
                        'c' : (1000,1000) }
@@ -323,17 +325,17 @@ class OpAutocontextClassification( Operator ):
         blockDimsX = { 't' : (1,1),
                         'z' : (128,256),
                         'y' : (128,256),
-                        'x' : (5,5),
+                        'x' : (thinCache,thinCache),
                         'c' : (1000,1000) } # Overestimate number of feature channels: Cache block dimensions will be clipped to the size of the actual feature image
         
         blockDimsY = { 't' : (1,1),
                         'z' : (128,256),
-                        'y' : (5,5),
+                        'y' : (thinCache,thinCache),
                         'x' : (128,256),
                         'c' : (1000,1000) }
         
         blockDimsZ = { 't' : (1,1),
-                        'z' : (5,5),
+                        'z' : (thinCache,thinCache),
                         'y' : (128,256),
                         'x' : (128,256),
                         'c' : (1000,1000) }
@@ -374,7 +376,7 @@ def createAutocontextFeatureOperators(oper, wrap):
         else:
             ops.append(OpContextVariance(graph=oper.graph))
         #ops[0].inputs["Radii"].setValue([[3, 3, 0], [5, 5, 0], [10, 10, 0]])
-        ops[0].inputs["Radii"].setValue([[3,3,0]])
+        ops[0].inputs["Radii"].setValue([[3,3,0], [5, 5, 1]])
         #ops[0].inputs["LabelsCount"].setValue(2)
         #ops.append(OperatorWrapper(OpContextVariance, graph=oper.graph))
         #ops[1].inputs["Radii"].setValue([5, 5, 1])
