@@ -9,7 +9,7 @@ from functools import partial
 import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget
+from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon
 
 # HCI
 from lazyflow.tracer import Tracer, traceLogged
@@ -18,6 +18,7 @@ from volumina.utility import ShortcutManager
 
 # ilastik
 from ilastik.utility import bind
+from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 
@@ -43,7 +44,7 @@ class PixelClassificationGui(LabelingGui):
         super(PixelClassificationGui, self).reset()
 
         # Ensure that we are NOT in interactive mode
-        self.labelingDrawerUi.checkInteractive.setChecked(False)
+        self._viewerControlUi.liveUpdateButton.setChecked(False)
         self._viewerControlUi.checkShowPredictions.setChecked(False)
         self._viewerControlUi.checkShowSegmentation.setChecked(False)
         self.toggleInteractive(False)
@@ -79,9 +80,8 @@ class PixelClassificationGui(LabelingGui):
         self.interactiveModeActive = False
         self._currentlySavingPredictions = False
 
-        self.labelingDrawerUi.checkInteractive.setEnabled(True)
-        self.labelingDrawerUi.checkInteractive.toggled.connect(self.toggleInteractive)
         self.labelingDrawerUi.savePredictionsButton.clicked.connect(self.onSavePredictionsButtonClicked)
+        self.labelingDrawerUi.savePredictionsButton.setIcon( QIcon(ilastikIcons.Save) )
 
         self.pipeline.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
         
@@ -100,6 +100,15 @@ class PixelClassificationGui(LabelingGui):
 
         self._viewerControlUi.checkShowPredictions.clicked.connect( self.handleShowPredictionsClicked )
         self._viewerControlUi.checkShowSegmentation.clicked.connect( self.handleShowSegmentationClicked )
+
+        self._viewerControlUi.liveUpdateButton.setEnabled(True)
+        self._viewerControlUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
+        self._viewerControlUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self._viewerControlUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
+
+        self._viewerControlUi.pauseUpdateButton.setEnabled(True)
+        self._viewerControlUi.pauseUpdateButton.setIcon( QIcon(ilastikIcons.Pause) )
+        self._viewerControlUi.pauseUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
 
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
@@ -129,11 +138,11 @@ class PixelClassificationGui(LabelingGui):
                       toggleSegmentation,
                       self._viewerControlUi.checkShowSegmentation )        
 
-        toggleLivePredict = QShortcut( QKeySequence("l"), self, member=self.labelingDrawerUi.checkInteractive.click )
+        toggleLivePredict = QShortcut( QKeySequence("l"), self, member=self._viewerControlUi.liveUpdateButton.toggle )
         mgr.register( shortcutGroupName,
                       "Toggle Live Prediction Mode",
                       toggleLivePredict,
-                      self.labelingDrawerUi.checkInteractive )
+                      self._viewerControlUi.liveUpdateButton )
 
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
@@ -174,7 +183,7 @@ class PixelClassificationGui(LabelingGui):
                                                     range=(0.0, 1.0),
                                                     normalize=(0.0, 1.0) )
                 predictLayer.opacity = 0.25
-                predictLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+                predictLayer.visible = self._viewerControlUi.liveUpdateButton.isChecked()
                 predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
                 def setLayerColor(c):
@@ -198,7 +207,7 @@ class PixelClassificationGui(LabelingGui):
                                                 range=(0.0, 1.0),
                                                 normalize=(0.0, 1.0) )
                 segLayer.opacity = 1
-                segLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+                segLayer.visible = self._viewerControlUi.liveUpdateButton.isChecked()
                 segLayer.visibleChanged.connect(self.updateShowSegmentationCheckbox)
 
                 def setLayerColor(c):
@@ -239,12 +248,15 @@ class PixelClassificationGui(LabelingGui):
 
     @traceLogged(traceLogger)
     def toggleInteractive(self, checked):
+        """
+        If enable
+        """
         logger.debug("toggling interactive mode to '%r'" % checked)
         
         if checked==True:
             if len(self.pipeline.FeatureImages) == 0 \
             or self.pipeline.FeatureImages[self.imageIndex].meta.shape==None:
-                self.labelingDrawerUi.checkInteractive.setChecked(False)
+                self._viewerControlUi.liveUpdateButton.setChecked(False)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
                 mexBox.exec_()
@@ -277,8 +289,8 @@ class PixelClassificationGui(LabelingGui):
                 layer.visible = checked
         
         # If we're being turned off, turn off live prediction mode, too.
-        if not checked and self.labelingDrawerUi.checkInteractive.isChecked():
-            self.labelingDrawerUi.checkInteractive.setChecked(False)
+        if not checked and self._viewerControlUi.liveUpdateButton.isChecked():
+            self._viewerControlUi.liveUpdateButton.setChecked(False)
             # And hide all segmentation layers
             for layer in self.layerstack:
                 if "Segmentation" in layer.name:
@@ -338,7 +350,8 @@ class PixelClassificationGui(LabelingGui):
             enabled &= numpy.prod(self.pipeline.CachedFeatureImages[self.imageIndex].meta.shape) > 0
         
         self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
-        self.labelingDrawerUi.checkInteractive.setEnabled(enabled)
+        self._viewerControlUi.liveUpdateButton.setEnabled(enabled)
+        self._viewerControlUi.pauseUpdateButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
         self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
     
