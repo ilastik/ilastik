@@ -15,6 +15,7 @@ from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence
 from lazyflow.tracer import traceLogged
 from volumina.api import LazyflowSinkSource, ColortableLayer
 from volumina.utility import ShortcutManager, PreferencesManager
+from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
 
@@ -198,6 +199,7 @@ class LabelingGui(LayerViewerGui):
                 pass
 
         # Connect Applet GUI to our event handlers
+        _labelControlUi.AddLabelButton.setIcon( QIcon(ilastikIcons.AddSel) )
         _labelControlUi.AddLabelButton.clicked.connect( bind(self._addNewLabel) )
         _labelControlUi.labelListModel.dataChanged.connect(onDataChanged)
 
