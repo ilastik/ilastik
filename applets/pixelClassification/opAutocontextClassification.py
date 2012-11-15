@@ -369,28 +369,19 @@ class OpAutocontextClassification( Operator ):
 def createAutocontextFeatureOperators(oper, wrap):
         #FIXME: just to test, create some array pipers
         ops = []
-        #ops.append(OperatorWrapper (OpArrayPiper, graph = self.graph))
-        #ops.append(OperatorWrapper (OpArrayPiper, graph = self.graph))
         if wrap is True:
             ops.append(OperatorWrapper(OpContextVariance, parent=oper, graph=oper.graph))
         else:
             ops.append(OpContextVariance(graph=oper.graph))
         #ops[0].inputs["Radii"].setValue([[3, 3, 0], [5, 5, 0], [10, 10, 0]])
-        ops[0].inputs["Radii"].setValue([[3,3,0], [5, 5, 1]])
-        #ops[0].inputs["LabelsCount"].setValue(2)
-        #ops.append(OperatorWrapper(OpContextVariance, graph=oper.graph))
-        #ops[1].inputs["Radii"].setValue([5, 5, 1])
-        #ops[1].inputs["LabelsCount"].setValue(2)
-        #ops.append(OperatorWrapper(OpContextVariance, graph=self.graph))
-        #ops[2].inputs["Radii"].setValue([10, 10, 2])
-        #ops[2].inputs["LabelsCount"].setValue(2)
+        #ops[0].inputs["Radii"].setValue([[3,3,0], [5, 5, 1]])
         
+        #Radii from last year
+        ops[0].inputs["Radii"].setValue([[1, 1, 1], [3, 3, 1], [5, 5, 1], [7, 7, 2], [10, 10, 2], \
+                  [15, 15, 3], [20, 20, 3], [30, 30, 3], [40, 40, 3]])
         
-        #ops[0].name = ops[0].name+" dummy1"
-        #ops[1].name = ops[1].name+" dummy2"
-        # ops.append(OperatorWrapper (OpArrayPiper(graph = self.graph)))
-        #for op in ops:
-        #    op.inputs["Input"].connect( self.predictors[iter].PMaps)
+        #ops[0].inputs["Radii"].setValue([[1, 1, 1], [3, 3, 1], [5, 5, 1], [7, 7, 2], [10, 10, 2]])
+        #ops[0].inputs["Radii"].setValue([[10, 10, 2]])
         return ops
 
 class OpShapeReader(Operator):

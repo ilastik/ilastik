@@ -343,6 +343,9 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
                        MultiArrayView<4, T, S>& predictions,
                        MultiArrayView<4, T, S>& res)
 {
+
+    //computes the features around the border with check and
+	//without check in the inside of the block
     int nx = predictions.shape()[0];
     int ny = predictions.shape()[1];
     int nz = predictions.shape()[2];
@@ -368,16 +371,38 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
     std::vector<T> newf2(nnewfeatures);
     IND offset;
 
-    IND maxRadius, minRadius;
-    sizes.minmax(&minRadius, &maxRadius);
-    //std::cout<<"max Radius: "<<maxRadius<<std::endl;
-    maxRadius++;
-    IND nzoff = nz-maxRadius+1;
-	IND nyoff = ny-maxRadius+1;
-	IND nxoff = nx-maxRadius+1;
+
+    //std::cout<<sizes.shape()<<std::endl;
+    IND maxRadiusX=0, maxRadiusY=0, maxRadiusZ=0;
+    for (int i=0; i<nnewfeatures; i++){
+    	if (maxRadiusX < sizes(i, 0)){
+    		maxRadiusX = sizes(i, 0);
+    	}
+    	if (maxRadiusY < sizes(i, 1)){
+    		maxRadiusY = sizes(i, 1);
+		}
+    	if (maxRadiusZ < sizes(i, 2)){
+			maxRadiusZ = sizes(i, 2);
+		}
+    }
+
+    //IND maxRadius, minRadius;
+    //sizes.minmax(&minRadius, &maxRadius);
+
+    //std::cout<<"max Radius: "<<maxRadiusX<<" "<<maxRadiusY<<" "<<maxRadiusZ<<std::endl;
+    //maxRadius++;
+
+    maxRadiusX++;
+    maxRadiusY++;
+    maxRadiusZ++;
+    IND nzoff = nz-maxRadiusZ+1;
+	IND nyoff = ny-maxRadiusY+1;
+	IND nxoff = nx-maxRadiusX+1;
+	//std::cout<<"offsets: "<<nxoff<<" "<<nyoff<<" "<<nzoff<<std::endl;
+	//std::cout<<"shape:"<<nx<<" "<<ny<<" "<<nz<<std::endl;
 
     //start = std::clock();
-    for (IND z=0; z<maxRadius; ++z){
+    for (IND z=0; z<maxRadiusZ; ++z){
     	//std::cout<<"first loop z= "<<z<<std::endl;
     	for (IND y=0; y<ny; ++y){
     		for (IND x=0; x<nx; ++x){
@@ -398,8 +423,8 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
 		}
 	}
 
-	for (IND z=maxRadius; z<nzoff; ++z){
-		for (IND y=0; y<maxRadius; ++y){
+	for (IND z=maxRadiusZ; z<nzoff; ++z){
+		for (IND y=0; y<maxRadiusY; ++y){
 			for (IND x=0; x<nx; ++x){
 				for (IND c=0; c<nclasses; ++c){
 					varContext3DmultiInnerLoop(sizes, integral, integral2, res, x, y, z, c, newf, newf2);
@@ -408,7 +433,7 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
 		}
 	}
 
-	for (IND z=maxRadius; z<nzoff; ++z){
+	for (IND z=maxRadiusZ; z<nzoff; ++z){
 		for (IND y=nyoff; y<ny; ++y){
 			for (IND x=0; x<nx; ++x){
 				for (IND c=0; c<nclasses; ++c){
@@ -417,17 +442,17 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
 			}
 		}
 	}
-	for (IND z=maxRadius; z<nzoff; ++z){
-		for (IND y=maxRadius; y<nyoff; ++y){
-			for (IND x=0; x<maxRadius; ++x){
+	for (IND z=maxRadiusZ; z<nzoff; ++z){
+		for (IND y=maxRadiusY; y<nyoff; ++y){
+			for (IND x=0; x<maxRadiusX; ++x){
 				for (IND c=0; c<nclasses; ++c){
 					varContext3DmultiInnerLoop(sizes, integral, integral2, res, x, y, z, c, newf, newf2);
 				}
 			}
 		}
 	}
-	for (IND z=maxRadius; z<nzoff; ++z){
-		for (IND y=maxRadius; y<nyoff; ++y){
+	for (IND z=maxRadiusZ; z<nzoff; ++z){
+		for (IND y=maxRadiusY; y<nyoff; ++y){
 			for (IND x=nxoff; x<nx; ++x){
 				for (IND c=0; c<nclasses; ++c){
 					varContext3DmultiInnerLoop(sizes, integral, integral2, res, x, y, z, c, newf, newf2);
@@ -437,11 +462,11 @@ void varContext3Danis(MultiArrayView<2, IND, S2>& sizes,
 	}
 
 
-	for (IND z=maxRadius; z<nzoff; ++z){
+	for (IND z=maxRadiusZ; z<nzoff; ++z){
     	//std::cout<<"second loop z= "<<z<<std::endl;
 
-    	for (IND y=maxRadius; y<nyoff; ++y){
-    		for (IND x=maxRadius; x<nxoff; ++x) {
+    	for (IND y=maxRadiusY; y<nyoff; ++y){
+    		for (IND x=maxRadiusX; x<nxoff; ++x) {
 				for (IND c=0; c<nclasses; ++c){
                     //
 					//varContext3DmultiInnerLoop(sizes, integral, integral2, res, x, y, z, c, newf, newf2);
