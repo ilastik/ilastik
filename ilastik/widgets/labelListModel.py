@@ -20,7 +20,7 @@ class Label(QObject):
     @color.setter
     def color(self, c):
         if self._color != c:
-            logger.debug("Label '%s' has new color %r" % (self._name, c))
+            logger.debug("Label '%s' has new color %r" % (self._color, c))
             self._color = c
             self.colorChanged.emit(c)
     
