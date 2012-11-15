@@ -330,7 +330,7 @@ class LayerViewerGui(QMainWindow):
             msg = "All layers must have unique names.\n"
             msg += "You're attempting to use these layer names:\n"
             msg += str( [l.name for l in newGuiLayers] )
-            raise RuntimeError()
+            raise RuntimeError(msg)
 
         # Copy the old visibilities and opacities
         if self.imageIndex != self.lastUpdateImageIndex:
