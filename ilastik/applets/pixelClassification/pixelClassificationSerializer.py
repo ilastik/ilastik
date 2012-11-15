@@ -100,7 +100,10 @@ class PixelClassificationSerializer(AppletSerializer):
             self.deleteIfPresent(topGroup, 'LabelSets')
             labelSetDir = topGroup.create_group('LabelSets')
             
+            self.deleteIfPresent(topGroup, 'LabelNames')
             topGroup.create_dataset("LabelNames", data=self.mainOperator.LabelNames.value)
+
+            self.deleteIfPresent(topGroup, 'LabelColors')
             topGroup.create_dataset("LabelColors", data=self.mainOperator.LabelColors.value)
     
             numImages = len(self.mainOperator.NonzeroLabelBlocks)
