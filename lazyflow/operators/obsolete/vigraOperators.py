@@ -240,12 +240,12 @@ class OpPixelFeaturesPresmoothed(Operator):
                         featureNameArray[i].append("Difference of Gaussians (s=" + str(self.scales[j]) + ")")
 
             #disconnecting all Operators
-            for i in range(dimRow):
-                for j in range(dimCol):
-                    self.multi.inputs["Input%02d" %(i*dimRow+j)].disconnect()
+            for islot in self.multi.inputs.values():
+                islot.disconnect()
 
             channelCount = 0
             featureCount = 0
+            self.Features.resize( 0 )
             self.featureOutputChannels = []
             #connect individual operators
             for i in range(dimRow):
