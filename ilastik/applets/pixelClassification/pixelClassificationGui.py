@@ -153,8 +153,6 @@ class PixelClassificationGui(LabelingGui):
         # Base class provides the label layer.
         layers = super(PixelClassificationGui, self).setupLayers(currentImageIndex)
 
-        labels = self.labelListData
-
         # Add the uncertainty estimate layer
         uncertaintySlot = self.pipeline.UncertaintyEstimate[currentImageIndex]
         if uncertaintySlot.ready():
@@ -174,6 +172,7 @@ class PixelClassificationGui(LabelingGui):
             layers.append(uncertaintyLayer)
 
         # Add each of the predictions
+        labels = self.labelListData
         for channel, predictionSlot in enumerate(self.pipeline.PredictionProbabilityChannels[currentImageIndex]):
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
@@ -424,8 +423,31 @@ class PixelClassificationGui(LabelingGui):
             saveThread = threading.Thread(target=saveThreadFunc)
             saveThread.start()
 
+    def getNextLabelName(self):
+        numLabels = self.labelListData.rowCount()
+        labelNames = self.pipeline.LabelNames.value
+        if numLabels < len(labelNames):
+            return labelNames[numLabels]
+        else:
+            return super( PixelClassificationGui, self ).getNextLabelName()
 
+    def onLabelNameChanged(self):
+        super( PixelClassificationGui, self ).onLabelNameChanged()
+        labelNames = map( lambda l: l.name, self.labelListData )
+        self.pipeline.LabelNames.setValue( labelNames )
 
+    def getNextLabelColor(self):
+        numLabels = self.labelListData.rowCount()
+        labelColors = self.pipeline.LabelColors.value
+        if numLabels < len(labelColors):
+            return QColor( *labelColors[numLabels] )
+        else:
+            return super( PixelClassificationGui, self ).getNextLabelColor()
+
+    def onLabelColorChanged(self):
+        super( PixelClassificationGui, self ).onLabelColorChanged()
+        labelColors = map( lambda l: (l.color.red(), l.color.green(), l.color.blue()), self.labelListData )
+        self.pipeline.LabelColors.setValue( labelColors )
 
 
 

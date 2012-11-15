@@ -99,6 +99,9 @@ class PixelClassificationSerializer(AppletSerializer):
             # Delete all labels from the file
             self.deleteIfPresent(topGroup, 'LabelSets')
             labelSetDir = topGroup.create_group('LabelSets')
+            
+            topGroup.create_dataset("LabelNames", data=self.mainOperator.LabelNames.value)
+            topGroup.create_dataset("LabelColors", data=self.mainOperator.LabelColors.value)
     
             numImages = len(self.mainOperator.NonzeroLabelBlocks)
             for imageIndex in range(numImages):
@@ -248,6 +251,20 @@ class PixelClassificationSerializer(AppletSerializer):
     def _deserializeLabels(self, topGroup):
         with Tracer(traceLogger):
             try:
+                labelNames = topGroup['LabelNames']
+            except KeyError:
+                self.mainOperator.LabelNames.setValue( [] )
+            else:
+                self.mainOperator.LabelNames.setValue( list( map(lambda s: str(s), labelNames ) ) )
+            
+            try:
+                labelColors = topGroup['LabelColors']
+            except KeyError:
+                self.mainOperator.LabelColors.setValue( [] )
+            else:
+                self.mainOperator.LabelColors.setValue( list( labelColors ) )
+            
+            try:
                 labelSetGroup = topGroup['LabelSets']
             except KeyError:
                 pass
@@ -365,6 +382,7 @@ class PixelClassificationSerializer(AppletSerializer):
         This way we can avoid invalid state due to a partially loaded project. """ 
         self.mainOperator.LabelInputs.resize(0)
         self.mainOperator.classifier_cache.Input.setDirty(slice(None))
+        self.mainOperator.labelNames = []
 
 class Ilastik05ImportDeserializer(AppletSerializer):
     """
