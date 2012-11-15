@@ -329,7 +329,7 @@ class LayerViewerGui(QMainWindow):
         if len(newNames) != len(newGuiLayers):
             msg = "All layers must have unique names.\n"
             msg += "You're attempting to use these layer names:\n"
-            msg += [l.name for l in newGuiLayers]
+            msg += str( [l.name for l in newGuiLayers] )
             raise RuntimeError()
 
         # Copy the old visibilities and opacities
