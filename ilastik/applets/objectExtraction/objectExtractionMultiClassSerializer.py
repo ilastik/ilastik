@@ -1,4 +1,5 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer
+import numpy
 
 class ObjectExtractionMultiClassSerializer(AppletSerializer):
     """
@@ -41,11 +42,23 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
             self.deleteIfPresent(topGroup, "DistanceTransform")
             src.copy('/DistanceTransform', topGroup)
         
-        if len(self.mainOperator.innerOperators[0]._opMaximumImage._processedTimeSteps) > 0:
+        if len(self.mainOperator.innerOperators[0]._opRegionalMaximum._processedTimeSteps) > 0:
             print "object extraction multi class: maximum image"
-            src = op._opMaximumImage._mem_h5
+            src = op._opRegionalMaximum._mem_h5
             self.deleteIfPresent(topGroup, "MaximumImage")
             src.copy('/MaximumImage', topGroup)
+        
+        ## Do not save the region local centers, it takes ages! In fact, they are computed quite fast...
+#        print "object extraction multi class: region local centers"
+#        self.deleteIfPresent( topGroup, "RegionLocalCenters")
+#        samples_gr = self.getOrCreateGroup( topGroup, "RegionLocalCenters" )        
+#        for t in op._opRegionalMaximum._cache.keys():       
+#            t_gr = samples_gr.create_group(str(t))
+#            for label,rlc in enumerate(op._opRegionalMaximum._cache[t]):
+#                if len(rlc) > 0:
+#                    t_gr.create_dataset(name=str(label), data=rlc, dtype=numpy.uint8,compression=1)
+#        print "region local centers: done"  
+         
 
         
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
@@ -98,7 +111,17 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
             self.mainOperator.innerOperators[0]._opRegionalMaximum._fixed = False        
             self.mainOperator.innerOperators[0]._opRegionalMaximum._processedTimeSteps = range(topGroup['MaximumImage'].shape[0])
         
-
+#        print "objectExtraciontn multi class: region local centers"
+#        if "RegionLocalCenters" in topGroup.keys():
+#            cache = {}
+#            for t in topGroup["RegionLocalCenters"].keys():
+#                cache[int(t)] = []                
+#                labels = topGroup["RegionLocalCenters"][t].keys()
+#                labels = [int(x) for x in labels]
+#                for label in labels:
+#                    cache[int(t)][label] = topGroup["RegionLocalCenters"][t][label].value
+#            self.mainOperator.innerOperators[0]._opRegionalMaximum._cache = cache
+        
     def isDirty(self):
         return True
     

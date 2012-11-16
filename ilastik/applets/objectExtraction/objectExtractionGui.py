@@ -70,12 +70,12 @@ class ObjectExtractionGui( QWidget ):
         layer.name = "Distance Transform Image"
         self.layerstack.append(layer)
         
-        self.maxFilterDistanceTransform = LazyflowSource( mainOperator.MaximumDistanceTransform )        
-        # FIXME range: magic number        
+        self.maxDistanceTransform = LazyflowSource( mainOperator.MaximumDistanceTransform )          
         ct = colortables.create_default_8bit()
         ct[1] = QColor(0,255,0,0).rgb() # make 1 green
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        layer = ColortableLayer( self.maxFilterDistanceTransform, ct )
+        ct[255] = QColor(255,255,255,0).rgba() # make 255 transparent
+        layer = ColortableLayer( self.maxDistanceTransform, ct )
         layer.name = "Maximum Distance Image"
         self.layerstack.append(layer)
 
@@ -290,28 +290,43 @@ class ObjectExtractionGui( QWidget ):
     def _onMaximumImageButtonPressed(self):
         m = self.curOp.LabelImage.meta
         maxt = m.shape[0] -1 # the last time frame will be dropped
-        progress = QProgressDialog("Computing maximum distance transform...", "Stop", 0, maxt)
+        progress = QProgressDialog("Computing maximum distance transform...", "Stop", 0, 2*maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())
         progress.forceShow()        
-                
+        
+        print "Computing Maximum Images"
         reqs = []        
         for t in range(maxt):
             reqs.append(self.curOp._opRegionalMaximum.MaximumImageComputation([t]))
             reqs[-1].submit()
+            
         for i, req in enumerate(reqs):
             progress.setValue(i)
             if progress.wasCanceled():
                 req.cancel()
             else:
                 req.wait()
-                
-        progress.setValue(maxt)
         self.curOp._opRegionalMaximum._fixed = False
-        
         roi = SubRegion(self.curOp.MaximumDistanceTransform, start=5*(0,), stop=m.shape)
-        self.curOp.MaximumDistanceTransform.setDirty(roi)            
+        self.curOp.MaximumDistanceTransform.setDirty(roi)
+                         
+        print "Computing Local Center Features"
+        reqs = []
+        for t in range(maxt):
+            reqs.append(self.curOp._opRegionalMaximum.RegionLocalCenters([t]))
+            reqs[-1].submit()
+            
+        for i, req in enumerate(reqs):
+            progress.setValue(maxt+i)
+            if progress.wasCanceled():
+                req.cancel()
+            else:
+                req.wait()                                        
+        progress.setValue(2*maxt)
+        
+                    
         print 'Maximum image: done'
         
     def _onDoAllButtonPressed(self):    

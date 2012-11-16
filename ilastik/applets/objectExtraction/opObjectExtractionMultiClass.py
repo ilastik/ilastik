@@ -20,7 +20,8 @@ class OpObjectExtractionMultiClass(Operator):
     RegionFeatures = OutputSlot(stype=Opaque, rtype=List)
     ClassMapping = OutputSlot(stype=Opaque, rtype=List)
     DistanceTransform = OutputSlot()
-    MaximumDistanceTransform = OutputSlot()    
+    MaximumDistanceTransform = OutputSlot()        # regional maximums of the distance transform    
+    RegionLocalCenters = OutputSlot(stype=Opaque, rtype=List)  
     BinaryImage = OutputSlot()
     
 
@@ -48,10 +49,11 @@ class OpObjectExtractionMultiClass(Operator):
         self._opObjectExtractionDiv.BackgroundLabel.setValue(0)
         
         self._opDistanceTransform = OpDistanceTransform3D(graph=graph)
-        self._opDistanceTransform.LabelImage.connect(self._opObjectExtractionBg.LabelImage)     
+        self._opDistanceTransform.Image.connect(self._opObjectExtractionBg.LabelImage)     
         
         self._opRegionalMaximum = OpRegionalMaximum(graph=graph)
-        self._opRegionalMaximum.Image.connect(self._opDistanceTransform.Image)   
+        self._opRegionalMaximum.Image.connect(self._opDistanceTransform.DistanceTransformImage)
+        self._opRegionalMaximum.LabelImage.connect(self._opObjectExtractionBg.LabelImage)   
         
         self.LabelImage.connect(self._opObjectExtractionBg.LabelImage)
         self.ObjectCenterImage.connect(self._opObjectExtractionBg.ObjectCenterImage)
@@ -59,13 +61,14 @@ class OpObjectExtractionMultiClass(Operator):
         self.RegionFeatures.connect(self._opObjectExtractionBg.RegionFeatures)        
         
         self._opClassExtraction = OpClassExtraction(graph=graph)
-        self._opClassExtraction.inputs["LabelImageBg"].connect(self._opObjectExtractionBg.LabelImage)
-        self._opClassExtraction.inputs["LabelImageDiv"].connect(self._opObjectExtractionDiv.LabelImage)
-        self._opClassExtraction.inputs["RegionFeaturesBg"].connect(self._opObjectExtractionBg.RegionFeatures)
-        self._opClassExtraction.inputs["RegionFeaturesDiv"].connect(self._opObjectExtractionDiv.RegionFeatures)
+        self._opClassExtraction.LabelImageBg.connect(self._opObjectExtractionBg.LabelImage)
+        self._opClassExtraction.LabelImageDiv.connect(self._opObjectExtractionDiv.LabelImage)
+        self._opClassExtraction.RegionFeaturesBg.connect(self._opObjectExtractionBg.RegionFeatures)
+        self._opClassExtraction.RegionFeaturesDiv.connect(self._opObjectExtractionDiv.RegionFeatures)
         
-        self.ClassMapping.connect(self._opClassExtraction.outputs["ClassMapping"])        
-        self.DistanceTransform.connect(self._opDistanceTransform.Image)
+        self.ClassMapping.connect(self._opClassExtraction.ClassMapping)        
+        self.DistanceTransform.connect(self._opDistanceTransform.DistanceTransformImage)
+        self.RegionLocalCenters.connect(self._opRegionalMaximum.RegionLocalCenters)
         self.MaximumDistanceTransform.connect(self._opRegionalMaximum.MaximumImage)
 
     def setupOutputs(self):
@@ -206,9 +209,9 @@ class OpThresholding(Operator):
 
 
 class OpDistanceTransform3D( Operator ):
-    LabelImage = InputSlot()    
+    Image = InputSlot()    
     
-    Image = OutputSlot()
+    DistanceTransformImage = OutputSlot()
     # Pull the following output slot to compute the distance transform image.
     # This slot is introduced to allow for a precomputation of the output image and
     # write the results into a compressed hdf5 virtual file instead of allocating
@@ -222,9 +225,10 @@ class OpDistanceTransform3D( Operator ):
         self._fixed = True
         
     def setupOutputs( self ):
-        self.Image.meta.assignFrom( self.LabelImage.meta )
-        self.Image.meta.dtype = numpy.uint8
-        m = self.Image.meta        
+        self.DistanceTransformImage.meta.assignFrom( self.Image.meta )
+        self.DistanceTransformImage.meta.dtype = numpy.uint8
+        m = self.DistanceTransformImage.meta   
+        print "OpDistanceTransform3D::setupOutputs: " + str(m)     
         self._mem_h5.create_dataset( 'DistanceTransform', shape=m.shape, dtype=numpy.float, compression=1 )
         self.DistanceTransformComputation.meta.dtype = numpy.float
         self.DistanceTransformComputation.meta.shape = [0]
@@ -233,7 +237,7 @@ class OpDistanceTransform3D( Operator ):
         self._mem_h5.close()
         
     def execute( self, slot, subindex, roi, destination ):        
-        if slot is self.Image:
+        if slot is self.DistanceTransformImage:
             if self._fixed:        
                 print 'Distance Transform Image not computed yet.'        
                 destination[:] = 255
@@ -247,8 +251,8 @@ class OpDistanceTransform3D( Operator ):
             for t in range(roi.start[0],roi.stop[0]):            
                 if t not in self._processedTimeSteps:
                     print "Computing Distance Transform Image at", t
-                    sroi = SubRegion(self.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.LabelImage.meta.shape[1:]))   
-                    a = self.LabelImage.get(sroi).wait()
+                    sroi = SubRegion(self.Image, start=[t,0,0,0,0], stop=[t+1,] + list(self.Image.meta.shape[1:]))   
+                    a = self.Image.get(sroi).wait()
                     a = a[0,...,0].astype(numpy.float32)                    
                     self._mem_h5['DistanceTransform'][t,...,0] = vigra.filters.distanceTransform3D( a, background=False)
                     self._processedTimeSteps.append(t)
@@ -256,7 +260,8 @@ class OpDistanceTransform3D( Operator ):
             
             
 class OpRegionalMaximum( Operator ):
-    Image = InputSlot()    
+    Image = InputSlot() # Distance Transform Image
+    LabelImage = InputSlot()    
     
     MaximumImage = OutputSlot()
     # Pull the following output slot to compute the distance transform image.
@@ -264,13 +269,15 @@ class OpRegionalMaximum( Operator ):
     # write the results into a compressed hdf5 virtual file instead of allocating
     # space for all the requests.
     MaximumImageComputation = OutputSlot(stype="float")
-    
+        
+    RegionLocalCenters = OutputSlot(stype=Opaque, rtype=List)    
 
     def __init__(self, parent=None, graph=None):
         super(OpRegionalMaximum, self).__init__(parent=parent,graph=graph)
         self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)        
         self._processedTimeSteps = []
         self._fixed = True
+        self._cache = {}
         
     def setupOutputs( self ):
         self.MaximumImage.meta.assignFrom( self.Image.meta )
@@ -296,13 +303,46 @@ class OpRegionalMaximum( Operator ):
             # assumes t,x,y,z,c           
             for t in range(roi.start[0],roi.stop[0]):            
                 if t not in self._processedTimeSteps:
-                    print "Computing Non Maximum Suppression at", t
+                    print "Computing Maximum Image at", t
                     sroi = SubRegion(self.Image, start=[t,0,0,0,0], stop=[t+1,] + list(self.Image.meta.shape[1:]))   
                     a = self.Image.get(sroi).wait()
                     a = a[0,...,0].astype(numpy.float32)
                     self._mem_h5['MaximumImage'][t,...,0] = vigra.analysis.extendedLocalMaxima3D(a)
                     self._processedTimeSteps.append(t)
         
-        
-        
+        if slot is self.RegionLocalCenters:
+            def extract( maximumImg, labelImg ):
+                # label 0 is not used                
+                feat = [ [] for i in range(numpy.max(labelImg)+1) ]
+                idxes = numpy.where(maximumImg>0)
+#                idxes = maximumImg.astype(numpy.bool)
+                labels = labelImg[idxes]
+                for idx, coord in enumerate(zip(idxes[0],idxes[1],idxes[2])):
+                    l = labels[idx]
+                    assert l is not 0
+                    
+                    feat[l].append(coord) # or l+1????? since label 0 is not included
+                    assert int(l) == int(labelImg[coord]), str(l) + ' ' + str(labelImg[coord]) + ' ' + str(coord)                                
+                return feat
+                return 0
+            
+            feats = {}
+            for t in roi:
+                print "Extracting RegionLocalCenters for t = ", t
+                if str(t) in self._cache:
+                    feats_at = self._cache[str(t)]                    
+                else:
+                    troi = SubRegion( self.Image, 
+                                      start = [t,] + (len(self.Image.meta.shape) - 1) * [0,], 
+                                      stop = [t+1,] + list(self.Image.meta.shape[1:]))
+                    maxImg = self.MaximumImage.get(troi).wait()
+                    maxImg = maxImg[0,...,0] # assumes t,x,y,z,c
+                    labelImg = self.LabelImage.get(troi).wait()
+                    labelImg = labelImg[0,...,0] # assumes t,x,y,z,c                    
+                    feats_at = extract(maxImg, labelImg)
+                    
+                    self._cache[str(t)] = feats_at
+                feats[t] = feats_at
+    
+            return feats
         

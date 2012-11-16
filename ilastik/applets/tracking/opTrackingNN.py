@@ -26,6 +26,7 @@ class OpTrackingNN(Operator):
     LabelImage = InputSlot()
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)
     ClassMapping = InputSlot(stype=Opaque, rtype=List)
+    RegionLocalCenters = InputSlot(stype=Opaque, rtype=List)
 
     Output = OutputSlot()
 #    LineageTrees = OutputSlot()
@@ -171,6 +172,7 @@ class OpTrackingNN(Operator):
         print "fetching region features and division probabilities"
         feats = self.ObjectFeatures(time_range).wait()
         divProbs = self.ClassMapping(time_range).wait()
+        localCenters = self.RegionLocalCenters(time_range).wait()
         
         print "filling traxelstore"
         ts = ctracking.TraxelStore()
@@ -206,15 +208,27 @@ class OpTrackingNN(Operator):
                 tr.set_z_scale(z_scale)
                 tr.Id = int(idx + 1)
                 tr.Timestep = t
+                
                 tr.add_feature_array("com", len(rc[idx]))                
                 for i, v in enumerate(rc[idx]):
                     tr.set_feature_value('com', i, float(v))
+                    
                 tr.add_feature_array("divProb", 1)
                 # idx+1 because rc and ct start from 1, divProbs starts from 0
-                tr.set_feature_value("divProb", 0, float(divProbs[t][idx+1][1]))                
+                tr.set_feature_value("divProb", 0, float(divProbs[t][idx+1][1]))
+                
+                tr.add_feature_array("localCentersX", len(localCenters[t][idx+1]))  
+                tr.add_feature_array("localCentersY", len(localCenters[t][idx+1]))
+                tr.add_feature_array("localCentersZ", len(localCenters[t][idx+1]))            
+                for i, v in enumerate(localCenters[t][idx+1]):
+                    tr.set_feature_value("localCentersX", i, float(v[0]))
+                    tr.set_feature_value("localCentersY", i, float(v[1]))
+                    tr.set_feature_value("localCentersZ", i, float(v[2]))                
+                
                 tr.add_feature_array("count", 1)
                 tr.set_feature_value("count", 0, float(size))                
-                ts.add(tr)            
+                ts.add(tr)   
+                         
             print "at timestep ", t, count, "traxels passed filter"            
             max_traxel_id_at.append(int(rc.shape[0]))
             if count == 0:
