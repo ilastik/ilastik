@@ -14,12 +14,12 @@ from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence
 # HCI
 from lazyflow.tracer import traceLogged
 from volumina.api import LazyflowSinkSource, ColortableLayer
+from volumina.utility import ShortcutManager, PreferencesManager
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
 
 # ilastik
-from ilastik.utility import bind, PreferencesManager
-from ilastik.utility.gui import ShortcutManager
+from ilastik.utility import bind 
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
 from ilastik.applets.layerViewer import LayerViewerGui
 

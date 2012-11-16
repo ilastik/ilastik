@@ -13,9 +13,11 @@ import traceback
 import os
 from functools import partial
 
+
+from volumina.utility import PreferencesManager, ShortcutManagerDlg
 from ilastik.versionManager import VersionManager
-from ilastik.utility import bind, PreferencesManager
-from ilastik.utility.gui import ThunkEvent, ThunkEventHandler, ShortcutManagerDlg
+from ilastik.utility import bind
+from ilastik.utility.gui import ThunkEvent, ThunkEventHandler
 
 import sys
 import logging
@@ -573,13 +575,13 @@ class IlastikShell( QMainWindow ):
     def onNewProjectActionTriggered(self):
         logger.debug("New Project action triggered")
         
-        # Make sure the user is finished with the currently open project
-        if not self.ensureNoCurrentProject():
-            return
-        
         newProjectFilePath = self.getProjectPathToCreate()
 
         if newProjectFilePath is not None:
+            # Make sure the user is finished with the currently open project
+            if not self.ensureNoCurrentProject():
+                return
+        
             self.createAndLoadNewProject(newProjectFilePath)
 
     def createAndLoadNewProject(self, newProjectFilePath):
@@ -629,9 +631,6 @@ class IlastikShell( QMainWindow ):
         """
         logger.debug("Import Project Action")
 
-        if not self.ensureNoCurrentProject():
-            return
-
         # Find the directory of the most recently *imported* project
         mostRecentImportPath = PreferencesManager().get( 'shell', 'recently imported' )
         if mostRecentImportPath is not None:
@@ -650,6 +649,8 @@ class IlastikShell( QMainWindow ):
 
         # If the user didn't cancel
         if importedFilePath is not None and newProjectFilePath is not None:
+            if not self.ensureNoCurrentProject():
+                return
             self.importProject( importedFilePath, newProjectFilePath )
 
     def importProject(self, originalPath, newProjectFilePath):
@@ -679,10 +680,6 @@ class IlastikShell( QMainWindow ):
     def onOpenProjectActionTriggered(self):
         logger.debug("Open Project action triggered")
         
-        # Make sure the user is finished with the currently open project
-        if not self.ensureNoCurrentProject():
-            return
-
         # Find the directory of the most recently opened project
         mostRecentProjectPath = PreferencesManager().get( 'shell', 'recently opened' )
         if mostRecentProjectPath is not None:
@@ -692,6 +689,10 @@ class IlastikShell( QMainWindow ):
 
         projectFilePath = self.getProjectPathToOpen(defaultDirectory)
         if projectFilePath is not None:
+            # Make sure the user is finished with the currently open project
+            if not self.ensureNoCurrentProject():
+                return
+
             PreferencesManager().set('shell', 'recently opened', projectFilePath)
             self.openProjectFile(projectFilePath)
     

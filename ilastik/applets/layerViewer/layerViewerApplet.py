@@ -13,7 +13,6 @@ class LayerViewerApplet( Applet ):
 
         self._topLevelOperator = OperatorWrapper( OpLayerViewer, parent=workflow, promotedSlotNames=set(['RawInput']) )
         self._topLevelOperator.name = "LayerViewer Top-Level Operator"
-        self._preferencesManager = None
         self._serializableItems = []
         self._gui = None
     
@@ -31,8 +30,4 @@ class LayerViewerApplet( Applet ):
     @property
     def topLevelOperator(self):
         return self._topLevelOperator
-    
-    @property
-    def appletPreferencesManager(self):
-        return self._preferencesManager
     

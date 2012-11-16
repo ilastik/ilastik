@@ -11,8 +11,9 @@ from lazyflow.graph import OperatorWrapper
 from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
 
 import os
+from volumina.utility import ShortcutManager
 from ilastik.utility import bind
-from ilastik.utility.gui import ThreadRouter, threadRouted, ShortcutManager
+from ilastik.utility.gui import ThreadRouter, threadRouted
 
 from volumina.adaptors import Op5ifyer
 
@@ -545,10 +546,21 @@ class LayerViewerGui(QMainWindow):
                 self.editor.imageViews[self.editor._lastImageViewFocus].centerImage()
                 self.actionOnly_for_current_view.setEnabled(True)
 
+        def resetAxes():
+            if hasattr(self.editor, '_lastImageViewFocus'):
+                self.editor.imageScenes[self.editor._lastImageViewFocus].resetAxes()
+                self.actionOnly_for_current_view.setEnabled(True)
+
+        def resetAllAxes():
+            for i, s in enumerate(self.editor.imageScenes):
+                s.resetAxes()
+
         self.menuGui.actionCenterAllImages.triggered.connect(centerAllImages)
         self.menuGui.actionCenterImage.triggered.connect(centerImage)
         self.menuGui.actionToggleAllHuds.triggered.connect(hideHud)
+        self.menuGui.actionResetAllAxes.triggered.connect(resetAllAxes)
         self.menuGui.actionToggleSelectedHud.triggered.connect(toggleSelectedHud)
+        self.menuGui.actionResetAxes.triggered.connect(resetAxes)
         self.menuGui.actionShowDebugPatches.toggled.connect(toggleDebugPatches)
         self.menuGui.actionFitToScreen.triggered.connect(fitToScreen)
         self.menuGui.actionFitImage.triggered.connect(fitImage)
