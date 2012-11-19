@@ -223,7 +223,6 @@ def testShrinkToShape():
     maxRadius = [3, 3, 2]
     inputShape = (15, 15, 15, 1)
     axistags = vigra.VigraArray.defaultAxistags(len(inputShape))
-    print axistags
     
     #cIndex = 3
     #first case, nothing is near the border
@@ -244,31 +243,27 @@ def testShrinkToShape():
     roi.setInputShape(inputShape)
     createRoisAndShrink(roi, maxRadius, axistags, opVar)
     
+    print "done!"
+    
 def createRoisAndShrink(roi, maxRadius, axistags, opVar):
     hasTimeAxis = axistags.axisTypeCount(vigra.AxisType.Time)
-    print "maxRadius:", maxRadius
-    #addShape = [maxRadius for dim in inputShape]
     addShape = list(maxRadius)
     tIndex = None
     cIndex = axistags.channelIndex
-    print cIndex
     if hasTimeAxis:
         tIndex = axistags.index('t')
         addShape.insert(tIndex, 0)
     addShape.insert(axistags.channelIndex, 0)
     
-    print "addShape", addShape, cIndex
-    
     roi_copy = copy.copy(roi)
     srcRoi = roi.expandByShape(addShape, cIndex, tIndex)
-    print srcRoi
     
     tgtRoi = opVar.shrinkToShape(maxRadius, srcRoi, roi_copy)
-    print tgtRoi
-    newshape = tgtRoi.stop-tgtRoi.start
-    oldshape = roi_copy.stop-roi_copy.start
-    print newshape==oldshape
-    print
+    shiftedTgtRoi = copy.copy(tgtRoi)
+    shiftedTgtRoi.start = tgtRoi.start+roi.start
+    shiftedTgtRoi.stop = tgtRoi.stop+roi.start
+    assert shiftedTgtRoi.start == roi_copy.start
+    assert shiftedTgtRoi.stop == roi_copy.stop
     
 
 if __name__=="__main__":
