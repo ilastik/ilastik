@@ -3,7 +3,8 @@ import os
 import numpy
 import h5py
 import vigra
-from ilastik.applets.base.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import \
+    AppletSerializer, slicingToString, stringToSlicing
 from ilastik.utility import bind
 from lazyflow.operators import OpH5WriterBigDataset
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader
@@ -123,7 +124,7 @@ class PixelClassificationSerializer(AppletSerializer):
                     labelGroup.create_dataset(blockName, data=block)
                     
                     # Add the slice this block came from as an attribute of the dataset
-                    labelGroup[blockName].attrs['blockSlice'] = self.slicingToString(slicing)
+                    labelGroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
     
             self._dirtyFlags[Section.Labels] = False
 
@@ -280,7 +281,7 @@ class PixelClassificationSerializer(AppletSerializer):
                     # For each block of label data in the file
                     for blockData in labelGroup.values():
                         # The location of this label data block within the image is stored as an hdf5 attribute
-                        slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
+                        slicing = stringToSlicing( blockData.attrs['blockSlice'] )
                         # Slice in this data to the label input
                         self.mainOperator.LabelInputs[index][slicing] = blockData[...]
             finally:
@@ -331,38 +332,6 @@ class PixelClassificationSerializer(AppletSerializer):
                 opStreamer.InternalPath.setValue( datasetName )
                 self.mainOperator.PredictionsFromDisk[imageIndex].connect( opStreamer.OutputImage )
         self._dirtyFlags[Section.Predictions] = False
-
-    def slicingToString(self, slicing):
-        """
-        Convert the given slicing into a string of the form '[0:1,2:3,4:5]'
-        """
-        strSlicing = '['
-        for s in slicing:
-            strSlicing += str(s.start)
-            strSlicing += ':'
-            strSlicing += str(s.stop)
-            strSlicing += ','
-        
-        # Drop the last comma
-        strSlicing = strSlicing[:-1]
-        strSlicing += ']'
-        return strSlicing
-        
-    def stringToSlicing(self, strSlicing):
-        """
-        Parse a string of the form '[0:1,2:3,4:5]' into a slicing (i.e. list of slices)
-        """
-        slicing = []
-        # Drop brackets
-        strSlicing = strSlicing[1:-1]
-        sliceStrings = strSlicing.split(',')
-        for s in sliceStrings:
-            ends = s.split(':')
-            start = int(ends[0])
-            stop = int(ends[1])
-            slicing.append(slice(start, stop))
-        
-        return slicing
 
     def isDirty(self):
         """
