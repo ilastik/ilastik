@@ -230,8 +230,9 @@ class LabelingGui(LayerViewerGui):
         firstCol = topLeft.column()
         lastCol  = bottomRight.column()
 
-        if lastCol == firstCol == 0:
-            assert(firstRow == lastRow) #only one data item changes at a time
+        # We only care about the color column
+        if firstCol <= 0 <= lastCol:
+            assert(firstRow == lastRow) # Only one data item changes at a time
 
             #in this case, the actual data (for example color) has changed
             color = self._labelControlUi.labelListModel[firstRow].color
@@ -240,11 +241,8 @@ class LabelingGui(LayerViewerGui):
 
             # Update the label layer colortable to match the list entry
             labellayer = self._getLabelLayer()
-            labellayer.colorTable = self._colorTable16
-        else:
-            #this column is used for the 'delete' buttons, we don't care
-            #about data changed here
-            pass
+            if labellayer is not None:
+                labellayer.colorTable = self._colorTable16
 
     def __initShortcuts(self):
         mgr = ShortcutManager()
@@ -573,7 +571,8 @@ class LabelingGui(LayerViewerGui):
 
         # Update the labellayer colortable with the new color mapping
         labellayer = self._getLabelLayer()
-        labellayer.colorTable = self._colorTable16
+        if labellayer is not None:
+            labellayer.colorTable = self._colorTable16
 
         currentSelection = self._labelControlUi.labelListModel.selectedRow()
         if currentSelection == -1:
@@ -594,8 +593,9 @@ class LabelingGui(LayerViewerGui):
         try:
             labellayer = itertools.ifilter(lambda l: l.name == "Labels", self.layerstack).next()
         except StopIteration:
-            raise RuntimeError("Couldn't locate the label layer in the layer stack.  Does it have the expected name?")
-        return labellayer
+            return None
+        else:
+            return labellayer
 
     @traceLogged(traceLogger)
     def createLabelLayer(self, currentImageIndex, direct=False):
