@@ -2,6 +2,51 @@ from abc import ABCMeta, abstractmethod
 from ilastik import VersionManager
 from ilastik.utility.simpleSignal import SimpleSignal
 
+#######################################
+# utility functions for serialization #
+#######################################
+
+def slicingToString(slicing):
+    """Convert the given slicing into a string of the form
+    '[0:1,2:3,4:5]'
+
+    """
+    strSlicing = '['
+    for s in slicing:
+        strSlicing += str(s.start)
+        strSlicing += ':'
+        strSlicing += str(s.stop)
+        strSlicing += ','
+
+    # Drop the last comma
+    strSlicing = strSlicing[:-1]
+    strSlicing += ']'
+    return strSlicing
+
+def stringToSlicing(strSlicing):
+    """Parse a string of the form '[0:1,2:3,4:5]' into a slicing (i.e.
+    list of slices)
+
+    """
+    slicing = []
+    # Drop brackets
+    strSlicing = strSlicing[1:-1]
+    sliceStrings = strSlicing.split(',')
+    for s in sliceStrings:
+        ends = s.split(':')
+        start = int(ends[0])
+        stop = int(ends[1])
+        slicing.append(slice(start, stop))
+
+    return slicing
+
+
+
+####################################
+# the base applet serializer class #
+####################################
+
+
 class AppletSerializer(object):
     """
     Base class for all AppletSerializers.
