@@ -25,7 +25,7 @@ class TestOpColorizeLabels(object):
     def testBasic(self):
         op = self.op
     
-        # Don't get RGBA, just get GBA.
+        # Test requesting specific channels: Don't get RGBA, just get GBA.
         colorizedData = op.Output[:,5:,5:,:,1:4].wait()
         
         # Output is colorized (3 channels)
@@ -40,7 +40,9 @@ class TestOpColorizeLabels(object):
         assert ( colorizedData[0,1,1,0,0] != colorizedData[0,2,2,0,0]
               or colorizedData[0,1,1,0,1] != colorizedData[0,2,2,0,1]
               or colorizedData[0,1,1,0,2] != colorizedData[0,2,2,0,2] )
-            
+
+        assert (colorizedData[0,1:,1:,0,2] == 255).all(), "Alpha should be 255 for all labels except label 0"
+
     def testOverrideColors(self):
         op = self.op
         

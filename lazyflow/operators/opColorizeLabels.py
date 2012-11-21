@@ -74,7 +74,7 @@ class OpColorizeLabels(Operator):
             # Replace removed overrides with their original random values
             for label, color in self.overrideColors.items():
                 if label not in newOverrideColors:
-                    self.colortable[label] = self.getRandomColor(label)
+                    self.colortable[label] = OpColorizeLabels.colortable[label]
 
         self.overrideColors = newOverrideColors
     
@@ -117,9 +117,10 @@ class OpColorizeLabels(Operator):
                 table = None
 
         if not loadedTable:
+            randState = numpy.random.mtrand.RandomState(0)
             table = numpy.zeros((size,4), dtype=numpy.uint8)
-            for index in range( size ):
-                table[index] = OpColorizeLabels.getRandomColor(index)
+            table[...] = randState.random_integers( 0, 255, table.shape )
+            table[...,3] = 255 # Alpha is 255 by default.
 
             # Save it for next session
             saved = False
@@ -142,15 +143,6 @@ class OpColorizeLabels(Operator):
                 logger.warn( "Caught exception: " + str(ex) )
                     
         return table
-
-    @staticmethod
-    def getRandomColor(label):
-        color = numpy.zeros(4, dtype=numpy.uint8)
-        # RGB
-        for channel in range(3):
-            color[channel] = (zlib.crc32(str(label)) >> (8*channel)) & 0xFF
-        color[3] = 255 # Alpha            
-        return color
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.Input:
