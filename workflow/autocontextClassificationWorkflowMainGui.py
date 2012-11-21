@@ -57,9 +57,9 @@ if __name__ == "__main__":
     # Start the GUI
     #import os
     #os.execl('/home/akreshuk/voluminave/bin/activate')
-    #startShellGui( AutocontextClassificationWorkflow )
+    startShellGui( AutocontextClassificationWorkflow )
 
     # Start the GUI with a debug project    
-    startShellGui( AutocontextClassificationWorkflow, debug_with_existing )    
+    #startShellGui( AutocontextClassificationWorkflow, debug_with_existing )    
 #    startShellGui( AutocontextClassificationWorkflow, debug_with_new )
 

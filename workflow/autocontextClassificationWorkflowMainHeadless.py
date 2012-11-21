@@ -17,7 +17,8 @@ from lazyflow.operators.ioOperators import OpStackToH5Writer
 # ilastik
 import ilastik.utility.monkey_patches
 from ilastik.shell.headless.startShellHeadless import startShellHeadless
-from pixelClassificationWorkflow import PixelClassificationWorkflow
+#from pixelClassificationWorkflow import PixelClassificationWorkflow
+from autocontextClassificationWorkflow import AutocontextClassificationWorkflow
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.applets.batchIo.opBatchIo import ExportFormat
 from ilastik.utility import PathComponents
@@ -40,7 +41,7 @@ def main(argv):
     return 0
 
 def getArgParser():
-    parser = argparse.ArgumentParser(description="Pixel Classification Prediction Workflow")
+    parser = argparse.ArgumentParser(description="Autocontext Classification Prediction Workflow")
     parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
     parser.add_argument('--generate_project_predictions', action='store_true', help="Compute full volume predictions for project data and save to project (otherwise, just export predictions for batch inputs).")
     parser.add_argument('--batch_export_dir', default='', help='A directory to save batch outputs. (Default saves with input files)')
@@ -59,6 +60,7 @@ def runWorkflow(parsed_args):
 
     # Make sure batch inputs exist.
     for p in args.batch_inputs:
+        print p
         error = False
         p = PathComponents(p).externalPath
         if not os.path.exists(p):
@@ -72,7 +74,7 @@ def runWorkflow(parsed_args):
         return
 
     # Instantiate 'shell'
-    shell, workflow = startShellHeadless( PixelClassificationWorkflow )
+    shell, workflow = startShellHeadless( AutocontextClassificationWorkflow )
     
     # Load project (auto-import it if necessary)
     logger.info("Opening project: '" + args.project + "'")
