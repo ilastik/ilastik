@@ -15,6 +15,7 @@ from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence
 from lazyflow.tracer import traceLogged
 from volumina.api import LazyflowSinkSource, ColortableLayer
 from volumina.utility import ShortcutManager, PreferencesManager
+from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
 
@@ -172,34 +173,10 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.labelListModel.rowsRemoved.connect(self._onLabelRemoved)
         _labelControlUi.labelListModel.labelSelected.connect(self._onLabelSelected)
 
-        @traceLogged(traceLogger)
-        def onDataChanged(topLeft, bottomRight):
-            """Handle changes to the label list selections."""
-            firstRow = topLeft.row()
-            lastRow  = bottomRight.row()
-
-            firstCol = topLeft.column()
-            lastCol  = bottomRight.column()
-
-            if lastCol == firstCol == 0:
-                assert(firstRow == lastRow) #only one data item changes at a time
-
-                #in this case, the actual data (for example color) has changed
-                color = _labelControlUi.labelListModel[firstRow].color
-                self._colorTable16[firstRow+1] = color.rgba()
-                self.editor.brushingModel.setBrushColor(color)
-
-                # Update the label layer colortable to match the list entry
-                labellayer = self._getLabelLayer()
-                labellayer.colorTable = self._colorTable16
-            else:
-                #this column is used for the 'delete' buttons, we don't care
-                #about data changed here
-                pass
-
         # Connect Applet GUI to our event handlers
+        _labelControlUi.AddLabelButton.setIcon( QIcon(ilastikIcons.AddSel) )
         _labelControlUi.AddLabelButton.clicked.connect( bind(self._addNewLabel) )
-        _labelControlUi.labelListModel.dataChanged.connect(onDataChanged)
+        _labelControlUi.labelListModel.dataChanged.connect(self.onLabelListDataChanged)
 
         # Initialize the arrow tool button with an icon and handler
         iconPath = os.path.split(__file__)[0] + "/icons/arrow.jpg"
@@ -243,6 +220,29 @@ class LabelingGui(LayerViewerGui):
 
         self.paintBrushSizeIndex = PreferencesManager().get( 'labeling', 'paint brush size', default=0 )
         self.eraserSizeIndex = PreferencesManager().get( 'labeling', 'eraser brush size', default=4 )
+
+    @traceLogged(traceLogger)
+    def onLabelListDataChanged(self, topLeft, bottomRight):
+        """Handle changes to the label list selections."""
+        firstRow = topLeft.row()
+        lastRow  = bottomRight.row()
+
+        firstCol = topLeft.column()
+        lastCol  = bottomRight.column()
+
+        # We only care about the color column
+        if firstCol <= 0 <= lastCol:
+            assert(firstRow == lastRow) # Only one data item changes at a time
+
+            #in this case, the actual data (for example color) has changed
+            color = self._labelControlUi.labelListModel[firstRow].color
+            self._colorTable16[firstRow+1] = color.rgba()
+            self.editor.brushingModel.setBrushColor(color)
+
+            # Update the label layer colortable to match the list entry
+            labellayer = self._getLabelLayer()
+            if labellayer is not None:
+                labellayer.colorTable = self._colorTable16
 
     def __initShortcuts(self):
         mgr = ShortcutManager()
@@ -476,6 +476,39 @@ class LabelingGui(LayerViewerGui):
         Add a new label to the label list GUI control.
         Return the new number of labels in the control.
         """
+        label = Label( self.getNextLabelName(), self.getNextLabelColor() )
+        label.nameChanged.connect(self._updateLabelShortcuts)
+        label.nameChanged.connect(self.onLabelNameChanged)
+        label.colorChanged.connect(self.onLabelColorChanged)
+
+        newRow = self._labelControlUi.labelListModel.rowCount()
+        self._labelControlUi.labelListModel.insertRow( newRow, label )
+        newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
+        self.onLabelListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
+
+        # Make the new label selected
+        nlabels = self._labelControlUi.labelListModel.rowCount()
+        selectedRow = nlabels-1
+        self._labelControlUi.labelListModel.select(selectedRow)
+
+        self._updateLabelShortcuts()
+
+    def getNextLabelName(self):
+        """
+        Return a suitable name for the next label added by the user.
+        Subclasses may override this.
+        """
+        maxNum = 0
+        for index, label in enumerate(self._labelControlUi.labelListModel):
+            nums = re.findall("\d+", label.name)
+            for n in nums:
+                maxNum = max(maxNum, int(n))
+        return "Label {}".format(maxNum+1)
+
+    def getNextLabelColor(self):
+        """
+        Return a QColor to use for the next label.
+        """
         numLabels = len(self._labelControlUi.labelListModel)
         if numLabels >= len(self._colorTable16)-1:
             # If the color table isn't large enough to handle all our labels,
@@ -485,25 +518,19 @@ class LabelingGui(LayerViewerGui):
 
         color = QColor()
         color.setRgba(self._colorTable16[numLabels+1]) # First entry is transparent (for zero label)
+        return color
 
-        label = Label(self._getNextLabelName(), color)
-        label.nameChanged.connect(self._updateLabelShortcuts)
-        self._labelControlUi.labelListModel.insertRow( self._labelControlUi.labelListModel.rowCount(), label )
-        nlabels = self._labelControlUi.labelListModel.rowCount()
+    def onLabelNameChanged(self):
+        """
+        Subclasses can override this to respond to changes in the label names.
+        """
+        pass
 
-        # Make the new label selected
-        selectedRow = nlabels-1
-        self._labelControlUi.labelListModel.select(selectedRow)
-
-        self._updateLabelShortcuts()
-
-    def _getNextLabelName(self):
-        maxNum = 0
-        for index, label in enumerate(self._labelControlUi.labelListModel):
-            nums = re.findall("\d+", label.name)
-            for n in nums:
-                maxNum = max(maxNum, int(n))
-        return "Label {}".format(maxNum+1)
+    def onLabelColorChanged(self):
+        """
+        Subclasses can override this to respond to changes in the label colors.
+        """
+        pass
 
     @traceLogged(traceLogger)
     def _removeLastLabel(self):
@@ -544,7 +571,8 @@ class LabelingGui(LayerViewerGui):
 
         # Update the labellayer colortable with the new color mapping
         labellayer = self._getLabelLayer()
-        labellayer.colorTable = self._colorTable16
+        if labellayer is not None:
+            labellayer.colorTable = self._colorTable16
 
         currentSelection = self._labelControlUi.labelListModel.selectedRow()
         if currentSelection == -1:
@@ -565,8 +593,9 @@ class LabelingGui(LayerViewerGui):
         try:
             labellayer = itertools.ifilter(lambda l: l.name == "Labels", self.layerstack).next()
         except StopIteration:
-            raise RuntimeError("Couldn't locate the label layer in the layer stack.  Does it have the expected name?")
-        return labellayer
+            return None
+        else:
+            return labellayer
 
     @traceLogged(traceLogger)
     def createLabelLayer(self, currentImageIndex, direct=False):

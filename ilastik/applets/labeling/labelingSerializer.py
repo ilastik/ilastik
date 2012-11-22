@@ -1,4 +1,5 @@
-from ilastik.applets.base.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import \
+    AppletSerializer, stringToSlicing, slicingToString
 
 class LabelingSerializer(AppletSerializer):
     """
@@ -43,7 +44,7 @@ class LabelingSerializer(AppletSerializer):
                 labelGroup.create_dataset(blockName, data=block)
                 
                 # Add the slice this block came from as an attribute of the dataset
-                labelGroup[blockName].attrs['blockSlice'] = self.slicingToString(slicing)
+                labelGroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
 
         self._dirty = False
 
@@ -57,43 +58,11 @@ class LabelingSerializer(AppletSerializer):
             # For each block of label data in the file
             for blockData in labelGroup.values():
                 # The location of this label data block within the image is stored as an hdf5 attribute
-                slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
+                slicing = stringToSlicing( blockData.attrs['blockSlice'] )
                 # Slice in this data to the label input
                 self.mainOperator.LabelInputs[index][slicing] = blockData[...]
 
         self._dirty = False
-
-    def slicingToString(self, slicing):
-        """
-        Convert the given slicing into a string of the form '[0:1,2:3,4:5]'
-        """
-        strSlicing = '['
-        for s in slicing:
-            strSlicing += str(s.start)
-            strSlicing += ':'
-            strSlicing += str(s.stop)
-            strSlicing += ','
-        
-        # Drop the last comma
-        strSlicing = strSlicing[:-1]
-        strSlicing += ']'
-        return strSlicing
-        
-    def stringToSlicing(self, strSlicing):
-        """
-        Parse a string of the form '[0:1,2:3,4:5]' into a slicing (i.e. list of slices)
-        """
-        slicing = []
-        # Drop brackets
-        strSlicing = strSlicing[1:-1]
-        sliceStrings = strSlicing.split(',')
-        for s in sliceStrings:
-            ends = s.split(':')
-            start = int(ends[0])
-            stop = int(ends[1])
-            slicing.append(slice(start, stop))
-        
-        return slicing
 
     def isDirty(self):
         """

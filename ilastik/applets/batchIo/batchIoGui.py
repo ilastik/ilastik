@@ -11,6 +11,7 @@ import ilastik.utility # This is the ilastik shell utility module
 from ilastik.utility import bind
 from ilastik.utility import PathComponents
 
+from ilastik.shell.gui.iconMgr import ilastikIcons
 import ilastik.applets.base.applet
 
 import logging
@@ -111,7 +112,10 @@ class BatchIoGui(QMainWindow):
             self.drawer.outputSuffixEdit.textEdited.connect( self.handleNewOutputSuffix )
             
             self.drawer.exportAllButton.clicked.connect( self.exportAllResults )
+            self.drawer.exportAllButton.setIcon( QIcon(ilastikIcons.Save) )
             self.drawer.deleteAllButton.clicked.connect( self.deleteAllResults )
+            self.drawer.deleteAllButton.setIcon( QIcon(ilastikIcons.Clear) )
+
             
             for i, formatInfo in sorted(SupportedFormats.items()):
                 self.drawer.exportFormatCombo.addItem( formatInfo.name + ' (' + formatInfo.extension + ')' )
