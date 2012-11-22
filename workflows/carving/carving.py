@@ -1029,8 +1029,6 @@ if __name__ == "__main__":
     parser = OptionParser(usage)
 
     import sys
-    sys.argv.append("/magnetic/denk.h5")
-    sys.argv.append("/magnetic/carving_test.ilp")
 
     (options, args) = parser.parse_args()
     
@@ -1054,4 +1052,4 @@ if __name__ == "__main__":
         startShellGui( CarvingWorkflow, loadProject, windowTitle="Carving %s" % carvingGraphFilename,
                        workflowKwargs={'carvingGraphFile': carvingGraphFilename} )
     else:
-        parser.error("incorrect number of arguments")
+        parser.error("incorrect number of arguments %d, expected 2" % len(args))
