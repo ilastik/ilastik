@@ -175,6 +175,10 @@ class TestPixelClassificationSerializer(object):
             # Slice them into our operator
             op.LabelInputs[0][0:1, 0:10, 0:5,   0:100, 0:1] = labeldata[:,:,0:5,:,:]
             op.LabelInputs[0][0:1, 0:10, 50:60, 0:100, 0:1] = labeldata[:,:,50:60,:,:]
+
+            # change label names and colors
+            op.LabelNames.setValue( ["Label1", "Label2"] )
+            op.LabelColors.setValue( [(255,30,30), (30,255,30)] )
             
             # Simulate the predictions changing by setting the prediction output dirty
             op.PredictionProbabilities[0].setDirty(slice(None))
