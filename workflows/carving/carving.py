@@ -28,7 +28,6 @@ from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.adaptors import Op5ifyer
 
 from cylemon.segmentation import MSTSegmentor
-from segmentation.h5utils import rH5data, wH5data
 
 
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -240,7 +239,8 @@ class OpCarving(Operator):
         self._done_seg_lut = None
         self._hints = None
         if hintOverlayFile is not None:
-            self._hints  = rH5data(self._hintOverlayFile,"/hints")
+            f = h5py.File(hintOverlayFile,"r")
+            self._hints  = f["/hints"]
        
         self._setCurrObjectName("")
         self.HasSegmentation.setValue(False)
