@@ -197,7 +197,7 @@ class OpPixelClassification( Operator ):
         axisOrder = [ tag.key for tag in inputSlot.meta.axistags ]
         
         ## Label Array blocks
-        blockDims = { 't' : 1, 'x' : 32, 'y' : 32, 'z' : 32, 'c' : 1 }
+        blockDims = { 't' : 1, 'x' : 64, 'y' : 64, 'z' : 64, 'c' : 1 }
         blockShape = tuple( blockDims[k] for k in axisOrder )
         self.opLabelArray.blockShape.setValue( blockShape )
 
