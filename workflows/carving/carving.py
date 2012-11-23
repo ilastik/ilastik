@@ -38,15 +38,17 @@ class OpCarvingTopLevel(Operator):
     RawData = InputSlot(level=1)
 
 
-    def __init__(self, carvingGraphFile, hintOverlayFile=None,*args, **kwargs):
-        super(OpCarvingTopLevel, self).__init__(*args, **kwargs)
+    def __init__(self, parent=None, carvingGraphFile=None, hintOverlayFile=None):
+        super(OpCarvingTopLevel, self).__init__(parent=parent)
 
         # Convert data to 5d before giving it to the real operators
         op5 = OperatorWrapper( Op5ifyer, parent=self, graph=self.graph )
         op5.input.connect( self.RawData )
 
         self.opLabeling = OpLabeling(graph=self.graph, parent=self)
-        self.opCarving = OperatorWrapper( OpCarving, operator_args=[carvingGraphFile,hintOverlayFile], graph=self.graph, parent=self )
+        
+        a = operator_kwargs={'carvingGraphFilename': carvingGraphFile, 'hintOverlayFile': hintOverlayFile}
+        self.opCarving = OperatorWrapper( OpCarving, operator_kwargs=a, parent=self )
         
         self.opLabeling.InputImages.connect( op5.output )
         self.opCarving.RawData.connect( op5.output )
@@ -228,8 +230,8 @@ class OpCarving(Operator):
     #Hint Overlay
     HintOverlay = OutputSlot()
     
-    def __init__(self, carvingGraphFilename, hintOverlayFile=None,*args, **kwargs):
-        super(OpCarving, self).__init__(*args, **kwargs)
+    def __init__(self, graph=None, carvingGraphFilename=None, hintOverlayFile=None, parent=None):
+        super(OpCarving, self).__init__(graph=graph, parent=parent)
         print "[Carving id=%d] CONSTRUCTOR" % id(self) 
         self._mst = MSTSegmentor.loadH5(carvingGraphFilename,  "graph")
         self._hintOverlayFile = hintOverlayFile
@@ -239,7 +241,10 @@ class OpCarving(Operator):
         self._done_seg_lut = None
         self._hints = None
         if hintOverlayFile is not None:
-            f = h5py.File(hintOverlayFile,"r")
+            try:
+                f = h5py.File(hintOverlayFile,"r")
+            except:
+                raise RuntimeError("Could not open hint overlay '%s'" % hintOverlayFile)
             self._hints  = f["/hints"]
        
         self._setCurrObjectName("")
@@ -975,10 +980,12 @@ class CarvingGui(LabelingGui):
 
 class CarvingApplet(LabelingApplet):
 
-    def __init__(self, graph, projectFileGroupName, carvingGraphFile,hintOverlayFile=None):
-        super(CarvingApplet, self).__init__(graph, projectFileGroupName)
+    def __init__(self, workflow, projectFileGroupName, carvingGraphFile, hintOverlayFile=None):
+        super(CarvingApplet, self).__init__(workflow, projectFileGroupName)
+        if hintOverlayFile is not None:
+            assert isinstance(hintOverlayFile, str)
 
-        self._topLevelOperator = OpCarvingTopLevel( carvingGraphFile, graph=graph, hintOverlayFile=hintOverlayFile )
+        self._topLevelOperator = OpCarvingTopLevel( parent=workflow, carvingGraphFile=carvingGraphFile, hintOverlayFile=hintOverlayFile )
 
         self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
         self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
@@ -1008,22 +1015,29 @@ class CarvingApplet(LabelingApplet):
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class CarvingWorkflow(Workflow):
-    
 
-    def __init__(self, carvingGraphFile, hintoverlayFile=None):
-        super(CarvingWorkflow, self).__init__()
+    def __init__(self, carvingGraphFile=None, hintoverlayFile=None):
+        if carvingGraphFile is not None:
+            assert isinstance(carvingGraphFile, str), "carvingGraphFile should be a string, not '%s'" % type(carvingGraphFile)
+        if hintoverlayFile is not None:
+            assert isinstance(hintoverlayFile, str), "hintoverlayFile should be a string, not '%s'" % type(hintoverlayFile)
+        #super(CarvingWorkflow, self).__init__()
         self._applets = []
 
         graph = Graph()
+        
         super(CarvingWorkflow, self).__init__(graph=graph)
+        
         self._applets = []
 
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
 
-
-        self.carvingApplet = CarvingApplet(graph, "xxx", carvingGraphFile,hintOverlayFile=hintoverlayFile)
+        self.carvingApplet = CarvingApplet(workflow=self,
+                                           projectFileGroupName="carving",
+                                           carvingGraphFile = carvingGraphFile,
+                                           hintOverlayFile=hintoverlayFile)
         self.carvingApplet.topLevelOperator.RawData.connect( self.dataSelectionApplet.topLevelOperator.Image )
         self.carvingApplet.topLevelOperator.opLabeling.LabelsAllowedFlags.connect( self.dataSelectionApplet.topLevelOperator.AllowLabels )
         self.carvingApplet.gui.minLabelNumber = 2
@@ -1069,7 +1083,7 @@ if __name__ == "__main__":
     usage = "%prog [options] <carving graph filename> <project filename to be created>"
     parser = OptionParser(usage)
     parser.add_option("--hintoverlay",
-                  dest="hintoverlayFile", default=False,
+                  dest="hintoverlayFile", default=None,
                   help="specify a file which adds a hint overlay")
 
 
