@@ -373,15 +373,14 @@ def createAutocontextFeatureOperators(oper, wrap):
             ops.append(OperatorWrapper(OpContextVariance, parent=oper, graph=oper.graph))
         else:
             ops.append(OpContextVariance(graph=oper.graph))
-        #ops[0].inputs["Radii"].setValue([[3, 3, 0], [5, 5, 0], [10, 10, 0]])
-        #ops[0].inputs["Radii"].setValue([[3,3,0], [5, 5, 1]])
         
         #Radii from last year
-        ops[0].inputs["Radii"].setValue([[1, 1, 1], [3, 3, 1], [5, 5, 1], [7, 7, 2], [10, 10, 2], \
-                  [15, 15, 3], [20, 20, 3], [30, 30, 3], [40, 40, 3]])
+        #ops[0].inputs["Radii"].setValue([[1, 1, 1], [3, 3, 1], [5, 5, 1], [7, 7, 2], [10, 10, 2], \
+        #          [15, 15, 3], [20, 20, 3], [30, 30, 3], [40, 40, 3]])
         
-        #ops[0].inputs["Radii"].setValue([[1, 1, 1], [3, 3, 1], [5, 5, 1], [7, 7, 2], [10, 10, 2]])
-        #ops[0].inputs["Radii"].setValue([[10, 10, 2]])
+        ops[0].inputs["Radii"].setValue([[1, 1, 1], [3, 3, 3], [5, 5, 5], [7, 7, 7], [10, 10, 10], \
+                  [15, 15, 10], [20, 20, 15], [30, 30, 20], [40, 40, 30]])
+        
         return ops
 
 class OpShapeReader(Operator):
