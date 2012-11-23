@@ -1246,7 +1246,21 @@ class OperatorMetaClass(ABCMeta):
 
     def __call__(cls,*args,**kwargs):
         # type.__call__ calls instance.__init__ internally
-        instance = ABCMeta.__call__(cls,*args,**kwargs)
+        try:
+            instance = ABCMeta.__call__(cls, *args, **kwargs)
+        except Exception as e:
+            err =  "Could not create instance of '%r'\n" % cls 
+            err += "*args   = %r\n" % (args,) 
+            err += "*kwargs = %r\n" % (kwargs,)
+            err +="The exception was:\n"
+            err += str(e)
+            err +="\nTraceback:\n"
+            import traceback
+            import StringIO
+            s = StringIO.StringIO()
+            traceback.print_exc(file=s)
+            err += s.getvalue()
+            raise RuntimeError(err)
         instance._after_init()
         return instance
 
@@ -1286,7 +1300,7 @@ class Operator(object):
 
     #definition of output slots -> operators instances
     outputSlots = []
-    name = ""
+    name = "Operator (base class)"
     description = ""
     category = "lazyflow"
 
@@ -1303,9 +1317,9 @@ class Operator(object):
 
     def __init__( self, parent = None, graph = None ):
         if not( parent is None or isinstance(parent, Operator) ):
-            assert False, "parent must be an operator!"
+            assert False, "parent of operator name='%s' must be an operator, not %r of type %s" % (self.name, parent, type(parent))
         if graph is None:
-            assert parent is not None
+            assert parent is not None, "parent of operator name='%s' is set to None in constructor" % self.name
             graph=parent.graph
         
         self.graph = graph
