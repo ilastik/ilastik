@@ -23,11 +23,18 @@ class OpLabeling( Operator ):
     LabelImages = OutputSlot(level=1) #: Stored labels from the user
     NonzeroLabelBlocks = OutputSlot(level=1) #: A list if slices that contain non-zero label values
 
-    def __init__( self, *args, **kwargs ):
+    def __init__(self, blockDims = None, *args, **kwargs):
         """
         Instantiate all internal operators and connect them together.
         """
         super(OpLabeling, self).__init__( *args, **kwargs )
+
+        # Configuration options
+        if blockDims is None:
+            self._blockDims = { 't' : 1, 'x' : 32, 'y' : 32, 'z' : 32, 'c' : 1 }, 
+        else:
+            self._blockDims = blockDims
+        assert isinstance(blockDims, dict)
 
         # Create internal operators
         self.opInputShapeReader = OperatorWrapper( OpShapeReader, parent=self, graph=self.graph )
@@ -95,8 +102,7 @@ class OpLabeling( Operator ):
         axisOrder = [ tag.key for tag in inputSlot.meta.axistags ]
         
         ## Label Array blocks
-        blockDims = { 't' : 1, 'x' : 32, 'y' : 32, 'z' : 32, 'c' : 1 }
-        blockShape = tuple( blockDims[k] for k in axisOrder )
+        blockShape = tuple( self._blockDims[k] for k in axisOrder )
         self.opLabelArray.blockShape.setValue( blockShape )
 
     def propagateDirty(self, slot, subindex, roi):
