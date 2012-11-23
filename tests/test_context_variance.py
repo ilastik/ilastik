@@ -1,7 +1,7 @@
 import numpy
 
 import vigra
-from numpy.testing import assert_equal, assert_almost_equal, assert_array_equal
+from numpy.testing import assert_equal, assert_almost_equal, assert_array_equal, assert_array_almost_equal
 from lazyflow import graph
 from context.operators.contextVariance import OpContextVariance
 from context.build.contextcpp import varContext2Dmulti, varContext3Dmulti, varContext3Danis
@@ -167,13 +167,14 @@ def testVarianceOperator():
     # 2d
     nx = 10
     ny = 10
-    nc = 2
+    nc = 3
     aaa = numpy.random.rand(nx,ny,nc)
     aaa = aaa.reshape((nx, ny, nc))
     aaa = aaa.astype(numpy.float32)
     dummy = vigra.VigraArray(aaa.shape, axistags=vigra.VigraArray.defaultAxistags(3)).astype(numpy.float32)
     dummy[:]=aaa[:]
 
+    '''
     sizes = numpy.array([1, 2], dtype=numpy.uint32)
     nr = sizes.shape[0]
     resshape = (nx, ny, nc*2*sizes.shape[0])
@@ -192,29 +193,41 @@ def testVarianceOperator():
     #assert_almost_equal(res[0:3, 0:3, 0], res2[0:3, 0:3, 0])
     print res2[0:3, 0:3, 0]
     print res[0:3, 0:3, 0]
+    '''
     
     nz = 10
     sizes_anis = numpy.array([[1, 1, 1], [2, 2, 2]], dtype=numpy.uint32)
     sizes_anis_list = [[1, 1, 1], [2, 2, 2]]
+    max_radius = numpy.max(sizes_anis, 0)
+    
     bbb = numpy.random.rand(nx, ny, nz, nc)
     bbb = bbb.reshape((nx, ny, nz, nc))
     bbb = bbb.astype(numpy.float32)
     dummy = vigra.VigraArray(bbb.shape, axistags=vigra.VigraArray.defaultAxistags(4)).astype(numpy.float32)
     dummy[:]=bbb[:]
-    resshape = (nx, ny, nz, nc*2*sizes.shape[0])
+    resshape = (nx, ny, nz, nc*2*sizes_anis.shape[0])
     res = vigra.VigraArray(resshape, axistags =vigra.VigraArray.defaultAxistags(4)).astype(numpy.float32)
     res = varContext3Danis(sizes_anis, dummy, res) 
     
     opVar3D = OpContextVariance(graph = g)
     opVar3D.inputs["Input"].setValue(dummy)
     opVar3D.inputs["Radii"].setValue(sizes_anis_list)
-    sub2 = lazyflow.rtype.SubRegion(None, start=[0, 0, 0, 0], stop=[5, 5, 5, 8])
+    sub2 = lazyflow.rtype.SubRegion(None, start=[max_radius[0], max_radius[1], max_radius[2], 0], stop=[nx-max_radius[0], ny-max_radius[1], nz-max_radius[2], resshape[-1]])
     res2 = opVar3D.outputs["Output"](sub2.start, sub2.stop).allocate().wait()
     res2 = numpy.asarray(res2)
-    res2 = res2.swapaxes(0, 1)
-    print res2[0:3, 0:3, 2, 0]
-    print res[0:3, 0:3, 2, 0]
+    #res2 = res2.swapaxes(0, 1)
+    #print res2.shape
+    #print res2[0:3, 0:3, 2, 0]
+    #print res[2:5, 2:5, 4, 0]
+    #print res[max_radius[0]:nx-max_radius[0], max_radius[1]:ny-max_radius[1], 4, 0]
+    res = numpy.asarray(res)
+    cut = res[max_radius[0]:nx-max_radius[0], max_radius[1]:ny-max_radius[1], max_radius[2]:nz-max_radius[2], :]
+    assert res2.shape==cut.shape
     
+    assert_array_almost_equal(res2, cut, 2)
+    print "done!"
+    #print res[max_radius[0]:nx-max_radius[0], max_radius[1]:ny-max_radius[1], max_radius[2]:nz-max_radius[2], 0]
+    #assert_array_almost_equal(res2, res[max_radius[0]:nx-max_radius[0], max_radius[1]:ny-max_radius[1], max_radius[2]:nz-max_radius[2], :], decimal=2)
     
 def testShrinkToShape():
     g = graph.Graph()
@@ -270,4 +283,5 @@ if __name__=="__main__":
     #testVariance2D();
     #testVariance3D();
     #testVariance3Danis()
-    testShrinkToShape()
+    #testShrinkToShape()
+    testVarianceOperator()

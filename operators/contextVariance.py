@@ -1,10 +1,17 @@
 from lazyflow.graph import *
 from lazyflow import roi
 from lazyflow.roi import TinyVector
+from lazyflow.request import Request, Pool
 
 import context
 import collections
 import vigra
+
+import logging
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger("TRACE." + __name__)
+from lazyflow.tracer import traceLogged
+from functools import partial
 
 class OpVarianceContext2DOld(Operator):
     name = "VarianceContext2D"
@@ -73,6 +80,7 @@ class OpContextVariance(Operator):
         #FIXME: why do we do that? To ensure correct types for C++?
         radii = numpy.array(radii, dtype = numpy.uint32)
         maxRadius = numpy.max(radii, 0)
+        nradii = radii.shape[0]
         
         #Set up roi 
         roi.setInputShape(inputShape)
@@ -105,12 +113,24 @@ class OpContextVariance(Operator):
         
         nNonsingles = len([x for x in inputShape if x>1])
         
-        if (inputShape[axistags.channelIndex]>1 and nNonsingles==3 or nNonsingles==2):
-            context.varContext2Dmulti(radii, source, temp)
-        elif isinstance(radii[0], collections.Iterable):
-            context.varContext3Danis(radii, source, temp)
-        else:
-            context.varContext3Dmulti(radii, source, temp)
+        traceLogger.debug("requesting c++ autocontext features. roi={}".format(roi))
+        
+        #make separate requests for each channel
+        pool = Pool()
+        
+        def computeForChannel(i):
+            if (inputShape[axistags.channelIndex]>1 and nNonsingles==3 or nNonsingles==2):
+                context.varContext2Dmulti(radii, source[..., i:i+1], temp[..., nradii*2*i:nradii*2(i+1)])
+            elif isinstance(radii[0], collections.Iterable):
+                context.varContext3Danis(radii, source[..., i:i+1], temp[..., nradii*2*i:nradii*2*(i+1)])
+            else:
+                context.varContext3Dmulti(radii, source[..., i:i+1], temp[..., i:i+1])
+        
+        for ic in range(nclasses):
+            req=pool.request(partial(computeForChannel, ic)) 
+            
+        pool.wait()
+        pool.clean()
         
         tgtRoi = self.shrinkToShape(maxRadius, srcRoi, roi_copy)
         channelIndex =self.outputs["Output"].meta.axistags.channelIndex
