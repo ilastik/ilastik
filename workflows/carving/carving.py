@@ -38,19 +38,19 @@ class OpCarvingTopLevel(Operator):
     RawData = InputSlot(level=1)
 
 
-    def __init__(self, parent=None, carvingGraphFile=None, hintOverlayFile=None):
+    def __init__(self, parent=None, labelingOperator=None, carvingGraphFile=None, hintOverlayFile=None):
         super(OpCarvingTopLevel, self).__init__(parent=parent)
 
         # Convert data to 5d before giving it to the real operators
         op5 = OperatorWrapper( Op5ifyer, parent=self, graph=self.graph )
         op5.input.connect( self.RawData )
-
-        self.opLabeling = OpLabeling(graph=self.graph, parent=self)
         
         a = operator_kwargs={'carvingGraphFilename': carvingGraphFile, 'hintOverlayFile': hintOverlayFile}
         self.opCarving = OperatorWrapper( OpCarving, operator_kwargs=a, parent=self )
         
+        self.opLabeling = labelingOperator
         self.opLabeling.InputImages.connect( op5.output )
+        
         self.opCarving.RawData.connect( op5.output )
         
         self.opCarving.WriteSeeds.connect(self.opLabeling.LabelInputs)
@@ -981,11 +981,12 @@ class CarvingGui(LabelingGui):
 class CarvingApplet(LabelingApplet):
 
     def __init__(self, workflow, projectFileGroupName, carvingGraphFile, hintOverlayFile=None):
-        super(CarvingApplet, self).__init__(workflow, projectFileGroupName)
+        super(CarvingApplet, self).__init__(workflow, projectFileGroupName, blockDims = {'c': 1, 'x':512, 'y': 512, 'z': 512, 't': 1})
         if hintOverlayFile is not None:
             assert isinstance(hintOverlayFile, str)
 
-        self._topLevelOperator = OpCarvingTopLevel( parent=workflow, carvingGraphFile=carvingGraphFile, hintOverlayFile=hintOverlayFile )
+        labelingOperator = self._topLevelOperator
+        self._topLevelOperator = OpCarvingTopLevel( parent=workflow, labelingOperator=labelingOperator, carvingGraphFile=carvingGraphFile, hintOverlayFile=hintOverlayFile )
 
         self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
         self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
