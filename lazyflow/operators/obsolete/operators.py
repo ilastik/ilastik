@@ -612,7 +612,7 @@ class OpArrayCache(OpArrayPiper):
                 req.onCancel(onCancel)
                 dirtyPool.add(req)
 
-                self._blockQuery[key2] = req
+                self._blockQuery[key2] = weakref.ref(req)
 
                 #sanity check:
                 if (self._blockState[key2] != OpArrayCache.DIRTY).any():
