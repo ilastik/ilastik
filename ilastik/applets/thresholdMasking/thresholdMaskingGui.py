@@ -21,6 +21,10 @@ class ThresholdMaskingGui(LayerViewerGui):
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
     
+    @classmethod
+    def defaultAppletDrawers(cls):
+        return [('Threshold Mask Viewer', QWidget())]
+
     def appletDrawers(self):
         return [ ("Threshold Mask Viewer", self.getAppletDrawerUi() ) ]
 
@@ -72,12 +76,12 @@ class ThresholdMaskingGui(LayerViewerGui):
     def getAppletDrawerUi(self):
         return self._drawer
     
-    def setupLayers(self, currentImageIndex):
+    def setupLayers(self):
         with Tracer(traceLogger):
             layers = []
     
             # Show the thresholded data
-            outputImageSlot = self.mainOperator.Output[ currentImageIndex ]
+            outputImageSlot = self.mainOperator.Output
             if outputImageSlot.ready():
                 outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
                 outputLayer.name = "min <= x <= max"
@@ -86,7 +90,7 @@ class ThresholdMaskingGui(LayerViewerGui):
                 layers.append(outputLayer)
             
             # Show the  data
-            invertedOutputSlot = self.mainOperator.InvertedOutput[ currentImageIndex ]
+            invertedOutputSlot = self.mainOperator.InvertedOutput
             if invertedOutputSlot.ready():
                 invertedLayer = self.createStandardLayerFromSlot( invertedOutputSlot )
                 invertedLayer.name = "(x < min) U (x > max)"
@@ -95,7 +99,7 @@ class ThresholdMaskingGui(LayerViewerGui):
                 layers.append(invertedLayer)
             
             # Show the raw input data
-            inputImageSlot = self.mainOperator.InputImage[ currentImageIndex ]
+            inputImageSlot = self.mainOperator.InputImage
             if inputImageSlot.ready():
                 inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
                 inputLayer.name = "Raw Input"

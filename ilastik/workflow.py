@@ -1,11 +1,9 @@
-from abc import ABCMeta, abstractproperty
+from abc import ABCMeta, abstractproperty, abstractmethod
 
 from lazyflow.graph import Operator
 
 class Workflow( Operator ):
     
-    __metaclass__ = ABCMeta # Force subclasses to override abstract methods and properties
-
     @abstractproperty
     def applets(self):
         return []
@@ -13,3 +11,28 @@ class Workflow( Operator ):
     @abstractproperty
     def imageNameListSlot(self):
         return None
+
+    def _after_init(self):
+        """
+        Overridden from Operator.
+        """
+        Operator._after_init(self)
+
+        # When a new image is added to the workflow, each applet should get a new lane.
+        self.imageNameListSlot.notifyInserted( self._createNewImageLane )
+        self.imageNameListSlot.notifyRemove( self._removeImageLane )
+        
+    def _createNewImageLane(self, multislot, index, *args):
+        for a in self.applets:
+            a.addLane(index)
+        
+        self.connectLane(index)
+    
+    def _removeImageLane(self, multislot, index, finalLength):
+        for a in self.applets:
+            a.removeLane(index, finalLength)
+
+    @abstractmethod
+    def connectLane(self):
+        raise NotImplementedError
+

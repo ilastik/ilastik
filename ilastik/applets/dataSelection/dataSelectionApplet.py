@@ -6,19 +6,20 @@ from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelect
 
 from lazyflow.graph import OperatorWrapper
 
-class DataSelectionApplet( Applet ):
+from ilastik.applets.base.applet import SingleToMultiAppletAdapter
+class DataSelectionApplet( SingleToMultiAppletAdapter ): # Uses base class for most methods, but provides a custom self.gui override.
     """
     This applet allows the user to select sets of input data, 
     which are provided as outputs in the corresponding top-level applet operator.
     """
     def __init__( self, workflow, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False):
-        super(DataSelectionApplet, self).__init__(title)
+        super(DataSelectionApplet, self).__init__(title, workflow)
 
         # Our top-level operator is wrapped to enable multi-image support.
         # All inputs are common to all inputs except for the 'Dataset' input, which is unique for each image.
         # Hence, 'Dataset' is the only 'promoted' slot.
-        self._topLevelOperator = OperatorWrapper( OpDataSelection, parent=workflow, promotedSlotNames=set(['Dataset']) )
-        self._topLevelOperator.name = "DataSelection Top-level Operator"
+        #self._topLevelOperator = OperatorWrapper( OpDataSelection, parent=workflow, promotedSlotNames=set(['Dataset']) )
+        self.topLevelOperator.name = "DataSelection Top-level Operator"
 
         self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator, projectFileGroupName) ]
         if supportIlastik05Import:
@@ -41,5 +42,23 @@ class DataSelectionApplet( Applet ):
         return self._serializableItems
 
     @property
-    def topLevelOperator(self):
-        return self._topLevelOperator
+    def operatorClass(self):
+        return OpDataSelection
+
+    def addLane(self, laneIndex):
+        """
+        Add an image lane to the top-level operator.
+        Since the top-level operator is just an OperatorWrapper, this is simple.
+        """
+        numLanes = len(self.topLevelOperator.innerOperators)
+        if laneIndex == numLanes:
+            self.topLevelOperator._insertInnerOperator(numLanes, numLanes+1)
+        
+    def removeLane(self, laneIndex, finalLength):
+        """
+        Remove an image lane from the top-level operator.
+        Since the top-level operator is just an OperatorWrapper, this is simple.
+        """
+        numLanes = len(self.topLevelOperator.innerOperators)
+        if finalLength < numLanes:
+            self.topLevelOperator._removeInnerOperator(laneIndex, numLanes-1)

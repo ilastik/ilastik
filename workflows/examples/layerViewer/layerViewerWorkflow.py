@@ -18,9 +18,13 @@ class LayerViewerWorkflow(Workflow):
 
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.viewerApplet )
-        
+
+    def connectLane(self, laneIndex):
+        opDataSelection = self.dataSelectionApplet.topLevelOperatorForLane(laneIndex)
+        opLayerViewer = self.viewerApplet.topLevelOperatorForLane(laneIndex)
+
         # Connect top-level operators
-        self.viewerApplet.topLevelOperator.RawInput.connect( self.dataSelectionApplet.topLevelOperator.Image )
+        opLayerViewer.RawInput.connect( opDataSelection.Image )
 
     @property
     def applets(self):
@@ -29,3 +33,4 @@ class LayerViewerWorkflow(Workflow):
     @property
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
+

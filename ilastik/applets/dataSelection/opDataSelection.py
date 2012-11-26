@@ -51,9 +51,12 @@ class OpDataSelection(Operator):
     Dataset = InputSlot(stype='object') #: A DatasetInfo object
 
     # Outputs
-    ImageName = OutputSlot(stype='string') #: The name of the output image
     Image = OutputSlot() #: The output image
     AllowLabels = OutputSlot(stype='bool') #: A bool indicating whether or not this image can be used for training
+
+    # Must be declared last of all slots.
+    # When the shell detects that this slot has been resized, it assumes all the others have already been resized.
+    ImageName = OutputSlot(stype='string') #: The name of the output image
     
     def __init__(self, *args, **kwargs):
         super(OpDataSelection, self).__init__(*args, **kwargs)

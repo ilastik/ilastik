@@ -64,12 +64,6 @@ class LayerViewerGui(QMainWindow):
     ###########################################
     ###########################################
 
-    def operatorForCurrentImage(self):
-        try:
-            return self.topLevelOperator[self.imageIndex]
-        except IndexError:
-            return None
-
     @traceLogged(traceLogger)
     def __init__(self, topLevelOperator):
         """
@@ -121,8 +115,6 @@ class LayerViewerGui(QMainWindow):
         Create a list of layers to be displayed in the central widget.
         Subclasses should override this method to create the list of layers that can be displayed.
         For debug and development purposes, the base class implementation simply generates layers for all topLevelOperator slots.
-
-        :param currentImageIndex: The index of the shell's currently selected image.
         """
         layers = []
         for multiLayerSlot in self.observedSlots:
@@ -535,16 +527,16 @@ class LayerViewerGui(QMainWindow):
 
     def _handleEditorRightClick(self, position5d, globalWindowCoordinate):
         dataPosition = self._convertPositionToDataSpace(position5d)
-        self.handleEditorRightClick(self.imageIndex, dataPosition, globalWindowCoordinate)
+        self.handleEditorRightClick(dataPosition, globalWindowCoordinate)
 
     def _handleEditorLeftClick(self, position5d, globalWindowCoordinate):
         dataPosition = self._convertPositionToDataSpace(position5d)
-        self.handleEditorLeftClick(self.imageIndex, dataPosition, globalWindowCoordinate)
+        self.handleEditorLeftClick(dataPosition, globalWindowCoordinate)
 
-    def handleEditorRightClick(self, currentImageIndex, position5d, globalWindowCoordinate):
+    def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         # Override me
         pass
 
-    def handleEditorLeftClick(self, currentImageIndex, position5d, globalWindowCoordiante):
+    def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
         # Override me
         pass

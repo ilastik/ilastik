@@ -1,6 +1,7 @@
 from ilastik.utility.simpleSignal import SimpleSignal
+from ilastik.utility.operatorSubView import OperatorSubView
 
-from abc import ABCMeta, abstractproperty
+from abc import ABCMeta, abstractproperty, abstractmethod
 
 class Applet( object ):
     """
@@ -45,6 +46,26 @@ class Applet( object ):
         Workflow managers can connect the top-level operator of one applet to others.
         """
         return None
+
+    def topLevelOperatorForLane(self, laneIndex):
+        """
+        Return a view of the top-level operator for the given lane.
+        """
+        return OperatorSubView(self.topLevelOperator, laneIndex)
+
+    @abstractmethod
+    def addLane(self, laneIndex):
+        """
+        Add an image processing lane to the top-level operator.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def removeLane(self, laneIndex, finalLength):
+        """
+        Remove an image processing lane from the top-level operator.
+        """
+        raise NotImplementedError
 
     @abstractproperty
     def gui(self):
@@ -95,9 +116,33 @@ class SingleToMultiAppletAdapter( Applet ):
         self._topLevelOperator = OperatorWrapper(self.operatorClass, parent=workflow)
         self._gui = None
 
+    @abstractproperty
+    def operatorClass(self):
+        raise NotImplementedError
+
     @property
     def topLevelOperator(self):
         return self._topLevelOperator
+
+    def topLevelOperatorForLane(self, laneIndex):
+        return OperatorSubView(self.topLevelOperator, laneIndex)
+
+    def addLane(self, laneIndex):
+        """
+        Add an image lane to the top-level operator.
+        Since the top-level operator is just an OperatorWrapper, this is simple.
+        """
+        numLanes = len(self.topLevelOperator.innerOperators)
+        assert numLanes == laneIndex, "Image lanes must be appended."        
+        self.topLevelOperator._insertInnerOperator(numLanes, numLanes+1)
+        
+    def removeLane(self, laneIndex, finalLength):
+        """
+        Remove an image lane from the top-level operator.
+        Since the top-level operator is just an OperatorWrapper, this is simple.
+        """
+        numLanes = len(self.topLevelOperator.innerOperators)
+        self.topLevelOperator._removeInnerOperator(laneIndex, numLanes-1)
 
     @property
     def gui(self):
