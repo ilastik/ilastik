@@ -46,7 +46,7 @@ class BatchIoGui(QMainWindow):
         return []
 
     def viewerControlWidget(self):
-        return None
+        return QWidget() # No viewer controls for this applet.
 
     def setImageIndex(self, index):
         pass

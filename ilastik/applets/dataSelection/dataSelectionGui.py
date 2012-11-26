@@ -66,7 +66,7 @@ class DataSelectionGui(QMainWindow):
         return []
 
     def viewerControlWidget(self):
-        return None # No viewer controls for this applet.
+        return QWidget() # No viewer controls for this applet.
     
     def setImageIndex(self, imageIndex):
         pass # This applet doesn't care which image is currently selected.  It always lists all inputs.

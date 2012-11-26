@@ -26,7 +26,7 @@ class ProjectMetadataGui( QWidget ):
         return []
 
     def viewerControlWidget(self):
-        return None # No viewer controls
+        return QWidget() # No viewer controls for this applet.
 
     def setImageIndex(self, index):
         pass # This applet does't deal with images.

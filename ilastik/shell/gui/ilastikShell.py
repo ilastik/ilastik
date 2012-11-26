@@ -183,6 +183,8 @@ class IlastikShell( QMainWindow ):
         for app in workflow.applets:
             self.addApplet(app)
         self.workflow = workflow
+
+        self._refreshDrawerRecursionGuard = False
         
     def _createProjectMenu(self):
         # Create a menu for "General" (non-applet) actions
@@ -373,6 +375,8 @@ class IlastikShell( QMainWindow ):
                 
             self.currentImageIndex = newImageIndex
 
+            # Force the applet drawer to be redrawn
+            self.setSelectedAppletDrawer(self.currentAppletIndex)
 
     def handleAppleBarItemExpanded(self, modelIndex):
         """
@@ -385,42 +389,63 @@ class IlastikShell( QMainWindow ):
         """
         Show the correct applet central widget, viewer control widget, and applet drawer widget for this drawer index.
         """
-        if self.currentAppletIndex != drawerIndex:
+        if self._refreshDrawerRecursionGuard is False:
+            self._refreshDrawerRecursionGuard = True
             self.currentAppletIndex = drawerIndex
             # Collapse all drawers in the applet bar...
             self.appletBar.collapseAll()
             # ...except for the newly selected item.
-            self.appletBar.expand( self.getModelIndexFromDrawerIndex(drawerIndex) )
+            drawerModelIndex = self.getModelIndexFromDrawerIndex(drawerIndex)
+            self.appletBar.expand( drawerModelIndex )
             
             if len(self.appletBarMapping) != 0:
                 # Determine which applet this drawer belongs to
                 assert drawerIndex in self.appletBarMapping
                 applet_index = self.appletBarMapping[drawerIndex]
-
+    
                 # Select the appropriate central widget, menu widget, and viewer control widget for this applet
                 self.showCentralWidget(applet_index)
                 self.showViewerControlWidget(applet_index)
                 self.showMenus(applet_index)
+                self.refreshAppletDrawer( applet_index, drawerIndex )
                 
                 self.autoSizeSideSplitter( self._sideSplitterSizePolicy )
+            self._refreshDrawerRecursionGuard = False
 
     def showCentralWidget(self, applet_index):
         centralWidget = self._applets[applet_index].gui.centralWidget()
         # Replace the placeholder widget, if possible
-        if centralWidget is not None and self.appletStack.indexOf( centralWidget ) == -1:
-            self.appletStack.removeWidget( self.appletStack.widget( applet_index ) )
-            self.appletStack.insertWidget( applet_index, centralWidget )
+        if centralWidget is not None:
+            if self.appletStack.indexOf( centralWidget ) == -1:
+                self.appletStack.removeWidget( self.appletStack.widget( applet_index ) )
+                self.appletStack.insertWidget( applet_index, centralWidget )
 
         self.appletStack.setCurrentIndex(applet_index)
 
     def showViewerControlWidget(self, applet_index ):
         viewerControlWidget = self._applets[applet_index].gui.viewerControlWidget()        
         # Replace the placeholder widget, if possible
-        if viewerControlWidget is not None and self.viewerControlStack.indexOf( viewerControlWidget ) == -1:
-            self.viewerControlStack.removeWidget( self.appletStack.widget( applet_index ) )
-            self.viewerControlStack.insertWidget( applet_index, viewerControlWidget )
+        if viewerControlWidget is not None:
+            if self.viewerControlStack.indexOf( viewerControlWidget ) == -1:
+                self.viewerControlStack.addWidget( viewerControlWidget )
+            self.viewerControlStack.setCurrentWidget(viewerControlWidget)
 
-        self.viewerControlStack.setCurrentIndex(applet_index)
+    def refreshAppletDrawer(self, applet_index, drawerIndex):
+        firstDrawerIndex = 0
+        for k,v in self.appletBarMapping.items():
+            if v == applet_index:
+                firstDrawerIndex = k
+                break
+        
+        relativeDrawerIndex = drawerIndex - firstDrawerIndex
+        updatedDrawerWidget = self._applets[applet_index].gui.appletDrawers()[relativeDrawerIndex][1]
+
+        rootItem = self.appletBar.invisibleRootItem()
+        appletDrawerItem = rootItem.child(drawerIndex).child(0)
+        appletDrawerStackedWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
+        if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
+            appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
+        appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
 
     def showMenus(self, applet_index):
         self.menuBar().clear()
@@ -493,14 +518,17 @@ class IlastikShell( QMainWindow ):
         rootItem = self.appletBar.invisibleRootItem()
 
         # Add all of the applet bar's items to the toolbox widget
-        for controlName, controlGuiItem in app.gui.appletDrawers():
+        for controlName, controlGuiWidget in app.gui.appletDrawers():
             appletNameItem = QTreeWidgetItem( self.appletBar, QtCore.QStringList( controlName ) )
             appletNameItem.setFont( 0, QFont("Ubuntu", 14) )
             drawerItem = QTreeWidgetItem(appletNameItem)
-            drawerItem.setSizeHint( 0, controlGuiItem.frameSize() )
+            drawerItem.setSizeHint( 0, controlGuiWidget.frameSize() )
 #            drawerItem.setBackground( 0, QBrush( QColor(224, 224, 224) ) )
 #            drawerItem.setForeground( 0, QBrush( QColor(0,0,0) ) )
-            self.appletBar.setItemWidget( drawerItem, 0, controlGuiItem )
+
+            stackedWidget = QStackedWidget()
+            stackedWidget.addWidget( controlGuiWidget )
+            self.appletBar.setItemWidget( drawerItem, 0, stackedWidget )
 
             # Since each applet can contribute more than one applet bar item,
             #  we need to keep track of which applet this item is associated with
