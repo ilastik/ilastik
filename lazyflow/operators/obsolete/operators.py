@@ -656,7 +656,9 @@ class OpArrayCache(OpArrayPiper):
         inProcessPool = request.Pool()
         #wait for all in process queries
         for req in inProcessQueries:
-            inProcessPool.add(req)
+            req = req() # get original req object from weakref
+            if req is not None:
+                inProcessPool.add(req) 
 
         inProcessPool.wait()
         inProcessPool.clean()
