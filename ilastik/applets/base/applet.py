@@ -87,8 +87,70 @@ class ShellRequest(object):
     RequestSave = 0 #: Request that the shell perform a "save project" action.
 
 
+from lazyflow.graph import OperatorWrapper
+class SingleToMultiAppletAdapter( Applet ):
 
+    def __init__(self, name, workflow):
+        super(SingleToMultiAppletAdapter, self).__init__(name)
+        self._topLevelOperator = OperatorWrapper(self.operatorClass, parent=workflow)
+        self._gui = None
 
+    @property
+    def topLevelOperator(self):
+        return self._topLevelOperator
 
+    @property
+    def gui(self):
+        if self._gui is None:
+            self._gui = SingleToMultiGuiAdapter( self.guiClass, self._topLevelOperator )
+        return self._gui
+
+def checkCurrentGui(f):
+    def _wrapper(self, *args, **kwargs):
+        if self.currentGui() is None:
+            return None
+        else:
+            return f(self, *args, **kwargs)
+    return _wrapper
+    
+class SingleToMultiGuiAdapter( object ):
+    def __init__(self, singleImageGuiClass, topLevelOperator):
+        self._singleImageGuiClass = singleImageGuiClass
+        self._imageIndex = None
+        self._guis = {}
+        self.topLevelOperator = topLevelOperator
+
+    def currentGui(self):
+        if self._imageIndex is None:
+            return None
+        # Create first if necessary
+        if self._imageIndex not in self._guis:
+            self._guis[self._imageIndex] = self._singleImageGuiClass( self.topLevelOperator.innerOperators[self._imageIndex] )
+        return self._guis[self._imageIndex]
+
+    def appletDrawers(self):
+        if self.currentGui() is not None:
+            return self.currentGui().appletDrawers()
+        else:
+            return self._singleImageGuiClass.defaultAppletDrawers()
+
+    @checkCurrentGui
+    def centralWidget( self ):
+        return self.currentGui().centralWidget()
+
+    @checkCurrentGui
+    def menus(self):
+        return self.currentGui().menus()
+    
+    @checkCurrentGui
+    def viewerControlWidget(self):
+        return self.currentGui().viewerControlWidget()
+    
+    def setImageIndex(self, imageIndex):
+        self._imageIndex = imageIndex
+
+    def reset(self):
+        for gui in self._guis.values():
+            gui.reset()
 
 

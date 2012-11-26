@@ -398,15 +398,38 @@ class IlastikShell( QMainWindow ):
                 applet_index = self.appletBarMapping[drawerIndex]
 
                 # Select the appropriate central widget, menu widget, and viewer control widget for this applet
-                self.appletStack.setCurrentIndex(applet_index)
-                self.viewerControlStack.setCurrentIndex(applet_index)
-                self.menuBar().clear()
-                self.menuBar().addMenu(self._projectMenu)
-                self.menuBar().addMenu(self._settingsMenu)
-                for m in self._applets[applet_index].gui.menus():
-                    self.menuBar().addMenu(m)
+                self.showCentralWidget(applet_index)
+                self.showViewerControlWidget(applet_index)
+                self.showMenus(applet_index)
                 
                 self.autoSizeSideSplitter( self._sideSplitterSizePolicy )
+
+    def showCentralWidget(self, applet_index):
+        centralWidget = self._applets[applet_index].gui.centralWidget()
+        # Replace the placeholder widget, if possible
+        if centralWidget is not None and self.appletStack.indexOf( centralWidget ) == -1:
+            self.appletStack.removeWidget( self.appletStack.widget( applet_index ) )
+            self.appletStack.insertWidget( applet_index, centralWidget )
+
+        self.appletStack.setCurrentIndex(applet_index)
+
+    def showViewerControlWidget(self, applet_index ):
+        viewerControlWidget = self._applets[applet_index].gui.viewerControlWidget()        
+        # Replace the placeholder widget, if possible
+        if viewerControlWidget is not None and self.viewerControlStack.indexOf( viewerControlWidget ) == -1:
+            self.viewerControlStack.removeWidget( self.appletStack.widget( applet_index ) )
+            self.viewerControlStack.insertWidget( applet_index, viewerControlWidget )
+
+        self.viewerControlStack.setCurrentIndex(applet_index)
+
+    def showMenus(self, applet_index):
+        self.menuBar().clear()
+        self.menuBar().addMenu(self._projectMenu)
+        self.menuBar().addMenu(self._settingsMenu)
+        appletMenus = self._applets[applet_index].gui.menus()
+        if appletMenus is not None:
+            for m in appletMenus:
+                self.menuBar().addMenu(m)
 
     def getModelIndexFromDrawerIndex(self, drawerIndex):
         drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
@@ -455,17 +478,16 @@ class IlastikShell( QMainWindow ):
         assert isinstance( app, Applet ), "Applets must inherit from Applet base class."
         assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
 
-        assert issubclass( type(app.gui), AppletGuiInterface ), "Applet GUIs must conform to the Applet GUI interface."
+        #assert issubclass( type(app.gui), AppletGuiInterface ), "Applet GUIs must conform to the Applet GUI interface."
         
         self._applets.append(app)
         applet_index = len(self._applets) - 1
-        self.appletStack.addWidget( app.gui.centralWidget() )
         
-        # Viewer controls are optional. If the applet didn't provide one, create an empty widget for him.
-        if app.gui.viewerControlWidget() is None:
-            self.viewerControlStack.addWidget( QWidget(parent=self) )
-        else:
-            self.viewerControlStack.addWidget( app.gui.viewerControlWidget() )
+        # Add placeholder widget, since the applet's central widget may not exist yet.
+        self.appletStack.addWidget( QWidget(parent=self) )
+        
+        # Add a placeholder widget
+        self.viewerControlStack.addWidget( QWidget(parent=self) )
 
         # Add rows to the applet bar model
         rootItem = self.appletBar.invisibleRootItem()
@@ -834,7 +856,8 @@ class IlastikShell( QMainWindow ):
             enabled = self._disableCounts[index] == 0
 
             # Apply to the applet central widget
-            applet.gui.centralWidget().setEnabled( enabled and self.enableWorkflow )
+            if applet.gui.centralWidget() is not None:
+                applet.gui.centralWidget().setEnabled( enabled and self.enableWorkflow )
             
             # Apply to the applet bar drawers
             for appletName, appletGui in applet.gui.appletDrawers():

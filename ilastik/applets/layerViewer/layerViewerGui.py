@@ -41,6 +41,10 @@ class LayerViewerGui(QMainWindow):
         return self
 
     def appletDrawers(self):
+        return self.defaultAppletDrawers()
+
+    @classmethod
+    def defaultAppletDrawers(cls):
         return [('Viewer', QWidget())]
 
     def menus( self ):
@@ -48,9 +52,6 @@ class LayerViewerGui(QMainWindow):
 
     def viewerControlWidget(self):
         return self.__viewerControlWidget
-
-    def setImageIndex(self, index):
-        self._setImageIndex(index)
 
     def reset(self):
         # Remove all layers
@@ -87,22 +88,24 @@ class LayerViewerGui(QMainWindow):
         observedSlots = []
 
         for slot in topLevelOperator.inputs.values() + topLevelOperator.outputs.values():
-            if slot.level == 1 or slot.level == 2:
+            if slot.level == 0 or slot.level == 1:
                 observedSlots.append(slot)
 
         self.observedSlots = []
         for slot in observedSlots:
-            if slot.level == 1:
-                # The user gave us a slot that is indexed as slot[image]
-                # Wrap the operator so it has the right level.  Indexed as: slot[image][0]
-                opPromoteInput = OperatorWrapper( Op1ToMulti, graph=slot.operator.graph )
+            if slot.level == 0:
+                # To be monitored and updated correctly by this GUI, slots must have level=1, but this slot is of level 0.
+                # Pass it through a trivial "up-leveling" operator so it will have level 1 for our purposes.
+                opPromoteInput = Op1ToMulti(graph=slot.operator.graph)
                 opPromoteInput.Input.connect(slot)
                 slot = opPromoteInput.Outputs
 
-            # Each slot should now be indexed as slot[image][sub_index]
-            assert slot.level == 2
+            # Each slot should now be indexed as slot[layer_index]
+            assert slot.level == 1
             self.observedSlots.append( slot )
-
+            slot.notifyInserted( bind(self._handleLayerInsertion) )
+            slot.notifyRemoved( bind(self._handleLayerRemoval) )
+ 
         self.layerstack = LayerStackModel()
 
         self.initAppletDrawerUi() # Default implementation loads a blank drawer.
@@ -110,33 +113,10 @@ class LayerViewerGui(QMainWindow):
         self._initEditor()
         self.__viewerControlWidget = None
         self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
+        
+        self.updateAllLayers()
 
-        self.imageIndex = -1
-        self.lastUpdateImageIndex = -1
-
-        def handleDatasetInsertion(slot, imageIndex):
-            if self.imageIndex == -1 and self._areProvidersInSync():
-                self.setImageIndex( imageIndex )
-
-        for provider in self.observedSlots:
-            provider.notifyInserted( bind( handleDatasetInsertion ) )
-
-        def handleDatasetRemoval(slot, index, finalsize):
-            if finalsize == 0:
-                # Clear everything
-                self.setImageIndex(-1)
-            elif index == self.imageIndex:
-                # Our currently displayed image is being removed.
-                # Switch to the first image (unless that's the one being removed!)
-                newIndex = 0
-                if index == newIndex:
-                    newIndex = 1
-                self.setImageIndex(newIndex)
-
-        for provider in self.observedSlots:
-            provider.notifyRemove( bind( handleDatasetRemoval ) )
-
-    def setupLayers( self, currentImageIndex ):
+    def setupLayers( self ):
         """
         Create a list of layers to be displayed in the central widget.
         Subclasses should override this method to create the list of layers that can be displayed.
@@ -145,63 +125,31 @@ class LayerViewerGui(QMainWindow):
         :param currentImageIndex: The index of the shell's currently selected image.
         """
         layers = []
-        for multiImageSlot in self.observedSlots:
-            if 0 <= currentImageIndex < len(multiImageSlot):
-                multiLayerSlot = multiImageSlot[currentImageIndex]
-                for j, slot in enumerate(multiLayerSlot):
-                    if slot.ready():
-                        layer = self.createStandardLayerFromSlot(slot)
-                        layer.name = multiImageSlot.name + " " + str(j)
-                        layers.append(layer)
+        for multiLayerSlot in self.observedSlots:
+            for j, slot in enumerate(multiLayerSlot):
+                if slot.ready():
+                    layer = self.createStandardLayerFromSlot(slot)
+                    layer.name = multiLayerSlot.name + " " + str(j)
+                    layers.append(layer)
         return layers
 
     @traceLogged(traceLogger)
-    def _setImageIndex(self, imageIndex):
-        if self.imageIndex != -1:
-            for provider in self.observedSlots:
-                # We're switching datasets.  Unsubscribe from the old one's notifications.
-                provider[self.imageIndex].unregisterInserted( bind(self._handleLayerInsertion) )
-                provider[self.imageIndex].unregisterRemove( bind(self._handleLayerRemoval) )
-
-        self.imageIndex = imageIndex
-
-        # Don't repopulate the GUI if there isn't a current dataset.  Stop now.
-        if imageIndex is -1:
-            self.layerstack.clear()
-            return
-
-        # Update the GUI for all layers in the current dataset
-        self.updateAllLayers()
-
-        # For layers that already exist, subscribe to ready notifications
-        for provider in self.observedSlots:
-            for slotIndex, slot in enumerate(provider):
-                slot.notifyReady( bind(self.updateAllLayers) )
-                slot.notifyUnready( bind(self.updateAllLayers) )
-
-        # Make sure we're notified if a layer is inserted in the future so we can subscribe to its ready notifications
-        for provider in self.observedSlots:
-            if self.imageIndex < len(provider):
-                provider[self.imageIndex].notifyInserted( bind(self._handleLayerInsertion) )
-                provider[self.imageIndex].notifyRemoved( bind(self._handleLayerRemoval) )
-
     def _handleLayerInsertion(self, slot, slotIndex):
         """
         The multislot providing our layers has a new item.
         Make room for it in the layer GUI and subscribe to updates.
         """
-        with Tracer(traceLogger):
-            # When the slot is ready, we'll replace the blank layer with real data
-            slot[slotIndex].notifyReady( bind(self.updateAllLayers) )
-            slot[slotIndex].notifyUnready( bind(self.updateAllLayers) )
+        # When the slot is ready, we'll replace the blank layer with real data
+        slot[slotIndex].notifyReady( bind(self.updateAllLayers) )
+        slot[slotIndex].notifyUnready( bind(self.updateAllLayers) )
 
+    @traceLogged(traceLogger)
     def _handleLayerRemoval(self, slot, slotIndex):
         """
         An item is about to be removed from the multislot that is providing our layers.
         Remove the layer from the GUI.
         """
-        with Tracer(traceLogger):
-            self.updateAllLayers()
+        self.updateAllLayers()
 
     def generateAlphaModulatedLayersFromChannels(self, slot):
         # TODO
@@ -288,42 +236,10 @@ class LayerViewerGui(QMainWindow):
         return layer
 
     @traceLogged(traceLogger)
-    def _areProvidersInSync(self):
-        """
-        When an image is appended to the workflow, not all slots are resized simultaneously.
-        We should avoid calling setupLayers() until all the slots have been resized with the new image.
-        """
-        try:
-            numImages = len(self.observedSlots[0])
-        except IndexError: # observedSlots is empty
-            pass
-
-        inSync = True
-        for slot in self.observedSlots:
-            # Check each slot for out-of-sync status except:
-            # - slots that are optional and unconnected
-            # - slots that are not images (e.g. a classifier or other object)
-            if not (slot._optional and slot.partner is None):
-                if len(slot) == 0:
-                    inSync = False
-                    break
-                elif len(slot[0]) > 0 and slot[0][0].meta.axistags is not None:
-                    inSync &= (len(slot) == numImages)
-        return inSync
-
-    @traceLogged(traceLogger)
     @threadRouted
     def updateAllLayers(self):
-        # Check to make sure all layers are in sync
-        # (During image insertions, outputs are resized one at a time.)
-        if not self._areProvidersInSync():
-            return
-
-        if self.imageIndex >= 0:
-            # Ask the subclass for the updated layer list
-            newGuiLayers = self.setupLayers(self.imageIndex)
-        else:
-            newGuiLayers = []
+        # Ask for the updated layer list (usually provided by the subclass)
+        newGuiLayers = self.setupLayers()
 
         newNames = set(l.name for l in newGuiLayers)
         if len(newNames) != len(newGuiLayers):
@@ -332,23 +248,8 @@ class LayerViewerGui(QMainWindow):
             msg += str( [l.name for l in newGuiLayers] )
             raise RuntimeError(msg)
 
-        # Copy the old visibilities and opacities
-        if self.imageIndex != self.lastUpdateImageIndex:
-            existing = {l.name : l for l in self.layerstack}
-            for layer in newGuiLayers:
-                if layer.name in existing.keys():
-                    layer.visible = existing[layer.name].visible
-                    layer.opacity = existing[layer.name].opacity
-
-            # Clear all existing layers.
-            self.layerstack.clear()
-            self.lastUpdateImageIndex = self.imageIndex
-
-            # Zoom at a 1-1 scale to avoid loading big datasets entirely...
-            for view in self.editor.imageViews:
-                view.doScaleTo(1)
-
         # If the datashape changed, tell the editor
+        # FIXME: This may not be necessary now that this gui doesn't handle the multi-image case...
         newDataShape = self.determineDatashape()
         if newDataShape is not None and self.editor.dataShape != newDataShape:
             self.editor.dataShape = newDataShape
@@ -404,7 +305,7 @@ class LayerViewerGui(QMainWindow):
                     shortcut = layer.shortcutRegistration[2]
                     shortcut.setEnabled(False)
 
-                # Move existing layer to the correct positon
+                # Move existing layer to the correct position
                 stackIndex = self.layerstack.findMatchingIndex(lambda l: l.name == layer.name)
                 self.layerstack.selectRow(stackIndex)
                 while stackIndex > index:
@@ -416,22 +317,18 @@ class LayerViewerGui(QMainWindow):
 
     @traceLogged(traceLogger)
     def determineDatashape(self):
-        if self.imageIndex < 0:
-            return None
-
         newDataShape = None
         for provider in self.observedSlots:
-            if self.imageIndex < len(provider):
-                for i, slot in enumerate(provider[self.imageIndex]):
-                    if newDataShape is None and slot.ready() and slot.meta.axistags is not None:
-                        # Use an Op5ifyer adapter to transpose the shape for us.
-                        op5 = Op5ifyer( graph=slot.graph )
-                        op5.input.connect( slot )
-                        newDataShape = op5.output.meta.shape
+            for i, slot in enumerate(provider):
+                if newDataShape is None and slot.ready() and slot.meta.axistags is not None:
+                    # Use an Op5ifyer adapter to transpose the shape for us.
+                    op5 = Op5ifyer( graph=slot.graph )
+                    op5.input.connect( slot )
+                    newDataShape = op5.output.meta.shape
 
-                        # We just needed the operator to determine the transposed shape.
-                        # Disconnect it so it can be garbage collected.
-                        op5.input.disconnect()
+                    # We just needed the operator to determine the transposed shape.
+                    # Disconnect it so it can be garbage collected.
+                    op5.input.disconnect()
 
         if newDataShape is not None:
             # For now, this base class combines multi-channel images into a single layer,
@@ -600,6 +497,10 @@ class LayerViewerGui(QMainWindow):
         self.volumeEditorWidget.init(self.editor)
 
         self.editor._lastImageViewFocus = 0
+
+        # Zoom at a 1-1 scale to avoid loading big datasets entirely...
+        for view in self.editor.imageViews:
+            view.doScaleTo(1)
 
     @traceLogged(traceLogger)
     def _setIconToViewMenu(self):
