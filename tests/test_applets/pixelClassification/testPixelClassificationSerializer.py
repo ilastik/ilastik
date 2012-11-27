@@ -32,8 +32,15 @@ class OpMockPixelClassifier(Operator):
     
     FreezePredictions = InputSlot()
     
+    LabelNames = OutputSlot()
+    LabelColors = OutputSlot()
+    
     def __init__(self, *args, **kwargs):
         super(OpMockPixelClassifier, self).__init__(*args, **kwargs)
+
+        self.LabelNames.setValue( ["Membrane", "Cytoplasm"] )
+        self.LabelColors.setValue( [(255,0,0), (0,255,0)] ) # Red, Green
+        
         self._data = []
         self.dataShape = (1,10,100,100,1)
         self.prediction_shape = self.dataShape[:-1] + (2,) # Hard-coded to provide 2 classes
@@ -168,6 +175,10 @@ class TestPixelClassificationSerializer(object):
             # Slice them into our operator
             op.LabelInputs[0][0:1, 0:10, 0:5,   0:100, 0:1] = labeldata[:,:,0:5,:,:]
             op.LabelInputs[0][0:1, 0:10, 50:60, 0:100, 0:1] = labeldata[:,:,50:60,:,:]
+
+            # change label names and colors
+            op.LabelNames.setValue( ["Label1", "Label2"] )
+            op.LabelColors.setValue( [(255,30,30), (30,255,30)] )
             
             # Simulate the predictions changing by setting the prediction output dirty
             op.PredictionProbabilities[0].setDirty(slice(None))
@@ -190,6 +201,9 @@ class TestPixelClassificationSerializer(object):
             assert len(operatorToLoad.LabelImages) == 1
             assert (operatorToSave.LabelImages[0][...].wait() == operatorToLoad.LabelImages[0][...].wait()).all()
             assert (operatorToSave.LabelImages[0][...].wait() == labeldata[...]).all()
+
+            assert operatorToSave.LabelNames.value == operatorToLoad.LabelNames.value
+            assert (numpy.array(operatorToSave.LabelColors.value) == numpy.array(operatorToLoad.LabelColors.value)).all()
         
         os.remove(testProjectName)
 

@@ -26,13 +26,14 @@ class DataSelectionApplet( Applet ):
 
         self._gui = None
         self.batchDataGui = batchDataGui
+        self.title = title
         
     @property
     def gui( self ):
         if self._gui is None:
             from dataSelectionGui import DataSelectionGui, GuiMode
             guiMode = { True: GuiMode.Batch, False: GuiMode.Normal }[self.batchDataGui]
-            self._gui = DataSelectionGui( self._topLevelOperator, self._serializableItems[0], self.guiControlSignal, guiMode )
+            self._gui = DataSelectionGui( self._topLevelOperator, self._serializableItems[0], self.guiControlSignal, guiMode, self.title )
         return self._gui
 
     @property

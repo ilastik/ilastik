@@ -6,10 +6,10 @@ class LabelingApplet( Applet ):
     """
     This applet demonstrates how to use the LabelingGui base class, which serves as a reusable base class for other applet GUIs that need a labeling UI.  
     """
-    def __init__( self, workflow, projectFileGroupName ):
+    def __init__( self, workflow, projectFileGroupName, blockDims=None ):
         Applet.__init__( self, "Generic Labeling" )
 
-        self._topLevelOperator = OpLabeling(parent=workflow)
+        self._topLevelOperator = OpLabeling(parent=workflow, blockDims=blockDims)
         self._topLevelOperator.name = "Labeling Top-Level Operator"
         self._serializableItems = [ LabelingSerializer( self._topLevelOperator, projectFileGroupName ) ]
         self._gui = None

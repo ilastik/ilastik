@@ -13,47 +13,74 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <widget class="QTableWidget" name="fileInfoTableWidget">
+  <widget class="QWidget" name="outerLayout">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>10</y>
-     <width>871</width>
-     <height>781</height>
+     <x>0</x>
+     <y>0</y>
+     <width>781</width>
+     <height>531</height>
     </rect>
    </property>
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
-   <property name="toolTip">
-    <string/>
-   </property>
-   <property name="styleSheet">
-    <string notr="true"/>
-   </property>
-   <column>
-    <property name="text">
-     <string>Name</string>
-    </property>
-   </column>
-   <column>
-    <property name="text">
-     <string>Location</string>
-    </property>
-   </column>
-   <column>
-    <property name="text">
-     <string>Internal Path</string>
-    </property>
-   </column>
-   <column>
-    <property name="text">
-     <string>Labels Allowed</string>
-    </property>
-   </column>
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QTableWidget" name="fileInfoTableWidget">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="toolTip">
+       <string/>
+      </property>
+      <property name="styleSheet">
+       <string notr="true"/>
+      </property>
+      <attribute name="horizontalHeaderCascadingSectionResizes">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="horizontalHeaderStretchLastSection">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="verticalHeaderCascadingSectionResizes">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="verticalHeaderStretchLastSection">
+       <bool>false</bool>
+      </attribute>
+      <column>
+       <property name="text">
+        <string>Name</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Location</string>
+       </property>
+       <property name="toolTip">
+        <string>Where the data is located on your hard disk.</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Internal Path</string>
+       </property>
+       <property name="toolTip">
+        <string>For file formats that may contain more than one dataset (e.g. hdf5), this is the dataset's ID within the file.</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Labels Allowed</string>
+       </property>
+       <property name="toolTip">
+        <string>If checked, the user is allowed to label this image in subsequent training applets.</string>
+       </property>
+      </column>
+     </widget>
+    </item>
+   </layout>
   </widget>
  </widget>
  <resources/>

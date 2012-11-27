@@ -6,22 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>210</width>
-    <height>172</height>
+    <width>184</width>
+    <height>134</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <widget class="QWidget" name="layoutWidget">
-   <property name="geometry">
-    <rect>
-     <x>4</x>
-     <y>9</y>
-     <width>204</width>
-     <height>150</height>
-    </rect>
-   </property>
+  <widget class="QWidget" name="">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
      <widget class="QPushButton" name="addFileButton">
@@ -36,7 +28,7 @@
         <normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</iconset>
       </property>
       <property name="default">
-       <bool>true</bool>
+       <bool>false</bool>
       </property>
       <property name="flat">
        <bool>false</bool>
@@ -52,7 +44,7 @@
        <string>Import Stack Directory</string>
       </property>
       <property name="default">
-       <bool>true</bool>
+       <bool>false</bool>
       </property>
       <property name="flat">
        <bool>false</bool>
