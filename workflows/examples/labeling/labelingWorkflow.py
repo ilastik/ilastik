@@ -12,16 +12,20 @@ class LabelingWorkflow(Workflow):
         super(LabelingWorkflow, self).__init__(graph=graph)
         self._applets = []
 
-        # Create applets 
+        # Create applets
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
         self.labelingApplet = LabelingApplet(self, "Generic Labeling Data")
 
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.labelingApplet )
+
+    def connectLane(self, laneIndex):
+        opDataSelection = self.dataSelectionApplet.topLevelOperatorForLane(laneIndex)
+        opLabeling = self.labelingApplet.topLevelOperatorForLane(laneIndex)
         
         # Connect top-level operators
-        self.labelingApplet.topLevelOperator.InputImages.connect( self.dataSelectionApplet.topLevelOperator.Image )
-        self.labelingApplet.topLevelOperator.LabelsAllowedFlags.connect( self.dataSelectionApplet.topLevelOperator.AllowLabels )
+        opLabeling.InputImages.connect( opDataSelection.Image )
+        opLabeling.LabelsAllowedFlags.connect( opDataSelection.AllowLabels )
 
     @property
     def applets(self):
