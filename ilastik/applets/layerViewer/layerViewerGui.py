@@ -24,6 +24,21 @@ logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 from lazyflow.tracer import traceLogged, Tracer
 
+class LayerViewerGuiMetaclass(type(QMainWindow)):
+    """
+    Custom metaclass to enable the _after_init function.
+    """
+    def __call__(cls, *args, **kwargs):
+        """
+        This is where __init__ is called.
+        Here we can call code to execute immediately before or after the *subclass* __init__ function.
+        """
+        # Base class first. (type is our baseclass)
+        # type.__call__ calls instance.__init__ internally
+        instance = type(QMainWindow).__call__(cls,*args,**kwargs)
+        instance._after_init()
+        return instance
+
 class LayerViewerGui(QMainWindow):
     """
     Implements an applet GUI whose central widget is a VolumeEditor
@@ -33,6 +48,8 @@ class LayerViewerGui(QMainWindow):
     Provides: Central widget (viewer), View Menu, and Layer controls
     Provides an EMPTY applet drawer widget.  Subclasses should replace it with their own applet drawer.
     """
+    __metaclass__ = LayerViewerGuiMetaclass
+    
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
@@ -65,7 +82,7 @@ class LayerViewerGui(QMainWindow):
     ###########################################
 
     @traceLogged(traceLogger)
-    def __init__(self, topLevelOperator):
+    def __init__(self, topLevelOperator, additionalMonitoredSlots=[]):
         """
         Constructor.  **All** slots of the provided *topLevelOperator* will be monitored for changes.
         Changes include slot resize events, and slot ready/unready status changes.
@@ -84,6 +101,8 @@ class LayerViewerGui(QMainWindow):
         for slot in topLevelOperator.inputs.values() + topLevelOperator.outputs.values():
             if slot.level == 0 or slot.level == 1:
                 observedSlots.append(slot)
+        
+        observedSlots += additionalMonitoredSlots
 
         self.observedSlots = []
         for slot in observedSlots:
@@ -99,6 +118,8 @@ class LayerViewerGui(QMainWindow):
             self.observedSlots.append( slot )
             slot.notifyInserted( bind(self._handleLayerInsertion) )
             slot.notifyRemoved( bind(self._handleLayerRemoval) )
+            for i in range(len(slot)):
+                self._handleLayerInsertion(slot, i)
  
         self.layerstack = LayerStackModel()
 
@@ -108,6 +129,7 @@ class LayerViewerGui(QMainWindow):
         self.__viewerControlWidget = None
         self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
         
+    def _after_init(self):
         self.updateAllLayers()
 
     def setupLayers( self ):
