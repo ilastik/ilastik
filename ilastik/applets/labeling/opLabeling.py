@@ -2,6 +2,8 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 
 from lazyflow.operators import OpBlockedSparseLabelArray
 
+from functools import partial
+
 class OpLabeling( Operator ):
     """
     Top-level operator for the labeling base class.
@@ -10,7 +12,7 @@ class OpLabeling( Operator ):
     name="OpLabeling"
     category = "Top-level"
 
-    # Input slots    
+    # Input slots
     InputImages = InputSlot(level=1) #: Original input data.
     LabelInputs = InputSlot(optional = True, level=1) #: Input for providing label data from an external source
     
@@ -80,8 +82,23 @@ class OpLabeling( Operator ):
             def handleInputReady(slot):
                 self.setupCaches( multislot.index(slot) )
             multislot[index].notifyReady(handleInputReady)
-                
+
+        # Monitor all inputs for readiness, then udpate the cache block size
         self.InputImages.notifyInserted( handleNewInputImage )
+
+        # All input multi-slots should be kept in sync
+        # Output multi-slots will auto-sync via the graph
+        multiInputs = filter( lambda s: s.level >= 1, self.inputs.values() )
+        for s1 in multiInputs:
+            for s2 in multiInputs:
+                if s1 != s2:
+                    def insertSlot( a, b, position, finalsize ):
+                        a.insertSlot(position, finalsize)
+                    s1.notifyInserted( partial(insertSlot, s2 ) )
+                    
+                    def removeSlot( a, b, position, finalsize ):
+                        a.removeSlot(position, finalsize)
+                    s1.notifyRemoved( partial(removeSlot, s2 ) )
 
     def setupCaches(self, imageIndex):
         numImages = len(self.InputImages)
