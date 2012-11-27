@@ -22,10 +22,14 @@ class LayerViewerApplet( SingleToMultiAppletAdapter ):
         return OpLayerViewer
     
     @property
-    def guiClass(self):
+    def singleImageGuiClass(self):
         from layerViewerGui import LayerViewerGui
         return LayerViewerGui
 
+    @property
+    def broadcastingSlotNames(self):
+        return []
+    
     @property
     def dataSerializers(self):
         return self._serializableItems

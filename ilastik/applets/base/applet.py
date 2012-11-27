@@ -114,12 +114,16 @@ class SingleToMultiAppletAdapter( Applet ):
     def __init__(self, name, workflow):
         super(SingleToMultiAppletAdapter, self).__init__(name)
         self._gui = None
+        self.__topLevelOperator = None
         
         # OperatorWrapper will eventually switch API to take "non-promoted" slot names,
         #   but for now we have to invert the set ourselves...
         allInputSlotNames = set( map( lambda s: s.name, self.operatorClass.inputSlots ) )        
-        promotedSlotNames = allInputSlotNames - set(self.broadcastingSlotNames) # set difference        
-        self._topLevelOperator = OperatorWrapper(self.operatorClass, parent=workflow, promotedSlotNames=promotedSlotNames)
+        promotedSlotNames = allInputSlotNames - set(self.broadcastingSlotNames) # set difference
+
+        # Create a new top-level operator if the subclass didn't provide a custom one.
+        if self.topLevelOperator is None:
+            self.__topLevelOperator = OperatorWrapper(self.operatorClass, parent=workflow, promotedSlotNames=promotedSlotNames)
 
     @abstractproperty
     def operatorClass(self):
@@ -129,9 +133,13 @@ class SingleToMultiAppletAdapter( Applet ):
     def broadcastingSlotNames(self):
         raise NotImplementedError
 
+    @abstractmethod
+    def singleImageGuiClass(self):
+        raise NotImplementedError
+
     @property
     def topLevelOperator(self):
-        return self._topLevelOperator
+        return self.__topLevelOperator
 
     def topLevelOperatorForLane(self, laneIndex):
         return OperatorSubView(self.topLevelOperator, laneIndex)
@@ -156,8 +164,15 @@ class SingleToMultiAppletAdapter( Applet ):
     @property
     def gui(self):
         if self._gui is None:
-            self._gui = SingleToMultiGuiAdapter( self.guiClass, self._topLevelOperator )
+            self._gui = SingleToMultiGuiAdapter( self.createSingleImageGui, self.topLevelOperator, self.singleImageGuiClass.defaultAppletDrawers() )
         return self._gui
+
+    def createSingleImageGui(self, imageLaneIndex):
+        # This default implementation works for the default 
+        # case of guis with the standard constructor arglist.
+        # If your single-image GUI is more complicated than that, then override this function in your applet.
+        singleLaneOperator = self.topLevelOperatorForLane( imageLaneIndex )
+        return self.singleImageGuiClass( singleLaneOperator )
 
 def checkCurrentGui(f):
     def _wrapper(self, *args, **kwargs):
@@ -168,25 +183,26 @@ def checkCurrentGui(f):
     return _wrapper
     
 class SingleToMultiGuiAdapter( object ):
-    def __init__(self, singleImageGuiClass, topLevelOperator):
-        self._singleImageGuiClass = singleImageGuiClass
+    def __init__(self, singleImageGuiFactory, topLevelOperator, defaultAppletDrawers):
+        self.singleImageGuiFactory = singleImageGuiFactory
         self._imageIndex = None
         self._guis = {}
         self.topLevelOperator = topLevelOperator
+        self.defaultAppletDrawers = defaultAppletDrawers
 
     def currentGui(self):
         if self._imageIndex is None:
             return None
         # Create first if necessary
         if self._imageIndex not in self._guis:
-            self._guis[self._imageIndex] = self._singleImageGuiClass( self.topLevelOperator.innerOperators[self._imageIndex] )
+            self._guis[self._imageIndex] = self.singleImageGuiFactory( self._imageIndex )
         return self._guis[self._imageIndex]
 
     def appletDrawers(self):
         if self.currentGui() is not None:
             return self.currentGui().appletDrawers()
         else:
-            return self._singleImageGuiClass.defaultAppletDrawers()
+            return self.defaultAppletDrawers
 
     @checkCurrentGui
     def centralWidget( self ):
@@ -206,5 +222,23 @@ class SingleToMultiGuiAdapter( object ):
     def reset(self):
         for gui in self._guis.values():
             gui.reset()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

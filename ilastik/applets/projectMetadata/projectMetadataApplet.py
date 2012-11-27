@@ -34,6 +34,16 @@ class ProjectMetadataApplet( Applet ):
         # This applet provides a GUI and serializers, but does not affect the graph in any way.
         return None
 
+    def addLane(self, laneIndex):
+        """
+        Add an image processing lane to the top-level operator.
+        """
+        pass
 
+    def removeLane(self, laneIndex, finalLength):
+        """
+        Remove an image processing lane from the top-level operator.
+        """
+        pass
 
 

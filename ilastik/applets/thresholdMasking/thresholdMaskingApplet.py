@@ -29,7 +29,7 @@ class ThresholdMaskingApplet( SingleToMultiAppletAdapter ):
         return ['MinValue', 'MaxValue']
     
     @property
-    def guiClass(self):
+    def singleImageGuiClass(self):
         from thresholdMaskingGui import ThresholdMaskingGui
         return ThresholdMaskingGui
 

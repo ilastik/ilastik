@@ -9,7 +9,7 @@ from functools import partial
 import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import QRectF, Qt
-from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence
+from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence, QWidget
 
 # HCI
 from lazyflow.tracer import traceLogged
@@ -49,6 +49,10 @@ class LabelingGui(LayerViewerGui):
     def appletDrawers(self):
         return [ ("Label Marking", self._labelControlUi) ]
 
+    @classmethod
+    def defaultAppletDrawers(cls):
+        return [('Labeling', QWidget())]
+
     def reset(self):
         super(LabelingGui, self).reset()
 
@@ -57,12 +61,6 @@ class LabelingGui(LayerViewerGui):
 
         # Start in navigation mode (not painting)
         self._changeInteractionMode(Tool.Navigation)
-
-    def setImageIndex(self, index):
-        super(LabelingGui, self).setImageIndex(index)
-
-        # Reset the GUI for "labels allowed" status
-        self._changeInteractionMode(self._toolId)
 
     ###########################################
     ###########################################
@@ -103,11 +101,10 @@ class LabelingGui(LayerViewerGui):
         It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the user's mouse clicks.
         """
         def __init__(self):
-            # Label slots are multi (level=1) and accessed as shown.
             # Slot to insert labels onto
-            self.labelInput = None # labelInput[image_index].setInSlot(xxx)
+            self.labelInput = None # labelInput.setInSlot(xxx)
             # Slot to read labels from
-            self.labelOutput = None # labelOutput[image_index].get(roi)
+            self.labelOutput = None # labelOutput.get(roi)
             # Slot that determines which label value corresponds to erased values
             self.labelEraserValue = None # labelEraserValue.setValue(xxx)
             # Slot that is used to request wholesale label deletion
@@ -116,7 +113,7 @@ class LabelingGui(LayerViewerGui):
             self.maxLabelValue = None # maxLabelValue.value
 
             # Slot to specify which images the user is allowed to label.
-            self.labelsAllowed = None # labelsAllowed[image_index].value == True
+            self.labelsAllowed = None # labelsAllowed.value == True
 
     @traceLogged(traceLogger)
     def __init__(self, labelingSlots, topLevelOperator, drawerUiPath=None, rawInputSlot=None ):
@@ -128,24 +125,18 @@ class LabelingGui(LayerViewerGui):
         :param drawerUiPath: can be given if you provide an extended drawer UI file.  Otherwise a default one is used.
         :param rawInputSlot: Data from the rawInputSlot parameter will be displayed directly underneath the labels (if provided).
         """
+
         # Do have have all the slots we need?
         assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
         assert all( [v is not None for v in labelingSlots.__dict__.values()] )
 
+        self._labelingSlots = labelingSlots
         self._minLabelNumber = 0
         self._maxLabelNumber = 99 #100 or 255 is reserved for eraser
 
         self._rawInputSlot = rawInputSlot
 
-        # Init base class
-        super(LabelingGui, self).__init__( topLevelOperator )
-
-        self._labelingSlots = labelingSlots
-        self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)
         self._labelingSlots.maxLabelValue.notifyDirty( bind(self._updateLabelList) )
-
-        # Register for thunk events (easy UI calls from non-GUI threads)
-        self.thunkEventHandler = ThunkEventHandler(self)
 
         self._colorTable16 = self._createDefault16ColorColorTable()
         self._programmaticallyRemovingLabels = False
@@ -155,9 +146,15 @@ class LabelingGui(LayerViewerGui):
             drawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
         self._initLabelUic(drawerUiPath)
 
-        self._changeInteractionMode(Tool.Navigation)
+        # Init base class
+        super(LabelingGui, self).__init__( topLevelOperator, [labelingSlots.labelInput, labelingSlots.labelOutput] )
 
         self.__initShortcuts()
+        self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)
+
+        # Register for thunk events (easy UI calls from non-GUI threads)
+        self.thunkEventHandler = ThunkEventHandler(self)
+        self._changeInteractionMode(Tool.Navigation)
 
     @traceLogged(traceLogger)
     def _initLabelUic(self, drawerUiPath):
@@ -353,18 +350,18 @@ class LabelingGui(LayerViewerGui):
 
         # If the user can't label this image, disable the button and say why its disabled
         labelsAllowed = False
-        if 0 <= self.imageIndex < len(self._labelingSlots.labelsAllowed) :
-            labelsAllowedSlot = self._labelingSlots.labelsAllowed[self.imageIndex]
-            if labelsAllowedSlot.ready():
-                labelsAllowed = labelsAllowedSlot.value
 
-                self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed and self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
-                if labelsAllowed:
-                    self._labelControlUi.AddLabelButton.setText("Add Label")
-                else:
-                    self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
+        labelsAllowedSlot = self._labelingSlots.labelsAllowed
+        if labelsAllowedSlot.ready():
+            labelsAllowed = labelsAllowedSlot.value
 
-        if self.imageIndex != -1 and labelsAllowed:
+            self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed and self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
+            if labelsAllowed:
+                self._labelControlUi.AddLabelButton.setText("Add Label")
+            else:
+                self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
+
+        if labelsAllowed:
             self._labelControlUi.arrowToolButton.show()
             self._labelControlUi.paintToolButton.show()
             self._labelControlUi.eraserToolButton.show()
@@ -598,19 +595,19 @@ class LabelingGui(LayerViewerGui):
             return labellayer
 
     @traceLogged(traceLogger)
-    def createLabelLayer(self, currentImageIndex, direct=False):
+    def createLabelLayer(self, direct=False):
         """
         Return a colortable layer that displays the label slot data, along with its associated label source.
         direct: whether this layer is drawn synchronously by volumina
         """
-        labelOutput = self._labelingSlots.labelOutput[currentImageIndex]
+        labelOutput = self._labelingSlots.labelOutput
         if not labelOutput.ready():
             return (None, None)
         else:
-            traceLogger.debug("Setting up labels for image index={}".format(currentImageIndex) )
+            traceLogger.debug("Setting up labels" )
             # Add the layer to draw the labels, but don't add any labels
-            labelsrc = LazyflowSinkSource( self._labelingSlots.labelOutput[currentImageIndex],
-                                           self._labelingSlots.labelInput[currentImageIndex])
+            labelsrc = LazyflowSinkSource( self._labelingSlots.labelOutput,
+                                           self._labelingSlots.labelInput)
 
             labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16, direct=direct )
             labellayer.name = "Labels"
@@ -619,7 +616,7 @@ class LabelingGui(LayerViewerGui):
             return labellayer, labelsrc
 
     @traceLogged(traceLogger)
-    def setupLayers(self, currentImageIndex):
+    def setupLayers(self):
         """
         Sets up the label layer for display by our base class (LayerViewerGui).
         If our subclass overrides this function to add his own layers,
@@ -628,7 +625,7 @@ class LabelingGui(LayerViewerGui):
         layers = []
 
         # Labels
-        labellayer, labelsrc = self.createLabelLayer(currentImageIndex)
+        labellayer, labelsrc = self.createLabelLayer()
         if labellayer is not None:
             layers.append(labellayer)
 
@@ -641,13 +638,13 @@ class LabelingGui(LayerViewerGui):
 
         # Side effect 2: Switch to navigation mode if labels aren't
         #  allowed on this image.
-        labelsAllowedSlot = self._labelingSlots.labelsAllowed[self.imageIndex]
+        labelsAllowedSlot = self._labelingSlots.labelsAllowed
         if labelsAllowedSlot.ready() and not labelsAllowedSlot.value:
             self._changeInteractionMode(Tool.Navigation)
 
         # Raw Input Layer
-        if self._rawInputSlot is not None and self._rawInputSlot[currentImageIndex].ready():
-            layer = self.createStandardLayerFromSlot( self._rawInputSlot[currentImageIndex] )
+        if self._rawInputSlot is not None and self._rawInputSlot.ready():
+            layer = self.createStandardLayerFromSlot( self._rawInputSlot )
             layer.name = "Raw Input"
             layer.visible = True
             layer.opacity = 1.0

@@ -21,20 +21,24 @@ class DataSelectionApplet( SingleToMultiAppletAdapter ): # Uses base class for m
         #self._topLevelOperator = OperatorWrapper( OpDataSelection, parent=workflow, promotedSlotNames=set(['Dataset']) )
         self.topLevelOperator.name = "DataSelection Top-level Operator"
 
-        self._serializableItems = [ DataSelectionSerializer(self._topLevelOperator, projectFileGroupName) ]
+        self._serializableItems = [ DataSelectionSerializer(self.topLevelOperator, projectFileGroupName) ]
         if supportIlastik05Import:
-            self._serializableItems.append(Ilastik05DataSelectionDeserializer(self._topLevelOperator))
+            self._serializableItems.append(Ilastik05DataSelectionDeserializer(self.topLevelOperator))
 
         self._gui = None
         self.batchDataGui = batchDataGui
         self.title = title
+
+    @property
+    def singleImageGuiClass( self ):
+        raise NotImplementedError
         
     @property
     def gui( self ):
         if self._gui is None:
             from dataSelectionGui import DataSelectionGui, GuiMode
             guiMode = { True: GuiMode.Batch, False: GuiMode.Normal }[self.batchDataGui]
-            self._gui = DataSelectionGui( self._topLevelOperator, self._serializableItems[0], self.guiControlSignal, guiMode, self.title )
+            self._gui = DataSelectionGui( self.topLevelOperator, self._serializableItems[0], self.guiControlSignal, guiMode, self.title )
         return self._gui
 
     @property

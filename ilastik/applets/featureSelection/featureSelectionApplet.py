@@ -17,11 +17,11 @@ class FeatureSelectionApplet( SingleToMultiAppletAdapter ):
 
         # Top-level operator is wrapped to support multiple images.
         # Note that the only promoted input slot is the image.  All other inputs are shared among all inner operators.        
-        #self._topLevelOperator = OperatorWrapper( OpFeatureSelection, parent=workflow, promotedSlotNames=set(['InputImage']) )
+        #self.topLevelOperator = OperatorWrapper( OpFeatureSelection, parent=workflow, promotedSlotNames=set(['InputImage']) )
         #assert len(self._topLevelOperator.InputImage) == 0
 
-        self._serializableItems = [ FeatureSelectionSerializer(self._topLevelOperator, projectFileGroupName),
-                                    Ilastik05FeatureSelectionDeserializer(self._topLevelOperator) ]
+        self._serializableItems = [ FeatureSelectionSerializer(self.topLevelOperator, projectFileGroupName),
+                                    Ilastik05FeatureSelectionDeserializer(self.topLevelOperator) ]
 
     @property
     def operatorClass(self):
@@ -32,7 +32,7 @@ class FeatureSelectionApplet( SingleToMultiAppletAdapter ):
         return ['Scales', 'FeatureIds', 'SelectionMatrix']
     
     @property
-    def guiClass(self):
+    def singleImageGuiClass(self):
         from featureSelectionGui import FeatureSelectionGui
         return FeatureSelectionGui
 
