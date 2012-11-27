@@ -52,6 +52,10 @@ class FeatureSelectionGui(LayerViewerGui):
     def appletDrawers(self):
         return [ ("Feature Selection", self.drawer ) ]
 
+    @classmethod
+    def defaultAppletDrawers(cls):
+        return [('Feature Selection', QWidget())]
+
     def viewerControlWidget(self):
         return self._viewerControlWidget
 
@@ -72,8 +76,8 @@ class FeatureSelectionGui(LayerViewerGui):
     def __init__(self, mainOperator):
         """
         """
-        super(FeatureSelectionGui, self).__init__(mainOperator)
         self.mainOperator = mainOperator
+        super(FeatureSelectionGui, self).__init__(mainOperator)
 
         self.mainOperator.SelectionMatrix.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
 
@@ -140,10 +144,10 @@ class FeatureSelectionGui(LayerViewerGui):
         layerListWidget.currentRowChanged.connect( handleSelectionChanged )
     
     @traceLogged(traceLogger)
-    def setupLayers(self, currentImageIndex):
+    def setupLayers(self):
         layers = []
         
-        opFeatureSelection = self.operatorForCurrentImage()
+        opFeatureSelection = self.mainOperator
 
         inputSlot = opFeatureSelection.InputImage
         featureMultiSlot = opFeatureSelection.FeatureLayers
@@ -250,7 +254,7 @@ class FeatureSelectionGui(LayerViewerGui):
         self.featureDlg.exec_()
 
     def onNewFeaturesFromFeatureDlg(self):
-        opFeatureSelection = self.operatorForCurrentImage()
+        opFeatureSelection = self.mainOperator
         if opFeatureSelection is not None:
             # Re-initialize the scales and features
             self.initFeatureOrder()
