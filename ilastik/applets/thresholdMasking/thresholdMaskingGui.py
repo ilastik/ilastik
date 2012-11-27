@@ -39,7 +39,6 @@ class ThresholdMaskingGui(LayerViewerGui):
         with Tracer(traceLogger):
             self.mainOperator = mainOperator
             super(ThresholdMaskingGui, self).__init__(self.mainOperator)
-            self.handleThresholdGuiValuesChanged(0, 255)
             
     def initAppletDrawerUi(self):
         with Tracer(traceLogger):
@@ -63,11 +62,12 @@ class ThresholdMaskingGui(LayerViewerGui):
                 if self.mainOperator.MaxValue.ready():
                     maxValue = self.mainOperator.MaxValue.value
 
-                thresholdWidget.setValue(minValue, maxValue)                
+                thresholdWidget.setValue(minValue, maxValue)
                 
             self.mainOperator.MinValue.notifyDirty( bind(updateDrawerFromOperator) )
             self.mainOperator.MaxValue.notifyDirty( bind(updateDrawerFromOperator) )
-                
+            updateDrawerFromOperator()
+            
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):
             self.mainOperator.MinValue.setValue(minVal)

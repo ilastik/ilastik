@@ -44,6 +44,11 @@ class DataSelectionApplet( SingleToMultiAppletAdapter ): # Uses base class for m
     @property
     def operatorClass(self):
         return OpDataSelection
+    
+    @property
+    def broadcastingSlotNames(self):
+        # Everything except Dataset
+        return ['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory']
 
     def addLane(self, laneIndex):
         """

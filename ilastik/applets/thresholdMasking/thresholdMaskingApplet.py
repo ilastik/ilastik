@@ -23,6 +23,10 @@ class ThresholdMaskingApplet( SingleToMultiAppletAdapter ):
     @property
     def operatorClass(self):
         return OpThresholdMasking
+
+    @property
+    def broadcastingSlotNames(self):
+        return ['MinValue', 'MaxValue']
     
     @property
     def guiClass(self):

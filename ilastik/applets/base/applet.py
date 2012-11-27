@@ -113,11 +113,20 @@ class SingleToMultiAppletAdapter( Applet ):
 
     def __init__(self, name, workflow):
         super(SingleToMultiAppletAdapter, self).__init__(name)
-        self._topLevelOperator = OperatorWrapper(self.operatorClass, parent=workflow)
         self._gui = None
+        
+        # OperatorWrapper will eventually switch API to take "non-promoted" slot names,
+        #   but for now we have to invert the set ourselves...
+        allInputSlotNames = set( map( lambda s: s.name, self.operatorClass.inputSlots ) )        
+        promotedSlotNames = allInputSlotNames - set(self.broadcastingSlotNames) # set difference        
+        self._topLevelOperator = OperatorWrapper(self.operatorClass, parent=workflow, promotedSlotNames=promotedSlotNames)
 
     @abstractproperty
     def operatorClass(self):
+        raise NotImplementedError
+
+    @abstractproperty
+    def broadcastingSlotNames(self):
         raise NotImplementedError
 
     @property
