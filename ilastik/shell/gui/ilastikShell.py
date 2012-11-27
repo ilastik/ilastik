@@ -130,8 +130,7 @@ class IlastikShell( QMainWindow ):
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
 
-
-    def __init__( self, workflow = [], parent = None, flags = QtCore.Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
+    def __init__( self, workflow, parent = None, flags = QtCore.Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
         QMainWindow.__init__(self, parent = parent, flags = flags )
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
@@ -185,6 +184,8 @@ class IlastikShell( QMainWindow ):
         self.workflow = workflow
 
         self._refreshDrawerRecursionGuard = False
+
+        self.setImageNameListSlot( workflow.imageNameListSlot )
         
     def _createProjectMenu(self):
         # Create a menu for "General" (non-applet) actions
@@ -436,7 +437,7 @@ class IlastikShell( QMainWindow ):
             if v == applet_index:
                 firstDrawerIndex = k
                 break
-        
+
         relativeDrawerIndex = drawerIndex - firstDrawerIndex
         updatedDrawerWidget = self._applets[applet_index].gui.appletDrawers()[relativeDrawerIndex][1]
 
