@@ -149,7 +149,7 @@ Any operator will work with the LayerViewerGui base class.</p>
 <dl class="class">
 <dt id="ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui">
 <em class="property">class </em><tt class="descclassname">ilastik.applets.layerViewer.layerViewerGui.</tt><tt class="descname">LayerViewerGui</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui" title="Permalink to this definition">¶</a></dt>
-<dd><p>Implements an applet GUI whose central widget is a VolumeEditor 
+<dd><p>Implements an applet GUI whose central widget is a VolumeEditor
 and whose layer controls simply contains a layer list widget.
 Intended to be used as a subclass for applet GUI objects.</p>
 <p>Provides: Central widget (viewer), View Menu, and Layer controls
@@ -298,7 +298,7 @@ Provides all the slots needed by the labeling GUI, but any operator that provide
 <dl class="class">
 <dt id="ilastik.applets.labeling.labelingGui.LabelingGui">
 <em class="property">class </em><tt class="descclassname">ilastik.applets.labeling.labelingGui.</tt><tt class="descname">LabelingGui</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui" title="Permalink to this definition">¶</a></dt>
-<dd><p>Provides all the functionality of a simple layerviewer 
+<dd><p>Provides all the functionality of a simple layerviewer
 applet with the added functionality of labeling.</p>
 <dl class="method">
 <dt id="ilastik.applets.labeling.labelingGui.LabelingGui.__init__">
@@ -330,8 +330,14 @@ Equivalent to clicking on the (labelIndex+1)&#8217;th position in the label widg
 <dl class="class">
 <dt id="ilastik.applets.labeling.labelingGui.LabelingGui.LabelingSlots">
 <em class="property">class </em><tt class="descname">LabelingSlots</tt><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.LabelingSlots"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.LabelingSlots" title="Permalink to this definition">¶</a></dt>
-<dd><p>This class serves as the parameter for the LabelingGui constructor.  
+<dd><p>This class serves as the parameter for the LabelingGui constructor.
 It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the user&#8217;s mouse clicks.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.onLabelListDataChanged">
+<tt class="descclassname">LabelingGui.</tt><tt class="descname">onLabelListDataChanged</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelListDataChanged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle changes to the label list selections.</p>
 </dd></dl>
 
 <dl class="method">
@@ -340,6 +346,31 @@ It provides the slots that the labeling GUI uses to source labels to the display
 <dd><p>QT event handler.
 The user has selected another applet or is closing the whole app.
 Save all preferences.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelName">
+<tt class="descclassname">LabelingGui.</tt><tt class="descname">getNextLabelName</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelName" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a suitable name for the next label added by the user.
+Subclasses may override this.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelColor">
+<tt class="descclassname">LabelingGui.</tt><tt class="descname">getNextLabelColor</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelColor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a QColor to use for the next label.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.onLabelNameChanged">
+<tt class="descclassname">LabelingGui.</tt><tt class="descname">onLabelNameChanged</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelNameChanged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses can override this to respond to changes in the label names.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.onLabelColorChanged">
+<tt class="descclassname">LabelingGui.</tt><tt class="descname">onLabelColorChanged</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelColorChanged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses can override this to respond to changes in the label colors.</p>
 </dd></dl>
 
 <dl class="method">

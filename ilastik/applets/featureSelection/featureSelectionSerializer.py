@@ -1,6 +1,7 @@
 import numpy
 
-from ilastik.applets.base.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import \
+    AppletSerializer, deleteIfPresent
 
 from ilastik.utility import bind
 
@@ -35,9 +36,9 @@ class FeatureSelectionSerializer(AppletSerializer):
                 return
         
             # Delete previous entries if they exist
-            self.deleteIfPresent(topGroup, 'Scales')
-            self.deleteIfPresent(topGroup, 'FeatureIds')
-            self.deleteIfPresent(topGroup, 'SelectionMatrix')
+            deleteIfPresent(topGroup, 'Scales')
+            deleteIfPresent(topGroup, 'FeatureIds')
+            deleteIfPresent(topGroup, 'SelectionMatrix')
             
             # Store the new values (as numpy arrays)
             topGroup.create_dataset('Scales', data=self.mainOperator.Scales.value)

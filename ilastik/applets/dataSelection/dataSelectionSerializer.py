@@ -7,7 +7,8 @@ import copy
 from ilastik.utility import bind, PathComponents
 import ilastik.utility.globals
 
-from ilastik.applets.base.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import \
+    AppletSerializer, getOrCreateGroup, deleteIfPresent
 
 import logging
 logger = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ class DataSelectionSerializer( AppletSerializer ):
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         with Tracer(traceLogger):
             # Write any missing local datasets to the local_data group
-            localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
+            localDataGroup = getOrCreateGroup(topGroup, 'local_data')
             wroteInternalData = False
             for index, slot in enumerate(self.mainOperator.Dataset):
                 info = slot.value
@@ -94,7 +95,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     self.mainOperator.Dataset[0].setValue(firstInfo, False)
 
             # Access the info group
-            infoDir = self.getOrCreateGroup(topGroup, 'infos')
+            infoDir = getOrCreateGroup(topGroup, 'infos')
             
             # Delete all infos
             for infoName in infoDir.keys():
@@ -125,8 +126,8 @@ class DataSelectionSerializer( AppletSerializer ):
                 self.progressSignal.emit(0)
                 
                 projectFileHdf5 = self.mainOperator.ProjectFile.value
-                topGroup = self.getOrCreateGroup(projectFileHdf5, self.topGroupName)
-                localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
+                topGroup = getOrCreateGroup(projectFileHdf5, self.topGroupName)
+                localDataGroup = getOrCreateGroup(topGroup, 'local_data')
     
                 globstring = info.filePath
                 info.location = DatasetInfo.Location.ProjectInternal

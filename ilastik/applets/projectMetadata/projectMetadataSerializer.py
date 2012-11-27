@@ -1,8 +1,9 @@
-from ilastik.applets.base.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import \
+    AppletSerializer
 
 class ProjectMetadataSerializer(AppletSerializer):
     SerializerVersion = 0.1
-    
+
     def __init__(self, projectMetadata, projectFileGroupName):
         super( ProjectMetadataSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
         self.projectMetadata = projectMetadata
@@ -11,7 +12,7 @@ class ProjectMetadataSerializer(AppletSerializer):
         def handleChange():
             self._dirty = True
         projectMetadata.changedSignal.connect( handleChange )
-    
+
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         metadataGroup = topGroup
 
@@ -20,7 +21,7 @@ class ProjectMetadataSerializer(AppletSerializer):
         self.setDataset(metadataGroup, 'Labeler', self.projectMetadata.labeler)
         self.setDataset(metadataGroup, 'Description', self.projectMetadata.description)
         self._dirty = False
-    
+
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         self.projectMetadata.projectName = self.getDataset(topGroup, 'ProjectName')
         self.projectMetadata.labeler = self.getDataset(topGroup, 'Labeler')
@@ -28,7 +29,7 @@ class ProjectMetadataSerializer(AppletSerializer):
         self._dirty = False
 
     def isDirty(self):
-        """ Return true if the current state of this item 
+        """ Return true if the current state of this item
             (in memory) does not match the state of the HDF5 group on disk.
             SerializableItems are responsible for tracking their own dirty/notdirty state."""
         return self._dirty
@@ -38,7 +39,7 @@ class ProjectMetadataSerializer(AppletSerializer):
             (1) the user closed the project or
             (2) the project opening process needs to be aborted for some reason
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
-            This way we can avoid invalid state due to a partially loaded project. """ 
+            This way we can avoid invalid state due to a partially loaded project. """
         self.projectMetadata.projectName = ''
         self.projectMetadata.labeler = ''
         self.projectMetadata.description = ''
@@ -50,25 +51,25 @@ class ProjectMetadataSerializer(AppletSerializer):
         else:
             # Assign (this will fail if the dtype doesn't match)
             group[dataName][()] = dataValue
-    
+
     def getDataset(self, group, dataName):
         try:
             result = group[dataName].value
         except KeyError:
             result = ''
         return result
-    
+
 class Ilastik05ProjectMetadataDeserializer(AppletSerializer):
     SerializerVersion = 0.1
 
     def __init__(self, projectMetadata):
         super( Ilastik05ProjectMetadataDeserializer, self ).__init__( '', self.SerializerVersion )
         self.projectMetadata = projectMetadata
-    
+
     def serializeToHdf5(self, hdf5File, filePath):
         # This is for deserialization only.
         pass
-        
+
     def deserializeFromHdf5(self, hdf5File, filePath):
         # Check the overall file version
         ilastikVersion = hdf5File["ilastikVersion"].value
@@ -76,7 +77,7 @@ class Ilastik05ProjectMetadataDeserializer(AppletSerializer):
         # This is the v0.5 import deserializer.  Don't work with 0.6 projects (or anything else).
         if ilastikVersion != 0.5:
             return
-        
+
         try:
             metadataGroup = hdf5File['Project']
         except KeyError:
@@ -90,7 +91,7 @@ class Ilastik05ProjectMetadataDeserializer(AppletSerializer):
         self.projectMetadata.description = self.getDataset(metadataGroup, 'Description')
 
     def isDirty(self):
-        """ Return true if the current state of this item 
+        """ Return true if the current state of this item
             (in memory) does not match the state of the HDF5 group on disk.
             SerializableItems are responsible for tracking their own dirty/notdirty state."""
         return False
@@ -100,11 +101,11 @@ class Ilastik05ProjectMetadataDeserializer(AppletSerializer):
             (1) the user closed the project or
             (2) the project opening process needs to be aborted for some reason
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
-            This way we can avoid invalid state due to a partially loaded project. """ 
+            This way we can avoid invalid state due to a partially loaded project. """
         self.projectMetadata.projectName = ''
         self.projectMetadata.labeler = ''
         self.projectMetadata.description = ''
-    
+
     def getDataset(self, group, dataName):
         try:
             result = group[dataName].value
@@ -120,40 +121,3 @@ class Ilastik05ProjectMetadataDeserializer(AppletSerializer):
         # It doesn't make use of the serializer base class, which makes assumptions about the file structure.
         # Instead, if overrides the public serialize/deserialize functions directly
         assert False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
