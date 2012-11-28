@@ -139,8 +139,6 @@ class PixelClassificationSerializer(AppletSerializer):
     workflow parameters and datasets.
 
     """
-    SerializerVersion = 0.1
-
     def __init__(self, operator, projectFileGroupName):
         self.predictionSlot = SerialPredictionSlot(operator.PredictionProbabilities,
                                                    operator,
@@ -160,7 +158,6 @@ class PixelClassificationSerializer(AppletSerializer):
 
 
         super(PixelClassificationSerializer, self).__init__(projectFileGroupName,
-                                                            self.SerializerVersion,
                                                             slots=slots)
 
 
@@ -186,10 +183,9 @@ class Ilastik05ImportDeserializer(AppletSerializer):
     For now, this class is import-only.  Only the deserialize function is implemented.
     If the project is not an ilastik0.5 project, this serializer does nothing.
     """
-    SerializerVersion = 0.1
 
     def __init__(self, topLevelOperator):
-        super(Ilastik05ImportDeserializer, self).__init__('', self.SerializerVersion)
+        super(Ilastik05ImportDeserializer, self).__init__('')
         self.mainOperator = topLevelOperator
 
     def serializeToHdf5(self, hdf5Group, projectFilePath):

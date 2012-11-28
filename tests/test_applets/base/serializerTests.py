@@ -26,12 +26,10 @@ class OpMock(Operator):
 
 
 class OpMockSerializer(AppletSerializer):
-    SerializerVersion = 0.1
     def __init__(self, operator, groupName):
         slots = [SerialSlot(operator.TestSlot),
                  SerialSlot(operator.TestMultiSlot)]
         super(OpMockSerializer, self).__init__(groupName,
-                                               self.SerializerVersion,
                                                slots)
 
 

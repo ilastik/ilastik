@@ -2,10 +2,9 @@ from ilastik.applets.base.appletSerializer import \
     AppletSerializer
 
 class ProjectMetadataSerializer(AppletSerializer):
-    SerializerVersion = 0.1
 
     def __init__(self, projectMetadata, projectFileGroupName):
-        super( ProjectMetadataSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
+        super( ProjectMetadataSerializer, self ).__init__(projectFileGroupName)
         self.projectMetadata = projectMetadata
         self._dirty = False
 
@@ -60,10 +59,8 @@ class ProjectMetadataSerializer(AppletSerializer):
         return result
 
 class Ilastik05ProjectMetadataDeserializer(AppletSerializer):
-    SerializerVersion = 0.1
-
     def __init__(self, projectMetadata):
-        super( Ilastik05ProjectMetadataDeserializer, self ).__init__( '', self.SerializerVersion )
+        super( Ilastik05ProjectMetadataDeserializer, self ).__init__('')
         self.projectMetadata = projectMetadata
 
     def serializeToHdf5(self, hdf5File, filePath):

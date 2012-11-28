@@ -38,8 +38,6 @@ class BatchIoSerializer(AppletSerializer):
     """
     Serializes the user's input data selections to an ilastik v0.6 project file.
     """
-    SerializerVersion = 0.1
-
     def __init__(self, operator, projectFileGroupName):
         slots = [
             SerialSlot(operator.ExportDirectory, default=''),
@@ -51,5 +49,4 @@ class BatchIoSerializer(AppletSerializer):
         ]
 
         super(BatchIoSerializer, self).__init__(projectFileGroupName,
-                                                self.SerializerVersion,
                                                 slots=slots)

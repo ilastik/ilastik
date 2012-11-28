@@ -20,14 +20,12 @@ class DataSelectionSerializer( AppletSerializer ):
     """
     Serializes the user's input data selections to an ilastik v0.6 project file.
     """
-    SerializerVersion = 0.1
-
     # Constants    
     LocationStrings = { DatasetInfo.Location.FileSystem      : 'FileSystem',
                         DatasetInfo.Location.ProjectInternal : 'ProjectInternal' }
 
     def __init__(self, mainOperator, projectFileGroupName):
-        super( DataSelectionSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
+        super( DataSelectionSerializer, self ).__init__(projectFileGroupName)
         self.mainOperator = mainOperator
         self._dirty = False
         
@@ -230,10 +228,8 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
     """
     Deserializes the user's input data selections from an ilastik v0.5 project file.
     """
-    SerializerVersion = 0.1
-    
     def __init__(self, mainOperator):
-        super( Ilastik05DataSelectionDeserializer, self ).__init__( '', self.SerializerVersion )
+        super( Ilastik05DataSelectionDeserializer, self ).__init__( '' )
         self.mainOperator = mainOperator
     
     def serializeToHdf5(self, hdf5File, projectFilePath):

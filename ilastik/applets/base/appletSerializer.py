@@ -382,8 +382,10 @@ class AppletSerializer(object):
     """
     # Force subclasses to override abstract methods and properties
     __metaclass__ = ABCMeta
-
     base_initialized = False
+
+    # override if necessary
+    version = "0.1"
 
     #########################
     # Semi-abstract methods #
@@ -409,7 +411,7 @@ class AppletSerializer(object):
     # Base class implementation #
     #############################
 
-    def __init__(self, topGroupName, version, slots=None, operator=None):
+    def __init__(self, topGroupName, slots=None, operator=None):
         """Constructor. Subclasses must call this method in their own
         __init__ functions. If they fail to do so, the shell raises an
         exception.
@@ -417,11 +419,9 @@ class AppletSerializer(object):
         Parameters:
         :param topGroupName: name of this applet's data group in the file.
             Defaults to the name of the operator.
-        :param version: serializer version; for compatability checks
         :param slots: a list of SerialSlots
 
         """
-        self.version = version
         self.progressSignal = SimpleSignal() # Signature: emit(percentComplete)
         self.base_initialized = True
         self.topGroupName = topGroupName
