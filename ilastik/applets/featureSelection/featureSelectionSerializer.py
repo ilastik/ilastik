@@ -128,7 +128,7 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
             # If the main operator already has a feature ordering (provided by the GUI),
             # then don't overwrite it.  We'll re-order the matrix to match the existing ordering.
             if not self.mainOperator.FeatureIds.ready():
-                self.mainOperator.FeatureIds.setValue(featureIds)
+                self.mainOperator.FeatureIds.setValue(FeatureIds)
     
             # Create a feature selection matrix of the correct shape (all false by default)
             pipeLineSelectedFeatureMatrix = numpy.array(numpy.zeros((6,7)), dtype=bool)
