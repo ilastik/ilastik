@@ -236,13 +236,13 @@ Override this in a subclass to get a real applet drawer.</p>
 </div>
 <dl class="class">
 <dt id="ilastik.applets.labeling.labelingApplet.LabelingApplet">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.labeling.labelingApplet.</tt><tt class="descname">LabelingApplet</tt><big>(</big><em>workflow</em>, <em>projectFileGroupName</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingApplet.html#LabelingApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingApplet.LabelingApplet" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">ilastik.applets.labeling.labelingApplet.</tt><tt class="descname">LabelingApplet</tt><big>(</big><em>workflow</em>, <em>projectFileGroupName</em>, <em>blockDims=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingApplet.html#LabelingApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingApplet.LabelingApplet" title="Permalink to this definition">¶</a></dt>
 <dd><p>This applet demonstrates how to use the LabelingGui base class, which serves as a reusable base class for other applet GUIs that need a labeling UI.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="ilastik.applets.labeling.opLabeling.OpLabeling">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.labeling.opLabeling.</tt><tt class="descname">OpLabeling</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabeling"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">ilastik.applets.labeling.opLabeling.</tt><tt class="descname">OpLabeling</tt><big>(</big><em>blockDims=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabeling"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling" title="Permalink to this definition">¶</a></dt>
 <dd><p>Top-level operator for the labeling base class.
 Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.</p>
 <dl class="attribute">

@@ -94,8 +94,26 @@ Serializable Slots
    :members:
 
    .. automethod:: __init__
-   .. automethod:: _serializeToHdf5
-   .. automethod:: _deserializeFromHdf5
+   .. automethod:: _serialize
+   .. automethod:: _deserialize
+
+.. autoclass:: SerialListSlot
+   :members:
+
+   .. automethod:: __init__
+
+.. autoclass:: SerialBlockSlot
+   :members:
+
+   .. automethod:: __init__
+
+.. autoclass:: SerialClassifierSlot
+   :members:
+
+   .. automethod:: __init__
+   .. automethod:: _serialize
+   .. automethod:: _deserialize
+
 
 Applet Library
 ==============

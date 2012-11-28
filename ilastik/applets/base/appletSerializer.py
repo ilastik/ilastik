@@ -72,11 +72,11 @@ class SerialSlot(object):
         :param name: name used for the group in the hdf5 file.
 
             - For level 0 slots, this should just be a string, or None to
-            use the slot's name.
+              use the slot's name.
 
             - For level 1 slots, this should be a tuple (groupname,
-            subname), or None. If provided, subname should be able to be
-            format()ed with a single argument: the index of the subslot.
+              subname), or None. If provided, subname should be able to be
+              format()ed with a single argument: the index of the subslot.
 
         :param default: the default value when unload() is called. If it is
           None, the slot will just be disconnected (for level 0 slots) or
@@ -233,14 +233,13 @@ class SerialListSlot(SerialSlot):
     - if deserializing fails, sets the slot value to [].
 
     - if it succeeds, applies a transform to every element of the list
-          (for instance, to convert it to the proper type).
+      (for instance, to convert it to the proper type).
 
     """
     def __init__(self, slot, name=None, default=None, depends=None,
                  autodepends=False, transform=None):
         """
-        :param transform: a function that will be applied to every
-            member of the list on deserialization.
+        :param transform: function applied to members on deserialization.
 
         """
         super(SerialListSlot, self).__init__(slot, name, default, depends,
@@ -267,6 +266,12 @@ class SerialBlockSlot(SerialSlot):
     """A slot which only saves nonzero blocks."""
     def __init__(self, inslot, outslot, blockslot, name=None, default=None,
                  depends=None, autodepends=False):
+        """
+        :param inslot: where to put deserialized data.
+        :param outslot: where to take data for serialization.
+        :param blockslot: provides non-zero blocks.
+
+        """
         super(SerialBlockSlot, self).__init__(inslot, name, default,
                                               depends, autodepends)
         self.inslot = inslot
@@ -298,6 +303,7 @@ class SerialBlockSlot(SerialSlot):
 
 
 class SerialClassifierSlot(SerialSlot):
+    """For saving a random forest classifier."""
     def __init__(self, slot, cacheslot, name=None, default=None,
                  depends=None, autodepends=True):
         super(SerialClassifierSlot, self).__init__(slot, name,
