@@ -1,30 +1,52 @@
-from lazyflow.graph import OperatorWrapper
+from lazyflow.graph import OperatorWrapper, InputDict, OutputDict
+
+class OperatorSubViewMetaclass(type):
+    def __getattr__(self, name):
+        if name == "inputSlots":
+            assert False, "OperatorSubView.inputSlots cannot be accessed as a class member.  It can only be accessed as an instance member"
+        if name == "outputSlots":
+            assert False, "OperatorSubView.outputSlots cannot be accessed as a class member.  It can only be accessed as an instance member"
+        return type.__getattr__(self, name)
 
 class OperatorSubView(object):
     """
     An adapter class that makes a specific lane of a multi-image operator look like a single image operator.
     """
+
+    __metaclass__ = OperatorSubViewMetaclass
     
     def __init__(self, op, index):
         self.__op = op
         self.__index = index
         self.__slots = {}
-        self.__slots.update(op.inputs)
-        self.__slots.update(op.outputs)
-        
+
+        self.inputs = InputDict(self)
+        for slot in op.inputs.values():
+            if slot.level >= 1:
+                self.inputs[slot.name] = slot[index]
+            else:
+                self.inputs[slot.name] = slot
+
+            setattr(self, slot.name, self.inputs[slot.name])
+
+        self.inputSlots = list( self.inputs.values() )
+                
+        self.outputs = OutputDict(self)
+        for slot in op.outputs.values():
+            if slot.level >= 1:
+                self.outputs[slot.name] = slot[index]
+            else:
+                self.outputs[slot.name] = slot
+
+            setattr(self, slot.name, self.outputs[slot.name])
+
+        self.outputSlots = list( self.inputs.values() )
+
     def __getattribute__(self, name):
         try:
             # If we have this attr, return it.
             return object.__getattribute__(self, name)
         except:
-            # If it's a slot, return that.
-            if name in self.__slots.keys():
-                slot = self.__slots[name]
-                if slot.level >= 1:
-                    return slot[self.__index]
-                else:
-                    return slot
-
             # Special case for OperatorWrappers: Get the member from the appropriate inner operator.
             if isinstance(self.__op, OperatorWrapper):
                 return getattr(self.__op.innerOperators[self.__index], name)
@@ -33,6 +55,7 @@ class OperatorSubView(object):
             return getattr(self.__op, name)
 
 if __name__ == "__main__":
+    
     from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 
     class OpSum(Operator):
@@ -110,4 +133,3 @@ if __name__ == "__main__":
     assert subThresholdView.Inputs == opMultiThreshold.Inputs[1]
     assert subThresholdView.Outputs == opMultiThreshold.Outputs[1]
     assert subThresholdView.hello == opMultiThreshold.hello
-
