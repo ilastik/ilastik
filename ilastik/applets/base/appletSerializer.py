@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from ilastik import VersionManager
+from ilastik import isVersionCompatible
 from ilastik.utility.simpleSignal import SimpleSignal
 from ilastik.utility.maybe import maybe
 import os
@@ -484,10 +484,10 @@ class AppletSerializer(object):
 
         """
         # Check the overall file version
-        ilastikVersion = hdf5File["ilastikVersion"].value
+        fileVersion = hdf5File["ilastikVersion"].value
 
         # Make sure we can find our way around the project tree
-        if not VersionManager.isProjectFileVersionCompatible(ilastikVersion):
+        if not isVersionCompatible(fileVersion):
             return
 
         topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
@@ -528,10 +528,10 @@ class AppletSerializer(object):
 
         """
         # Check the overall file version
-        ilastikVersion = hdf5File["ilastikVersion"].value
+        fileVersion = hdf5File["ilastikVersion"].value
 
         # Make sure we can find our way around the project tree
-        if not VersionManager.isProjectFileVersionCompatible(ilastikVersion):
+        if not isVersionCompatible(fileVersion):
             return
 
         self.progressSignal.emit(0)

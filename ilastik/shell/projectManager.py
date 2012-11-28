@@ -6,7 +6,8 @@ logger = logging.getLogger(__name__)
 
 import traceback
 
-from ilastik.versionManager import VersionManager
+import ilastik
+from ilastik import isVersionCompatible
 
 class ProjectManager(object):
     
@@ -37,7 +38,7 @@ class ProjectManager(object):
         """
         # Create the blank project file
         h5File = h5py.File(projectFilePath, "w")
-        h5File.create_dataset("ilastikVersion", data=VersionManager.CurrentIlastikVersion)
+        h5File.create_dataset("ilastikVersion", data=ilastik.__version__)
         
         return h5File        
 
@@ -57,13 +58,14 @@ class ProjectManager(object):
             hdf5File = h5py.File(projectFilePath, 'r')
             readOnly = True
 
-        projectVersion = 0.5
+        projectVersion = "0.5"
         if "ilastikVersion" in hdf5File.keys():
             projectVersion = hdf5File["ilastikVersion"].value
 
-        if projectVersion < VersionManager.CurrentIlastikVersion:
+        # FIXME: version comparison
+        if not isVersionCompatible(projectVersion):
             # Must use importProject() for old project files.
-            raise ProjectManager.ProjectVersionError(projectVersion, VersionManager.CurrentIlastikVersion)
+            raise ProjectManager.ProjectVersionError(projectVersion, ilastik.__version__)
         
         return (hdf5File, readOnly)
 
