@@ -208,7 +208,7 @@ def convertStacksToH5(filePaths):
 
 if __name__ == "__main__":
     # DEBUG ARGS
-    if True:
+    if False:
 #        args = ""
 #        args += " --project=/home/bergs/tinyfib/boundary_training/pred.ilp"
 #        args += " --batch_output_dataset_name=/volume/pred_volume"
