@@ -39,6 +39,10 @@ class PixelClassificationGui(LabelingGui):
         labelingDrawer = super(PixelClassificationGui, self).appletDrawers()[0][1]
         return [ ("Training", labelingDrawer) ]
 
+    @classmethod
+    def defaultAppletDrawers(cls):
+        return [('Training', QWidget())]
+
     def reset(self):
         # Base class first
         super(PixelClassificationGui, self).reset()
@@ -145,16 +149,16 @@ class PixelClassificationGui(LabelingGui):
                       self._viewerControlUi.liveUpdateButton )
 
     @traceLogged(traceLogger)
-    def setupLayers(self, currentImageIndex):
+    def setupLayers(self):
         """
         Called by our base class when one of our data slots has changed.
         This function creates a layer for each slot we want displayed in the volume editor.
         """
         # Base class provides the label layer.
-        layers = super(PixelClassificationGui, self).setupLayers(currentImageIndex)
+        layers = super(PixelClassificationGui, self).setupLayers()
 
         # Add the uncertainty estimate layer
-        uncertaintySlot = self.pipeline.UncertaintyEstimate[currentImageIndex]
+        uncertaintySlot = self.pipeline.UncertaintyEstimate
         if uncertaintySlot.ready():
             uncertaintySrc = LazyflowSource(uncertaintySlot)
             uncertaintyLayer = AlphaModulatedLayer( uncertaintySrc,
@@ -173,7 +177,7 @@ class PixelClassificationGui(LabelingGui):
 
         # Add each of the predictions
         labels = self.labelListData
-        for channel, predictionSlot in enumerate(self.pipeline.PredictionProbabilityChannels[currentImageIndex]):
+        for channel, predictionSlot in enumerate(self.pipeline.PredictionProbabilityChannels):
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
@@ -197,7 +201,7 @@ class PixelClassificationGui(LabelingGui):
                 layers.append(predictLayer)
 
         # Add each of the segementations
-        for channel, segmentationSlot in enumerate(self.pipeline.SegmentationChannels[currentImageIndex]):
+        for channel, segmentationSlot in enumerate(self.pipeline.SegmentationChannels):
             if segmentationSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 segsrc = LazyflowSource(segmentationSlot)
@@ -221,7 +225,7 @@ class PixelClassificationGui(LabelingGui):
                 layers.append(segLayer)
 
         # Add the raw data last (on the bottom)
-        inputDataSlot = self.pipeline.InputImages[currentImageIndex]
+        inputDataSlot = self.pipeline.InputImages
         if inputDataSlot.ready():
             inputLayer = self.createStandardLayerFromSlot( inputDataSlot )
             inputLayer.name = "Input Data"
@@ -253,8 +257,8 @@ class PixelClassificationGui(LabelingGui):
         logger.debug("toggling interactive mode to '%r'" % checked)
         
         if checked==True:
-            if len(self.pipeline.FeatureImages) == 0 \
-            or self.pipeline.FeatureImages[self.imageIndex].meta.shape==None:
+            if not self.pipeline.FeatureImages.ready() \
+            or self.pipeline.FeatureImages.meta.shape==None:
                 self._viewerControlUi.liveUpdateButton.setChecked(False)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
@@ -277,7 +281,7 @@ class PixelClassificationGui(LabelingGui):
             else:
                 self.labelingDrawerUi.labelListView.allowDelete = True
                 self.labelingDrawerUi.AddLabelButton.setEnabled( True )
-        self.interactiveModeActive = checked    
+        self.interactiveModeActive = checked
 
     @pyqtSlot()
     @traceLogged(traceLogger)
@@ -346,7 +350,7 @@ class PixelClassificationGui(LabelingGui):
         if self.pipeline.MaxLabelValue.ready():
             enabled = True
             enabled &= self.pipeline.MaxLabelValue.value >= 2
-            enabled &= numpy.prod(self.pipeline.CachedFeatureImages[self.imageIndex].meta.shape) > 0
+            enabled &= numpy.prod(self.pipeline.CachedFeatureImages.meta.shape) > 0
         
         self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
         self._viewerControlUi.liveUpdateButton.setEnabled(enabled)

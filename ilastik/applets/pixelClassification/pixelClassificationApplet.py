@@ -2,14 +2,14 @@ from ilastik.applets.base.applet import Applet
 from opPixelClassification import OpPixelClassification
 from pixelClassificationSerializer import PixelClassificationSerializer, Ilastik05ImportDeserializer
 
-class PixelClassificationApplet( Applet ):
+from ilastik.applets.base.applet import SingleToMultiAppletAdapter
+class PixelClassificationApplet( SingleToMultiAppletAdapter ):
     """
     Implements the pixel classification "applet", which allows the ilastik shell to use it.
     """
     def __init__( self, workflow, projectFileGroupName ):
-        Applet.__init__( self, "Pixel Classification" )
-
         self._topLevelOperator = OpPixelClassification( parent=workflow )
+        Applet.__init__( self, "Pixel Classification" )
 
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.
@@ -37,8 +37,35 @@ class PixelClassificationApplet( Applet ):
         return self._serializableItems
 
     @property
-    def gui(self):
-        if self._gui is None:
-            from pixelClassificationGui import PixelClassificationGui
-            self._gui = PixelClassificationGui( self._topLevelOperator, self.shellRequestSignal, self.guiControlSignal, self.predictionSerializer )        
-        return self._gui
+    def singleImageGuiClass(self):
+        from pixelClassificationGui import PixelClassificationGui
+        return PixelClassificationGui
+
+    def createSingleImageGui(self, imageLaneIndex):
+        from pixelClassificationGui import PixelClassificationGui
+        singleImageOperator = self.topLevelOperatorForLane(imageLaneIndex)
+        return PixelClassificationGui( singleImageOperator, self.shellRequestSignal, self.guiControlSignal, self.predictionSerializer )        
+
+    def addLane(self, laneIndex):
+        """
+        Add an image lane to the top-level operator.
+        """
+        numLanes = len(self.topLevelOperator.InputImages)
+        assert numLanes == laneIndex, "Image lanes must be appended."        
+        self.topLevelOperator.InputImages.resize(numLanes+1)
+        
+    def removeLane(self, laneIndex, finalLength):
+        """
+        Remove the specified image lane from the top-level operator.
+        """
+        self.topLevelOperator.InputImages.removeSlot(laneIndex, finalLength)
+
+    @property
+    def operatorClass(self):
+        # This should never be called because we provided a custom top-level operator
+        assert False
+
+    @property
+    def broadcastingSlotNames(self):
+        # This should never be called because we provided a custom top-level operator
+        assert False
