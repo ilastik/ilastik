@@ -142,10 +142,7 @@ class PixelClassificationSerializer(AppletSerializer):
         self.predictionSlot = SerialPredictionSlot(operator.PredictionProbabilities,
                                                    operator,
                                                    name=('Predictions', 'predictions{:04d}'))
-        slots = [SerialClassifierSlot(operator.Classifier,
-                                      operator.classifier_cache,
-                                      name=("ClassifierForests", "Forest{:04d}")),
-                 SerialListSlot(operator.LabelNames,
+        slots = [SerialListSlot(operator.LabelNames,
                                 transform=str),
                  SerialListSlot(operator.LabelColors),
                  SerialBlockSlot(operator.LabelInputs,
@@ -153,6 +150,9 @@ class PixelClassificationSerializer(AppletSerializer):
                                  operator.NonzeroLabelBlocks,
                                  name=('LabelSets', 'labels{:03d}'),
                                  autodepends=False),
+                 SerialClassifierSlot(operator.Classifier,
+                                      operator.classifier_cache,
+                                      name=("ClassifierForests", "Forest{:04d}")),
                  self.predictionSlot]
 
 
