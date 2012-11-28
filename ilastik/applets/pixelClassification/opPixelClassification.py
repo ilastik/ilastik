@@ -1,3 +1,4 @@
+from functools import partial
 import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
@@ -178,6 +179,20 @@ class OpPixelClassification( Operator ):
             multislot[index].notifyReady(handleInputReady)
                 
         self.InputImages.notifyInserted( handleNewInputImage )
+
+        # All input multi-slots should be kept in sync
+        # Output multi-slots will auto-sync via the graph
+        multiInputs = filter( lambda s: s.level >= 1, self.inputs.values() )
+        for s1 in multiInputs:
+            for s2 in multiInputs:
+                if s1 != s2:
+                    def insertSlot( a, b, position, finalsize ):
+                        a.insertSlot(position, finalsize)
+                    s1.notifyInserted( partial(insertSlot, s2 ) )
+                    
+                    def removeSlot( a, b, position, finalsize ):
+                        a.removeSlot(position, finalsize)
+                    s1.notifyRemoved( partial(removeSlot, s2 ) )
 
     def setupCaches(self, imageIndex):
         numImages = len(self.InputImages)
