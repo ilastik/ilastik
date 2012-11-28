@@ -47,13 +47,12 @@ class SerialPredictionSlot(SerialSlot):
             slot.disconnect()
 
     def serialize(self, group):
+        if not self.shouldSerialize(group):
+            return
+
         self._disconnect()
-
         super(SerialPredictionSlot, self).serialize(group)
-
-        if self._predictionStorageEnabled:
-            # now reconnect to predictions on disk
-            self.deserialize(group)
+        self.deserialize(group)
 
     def _serialize(self, group):
         """Called when the currently stored predictions are dirty. If
