@@ -252,14 +252,20 @@ class SerialListSlot(SerialSlot):
         try:
             subgroup = group[self.name]
         except KeyError:
-            self.slot.setValue([])
+            self.unload()
         else:
-            self.slot.setValue(list(map(self.transform, subgroup)))
+            if self.slot.level == 0:
+                self.slot.setValue(list(map(self.transform, subgroup)))
+            else:
+                raise NotImplementedError()
         finally:
             self.dirty = False
 
     def unload(self):
-        self.slot.setValue([])
+        if self.slot.level == 0:
+            self.slot.setValue([])
+        else:
+            self.slot.resize(0)
 
 
 class SerialBlockSlot(SerialSlot):
