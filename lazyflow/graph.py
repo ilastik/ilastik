@@ -1234,6 +1234,14 @@ class OperatorMetaClass(ABCMeta):
         setattr(cls,"inputSlots", list(cls.inputSlots))
         setattr(cls,"outputSlots", list(cls.outputSlots))
 
+        # Support fancy syntax.
+        # If the user typed this in his class definition:
+        #    MySlot = InputSlot()
+        #    MySlot2 = InputSlot()
+        #
+        # Make it equivalent to this:
+        #    inputSlots = [ InputSlot("MySlot"), InputSlot("MySlot2") ]
+
         for k,v in cls.__dict__.items():
             if isinstance(v,InputSlot, ):
                 v.name = k
