@@ -86,6 +86,35 @@ Applet Serializers
    .. automethod:: _serializeToHdf5
    .. automethod:: _deserializeFromHdf5
 
+Serializable Slots
+==================
+
+.. currentmodule:: ilastik.applets.base.appletSerializer
+.. autoclass:: SerialSlot
+   :members:
+
+   .. automethod:: __init__
+   .. automethod:: _serialize
+   .. automethod:: _deserialize
+
+.. autoclass:: SerialListSlot
+   :members:
+
+   .. automethod:: __init__
+
+.. autoclass:: SerialBlockSlot
+   :members:
+
+   .. automethod:: __init__
+
+.. autoclass:: SerialClassifierSlot
+   :members:
+
+   .. automethod:: __init__
+   .. automethod:: _serialize
+   .. automethod:: _deserialize
+
+
 Applet Library
 ==============
 

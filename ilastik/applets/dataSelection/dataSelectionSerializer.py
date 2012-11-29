@@ -7,7 +7,8 @@ import copy
 from ilastik.utility import bind, PathComponents
 import ilastik.utility.globals
 
-from ilastik.applets.base.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import \
+    AppletSerializer, getOrCreateGroup, deleteIfPresent
 
 import logging
 logger = logging.getLogger(__name__)
@@ -19,14 +20,12 @@ class DataSelectionSerializer( AppletSerializer ):
     """
     Serializes the user's input data selections to an ilastik v0.6 project file.
     """
-    SerializerVersion = 0.1
-
     # Constants    
     LocationStrings = { DatasetInfo.Location.FileSystem      : 'FileSystem',
                         DatasetInfo.Location.ProjectInternal : 'ProjectInternal' }
 
     def __init__(self, mainOperator, projectFileGroupName):
-        super( DataSelectionSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
+        super( DataSelectionSerializer, self ).__init__(projectFileGroupName)
         self.mainOperator = mainOperator
         self._dirty = False
         
@@ -46,7 +45,7 @@ class DataSelectionSerializer( AppletSerializer ):
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         with Tracer(traceLogger):
             # Write any missing local datasets to the local_data group
-            localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
+            localDataGroup = getOrCreateGroup(topGroup, 'local_data')
             wroteInternalData = False
             for index, slot in enumerate(self.mainOperator.Dataset):
                 info = slot.value
@@ -94,7 +93,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     self.mainOperator.Dataset[0].setValue(firstInfo, False)
 
             # Access the info group
-            infoDir = self.getOrCreateGroup(topGroup, 'infos')
+            infoDir = getOrCreateGroup(topGroup, 'infos')
             
             # Delete all infos
             for infoName in infoDir.keys():
@@ -125,8 +124,8 @@ class DataSelectionSerializer( AppletSerializer ):
                 self.progressSignal.emit(0)
                 
                 projectFileHdf5 = self.mainOperator.ProjectFile.value
-                topGroup = self.getOrCreateGroup(projectFileHdf5, self.topGroupName)
-                localDataGroup = self.getOrCreateGroup(topGroup, 'local_data')
+                topGroup = getOrCreateGroup(projectFileHdf5, self.topGroupName)
+                localDataGroup = getOrCreateGroup(topGroup, 'local_data')
     
                 globstring = info.filePath
                 info.location = DatasetInfo.Location.ProjectInternal
@@ -229,10 +228,8 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
     """
     Deserializes the user's input data selections from an ilastik v0.5 project file.
     """
-    SerializerVersion = 0.1
-    
     def __init__(self, mainOperator):
-        super( Ilastik05DataSelectionDeserializer, self ).__init__( '', self.SerializerVersion )
+        super( Ilastik05DataSelectionDeserializer, self ).__init__( '' )
         self.mainOperator = mainOperator
     
     def serializeToHdf5(self, hdf5File, projectFilePath):

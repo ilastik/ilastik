@@ -304,79 +304,76 @@ The GUI should reset itself to its initial state, whatever that is.</p>
 <h2>Applet Serializers<a class="headerlink" href="#applet-serializers" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="ilastik.applets.base.appletSerializer.AppletSerializer">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.base.appletSerializer.</tt><tt class="descname">AppletSerializer</tt><big>(</big><em>topGroupName</em>, <em>version</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">ilastik.applets.base.appletSerializer.</tt><tt class="descname">AppletSerializer</tt><big>(</big><em>topGroupName</em>, <em>slots=None</em>, <em>operator=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base class for all AppletSerializers.</p>
 <dl class="method">
 <dt id="ilastik.applets.base.appletSerializer.AppletSerializer._serializeToHdf5">
 <tt class="descname">_serializeToHdf5</tt><big>(</big><em>topGroup</em>, <em>hdf5File</em>, <em>projectFilePath</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer._serializeToHdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer._serializeToHdf5" title="Permalink to this definition">¶</a></dt>
-<dd><p>Abstract Method.
-Write the applet&#8217;s data to hdf5.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>topGroup</strong> &#8211; The hdf5Group object this serializer is responsible for</li>
-<li><strong>hdf5File</strong> &#8211; An hdf5File object (already open)</li>
-<li><strong>projectFilePath</strong> &#8211; The path to the project file (a string)                                (Most serializers don&#8217;t need to use this parameter)</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
+<dd><p>Child classes should override this function, if
+necessary.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="ilastik.applets.base.appletSerializer.AppletSerializer._deserializeFromHdf5">
 <tt class="descname">_deserializeFromHdf5</tt><big>(</big><em>topGroup</em>, <em>groupVersion</em>, <em>hdf5File</em>, <em>projectFilePath</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer._deserializeFromHdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer._deserializeFromHdf5" title="Permalink to this definition">¶</a></dt>
-<dd><p>Abstract Method.
-Read the applet&#8217;s data from hdf5.</p>
+<dd><p>Child classes should override this function, if
+necessary.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.isDirty">
+<tt class="descname">isDirty</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.isDirty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.isDirty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns true if the current state of this item (in memory)
+does not match the state of the HDF5 group on disk.</p>
+<p>Subclasses only need override this method if ORing the flags
+is not enough.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.unload">
+<tt class="descname">unload</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.unload"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.unload" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called if either</p>
+<ol class="arabic simple">
+<li>the user closed the project or</li>
+<li>the project opening process needs to be aborted for some
+reason (e.g. not all items could be deserialized
+properly due to a corrupted ilp)</li>
+</ol>
+<p>This way we can avoid invalid state due to a partially loaded
+project.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.progressIncrement">
+<tt class="descname">progressIncrement</tt><big>(</big><em>group=None</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.progressIncrement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the percentage progress for each slot.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>topGroup</strong> &#8211; The hdf5Group object this serializer is responsible for</li>
-<li><strong>hdf5File</strong> &#8211; An hdf5File object (already open)</li>
-<li><strong>projectFilePath</strong> &#8211; The path to the project file (a string)                                (Most serializers don&#8217;t need to use this parameter)</li>
-</ul>
-</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group</strong> &#8211; If None, all all slots are assumed to be
+processed. Otherwise, decides for each slot by calling
+slot.shouldSerialize(group).</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="method">
-<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.isDirty">
-<tt class="descname">isDirty</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.isDirty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.isDirty" title="Permalink to this definition">¶</a></dt>
-<dd><p>Abstract Method.
-Return true if the current state of this item 
-(in memory) does not match the state of the HDF5 group on disk.
-SerializableItems are responsible for tracking their own dirty/notdirty state</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.unload">
-<tt class="descname">unload</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.unload"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.unload" title="Permalink to this definition">¶</a></dt>
-<dd><p>Abstract Method.
-Called if either
-(1) the user closed the project or
-(2) the project opening process needs to be aborted for some reason             (e.g. not all items could be deserialized properly due to a corrupted ilp)
-This way we can avoid invalid state due to a partially loaded project.</p>
-</dd></dl>
-
-<dl class="method">
 <dt id="ilastik.applets.base.appletSerializer.AppletSerializer.serializeToHdf5">
 <tt class="descname">serializeToHdf5</tt><big>(</big><em>hdf5File</em>, <em>projectFilePath</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.serializeToHdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.serializeToHdf5" title="Permalink to this definition">¶</a></dt>
-<dd><p>Serialize the current applet state to the given hdf5 file.
-Subclasses should <strong>not</strong> override this method.  Instead, subclasses override the &#8216;private&#8217; version, <em>_serializetoHdf5</em></p>
+<dd><p>Serialize the current applet state to the given hdf5 file.</p>
+<p>Subclasses should <strong>not</strong> override this method. Instead,
+subclasses override the &#8216;private&#8217; version, <em>_serializetoHdf5</em></p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>hdf5File</strong> &#8211; An h5py.File handle to the project file, which should already be open</li>
-<li><strong>projectFilePath</strong> &#8211; The path to the given file handle.  (Most serializers do not use this parameter.)</li>
+<li><strong>hdf5File</strong> &#8211; An h5py.File handle to the project file,
+which should already be open</li>
+<li><strong>projectFilePath</strong> &#8211; The path to the given file handle.
+(Most serializers do not use this parameter.)</li>
 </ul>
 </td>
 </tr>
@@ -387,15 +384,20 @@ Subclasses should <strong>not</strong> override this method.  Instead, subclasse
 <dl class="method">
 <dt id="ilastik.applets.base.appletSerializer.AppletSerializer.deserializeFromHdf5">
 <tt class="descname">deserializeFromHdf5</tt><big>(</big><em>hdf5File</em>, <em>projectFilePath</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.deserializeFromHdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.deserializeFromHdf5" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read the the current applet state from the given hdf5File handle, which should already be open.
-Subclasses should <strong>not</strong> override this method.  Instead, subclasses override the &#8216;private&#8217; version, <em>_deserializeFromHdf5</em></p>
+<dd><p>Read the the current applet state from the given hdf5File
+handle, which should already be open.</p>
+<p>Subclasses should <strong>not</strong> override this method. Instead,
+subclasses override the &#8216;private&#8217; version,
+<em>_deserializeFromHdf5</em></p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>hdf5File</strong> &#8211; An h5py.File handle to the project file, which should already be open</li>
-<li><strong>projectFilePath</strong> &#8211; The path to the given file handle.  (Most serializers do not use this parameter.)</li>
+<li><strong>hdf5File</strong> &#8211; An h5py.File handle to the project file,
+which should already be open</li>
+<li><strong>projectFilePath</strong> &#8211; The path to the given file handle.
+(Most serializers do not use this parameter.)</li>
 </ul>
 </td>
 </tr>
@@ -406,37 +408,196 @@ Subclasses should <strong>not</strong> override this method.  Instead, subclasse
 <dl class="method">
 <dt id="ilastik.applets.base.appletSerializer.AppletSerializer.initWithoutTopGroup">
 <tt class="descname">initWithoutTopGroup</tt><big>(</big><em>hdf5File</em>, <em>projectFilePath</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.initWithoutTopGroup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.initWithoutTopGroup" title="Permalink to this definition">¶</a></dt>
-<dd><p>Optional override for subclasses.
-Called when there is no top group to deserialize
-Gives the applet a chance to inspect the hdf5File or project path, even though no top group is present in the file.
-Parameters as the same as in serializeToHdf5()</p>
+<dd><p>Optional override for subclasses. Called when there is no
+top group to deserialize.</p>
 </dd></dl>
 
-<dl class="classmethod">
-<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.getOrCreateGroup">
-<em class="property">classmethod </em><tt class="descname">getOrCreateGroup</tt><big>(</big><em>parentGroup</em>, <em>groupName</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.getOrCreateGroup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.getOrCreateGroup" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convenience helper.
-Returns parentGorup[groupName], creating first it if necessary.</p>
 </dd></dl>
 
-<dl class="classmethod">
-<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.deleteIfPresent">
-<em class="property">classmethod </em><tt class="descname">deleteIfPresent</tt><big>(</big><em>parentGroup</em>, <em>name</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.deleteIfPresent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.deleteIfPresent" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convenience helper.
-Deletes parentGorup[groupName], if it exists.</p>
+</div>
+<div class="section" id="serializable-slots">
+<h2>Serializable Slots<a class="headerlink" href="#serializable-slots" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="ilastik.applets.base.appletSerializer.SerialSlot">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.base.appletSerializer.</tt><tt class="descname">SerialSlot</tt><big>(</big><em>slot</em>, <em>name=None</em>, <em>default=None</em>, <em>depends=None</em>, <em>autodepends=True</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialSlot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implements the logic for serializing a slot.</p>
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialSlot.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>slot</em>, <em>name=None</em>, <em>default=None</em>, <em>depends=None</em>, <em>autodepends=True</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialSlot.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>slot</strong> &#8211; the slot to save/load</li>
+<li><strong>name</strong> &#8211; <p>name used for the group in the hdf5 file.</p>
+<ul>
+<li>For level 0 slots, this should just be a string, or None to
+use the slot&#8217;s name.</li>
+<li>For level 1 slots, this should be a tuple (groupname,
+subname), or None. If provided, subname should be able to be
+format()ed with a single argument: the index of the subslot.</li>
+</ul>
+</li>
+<li><strong>default</strong> &#8211; the default value when unload() is called. If it is
+None, the slot will just be disconnected (for level 0 slots) or
+resized to length 0 (for multislots)</li>
+<li><strong>depends</strong> &#8211; a list of slots which must be ready before this slot
+can be serialized. If None, defaults to [].</li>
+<li><strong>autodepends</strong> &#8211; whether &#8216;slot&#8217; should be added to &#8216;depends&#8217;</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
-<dl class="attribute">
-<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.version">
-<tt class="descname">version</tt><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.version"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.version" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the version of the serializer itself.</p>
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialSlot._serialize">
+<tt class="descname">_serialize</tt><big>(</big><em>group</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialSlot._serialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>&#8221;
+:param group: The parent group.
+:type group: h5py.Group</p>
 </dd></dl>
 
-<dl class="attribute">
-<dt id="ilastik.applets.base.appletSerializer.AppletSerializer.base_initialized">
-<tt class="descname">base_initialized</tt><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#AppletSerializer.base_initialized"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.AppletSerializer.base_initialized" title="Permalink to this definition">¶</a></dt>
-<dd><p>Do not override this property.
-Used by the shell to ensure that Applet.__init__ was called by your subclass.</p>
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialSlot._deserialize">
+<tt class="descname">_deserialize</tt><big>(</big><em>subgroup</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialSlot._deserialize" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>subgroup</strong> &#8211; <em>not</em> the parent group. This slot&#8217;s group.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Typpe subgroup:</th><td class="field-body">h5py.Group</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialSlot.shouldSerialize">
+<tt class="descname">shouldSerialize</tt><big>(</big><em>group</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialSlot.shouldSerialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Whether to serialize or not.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialSlot.serialize">
+<tt class="descname">serialize</tt><big>(</big><em>group</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialSlot.serialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs tasks common to all serializations, like changing
+dirty status.</p>
+<p>Do not override (unless for some reason this function does not
+do the right thing in your case). Instead override
+_serialize().</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group</strong> (<em>h5py.Group</em>) &#8211; The parent group in which to create this slot&#8217;s
+group.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialSlot.deserialize">
+<tt class="descname">deserialize</tt><big>(</big><em>group</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialSlot.deserialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs tasks common to all deserializations.</p>
+<p>Do not override (unless for some reason this function does not
+do the right thing in your case). Instead override
+_deserialize.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group</strong> (<em>h5py.Group</em>) &#8211; The parent group in which to create this slot&#8217;s
+group.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialSlot.unload">
+<tt class="descname">unload</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialSlot.unload" title="Permalink to this definition">¶</a></dt>
+<dd><p>see AppletSerializer.unload()</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.base.appletSerializer.SerialListSlot">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.base.appletSerializer.</tt><tt class="descname">SerialListSlot</tt><big>(</big><em>slot</em>, <em>name=None</em>, <em>default=None</em>, <em>depends=None</em>, <em>autodepends=False</em>, <em>transform=None</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialListSlot" title="Permalink to this definition">¶</a></dt>
+<dd><p>As the name implies: used for serializing a list.</p>
+<p>The only differences from the base class are:</p>
+<ul class="simple">
+<li>if deserializing fails, sets the slot value to [].</li>
+<li>if it succeeds, applies a transform to every element of the list
+(for instance, to convert it to the proper type).</li>
+</ul>
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialListSlot.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>slot</em>, <em>name=None</em>, <em>default=None</em>, <em>depends=None</em>, <em>autodepends=False</em>, <em>transform=None</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialListSlot.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>transform</strong> &#8211; function applied to members on deserialization.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.base.appletSerializer.SerialBlockSlot">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.base.appletSerializer.</tt><tt class="descname">SerialBlockSlot</tt><big>(</big><em>inslot</em>, <em>outslot</em>, <em>blockslot</em>, <em>name=None</em>, <em>default=None</em>, <em>depends=None</em>, <em>autodepends=False</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialBlockSlot" title="Permalink to this definition">¶</a></dt>
+<dd><p>A slot which only saves nonzero blocks.</p>
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialBlockSlot.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>inslot</em>, <em>outslot</em>, <em>blockslot</em>, <em>name=None</em>, <em>default=None</em>, <em>depends=None</em>, <em>autodepends=False</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialBlockSlot.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>inslot</strong> &#8211; where to put deserialized data.</li>
+<li><strong>outslot</strong> &#8211; where to take data for serialization.</li>
+<li><strong>blockslot</strong> &#8211; provides non-zero blocks.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.base.appletSerializer.SerialClassifierSlot">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.base.appletSerializer.</tt><tt class="descname">SerialClassifierSlot</tt><big>(</big><em>slot</em>, <em>cacheslot</em>, <em>name=None</em>, <em>default=None</em>, <em>depends=None</em>, <em>autodepends=True</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialClassifierSlot" title="Permalink to this definition">¶</a></dt>
+<dd><p>For saving a random forest classifier.</p>
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialClassifierSlot.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>slot</em>, <em>cacheslot</em>, <em>name=None</em>, <em>default=None</em>, <em>depends=None</em>, <em>autodepends=True</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialClassifierSlot.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialClassifierSlot._serialize">
+<tt class="descname">_serialize</tt><big>(</big><em>group</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialClassifierSlot._serialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialClassifierSlot._deserialize">
+<tt class="descname">_deserialize</tt><big>(</big><em>classifierGroup</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialClassifierSlot._deserialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.base.appletSerializer.SerialClassifierSlot.deserialize">
+<tt class="descname">deserialize</tt><big>(</big><em>group</em><big>)</big><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialClassifierSlot.deserialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Have to override this to ensure that dirty is always set False.</p>
 </dd></dl>
 
 </dd></dl>
@@ -479,6 +640,7 @@ It is intended to be used as a base class for almost all user-defined applets.</
 <li><a class="reference internal" href="#top-level-operators">Top-level Operators</a></li>
 <li><a class="reference internal" href="#applet-guis">Applet GUIs</a></li>
 <li><a class="reference internal" href="#applet-serializers">Applet Serializers</a></li>
+<li><a class="reference internal" href="#serializable-slots">Serializable Slots</a></li>
 <li><a class="reference internal" href="#applet-library">Applet Library</a><ul>
 </ul>
 </li>

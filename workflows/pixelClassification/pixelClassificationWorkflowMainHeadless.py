@@ -69,10 +69,6 @@ def runWorkflow(parsed_args):
         if error:
             raise RuntimeError("Could not find one or more batch inputs.  See logged errors.")
 
-    if not args.generate_project_predictions and len(args.batch_inputs) == 0:
-        logger.error("Command-line arguments didn't specify a workload.")
-        return
-
     # Instantiate 'shell'
     shell, workflow = startShellHeadless( PixelClassificationWorkflow )
     
@@ -88,24 +84,27 @@ def runWorkflow(parsed_args):
     logger.info("Opening project: '" + args.project + "'")
     shell.openProjectPath(args.project)
 
-    # Predictions for project input datasets
-    if args.generate_project_predictions:
-        generateProjectPredictions(shell, workflow)
+    try:
+        if not args.generate_project_predictions and len(args.batch_inputs) == 0:
+            logger.error("Command-line arguments didn't specify any classification jobs.")
+        else:
+            # Predictions for project input datasets
+            if args.generate_project_predictions:
+                generateProjectPredictions(shell, workflow)
+        
+            # Predictions for other datasets ('batch datasets')
+            result = True
+            if len(args.batch_inputs) > 0:
+                result = generateBatchPredictions(workflow,
+                                                  args.batch_inputs,
+                                                  args.batch_export_dir,
+                                                  args.batch_output_suffix,
+                                                  args.batch_output_dataset_name)
+                assert result
+    finally:
+        logger.info("Closing project...")
+        shell.projectManager.closeCurrentProject()
 
-    # Predictions for other datasets ('batch datasets')
-    result = True
-    if len(args.batch_inputs) > 0:
-        result = generateBatchPredictions(workflow,
-                                          args.batch_inputs,
-                                          args.batch_export_dir,
-                                          args.batch_output_suffix,
-                                          args.batch_output_dataset_name)
-
-    logger.info("Closing project...")
-    shell.projectManager.closeCurrentProject()
-    
-    assert result    
-    
     logger.info("FINISHED.")
         
 def generateProjectPredictions(shell, workflow):
@@ -216,7 +215,8 @@ if __name__ == "__main__":
 #        args += " --batch_export_dir=/home/bergs/tmp"
 #        args += " /home/bergs/tinyfib/initial_segmentation/version1.h5/volume/data"
 
-        args = "--project=/groups/flyem/proj/cluster/tbar_detect_files/best.ilp --batch_export_dir=/home/bergs/tmp /groups/flyem/proj/cluster/tbar_detect_files/grayscale.h5"
+        #args = "--project=/groups/flyem/proj/cluster/tbar_detect_files/best.ilp --batch_export_dir=/home/bergs/tmp /groups/flyem/proj/cluster/tbar_detect_files/grayscale.h5"
+        args = "--project=/groups/flyem/proj/cluster/tbar_detect_files/best.ilp" # --batch_export_dir=/home/bergs/tmp /groups/flyem/proj/cluster/tbar_detect_files/grayscale.h5"
 
         print args
 

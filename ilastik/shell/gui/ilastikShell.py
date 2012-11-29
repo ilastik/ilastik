@@ -15,7 +15,6 @@ from functools import partial
 
 
 from volumina.utility import PreferencesManager, ShortcutManagerDlg
-from ilastik.versionManager import VersionManager
 from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEvent, ThunkEventHandler
 
