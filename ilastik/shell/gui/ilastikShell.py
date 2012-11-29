@@ -372,7 +372,10 @@ class IlastikShell( QMainWindow ):
 
             # Alert each central widget and viewer control widget that the image selection changed
             for i in range( len(self._applets) ):
-                self._applets[i].getMultiLaneGui().setImageIndex(newImageIndex)
+                if newImageIndex == -1:
+                    self._applets[i].getMultiLaneGui().setImageIndex(None)
+                else:
+                    self._applets[i].getMultiLaneGui().setImageIndex(newImageIndex)
                 
             self.currentImageIndex = newImageIndex
 
