@@ -123,11 +123,11 @@ class LayerViewerGui(QMainWindow):
  
         self.layerstack = LayerStackModel()
 
-        self.initAppletDrawerUi() # Default implementation loads a blank drawer.
         self._initCentralUic()
         self._initEditor()
         self.__viewerControlWidget = None
         self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
+        self.initAppletDrawerUi() # Default implementation loads a blank drawer.
         
     def _after_init(self):
         self.updateAllLayers()
