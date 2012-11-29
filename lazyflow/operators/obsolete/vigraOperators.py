@@ -179,6 +179,17 @@ class OpPixelFeaturesPresmoothed(Operator):
                 featureNameArray.append([])
 
             self.newScales = []
+            #FIXME, FIXME, FIXME: remove this, just a test
+            '''
+            for j in range(dimCol):
+                destSigma = 1.0
+                if self.scales[j] > destSigma:
+                    self.newScales.append((destSigma, destSigma, destSigma))
+                else:
+                    self.newScales.append((self.scales[j], self.scales[j], min(1, 0.2*self.scales[j])ifconfig))
+                #self.newScales.append((self.scales[j], self.scales[j], 0.2*self.scales[j]))
+            '''
+            
             for j in range(dimCol):
                 destSigma = 1.0
                 if self.scales[j] > destSigma:
@@ -187,7 +198,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     self.newScales.append(self.scales[j])
 
                 logger.debug("Replacing scale %f with new scale %f" %(self.scales[j], self.newScales[j]))
-
+            
             for i, featureId in enumerate(self.inputs["FeatureIds"].value):
                 if featureId == 'GaussianSmoothing':
                     for j in range(dimCol):
@@ -211,6 +222,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                         #  you must make a new feature (with a new feature ID) and
                         #  leave this feature here to preserve backwards compatibility
                         oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
+                        #FIXME, FIXME, FIXME
+                        #sigma1 = [x*0.5 for x in self.newScales[j]]
+                        #oparray[i][j].inputs["outerScale"].setValue(sigma1)
                         oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
                         featureNameArray[i].append("Structure Tensor Eigenvalues (s=" + str(self.scales[j]) + ")")
 
@@ -236,6 +250,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                         #  feature (with a new feature ID) and leave this feature here
                         #  to preserve backwards compatibility
                         oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])
+                        #FIXME, FIXME, FIXME
+                        #sigma1 = [x*0.66 for x in self.newScales[j]]
+                        #oparray[i][j].inputs["sigma1"].setValue(sigma1)
                         oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
                         featureNameArray[i].append("Difference of Gaussians (s=" + str(self.scales[j]) + ")")
 

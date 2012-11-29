@@ -64,9 +64,12 @@ class Everything(Roi):
     pass
 
 class List(Roi):
-    def __init__(self, slot, iterable=()):
+    def __init__(self, slot, iterable=(), pslice=None):
         super(List, self).__init__(slot)
         self._l = list(iterable)
+        if pslice is not None:
+            print "pslice not none, but we are in a list!", pslice
+            self._l = [pslice]
     def __iter__( self ):
         return iter(self._l)
     def __len__( self ):

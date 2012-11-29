@@ -213,12 +213,14 @@ class SvgOperator( DrawableABC ):
         x, y = upperLeft
 
         title_text = self.op.name
+        print "generating code for operator:", title_text
 
         inputSize = self.getInputSize()
         outputSize = self.getOutputSize()
 
         child_ordering = {}
         for child in self.op.children:
+            print "child with name:", child.name
             col = get_column_within_parent(child)
             if col not in child_ordering:
                 child_ordering[col] = []

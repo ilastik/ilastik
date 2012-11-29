@@ -279,6 +279,9 @@ class OpMultiArrayStacker(Operator):
         axisindex = self.inputs["AxisIndex"].value
 
         self.intervals = []
+
+        inTagKeys = []
+
         for inSlot in self.inputs["Images"]:
             inTagKeys = [ax.key for ax in inSlot.meta.axistags]
             if inSlot.partner is not None:
@@ -302,6 +305,7 @@ class OpMultiArrayStacker(Operator):
             newshape = list(self.inputs["Images"][0].meta.shape)
             if flag in inTagKeys:
                 #here we assume that all axis are present
+                axisindex = self.outputs["Output"].meta.axistags.index(flag)
                 newshape[axisindex]=c
             else:
                 newshape.insert(axisindex, c)
@@ -318,11 +322,13 @@ class OpMultiArrayStacker(Operator):
         written = 0
         start, stop = roi.sliceToRoi(key, self.outputs["Output"].meta.shape)
         assert (stop<=self.outputs["Output"].meta.shape).all()
-        axisindex = self.inputs["AxisIndex"].value
+        #axisindex = self.inputs["AxisIndex"].value
         flag = self.inputs["AxisFlag"].value
+        axisindex = self.outputs["Output"].meta.axistags.index(flag)
         #ugly-ugly-ugly
         oldkey = list(key)
         oldkey.pop(axisindex)
+        
         #print "STACKER: ", flag, axisindex
         #print "requesting an outslot from stacker:", key, result.shape
         #print "input slots total: ", len(self.inputs['Images'])
@@ -370,6 +376,7 @@ class OpMultiArrayStacker(Operator):
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.AxisFlag or inputSlot == self.AxisIndex:
             self.Output.setDirty( slice(None) )
+
         elif inputSlot == self.Images:
             imageIndex = subindex[0]
             axisIndex = self.AxisIndex.value
