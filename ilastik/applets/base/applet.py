@@ -116,13 +116,13 @@ class SingleToMultiAppletAdapter( Applet ):
         self._gui = None
         self.__topLevelOperator = None
         
-        # OperatorWrapper will eventually switch API to take "non-promoted" slot names,
-        #   but for now we have to invert the set ourselves...
-        allInputSlotNames = set( map( lambda s: s.name, self.operatorClass.inputSlots ) )        
-        promotedSlotNames = allInputSlotNames - set(self.broadcastingSlotNames) # set difference
-
         # Create a new top-level operator if the subclass didn't provide a custom one.
         if self.topLevelOperator is None:
+            # OperatorWrapper will eventually switch API to take "non-promoted" slot names,
+            #   but for now we have to invert the set ourselves...
+            allInputSlotNames = set( map( lambda s: s.name, self.operatorClass.inputSlots ) )        
+            promotedSlotNames = allInputSlotNames - set(self.broadcastingSlotNames) # set difference
+
             self.__topLevelOperator = OperatorWrapper(self.operatorClass, parent=workflow, promotedSlotNames=promotedSlotNames)
 
     @abstractproperty
