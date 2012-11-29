@@ -20,8 +20,8 @@ class FeatureSelectionWorkflow(Workflow):
         self._applets.append( self.featureSelectionApplet )
 
     def connectLane(self, laneIndex):
-        opDataSelection = self.dataSelectionApplet.topLevelOperatorForLane(laneIndex)        
-        opFeatureSelection = self.featureSelectionApplet.topLevelOperatorForLane(laneIndex)
+        opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)        
+        opFeatureSelection = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect top-level operators
         opFeatureSelection.InputImage.connect( opDataSelection.Image )

@@ -1,38 +1,27 @@
-from ilastik.applets.base.applet import Applet
-
+from ilastik.applets.base.applet import StandardApplet
 from opFeatureSelection import OpFeatureSelection
-
 from featureSelectionSerializer import FeatureSelectionSerializer, Ilastik05FeatureSelectionDeserializer
 
-from lazyflow.graph import OperatorWrapper
-
-from ilastik.applets.base.applet import SingleToMultiAppletAdapter
-class FeatureSelectionApplet( SingleToMultiAppletAdapter ):
+class FeatureSelectionApplet( StandardApplet ):
     """
     This applet allows the user to select sets of input data, 
     which are provided as outputs in the corresponding top-level applet operator.
     """
     def __init__( self, workflow, guiName, projectFileGroupName ):
         super(FeatureSelectionApplet, self).__init__(guiName, workflow)
-
-        # Top-level operator is wrapped to support multiple images.
-        # Note that the only promoted input slot is the image.  All other inputs are shared among all inner operators.        
-        #self.topLevelOperator = OperatorWrapper( OpFeatureSelection, parent=workflow, promotedSlotNames=set(['InputImage']) )
-        #assert len(self._topLevelOperator.InputImage) == 0
-
         self._serializableItems = [ FeatureSelectionSerializer(self.topLevelOperator, projectFileGroupName),
                                     Ilastik05FeatureSelectionDeserializer(self.topLevelOperator) ]
 
     @property
-    def operatorClass(self):
+    def singleLaneOperatorClass(self):
         return OpFeatureSelection
 
     @property
-    def broadcastingSlotNames(self):
+    def broadcastingSlots(self):
         return ['Scales', 'FeatureIds', 'SelectionMatrix']
     
     @property
-    def singleImageGuiClass(self):
+    def singleLaneGuiClass(self):
         from featureSelectionGui import FeatureSelectionGui
         return FeatureSelectionGui
 

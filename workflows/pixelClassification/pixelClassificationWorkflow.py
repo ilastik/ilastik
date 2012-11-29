@@ -44,9 +44,9 @@ class PixelClassificationWorkflow(Workflow):
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator
-        opData = self.dataSelectionApplet.topLevelOperatorForLane(laneIndex)
-        opTrainingFeatures = self.featureSelectionApplet.topLevelOperatorForLane(laneIndex)
-        opClassify = self.pcApplet.topLevelOperatorForLane(laneIndex)
+        opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
         
         # Input Image -> Feature Op
         #         and -> Classification Op (for display)

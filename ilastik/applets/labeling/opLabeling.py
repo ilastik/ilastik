@@ -1,8 +1,7 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
-
 from lazyflow.operators import OpBlockedSparseLabelArray
-
 from functools import partial
+from ilastik.utility.operatorSubView import OperatorSubView
 
 class OpLabeling( Operator ):
     """
@@ -131,6 +130,28 @@ class OpLabeling( Operator ):
         # Nothing to do here: All inputs that support __setitem__
         #   are directly connected to internal operators.
         pass
+
+    def addLane(self, laneIndex):
+        """
+        Add an image lane.
+        """
+        numLanes = len(self.InputImages)
+        assert laneIndex == numLanes, "Lanes must be appended"
+
+        # Just resize one of our multi-inputs.
+        # The others will resize automatically
+        self.InputImages.resize(numLanes+1)
+
+    def removeLane(self, laneIndex, finalLength):
+        """
+        Remove an image lane.
+        """
+        numLanes = len(self.InputImages)
+        self.InputImages.removeSlot(laneIndex, numLanes-1)
+
+    def getLane(self, laneIndex):
+        return OperatorSubView(self, laneIndex)
+
 
 class OpShapeReader(Operator):
     """

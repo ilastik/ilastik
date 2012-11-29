@@ -46,12 +46,12 @@ class LabelingGui(LayerViewerGui):
     def centralWidget( self ):
         return self
 
-    def appletDrawers(self):
-        return [ ("Label Marking", self._labelControlUi) ]
+    def appletDrawer(self):
+        return self._labelControlUi
 
     @classmethod
-    def defaultAppletDrawers(cls):
-        return [('Labeling', QWidget())]
+    def appletDrawerName(cls):
+        return 'Labeling'
 
     def reset(self):
         super(LabelingGui, self).reset()

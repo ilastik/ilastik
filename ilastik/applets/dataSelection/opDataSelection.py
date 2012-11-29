@@ -1,6 +1,6 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
+from ilastik.utility.operatorSubView import OperatorSubView
 
 import uuid
 
@@ -100,3 +100,29 @@ class OpDataSelection(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators
         pass
+
+class OpMultiLaneDataSelection( OperatorWrapper ):
+    
+    def __init__(self, parent):
+        super( OpMultiLaneDataSelection, self ).__init__(OpDataSelection, parent=parent, broadcastingSlotNames=['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory'] )
+    
+    def addLane(self, laneIndex):
+        """
+        Add an image lane.
+        """
+        numLanes = len(self.innerOperators)
+        
+        # Only add this lane if we don't already have it
+        # We might be called from within the context of our own insertSlot signal.
+        if numLanes == laneIndex:
+            self._insertInnerOperator(numLanes, numLanes+1)
+
+    def removeLane(self, laneIndex, finalLength):
+        """
+        Remove an image lane.
+        """
+        numLanes = len(self.innerOperators)
+        self._removeInnerOperator(laneIndex, numLanes-1)
+
+    def getLane(self, laneIndex):
+        return OperatorSubView(self, laneIndex)

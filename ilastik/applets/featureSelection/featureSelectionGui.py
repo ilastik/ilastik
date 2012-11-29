@@ -49,12 +49,12 @@ class FeatureSelectionGui(LayerViewerGui):
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
     
-    def appletDrawers(self):
-        return [ ("Feature Selection", self.drawer ) ]
+    def appletDrawer(self):
+        return self.drawer
 
     @classmethod
-    def defaultAppletDrawers(cls):
-        return [('Feature Selection', QWidget())]
+    def appletDrawerName(cls):
+        return 'Feature Selection'
 
     def viewerControlWidget(self):
         return self._viewerControlWidget

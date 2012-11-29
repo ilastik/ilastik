@@ -20,8 +20,8 @@ class DeviationFromMeanWorkflow(Workflow):
         self._applets.append( self.deviationFromMeanApplet )
 
     def connectLane(self, laneIndex):
-        opDataSelection = self.dataSelectionApplet.topLevelOperatorForLane(laneIndex)
-        opDeviationFromMean = self.deviationFromMeanApplet.topLevelOperatorForLane(laneIndex)
+        opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opDeviationFromMean = self.deviationFromMeanApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect top-level operators
         opDeviationFromMean.Input.connect( opDataSelection.Image )

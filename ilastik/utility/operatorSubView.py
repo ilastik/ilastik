@@ -1,6 +1,9 @@
 from lazyflow.graph import OperatorWrapper, InputDict, OutputDict
 
 class OperatorSubViewMetaclass(type):
+    """
+    Simple metaclass to catch errors the user might make by attempting to access certain class attributes.
+    """
     def __getattr__(self, name):
         if name == "inputSlots":
             assert False, "OperatorSubView.inputSlots cannot be accessed as a class member.  It can only be accessed as an instance member"

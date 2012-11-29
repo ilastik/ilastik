@@ -1,6 +1,7 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-
+from ilastik.applets.base.multiLaneOperator import MultiLaneOperatorABC
 import numpy
+from ilastik.utility.operatorSubView import OperatorSubView
 
 class OpDeviationFromMean(Operator):
     """
@@ -70,6 +71,31 @@ class OpDeviationFromMean(Operator):
         # All inputs affect all outputs, so every image is dirty now
         for oslot in self.Output:
             oslot.setDirty( roi )
+
+    #############################################
+    ## Methods to satisfy MultiLaneOperatorABC ##
+    #############################################
+
+    def addLane(self, laneIndex):
+        """
+        Add an image lane to the top-level operator.
+        """
+        numLanes = len(self.Input)
+        assert numLanes == laneIndex, "Image lanes must be appended."        
+        self.Input.resize(numLanes+1)
+        self.Output.resize(numLanes+1)
+        
+    def removeLane(self, laneIndex, finalLength):
+        """
+        Remove the specified image lane from the top-level operator.
+        """
+        self.Input.removeSlot(laneIndex, finalLength)
+        self.Output.removeSlot(laneIndex, finalLength)
+
+    def getLane(self, laneIndex):
+        return OperatorSubView(self, laneIndex)
+
+assert issubclass(OpDeviationFromMean, MultiLaneOperatorABC)
 
 if __name__ == "__main__":
     from lazyflow.graph import Graph

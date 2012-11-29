@@ -20,10 +20,17 @@ class AppletGuiInterface():
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def appletDrawers(self):
+    @classmethod
+    def appletDrawerName(cls):
         """
-        Abstract method.  Return a list of (drawer title, drawer widget) pairs for this applet.
+        Abstract class method. Return the name of this applet in the GUI (displayed as the drawer heading).
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def appletDrawer(self):
+        """
+        Abstract method.  Return the drawer widget for this applet.
         """
         raise NotImplementedError
     

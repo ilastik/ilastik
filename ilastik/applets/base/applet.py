@@ -1,6 +1,4 @@
 from ilastik.utility.simpleSignal import SimpleSignal
-from ilastik.utility.operatorSubView import OperatorSubView
-
 from abc import ABCMeta, abstractproperty, abstractmethod
 
 class Applet( object ):
@@ -47,28 +45,8 @@ class Applet( object ):
         """
         return None
 
-    def topLevelOperatorForLane(self, laneIndex):
-        """
-        Return a view of the top-level operator for the given lane.
-        """
-        return OperatorSubView(self.topLevelOperator, laneIndex)
-
     @abstractmethod
-    def addLane(self, laneIndex):
-        """
-        Add an image processing lane to the top-level operator.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def removeLane(self, laneIndex, finalLength):
-        """
-        Remove an image processing lane from the top-level operator.
-        """
-        raise NotImplementedError
-
-    @abstractproperty
-    def gui(self):
+    def getMultiLaneGui(self):
         """
         Abstract property.
         Provides the applet's GUI, which must be an instance of AppletGuiInterface.
@@ -108,71 +86,98 @@ class ShellRequest(object):
     RequestSave = 0 #: Request that the shell perform a "save project" action.
 
 
-from lazyflow.graph import OperatorWrapper
-class SingleToMultiAppletAdapter( Applet ):
+from ilastik.applets.base.multiLaneOperator import MultiLaneOperatorABC, OpAutoMultiLane
+class StandardApplet( Applet ):
 
-    def __init__(self, name, workflow):
-        super(SingleToMultiAppletAdapter, self).__init__(name)
+    def __init__(self, name, workflow=None):
+        super(StandardApplet, self).__init__(name)
         self._gui = None
         self.__topLevelOperator = None
-        
-        # Create a new top-level operator if the subclass didn't provide a custom one.
-        if self.topLevelOperator is None:
-            # OperatorWrapper will eventually switch API to take "non-promoted" slot names,
-            #   but for now we have to invert the set ourselves...
-            allInputSlotNames = set( map( lambda s: s.name, self.operatorClass.inputSlots ) )        
-            promotedSlotNames = allInputSlotNames - set(self.broadcastingSlotNames) # set difference
+        self.__workflow = workflow
 
-            self.__topLevelOperator = OperatorWrapper(self.operatorClass, parent=workflow, promotedSlotNames=promotedSlotNames)
+    #
+    # Top-Level Operator
+    #
+    # Subclasses have 2 Choices:
+    #   - Override topLevelOperator (advanced)
+    #   - Override singleLaneOpeartorClass AND broadcastingSlots (easier; uses default topLevelOperator implementation)
+    
+    @property
+    def singleLaneOperatorClass(self):
+        """
+        Return the operator class which handles a single image.
+        Single-lane applets should override this property.
+        Multi-lane applets must override topLevelOperator directly.
+        """
+        return NotImplemented
 
-    @abstractproperty
-    def operatorClass(self):
-        raise NotImplementedError
-
-    @abstractproperty
-    def broadcastingSlotNames(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def singleImageGuiClass(self):
-        raise NotImplementedError
+    @property
+    def broadcastingSlots(self):
+        """
+        Slots that should be connected to all image lanes are referred to as "broadcasting" slots.
+        Single-lane applets should override this property to return a list of the broadcasting slots' names.
+        Multi-lane applets must override topLevelOperator directly.
+        """
+        return NotImplemented
 
     @property
     def topLevelOperator(self):
+        """
+        Get the top-level (multi-image-lane) operator for the applet.
+        Applets that must be multi-image-lane aware must override this property.
+        """
+        if self.__topLevelOperator is None:
+            self.__createTopLevelOperator()
         return self.__topLevelOperator
 
-    def topLevelOperatorForLane(self, laneIndex):
-        return OperatorSubView(self.topLevelOperator, laneIndex)
-
-    def addLane(self, laneIndex):
-        """
-        Add an image lane to the top-level operator.
-        Since the top-level operator is just an OperatorWrapper, this is simple.
-        """
-        numLanes = len(self.topLevelOperator.innerOperators)
-        assert numLanes == laneIndex, "Image lanes must be appended."        
-        self.topLevelOperator._insertInnerOperator(numLanes, numLanes+1)
-        
-    def removeLane(self, laneIndex, finalLength):
-        """
-        Remove an image lane from the top-level operator.
-        Since the top-level operator is just an OperatorWrapper, this is simple.
-        """
-        numLanes = len(self.topLevelOperator.innerOperators)
-        self.topLevelOperator._removeInnerOperator(laneIndex, numLanes-1)
+    #
+    # GUI
+    #
+    # Subclasses have 3 choices:
+    # - Override getMultiLaneGui (advanced)
+    # - Override createSingleLaneGui (easier: uses default getMultiLaneGui implementation)
+    # - Override singleLaneGuiClass (easiest: uses default createSingleLaneGui and getMultiLaneGui implementations)
 
     @property
-    def gui(self):
+    def singleLaneGuiClass(self):
+        """
+        Return the class that will be instantiated for each image lane the applet needs.
+        """
+        return NotImplemented
+
+    def createSingleLaneGui(self, imageLaneIndex):
+        if self.singleLaneGuiClass is NotImplemented:
+            message  = "Cannot create GUI.\n"
+            message += "StandardApplet subclasses must implement ONE of the following:\n" 
+            message += "singleLaneGuiClass, createSingleLaneGui, or getMultiLaneGui"
+            raise NotImplementedError(message)
+        singleLaneOperator = self.topLevelOperator.getLane( imageLaneIndex )
+        return self.singleLaneGuiClass( singleLaneOperator )
+
+    def getMultiLaneGui(self):
         if self._gui is None:
-            self._gui = SingleToMultiGuiAdapter( self.createSingleImageGui, self.topLevelOperator, self.singleImageGuiClass.defaultAppletDrawers() )
+            assert isinstance(self.topLevelOperator, MultiLaneOperatorABC), "All applet top-level operators must satisfy the Multi-lane interface."
+            self._gui = SingleToMultiGuiAdapter( self.createSingleLaneGui, self.topLevelOperator )
         return self._gui
 
-    def createSingleImageGui(self, imageLaneIndex):
-        # This default implementation works for the default 
-        # case of guis with the standard constructor arglist.
-        # If your single-image GUI is more complicated than that, then override this function in your applet.
-        singleLaneOperator = self.topLevelOperatorForLane( imageLaneIndex )
-        return self.singleImageGuiClass( singleLaneOperator )
+    def __createTopLevelOperator(self):
+        assert self.__topLevelOperator is None
+        operatorClass = self.singleLaneOperatorClass
+        broadcastingSlots = self.broadcastingSlots
+        if operatorClass is NotImplemented or broadcastingSlots is NotImplemented:
+            message = "Could not create top-level operator for {}\n".format( self.__class__ )
+            message += "StandardApplet subclasses must implement the singleLaneOperatorClass and broadcastingSlots"
+            message += " members OR override topLevelOperator themselves."
+            raise NotImplementedError(message)
+
+        if self.__workflow is None:
+            message = "Could not create top-level operator for {}\n".format( self.__class__ )
+            message += "Please initialize StandardApplet base class with a workflow object."
+            raise NotImplementedError(message)
+        
+        self.__topLevelOperator = OpAutoMultiLane(self.singleLaneOperatorClass,
+                                                  parent=self.__workflow,
+                                                  broadcastingSlotNames=self.broadcastingSlots)
 
 def checkCurrentGui(f):
     def _wrapper(self, *args, **kwargs):
@@ -183,12 +188,11 @@ def checkCurrentGui(f):
     return _wrapper
     
 class SingleToMultiGuiAdapter( object ):
-    def __init__(self, singleImageGuiFactory, topLevelOperator, defaultAppletDrawers):
+    def __init__(self, singleImageGuiFactory, topLevelOperator):
         self.singleImageGuiFactory = singleImageGuiFactory
         self._imageIndex = None
         self._guis = {}
         self.topLevelOperator = topLevelOperator
-        self.defaultAppletDrawers = defaultAppletDrawers
 
     def currentGui(self):
         if self._imageIndex is None:
@@ -198,11 +202,18 @@ class SingleToMultiGuiAdapter( object ):
             self._guis[self._imageIndex] = self.singleImageGuiFactory( self._imageIndex )
         return self._guis[self._imageIndex]
 
-    def appletDrawers(self):
-        if self.currentGui() is not None:
-            return self.currentGui().appletDrawers()
+    def appletDrawerName(self):
+        if self.currentGui() is None:
+            return ""
         else:
-            return self.defaultAppletDrawers
+            return self.currentGui().appletDrawerName()
+
+    def appletDrawer(self):
+        if self.currentGui() is not None:
+            return self.currentGui().appletDrawer()
+        else:
+            from PyQt4.QtGui import QWidget
+            return QWidget()
 
     @checkCurrentGui
     def centralWidget( self ):

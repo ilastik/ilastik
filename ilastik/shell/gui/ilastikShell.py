@@ -372,12 +372,20 @@ class IlastikShell( QMainWindow ):
 
             # Alert each central widget and viewer control widget that the image selection changed
             for i in range( len(self._applets) ):
-                self._applets[i].gui.setImageIndex(newImageIndex)
+                self._applets[i].getMultiLaneGui().setImageIndex(newImageIndex)
                 
             self.currentImageIndex = newImageIndex
 
             # Force the applet drawer to be redrawn
             self.setSelectedAppletDrawer(self.currentAppletIndex)
+            
+            # Update all other applet drawer titles
+            for applet_index, app in enumerate(self._applets):
+                updatedDrawerTitle = app.getMultiLaneGui().appletDrawerName()
+        
+                rootItem = self.appletBar.invisibleRootItem()
+                appletTitleItem = rootItem.child(applet_index)
+                appletTitleItem.setText( 0, updatedDrawerTitle )
 
     def handleAppleBarItemExpanded(self, modelIndex):
         """
@@ -414,7 +422,7 @@ class IlastikShell( QMainWindow ):
             self._refreshDrawerRecursionGuard = False
 
     def showCentralWidget(self, applet_index):
-        centralWidget = self._applets[applet_index].gui.centralWidget()
+        centralWidget = self._applets[applet_index].getMultiLaneGui().centralWidget()
         # Replace the placeholder widget, if possible
         if centralWidget is not None:
             if self.appletStack.indexOf( centralWidget ) == -1:
@@ -424,7 +432,7 @@ class IlastikShell( QMainWindow ):
         self.appletStack.setCurrentIndex(applet_index)
 
     def showViewerControlWidget(self, applet_index ):
-        viewerControlWidget = self._applets[applet_index].gui.viewerControlWidget()        
+        viewerControlWidget = self._applets[applet_index].getMultiLaneGui().viewerControlWidget()        
         # Replace the placeholder widget, if possible
         if viewerControlWidget is not None:
             if self.viewerControlStack.indexOf( viewerControlWidget ) == -1:
@@ -432,17 +440,14 @@ class IlastikShell( QMainWindow ):
             self.viewerControlStack.setCurrentWidget(viewerControlWidget)
 
     def refreshAppletDrawer(self, applet_index, drawerIndex):
-        firstDrawerIndex = 0
-        for k,v in self.appletBarMapping.items():
-            if v == applet_index:
-                firstDrawerIndex = k
-                break
-
-        relativeDrawerIndex = drawerIndex - firstDrawerIndex
-        updatedDrawerWidget = self._applets[applet_index].gui.appletDrawers()[relativeDrawerIndex][1]
+        updatedDrawerTitle = self._applets[applet_index].getMultiLaneGui().appletDrawerName()
+        updatedDrawerWidget = self._applets[applet_index].getMultiLaneGui().appletDrawer()
 
         rootItem = self.appletBar.invisibleRootItem()
-        appletDrawerItem = rootItem.child(drawerIndex).child(0)
+        appletTitleItem = rootItem.child(drawerIndex)
+        appletTitleItem.setText( 0, updatedDrawerTitle )
+        
+        appletDrawerItem = appletTitleItem.child(0)
         appletDrawerStackedWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
         if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
             appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
@@ -452,7 +457,7 @@ class IlastikShell( QMainWindow ):
         self.menuBar().clear()
         self.menuBar().addMenu(self._projectMenu)
         self.menuBar().addMenu(self._settingsMenu)
-        appletMenus = self._applets[applet_index].gui.menus()
+        appletMenus = self._applets[applet_index].getMultiLaneGui().menus()
         if appletMenus is not None:
             for m in appletMenus:
                 self.menuBar().addMenu(m)
@@ -504,7 +509,7 @@ class IlastikShell( QMainWindow ):
         assert isinstance( app, Applet ), "Applets must inherit from Applet base class."
         assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
 
-        #assert issubclass( type(app.gui), AppletGuiInterface ), "Applet GUIs must conform to the Applet GUI interface."
+        #assert issubclass( type(app.getMultiLaneGui()), AppletGuiInterface ), "Applet GUIs must conform to the Applet GUI interface."
         
         self._applets.append(app)
         applet_index = len(self._applets) - 1
@@ -519,21 +524,22 @@ class IlastikShell( QMainWindow ):
         rootItem = self.appletBar.invisibleRootItem()
 
         # Add all of the applet bar's items to the toolbox widget
-        for controlName, controlGuiWidget in app.gui.appletDrawers():
-            appletNameItem = QTreeWidgetItem( self.appletBar, QtCore.QStringList( controlName ) )
-            appletNameItem.setFont( 0, QFont("Ubuntu", 14) )
-            drawerItem = QTreeWidgetItem(appletNameItem)
-            drawerItem.setSizeHint( 0, controlGuiWidget.frameSize() )
+        controlName = app.getMultiLaneGui().appletDrawerName()
+        controlGuiWidget = app.getMultiLaneGui().appletDrawer()
+        appletNameItem = QTreeWidgetItem( self.appletBar, QtCore.QStringList( controlName ) )
+        appletNameItem.setFont( 0, QFont("Ubuntu", 14) )
+        drawerItem = QTreeWidgetItem(appletNameItem)
+        drawerItem.setSizeHint( 0, controlGuiWidget.frameSize() )
 #            drawerItem.setBackground( 0, QBrush( QColor(224, 224, 224) ) )
 #            drawerItem.setForeground( 0, QBrush( QColor(0,0,0) ) )
 
-            stackedWidget = QStackedWidget()
-            stackedWidget.addWidget( controlGuiWidget )
-            self.appletBar.setItemWidget( drawerItem, 0, stackedWidget )
+        stackedWidget = QStackedWidget()
+        stackedWidget.addWidget( controlGuiWidget )
+        self.appletBar.setItemWidget( drawerItem, 0, stackedWidget )
 
-            # Since each applet can contribute more than one applet bar item,
-            #  we need to keep track of which applet this item is associated with
-            self.appletBarMapping[rootItem.childCount()-1] = applet_index
+        # Since each applet can contribute more than one applet bar item,
+        #  we need to keep track of which applet this item is associated with
+        self.appletBarMapping[rootItem.childCount()-1] = applet_index
 
         # Set up handling of GUI commands from this applet
         app.guiControlSignal.connect( bind(self.handleAppletGuiControlSignal, applet_index) )
@@ -616,7 +622,7 @@ class IlastikShell( QMainWindow ):
 
     def closeCurrentProject(self):
         for applet in self._applets:
-            applet.gui.reset()
+            applet.getMultiLaneGui().reset()
         self.projectManager.closeCurrentProject()
         self.enableWorkflow = False
         self.updateAppletControlStates()
@@ -885,21 +891,21 @@ class IlastikShell( QMainWindow ):
             enabled = self._disableCounts[index] == 0
 
             # Apply to the applet central widget
-            if applet.gui.centralWidget() is not None:
-                applet.gui.centralWidget().setEnabled( enabled and self.enableWorkflow )
+            if applet.getMultiLaneGui().centralWidget() is not None:
+                applet.getMultiLaneGui().centralWidget().setEnabled( enabled and self.enableWorkflow )
             
-            # Apply to the applet bar drawers
-            for appletName, appletGui in applet.gui.appletDrawers():
-                appletGui.setEnabled( enabled and self.enableWorkflow )
+            # Apply to the applet bar drawer
+            appletGui = applet.getMultiLaneGui().appletDrawer()
+            appletGui.setEnabled( enabled and self.enableWorkflow )
+        
+            # Apply to the applet bar drawer headings, too
+            drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
+            if enabled and self.enableWorkflow:
+                drawerTitleItem.setFlags( QtCore.Qt.ItemIsEnabled )
+            else:
+                drawerTitleItem.setFlags( QtCore.Qt.NoItemFlags )
             
-                # Apply to the applet bar drawer headings, too
-                drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
-                if enabled and self.enableWorkflow:
-                    drawerTitleItem.setFlags( QtCore.Qt.ItemIsEnabled )
-                else:
-                    drawerTitleItem.setFlags( QtCore.Qt.NoItemFlags )
-                
-                drawerIndex += 1
+            drawerIndex += 1
 
 
 #    def scrollToTop(self):

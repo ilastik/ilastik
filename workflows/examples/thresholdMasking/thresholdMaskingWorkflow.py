@@ -20,8 +20,8 @@ class ThresholdMaskingWorkflow(Workflow):
         self._applets.append( self.thresholdMaskingApplet )
 
     def connectLane(self, laneIndex):
-        opDataSelection = self.dataSelectionApplet.topLevelOperatorForLane(laneIndex)        
-        opThresholdMasking = self.thresholdMaskingApplet.topLevelOperatorForLane(laneIndex)
+        opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)        
+        opThresholdMasking = self.thresholdMaskingApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect top-level operators
         opThresholdMasking.InputImage.connect( opDataSelection.Image )

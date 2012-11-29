@@ -59,8 +59,11 @@ class DataSelectionGui(QMainWindow):
     def centralWidget( self ):
         return self
 
-    def appletDrawers(self):
-        return [ (self.title, self.drawer) ]
+    def appletDrawerName( self ):
+        return self.title
+
+    def appletDrawer( self ):
+        return self.drawer
     
     def menus( self ):
         return []

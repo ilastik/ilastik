@@ -19,8 +19,11 @@ class ProjectMetadataGui( QWidget ):
     def centralWidget( self ):
         return self
 
-    def appletDrawers(self):
-        return [ ( "Project Metadata", self.getAppletDrawerUi() ) ]
+    def appletDrawer(self):
+        return self.getAppletDrawerUi()
+
+    def appletDrawerName(self):
+        return "Project Metadata"
 
     def menus( self ):
         return []

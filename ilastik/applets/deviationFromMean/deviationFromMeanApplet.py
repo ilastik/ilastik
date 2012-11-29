@@ -1,35 +1,30 @@
-from ilastik.applets.base.applet import Applet
+from ilastik.applets.base.applet import StandardApplet
 from opDeviationFromMean import OpDeviationFromMean
 #from deviationFromMeanSerializer import DeviationFromMeanSerializer
 
-
-from ilastik.applets.base.applet import SingleToMultiAppletAdapter
-class DeviationFromMeanApplet( SingleToMultiAppletAdapter ):
+class DeviationFromMeanApplet( StandardApplet ):
     """
-    This applet demonstrates how to use the LabelingGui base class, which serves as a reusable base class for other applet GUIs that need a labeling UI.  
+    This applet serves as an example multi-image-lane applet.
+    The GUI is not aware of multiple image lanes (it is written as if the applet were single-image only).
+    The top-level operator is multi-image.
     """
     def __init__( self, workflow, projectFileGroupName ):
+
+        # Multi-image operator
         self._topLevelOperator = OpDeviationFromMean(parent=workflow)
+        
+        # Base class
         super(DeviationFromMeanApplet, self).__init__( "Deviation From Mean", workflow )
         #self._serializableItems = [ DeviationFromMeanSerializer( self._topLevelOperator, projectFileGroupName ) ]
         self._serializableItems = []
             
     @property
     def topLevelOperator(self):
+        # Override from base class.
         return self._topLevelOperator
 
     @property
-    def operatorClass(self):
-        # This should never be called because we provided a custom top-level operator
-        assert False
-
-    @property
-    def broadcastingSlotNames(self):
-        # This should never be called because we provided a custom top-level operator
-        raise NotImplementedError
-        
-    @property
-    def singleImageGuiClass(self):
+    def singleLaneGuiClass(self):
         from deviationFromMeanGui import DeviationFromMeanGui
         return DeviationFromMeanGui
 
@@ -37,19 +32,4 @@ class DeviationFromMeanApplet( SingleToMultiAppletAdapter ):
     def dataSerializers(self):
         return self._serializableItems
 
-    def addLane(self, laneIndex):
-        """
-        Add an image lane to the top-level operator.
-        """
-        numLanes = len(self.topLevelOperator.Input)
-        assert numLanes == laneIndex, "Image lanes must be appended."        
-        self.topLevelOperator.Input.resize(numLanes+1)
-        self.topLevelOperator.Output.resize(numLanes+1)
-        
-    def removeLane(self, laneIndex, finalLength):
-        """
-        Remove the specified image lane from the top-level operator.
-        """
-        self.topLevelOperator.Input.removeSlot(laneIndex, finalLength)
-        self.topLevelOperator.Output.removeSlot(laneIndex, finalLength)
 

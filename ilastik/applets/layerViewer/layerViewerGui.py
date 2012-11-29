@@ -57,12 +57,12 @@ class LayerViewerGui(QMainWindow):
     def centralWidget( self ):
         return self
 
-    def appletDrawers(self):
-        return self.defaultAppletDrawers()
+    def appletDrawer(self):
+        return QWidget(self)
 
     @classmethod
-    def defaultAppletDrawers(cls):
-        return [('Viewer', QWidget())]
+    def appletDrawerName(cls):
+        return "Viewer"
 
     def menus( self ):
         return [self.menuView] # From the .ui file

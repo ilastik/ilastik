@@ -25,8 +25,12 @@ class ThresholdMaskingGui(LayerViewerGui):
     def defaultAppletDrawers(cls):
         return [('Threshold Mask Viewer', QWidget())]
 
-    def appletDrawers(self):
-        return [ ("Threshold Mask Viewer", self.getAppletDrawerUi() ) ]
+    def appletDrawer(self):
+        return self.getAppletDrawerUi()
+
+    @classmethod
+    def appletDrawerName(self):
+        return "Threshold Mask Viewer"
 
     # (Other methods already provided by our base class)
 

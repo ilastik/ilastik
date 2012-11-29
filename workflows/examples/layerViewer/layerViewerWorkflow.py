@@ -20,8 +20,8 @@ class LayerViewerWorkflow(Workflow):
         self._applets.append( self.viewerApplet )
 
     def connectLane(self, laneIndex):
-        opDataSelection = self.dataSelectionApplet.topLevelOperatorForLane(laneIndex)
-        opLayerViewer = self.viewerApplet.topLevelOperatorForLane(laneIndex)
+        opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opLayerViewer = self.viewerApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect top-level operators
         opLayerViewer.RawInput.connect( opDataSelection.Image )

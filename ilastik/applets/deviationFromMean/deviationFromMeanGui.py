@@ -14,12 +14,12 @@ class DeviationFromMeanGui(LayerViewerGui):
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
     
-    @classmethod
-    def defaultAppletDrawers(cls):
-        return [('Deviation From Mean', QWidget())]
+    def appletDrawer(self):
+        return self.getAppletDrawerUi()
 
-    def appletDrawers(self):
-        return [ ("Deviation From Mean", self.getAppletDrawerUi() ) ]
+    @classmethod
+    def appletDrawerName(self):
+        return "Deviation From Mean"
 
     # (Other methods already provided by our base class)
 

@@ -20,8 +20,8 @@ class LabelingWorkflow(Workflow):
         self._applets.append( self.labelingApplet )
 
     def connectLane(self, laneIndex):
-        opDataSelection = self.dataSelectionApplet.topLevelOperatorForLane(laneIndex)
-        opLabeling = self.labelingApplet.topLevelOperatorForLane(laneIndex)
+        opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opLabeling = self.labelingApplet.topLevelOperator.getLane(laneIndex)
         
         # Connect top-level operators
         opLabeling.InputImages.connect( opDataSelection.Image )

@@ -1,10 +1,7 @@
-from lazyflow.graph import OperatorWrapper
-from ilastik.applets.base.applet import Applet
+from ilastik.applets.base.applet import StandardApplet
 from opLayerViewer import OpLayerViewer
 
-
-from ilastik.applets.base.applet import SingleToMultiAppletAdapter
-class LayerViewerApplet( SingleToMultiAppletAdapter ):
+class LayerViewerApplet( StandardApplet ):
     """
     This applet can be used as a simple viewer of raw image data.  
     Its main purpose is to provide a simple example of how to use the LayerViewerGui, 
@@ -12,29 +9,21 @@ class LayerViewerApplet( SingleToMultiAppletAdapter ):
     """
     def __init__( self, workflow ):
         super(LayerViewerApplet, self).__init__("layer Viewer", workflow)
-
-#        self._topLevelOperator = OperatorWrapper( OpLayerViewer, parent=workflow, promotedSlotNames=set(['RawInput']) )
-#        self._topLevelOperator.name = "LayerViewer Top-Level Operator"
         self._serializableItems = []
 
     @property
-    def operatorClass(self):
+    def singleLaneOperatorClass(self):
         return OpLayerViewer
     
     @property
-    def singleImageGuiClass(self):
+    def singleLaneGuiClass(self):
         from layerViewerGui import LayerViewerGui
         return LayerViewerGui
 
     @property
-    def broadcastingSlotNames(self):
+    def broadcastingSlots(self):
         return []
     
     @property
     def dataSerializers(self):
         return self._serializableItems
-
-#    @property
-#    def topLevelOperator(self):
-#        return self._topLevelOperator
-#    
