@@ -122,7 +122,8 @@ class OpMultiLaneDataSelection( OperatorWrapper ):
         Remove an image lane.
         """
         numLanes = len(self.innerOperators)
-        self._removeInnerOperator(laneIndex, numLanes-1)
+        if numLanes > finalLength:
+            self._removeInnerOperator(laneIndex, numLanes-1)
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
