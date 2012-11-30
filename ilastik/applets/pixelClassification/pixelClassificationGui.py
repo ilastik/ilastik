@@ -34,15 +34,6 @@ class PixelClassificationGui(LabelingGui):
     def centralWidget( self ):
         return self
 
-    def appletDrawers(self):
-        # Get the labeling drawer from the base class
-        labelingDrawer = super(PixelClassificationGui, self).appletDrawers()[0][1]
-        return [ ("Training", labelingDrawer) ]
-
-    @classmethod
-    def defaultAppletDrawers(cls):
-        return [('Training', QWidget())]
-
     def reset(self):
         # Base class first
         super(PixelClassificationGui, self).reset()

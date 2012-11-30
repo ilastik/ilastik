@@ -52,10 +52,6 @@ class FeatureSelectionGui(LayerViewerGui):
     def appletDrawer(self):
         return self.drawer
 
-    @classmethod
-    def appletDrawerName(cls):
-        return 'Feature Selection'
-
     def viewerControlWidget(self):
         return self._viewerControlWidget
 

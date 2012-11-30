@@ -10,7 +10,7 @@ class LabelingApplet( StandardApplet ):
     def __init__( self, workflow, projectFileGroupName, blockDims=None ):
         # Provide a custom top-level operator before we init the base class.
         self.__topLevelOperator = OpLabeling(parent=workflow, blockDims=blockDims)
-        super(LabelingApplet, self).__init__( "Generic Labeling" )
+        super(LabelingApplet, self).__init__( "Labeling" )
         self._serializableItems = [ LabelingSerializer( self.__topLevelOperator, projectFileGroupName ) ]
         self._gui = None
             

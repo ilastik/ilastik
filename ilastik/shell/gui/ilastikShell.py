@@ -385,7 +385,7 @@ class IlastikShell( QMainWindow ):
             
             # Update all other applet drawer titles
             for applet_index, app in enumerate(self._applets):
-                updatedDrawerTitle = app.getMultiLaneGui().appletDrawerName()
+                updatedDrawerTitle = app.name
         
                 rootItem = self.appletBar.invisibleRootItem()
                 appletTitleItem = rootItem.child(applet_index)
@@ -444,7 +444,7 @@ class IlastikShell( QMainWindow ):
             self.viewerControlStack.setCurrentWidget(viewerControlWidget)
 
     def refreshAppletDrawer(self, applet_index, drawerIndex):
-        updatedDrawerTitle = self._applets[applet_index].getMultiLaneGui().appletDrawerName()
+        updatedDrawerTitle = self._applets[applet_index].name
         updatedDrawerWidget = self._applets[applet_index].getMultiLaneGui().appletDrawer()
 
         rootItem = self.appletBar.invisibleRootItem()
@@ -525,7 +525,7 @@ class IlastikShell( QMainWindow ):
         rootItem = self.appletBar.invisibleRootItem()
 
         # Add all of the applet bar's items to the toolbox widget
-        controlName = app.getMultiLaneGui().appletDrawerName()
+        controlName = app.name
         controlGuiWidget = app.getMultiLaneGui().appletDrawer()
         appletNameItem = QTreeWidgetItem( self.appletBar, QtCore.QStringList( controlName ) )
         appletNameItem.setFont( 0, QFont("Ubuntu", 14) )

@@ -17,10 +17,6 @@ class DeviationFromMeanGui(LayerViewerGui):
     def appletDrawer(self):
         return self.getAppletDrawerUi()
 
-    @classmethod
-    def appletDrawerName(self):
-        return "Deviation From Mean"
-
     # (Other methods already provided by our base class)
 
     ###########################################

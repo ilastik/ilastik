@@ -8,7 +8,7 @@ class LayerViewerApplet( StandardApplet ):
     which is intended to be used as a base class for most other applet GUIs.
     """
     def __init__( self, workflow ):
-        super(LayerViewerApplet, self).__init__("layer Viewer", workflow)
+        super(LayerViewerApplet, self).__init__("Viewer", workflow)
         self._serializableItems = []
 
     @property

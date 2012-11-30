@@ -13,7 +13,7 @@ class Applet( object ):
         """
         Constructor.  Subclasses must call this base implementation in their own __init__ methods.  If they fail to do so, the shell raises an exception.
             
-            *name*: The applet's name, used for debugging purposes. 
+            :param name: The applet's name, which will appear as the applet drawer title. 
         """
         self.name = name
 
@@ -201,12 +201,6 @@ class SingleToMultiGuiAdapter( object ):
         if self._imageIndex not in self._guis:
             self._guis[self._imageIndex] = self.singleImageGuiFactory( self._imageIndex )
         return self._guis[self._imageIndex]
-
-    def appletDrawerName(self):
-        if self.currentGui() is None:
-            return ""
-        else:
-            return self.currentGui().appletDrawerName()
 
     def appletDrawer(self):
         if self.currentGui() is not None:

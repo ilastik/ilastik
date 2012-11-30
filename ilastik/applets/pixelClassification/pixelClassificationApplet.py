@@ -8,7 +8,7 @@ class PixelClassificationApplet( StandardApplet ):
     """
     def __init__( self, workflow, projectFileGroupName ):
         self._topLevelOperator = OpPixelClassification( parent=workflow )
-        super(PixelClassificationApplet, self).__init__( "Pixel Classification" )
+        super(PixelClassificationApplet, self).__init__( "Training" )
 
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.

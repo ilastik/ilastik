@@ -49,10 +49,6 @@ class LabelingGui(LayerViewerGui):
     def appletDrawer(self):
         return self._labelControlUi
 
-    @classmethod
-    def appletDrawerName(cls):
-        return 'Labeling'
-
     def reset(self):
         super(LabelingGui, self).reset()
 
