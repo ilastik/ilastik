@@ -14,7 +14,7 @@ class BatchIoApplet( Applet ):
     def __init__( self, workflow, title ):
         super(BatchIoApplet, self).__init__(title)
 
-        self._topLevelOperator = OperatorWrapper( OpBatchIo, parent=workflow, promotedSlotNames=set(['DatasetPath', 'ImageToExport']) )
+        self._topLevelOperator = OperatorWrapper( OpBatchIo, parent=workflow, promotedSlotNames=set(['DatasetPath', 'ImageToExport', 'OutputFileNameBase']) )
         self._topLevelOperator.name = "BatchOutput Top-Level Operator"
                 
         # Ensure the operator has no length yet.
