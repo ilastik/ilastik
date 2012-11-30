@@ -87,8 +87,6 @@ class ProgressDisplayManager(QObject):
         # (Progress will always come from either the serializer or the applet itself; not both at once.)
         for serializer in app.dataSerializers:
             serializer.progressSignal.connect( bind( self.handleAppletProgress, index ) )
-        
-        
 
     def handleAppletProgress(self, index, percentage, cancelled=False):
         # Forward the signal to the handler via our qt signal, which provides a queued connection.
@@ -136,9 +134,8 @@ class IlastikShell( QMainWindow ):
         self.thunkEventHandler = ThunkEventHandler(self)
         self._sideSplitterSizePolicy = sideSplitterSizePolicy
 
-        import inspect
-        ilastikShellFilePath = os.path.dirname(inspect.getfile(inspect.currentframe()))
-        uic.loadUi( ilastikShellFilePath + "/ui/ilastikShell.ui", self )
+        localDir = os.path.split(__file__)[0]
+        uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
         self.appletBarMapping = {}
 
         self.setAttribute(Qt.WA_AlwaysShowToolTips)
