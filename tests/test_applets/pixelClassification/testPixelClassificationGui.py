@@ -58,10 +58,10 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             projFilePath = self.PROJECT_FILE
         
             shell = self.shell
-            workflow = self.workflow
             
             # New project
             shell.createAndLoadNewProject(projFilePath)
+            workflow = shell.projectManager.workflow
         
             # Add a file
             from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
@@ -95,7 +95,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 #        Check the state of various shell and gui members when no project is currently loaded.
 #        """
 #        def impl():
-#            pixClassApplet = self.workflow.pcApplet
+#            workflow = self.shell.projectManager.workflow
+#            pixClassApplet = workflow.pcApplet
 #            gui = pixClassApplet.getMultiLaneGui()
 #
 #            assert gui.currentGui() is None
@@ -126,7 +127,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         Add labels and draw them in the volume editor.
         """
         def impl():
-            pixClassApplet = self.workflow.pcApplet
+            workflow = self.shell.projectManager.workflow
+            pixClassApplet = workflow.pcApplet
             gui = pixClassApplet.getMultiLaneGui()
             opPix = pixClassApplet.topLevelOperator
 
@@ -192,7 +194,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         Delete a label from the label list.
         """
         def impl():
-            pixClassApplet = self.workflow.pcApplet
+            workflow = self.shell.projectManager.workflow
+            pixClassApplet = workflow.pcApplet
             gui = pixClassApplet.getMultiLaneGui()
             opPix = pixClassApplet.topLevelOperator
 
@@ -256,7 +259,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         Erase a few of the previously drawn labels from the volume editor using the eraser.
         """
         def impl():
-            pixClassApplet = self.workflow.pcApplet
+            workflow = self.shell.projectManager.workflow
+            pixClassApplet = workflow.pcApplet
             gui = pixClassApplet.getMultiLaneGui()
 
             # Select the labeling drawer
@@ -302,7 +306,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         Erase all of the labels of a particular color using the eraser.
         """
         def impl():
-            pixClassApplet = self.workflow.pcApplet
+            workflow = self.shell.projectManager.workflow
+            pixClassApplet = workflow.pcApplet
             gui = pixClassApplet.getMultiLaneGui()
             opPix = pixClassApplet.topLevelOperator
 
@@ -367,7 +372,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         Click the "interactive mode" checkbox and see if any errors occur.
         """
         def impl():
-            pixClassApplet = self.workflow.pcApplet
+            workflow = self.shell.projectManager.workflow
+            pixClassApplet = workflow.pcApplet
             gui = pixClassApplet.getMultiLaneGui()
 
             # Clear all the labels

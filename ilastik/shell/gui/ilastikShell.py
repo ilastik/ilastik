@@ -12,7 +12,7 @@ import h5py
 import traceback
 import os
 from functools import partial
-
+import weakref
 
 from volumina.utility import PreferencesManager, ShortcutManagerDlg
 from ilastik.utility import bind
@@ -67,7 +67,7 @@ class ProgressDisplayManager(QObject):
     #  requiring the applet interface to be dependent on qt.
     dispatchSignal = pyqtSignal(int, int, "bool")
     
-    def __init__(self, statusBar):
+    def __init__(self, statusBar, workflow):
         """
         """
         super(ProgressDisplayManager, self).__init__( parent=statusBar.parent() )
@@ -77,8 +77,18 @@ class ProgressDisplayManager(QObject):
 
         # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread        
         self.dispatchSignal.connect(self.handleAppletProgressImpl)
-        
-    def addApplet(self, index, app):
+
+        # Add all applets from the workflow
+        for index, app in enumerate(workflow.applets):
+            self._addApplet(index, app)
+    
+    def __del__(self):
+        # Disconnect everything
+        self.dispatchSignal.disconnect()
+        if self.progressBar is not None:
+            self.statusBar.removeWidget( self.progressBar )
+    
+    def _addApplet(self, index, app):
         # Subscribe to progress updates from this applet,
         # and include the applet index in the signal parameters.
         app.progressSignal.connect( bind(self.handleAppletProgress, index) )
@@ -134,6 +144,8 @@ class IlastikShell( QMainWindow ):
         self.thunkEventHandler = ThunkEventHandler(self)
         self._sideSplitterSizePolicy = sideSplitterSizePolicy
 
+        self._workflowClass = workflowClass
+
         localDir = os.path.split(__file__)[0]
         uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
 
@@ -166,23 +178,18 @@ class IlastikShell( QMainWindow ):
         self._disableCounts = []    # Controls for each applet can be disabled by his peers.
                                     # No applet can be enabled unless his disableCount == 0
 
-        self.projectManager = ProjectManager( workflowClass )
-        self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
-
         self._refreshDrawerRecursionGuard = False
-        
-        # Add all the applets from the workflow
-        for index, app in enumerate(self.projectManager.workflow.applets):
-            self.addApplet(index, app)
 
-
-        self.setImageNameListSlot( self.projectManager.workflow.imageNameListSlot )
-
+        self.projectManager = None
+        self.projectDisplayManager = None
         self.updateShellProjectDisplay()
 
     @property
     def _applets(self):
-        return self.projectManager.workflow.applets
+        if self.projectManager is None:
+            return []
+        else:
+            return self.projectManager.workflow.applets
 
     def _createProjectMenu(self):
         # Create a menu for "General" (non-applet) actions
@@ -298,7 +305,7 @@ class IlastikShell( QMainWindow ):
         Show the window, and enable/disable controls depending on whether or not a project file present.
         """
         super(IlastikShell, self).show()
-        self.enableWorkflow = (self.projectManager.currentProjectFile is not None)
+        self.enableWorkflow = (self.projectManager is not None)
         self.updateAppletControlStates()
         self.updateShellProjectDisplay()
         if self._sideSplitterSizePolicy == SideSplitterSizePolicy.Manual:
@@ -311,20 +318,19 @@ class IlastikShell( QMainWindow ):
         Update the title bar and allowable shell actions based on the state of the currently loaded project.
         """
         windowTitle = "ilastik - "
-        projectPath = self.projectManager.currentProjectPath
-        if projectPath is None:
+        if self.projectManager is None:
             windowTitle += "No Project Loaded"
         else:
-            windowTitle += projectPath
+            windowTitle += self.projectManager.currentProjectPath
 
-        readOnly = self.projectManager.currentProjectIsReadOnly
-        if readOnly:
-            windowTitle += " [Read Only]"
+            readOnly = self.projectManager.currentProjectIsReadOnly
+            if readOnly:
+                windowTitle += " [Read Only]"
 
         self.setWindowTitle(windowTitle)        
 
         # Enable/Disable menu items
-        projectIsOpen = self.projectManager.currentProjectFile is not None
+        projectIsOpen = self.projectManager is not None
         self._shellActions.saveProjectAction.setEnabled(projectIsOpen and not readOnly) # Can't save a read-only project
         self._shellActions.saveProjectAsAction.setEnabled(projectIsOpen)
         self._shellActions.saveProjectSnapshotAction.setEnabled(projectIsOpen)
@@ -332,6 +338,7 @@ class IlastikShell( QMainWindow ):
     def setImageNameListSlot(self, multiSlot):
         assert multiSlot.level == 1
         self.imageNamesSlot = multiSlot
+        self.cleanupFunctions = []
         
         def insertImageName( index, slot ):
             self.imageSelectionCombo.setItemText( index, slot.value )
@@ -345,13 +352,18 @@ class IlastikShell( QMainWindow ):
             self.populatingImageSelectionCombo = False
             multislot[index].notifyDirty( bind( insertImageName, index) )
 
-        multiSlot.notifyInserted( bind(handleImageNameSlotInsertion) )
+        insertedCallback = bind(handleImageNameSlotInsertion)
+        self.cleanupFunctions.append( partial( multiSlot.unregisterInserted, insertedCallback ) )
+        multiSlot.notifyInserted( insertedCallback )
 
         def handleImageNameSlotRemoval(multislot, index):
             # Simply remove the combo entry, which causes the currentIndexChanged signal to fire if necessary.
             self.imageSelectionCombo.removeItem(index)
             if len(multislot) == 0:
                 self.changeCurrentInputImageIndex(-1)
+
+        removeCallback = bind(handleImageNameSlotRemoval)
+        self.cleanupFunctions.append( partial( multiSlot.unregisterRemove, removeCallback ) )
         multiSlot.notifyRemove( bind(handleImageNameSlotRemoval) )
 
     def changeCurrentInputImageIndex(self, newImageIndex):
@@ -534,13 +546,25 @@ class IlastikShell( QMainWindow ):
         self._disableCounts.append(0)
         self._controlCmds.append( [] )
 
-        # Set up handling of progress updates from this applet
-        self.progressDisplayManager.addApplet(applet_index, app)
-        
         # Set up handling of shell requests from this applet
         app.shellRequestSignal.connect( partial(self.handleShellRequest, applet_index) )
 
         return applet_index
+
+    def removeAllAppletWidgets(self):
+        for app in self._applets:
+            app.shellRequestSignal.disconnectAll()
+            app.guiControlSignal.disconnectAll()
+            app.progressSignal.disconnectAll()
+        
+        self._clearStackedWidget(self.appletStack)
+        self._clearStackedWidget(self.viewerControlStack)
+        self.appletBar.clear()
+
+    def _clearStackedWidget(self, stackedWidget):
+        for i in reversed( range( stackedWidget.count() ) ):
+            lastWidget = stackedWidget.widget(i)
+            stackedWidget.removeWidget(lastWidget)
 
     def handleAppletGuiControlSignal(self, applet_index, command=ControlCommand.DisableAll):
         """
@@ -583,37 +607,6 @@ class IlastikShell( QMainWindow ):
     def __getitem__( self, index ):
         return self._applets[index]
     
-    def ensureNoCurrentProject(self, assertClean=False):
-        """
-        Close the current project.  If it's dirty, we ask the user for confirmation.
-        
-        The assertClean parameter is for tests.  Setting it to True will raise an assertion if the project was dirty.
-        """
-        closeProject = True
-        if self.projectManager.isProjectDataDirty():
-            # Testing assertion
-            assert not assertClean, "Expected a clean project but found it to be dirty!"
-
-            message = "Your current project is about to be closed, but it has unsaved changes which will be lost.\n"
-            message += "Are you sure you want to proceed?"
-            buttons = QMessageBox.Yes | QMessageBox.Cancel
-            response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
-            closeProject = (response == QMessageBox.Yes)
-            
-
-        if closeProject:
-            self.closeCurrentProject()
-
-        return closeProject
-
-    def closeCurrentProject(self):
-        for applet in self._applets:
-            applet.getMultiLaneGui().reset()
-        self.projectManager.closeCurrentProject()
-        self.enableWorkflow = False
-        self.updateAppletControlStates()
-        self.updateShellProjectDisplay()
-    
     def onNewProjectActionTriggered(self):
         logger.debug("New Project action triggered")
         
@@ -627,7 +620,7 @@ class IlastikShell( QMainWindow ):
             self.createAndLoadNewProject(newProjectFilePath)
 
     def createAndLoadNewProject(self, newProjectFilePath):
-        newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
+        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
         self.loadProject(newProjectFile, newProjectFilePath, False)
     
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
@@ -696,14 +689,8 @@ class IlastikShell( QMainWindow ):
             self.importProject( importedFilePath, newProjectFilePath )
 
     def importProject(self, originalPath, newProjectFilePath):
-        newProjectFile = self.projectManager.createBlankProjectFile(newProjectFilePath)
-        self.projectManager.importProject(originalPath, newProjectFile, newProjectFilePath)
-
-        self.updateShellProjectDisplay()
-
-        # Enable all the applet controls
-        self.enableWorkflow = True
-        self.updateAppletControlStates()
+        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
+        self.importProject(originalPath, newProjectFile, newProjectFilePath, originalPath)
         
     def getProjectPathToOpen(self, defaultDirectory):
         """
@@ -740,7 +727,7 @@ class IlastikShell( QMainWindow ):
     
     def openProjectFile(self, projectFilePath):
         try:
-            hdf5File, readOnly = self.projectManager.openProjectFile(projectFilePath)
+            hdf5File, readOnly = ProjectManager.openProjectFile(projectFilePath)
         except ProjectManager.ProjectVersionError,e:
             QMessageBox.warning(self, "Old Project", "Could not load old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
         except ProjectManager.FileMissingError:
@@ -751,21 +738,77 @@ class IlastikShell( QMainWindow ):
         else:
             self.loadProject(hdf5File, projectFilePath, readOnly)
     
-    def loadProject(self, hdf5File, projectFilePath, readOnly):
+    def loadProject(self, hdf5File, projectFilePath, readOnly, importFromPath=None):
         """
         Load the data from the given hdf5File (which should already be open).
+        Populate the shell with widgets from all the applets in the new workflow.
         """
         try:
-            self.projectManager.loadProject(hdf5File, projectFilePath, readOnly)
+            assert self.projectManager is None
+            self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, importFromPath )
         except Exception, e:
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
         else:
-            self.updateShellProjectDisplay()
+            self.progressDisplayManager = ProgressDisplayManager(self.statusBar, self.projectManager.workflow)    
+
+            # Add all the applets from the workflow
+            for index, app in enumerate(self.projectManager.workflow.applets):
+                self.addApplet(index, app)
     
+            self.setImageNameListSlot( self.projectManager.workflow.imageNameListSlot )
+            self.updateShellProjectDisplay()
+
             # Enable all the applet controls
             self.enableWorkflow = True
             self.updateAppletControlStates()
-    
+
+    def closeCurrentProject(self):
+        """
+        Undo everything that was done in loadProject()
+        """
+        if self.projectManager is not None:
+            self.removeAllAppletWidgets()
+            for f in self.cleanupFunctions:
+                f()
+
+            old = weakref.ref(self.projectManager)
+            self.projectManager = None # Destroy project manager
+            # Ensure that it was really destroyed
+            assert old() is None, "There shouldn't be extraneous references to the project manager!"
+
+        if self.projectDisplayManager is not None: 
+            old = weakref.ref(self.projectDisplayManager)
+            self.projectDisplayManager = None # Destroy display manager
+            # Ensure that it was really destroyed
+            assert old() is None, "There shouldn't be extraneous references to the project display manager!"
+        
+        self.enableWorkflow = False
+        self.updateAppletControlStates()
+        self.updateShellProjectDisplay()
+        
+    def ensureNoCurrentProject(self, assertClean=False):
+        """
+        Close the current project.  If it's dirty, we ask the user for confirmation.
+        
+        The ``assertClean`` parameter is for tests.  Setting it to True will raise an assertion if the project was dirty.
+        """
+        closeProject = True
+        if self.projectManager and self.projectManager.isProjectDataDirty():
+            # Testing assertion
+            assert not assertClean, "Expected a clean project but found it to be dirty!"
+
+            message = "Your current project is about to be closed, but it has unsaved changes which will be lost.\n"
+            message += "Are you sure you want to proceed?"
+            buttons = QMessageBox.Yes | QMessageBox.Cancel
+            response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
+            closeProject = (response == QMessageBox.Yes)
+            
+
+        if closeProject:
+            self.closeCurrentProject()
+
+        return closeProject
+
     def onSaveProjectActionTriggered(self):
         logger.debug("Save Project action triggered")
         def save():
@@ -847,7 +890,7 @@ class IlastikShell( QMainWindow ):
             self.closeAndQuit(quitApp)
         
     def confirmQuit(self):
-        if self.projectManager.isProjectDataDirty():
+        if self.projectManager and self.projectManager.isProjectDataDirty():
             message = "Your project has unsaved data.  Are you sure you want to discard your changes and quit?"
             buttons = QMessageBox.Discard | QMessageBox.Cancel
             response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
@@ -856,7 +899,7 @@ class IlastikShell( QMainWindow ):
         return True
 
     def closeAndQuit(self, quitApp=True):
-        self.projectManager.closeCurrentProject()
+        self.projectManager = None # Destroy project manager
 
         # Stop the thread that checks for log config changes.
         ilastik.ilastik_logging.stopUpdates()

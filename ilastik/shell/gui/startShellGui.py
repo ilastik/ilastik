@@ -58,4 +58,4 @@ def launchShell(workflowClass, testFunc = None):
 
     # Run a test (if given)
     if testFunc:
-        QTimer.singleShot(0, functools.partial(testFunc, shell, shell.projectManager.workflow) )
+        QTimer.singleShot(0, functools.partial(testFunc, shell) )

@@ -35,6 +35,7 @@ class ProjectManager(object):
     def createBlankProjectFile(cls, projectFilePath):
         """
         Create a new ilp file at the given path and initialize it with a project version.
+        If a file already existed at that location, it will be overwritten with a blank project.
         """
         # Create the blank project file
         h5File = h5py.File(projectFilePath, "w")
@@ -44,6 +45,11 @@ class ProjectManager(object):
 
     @classmethod
     def openProjectFile(cls, projectFilePath):
+        """
+        Attempt to open the given path to an existing project file.
+        If it doesn't exist, raise a ``ProjectManager.FileMissingError``.
+        If its version is outdated, raise a ``ProjectManager.ProjectVersionError.``
+        """
         logger.info("Opening Project: " + projectFilePath)
 
         if not os.path.exists(projectFilePath):
@@ -64,60 +70,57 @@ class ProjectManager(object):
 
         # FIXME: version comparison
         if not isVersionCompatible(projectVersion):
-            # Must use importProject() for old project files.
+            # Must use _importProject() for old project files.
             raise ProjectManager.ProjectVersionError(projectVersion, ilastik.__version__)
         
         return (hdf5File, readOnly)
 
     #########################
-    ## Class methods
+    ## Public methods
     #########################    
 
-    def __init__(self, workflowClass):
+    def __init__(self, workflowClass, hdf5File, projectFilePath, readOnly, importFromPath=None):
+        """
+        Constructor.
+        
+        :param workflowClass: A subclass of ilastik.workflow.Workflow (the class, not an instance).
+        :param hdf5File: An already-open h5py.File, usually created via ``ProjectManager.createBlankProjectFile``
+        :param projectFilePath: The path to the file represented in the ``hdf5File`` parameter.
+        :param readOnly: Set to True if the project file should NOT be modified.
+        :param importFromPath: If the project should be overwritten using data imported from a different project, set this parameter to the other project's filepath.
+        """
+        # Instantiate the workflow.
+        self.workflow = workflowClass()
+
         self.currentProjectFile = None
         self.currentProjectPath = None
         self.currentProjectIsReadOnly = False
-        
-        self._workflowClass = workflowClass
-        self.workflow = workflowClass()
 
-    @property
-    def _applets(self):
-        return self.workflow.applets
+        if importFromPath is None:
+            # Normal load        
+            self._loadProject(hdf5File, projectFilePath, readOnly)
+        else:
+            assert not readOnly, "Can't import into a read-only file."
+            self._importProject(importFromPath, hdf5File, projectFilePath)
 
-    def loadProject(self, hdf5File, projectFilePath, readOnly):
+    def __del__(self):
+        self._closeCurrentProject()
+
+    def isProjectDataDirty(self):
         """
-        Load the data from the given hdf5File (which should already be open).
+        Check all serializable items in our workflow if they have any unsaved data.
         """
-        self.closeCurrentProject()
+        if self.currentProjectFile is None:
+            return False
 
-        assert self.currentProjectFile is None
-
-        # Minor GUI nicety: Pre-activate the progress signals for all applets so
-        #  the progress manager treats these tasks as a group instead of several sequential jobs.
-        for aplt in self._applets:
-            aplt.progressSignal.emit(0)
-
-        # Save this as the current project
-        self.currentProjectFile = hdf5File
-        self.currentProjectPath = projectFilePath
-        self.currentProjectIsReadOnly = readOnly
-        try:
-            # Applet serializable items are given the whole file (root group)
-            for aplt in self._applets:
-                for item in aplt.dataSerializers:
-                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
-        except Exception, e:
-            logger.error("Project Open Action failed due to the following exception:")
-            traceback.print_exc()
-            logger.error("Aborting Project Open Action")
-            self.closeCurrentProject()
-
-            raise e
-        finally:
-            for aplt in self._applets:
-                aplt.progressSignal.emit(100)
+        unSavedDataExists = False
+        for applet in self._applets:
+            for item in applet.dataSerializers:
+                if unSavedDataExists:
+                    break
+                else:
+                    unSavedDataExists = item.isDirty()
+        return unSavedDataExists
 
     def saveProject(self):
         logger.debug("Save Project triggered")
@@ -204,7 +207,7 @@ class ProjectManager(object):
         # If our project is read-only, we can't be efficient.
         # We have to take a snapshot, then close our current project and open the snapshot
         if self.currentProjectIsReadOnly:
-            self.takeSnapshotAndLoadIt(newPath)
+            self._takeSnapshotAndLoadIt(newPath)
             return
 
         oldPath = self.currentProjectPath
@@ -230,16 +233,58 @@ class ProjectManager(object):
         # Save the current project state
         self.saveProject()
         
-    def takeSnapshotAndLoadIt(self, newPath):
+    #########################
+    ## Private methods
+    #########################    
+
+    @property
+    def _applets(self):
+        return self.workflow.applets
+
+    def _loadProject(self, hdf5File, projectFilePath, readOnly):
+        """
+        Load the data from the given hdf5File (which should already be open).
+        """
+        self._closeCurrentProject()
+
+        assert self.currentProjectFile is None
+
+        # Minor GUI nicety: Pre-activate the progress signals for all applets so
+        #  the progress manager treats these tasks as a group instead of several sequential jobs.
+        for aplt in self._applets:
+            aplt.progressSignal.emit(0)
+
+        # Save this as the current project
+        self.currentProjectFile = hdf5File
+        self.currentProjectPath = projectFilePath
+        self.currentProjectIsReadOnly = readOnly
+        try:
+            # Applet serializable items are given the whole file (root group)
+            for aplt in self._applets:
+                for item in aplt.dataSerializers:
+                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
+                    item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
+        except Exception, e:
+            logger.error("Project could not be loaded due to the following exception:")
+            traceback.print_exc()
+            logger.error("Aborting Project Open Action")
+            self._closeCurrentProject()
+
+            raise e
+        finally:
+            for aplt in self._applets:
+                aplt.progressSignal.emit(100)
+
+    def _takeSnapshotAndLoadIt(self, newPath):
         """
         This is effectively a "save as", but is slower because the operators are totally re-loaded.
         All caches, etc. will be lost.
         """
         self.saveProjectSnapshot( newPath )
         hdf5File, readOnly = ProjectManager.openProjectFile( newPath )
-        self.loadProject(hdf5File, newPath, readOnly)
+        self._loadProject(hdf5File, newPath, readOnly)
 
-    def importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
+    def _importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
         """
         Load the data from a project and save it to a different project file.
         
@@ -256,7 +301,7 @@ class ProjectManager(object):
             logger.error("Error opening file: " + importedFilePath)
             raise
 
-        self.loadProject(importedFile, importedFilePath, True)
+        self._loadProject(importedFile, importedFilePath, True)
         
         # Export the current workflow state to the new file.
         # (Somewhat hacky: We temporarily swap the new file object as our current one during the save.)
@@ -268,20 +313,20 @@ class ProjectManager(object):
         self.currentProjectFile = origProjectFile
 
         # Close the original project
-        self.closeCurrentProject()
+        self._closeCurrentProject()
 
         # Reload the workflow from the new file
-        self.loadProject(newProjectFile, newProjectFilePath, False)
+        self._loadProject(newProjectFile, newProjectFilePath, False)
 
-    def closeCurrentProject(self):
-        self.unloadAllApplets()
+    def _closeCurrentProject(self):
+        self._unloadAllApplets()
         if self.currentProjectFile is not None:
             self.currentProjectFile.close()
             self.currentProjectFile = None
             self.currentProjectPath = None
             self.currentProjectIsReadOnly = False
 
-    def unloadAllApplets(self):
+    def _unloadAllApplets(self):
         """
         Unload all applets into a blank state.
         """
@@ -289,19 +334,3 @@ class ProjectManager(object):
             # Unload the project data
             for item in applet.dataSerializers:
                 item.unload()
-
-    def isProjectDataDirty(self):
-        """
-        Check all serializable items in our workflow if they have any unsaved data.
-        """
-        if self.currentProjectFile is None:
-            return False
-
-        unSavedDataExists = False
-        for applet in self._applets:
-            for item in applet.dataSerializers:
-                if unSavedDataExists:
-                    break
-                else:
-                    unSavedDataExists = item.isDirty()
-        return unSavedDataExists

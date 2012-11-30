@@ -16,3 +16,7 @@ class SimpleSignal(object):
 
     def __repr__(self):
         return "SimpleSignal"
+
+    def disconnectAll(self):
+        self.subscribers = []
+            
