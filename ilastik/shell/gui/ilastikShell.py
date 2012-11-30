@@ -130,19 +130,15 @@ class IlastikShell( QMainWindow ):
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
 
-    def __init__( self, workflow, parent = None, flags = QtCore.Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
+    def __init__( self, workflowClass, parent = None, flags = QtCore.Qt.WindowFlags(0), sideSplitterSizePolicy=SideSplitterSizePolicy.Manual ):
         QMainWindow.__init__(self, parent = parent, flags = flags )
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
-
         self._sideSplitterSizePolicy = sideSplitterSizePolicy
 
-        self.projectManager = ProjectManager()
-        
-        import inspect, os
+        import inspect
         ilastikShellFilePath = os.path.dirname(inspect.getfile(inspect.currentframe()))
         uic.loadUi( ilastikShellFilePath + "/ui/ilastikShell.ui", self )
-        self._applets = []
         self.appletBarMapping = {}
 
         self.setAttribute(Qt.WA_AlwaysShowToolTips)
@@ -155,8 +151,6 @@ class IlastikShell( QMainWindow ):
         self._settingsMenu = self._createSettingsMenu()
         self.menuBar().addMenu( self._projectMenu )
         self.menuBar().addMenu( self._settingsMenu )
-
-        self.updateShellProjectDisplay()
         
         self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
 
@@ -178,15 +172,22 @@ class IlastikShell( QMainWindow ):
         self._disableCounts = []    # Controls for each applet can be disabled by his peers.
                                     # No applet can be enabled unless his disableCount == 0
 
+        self.projectManager = ProjectManager( workflowClass )
+        
         # Add all the applets from the workflow
-        for app in workflow.applets:
-            self.addApplet(app)
-        self.workflow = workflow
+        for index, app in enumerate(self.projectManager.workflow.applets):
+            self.addApplet(index, app)
 
         self._refreshDrawerRecursionGuard = False
 
-        self.setImageNameListSlot( workflow.imageNameListSlot )
-        
+        self.setImageNameListSlot( self.projectManager.workflow.imageNameListSlot )
+
+        self.updateShellProjectDisplay()
+
+    @property
+    def _applets(self):
+        return self.projectManager.workflow.applets
+
     def _createProjectMenu(self):
         # Create a menu for "General" (non-applet) actions
         menu = QMenu("&Project", self)
@@ -278,8 +279,8 @@ class IlastikShell( QMainWindow ):
         self.exportOperatorDiagram(op, detail)
         
     def exportWorkflowDiagram(self, detail):
-        assert isinstance(self.workflow, Operator), "Workflow must be an operator if you want to export it!"
-        self.exportOperatorDiagram(self.workflow, detail)
+        assert isinstance(self.projectManager.workflow, Operator), "Workflow must be an operator if you want to export it!"
+        self.exportOperatorDiagram(self.projectManager.workflow, detail)
     
     def exportOperatorDiagram(self, op, detail):
         recentPath = PreferencesManager().get( 'shell', 'recent debug diagram' )
@@ -508,15 +509,12 @@ class IlastikShell( QMainWindow ):
         else:
             self.appletBar.setCurrentIndex( modelIndex.parent() )
 
-    def addApplet( self, app ):
+    def addApplet( self, applet_index, app ):
         assert isinstance( app, Applet ), "Applets must inherit from Applet base class."
         assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
 
         #assert issubclass( type(app.getMultiLaneGui()), AppletGuiInterface ), "Applet GUIs must conform to the Applet GUI interface."
-        
-        self._applets.append(app)
-        applet_index = len(self._applets) - 1
-        
+                
         # Add placeholder widget, since the applet's central widget may not exist yet.
         self.appletStack.addWidget( QWidget(parent=self) )
         
@@ -555,8 +553,6 @@ class IlastikShell( QMainWindow ):
         # Set up handling of shell requests from this applet
         app.shellRequestSignal.connect( partial(self.handleShellRequest, applet_index) )
 
-        self.projectManager.addApplet(app)
-                
         return applet_index
 
     def handleAppletGuiControlSignal(self, applet_index, command=ControlCommand.DisableAll):

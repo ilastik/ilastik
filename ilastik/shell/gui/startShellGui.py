@@ -47,11 +47,8 @@ def launchShell(workflowClass, testFunc = None):
     splashScreen = QSplashScreen(splashImage)
     splashScreen.show()
     
-    # Create workflow
-    workflow = workflowClass()
-    
     # Create the shell and populate it
-    shell = IlastikShell(workflow=workflow, sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
+    shell = IlastikShell(workflowClass=workflowClass, sideSplitterSizePolicy=SideSplitterSizePolicy.Manual)
     
     # Start the shell GUI.
     shell.show()
@@ -61,4 +58,4 @@ def launchShell(workflowClass, testFunc = None):
 
     # Run a test (if given)
     if testFunc:
-        QTimer.singleShot(0, functools.partial(testFunc, shell, workflow) )
+        QTimer.singleShot(0, functools.partial(testFunc, shell, shell.projectManager.workflow) )

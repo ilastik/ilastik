@@ -23,14 +23,17 @@ class ProjectManager(object):
     class SaveError(RuntimeError):
         pass
     
-    def __init__(self):
+    def __init__(self, workflowClass):
         self.currentProjectFile = None
         self.currentProjectPath = None
         self.currentProjectIsReadOnly = False
-        self._applets = []
+        
+        self._workflowClass = workflowClass
+        self.workflow = workflowClass()
 
-    def addApplet(self, app):
-        self._applets.append(app)
+    @property
+    def _applets(self):
+        return self.workflow.applets
 
     def createBlankProjectFile(self, projectFilePath):
         """
