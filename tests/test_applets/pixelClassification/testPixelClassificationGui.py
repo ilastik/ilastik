@@ -84,35 +84,35 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             opFeatures.SelectionMatrix.setValue(selections)
         
             # Save and close
-            shell.projectManager.saveProject()
-            shell.ensureNoCurrentProject(assertClean=True)
+#            shell.projectManager.saveProject()
+#            shell.ensureNoCurrentProject(assertClean=True)
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_2_ClosedState(self):
-        """
-        Check the state of various shell and gui members when no project is currently loaded.
-        """
-        def impl():
-            pixClassApplet = self.workflow.pcApplet
-            gui = pixClassApplet.getMultiLaneGui()
-
-            assert gui.currentGui() is None
-#            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
-#            assert gui.currentGui().labelingDrawerUi.labelListModel.rowCount() == 0
-            assert self.shell.projectManager.currentProjectFile is None
-
-        # Run this test from within the shell event loop
-        self.exec_in_shell(impl)
-
-    def test_3_OpenProject(self):
-        def impl():
-            self.shell.openProjectFile(self.PROJECT_FILE)
-            assert self.shell.projectManager.currentProjectFile is not None
-
-        # Run this test from within the shell event loop
-        self.exec_in_shell(impl)
+#    def test_2_ClosedState(self):
+#        """
+#        Check the state of various shell and gui members when no project is currently loaded.
+#        """
+#        def impl():
+#            pixClassApplet = self.workflow.pcApplet
+#            gui = pixClassApplet.getMultiLaneGui()
+#
+#            assert gui.currentGui() is None
+##            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+##            assert gui.currentGui().labelingDrawerUi.labelListModel.rowCount() == 0
+#            assert self.shell.projectManager.currentProjectFile is None
+#
+#        # Run this test from within the shell event loop
+#        self.exec_in_shell(impl)
+#
+#    def test_3_OpenProject(self):
+#        def impl():
+#            self.shell.openProjectFile(self.PROJECT_FILE)
+#            assert self.shell.projectManager.currentProjectFile is not None
+#
+#        # Run this test from within the shell event loop
+#        self.exec_in_shell(impl)
     
     # These points are relative to the CENTER of the view
     LABEL_START = (-20,-20)
