@@ -136,7 +136,6 @@ class IlastikShell( QMainWindow ):
 
         localDir = os.path.split(__file__)[0]
         uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
-        self.appletBarMapping = {}
 
         self.setAttribute(Qt.WA_AlwaysShowToolTips)
         
@@ -408,18 +407,15 @@ class IlastikShell( QMainWindow ):
             drawerModelIndex = self.getModelIndexFromDrawerIndex(drawerIndex)
             self.appletBar.expand( drawerModelIndex )
             
-            if len(self.appletBarMapping) != 0:
-                # Determine which applet this drawer belongs to
-                assert drawerIndex in self.appletBarMapping
-                applet_index = self.appletBarMapping[drawerIndex]
-    
-                # Select the appropriate central widget, menu widget, and viewer control widget for this applet
-                self.showCentralWidget(applet_index)
-                self.showViewerControlWidget(applet_index)
-                self.showMenus(applet_index)
-                self.refreshAppletDrawer( applet_index, drawerIndex )
-                
-                self.autoSizeSideSplitter( self._sideSplitterSizePolicy )
+            applet_index = drawerIndex
+
+            # Select the appropriate central widget, menu widget, and viewer control widget for this applet
+            self.showCentralWidget(applet_index)
+            self.showViewerControlWidget(applet_index)
+            self.showMenus(applet_index)
+            self.refreshAppletDrawer( applet_index, drawerIndex )
+            
+            self.autoSizeSideSplitter( self._sideSplitterSizePolicy )
             self._refreshDrawerRecursionGuard = False
 
     def showCentralWidget(self, applet_index):
@@ -482,7 +478,7 @@ class IlastikShell( QMainWindow ):
         if sizePolicy == SideSplitterSizePolicy.AutoLargestDrawer:
             appletDrawerHeight = 0
             # Get the height of the largest drawer in the bar
-            for drawerIndex in range( len(self.appletBarMapping) ):
+            for drawerIndex in range( len(self._applets) ):
                 rootItem = self.appletBar.invisibleRootItem()
                 appletDrawerItem = rootItem.child(drawerIndex).child(0)
                 appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
@@ -491,7 +487,7 @@ class IlastikShell( QMainWindow ):
         # Get total height of the titles in the applet bar (not the widgets)
         firstItem = self.appletBar.invisibleRootItem().child(0)
         titleHeight = self.appletBar.visualItemRect(firstItem).size().height()
-        numDrawers = len(self.appletBarMapping)
+        numDrawers = len(self._applets)
         totalTitleHeight = numDrawers * titleHeight    
     
         # Auto-size the splitter height based on the height of the applet bar.
@@ -534,10 +530,6 @@ class IlastikShell( QMainWindow ):
         stackedWidget = QStackedWidget()
         stackedWidget.addWidget( controlGuiWidget )
         self.appletBar.setItemWidget( drawerItem, 0, stackedWidget )
-
-        # Since each applet can contribute more than one applet bar item,
-        #  we need to keep track of which applet this item is associated with
-        self.appletBarMapping[rootItem.childCount()-1] = applet_index
 
         # Set up handling of GUI commands from this applet
         app.guiControlSignal.connect( bind(self.handleAppletGuiControlSignal, applet_index) )
