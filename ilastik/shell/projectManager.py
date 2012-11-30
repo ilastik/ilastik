@@ -10,7 +10,11 @@ import ilastik
 from ilastik import isVersionCompatible
 
 class ProjectManager(object):
-    
+
+    #########################
+    ## Error types
+    #########################    
+
     class ProjectVersionError(RuntimeError):
         def __init__(self, projectVersion, expectedVersion):
             RuntimeError.__init__(self, "Incompatible project version: {} (Expected: {})".format(projectVersion, expectedVersion) )
@@ -22,20 +26,13 @@ class ProjectManager(object):
 
     class SaveError(RuntimeError):
         pass
+
+    #########################
+    ## Class methods
+    #########################    
     
-    def __init__(self, workflowClass):
-        self.currentProjectFile = None
-        self.currentProjectPath = None
-        self.currentProjectIsReadOnly = False
-        
-        self._workflowClass = workflowClass
-        self.workflow = workflowClass()
-
-    @property
-    def _applets(self):
-        return self.workflow.applets
-
-    def createBlankProjectFile(self, projectFilePath):
+    @classmethod
+    def createBlankProjectFile(cls, projectFilePath):
         """
         Create a new ilp file at the given path and initialize it with a project version.
         """
@@ -43,14 +40,14 @@ class ProjectManager(object):
         h5File = h5py.File(projectFilePath, "w")
         h5File.create_dataset("ilastikVersion", data=ilastik.__version__)
         
-        return h5File        
+        return h5File
 
-    def openProjectFile(self, projectFilePath):
+    @classmethod
+    def openProjectFile(cls, projectFilePath):
         logger.info("Opening Project: " + projectFilePath)
 
         if not os.path.exists(projectFilePath):
             raise ProjectManager.FileMissingError()
-
 
         # Open the file as an HDF5 file
         try:
@@ -71,6 +68,22 @@ class ProjectManager(object):
             raise ProjectManager.ProjectVersionError(projectVersion, ilastik.__version__)
         
         return (hdf5File, readOnly)
+
+    #########################
+    ## Class methods
+    #########################    
+
+    def __init__(self, workflowClass):
+        self.currentProjectFile = None
+        self.currentProjectPath = None
+        self.currentProjectIsReadOnly = False
+        
+        self._workflowClass = workflowClass
+        self.workflow = workflowClass()
+
+    @property
+    def _applets(self):
+        return self.workflow.applets
 
     def loadProject(self, hdf5File, projectFilePath, readOnly):
         """
@@ -223,7 +236,7 @@ class ProjectManager(object):
         All caches, etc. will be lost.
         """
         self.saveProjectSnapshot( newPath )
-        hdf5File, readOnly = self.openProjectFile( newPath )
+        hdf5File, readOnly = ProjectManager.openProjectFile( newPath )
         self.loadProject(hdf5File, newPath, readOnly)
 
     def importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
