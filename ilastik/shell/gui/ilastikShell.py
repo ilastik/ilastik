@@ -394,26 +394,24 @@ class IlastikShell( QMainWindow ):
         drawerIndex = modelIndex.row()
         self.setSelectedAppletDrawer(drawerIndex)
     
-    def setSelectedAppletDrawer(self, drawerIndex):
+    def setSelectedAppletDrawer(self, applet_index):
         """
         Show the correct applet central widget, viewer control widget, and applet drawer widget for this drawer index.
         """
         if self._refreshDrawerRecursionGuard is False:
             self._refreshDrawerRecursionGuard = True
-            self.currentAppletIndex = drawerIndex
+            self.currentAppletIndex = applet_index
             # Collapse all drawers in the applet bar...
             self.appletBar.collapseAll()
             # ...except for the newly selected item.
-            drawerModelIndex = self.getModelIndexFromDrawerIndex(drawerIndex)
+            drawerModelIndex = self.getModelIndexFromDrawerIndex(applet_index)
             self.appletBar.expand( drawerModelIndex )
             
-            applet_index = drawerIndex
-
             # Select the appropriate central widget, menu widget, and viewer control widget for this applet
             self.showCentralWidget(applet_index)
             self.showViewerControlWidget(applet_index)
             self.showMenus(applet_index)
-            self.refreshAppletDrawer( applet_index, drawerIndex )
+            self.refreshAppletDrawer( applet_index )
             
             self.autoSizeSideSplitter( self._sideSplitterSizePolicy )
             self._refreshDrawerRecursionGuard = False
@@ -436,12 +434,12 @@ class IlastikShell( QMainWindow ):
                 self.viewerControlStack.addWidget( viewerControlWidget )
             self.viewerControlStack.setCurrentWidget(viewerControlWidget)
 
-    def refreshAppletDrawer(self, applet_index, drawerIndex):
+    def refreshAppletDrawer(self, applet_index):
         updatedDrawerTitle = self._applets[applet_index].name
         updatedDrawerWidget = self._applets[applet_index].getMultiLaneGui().appletDrawer()
 
         rootItem = self.appletBar.invisibleRootItem()
-        appletTitleItem = rootItem.child(drawerIndex)
+        appletTitleItem = rootItem.child(applet_index)
         appletTitleItem.setText( 0, updatedDrawerTitle )
         
         appletDrawerItem = appletTitleItem.child(0)
@@ -478,9 +476,9 @@ class IlastikShell( QMainWindow ):
         if sizePolicy == SideSplitterSizePolicy.AutoLargestDrawer:
             appletDrawerHeight = 0
             # Get the height of the largest drawer in the bar
-            for drawerIndex in range( len(self._applets) ):
+            for applet_index in range( len(self._applets) ):
                 rootItem = self.appletBar.invisibleRootItem()
-                appletDrawerItem = rootItem.child(drawerIndex).child(0)
+                appletDrawerItem = rootItem.child(applet_index).child(0)
                 appletDrawerWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
                 appletDrawerHeight = max( appletDrawerHeight, appletDrawerWidget.frameSize().height() )
         
@@ -874,9 +872,8 @@ class IlastikShell( QMainWindow ):
         """
         Enable or disable all controls of all applets according to their disable count.
         """
-        drawerIndex = 0
-        for index, applet in enumerate(self._applets):
-            enabled = self._disableCounts[index] == 0
+        for applet_index, applet in enumerate(self._applets):
+            enabled = self._disableCounts[applet_index] == 0
 
             # Apply to the applet central widget
             if applet.getMultiLaneGui().centralWidget() is not None:
@@ -887,13 +884,11 @@ class IlastikShell( QMainWindow ):
             appletGui.setEnabled( enabled and self.enableWorkflow )
         
             # Apply to the applet bar drawer headings, too
-            drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
+            drawerTitleItem = self.appletBar.invisibleRootItem().child(applet_index)
             if enabled and self.enableWorkflow:
                 drawerTitleItem.setFlags( QtCore.Qt.ItemIsEnabled )
             else:
                 drawerTitleItem.setFlags( QtCore.Qt.NoItemFlags )
-            
-            drawerIndex += 1
 
 
 #    def scrollToTop(self):
