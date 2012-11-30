@@ -149,8 +149,6 @@ class IlastikShell( QMainWindow ):
         self.menuBar().addMenu( self._projectMenu )
         self.menuBar().addMenu( self._settingsMenu )
         
-        self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
-
         self.appletBar.expanded.connect(self.handleAppleBarItemExpanded)
         self.appletBar.clicked.connect(self.handleAppletBarClick)
         self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
@@ -170,12 +168,14 @@ class IlastikShell( QMainWindow ):
                                     # No applet can be enabled unless his disableCount == 0
 
         self.projectManager = ProjectManager( workflowClass )
+        self.progressDisplayManager = ProgressDisplayManager(self.statusBar)
+
+        self._refreshDrawerRecursionGuard = False
         
         # Add all the applets from the workflow
         for index, app in enumerate(self.projectManager.workflow.applets):
             self.addApplet(index, app)
 
-        self._refreshDrawerRecursionGuard = False
 
         self.setImageNameListSlot( self.projectManager.workflow.imageNameListSlot )
 
