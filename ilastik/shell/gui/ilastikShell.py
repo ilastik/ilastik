@@ -365,6 +365,11 @@ class IlastikShell( QMainWindow ):
         removeCallback = bind(handleImageNameSlotRemoval)
         self.cleanupFunctions.append( partial( multiSlot.unregisterRemove, removeCallback ) )
         multiSlot.notifyRemove( bind(handleImageNameSlotRemoval) )
+        
+        # Update for the slots that already exist
+        for index, slot in enumerate(multiSlot):
+            handleImageNameSlotInsertion(multiSlot, index)
+            insertImageName(index, slot)
 
     def changeCurrentInputImageIndex(self, newImageIndex):
         if newImageIndex != self.currentImageIndex \
@@ -388,8 +393,9 @@ class IlastikShell( QMainWindow ):
                 
             self.currentImageIndex = newImageIndex
 
-            # Force the applet drawer to be redrawn
-            self.setSelectedAppletDrawer(self.currentAppletIndex)
+            if self.currentImageIndex != -1:
+                # Force the applet drawer to be redrawn
+                self.setSelectedAppletDrawer(self.currentAppletIndex)
             
             # Update all other applet drawer titles
             for applet_index, app in enumerate(self._applets):
@@ -429,45 +435,49 @@ class IlastikShell( QMainWindow ):
             self._refreshDrawerRecursionGuard = False
 
     def showCentralWidget(self, applet_index):
-        centralWidget = self._applets[applet_index].getMultiLaneGui().centralWidget()
-        # Replace the placeholder widget, if possible
-        if centralWidget is not None:
-            if self.appletStack.indexOf( centralWidget ) == -1:
-                self.appletStack.removeWidget( self.appletStack.widget( applet_index ) )
-                self.appletStack.insertWidget( applet_index, centralWidget )
+        if applet_index < len(self._applets):
+            centralWidget = self._applets[applet_index].getMultiLaneGui().centralWidget()
+            # Replace the placeholder widget, if possible
+            if centralWidget is not None:
+                if self.appletStack.indexOf( centralWidget ) == -1:
+                    self.appletStack.removeWidget( self.appletStack.widget( applet_index ) )
+                    self.appletStack.insertWidget( applet_index, centralWidget )
 
-        self.appletStack.setCurrentIndex(applet_index)
+            self.appletStack.setCurrentIndex(applet_index)
 
     def showViewerControlWidget(self, applet_index ):
-        viewerControlWidget = self._applets[applet_index].getMultiLaneGui().viewerControlWidget()        
-        # Replace the placeholder widget, if possible
-        if viewerControlWidget is not None:
-            if self.viewerControlStack.indexOf( viewerControlWidget ) == -1:
-                self.viewerControlStack.addWidget( viewerControlWidget )
-            self.viewerControlStack.setCurrentWidget(viewerControlWidget)
+        if applet_index < len(self._applets):
+            viewerControlWidget = self._applets[applet_index].getMultiLaneGui().viewerControlWidget()        
+            # Replace the placeholder widget, if possible
+            if viewerControlWidget is not None:
+                if self.viewerControlStack.indexOf( viewerControlWidget ) == -1:
+                    self.viewerControlStack.addWidget( viewerControlWidget )
+                self.viewerControlStack.setCurrentWidget(viewerControlWidget)
 
     def refreshAppletDrawer(self, applet_index):
-        updatedDrawerTitle = self._applets[applet_index].name
-        updatedDrawerWidget = self._applets[applet_index].getMultiLaneGui().appletDrawer()
-
-        rootItem = self.appletBar.invisibleRootItem()
-        appletTitleItem = rootItem.child(applet_index)
-        appletTitleItem.setText( 0, updatedDrawerTitle )
-        
-        appletDrawerItem = appletTitleItem.child(0)
-        appletDrawerStackedWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
-        if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
-            appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
-        appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
+        if applet_index < len(self._applets):
+            updatedDrawerTitle = self._applets[applet_index].name
+            updatedDrawerWidget = self._applets[applet_index].getMultiLaneGui().appletDrawer()
+    
+            rootItem = self.appletBar.invisibleRootItem()
+            appletTitleItem = rootItem.child(applet_index)
+            appletTitleItem.setText( 0, updatedDrawerTitle )
+            
+            appletDrawerItem = appletTitleItem.child(0)
+            appletDrawerStackedWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
+            if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
+                appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
+            appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
 
     def showMenus(self, applet_index):
         self.menuBar().clear()
         self.menuBar().addMenu(self._projectMenu)
         self.menuBar().addMenu(self._settingsMenu)
-        appletMenus = self._applets[applet_index].getMultiLaneGui().menus()
-        if appletMenus is not None:
-            for m in appletMenus:
-                self.menuBar().addMenu(m)
+        if applet_index < len(self._applets):
+            appletMenus = self._applets[applet_index].getMultiLaneGui().menus()
+            if appletMenus is not None:
+                for m in appletMenus:
+                    self.menuBar().addMenu(m)
 
     def getModelIndexFromDrawerIndex(self, drawerIndex):
         drawerTitleItem = self.appletBar.invisibleRootItem().child(drawerIndex)
@@ -690,7 +700,7 @@ class IlastikShell( QMainWindow ):
 
     def importProject(self, originalPath, newProjectFilePath):
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
-        self.importProject(originalPath, newProjectFile, newProjectFilePath, originalPath)
+        self.loadProject(newProjectFile, newProjectFilePath, readOnly=False, importFromPath=originalPath)
         
     def getProjectPathToOpen(self, defaultDirectory):
         """
@@ -775,6 +785,9 @@ class IlastikShell( QMainWindow ):
             self.projectManager = None # Destroy project manager
             # Ensure that it was really destroyed
             assert old() is None, "There shouldn't be extraneous references to the project manager!"
+
+            self.imageSelectionCombo.clear()
+            self.changeCurrentInputImageIndex(-1)
 
         if self.projectDisplayManager is not None: 
             old = weakref.ref(self.projectDisplayManager)

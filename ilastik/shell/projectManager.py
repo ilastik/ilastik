@@ -245,8 +245,6 @@ class ProjectManager(object):
         """
         Load the data from the given hdf5File (which should already be open).
         """
-        self._closeCurrentProject()
-
         assert self.currentProjectFile is None
 
         # Minor GUI nicety: Pre-activate the progress signals for all applets so
@@ -301,6 +299,7 @@ class ProjectManager(object):
             logger.error("Error opening file: " + importedFilePath)
             raise
 
+        # Load the imported project into the workflow state
         self._loadProject(importedFile, importedFilePath, True)
         
         # Export the current workflow state to the new file.
@@ -315,22 +314,16 @@ class ProjectManager(object):
         # Close the original project
         self._closeCurrentProject()
 
-        # Reload the workflow from the new file
+        # Discard the old workflow and make a new one
+        self.workflow = self.workflow.__class__()
+
+        # Load the new file.
         self._loadProject(newProjectFile, newProjectFilePath, False)
 
     def _closeCurrentProject(self):
-        self._unloadAllApplets()
+        self.workflow.cleanUp()
         if self.currentProjectFile is not None:
             self.currentProjectFile.close()
             self.currentProjectFile = None
             self.currentProjectPath = None
             self.currentProjectIsReadOnly = False
-
-    def _unloadAllApplets(self):
-        """
-        Unload all applets into a blank state.
-        """
-        for applet in self._applets:
-            # Unload the project data
-            for item in applet.dataSerializers:
-                item.unload()

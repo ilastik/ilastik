@@ -105,6 +105,12 @@ class DataSelectionGui(QMainWindow):
                     self.mainOperator.Dataset[index].notifyDirty( self.updateTableForSlot )
     
             self.mainOperator.Dataset.notifyInserted( bind( handleNewDataset ) )
+            
+            # For each dataset that already exists, update the GUI
+            for i, subslot in enumerate(self.mainOperator.Dataset):
+                handleNewDataset( self.mainOperator.Dataset, i )
+                if subslot.ready():
+                    self.updateTableForSlot(subslot)
         
             def handleDatasetRemoved( multislot, index ):
                 with Tracer(traceLogger):

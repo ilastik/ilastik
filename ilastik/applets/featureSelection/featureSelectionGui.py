@@ -76,6 +76,7 @@ class FeatureSelectionGui(LayerViewerGui):
         super(FeatureSelectionGui, self).__init__(mainOperator)
 
         self.mainOperator.SelectionMatrix.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
+        self.onFeaturesSelectionsChanged()
 
         # Init feature dialog
         self.initFeatureDlg()
