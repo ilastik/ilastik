@@ -39,8 +39,8 @@ class BatchIoGui(QMainWindow):
     def centralWidget( self ):
         return self
 
-    def appletDrawers(self):
-        return [ (self.title, self.drawer) ]
+    def appletDrawer(self):
+        return self.drawer
 
     def menus( self ):
         return []
@@ -51,8 +51,7 @@ class BatchIoGui(QMainWindow):
     def setImageIndex(self, index):
         pass
 
-    def reset(self):
-        # Nothing to do (Every control in our GUI is dynamically updated via slot changes)
+    def stopAndCleanUp(self):
         pass
 
     ###########################################

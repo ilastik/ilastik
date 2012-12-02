@@ -1,15 +1,15 @@
-from ilastik.applets.base.applet import StandardApplet
+from ilastik.applets.base.applet import Applet
 from opDataSelection import OpMultiLaneDataSelection
 from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 
-class DataSelectionApplet( StandardApplet ):
+class DataSelectionApplet( Applet ):
     """
     This applet allows the user to select sets of input data, 
     which are provided as outputs in the corresponding top-level applet operator.
     """
     def __init__( self, workflow, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False):
         self.__topLevelOperator = OpMultiLaneDataSelection( parent=workflow )
-        super(DataSelectionApplet, self).__init__(title, workflow)
+        super(DataSelectionApplet, self).__init__( title, syncWithImageIndex=False )
 
         self._serializableItems = [ DataSelectionSerializer(self.topLevelOperator, projectFileGroupName) ]
         if supportIlastik05Import:
