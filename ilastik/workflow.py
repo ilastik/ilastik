@@ -27,14 +27,14 @@ class Workflow( Operator ):
         
     def _createNewImageLane(self, multislot, index, *args):
         for a in self.applets:
-            if a.topLevelOperator is not None:
+            if a.syncWithImageIndex and a.topLevelOperator is not None:
                 a.topLevelOperator.addLane(index)
         
         self.connectLane(index)
     
     def _removeImageLane(self, multislot, index, finalLength):
         for a in self.applets:
-            if a.topLevelOperator is not None:
+            if a.syncWithImageIndex and a.topLevelOperator is not None:
                 a.topLevelOperator.removeLane(index, finalLength)
 
     def cleanUp(self):

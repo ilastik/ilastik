@@ -1,7 +1,5 @@
 from ilastik.utility.simpleSignal import SimpleSignal
 from abc import ABCMeta, abstractproperty, abstractmethod
-import weakref
-import gc
 
 class Applet( object ):
     """
@@ -11,13 +9,15 @@ class Applet( object ):
 
     _base_initialized = False
     
-    def __init__( self, name ):
+    def __init__( self, name, syncWithImageIndex=True ):
         """
         Constructor.  Subclasses must call this base implementation in their own __init__ methods.  If they fail to do so, the shell raises an exception.
             
-            :param name: The applet's name, which will appear as the applet drawer title. 
+            :param name: The applet's name, which will appear as the applet drawer title.
+            :param syncWithImageIndex: If True, the shell/workflow will add an image lane to this applet for each image in the interactive workflow. 
         """
         self.name = name
+        self.syncWithImageIndex = syncWithImageIndex
 
         #: Progress signal.
         #: When the applet is doing something time-consuming, this signal tells the shell to show a progress bar.
@@ -158,7 +158,7 @@ class StandardApplet( Applet ):
 
     def getMultiLaneGui(self):
         if self._gui is None:
-            assert isinstance(self.topLevelOperator, MultiLaneOperatorABC), "All applet top-level operators must satisfy the Multi-lane interface."
+            assert isinstance(self.topLevelOperator, MultiLaneOperatorABC), "If your applet's top-level operator doesn't satisfy MultiLaneOperatorABC, you must implement getMultiLaneGui yourself."
             self._gui = SingleToMultiGuiAdapter( self.createSingleLaneGui, self.topLevelOperator )
         return self._gui
 
