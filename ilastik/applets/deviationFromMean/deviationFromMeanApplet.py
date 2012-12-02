@@ -1,6 +1,6 @@
 from ilastik.applets.base.applet import StandardApplet
 from opDeviationFromMean import OpDeviationFromMean
-#from deviationFromMeanSerializer import DeviationFromMeanSerializer
+from deviationFromMeanSerializer import DeviationFromMeanSerializer
 
 class DeviationFromMeanApplet( StandardApplet ):
     """
@@ -9,14 +9,12 @@ class DeviationFromMeanApplet( StandardApplet ):
     The top-level operator is multi-image.
     """
     def __init__( self, workflow, projectFileGroupName ):
-
         # Multi-image operator
         self._topLevelOperator = OpDeviationFromMean(parent=workflow)
         
         # Base class
         super(DeviationFromMeanApplet, self).__init__( "Deviation From Mean", workflow )
-        #self._serializableItems = [ DeviationFromMeanSerializer( self._topLevelOperator, projectFileGroupName ) ]
-        self._serializableItems = []
+        self._serializableItems = [ DeviationFromMeanSerializer( self._topLevelOperator, projectFileGroupName ) ]
             
     @property
     def topLevelOperator(self):
