@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>172</width>
-    <height>155</height>
+    <width>226</width>
+    <height>152</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,11 +18,14 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>170</width>
-     <height>150</height>
+     <width>221</width>
+     <height>151</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="rightMargin">
+     <number>12</number>
+    </property>
     <item>
      <widget class="QPushButton" name="addFileButton">
       <property name="toolTip">
@@ -94,6 +97,19 @@
        <bool>true</bool>
       </property>
      </widget>
+    </item>
+    <item>
+     <spacer name="verticalSpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>0</height>
+       </size>
+      </property>
+     </spacer>
     </item>
    </layout>
   </widget>

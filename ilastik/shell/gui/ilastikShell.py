@@ -1,5 +1,5 @@
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, QEvent, Qt
+from PyQt4.QtCore import pyqtSignal, QObject, QEvent, Qt, QSize
 from PyQt4.QtGui import QMainWindow, QWidget, QHBoxLayout, QMenu, \
                         QMenuBar, QFrame, QLabel, QStackedLayout, \
                         QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
@@ -309,7 +309,9 @@ class IlastikShell( QMainWindow ):
         self.updateAppletControlStates()
         self.updateShellProjectDisplay()
         if self._sideSplitterSizePolicy == SideSplitterSizePolicy.Manual:
-            self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoLargestDrawer )
+            # Default to a 50-50 split
+            totalSplitterHeight = sum(self.sideSplitter.sizes())
+            self.sideSplitter.setSizes([totalSplitterHeight/2, totalSplitterHeight/2])
         else:
             self.autoSizeSideSplitter( SideSplitterSizePolicy.AutoCurrentDrawer )
 
@@ -458,6 +460,10 @@ class IlastikShell( QMainWindow ):
         if applet_index < len(self._applets) and applet_index < self.appletBar.invisibleRootItem().childCount():
             updatedDrawerTitle = self._applets[applet_index].name
             updatedDrawerWidget = self._applets[applet_index].getMultiLaneGui().appletDrawer()
+            if updatedDrawerWidget.layout() is not None:
+                sizeHint = updatedDrawerWidget.layout().geometry().size()
+            else:
+                sizeHint = QSize(0,0)
     
             rootItem = self.appletBar.invisibleRootItem()
             appletTitleItem = rootItem.child(applet_index)
@@ -467,7 +473,10 @@ class IlastikShell( QMainWindow ):
             appletDrawerStackedWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
             if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
                 appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
+                print "Setting size hint: {}".format( sizeHint )
+                appletDrawerItem.setSizeHint( 0, sizeHint )
             appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
+
 
     def showMenus(self, applet_index):
         self.menuBar().clear()
@@ -487,7 +496,7 @@ class IlastikShell( QMainWindow ):
         if sizePolicy == SideSplitterSizePolicy.Manual:
             # In manual mode, don't resize the splitter at all.
             return
-        
+
         if sizePolicy == SideSplitterSizePolicy.AutoCurrentDrawer:
             # Get the height of the current applet drawer
             rootItem = self.appletBar.invisibleRootItem()
