@@ -473,7 +473,6 @@ class IlastikShell( QMainWindow ):
             appletDrawerStackedWidget = self.appletBar.itemWidget(appletDrawerItem, 0)
             if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
                 appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
-                print "Setting size hint: {}".format( sizeHint )
                 appletDrawerItem.setSizeHint( 0, sizeHint )
             appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
 
@@ -766,6 +765,7 @@ class IlastikShell( QMainWindow ):
             assert self.projectManager is None, "Expected projectManager to be None."
             self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, importFromPath )
         except Exception, e:
+            traceback.print_exc()
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
         else:
             self.progressDisplayManager = ProgressDisplayManager(self.statusBar, self.projectManager.workflow)    
