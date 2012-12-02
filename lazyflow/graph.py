@@ -548,6 +548,8 @@ class Slot(object):
         Arguments:
           size    : the desired number of subslots
         """
+        assert isinstance(size, int)
+
         if self._resizing:
             return
         if self.level == 0:
@@ -1600,7 +1602,7 @@ class OperatorWrapper(Operator):
     logger = logging.getLogger(loggerName)
     traceLogger = logging.getLogger('TRACE.' + loggerName)
 
-    def __init__(self, operatorClass, operator_args=None, operator_kwargs=None, parent=None, graph=None, promotedSlotNames = None):
+    def __init__(self, operatorClass, operator_args=None, operator_kwargs=None, parent=None, graph=None, promotedSlotNames = None, broadcastingSlotNames = None):
         """
         Constructs a wrapper for the given operator.
         That is, manages a list of copies of the original operator, and provides access to these inner operators' slots via external multislots.
@@ -1634,11 +1636,19 @@ class OperatorWrapper(Operator):
         
         self._customName = False
 
-        if promotedSlotNames is None:
+        if promotedSlotNames is not None:
+            assert broadcastingSlotNames is None, "Please specify either the promoted slots or the broadcasting slots, not both."
+            # 'Promoted' slots will be exposed as multi-slots
+            # All others will be broadcasted
+            promotedSlotNames = set(promotedSlotNames)
+        elif broadcastingSlotNames is not None:
+            # 'Broadcasting' slots are NOT exposed as multi-slots.
+            # Each is exposed as a single slot that is shared by all inner operators.
+            allInputSlotNames = set( map( lambda s: s.name, operatorClass.inputSlots ) )        
+            promotedSlotNames = allInputSlotNames - set(broadcastingSlotNames) # set difference
+        else:
             # No slots specified: All original slots are promoted by default
             promotedSlotNames = set(slot.name for slot in operatorClass.inputSlots)
-        else:
-            promotedSlotNames = set(promotedSlotNames)
 
         # All Outputs are always promoted
         promotedSlotNames |= set(slot.name for slot in operatorClass.outputSlots)
