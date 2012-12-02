@@ -75,6 +75,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Set some features
             featureGui = workflow.featureSelectionApplet.getMultiLaneGui()
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
+            opFeatures.FeatureIds.setValue( OpPixelFeaturesPresmoothed.DefaultFeatureIds )
+            opFeatures.Scales.setValue( [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0] )
             #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
             selections = numpy.array( [[True, False, False, False, False, False, False],
                                        [True, False, False, False, False, False, False],
@@ -83,8 +85,6 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                                        [False, False, False, False, False, False, False],
                                        [False, False, False, False, False, False, False]] )
 
-            opFeatures.FeatureIds.setValue( OpPixelFeaturesPresmoothed.DefaultFeatureIds )
-            opFeatures.Scales.setValue( [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0] )
             opFeatures.SelectionMatrix.setValue(selections)
         
             # Save and close

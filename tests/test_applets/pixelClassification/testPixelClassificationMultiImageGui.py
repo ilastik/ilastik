@@ -4,6 +4,7 @@ from PyQt4.QtGui import QApplication
 from volumina.layer import AlphaModulatedLayer
 from workflows.pixelClassification import PixelClassificationWorkflow
 from tests.helpers import ShellGuiTestCaseBase
+from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
     """
@@ -63,12 +64,11 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
         """
         def impl():
             projFilePath = self.PROJECT_FILE
-        
             shell = self.shell
-            workflow = self.workflow
             
             # New project
             shell.createAndLoadNewProject(projFilePath)
+            workflow = shell.projectManager.workflow
 
             from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
@@ -80,8 +80,10 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
                 opDataSelection.Dataset[i].setValue(info)
             
             # Set some features
-            featureGui = workflow.featureSelectionApplet.gui
+            featureGui = workflow.featureSelectionApplet.getMultiLaneGui()
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
+            opFeatures.FeatureIds.setValue( OpPixelFeaturesPresmoothed.DefaultFeatureIds )
+            opFeatures.Scales.setValue( [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0] )
             #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
             selections = numpy.array( [[True, False, False, False, False, False, False],
                                        [True, False, False, False, False, False, False],
@@ -90,7 +92,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
                                        [False, False, False, False, False, False, False],
                                        [False, False, False, False, False, False, False]] )
             opFeatures.SelectionMatrix.setValue(selections)
-        
+      
             # Save and close
             shell.projectManager.saveProject()
             shell.ensureNoCurrentProject(assertClean=True)
@@ -103,12 +105,8 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
         Check the state of various shell and gui members when no project is currently loaded.
         """
         def impl():
-            pixClassApplet = self.workflow.pcApplet
-            gui = pixClassApplet.gui
-
-            assert gui.labelingDrawerUi.checkInteractive.isChecked() == False
-            assert gui.labelingDrawerUi.labelListModel.rowCount() == 0
-            assert self.shell.projectManager.currentProjectFile is None
+            assert self.shell.projectManager is None
+            assert self.shell.appletBar.invisibleRootItem().childCount() == 0
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
@@ -133,37 +131,38 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
         Add labels and draw them in the volume editor.
         """
         def impl():
-            pixClassApplet = self.workflow.pcApplet
-            gui = pixClassApplet.gui
+            workflow = self.shell.projectManager.workflow
+            pixClassApplet = workflow.pcApplet
+            gui = pixClassApplet.getMultiLaneGui()
             opPix = pixClassApplet.topLevelOperator
 
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(3)
             
             # Turn off the huds and so we can capture the raw image
-            gui.menuGui.actionToggleAllHuds.trigger()
+            gui.currentGui().menuGui.actionToggleAllHuds.trigger()
 
             ## Turn off the slicing position lines
             ## FIXME: This disables the lines without unchecking the position  
             ##        box in the VolumeEditorWidget, making the checkbox out-of-sync
-            #gui.editor.navCtrl.indicateSliceIntersection = False
+            #gui.currentGui().editor.navCtrl.indicateSliceIntersection = False
 
             # Do our tests at position 0,0,0
-            gui.editor.posModel.slicingPos = (0,0,0)
+            gui.currentGui().editor.posModel.slicingPos = (0,0,0)
 
-            assert not gui._labelControlUi.checkInteractive.isChecked()
-            assert gui._labelControlUi.labelListModel.rowCount() == 0
+            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 0
             
             # Add label classes
             for i in range(3):
-                gui._labelControlUi.AddLabelButton.click()
-                assert gui._labelControlUi.labelListModel.rowCount() == i+1
+                gui.currentGui()._labelControlUi.AddLabelButton.click()
+                assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == i+1
 
             # Select the brush
-            gui._labelControlUi.paintToolButton.click()
+            gui.currentGui()._labelControlUi.paintToolButton.click()
 
             # Set the brush size
-            gui._labelControlUi.brushSizeComboBox.setCurrentIndex(1)
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(1)
 
             # Let the GUI catch up: Process all events
             QApplication.processEvents()
@@ -171,21 +170,21 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             # Draw some arbitrary labels in each view using mouse events.
             for i in range(3):
                 # Post this as an event to ensure sequential execution.
-                gui._labelControlUi.labelListModel.select(i)
+                gui.currentGui()._labelControlUi.labelListModel.select(i)
                 
-                imgView = gui.editor.imageViews[i]
+                imgView = gui.currentGui().editor.imageViews[i]
                 self.strokeMouseFromCenter( imgView, self.LABEL_START, self.LABEL_STOP )
 
                 # Make sure the labels were added to the label array operator
                 assert opPix.MaxLabelValue.value == i+1
 
-            self.waitForViews(gui.editor.imageViews)
+            self.waitForViews(gui.currentGui().editor.imageViews)
 
             # Verify the actual rendering of each view
             for i in range(3):
-                imgView = gui.editor.imageViews[i]
+                imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-                expectedColor = gui._colorTable16[i+1]
+                expectedColor = gui.currentGui()._colorTable16[i+1]
                 assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 
             # Save the project
@@ -199,12 +198,13 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
         Click the "interactive mode" checkbox and see if any errors occur.
         """
         def impl():
-            pixClassApplet = self.workflow.pcApplet
-            gui = pixClassApplet.gui
+            workflow = self.shell.projectManager.workflow
+            pixClassApplet = workflow.pcApplet
+            gui = pixClassApplet.getMultiLaneGui()
 
             # Clear all the labels
-            while len(gui._labelControlUi.labelListModel) > 0:
-                gui._labelControlUi.labelListModel.removeRow(0)
+            while len(gui.currentGui()._labelControlUi.labelListModel) > 0:
+                gui.currentGui()._labelControlUi.labelListModel.removeRow(0)
                 
             # Let the GUI catch up: Process all events
             QApplication.processEvents()
@@ -213,15 +213,15 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             self.test_4_AddLabels()
 
             # Enable interactive mode            
-            assert not gui._labelControlUi.checkInteractive.isChecked()
-            gui._labelControlUi.checkInteractive.click()
+            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+            gui.currentGui()._viewerControlUi.liveUpdateButton.click()
 
-            self.waitForViews(gui.editor.imageViews)
+            self.waitForViews(gui.currentGui().editor.imageViews)
 
             # Disable iteractive mode.            
-            gui._labelControlUi.checkInteractive.click()
+            gui.currentGui()._viewerControlUi.liveUpdateButton.click()
 
-            self.waitForViews(gui.editor.imageViews)
+            self.waitForViews(gui.currentGui().editor.imageViews)
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
@@ -231,42 +231,43 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
         Switch back and forth between a labeled image and an unlabeled one.  Labels should disappear and then reappear.
         """
         def impl():
-            pixClassApplet = self.workflow.pcApplet
-            gui = pixClassApplet.gui
+            workflow = self.shell.projectManager.workflow
+            pixClassApplet = workflow.pcApplet
+            gui = pixClassApplet.getMultiLaneGui()
 
             # Get the colors of the labels
-            originalLabelColors = gui._colorTable16[1:4]
+            originalLabelColors = gui.currentGui()._colorTable16[1:4]
 
             # Sanity check: Verify the actual rendering of each view WITH the labels
             # (we haven't switched images yet)
             for i in range(3):
-                imgView = gui.editor.imageViews[i]
+                imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-                expectedColor = gui._colorTable16[i+1]
+                expectedColor = gui.currentGui()._colorTable16[i+1]
                 assert observedColor == expectedColor, "Label is missing (should have been drawn in a previous test).  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 
             # Select the second image
             self.shell.imageSelectionCombo.setCurrentIndex(1)
-            gui.editor.posModel.slicingPos = (0,0,0)
-            self.waitForViews(gui.editor.imageViews)
+            gui.currentGui().editor.posModel.slicingPos = (0,0,0)
+            self.waitForViews(gui.currentGui().editor.imageViews)
 
             # Verify the actual rendering of each view (labels should NOT be present on the second image)
             for i in range(3):
-                imgView = gui.editor.imageViews[i]
+                imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 oldColor = originalLabelColors[i]
                 assert observedColor != oldColor, "Label should not be presnt on the second image in this test."
 
             # Select the first image again
             self.shell.imageSelectionCombo.setCurrentIndex(0)
-            gui.editor.posModel.slicingPos = (0,0,0)
-            self.waitForViews(gui.editor.imageViews)
+            gui.currentGui().editor.posModel.slicingPos = (0,0,0)
+            self.waitForViews(gui.currentGui().editor.imageViews)
 
             # Verify the actual rendering of each view.  Labels should re-appear.
             for i in range(3):
-                imgView = gui.editor.imageViews[i]
+                imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
-                expectedColor = gui._colorTable16[i+1]
+                expectedColor = gui.currentGui()._colorTable16[i+1]
                 assert observedColor == expectedColor, "Label is missing (should have been drawn in a previous test).  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 
         # Run this test from within the shell event loop
