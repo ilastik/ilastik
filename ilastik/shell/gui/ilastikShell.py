@@ -397,13 +397,13 @@ class IlastikShell( QMainWindow ):
                 # Force the applet drawer to be redrawn
                 self.setSelectedAppletDrawer(self.currentAppletIndex)
             
-            # Update all other applet drawer titles
-            for applet_index, app in enumerate(self._applets):
-                updatedDrawerTitle = app.name
-        
-                rootItem = self.appletBar.invisibleRootItem()
-                appletTitleItem = rootItem.child(applet_index)
-                appletTitleItem.setText( 0, updatedDrawerTitle )
+                # Update all other applet drawer titles
+                for applet_index, app in enumerate(self._applets):
+                    updatedDrawerTitle = app.name
+            
+                    rootItem = self.appletBar.invisibleRootItem()
+                    appletTitleItem = rootItem.child(applet_index)
+                    appletTitleItem.setText( 0, updatedDrawerTitle )
 
     def handleAppleBarItemExpanded(self, modelIndex):
         """
@@ -455,7 +455,7 @@ class IlastikShell( QMainWindow ):
                 self.viewerControlStack.setCurrentWidget(viewerControlWidget)
 
     def refreshAppletDrawer(self, applet_index):
-        if applet_index < len(self._applets):
+        if applet_index < len(self._applets) and applet_index < self.appletBar.invisibleRootItem().childCount():
             updatedDrawerTitle = self._applets[applet_index].name
             updatedDrawerWidget = self._applets[applet_index].getMultiLaneGui().appletDrawer()
     
@@ -754,7 +754,7 @@ class IlastikShell( QMainWindow ):
         Populate the shell with widgets from all the applets in the new workflow.
         """
         try:
-            assert self.projectManager is None
+            assert self.projectManager is None, "Expected projectManager to be None."
             self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, importFromPath )
         except Exception, e:
             QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + e.message)
@@ -781,20 +781,20 @@ class IlastikShell( QMainWindow ):
             for f in self.cleanupFunctions:
                 f()
 
+            self.imageSelectionCombo.clear()
+            self.changeCurrentInputImageIndex(-1)
+
+            if self.projectDisplayManager is not None: 
+                old = weakref.ref(self.projectDisplayManager)
+                self.projectDisplayManager = None # Destroy display manager
+                # Ensure that it was really destroyed
+                assert old() is None, "There shouldn't be extraneous references to the project display manager!"
+
             old = weakref.ref(self.projectManager)
             self.projectManager = None # Destroy project manager
             # Ensure that it was really destroyed
             assert old() is None, "There shouldn't be extraneous references to the project manager!"
 
-            self.imageSelectionCombo.clear()
-            self.changeCurrentInputImageIndex(-1)
-
-        if self.projectDisplayManager is not None: 
-            old = weakref.ref(self.projectDisplayManager)
-            self.projectDisplayManager = None # Destroy display manager
-            # Ensure that it was really destroyed
-            assert old() is None, "There shouldn't be extraneous references to the project display manager!"
-        
         self.enableWorkflow = False
         self.updateAppletControlStates()
         self.updateShellProjectDisplay()
@@ -940,12 +940,12 @@ class IlastikShell( QMainWindow ):
             appletGui.setEnabled( enabled and self.enableWorkflow )
         
             # Apply to the applet bar drawer headings, too
-            drawerTitleItem = self.appletBar.invisibleRootItem().child(applet_index)
-            if enabled and self.enableWorkflow:
-                drawerTitleItem.setFlags( QtCore.Qt.ItemIsEnabled )
-            else:
-                drawerTitleItem.setFlags( QtCore.Qt.NoItemFlags )
-
+            if applet_index < self.appletBar.invisibleRootItem().childCount():
+                drawerTitleItem = self.appletBar.invisibleRootItem().child(applet_index)
+                if enabled and self.enableWorkflow:
+                    drawerTitleItem.setFlags( QtCore.Qt.ItemIsEnabled )
+                else:
+                    drawerTitleItem.setFlags( QtCore.Qt.NoItemFlags )
 
 #    def scrollToTop(self):
 #        #self.appletBar.verticalScrollBar().setValue( 0 )
