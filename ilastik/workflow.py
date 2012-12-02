@@ -1,5 +1,4 @@
 from abc import abstractproperty, abstractmethod
-
 from lazyflow.graph import Operator
 
 class Workflow( Operator ):
@@ -11,6 +10,10 @@ class Workflow( Operator ):
     @abstractproperty
     def imageNameListSlot(self):
         return None
+
+    @abstractmethod
+    def connectLane(self):
+        raise NotImplementedError
 
     def _after_init(self):
         """
@@ -34,7 +37,10 @@ class Workflow( Operator ):
             if a.topLevelOperator is not None:
                 a.topLevelOperator.removeLane(index, finalLength)
 
-    @abstractmethod
-    def connectLane(self):
-        raise NotImplementedError
-
+    def cleanUp(self):
+        # Stop and clean up the GUIs before we invalidate the operators they depend on.
+        for a in self.applets:
+            a.getMultiLaneGui().stopAndCleanUp()
+        
+        # Clean up the graph as usual.
+        super(Workflow, self).cleanUp()

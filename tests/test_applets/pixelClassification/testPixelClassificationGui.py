@@ -4,6 +4,7 @@ from PyQt4.QtGui import QApplication
 from volumina.layer import AlphaModulatedLayer
 from workflows.pixelClassification import PixelClassificationWorkflow
 from tests.helpers import ShellGuiTestCaseBase
+from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 class TestPixelClassificationGui(ShellGuiTestCaseBase):
     """
@@ -81,39 +82,36 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                                        [False, False, False, False, False, False, False],
                                        [False, False, False, False, False, False, False],
                                        [False, False, False, False, False, False, False]] )
+
+            opFeatures.FeatureIds.setValue( OpPixelFeaturesPresmoothed.DefaultFeatureIds )
+            opFeatures.Scales.setValue( [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0] )
             opFeatures.SelectionMatrix.setValue(selections)
         
             # Save and close
-#            shell.projectManager.saveProject()
-#            shell.ensureNoCurrentProject(assertClean=True)
+            shell.projectManager.saveProject()
+            shell.ensureNoCurrentProject(assertClean=True)
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-#    def test_2_ClosedState(self):
-#        """
-#        Check the state of various shell and gui members when no project is currently loaded.
-#        """
-#        def impl():
-#            workflow = self.shell.projectManager.workflow
-#            pixClassApplet = workflow.pcApplet
-#            gui = pixClassApplet.getMultiLaneGui()
-#
-#            assert gui.currentGui() is None
-##            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
-##            assert gui.currentGui().labelingDrawerUi.labelListModel.rowCount() == 0
-#            assert self.shell.projectManager.currentProjectFile is None
-#
-#        # Run this test from within the shell event loop
-#        self.exec_in_shell(impl)
-#
-#    def test_3_OpenProject(self):
-#        def impl():
-#            self.shell.openProjectFile(self.PROJECT_FILE)
-#            assert self.shell.projectManager.currentProjectFile is not None
-#
-#        # Run this test from within the shell event loop
-#        self.exec_in_shell(impl)
+    def test_2_ClosedState(self):
+        """
+        Check the state of various shell and gui members when no project is currently loaded.
+        """
+        def impl():
+            assert self.shell.projectManager is None
+            assert self.shell.appletBar.invisibleRootItem().childCount() == 0
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_3_OpenProject(self):
+        def impl():
+            self.shell.openProjectFile(self.PROJECT_FILE)
+            assert self.shell.projectManager.currentProjectFile is not None
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
     
     # These points are relative to the CENTER of the view
     LABEL_START = (-20,-20)

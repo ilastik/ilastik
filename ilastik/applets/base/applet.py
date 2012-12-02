@@ -1,5 +1,7 @@
 from ilastik.utility.simpleSignal import SimpleSignal
 from abc import ABCMeta, abstractproperty, abstractmethod
+import weakref
+import gc
 
 class Applet( object ):
     """
@@ -224,9 +226,9 @@ class SingleToMultiGuiAdapter( object ):
     def setImageIndex(self, imageIndex):
         self._imageIndex = imageIndex
 
-    def reset(self):
+    def stopAndCleanUp(self):
         for gui in self._guis.values():
-            gui.reset()
+            gui.stopAndCleanUp()
 
 
 

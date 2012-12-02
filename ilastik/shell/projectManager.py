@@ -104,7 +104,12 @@ class ProjectManager(object):
             self._importProject(importFromPath, hdf5File, projectFilePath)
 
     def __del__(self):
-        self._closeCurrentProject()
+        try:
+            self._closeCurrentProject()
+        except Exception,e:
+            traceback.print_exc()
+            raise e
+
 
     def isProjectDataDirty(self):
         """
@@ -322,6 +327,7 @@ class ProjectManager(object):
 
     def _closeCurrentProject(self):
         self.workflow.cleanUp()
+        self.workflow = None
         if self.currentProjectFile is not None:
             self.currentProjectFile.close()
             self.currentProjectFile = None

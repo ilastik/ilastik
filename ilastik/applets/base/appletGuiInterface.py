@@ -53,11 +53,11 @@ class AppletGuiInterface():
         raise NotImplementedError
 
     @abstractmethod    
-    def reset(self):
+    def stopAndCleanUp(self):
         """
         Abstract method.
-        Called by the shell when the current project has been unloaded.
-        The GUI should reset itself to its initial state, whatever that is.
+        Called when the GUI is about to be destroyed.
+        The gui should stop updating all data views and should clean up any resources it created (e.g. orphan operators).
         """
         raise NotImplementedError
 

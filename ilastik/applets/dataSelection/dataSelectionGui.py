@@ -71,8 +71,7 @@ class DataSelectionGui(QMainWindow):
     def setImageIndex(self, imageIndex):
         pass # This applet doesn't care which image is currently selected.  It always lists all inputs.
 
-    def reset(self):
-        # Nothing to do (our drawer has no state and the central widget is dynamically loaded/unloaded by operator changes)
+    def stopAndCleanUp(self):
         pass
         
     ###########################################

@@ -66,13 +66,20 @@ class LayerViewerGui(QMainWindow):
     def viewerControlWidget(self):
         return self.__viewerControlWidget
 
-    def reset(self):
+    def stopAndCleanUp(self):
+        self._stopped = True
+
         # Remove all layers
         self.layerstack.clear()
 
-        # reset view shapes
-        self.editor._reset()
-
+        # Stop rendering
+        for scene in self.editor.imageScenes:
+            if scene._tileProvider:
+                scene._tileProvider.notifyThreadsToStop()
+            scene.joinRendering()
+            
+        for op in self._orphanOperators:
+            op.cleanUp()
 
     ###########################################
     ###########################################
@@ -88,6 +95,8 @@ class LayerViewerGui(QMainWindow):
         """
         super(LayerViewerGui, self).__init__()
 
+        self._stopped = False
+
         self.threadRouter = ThreadRouter(self) # For using @threadRouted
 
         self.topLevelOperator = topLevelOperator
@@ -100,6 +109,7 @@ class LayerViewerGui(QMainWindow):
         
         observedSlots += additionalMonitoredSlots
 
+        self._orphanOperators = [] # Operators that are owned by this GUI directly (not owned by the top-level operator)
         self.observedSlots = []
         for slot in observedSlots:
             if slot.level == 0:
@@ -108,6 +118,7 @@ class LayerViewerGui(QMainWindow):
                 opPromoteInput = Op1ToMulti(graph=slot.operator.graph)
                 opPromoteInput.Input.connect(slot)
                 slot = opPromoteInput.Outputs
+                self._orphanOperators.append( opPromoteInput )
 
             # Each slot should now be indexed as slot[layer_index]
             assert slot.level == 1
@@ -248,6 +259,9 @@ class LayerViewerGui(QMainWindow):
     @traceLogged(traceLogger)
     @threadRouted
     def updateAllLayers(self):
+        if self._stopped:
+            return
+
         # Ask for the updated layer list (usually provided by the subclass)
         newGuiLayers = self.setupLayers()
 

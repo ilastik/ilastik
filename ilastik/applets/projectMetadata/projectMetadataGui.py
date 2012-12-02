@@ -31,8 +31,7 @@ class ProjectMetadataGui( QWidget ):
     def setImageIndex(self, index):
         pass # This applet does't deal with images.
     
-    def reset(self):
-        # Nothing to do (our drawer has no state and the central widget is dynamically loaded/unloaded when the project file is loaded)
+    def stopAndCleanUp(self):
         pass
 
     ###########################################
