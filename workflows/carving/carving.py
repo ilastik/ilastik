@@ -993,7 +993,7 @@ class CarvingApplet(LabelingApplet):
 
     @property
     def dataSerializers(self):
-        return [ CarvingSerializer(self._topLevelOperator, "carving", 0.1) ]
+        return [ CarvingSerializer(self._topLevelOperator, "carving") ]
 
     @property
     def gui(self):
