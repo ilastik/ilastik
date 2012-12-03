@@ -74,8 +74,23 @@ class OpCarving(Operator):
        
         self._setCurrObjectName("")
         self.HasSegmentation.setValue(False)
-    
-    
+   
+        #for volume rendering 
+        self._volumeRenderingVolume = numpy.zeros(self._mst.raw.shape, dtype=numpy.uint8)
+        self._shownObjects3D = dict()
+        
+    def _getVolumeRenderingLabel(self):
+        if len(self._shownObjects3D) == 0:
+            return 1
+        s = sorted(self._shownObjects3D.values()) 
+        for i in range(len(s)-1):
+            if s[i] < s[i+1]-1:
+                return s[i]+1
+        if s[-1]+1 < 256: 
+            return s[-1]+1
+        else:
+            raise RuntimeError("More than uint8 objects")  
+        
     def _setCurrObjectName(self, n):
         """
         Sets the current object name to n.

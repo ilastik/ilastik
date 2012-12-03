@@ -1,5 +1,6 @@
 import os
 import numpy
+import time
 
 from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QShortcut, QKeySequence
@@ -23,6 +24,13 @@ class CarvingGui(LabelingGui):
         
         #set up keyboard shortcuts
         c = QShortcut(QKeySequence("3"), self, member=self.labelingDrawerUi.segment.click, ambiguousMember=self.labelingDrawerUi.segment.click)
+       
+        #volume rendering 
+        self._volumeRenderingInitialized = False
+        self._volumeRendering = None
+        self._dataImporter    = None
+        self._colorFunc       = None
+        self._doneSegmentationLayer = None
 
         def onSegmentButton():
             print "segment button clicked"
@@ -170,15 +178,39 @@ class CarvingGui(LabelingGui):
                 makeColortable()
                 self._doneSegmentationLayer.colorTable = self._doneSegmentationColortable
         self.labelingDrawerUi.randomizeColors.clicked.connect(onRandomizeColors)
+      
+    def _updateVolumeRendering(self):    
+        op = self._carvingApplet.topLevelOperator.opCarving[0]
+        if not self._volumeRenderingInitialized:
+            a = time.time()
+            from volumina.view3d.volumeRendering import makeVolumeRenderingPipeline
+            dataImporter, colorFunc, volume = makeVolumeRenderingPipeline(op._volumeRenderingVolume) 
+            b = time.time()
+            print "creating volume rendering pipeline took %f sec." % (b-a)
+            
+            self.editor.view3d.qvtk.renderer.AddVolume(volume)
+            self._volumeRendering = volume
+            self._dataImporter    = dataImporter
+            self._colorFunc       = colorFunc
+            self._volumeRenderingInitialized = True
+        self._dataImporter.Modified()
+        self._volumeRendering.Update() 
+        self.editor.view3d.qvtk.update()
         
     def handleEditorRightClick(self, currentImageIndex, position5d, globalWindowCoordinate):
         names = self._carvingApplet.topLevelOperator.doneObjectNamesForPosition(position5d[1:4], currentImageIndex)
        
+        op = self._carvingApplet.topLevelOperator.opCarving[self.imageIndex]
+        
         m = QMenu(self)
         m.addAction("position %d %d %d" % (position5d[1], position5d[2], position5d[3]))
         for n in names:
             m.addAction("edit %s" % n)
             m.addAction("delete %s" % n)
+            if not n in op._shownObjects3D:
+                m.addAction("show 3D %s" % n)
+            else:
+                m.addAction("remove %s from 3D view" % n)
             
         act = m.exec_(globalWindowCoordinate) 
         for n in names:
@@ -186,6 +218,46 @@ class CarvingGui(LabelingGui):
                 self._carvingApplet.topLevelOperator.loadObject(n, self.imageIndex)
             elif act is not None and act.text() =="delete %s" % n:
                 self._carvingApplet.topLevelOperator.deleteObject(n,self.imageIndex) 
+            elif act is not None and act.text() == "show 3D %s" % n:
+               
+                self._updateVolumeRendering()
+                
+                label = op._getVolumeRenderingLabel()
+                print "*** showing",n, "as", label
+                op._shownObjects3D[n] = label 
+               
+                a = time.time() 
+                ctable = self._doneSegmentationLayer.colorTable
+                lut = numpy.zeros(len(op._mst.objects.lut), dtype=numpy.int32)
+                for name, label in op._shownObjects3D.iteritems():
+                    objectSupervoxels = op._mst.object_lut[name]
+                    lut[objectSupervoxels] = label
+                    import colorsys
+                    rgb = colorsys.hsv_to_rgb(numpy.random.random(), 1.0, 1.0)
+                    self._colorFunc.AddRGBPoint(label, *rgb)
+                
+                op._volumeRenderingVolume[:] = ( lut[op._mst.regionVol] )
+                b = time.time()
+                print "updating the volume rendering volume took %f sec." % (b-a)
+                print "min/max: ",op._volumeRenderingVolume.min(), op._volumeRenderingVolume.max()
+                self._updateVolumeRendering()
+                
+            elif act is not None and act.text() == "remove %s from 3D view" % n:
+                a = time.time() 
+                lut = numpy.zeros(len(op._mst.objects.lut), dtype=numpy.int32)
+                for name, label in op._shownObjects3D.iteritems():
+                    objectSupervoxels = op._mst.object_lut[name]
+                    if name != n:
+                        lut[objectSupervoxels] = label
+                        
+                    else:
+                        lut[objectSupervoxels] = 0
+                del op._shownObjects3D[n]
+                
+                op._volumeRenderingVolume[:] = ( lut[op._mst.regionVol] )
+                b = time.time()
+                print "[remove] updating the volume rendering volume took %f sec." % (b-a)
+                self._updateVolumeRendering()
         
     def getNextLabelName(self):
         l = len(self._labelControlUi.labelListModel)
