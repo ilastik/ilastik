@@ -563,12 +563,18 @@ class OpCarving(Operator):
                 #if the carving graph file is not valid, all outputs must be invalid
                 for output in self.outputs.values():
                     output.setDirty(slice(0,None))
-            
+           
+            #FIXME: currently, the carving graph file is loaded in the constructor
+            #       refactor such that it is only loaded here
+            ''' 
             fname = self.CarvingGraphFile.value
+            
             self._mst = MSTSegmentor.loadH5(fname,  "graph")
             print "[Carving id=%d] loading graph file %s (mst=%d)" % (id(self), fname, id(self._mst)) 
+            '''
             
             self.Segmentation.setDirty(slice(None))
+            
         else:
             super(OpCarving, self).notifyDirty(slot, key) 
     
