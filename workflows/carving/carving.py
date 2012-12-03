@@ -245,7 +245,7 @@ class OpCarving(Operator):
                 f = h5py.File(hintOverlayFile,"r")
             except:
                 raise RuntimeError("Could not open hint overlay '%s'" % hintOverlayFile)
-            self._hints  = f["/hints"]
+            self._hints  = f["/hints"].value[numpy.newaxis, :,:,:, numpy.newaxis]
        
         self._setCurrObjectName("")
         self.HasSegmentation.setValue(False)
@@ -505,12 +505,10 @@ class OpCarving(Operator):
                 temp.shape = (1,) + temp.shape + (1,)
         elif slot == self.HintOverlay:
             if self._hints is None:
-                result[0,:,:,:,0] = 0
+                result[:] = 0
                 return result
             else: 
-                roi.popDim(0)
-                roi.popDim(-1)
-                result[0,:,:,:,0] = self._hints[roi.toSlice()]
+                result[:] = self._hints[roi.toSlice()]
                 return result
         else:
             raise RuntimeError("unknown slot")
@@ -896,7 +894,6 @@ class CarvingGui(LabelingGui):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
                 
-            #layer = DirectColorTableLayer(seg, colortable, lazyflow=True)
             layer = ColortableLayer(LazyflowSource(seg), colortable, direct=True)
             layer.name = "segmentation"
             layer.visible = True
@@ -911,7 +908,6 @@ class CarvingGui(LabelingGui):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
             #have to use lazyflow because it provides dirty signals
-            #layer = DirectColorTableLayer(done, colortable, lazyflow=True)
             layer = ColortableLayer(LazyflowSource(done), colortable, direct=True)
             layer.name = "done"
             layer.visible = False
@@ -919,10 +915,15 @@ class CarvingGui(LabelingGui):
             layers.append(layer)
             
         #hints
-        hints = self._carvingApplet.topLevelOperator.opCarving.HintOverlay[currentImageIndex]
-        if hints.ready():
-            ctable = [QColor(0,0,0,0).rgba(), QColor(255,0,0).rgba()]
+        useLazyflow = True
+        ctable = [QColor(0,0,0,0).rgba(), QColor(255,0,0).rgba()]
+        if useLazyflow:
+            hints = self._carvingApplet.topLevelOperator.opCarving.HintOverlay[currentImageIndex]
             layer = ColortableLayer(LazyflowSource(hints), ctable, direct=True)
+        else:
+            hints = self._carvingApplet.topLevelOperator.opCarving[currentImageIndex]._hints
+            layer = ColortableLayer(ArraySource(hints), ctable, direct=True)
+        if not useLazyflow or hints.ready():
             layer.name = "hints"
             layer.visible = False
             layer.opacity = 1.0
@@ -944,7 +945,6 @@ class CarvingGui(LabelingGui):
             for i in range(256):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
-            #layer = DirectColorTableLayer(sv, colortable, lazyflow=True)
             layer = ColortableLayer(LazyflowSource(sv), colortable, direct=True)
             layer.name = "supervoxels"
             layer.visible = False
@@ -966,12 +966,10 @@ class CarvingGui(LabelingGui):
         raw = self._carvingApplet.topLevelOperator.opCarving[0]._mst.raw
         raw5D = numpy.zeros((1,)+raw.shape+(1,), dtype=raw.dtype)
         raw5D[0,:,:,:,0] = raw[:,:,:]
-        #layer = DirectGrayscaleLayer(raw5D)
         layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
         layer.name = "raw"
         layer.visible = True
         layer.opacity = 1.0
-        #layers.insert(1, layer)
         layers.append(layer)
             
         return layers
