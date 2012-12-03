@@ -33,10 +33,6 @@ class DeviationFromMeanGui(LayerViewerGui):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         
-        layout = QVBoxLayout( self )
-        layout.setSpacing(0)
-        self._drawer.setLayout( layout )
-
         self._drawer.scalingFactorSpinBox.valueChanged.connect(self.updateOperatorScalingFactor)
         self._drawer.offsetSpinBox.valueChanged.connect(self.updateOperatorOffset)
 

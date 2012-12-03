@@ -42,13 +42,13 @@ class ThresholdMaskingGui(LayerViewerGui):
             localDir = os.path.split(__file__)[0]
             self._drawer = uic.loadUi(localDir+"/drawer.ui")
             
-            layout = QVBoxLayout( self )
+            layout = QVBoxLayout()
             layout.setSpacing(0)
             self._drawer.setLayout( layout )
     
             thresholdWidget = ThresholdingWidget(self)
             thresholdWidget.valueChanged.connect( self.handleThresholdGuiValuesChanged )
-            layout.addWidget( thresholdWidget )
+            self._drawer.layout().addWidget( thresholdWidget )
             
             def updateDrawerFromOperator():
                 minValue, maxValue = (0,255)
