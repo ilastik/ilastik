@@ -262,12 +262,6 @@ class SerialListSlot(SerialSlot):
 
     @staticmethod
     def _saveValue(group, name, value):
-        """Seperate so that subclasses can override, if necessary.
-
-        For instance, SerialListSlot needs to save an extra attribute
-        if the value is an empty list.
-
-        """
         isempty = (len(value) == 0)
         if isempty:
             value = numpy.empty((1,))
