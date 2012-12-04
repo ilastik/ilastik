@@ -27,8 +27,8 @@ class VigraWatershedViewerGui(LayerViewerGui):
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
     
-    def appletDrawers(self):
-        return [ ("Watershed Viewer", self.getAppletDrawerUi() ) ]
+    def appletDrawer(self):
+        return self.getAppletDrawerUi()
 
     # (Other methods already provided by our base class)
 
@@ -72,9 +72,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
         # Init input channel gui updates
         self.mainOperator.InputChannelIndexes.notifyDirty( self.updateInputChannelGui )
         self.mainOperator.InputChannelIndexes.setValue( [0] )
-        def subscribeToInputMetaChanges(multislot, index):
-            multislot[index].notifyMetaChanged( self.updateInputChannelGui )
-        self.mainOperator.InputImage.notifyInserted( bind(subscribeToInputMetaChanges) )
+        self.mainOperator.InputImage.notifyMetaChanged( bind(self.updateInputChannelGui) )
         self.updateInputChannelGui()
     
     @traceLogged(traceLogger)
@@ -122,19 +120,20 @@ class VigraWatershedViewerGui(LayerViewerGui):
         This GUI is being hidden because the user selected another applet or the window is closing.
         Save all preferences.
         """
-        with PreferencesManager() as prefsMgr:
-            prefsMgr.set( 'vigra watershed viewer', 'cache block shape', self.mainOperator.CacheBlockShape.value )
-            prefsMgr.set( 'vigra watershed viewer', 'block padding', self.mainOperator.WatershedPadding.value )
+        if self.mainOperator.CacheBlockShape.ready() and self.mainOperator.WatershedPadding.ready():
+            with PreferencesManager() as prefsMgr:
+                prefsMgr.set( 'vigra watershed viewer', 'cache block shape', self.mainOperator.CacheBlockShape.value )
+                prefsMgr.set( 'vigra watershed viewer', 'block padding', self.mainOperator.WatershedPadding.value )
         super( VigraWatershedViewerGui, self ).hideEvent(event)
     
     @traceLogged(traceLogger)
-    def setupLayers(self, currentImageIndex):
+    def setupLayers(self):
         layers = []
 
         self.updateInputChannelGui()
         
         # Show the watershed data
-        outputImageSlot = self.mainOperator.ColoredPixels[ currentImageIndex ]
+        outputImageSlot = self.mainOperator.ColoredPixels
         if outputImageSlot.ready():
             outputLayer = self.createStandardLayerFromSlot( outputImageSlot, lastChannelIsAlpha=True )
             outputLayer.name = "Watershed"
@@ -148,7 +147,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
             layers.append(outputLayer)
         
         # Show the watershed seeds
-        seedSlot = self.mainOperator.ColoredSeeds[ currentImageIndex ]
+        seedSlot = self.mainOperator.ColoredSeeds
         if seedSlot.ready():
             seedLayer = self.createStandardLayerFromSlot( seedSlot, lastChannelIsAlpha=True )
             seedLayer.name = "Watershed Seeds"
@@ -161,11 +160,11 @@ class VigraWatershedViewerGui(LayerViewerGui):
                 seedLayer )
             layers.append(seedLayer)
 
-        selectedInputImageSlot = self.mainOperator.SelectedInputChannels[ currentImageIndex ]
+        selectedInputImageSlot = self.mainOperator.SelectedInputChannels
         if selectedInputImageSlot.ready():
             # Show the summed input if there's more than one input channel 
             if len(selectedInputImageSlot) > 1:
-                summedSlot = self.mainOperator.SummedInput[ currentImageIndex ]
+                summedSlot = self.mainOperator.SummedInput
                 if summedSlot.ready():
                     sumLayer = self.createStandardLayerFromSlot( summedSlot )
                     sumLayer.name = "Summed Input"
@@ -183,7 +182,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
                 layers.append(inputLayer)
 
         # Show the raw input (if provided) 
-        rawImageSlot = self.mainOperator.RawImage[ currentImageIndex ]
+        rawImageSlot = self.mainOperator.RawImage
         if rawImageSlot.ready():
             rawLayer = self.createStandardLayerFromSlot( rawImageSlot )
             rawLayer.name = "Raw Image"
@@ -218,7 +217,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
             self.mainOperator.FreezeCache.setValue(False)
 
             # Force the cache to update.
-            self.mainOperator.InputImage[self.imageIndex].setDirty( slice(None) )
+            self.mainOperator.InputImage.setDirty( slice(None) )
             
             # Wait for the image to be rendered into all three image views
             time.sleep(2)
@@ -226,39 +225,38 @@ class VigraWatershedViewerGui(LayerViewerGui):
                 imgView.scene().joinRendering()
             self.mainOperator.FreezeCache.setValue(True)
 
-        if self.imageIndex >= 0:
-            th = threading.Thread(target=updateThread)
-            th.start()
+        th = threading.Thread(target=updateThread)
+        th.start()
 
-    def getLabelAt(self, currentImageIndex, position5d):
-        labelSlot = self.mainOperator.WatershedLabels[currentImageIndex]
+    def getLabelAt(self, position5d):
+        labelSlot = self.mainOperator.WatershedLabels
         if labelSlot.ready():
             labelData = labelSlot[ index2slice(position5d) ].wait()
             return labelData.squeeze()[()]
         else:
             return None
 
-    def handleEditorLeftClick(self, currentImageIndex, position5d, globalWindowCoordinate):
+    def handleEditorLeftClick(self, position5d, globalWindowCoordinate):
         """
         This is an override from the base class.  Called when the user clicks in the volume.
         
         For left clicks, we highlight the clicked label.
         """
-        label = self.getLabelAt(currentImageIndex, position5d)
+        label = self.getLabelAt(position5d)
         if label != 0 and label is not None:
-            overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
+            overrideSlot = self.mainOperator.OverrideLabels
             overrides = copy.copy(overrideSlot.value)
             overrides[label] = (255, 255, 255, 255)
             overrideSlot.setValue(overrides)
             
-    def handleEditorRightClick(self, currentImageIndex, position5d, globalWindowCoordinate):
+    def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         """
         This is an override from the base class.  Called when the user clicks in the volume.
         
         For right clicks, we un-highlight the clicked label.
         """
-        label = self.getLabelAt(currentImageIndex, position5d)
-        overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
+        label = self.getLabelAt(position5d)
+        overrideSlot = self.mainOperator.OverrideLabels
         overrides = copy.copy(overrideSlot.value)
         if label != 0 and label in overrides:
             del overrides[label]
@@ -276,17 +274,18 @@ class VigraWatershedViewerGui(LayerViewerGui):
         self.mainOperator.CacheBlockShape.setValue( (width, depth) )
     
     def onInputSelectionsChanged(self):
-        if 0 <= self.imageIndex < len(self.mainOperator.InputImage):
-            inputImageSlot = self.mainOperator.InputImage[self.imageIndex]
-            if inputImageSlot.ready():
-                channelAxis = inputImageSlot.meta.axistags.channelIndex
-                numInputChannels = inputImageSlot.meta.shape[channelAxis]
-            channels = []
-            for i, checkbox in enumerate( self._inputChannelCheckboxes[0:numInputChannels] ):
-                if checkbox.isChecked():
-                    channels.append(i)
-            
-            self.mainOperator.InputChannelIndexes.setValue( channels )
+        inputImageSlot = self.mainOperator.InputImage
+        if inputImageSlot.ready():
+            channelAxis = inputImageSlot.meta.axistags.channelIndex
+            numInputChannels = inputImageSlot.meta.shape[channelAxis]
+        else:
+            numInputChannels = 0
+        channels = []
+        for i, checkbox in enumerate( self._inputChannelCheckboxes[0:numInputChannels] ):
+            if checkbox.isChecked():
+                channels.append(i)
+        
+        self.mainOperator.InputChannelIndexes.setValue( channels )
     
     def onUseSeedsToggled(self):
         self.updateSeeds()
@@ -336,11 +335,10 @@ class VigraWatershedViewerGui(LayerViewerGui):
     def updateInputChannelGui(self, *args):
         # Show only checkboxes that can be used (limited by number of input channels)
         numChannels = 0
-        if 0 <= self.imageIndex < len(self.mainOperator.InputImage):
-            inputImageSlot = self.mainOperator.InputImage[self.imageIndex]
-            if inputImageSlot.ready():
-                channelAxis = inputImageSlot.meta.axistags.channelIndex
-                numChannels = inputImageSlot.meta.shape[channelAxis]
+        inputImageSlot = self.mainOperator.InputImage
+        if inputImageSlot.ready():
+            channelAxis = inputImageSlot.meta.axistags.channelIndex
+            numChannels = inputImageSlot.meta.shape[channelAxis]
         for i, checkbox in enumerate(self._inputChannelCheckboxes):
 #            if i >= numChannels:
 #                checkbox.setChecked(False)
