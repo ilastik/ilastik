@@ -111,21 +111,19 @@ class ProjectManager(object):
             raise e
 
 
-    def isProjectDataDirty(self):
+    def getDirtyAppletNames(self):
         """
         Check all serializable items in our workflow if they have any unsaved data.
         """
         if self.currentProjectFile is None:
-            return False
+            return []
 
-        unSavedDataExists = False
+        dirtyAppletNames = []
         for applet in self._applets:
             for item in applet.dataSerializers:
-                if unSavedDataExists:
-                    break
-                else:
-                    unSavedDataExists = item.isDirty()
-        return unSavedDataExists
+                if item.isDirty():
+                    dirtyAppletNames.append(applet.name)
+        return dirtyAppletNames
 
     def saveProject(self):
         logger.debug("Save Project triggered")

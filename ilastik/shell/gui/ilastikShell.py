@@ -815,15 +815,18 @@ class IlastikShell( QMainWindow ):
         The ``assertClean`` parameter is for tests.  Setting it to True will raise an assertion if the project was dirty.
         """
         closeProject = True
-        if self.projectManager and self.projectManager.isProjectDataDirty():
-            # Testing assertion
-            assert not assertClean, "Expected a clean project but found it to be dirty!"
-
-            message = "Your current project is about to be closed, but it has unsaved changes which will be lost.\n"
-            message += "Are you sure you want to proceed?"
-            buttons = QMessageBox.Yes | QMessageBox.Cancel
-            response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
-            closeProject = (response == QMessageBox.Yes)
+        if self.projectManager:
+            dirtyApplets = self.projectManager.getDirtyAppletNames()
+            if len(dirtyApplets) > 0:
+                # Testing assertion
+                assert not assertClean, "Expected a clean project but found it to be dirty!"
+    
+                message = "Your current project is about to be closed, but it has unsaved changes which will be lost.\n"
+                message += "Are you sure you want to proceed?\n"
+                message += "(Unsaved changes in: {})".format( ', '.join(dirtyApplets) )
+                buttons = QMessageBox.Yes | QMessageBox.Cancel
+                response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
+                closeProject = (response == QMessageBox.Yes)
             
 
         if closeProject:
@@ -912,12 +915,15 @@ class IlastikShell( QMainWindow ):
             self.closeAndQuit(quitApp)
         
     def confirmQuit(self):
-        if self.projectManager and self.projectManager.isProjectDataDirty():
-            message = "Your project has unsaved data.  Are you sure you want to discard your changes and quit?"
-            buttons = QMessageBox.Discard | QMessageBox.Cancel
-            response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
-            if response == QMessageBox.Cancel:
-                return False
+        if self.projectManager:
+            dirtyApplets = self.projectManager.getDirtyAppletNames()
+            if len(dirtyApplets) > 0:
+                message = "Your project has unsaved data.  Are you sure you want to discard your changes and quit?\n"
+                message += "(Unsaved changes in: {})".format( ', '.join(dirtyApplets) )
+                buttons = QMessageBox.Discard | QMessageBox.Cancel
+                response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
+                if response == QMessageBox.Cancel:
+                    return False
         return True
 
     def closeAndQuit(self, quitApp=True):
