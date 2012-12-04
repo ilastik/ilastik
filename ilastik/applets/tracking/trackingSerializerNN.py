@@ -5,7 +5,7 @@ class TrackingSerializerNN(AppletSerializer):
     SerializerVersion = 0.1
     
     def __init__(self, mainOperator, projectFileGroupName):
-        super( TrackingSerializerNN, self ).__init__( projectFileGroupName, self.SerializerVersion )
+        super( TrackingSerializerNN, self ).__init__( projectFileGroupName )
         self.mainOperator = mainOperator
         self._dirty = False
     
@@ -25,5 +25,6 @@ class TrackingSerializerNN(AppletSerializer):
         self._dirty = True
 
     def unload(self):
-        pass
+        print "TrackingSerializerNN::unload not implemented"
+        
 

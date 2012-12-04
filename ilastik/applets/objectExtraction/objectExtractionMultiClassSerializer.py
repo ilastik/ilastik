@@ -7,7 +7,7 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
     SerializerVersion = 0.1
     
     def __init__(self, mainOperator, projectFileGroupName):
-        super( ObjectExtractionMultiClassSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
+        super( ObjectExtractionMultiClassSerializer, self ).__init__( projectFileGroupName )
         self.mainOperator = mainOperator
 
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
@@ -123,7 +123,8 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
 #            self.mainOperator.innerOperators[0]._opRegionalMaximum._cache = cache
         
     def isDirty(self):
-        return True
+#        return True
+        pass
     
     
     def unload(self):
