@@ -96,6 +96,7 @@ class LayerViewerGui(QMainWindow):
         super(LayerViewerGui, self).__init__()
 
         self._stopped = False
+        self._initialized = False
 
         self.threadRouter = ThreadRouter(self) # For using @threadRouted
 
@@ -137,6 +138,7 @@ class LayerViewerGui(QMainWindow):
         self.initAppletDrawerUi() # Default implementation loads a blank drawer.
         
     def _after_init(self):
+        self._initialized = True
         self.updateAllLayers()
 
     def setupLayers( self ):
@@ -259,7 +261,7 @@ class LayerViewerGui(QMainWindow):
     @traceLogged(traceLogger)
     @threadRouted
     def updateAllLayers(self):
-        if self._stopped:
+        if self._stopped or not self._initialized:
             return
 
         # Ask for the updated layer list (usually provided by the subclass)
