@@ -12,9 +12,11 @@ Contents:
    :maxdepth: 2
 
    overview
-   workflow_design
    applet_api
+   workflow_design
    applet_library
+   projectManager
+   utilities
    dependencies
 
 

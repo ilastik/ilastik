@@ -49,6 +49,7 @@ class AppletGuiInterface():
         Abstract method.
         Called by the shell when the user has switched the input image he wants to view.
         The GUI should respond by updating the content of the central widget.
+        Note: Single-image GUIs do not need to provide this function.
         """
         raise NotImplementedError
 

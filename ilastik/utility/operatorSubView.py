@@ -14,11 +14,26 @@ class OperatorSubViewMetaclass(type):
 class OperatorSubView(object):
     """
     An adapter class that makes a specific lane of a multi-image operator look like a single image operator.
+    
+    If the adapted operator is an OperatorWrapper, then the view provides all of the members of the inner 
+    operator at the specified index, except that the slot members will refer to the OperatorWrapper's 
+    slots (i.e. the OUTER slots).
+    
+    If the adapted operator is NOT an OperatorWrapper, then the view provides all the members of the adapted operator,
+    except that ALL MULTISLOT members will be replaced with a reference to the subslot for the specified index.
+    Non-multislot members will not be replaced.
     """
 
     __metaclass__ = OperatorSubViewMetaclass
     
     def __init__(self, op, index):
+        """
+        Constructor.  Creates a view of the given operator for the specified index.
+        
+        :param op: The operator to view.
+        :param index: The index of this subview.  All multislots of the original 
+                      operator will be replaced with the corresponding subslot at this index.
+        """
         self.__op = op
         self.__index = index
         self.__slots = {}

@@ -10,21 +10,42 @@ import ilastik
 from ilastik import isVersionCompatible
 
 class ProjectManager(object):
+    """
+    This class manages creating, opening, importing, saving, and closing project files.
+    It instantiates a workflow object and loads its applets with the settings from the 
+    project file by using the applets' serializer objects.
+    
+    To open a project file, instantiate a ProjectManager object.
+    To close the project file, delete the ProjectManager object.
+    
+    Once the project manager has been instantiated, clients can access its ``workflow``
+    member for direct access to its applets and their top-level operators.
+    """
 
     #########################
     ## Error types
     #########################    
 
     class ProjectVersionError(RuntimeError):
+        """
+        Raised if an attempt is made to open a project file that was generated with an old version of ilastik.
+        """
         def __init__(self, projectVersion, expectedVersion):
             RuntimeError.__init__(self, "Incompatible project version: {} (Expected: {})".format(projectVersion, expectedVersion) )
             self.projectVersion = projectVersion
             self.expectedVersion = expectedVersion
     
     class FileMissingError(RuntimeError):
+        """
+        Raised if an attempt is made to open a project file that can't be found on disk.
+        """
         pass
 
     class SaveError(RuntimeError):
+        """
+        Raised if saving the project results in an error of some kind.
+        The project file will be in an UNKNOWN and potentially inconsistent state!
+        """
         pass
 
     #########################
@@ -34,6 +55,7 @@ class ProjectManager(object):
     @classmethod
     def createBlankProjectFile(cls, projectFilePath):
         """
+        Class method.
         Create a new ilp file at the given path and initialize it with a project version.
         If a file already existed at that location, it will be overwritten with a blank project.
         """
@@ -46,6 +68,7 @@ class ProjectManager(object):
     @classmethod
     def openProjectFile(cls, projectFilePath):
         """
+        Class method.
         Attempt to open the given path to an existing project file.
         If it doesn't exist, raise a ``ProjectManager.FileMissingError``.
         If its version is outdated, raise a ``ProjectManager.ProjectVersionError.``
@@ -104,6 +127,9 @@ class ProjectManager(object):
             self._importProject(importFromPath, hdf5File, projectFilePath)
 
     def __del__(self):
+        """
+        Destructor.  Closes the project file.
+        """
         try:
             self._closeCurrentProject()
         except Exception,e:
@@ -113,7 +139,9 @@ class ProjectManager(object):
 
     def getDirtyAppletNames(self):
         """
-        Check all serializable items in our workflow if they have any unsaved data.
+        Check the serializers for every applet in the workflow.
+        If a serializer declares itself to be dirty (i.e. it is-out-of-sync with the applet's operator),
+        then the applet's name is appended to the resulting list.
         """
         if self.currentProjectFile is None:
             return []
@@ -126,6 +154,10 @@ class ProjectManager(object):
         return dirtyAppletNames
 
     def saveProject(self):
+        """
+        Update the project file with the state of the current workflow settings.
+        Must not be called if the project file was opened in read-only mode.
+        """
         logger.debug("Save Project triggered")
         assert self.currentProjectFile != None
         assert self.currentProjectPath != None

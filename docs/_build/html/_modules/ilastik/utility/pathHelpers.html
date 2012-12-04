@@ -1,0 +1,201 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.utility.pathHelpers &mdash; ilastik v0.6.0 documentation</title>
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="ilastik v0.6.0 documentation" href="../../../index.html" />
+    <link rel="up" title="ilastik.utility" href="../utility.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../utility.html" accesskey="U">ilastik.utility</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for ilastik.utility.pathHelpers</h1><div class="highlight"><pre>
+<span class="k">class</span> <span class="nc">PathComponents</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="PathComponents"><a class="viewcode-back" href="../../../utilities.html#ilastik.utility.pathHelpers.PathComponents">[docs]</a><span class="sd">    Provides a convenient access to path components of a combined external/internal path to a dataset.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">totalPath</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="PathComponents.__init__"><a class="viewcode-back" href="../../../utilities.html#ilastik.utility.pathHelpers.PathComponents.__init__">[docs]</a><span class="sd">        Initialize the path components.</span>
+<span class="sd">        :param totalPath: The entire path to the dataset, including any internal path (e.g. the path to an hdf5 dataset).</span>
+<span class="sd">                          For example, totalPath=&#39;/some/path/to/file.h5/with/internal/dataset&#39;</span>
+<span class="sd">        :param cwd: If provided, relative paths will be converted to absolute paths using this arg as the working directory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">externalPath</span> <span class="o">=</span> <span class="bp">None</span>        <span class="c">#: Example: ``/some/path/to/file.h5``</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">externalDirectory</span> <span class="o">=</span> <span class="bp">None</span>   <span class="c">#: Example: ``/some/path/to``</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="bp">None</span>            <span class="c">#: Example: ``file.h5``</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filenameBase</span> <span class="o">=</span> <span class="bp">None</span>        <span class="c">#: Example: ``file``</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extension</span> <span class="o">=</span> <span class="bp">None</span>           <span class="c">#: Example: ``.h5``</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">internalPath</span> <span class="o">=</span> <span class="bp">None</span>        <span class="c">#: Example: ``/with/internal/dataset``</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">internalDatasetName</span> <span class="o">=</span> <span class="bp">None</span> <span class="c">#: Example: ``/dataset``</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">internalDirectory</span> <span class="o">=</span> <span class="bp">None</span>   <span class="c">#: Example: ``/some/path/to/file.h5/with/internal``</span>
+        
+        <span class="c"># For hdf5 paths, split into external, extension, and internal paths</span>
+        <span class="n">h5Exts</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;.ilp&#39;</span><span class="p">,</span> <span class="s">&#39;.h5&#39;</span><span class="p">,</span> <span class="s">&#39;.hdf5&#39;</span><span class="p">]</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">extIndex</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        
+        <span class="k">if</span> <span class="n">cwd</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">absPath</span><span class="p">,</span> <span class="n">relPath</span> <span class="o">=</span> <span class="n">getPathVariants</span><span class="p">(</span> <span class="n">totalPath</span><span class="p">,</span> <span class="n">cwd</span> <span class="p">)</span>
+            <span class="n">totalPath</span> <span class="o">=</span> <span class="n">absPath</span>
+        
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">h5Exts</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">totalPath</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">extIndex</span><span class="p">:</span>
+                <span class="n">extIndex</span> <span class="o">=</span> <span class="n">totalPath</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+                <span class="n">ext</span> <span class="o">=</span> <span class="n">x</span>
+
+        <span class="c"># Comments below refer to this example path:</span>
+        <span class="c"># /some/path/to/file.h5/with/internal/dataset</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">extension</span> <span class="o">=</span> <span class="n">ext</span>                              <span class="c"># .h5</span>
+            <span class="n">parts</span> <span class="o">=</span> <span class="n">totalPath</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">ext</span><span class="p">)</span>
+            
+            <span class="c"># Must deal with pathological filenames such as /path/to/file.h5_with_duplicate_ext.h5</span>
+            <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">ext</span> <span class="o">+</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">del</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">externalPath</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">ext</span> <span class="c"># /some/path/to/file.h5</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">internalPath</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\\</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">&#39;/&#39;</span><span class="p">)</span> <span class="c"># /with/internal/dataset</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">internalDirectory</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">internalPath</span> <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>   <span class="c"># /with/internal</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">internalDatasetName</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">internalPath</span> <span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="c"># dataset</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># For non-hdf5 files, use normal path/extension (no internal path)</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">externalPath</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">extension</span><span class="p">)</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">totalPath</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">externalPath</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extension</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">internalPath</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">internalDatasetName</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">internalDirectory</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">externalDirectory</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">externalPath</span> <span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="c"># /some/path/to</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">externalPath</span> <span class="p">)[</span><span class="mi">1</span><span class="p">]</span>          <span class="c"># file.h5</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filenameBase</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>         <span class="c"># file</span>
+
+    <span class="k">def</span> <span class="nf">totalPath</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="PathComponents.totalPath"><a class="viewcode-back" href="../../../utilities.html#ilastik.utility.pathHelpers.PathComponents.totalPath">[docs]</a><span class="sd">        Return the (reconstructed) totalPath to the dataset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">externalPath</span> 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">internalPath</span><span class="p">:</span>
+            <span class="n">total</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">internalPath</span>
+        <span class="k">return</span> <span class="n">total</span>
+
+<span class="k">def</span> <span class="nf">getPathVariants</span><span class="p">(</span><span class="n">originalPath</span><span class="p">,</span> <span class="n">workingDirectory</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span></div></div>
+<span class="sd">    Take the given filePath (which can be absolute or relative, and may include an internal path suffix),</span>
+<span class="sd">    and return a tuple of the absolute and relative paths to the file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lastDotIndex</span> <span class="o">=</span> <span class="n">originalPath</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span>
+    <span class="n">extensionAndInternal</span> <span class="o">=</span> <span class="n">originalPath</span><span class="p">[</span><span class="n">lastDotIndex</span><span class="p">:]</span>
+    <span class="n">extension</span> <span class="o">=</span> <span class="n">extensionAndInternal</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;/&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">relPath</span> <span class="o">=</span> <span class="n">originalPath</span>
+    
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">originalPath</span><span class="p">):</span>
+        <span class="n">absPath</span> <span class="o">=</span> <span class="n">originalPath</span>
+        <span class="n">relPath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">relpath</span><span class="p">(</span><span class="n">absPath</span><span class="p">,</span> <span class="n">workingDirectory</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">relPath</span> <span class="o">=</span> <span class="n">originalPath</span>
+        <span class="n">absPath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">normpath</span><span class="p">(</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">workingDirectory</span><span class="p">,</span> <span class="n">relPath</span><span class="p">)</span> <span class="p">)</span>
+        
+    <span class="k">return</span> <span class="p">(</span><span class="n">absPath</span><span class="p">,</span> <span class="n">relPath</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    
+    <span class="nb">abs</span><span class="p">,</span> <span class="n">rel</span> <span class="o">=</span> <span class="n">getPathVariants</span><span class="p">(</span><span class="s">&#39;/aaa/bbb/ccc/ddd.txt&#39;</span><span class="p">,</span> <span class="s">&#39;/aaa/bbb/ccc/eee&#39;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">abs</span> <span class="o">==</span> <span class="s">&#39;/aaa/bbb/ccc/ddd.txt&#39;</span>
+    <span class="k">assert</span> <span class="n">rel</span> <span class="o">==</span> <span class="s">&#39;../ddd.txt&#39;</span>
+
+    <span class="nb">abs</span><span class="p">,</span> <span class="n">rel</span> <span class="o">=</span> <span class="n">getPathVariants</span><span class="p">(</span><span class="s">&#39;../ddd.txt&#39;</span><span class="p">,</span> <span class="s">&#39;/aaa/bbb/ccc/eee&#39;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">abs</span> <span class="o">==</span> <span class="s">&#39;/aaa/bbb/ccc/ddd.txt&#39;</span>
+    <span class="k">assert</span> <span class="n">rel</span> <span class="o">==</span> <span class="s">&#39;../ddd.txt&#39;</span>
+
+    <span class="nb">abs</span><span class="p">,</span> <span class="n">rel</span> <span class="o">=</span> <span class="n">getPathVariants</span><span class="p">(</span><span class="s">&#39;ddd.txt&#39;</span><span class="p">,</span> <span class="s">&#39;/aaa/bbb/ccc&#39;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">abs</span> <span class="o">==</span> <span class="s">&#39;/aaa/bbb/ccc/ddd.txt&#39;</span>
+    <span class="k">assert</span> <span class="n">rel</span> <span class="o">==</span> <span class="s">&#39;ddd.txt&#39;</span>
+    
+    <span class="n">components</span> <span class="o">=</span> <span class="n">PathComponents</span><span class="p">(</span><span class="s">&#39;/some/external/path/to/file.h5/with/internal/path/to/data&#39;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">components</span><span class="o">.</span><span class="n">externalPath</span> <span class="o">==</span> <span class="s">&#39;/some/external/path/to/file.h5&#39;</span>
+    <span class="k">assert</span> <span class="n">components</span><span class="o">.</span><span class="n">extension</span> <span class="o">==</span> <span class="s">&#39;.h5&#39;</span>
+    <span class="k">assert</span> <span class="n">components</span><span class="o">.</span><span class="n">internalPath</span> <span class="o">==</span> <span class="s">&#39;/with/internal/path/to/data&#39;</span>
+
+    <span class="n">components</span> <span class="o">=</span> <span class="n">PathComponents</span><span class="p">(</span><span class="s">&#39;/some/external/path/to/file.h5_crazy_ext.h5/with/internal/path/to/data&#39;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">components</span><span class="o">.</span><span class="n">externalPath</span> <span class="o">==</span> <span class="s">&#39;/some/external/path/to/file.h5_crazy_ext.h5&#39;</span>
+    <span class="k">assert</span> <span class="n">components</span><span class="o">.</span><span class="n">extension</span> <span class="o">==</span> <span class="s">&#39;.h5&#39;</span>
+    <span class="k">assert</span> <span class="n">components</span><span class="o">.</span><span class="n">internalPath</span> <span class="o">==</span> <span class="s">&#39;/with/internal/path/to/data&#39;</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../utility.html" >ilastik.utility</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+    </div>
+  </body>
+</html>

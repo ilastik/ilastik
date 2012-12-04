@@ -1,4 +1,4 @@
-from ilastik.applets.base.applet import StandardApplet
+from ilastik.applets.base.standardApplet import StandardApplet
 from opLabeling import OpLabeling
 from labelingSerializer import LabelingSerializer
 

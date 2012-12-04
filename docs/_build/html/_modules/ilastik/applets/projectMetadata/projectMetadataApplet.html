@@ -3,16 +3,13 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
-
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.applets.projectMetadata.projectMetadataApplet &mdash; ilastik 0.6.0 documentation</title>
-    
+    <title>ilastik.applets.projectMetadata.projectMetadataApplet &mdash; ilastik v0.6.0 documentation</title>
     <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
-    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../../',
@@ -25,7 +22,7 @@
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
-    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="top" title="ilastik v0.6.0 documentation" href="../../../../index.html" />
     <link rel="up" title="Module code" href="../../../index.html" /> 
   </head>
   <body>
@@ -35,7 +32,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -46,13 +43,11 @@
           <div class="body">
             
   <h1>Source code for ilastik.applets.projectMetadata.projectMetadataApplet</h1><div class="highlight"><pre>
-<span class="kn">from</span> <span class="nn">ilastik.applets.base.applet</span> <span class="kn">import</span> <span class="n">Applet</span>
-<span class="kn">from</span> <span class="nn">projectMetadataSerializer</span> <span class="kn">import</span> <span class="n">ProjectMetadataSerializer</span><span class="p">,</span> <span class="n">Ilastik05ProjectMetadataDeserializer</span>
 <span class="kn">from</span> <span class="nn">projectMetadata</span> <span class="kn">import</span> <span class="n">ProjectMetadata</span>
 
-<div class="viewcode-block" id="ProjectMetadataApplet"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.projectMetadata.projectMetadataApplet.ProjectMetadataApplet">[docs]</a><span class="k">class</span> <span class="nc">ProjectMetadataApplet</span><span class="p">(</span> <span class="n">Applet</span> <span class="p">):</span>
+<span class="k">class</span> <span class="nc">ProjectMetadataApplet</span><span class="p">(</span> <span class="n">Applet</span> <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    This applet allows the user to enter project metadata (e.g. Project name, labeler name, etc.).</span>
+<div class="viewcode-block" id="ProjectMetadataApplet"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.projectMetadata.projectMetadataApplet.ProjectMetadataApplet">[docs]</a><span class="sd">    This applet allows the user to enter project metadata (e.g. Project name, labeler name, etc.).</span>
 <span class="sd">    </span>
 <span class="sd">    Note that this applet does not affect the processing pipeline and has no top-level operator.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -66,12 +61,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span> <span class="o">=</span> <span class="p">[</span> <span class="n">ProjectMetadataSerializer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_projectMetadata</span><span class="p">,</span> <span class="s">&quot;ProjectMetadata&quot;</span><span class="p">),</span>
                                     <span class="n">Ilastik05ProjectMetadataDeserializer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_projectMetadata</span><span class="p">)</span> <span class="p">]</span>
 
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">dataSerializers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">gui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">getMultiLaneGui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
             <span class="kn">from</span> <span class="nn">projectMetadataGui</span> <span class="kn">import</span> <span class="n">ProjectMetadataGui</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span> <span class="o">=</span> <span class="n">ProjectMetadataGui</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_projectMetadata</span><span class="p">)</span>
@@ -81,6 +71,10 @@
     <span class="k">def</span> <span class="nf">topLevelOperator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c"># This applet provides a GUI and serializers, but does not affect the graph in any way.</span>
         <span class="k">return</span> <span class="bp">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dataSerializers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span>
 </pre></div></div>
 
           </div>
@@ -111,13 +105,13 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
     </div>
   </body>
 </html>

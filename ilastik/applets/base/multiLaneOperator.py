@@ -10,6 +10,11 @@ class MultiLaneOperatorABC(object):
     This abstract base class specifies the interface to which all top-level applet operators must adhere.
     The distinguishing characteristic of a top-level operator is the fact that they must be capable of 
     supporting multiple images via multi-slots that are indexed by image lane number.
+    
+    Image lanes of the top-level operator are added, removed, and accessed via the ``addLane``, ``removeLane``, and ``getLane`` functions.
+    
+    Note: Most applets can simply inherit from the ``StandardApplet`` base class, 
+    which will automatically adapt single-lane top-level operators to satisfy this interface. 
     """
 
     __metaclass__ = ABCMeta

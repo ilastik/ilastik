@@ -2,6 +2,31 @@
 Applet API
 ==========
 
+Workflows
+=========
+
+A workflow represents a list of applets to display in the shell.  It is created when a project is loaded, 
+and destroyed when the project is closed.
+If the user opens more than one image in a workflow, then the workflow is said to have multiple *image lanes*.
+Each *image lane* is named according to the name of the input image it processes.  
+The workflow provides the list of currently loaded image lanes to the shell 
+via a special slot known as the "image name list".  The shell GUI presents this list of image names to the user, 
+allowing him to select which image lane he wants to view.
+
+When the user opens a new image in the workflow, the workflow creates a new image lane to process it.  This is done by calling 
+``addLane`` on every applet's topLevelOperator, and then calling ``connectLane`` to connect together the lanes from each applet.
+See :py:class:`MultiLaneOperatorABC<ilastik.applets.base.multiLaneOperator.MultiLaneOperatorABC>` for more details. 
+
+A workflow is instantiated when a project is loaded, and it is destroyed (it's ``cleanUp`` method is called)
+when the project is closed.  The cleanUp function is responsible for freeing all resources owned by the 
+applets, including GUI resources.
+
+.. currentmodule:: ilastik.workflow
+.. autoclass:: Workflow
+   :members:
+   
+   .. automethod:: __init__
+
 Applets
 =======
 
@@ -26,11 +51,21 @@ The base class provides a few signals, which applets can use to communicate with
 .. autoclass:: ShellRequest
    :members:
 
+.. currentmodule:: ilastik.applets.base.standardApplet
+.. autoclass:: StandardApplet
+   :members:
+   
+   .. automethod:: __init__
+
+
 Top-level Operators
 ===================
 
-Everything an applet does is centered around the applet's top-level operator.  It is typically the keeper of all state associated with the applet.
-It should expose its image outputs as multi-slots, which are indexed according to the index of the currently loaded image.  See :ref:`basic-workflows` for details.
+Everything an applet does is centered around the applet's top-level operator.  
+It is typically the keeper of all state associated with the applet.
+The top-level operators that the workflow and shell see must be capbable of handling multiple image lanes.
+That is, they must adhere to the :py:class:`MultiLaneOperatorABC<ilastik.applets.base.multiLaneOperator.MultiLaneOperatorABC>`.
+If your applet inherits from ``StandardApplet``, then your single-lane top-level operator can be automatically adapted to the multi-lane interface.
 
 The applet GUI and the applet serializers both make changes to the top-level operator and listen for changes made to the top-level operator.
 Here's an example timeline, showing a typical sequence of interactions.
@@ -40,7 +75,7 @@ Here's an example timeline, showing a typical sequence of interactions.
 2) The shell loads a project file
     * Calls each serializer to read settings from the project file and apply them to the appropriate slots of the top-level operator
 3) The GUI responds to the changes made to the top-level operator by updating the GUI appearance.
-    * Widgets in the applet drawer(s) for the applet are updated with the current operator slot values.
+    * Widgets in the applet drawer for the applet are updated with the current operator slot values.
 4) The user changes a setting in the GUI, which in turn changes a slot value on the applet's top-level operator.
     * The changes are propagated downstream from the top-level operator, possibly resulting in an update in the central widget.
     * The applet serializer also notices the change, and makes a note that the serializer is "dirty".
@@ -51,6 +86,10 @@ Here's an example timeline, showing a typical sequence of interactions.
 7) Repeat step 4 as the user experiments with more workflow options.
 8) The user attempts to close the project.
     * The shell determines if any serializers have work to do by calling isDirty().  If any declare themselves dirty, the user is asked to confirm his decision to close the project.
+
+.. currentmodule:: ilastik.applets.base.multiLaneOperator
+.. autoclass:: MultiLaneOperatorABC
+   :members:
 
 Applet GUIs
 ===========
