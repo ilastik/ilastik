@@ -1345,6 +1345,11 @@ class Operator(object):
         self._settingUp = False
 
         self._instantiate_slots()
+        
+        # We normally assert if an operator's upstream partners are yanked away.
+        # If operator is marked as "externally_managed", then we'll avoid the assert.
+        # In that case, it's assumed that you know what you're doing, and you weren't planning to use that operator, anyway.
+        self.externally_managed = False
 
     @property
     def children(self):
@@ -1459,7 +1464,9 @@ class Operator(object):
         self._disconnect()
 
         for s in self.inputs.values() + self.outputs.values():
-            if len(s.partners) > 0:
+            # See note about the externally_managed flag in Operator.__init__
+            partners = filter( lambda p: not p.getRealOperator().externally_managed, s.partners )
+            if len(partners) > 0:
                 msg = "Cannot clean up this operator: Slot '{}' is still providing data to downstream operators!\n".format(s.name)
                 for i,p in enumerate(s.partners):
                     msg += "Downstream Partner {}: {}.{}".format(i, p.getRealOperator().name, p.name)
