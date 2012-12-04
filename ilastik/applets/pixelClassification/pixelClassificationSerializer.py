@@ -176,6 +176,16 @@ class PixelClassificationSerializer(AppletSerializer):
     def cancel(self):
         self.predictionSlot.cancel()
 
+    def isDirty(self):
+        # Check all slots except the prediction slot
+        serialSlots = set(self.serialSlots)
+        serialSlots -= set([self.predictionSlot])
+        result = any(list(ss.dirty for ss in serialSlots))
+        
+        # Check the prediction slot, but only if prediction storage is enabled
+        result |= (self.predictionSlot.dirty and self.predictionSlot.predictionStorageEnabled)
+        
+        return result
 
 class Ilastik05ImportDeserializer(AppletSerializer):
     """
