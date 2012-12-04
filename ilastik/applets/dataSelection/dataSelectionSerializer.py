@@ -41,6 +41,9 @@ class DataSelectionSerializer( AppletSerializer ):
             slot[index].notifyDirty( bind(handleDirty) )
         # Dataset is a multi-slot, so subscribe to dirty callbacks on each slot as it is added
         self.mainOperator.Dataset.notifyInserted( bind(handleNewDataset) )
+
+        # If a dataset was removed, we need to be reserialized.
+        self.mainOperator.Dataset.notifyRemoved( bind(handleDirty) )
         
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         with Tracer(traceLogger):
