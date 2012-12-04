@@ -135,6 +135,7 @@ class SerialSlot(object):
             slot.notifyDirty(self.setDirty)
         else:
             slot.notifyInserted(doMulti)
+            slot.notifyRemoved( self.setDirty )
 
     def shouldSerialize(self, group):
         """Whether to serialize or not."""
