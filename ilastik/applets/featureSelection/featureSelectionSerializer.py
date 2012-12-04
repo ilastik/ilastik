@@ -50,6 +50,9 @@ class FeatureSelectionSerializer(AppletSerializer):
             try:
                 scales = topGroup['Scales'].value
                 featureIds = topGroup['FeatureIds'].value
+                
+                scales = list( map(lambda x: float(x), scales) )
+                featureIds = list( map(lambda s: str(s), featureIds) )
             except KeyError:
                 pass
             else:
