@@ -8,11 +8,11 @@ from lazyflow.operators import OpAttributeSelector
 
 class VigraWatershedWorkflow(Workflow):
     
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
 
-        super(VigraWatershedWorkflow, self).__init__(graph=graph)
+        super(VigraWatershedWorkflow, self).__init__(graph=graph, *args, **kwargs)
         self._applets = []
 
         # Create applets 
@@ -21,6 +21,7 @@ class VigraWatershedWorkflow(Workflow):
         
         # Connect top-level operators
         self.watershedApplet.topLevelOperator.InputImage.connect( self.dataSelectionApplet.topLevelOperator.Image )
+        self.watershedApplet.topLevelOperator.RawImage.connect( self.dataSelectionApplet.topLevelOperator.Image )
         
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.watershedApplet)

@@ -3,6 +3,10 @@ from lazyflow.graph import Operator
 
 class Workflow( Operator ):
     
+    def __init__(self, headless, *args, **kwargs):
+        super(Workflow, self).__init__(*args, **kwargs)
+        self._headless = headless
+    
     @abstractproperty
     def applets(self):
         return []
@@ -38,9 +42,10 @@ class Workflow( Operator ):
                 a.topLevelOperator.removeLane(index, finalLength)
 
     def cleanUp(self):
-        # Stop and clean up the GUIs before we invalidate the operators they depend on.
-        for a in self.applets:
-            a.getMultiLaneGui().stopAndCleanUp()
+        if not self._headless:
+            # Stop and clean up the GUIs before we invalidate the operators they depend on.
+            for a in self.applets:
+                a.getMultiLaneGui().stopAndCleanUp()
         
         # Clean up the graph as usual.
         super(Workflow, self).cleanUp()

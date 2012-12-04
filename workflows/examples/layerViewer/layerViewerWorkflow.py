@@ -6,10 +6,10 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.layerViewer import LayerViewerApplet
 
 class LayerViewerWorkflow(Workflow):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(LayerViewerWorkflow, self).__init__(graph=graph)
+        super(LayerViewerWorkflow, self).__init__(graph=graph, *args, **kwargs)
         self._applets = []
 
         # Create applets 

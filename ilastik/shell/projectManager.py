@@ -79,7 +79,7 @@ class ProjectManager(object):
     ## Public methods
     #########################    
 
-    def __init__(self, workflowClass, hdf5File, projectFilePath, readOnly, importFromPath=None):
+    def __init__(self, workflowClass, hdf5File, projectFilePath, readOnly, importFromPath=None, headless=False):
         """
         Constructor.
         
@@ -90,7 +90,7 @@ class ProjectManager(object):
         :param importFromPath: If the project should be overwritten using data imported from a different project, set this parameter to the other project's filepath.
         """
         # Instantiate the workflow.
-        self.workflow = workflowClass()
+        self.workflow = workflowClass(headless=headless)
 
         self.currentProjectFile = None
         self.currentProjectPath = None

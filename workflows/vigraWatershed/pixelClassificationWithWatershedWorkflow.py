@@ -2,11 +2,13 @@ from ilastik.workflow import Workflow
 from workflows.pixelClassification import PixelClassificationWorkflow
 from ilastik.applets.vigraWatershedViewer import VigraWatershedViewerApplet
 
+from lazyflow.graph import Graph
+
 class PixelClassificationWithVigraWatershedWorkflow(Workflow):
     
-    def __init__(self):
-        self._pixelClassificationWorkflow = PixelClassificationWorkflow()
-        graph = self._pixelClassificationWorkflow.graph
+    def __init__( self, *args, **kwargs ):
+        graph = Graph()
+        self._pixelClassificationWorkflow = PixelClassificationWorkflow(graph=graph, *args, **kwargs)
         super(PixelClassificationWithVigraWatershedWorkflow, self).__init__( graph=graph )
         self.dataSelectionApplet = self._pixelClassificationWorkflow.dataSelectionApplet
 

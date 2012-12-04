@@ -19,12 +19,16 @@ from lazyflow.operators.ioOperators import OpStackToH5Writer
 
 # ilastik
 import ilastik.utility.monkey_patches
-from ilastik.shell.headless.startShellHeadless import startShellHeadless
+from ilastik.shell.headless.headlessShell import HeadlessShell
 from pixelClassificationWorkflow import PixelClassificationWorkflow
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.applets.batchIo.opBatchIo import ExportFormat
 from ilastik.utility import PathComponents
 import ilastik.utility.globals
+
+import ilastik.ilastik_logging
+ilastik.ilastik_logging.default_config.init()
+ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +83,7 @@ def runWorkflow(parsed_args):
             raise RuntimeError("Could not find one or more batch inputs.  See logged errors.")
 
     # Instantiate 'shell'
-    shell, workflow = startShellHeadless( PixelClassificationWorkflow )
+    shell = HeadlessShell( PixelClassificationWorkflow )
     
     if args.assume_old_ilp_axes:
         # Special hack for Janelia: 
@@ -99,12 +103,12 @@ def runWorkflow(parsed_args):
         else:
             # Predictions for project input datasets
             if args.generate_project_predictions:
-                generateProjectPredictions(shell, workflow)
+                generateProjectPredictions(shell)
         
             # Predictions for other datasets ('batch datasets')
             result = True
             if len(args.batch_inputs) > 0:
-                result = generateBatchPredictions(workflow,
+                result = generateBatchPredictions(shell.workflow,
                                                   args.batch_inputs,
                                                   args.batch_export_dir,
                                                   args.batch_output_suffix,
@@ -113,11 +117,11 @@ def runWorkflow(parsed_args):
                 assert result
     finally:
         logger.info("Closing project...")
-        shell.projectManager.closeCurrentProject()
+        del shell
 
     logger.info("FINISHED.")
         
-def generateProjectPredictions(shell, workflow):
+def generateProjectPredictions(shell):
     """
     Compute predictions for all project inputs (not batch inputs), and save them to the project file.
     """
@@ -127,16 +131,16 @@ def generateProjectPredictions(shell, workflow):
         if currentProgress[0] != percentComplete:
             currentProgress[0] = percentComplete
             logger.info("Project Predictions: {}% complete.".format(percentComplete))
-    workflow.pcApplet.progressSignal.connect( handleProgress )
+    shell.workflow.pcApplet.progressSignal.connect( handleProgress )
     
     # Enable prediction saving
-    workflow.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
-    workflow.pcApplet.dataSerializers[0].predictionStorageEnabled = True
+    shell.workflow.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
+    shell.workflow.pcApplet.dataSerializers[0].predictionStorageEnabled = True
 
     # Save the project (which will request all predictions)
     shell.projectManager.saveProject()
     
-    workflow.pcApplet.dataSerializers[0].predictionStorageEnabled = False
+    shell.workflow.pcApplet.dataSerializers[0].predictionStorageEnabled = False
 
 def generateBatchPredictions(workflow, batchInputPaths, batchExportDir, batchOutputSuffix, exportedDatasetName, stackVolumeCacheDir):
     """
@@ -267,6 +271,10 @@ if __name__ == "__main__":
         #args += " /home/bergs/synapse_small.npy"
 
         sys.argv += args.split()
+
+    #make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     # MAIN
     sys.exit( main(sys.argv) )

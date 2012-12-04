@@ -3,11 +3,11 @@ from deviationFromMeanWorkflow import DeviationFromMeanWorkflow
 
 debug_testing = False
 if debug_testing:
-    def test(shell, workflow):
+    def test(shell):
         import h5py
 
         #projFilePath = '/home/bergs/Downloads/synapse_detection_training1.ilp'
-        projFilePath = '/magnetic/MyProject.ilp'
+        projFilePath = '/home/bergs/MyProject.ilp'
 
         shell.openProjectFile(projFilePath)
     
