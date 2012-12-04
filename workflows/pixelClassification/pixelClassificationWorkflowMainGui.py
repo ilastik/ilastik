@@ -97,6 +97,12 @@ if __name__ == "__main__":
         parser.error("incorrect number of arguments")
 
     # Start the GUI with a debug project    
+
+    import warnings
+    warnings.warn("WARNING: Assuming a strange axis order when importing 0.5 projects!")
+    import ilastik.utility.globals
+    ilastik.utility.globals.ImportOptions.default_axis_order = 'tyxzc'
+
     #startShellGui( PixelClassificationWorkflow )    
     #startShellGui( PixelClassificationWorkflow, debug_with_existing )
     #startShellGui( PixelClassificationWorkflow, debug_with_new )
