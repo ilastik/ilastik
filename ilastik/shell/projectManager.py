@@ -229,7 +229,8 @@ class ProjectManager(object):
     def saveProjectAs(self, newPath):
         """
         Implement "Save As"
-        Equivalent to the following (but done without closing the current project file):
+        Equivalent to the following steps (but done without closing the current project file):
+
         1) rename Old.ilp -> New.ilp
         2) touch Old.ilp
         3) copycontents New.ilp -> Old.ilp
