@@ -24,7 +24,7 @@ class StandardApplet( Applet ):
         """
         Constructor.
         :param name: The applet's name as it will appear in the GUI (e.g. the Applet Drawer title).
-        :param workflow: The workflow this applet belongs to.
+        :param workflow: The workflow this applet belongs to (not required if the subclass provides its own topLevelOperator).
         """
         super(StandardApplet, self).__init__(name)
         self._gui = None
