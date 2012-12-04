@@ -27,11 +27,10 @@ class AutocontextClassificationSerializer(AppletSerializer):
     """
     Encapsulate the serialization scheme for pixel classification workflow parameters and datasets.
     """
-    SerializerVersion = 0.1
     
     def __init__(self, mainOperator, projectFileGroupName):
         with Tracer(traceLogger):
-            super( AutocontextClassificationSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
+            super( AutocontextClassificationSerializer, self ).__init__( projectFileGroupName  )
             self.mainOperator = mainOperator
             self._initDirtyFlags()
    
