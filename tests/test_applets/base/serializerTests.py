@@ -10,13 +10,15 @@ from lazyflow.roi import roiToSlice
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache
 
-from ilastik.applets.base.appletSerializer import SerialSlot, AppletSerializer
+from ilastik.applets.base.appletSerializer import \
+    SerialSlot, SerialListSlot, AppletSerializer
 
 class OpMock(Operator):
     """A simple operator for testing serializers."""
     name = "OpMock"
     TestSlot = InputSlot(name="TestSlot")
     TestMultiSlot = InputSlot(name="TestMultiSlot", level=1)
+    TestListSlot = InputSlot(name='TestListSlot')
 
     def __init__(self, *args, **kwargs):
         super(OpMock, self).__init__(*args, **kwargs)
@@ -27,8 +29,13 @@ class OpMock(Operator):
 
 class OpMockSerializer(AppletSerializer):
     def __init__(self, operator, groupName):
-        slots = [SerialSlot(operator.TestSlot),
-                 SerialSlot(operator.TestMultiSlot)]
+        self.TestSerialSlot = SerialSlot(operator.TestSlot)
+        self.TestMultiSerialSlot = SerialSlot(operator.TestMultiSlot)
+        self.TestSerialListSlot = SerialListSlot(operator.TestListSlot,
+                                                 autodepends=True)
+        slots = (self.TestSerialSlot,
+                 self.TestMultiSerialSlot,
+                 self.TestSerialListSlot)
         super(OpMockSerializer, self).__init__(groupName,
                                                slots)
 
@@ -41,56 +48,102 @@ class TestSerializer(unittest.TestCase):
     def setUp(self):
         g = Graph()
         self.operator = OpMock(graph=g)
-        self.serializer = OpMockSerializer(self.operator,"TestApplet")
+        self.serializer = OpMockSerializer(self.operator, "TestApplet")
         self.tmpDir = tempfile.mkdtemp()
         self.projectFilePath = os.path.join(self.tmpDir, "tmp_project.ilp")
         self.projectFile = h5py.File(self.projectFilePath)
-        self.projectFile.create_dataset("ilastikVersion", data=0.6)
+        self.projectFile.create_dataset("ilastikVersion", data='0.6')
 
     def tearDown(self):
         self.projectFile.close()
         shutil.rmtree(self.tmpDir)
 
-    def testSlot(self):
+    def _testSlot(self, slot, ss, value, rvalue):
         """test whether serialzing and then deserializing works for a
         level-0 slot
 
         """
-        value = randArray()
-        rvalue = randArray()
-        slot = self.operator.TestSlot
-        ss = self.serializer.serialSlots[0]
         slot.setValue(value)
         self.assertTrue(ss.dirty)
         self.serializer.serializeToHdf5(self.projectFile, self.projectFilePath)
         self.assertTrue(not ss.dirty)
+
         slot.setValue(rvalue)
         self.assertTrue(ss.dirty)
         self.assertTrue(numpy.any(slot.value != value))
+
         self.serializer.deserializeFromHdf5(self.projectFile, self.projectFilePath)
         self.assertTrue(numpy.all(slot.value == value))
         self.assertTrue(not ss.dirty)
 
-    def testMultiSlot(self):
+    def _testMultiSlot(self, mslot, mss, values, rvalues):
         """test whether serialzing and then deserializing works for a
         level-1 slot
 
         """
-        value = randArray()
-        rvalue = randArray()
-        mslot = self.operator.TestMultiSlot
-        mss = self.serializer.serialSlots[1]
-        mslot.resize(1)
-        mslot[0].setValue(value)
-        self.assertTrue(mss.dirty)
+        mslot.resize(len(values))
+        for subslot, value in zip(mslot, values):
+            subslot.setValue(value)
+        if len(mslot) > 0:
+            self.assertTrue(mss.dirty)
         self.serializer.serializeToHdf5(self.projectFile, self.projectFilePath)
         self.assertTrue(not mss.dirty)
-        mslot[0].setValue(rvalue)
-        self.assertTrue(mss.dirty)
-        self.assertTrue(numpy.any(mslot[0].value != value))
+
+        mslot.resize(len(rvalues))
+        for subslot, value in zip(mslot, rvalues):
+            subslot.setValue(value)
+        if len(mslot) > 0:
+            self.assertTrue(mss.dirty)
+
+        for subslot, value in zip(mslot, values):
+            self.assertTrue(numpy.any(subslot.value != value))
+
         self.serializer.deserializeFromHdf5(self.projectFile, self.projectFilePath)
-        self.assertTrue(numpy.all(mslot[0].value == value))
+        for subslot, value in zip(mslot, values):
+            self.assertTrue(numpy.all(subslot.value == value))
         self.assertTrue(not mss.dirty)
+
+    def _testList(self, slot, ss, value, rvalue):
+        """test whether serialzing and then deserializing works for a
+        list slot.
+
+        """
+        slot.setValue(value)
+        self.assertTrue(ss.dirty)
+        self.serializer.serializeToHdf5(self.projectFile, self.projectFilePath)
+        self.assertTrue(not ss.dirty)
+
+        slot.setValue(rvalue)
+        self.assertTrue(ss.dirty)
+        self.assertTrue(slot.value != value)
+
+        self.serializer.deserializeFromHdf5(self.projectFile, self.projectFilePath)
+        self.assertTrue(slot.value == value)
+        self.assertTrue(not ss.dirty)
+
+    def testSlot(self):
+        slot = self.operator.TestSlot
+        ss = self.serializer.TestSerialSlot
+        self._testSlot(slot, ss, randArray(), randArray())
+
+
+    def testMultiSlot(self):
+        slot = self.operator.TestMultiSlot
+        ss = self.serializer.TestMultiSerialSlot
+        self._testMultiSlot(slot, ss, [randArray()], [])
+        self._testMultiSlot(slot, ss, [], [randArray()])
+        self._testMultiSlot(slot, ss, [randArray()], [randArray()])
+        self._testMultiSlot(slot, ss,
+                            [randArray(), randArray()],
+                            [randArray(), randArray()],)
+
+
+    def testList(self):
+        slot = self.operator.TestListSlot
+        ss = self.serializer.TestSerialListSlot
+        self._testList(slot, ss, [], [1, 2, 3])
+        self._testList(slot, ss, [4, 5, 6], [])
+        self._testList(slot, ss, [7, 8, 9], [10, 11, 12])
 
 
 if __name__ == "__main__":

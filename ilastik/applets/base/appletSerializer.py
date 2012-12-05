@@ -163,6 +163,16 @@ class SerialSlot(object):
         self._serialize(group)
         self.dirty = False
 
+    @staticmethod
+    def _saveValue(group, name, value):
+        """Seperate so that subclasses can override, if necessary.
+
+        For instance, SerialListSlot needs to save an extra attribute
+        if the value is an empty list.
+
+        """
+        group.create_dataset(name, data=value)
+
     def _serialize(self, group):
         """"
         :param group: The parent group.
@@ -170,13 +180,12 @@ class SerialSlot(object):
 
         """
         if self.slot.level == 0:
-            group.create_dataset(self.name, data=self.slot.value)
+            self._saveValue(group, self.name, self.slot.value)
         else:
             subgroup = group.create_group(self.name)
             for i, subslot in enumerate(self.slot):
                 subname = self.subname.format(i)
-                subgroup.create_dataset(subname,
-                                        data=self.slot[i].value)
+                self._saveValue(subgroup, subname, self.slot[i].value)
 
     def deserialize(self, group):
         """Performs tasks common to all deserializations.
@@ -242,11 +251,22 @@ class SerialListSlot(SerialSlot):
         :param transform: function applied to members on deserialization.
 
         """
+        if slot.level > 0:
+            raise NotImplementedError()
+
         super(SerialListSlot, self).__init__(slot, name, default, depends,
                                              autodepends)
         if transform is None:
             transform = lambda x: x
         self.transform = transform
+
+    @staticmethod
+    def _saveValue(group, name, value):
+        isempty = (len(value) == 0)
+        if isempty:
+            value = numpy.empty((1,))
+        sg = group.create_dataset(name, data=value)
+        sg.attrs['isEmpty'] = isempty
 
     def deserialize(self, group):
         try:
@@ -254,10 +274,13 @@ class SerialListSlot(SerialSlot):
         except KeyError:
             self.unload()
         else:
-            if self.slot.level == 0:
-                self.slot.setValue(list(map(self.transform, subgroup)))
+            if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
+                self.unload()
             else:
-                raise NotImplementedError()
+                try:
+                    self.slot.setValue(list(map(self.transform, subgroup[()])))
+                except:
+                    self.unload()
         finally:
             self.dirty = False
 
@@ -266,6 +289,7 @@ class SerialListSlot(SerialSlot):
             self.slot.setValue([])
         else:
             self.slot.resize(0)
+        self.dirty = False
 
 
 class SerialBlockSlot(SerialSlot):
@@ -507,10 +531,9 @@ class AppletSerializer(object):
         self.progressSignal.emit(0)
 
         # Set the version
-        if 'StorageVersion' not in topGroup.keys():
-            topGroup.create_dataset('StorageVersion', data=self.version)
-        else:
-            topGroup['StorageVersion'][()] = self.version
+        key = 'StorageVersion'
+        deleteIfPresent(topGroup, key)
+        topGroup.create_dataset(key, data=self.version)
 
         try:
             inc = self.progressIncrement(topGroup)
