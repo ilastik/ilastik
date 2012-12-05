@@ -56,6 +56,25 @@ class AppletGuiInterface():
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def laneAdded(self, laneIndex):
+        """
+        Abstract method.
+        Called when a new image lane has been added to the workflow, and the GUI should respond appropriately.
+        Note: The default GUI provided by StandardApplet overrides this for you. 
+        """
+        raise NotImplementedError
+
+    @abstractmethod    
+    def laneRemoved(self, laneIndex, finalLength):
+        """
+        Abstract method.
+        Called when a new image lane is about to be removed from the workflow, and the GUI should respond appropriately.
+        The GUI should clean up any resourecs it owns.
+        Note: The default GUI provided by StandardApplet overrides this for you. 
+        """
+        raise NotImplementedError
+
     @abstractmethod    
     def stopAndCleanUp(self):
         """
@@ -63,14 +82,6 @@ class AppletGuiInterface():
         Called when the GUI is about to be destroyed.
         The gui should stop updating all data views and should clean up any resources it created (e.g. orphan operators).
         """
-        raise NotImplementedError
-
-    @abstractmethod
-    def laneAdded(self):
-        raise NotImplementedError
-
-    @abstractmethod    
-    def laneRemoved(self, laneIndex, finalLength):
         raise NotImplementedError
 
     @classmethod

@@ -71,37 +71,6 @@ Also, bind objects can be compared for equality.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="ilastik.utility.OperatorSubView">
-<em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">OperatorSubView</tt><big>(</big><em>op</em>, <em>index</em><big>)</big><a class="headerlink" href="#ilastik.utility.OperatorSubView" title="Permalink to this definition">¶</a></dt>
-<dd><p>An adapter class that makes a specific lane of a multi-image operator look like a single image operator.</p>
-<p>If the adapted operator is an OperatorWrapper, then the view provides all of the members of the inner 
-operator at the specified index, except that the slot members will refer to the OperatorWrapper&#8217;s 
-slots (i.e. the OUTER slots).</p>
-<p>If the adapted operator is NOT an OperatorWrapper, then the view provides all the members of the adapted operator,
-except that ALL MULTISLOT members will be replaced with a reference to the subslot for the specified index.
-Non-multislot members will not be replaced.</p>
-<dl class="method">
-<dt id="ilastik.utility.OperatorSubView.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>op</em>, <em>index</em><big>)</big><a class="headerlink" href="#ilastik.utility.OperatorSubView.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Constructor.  Creates a view of the given operator for the specified index.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>op</strong> &#8211; The operator to view.</li>
-<li><strong>index</strong> &#8211; The index of this subview.  All multislots of the original 
-operator will be replaced with the corresponding subslot at this index.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
 <dt id="ilastik.utility.SimpleSignal">
 <em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">SimpleSignal</tt><a class="headerlink" href="#ilastik.utility.SimpleSignal" title="Permalink to this definition">¶</a></dt>
 <dd><p>A simple python-only signal class for implementing the observer pattern.
@@ -204,6 +173,55 @@ For example, <tt class="docutils literal"><span class="pre">totalPath='/some/pat
 <dd><p>Return the (reconstructed) totalPath to the dataset.</p>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.utility.OperatorSubView">
+<em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">OperatorSubView</tt><big>(</big><em>op</em>, <em>index</em><big>)</big><a class="headerlink" href="#ilastik.utility.OperatorSubView" title="Permalink to this definition">¶</a></dt>
+<dd><p>An adapter class that makes a specific lane of a multi-image operator look like a single image operator.</p>
+<p>If the adapted operator is an OperatorWrapper, then the view provides all of the members of the inner 
+operator at the specified index, except that the slot members will refer to the OperatorWrapper&#8217;s 
+slots (i.e. the OUTER slots).</p>
+<p>If the adapted operator is NOT an OperatorWrapper, then the view provides all the members of the adapted operator,
+except that ALL MULTISLOT members will be replaced with a reference to the subslot for the specified index.
+Non-multislot members will not be replaced.</p>
+<dl class="method">
+<dt id="ilastik.utility.OperatorSubView.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>op</em>, <em>index</em><big>)</big><a class="headerlink" href="#ilastik.utility.OperatorSubView.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.  Creates a view of the given operator for the specified index.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>op</strong> &#8211; The operator to view.</li>
+<li><strong>index</strong> &#8211; The index of this subview.  All multislots of the original 
+operator will be replaced with the corresponding subslot at this index.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.utility.MultiLaneOperatorABC">
+<em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">MultiLaneOperatorABC</tt><a class="headerlink" href="#ilastik.utility.MultiLaneOperatorABC" title="Permalink to this definition">¶</a></dt>
+<dd><p>This abstract base class specifies the interface to which all top-level applet operators must adhere.
+The distinguishing characteristic of a top-level operator is the fact that they must be capable of 
+supporting multiple images via multi-slots that are indexed by image lane number.</p>
+<p>Image lanes of the top-level operator are added, removed, and accessed via the <tt class="docutils literal"><span class="pre">addLane</span></tt>, <tt class="docutils literal"><span class="pre">removeLane</span></tt>, and <tt class="docutils literal"><span class="pre">getLane</span></tt> functions.</p>
+<p>Note: Most applets can simply inherit from the <tt class="docutils literal"><span class="pre">StandardApplet</span></tt> base class, 
+which will automatically adapt single-lane top-level operators to satisfy this interface.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.utility.OpMultiLaneWrapper">
+<em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">OpMultiLaneWrapper</tt><big>(</big><em>operatorClass</em>, <em>operator_args=None</em>, <em>operator_kwargs=None</em>, <em>parent=None</em>, <em>graph=None</em>, <em>promotedSlotNames=None</em>, <em>broadcastingSlotNames=None</em><big>)</big><a class="headerlink" href="#ilastik.utility.OpMultiLaneWrapper" title="Permalink to this definition">¶</a></dt>
+<dd><p>An extension of the OperatorWrapper that provides the functions needed to satisfy MultiLaneOperatorABC.
+See <tt class="docutils literal"><span class="pre">OperatorWrapper</span></tt> class documentation for details on that class.</p>
 </dd></dl>
 
 <div class="section" id="gui-utilities">

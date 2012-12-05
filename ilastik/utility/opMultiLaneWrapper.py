@@ -4,6 +4,7 @@ from ilastik.utility import OperatorSubView
 class OpMultiLaneWrapper( OperatorWrapper ):
     """
     An extension of the OperatorWrapper that provides the functions needed to satisfy MultiLaneOperatorABC.
+    See ``OperatorWrapper`` class documentation for details on that class.
     """
     
     def addLane(self, laneIndex):
@@ -22,6 +23,9 @@ class OpMultiLaneWrapper( OperatorWrapper ):
         self._removeInnerOperator(laneIndex, numLanes-1)
 
     def getLane(self, laneIndex):
+        """
+        Create sub-view that exposes the correct inner operator.
+        """
         return OperatorSubView(self, laneIndex)
 
 if __name__ == "__main__":

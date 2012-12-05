@@ -10,10 +10,6 @@ Utility Classes
 
    .. automethod:: __call__
 
-.. autoclass:: OperatorSubView
-
-   .. automethod:: __init__
-
 .. autoclass:: SimpleSignal
    :members:
 
@@ -21,6 +17,14 @@ Utility Classes
    :members:
 
    .. automethod:: __init__
+
+.. autoclass:: OperatorSubView
+
+   .. automethod:: __init__
+
+.. autoclass:: MultiLaneOperatorABC
+
+.. autoclass:: OpMultiLaneWrapper
 
 
 GUI Utilities

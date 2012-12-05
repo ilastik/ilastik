@@ -143,11 +143,13 @@ Original serializers and project file should not be touched.</p>
 <dt id="ilastik.shell.projectManager.ProjectManager.saveProjectAs">
 <tt class="descclassname">ProjectManager.</tt><tt class="descname">saveProjectAs</tt><big>(</big><em>newPath</em><big>)</big><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.saveProjectAs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.saveProjectAs" title="Permalink to this definition">¶</a></dt>
 <dd><p>Implement &#8220;Save As&#8221;
-Equivalent to the following (but done without closing the current project file):
-1) rename Old.ilp -&gt; New.ilp
-2) touch Old.ilp
-3) copycontents New.ilp -&gt; Old.ilp
-4) Save current applet state to current project (New.ilp)</p>
+Equivalent to the following steps (but done without closing the current project file):</p>
+<ol class="arabic simple">
+<li>rename Old.ilp -&gt; New.ilp</li>
+<li>touch Old.ilp</li>
+<li>copycontents New.ilp -&gt; Old.ilp</li>
+<li>Save current applet state to current project (New.ilp)</li>
+</ol>
 <dl class="docutils">
 <dt>Postconditions: - Original project state is saved to a new file with the original name.</dt>
 <dd><ul class="first last simple">

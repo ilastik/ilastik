@@ -15,7 +15,7 @@ allowing him to select which image lane he wants to view.
 
 When the user opens a new image in the workflow, the workflow creates a new image lane to process it.  This is done by calling 
 ``addLane`` on every applet's topLevelOperator, and then calling ``connectLane`` to connect together the lanes from each applet.
-See :py:class:`MultiLaneOperatorABC<ilastik.applets.base.multiLaneOperator.MultiLaneOperatorABC>` for more details. 
+See :py:class:`MultiLaneOperatorABC<ilastik.utility.MultiLaneOperatorABC>` for more details. 
 
 A workflow is instantiated when a project is loaded, and it is destroyed (it's ``cleanUp`` method is called)
 when the project is closed.  The cleanUp function is responsible for freeing all resources owned by the 
@@ -64,7 +64,7 @@ Top-level Operators
 Everything an applet does is centered around the applet's top-level operator.  
 It is typically the keeper of all state associated with the applet.
 The top-level operators that the workflow and shell see must be capbable of handling multiple image lanes.
-That is, they must adhere to the :py:class:`MultiLaneOperatorABC<ilastik.applets.base.multiLaneOperator.MultiLaneOperatorABC>`.
+That is, they must adhere to the :py:class:`MultiLaneOperatorABC<ilastik.utility.MultiLaneOperatorABC>`.
 If your applet inherits from ``StandardApplet``, then your single-lane top-level operator can be automatically adapted to the multi-lane interface.
 
 The applet GUI and the applet serializers both make changes to the top-level operator and listen for changes made to the top-level operator.
@@ -86,10 +86,6 @@ Here's an example timeline, showing a typical sequence of interactions.
 7) Repeat step 4 as the user experiments with more workflow options.
 8) The user attempts to close the project.
     * The shell determines if any serializers have work to do by calling isDirty().  If any declare themselves dirty, the user is asked to confirm his decision to close the project.
-
-.. currentmodule:: ilastik.applets.base.multiLaneOperator
-.. autoclass:: MultiLaneOperatorABC
-   :members:
 
 Applet GUIs
 ===========

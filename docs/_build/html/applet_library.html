@@ -23,8 +23,8 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="ilastik v0.6.0 documentation" href="index.html" />
-    <link rel="next" title="Appendix: Development Dependencies" href="dependencies.html" />
-    <link rel="prev" title="Applet Library" href="" /> 
+    <link rel="next" title="Project Manager" href="projectManager.html" />
+    <link rel="prev" title="Workflow Design" href="workflow_design.html" /> 
   </head>
   <body>
     <div class="related">
@@ -34,10 +34,10 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="dependencies.html" title="Appendix: Development Dependencies"
+          <a href="projectManager.html" title="Project Manager"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="#" title="Applet Library"
+          <a href="workflow_design.html" title="Workflow Design"
              accesskey="P">previous</a> |</li>
         <li><a href="index.html">ilastik v0.6.0 documentation</a> &raquo;</li> 
       </ul>
@@ -114,14 +114,14 @@ Provides an EMPTY applet drawer widget.  Subclasses should replace it with their
 <dl class="method">
 <dt id="ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.__init__">
 <tt class="descname">__init__</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Constructor.  <strong>All</strong> slots of the provided <em>topLevelOperator</em> will be monitored for changes.
+<dd><p>Constructor.  <strong>All</strong> slots of the provided <em>topLevelOperatorView</em> will be monitored for changes.
 Changes include slot resize events, and slot ready/unready status changes.
 When a change is detected, the <cite>setupLayers()</cite> function is called, and the result is used to update the list of layers shown in the central widget.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>topLevelOperator</strong> &#8211; The top-level operator for the applet this GUI belongs to.</td>
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>topLevelOperatorView</strong> &#8211; The top-level operator for the applet this GUI belongs to.</td>
 </tr>
 </tbody>
 </table>
@@ -132,7 +132,7 @@ When a change is detected, the <cite>setupLayers()</cite> function is called, an
 <tt class="descname">setupLayers</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui.setupLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.setupLayers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a list of layers to be displayed in the central widget.
 Subclasses should override this method to create the list of layers that can be displayed.
-For debug and development purposes, the base class implementation simply generates layers for all topLevelOperator slots.</p>
+For debug and development purposes, the base class implementation simply generates layers for all topLevelOperatorView slots.</p>
 </dd></dl>
 
 <dl class="method">
@@ -224,7 +224,7 @@ applet with the added functionality of labeling.</p>
 <tbody valign="top">
 <tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>labelingSlots</strong> &#8211; Provides the slots needed for sourcing/sinking label data.  See LabelingGui.LabelingSlots class source for details.</li>
-<li><strong>topLevelOperator</strong> &#8211; is provided to the LayerViewerGui (the base class)</li>
+<li><strong>topLevelOperatorView</strong> &#8211; is provided to the LayerViewerGui (the base class)</li>
 <li><strong>drawerUiPath</strong> &#8211; can be given if you provide an extended drawer UI file.  Otherwise a default one is used.</li>
 <li><strong>rawInputSlot</strong> &#8211; Data from the rawInputSlot parameter will be displayed directly underneath the labels (if provided).</li>
 </ul>
@@ -397,11 +397,11 @@ which are provided as outputs in the corresponding top-level applet operator.</p
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href=""
-                        title="previous chapter">Applet Library</a></p>
+  <p class="topless"><a href="workflow_design.html"
+                        title="previous chapter">Workflow Design</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="dependencies.html"
-                        title="next chapter">Appendix: Development Dependencies</a></p>
+  <p class="topless"><a href="projectManager.html"
+                        title="next chapter">Project Manager</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/applet_library.txt"
@@ -431,10 +431,10 @@ which are provided as outputs in the corresponding top-level applet operator.</p
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="dependencies.html" title="Appendix: Development Dependencies"
+          <a href="projectManager.html" title="Project Manager"
              >next</a> |</li>
         <li class="right" >
-          <a href="#" title="Applet Library"
+          <a href="workflow_design.html" title="Workflow Design"
              >previous</a> |</li>
         <li><a href="index.html">ilastik v0.6.0 documentation</a> &raquo;</li> 
       </ul>
