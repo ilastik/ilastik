@@ -3,13 +3,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.applets.labeling.opLabeling &mdash; ilastik v0.6.0 documentation</title>
+    <title>ilastik.applets.labeling.opLabeling &mdash; ilastik 0.6.0 documentation</title>
+    
     <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../../',
@@ -22,7 +25,7 @@
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
-    <link rel="top" title="ilastik v0.6.0 documentation" href="../../../../index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
     <link rel="up" title="Module code" href="../../../index.html" /> 
   </head>
   <body>
@@ -32,7 +35,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -43,12 +46,14 @@
           <div class="body">
             
   <h1>Source code for ilastik.applets.labeling.opLabeling</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span><span class="p">,</span> <span class="n">OperatorWrapper</span>
+<span class="kn">from</span> <span class="nn">lazyflow.operators</span> <span class="kn">import</span> <span class="n">OpBlockedSparseLabelArray</span>
 <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
 <span class="kn">from</span> <span class="nn">ilastik.utility.operatorSubView</span> <span class="kn">import</span> <span class="n">OperatorSubView</span>
 
-<span class="k">class</span> <span class="nc">OpLabeling</span><span class="p">(</span> <span class="n">Operator</span> <span class="p">):</span>
+<div class="viewcode-block" id="OpLabeling"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabeling">[docs]</a><span class="k">class</span> <span class="nc">OpLabeling</span><span class="p">(</span> <span class="n">Operator</span> <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="OpLabeling"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabeling">[docs]</a><span class="sd">    Top-level operator for the labeling base class.</span>
+<span class="sd">    Top-level operator for the labeling base class.</span>
 <span class="sd">    Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span><span class="o">=</span><span class="s">&quot;OpLabeling&quot;</span>
@@ -174,9 +179,9 @@
         <span class="c">#   are directly connected to internal operators.</span>
         <span class="k">pass</span>
 
-    <span class="k">def</span> <span class="nf">addLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+<div class="viewcode-block" id="OpLabeling.addLane"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabeling.addLane">[docs]</a>    <span class="k">def</span> <span class="nf">addLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="OpLabeling.addLane"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabeling.addLane">[docs]</a><span class="sd">        Add an image lane.</span>
+<span class="sd">        Add an image lane.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">)</span>
         <span class="k">assert</span> <span class="n">laneIndex</span> <span class="o">==</span> <span class="n">numLanes</span><span class="p">,</span> <span class="s">&quot;Lanes must be appended&quot;</span>
@@ -184,20 +189,20 @@
         <span class="c"># Just resize one of our multi-inputs.</span>
         <span class="c"># The others will resize automatically</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">numLanes</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">removeLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="OpLabeling.removeLane"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabeling.removeLane">[docs]</a><span class="sd">        Remove an image lane.</span>
+</div>
+<div class="viewcode-block" id="OpLabeling.removeLane"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabeling.removeLane">[docs]</a>    <span class="k">def</span> <span class="nf">removeLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove an image lane.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="o">.</span><span class="n">removeSlot</span><span class="p">(</span><span class="n">laneIndex</span><span class="p">,</span> <span class="n">numLanes</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-
+</div>
     <span class="k">def</span> <span class="nf">getLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">OperatorSubView</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">OperatorSubView</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">)</span>
 
-
+</div>
 <span class="k">class</span> <span class="nc">OpShapeReader</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span></div>
+    <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This operator outputs the shape of its input image, except the number of channels is set to 1.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">Input</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
@@ -294,13 +299,13 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

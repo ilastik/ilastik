@@ -3,13 +3,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.applets.base.appletSerializer &mdash; ilastik v0.6.0 documentation</title>
+    <title>ilastik.applets.base.appletSerializer &mdash; ilastik 0.6.0 documentation</title>
+    
     <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../../',
@@ -22,7 +25,7 @@
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
-    <link rel="top" title="ilastik v0.6.0 documentation" href="../../../../index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
     <link rel="up" title="Module code" href="../../../index.html" /> 
   </head>
   <body>
@@ -32,7 +35,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -43,6 +46,8 @@
           <div class="body">
             
   <h1>Source code for ilastik.applets.base.appletSerializer</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABCMeta</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">ilastik</span> <span class="kn">import</span> <span class="n">isVersionCompatible</span>
 <span class="kn">from</span> <span class="nn">ilastik.utility.simpleSignal</span> <span class="kn">import</span> <span class="n">SimpleSignal</span>
 <span class="kn">from</span> <span class="nn">ilastik.utility.maybe</span> <span class="kn">import</span> <span class="n">maybe</span>
 <span class="kn">import</span> <span class="nn">os</span>
@@ -105,11 +110,11 @@
     <span class="k">return</span> <span class="n">slicing</span>
 
 
-<span class="k">class</span> <span class="nc">SerialSlot</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="SerialSlot"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot">[docs]</a><span class="k">class</span> <span class="nc">SerialSlot</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Implements the logic for serializing a slot.&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="SerialSlot"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">depends</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+<div class="viewcode-block" id="SerialSlot.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">depends</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
                  <span class="n">autodepends</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
-<div class="viewcode-block" id="SerialSlot.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.__init__">[docs]</a>        <span class="sd">&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        :param slot: the slot to save/load</span>
 
 <span class="sd">        :param name: name used for the group in the hdf5 file.</span>
@@ -152,9 +157,9 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_dirty</span> <span class="o">=</span> <span class="bp">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_bind</span><span class="p">()</span>
-
+</div>
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">dirty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+    <span class="k">def</span> <span class="nf">dirty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dirty</span>
 
     <span class="nd">@dirty.setter</span>
@@ -180,24 +185,24 @@
             <span class="n">slot</span><span class="o">.</span><span class="n">notifyInserted</span><span class="p">(</span><span class="n">doMulti</span><span class="p">)</span>
             <span class="n">slot</span><span class="o">.</span><span class="n">notifyRemoved</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span> <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">shouldSerialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+<div class="viewcode-block" id="SerialSlot.shouldSerialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.shouldSerialize">[docs]</a>    <span class="k">def</span> <span class="nf">shouldSerialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Whether to serialize or not.&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="SerialSlot.shouldSerialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.shouldSerialize">[docs]</a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span>
         <span class="n">result</span> <span class="o">|=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">depends</span><span class="p">:</span>
             <span class="n">result</span> <span class="o">&amp;=</span> <span class="n">s</span><span class="o">.</span><span class="n">ready</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">result</span>
-
-    <span class="k">def</span> <span class="nf">serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Performs tasks common to all serializations, like changing</span></div>
-<div class="viewcode-block" id="SerialSlot.serialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.serialize">[docs]</a><span class="sd">        dirty status.</span>
+</div>
+<div class="viewcode-block" id="SerialSlot.serialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.serialize">[docs]</a>    <span class="k">def</span> <span class="nf">serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performs tasks common to all serializations, like changing</span>
+<span class="sd">        dirty status.</span>
 
 <span class="sd">        Do not override (unless for some reason this function does not</span>
 <span class="sd">        do the right thing in your case). Instead override</span>
 <span class="sd">        _serialize().</span>
 
 <span class="sd">        :param group: The parent group in which to create this slot&#39;s</span>
-<span class="sd">            group.</span>
+<span class="sd">                      group.</span>
 <span class="sd">        :type group: h5py.Group</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -206,9 +211,9 @@
         <span class="n">deleteIfPresent</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_serialize</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="bp">False</span>
-
+</div>
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_saveValue</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span></div>
+    <span class="k">def</span> <span class="nf">_saveValue</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Seperate so that subclasses can override, if necessary.</span>
 
 <span class="sd">        For instance, SerialListSlot needs to save an extra attribute</span>
@@ -217,9 +222,9 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;&quot;</span>
-<div class="viewcode-block" id="SerialSlot._serialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot._serialize">[docs]</a><span class="sd">        :param group: The parent group.</span>
+<div class="viewcode-block" id="SerialSlot._serialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot._serialize">[docs]</a>    <span class="k">def</span> <span class="nf">_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param group: The parent group.</span>
 <span class="sd">        :type group: h5py.Group</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -230,10 +235,10 @@
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">subslot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="p">):</span>
                 <span class="n">subname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_saveValue</span><span class="p">(</span><span class="n">subgroup</span><span class="p">,</span> <span class="n">subname</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="SerialSlot.deserialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.deserialize">[docs]</a>    <span class="k">def</span> <span class="nf">deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performs tasks common to all deserializations.</span>
 
-    <span class="k">def</span> <span class="nf">deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Performs tasks common to all deserializations.</span></div>
-<div class="viewcode-block" id="SerialSlot.deserialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.deserialize">[docs]</a>
 <span class="sd">        Do not override (unless for some reason this function does not</span>
 <span class="sd">        do the right thing in your case). Instead override</span>
 <span class="sd">        _deserialize.</span>
@@ -247,11 +252,11 @@
             <span class="k">return</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_deserialize</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="bp">False</span>
-
-    <span class="k">def</span> <span class="nf">_deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subgroup</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="SerialSlot._deserialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot._deserialize">[docs]</a><span class="sd">        :param subgroup: *not* the parent group. This slot&#39;s group.</span>
-<span class="sd">        :typpe subgroup: h5py.Group</span>
+</div>
+<div class="viewcode-block" id="SerialSlot._deserialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot._deserialize">[docs]</a>    <span class="k">def</span> <span class="nf">_deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subgroup</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param subgroup: *not* the parent group. This slot&#39;s group.</span>
+<span class="sd">        :type subgroup: h5py.Group</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -262,10 +267,10 @@
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">subgroup</span><span class="p">):</span>
                 <span class="n">val</span> <span class="o">=</span> <span class="n">subgroup</span><span class="p">[</span><span class="n">key</span><span class="p">][()]</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">unload</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;see AppletSerializer.unload()&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="SerialSlot.unload"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.unload">[docs]</a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</div>
+<div class="viewcode-block" id="SerialSlot.unload"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.unload">[docs]</a>    <span class="k">def</span> <span class="nf">unload</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;see AppletSerializer.unload()&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
@@ -277,10 +282,10 @@
 <span class="c">#######################################################</span>
 <span class="c"># some serial slots that are used in multiple applets #</span>
 <span class="c">#######################################################</span>
+</div></div>
+<div class="viewcode-block" id="SerialListSlot"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialListSlot">[docs]</a><span class="k">class</span> <span class="nc">SerialListSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;As the name implies: used for serializing a list.</span>
 
-<span class="k">class</span> <span class="nc">SerialListSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;As the name implies: used for serializing a list.</span></div></div>
-<div class="viewcode-block" id="SerialListSlot"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialListSlot">[docs]</a>
 <span class="sd">    The only differences from the base class are:</span>
 
 <span class="sd">    - if deserializing fails, sets the slot value to [].</span>
@@ -289,9 +294,9 @@
 <span class="sd">      (for instance, to convert it to the proper type).</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">depends</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+<div class="viewcode-block" id="SerialListSlot.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialListSlot.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">depends</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
                  <span class="n">autodepends</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-<div class="viewcode-block" id="SerialListSlot.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialListSlot.__init__">[docs]</a>        <span class="sd">&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        :param transform: function applied to members on deserialization.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -303,9 +308,9 @@
         <span class="k">if</span> <span class="n">transform</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
             <span class="n">transform</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">transform</span>
-
+</div>
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_saveValue</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span></div>
+    <span class="k">def</span> <span class="nf">_saveValue</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="n">isempty</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">isempty</span><span class="p">:</span>
             <span class="n">value</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">1</span><span class="p">,))</span>
@@ -335,12 +340,12 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="bp">False</span>
 
-
-<span class="k">class</span> <span class="nc">SerialBlockSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;A slot which only saves nonzero blocks.&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="SerialBlockSlot"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialBlockSlot">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inslot</span><span class="p">,</span> <span class="n">outslot</span><span class="p">,</span> <span class="n">blockslot</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+</div>
+<div class="viewcode-block" id="SerialBlockSlot"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialBlockSlot">[docs]</a><span class="k">class</span> <span class="nc">SerialBlockSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A slot which only saves nonzero blocks.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="SerialBlockSlot.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialBlockSlot.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inslot</span><span class="p">,</span> <span class="n">outslot</span><span class="p">,</span> <span class="n">blockslot</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
                  <span class="n">depends</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">autodepends</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
-<div class="viewcode-block" id="SerialBlockSlot.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialBlockSlot.__init__">[docs]</a>        <span class="sd">&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        :param inslot: where to put deserialized data.</span>
 <span class="sd">        :param outslot: where to take data for serialization.</span>
 <span class="sd">        :param blockslot: provides non-zero blocks.</span>
@@ -352,9 +357,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">outslot</span> <span class="o">=</span> <span class="n">outslot</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">blockslot</span> <span class="o">=</span> <span class="n">blockslot</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_bind</span><span class="p">(</span><span class="n">outslot</span><span class="p">)</span>
-
+</div>
     <span class="k">def</span> <span class="nf">_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
-        <span class="n">mygroup</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span></div>
+        <span class="n">mygroup</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="n">num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blockslot</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num</span><span class="p">):</span>
             <span class="n">subsubname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
@@ -375,12 +380,12 @@
                 <span class="n">slicing</span> <span class="o">=</span> <span class="n">stringToSlicing</span><span class="p">(</span><span class="n">blockData</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s">&#39;blockSlice&#39;</span><span class="p">])</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">inslot</span><span class="p">[</span><span class="n">index</span><span class="p">][</span><span class="n">slicing</span><span class="p">]</span> <span class="o">=</span> <span class="n">blockData</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
 
-
-<span class="k">class</span> <span class="nc">SerialClassifierSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;For saving a random forest classifier.&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="SerialClassifierSlot"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">cacheslot</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+</div>
+<div class="viewcode-block" id="SerialClassifierSlot"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot">[docs]</a><span class="k">class</span> <span class="nc">SerialClassifierSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;For saving a random forest classifier.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="SerialClassifierSlot.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">cacheslot</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
                  <span class="n">depends</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">autodepends</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
-<div class="viewcode-block" id="SerialClassifierSlot.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot.__init__">[docs]</a>        <span class="nb">super</span><span class="p">(</span><span class="n">SerialClassifierSlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">slot</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SerialClassifierSlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">slot</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span>
                                                    <span class="n">default</span><span class="p">,</span> <span class="n">depends</span><span class="p">,</span>
                                                    <span class="n">autodepends</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cacheslot</span> <span class="o">=</span> <span class="n">cacheslot</span>
@@ -388,13 +393,13 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">slot</span><span class="o">.</span><span class="n">name</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">subname</span> <span class="o">=</span> <span class="s">&quot;Forest{:04d}&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">subname</span> <span class="o">=</span> <span class="n">name</span>
-
+</div>
     <span class="k">def</span> <span class="nf">unload</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cacheslot</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">))</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cacheslot</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">setDirty</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="bp">None</span><span class="p">))</span>
 
-    <span class="k">def</span> <span class="nf">_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+<div class="viewcode-block" id="SerialClassifierSlot._serialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot._serialize">[docs]</a>    <span class="k">def</span> <span class="nf">_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
         <span class="n">classifier_forests</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="o">.</span><span class="n">value</span>
-<div class="viewcode-block" id="SerialClassifierSlot._serialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot._serialize">[docs]</a>
+
         <span class="c"># Classifier can be None if there isn&#39;t any training data yet.</span>
         <span class="k">if</span> <span class="n">classifier_forests</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
             <span class="k">return</span>
@@ -417,17 +422,17 @@
 
         <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">cachePath</span><span class="p">)</span>
         <span class="n">os</span><span class="o">.</span><span class="n">removedirs</span><span class="p">(</span><span class="n">tmpDir</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
-<div class="viewcode-block" id="SerialClassifierSlot.deserialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot.deserialize">[docs]</a><span class="sd">        Have to override this to ensure that dirty is always set False.</span>
+</div>
+<div class="viewcode-block" id="SerialClassifierSlot.deserialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot.deserialize">[docs]</a>    <span class="k">def</span> <span class="nf">deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Have to override this to ensure that dirty is always set False.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">SerialClassifierSlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="bp">False</span>
-
-    <span class="k">def</span> <span class="nf">_deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">classifierGroup</span><span class="p">):</span>
-        <span class="c"># Due to non-shared hdf5 dlls, vigra can&#39;t read directly</span></div>
-<div class="viewcode-block" id="SerialClassifierSlot._deserialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot._deserialize">[docs]</a>        <span class="c"># from our open hdf5 group. Instead, we&#39;ll copy the</span>
+</div>
+<div class="viewcode-block" id="SerialClassifierSlot._deserialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot._deserialize">[docs]</a>    <span class="k">def</span> <span class="nf">_deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">classifierGroup</span><span class="p">):</span>
+        <span class="c"># Due to non-shared hdf5 dlls, vigra can&#39;t read directly</span>
+        <span class="c"># from our open hdf5 group. Instead, we&#39;ll copy the</span>
         <span class="c"># classfier data to a temporary file and give it to vigra.</span>
         <span class="n">tmpDir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
         <span class="n">cachePath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tmpDir</span><span class="p">,</span> <span class="s">&#39;tmp_classifier_cache.h5&#39;</span><span class="p">)</span>
@@ -455,10 +460,10 @@
 <span class="c">####################################</span>
 <span class="c"># the base applet serializer class #</span>
 <span class="c">####################################</span>
-
-<span class="k">class</span> <span class="nc">AppletSerializer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span></div></div>
-<div class="viewcode-block" id="AppletSerializer"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer">[docs]</a><span class="sd">    Base class for all AppletSerializers.</span>
+</div></div>
+<div class="viewcode-block" id="AppletSerializer"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer">[docs]</a><span class="k">class</span> <span class="nc">AppletSerializer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for all AppletSerializers.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c"># Force subclasses to override abstract methods and properties</span>
     <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">ABCMeta</span>
@@ -471,17 +476,17 @@
     <span class="c"># Semi-abstract methods #</span>
     <span class="c">#########################</span>
 
-    <span class="k">def</span> <span class="nf">_serializeToHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroup</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+<div class="viewcode-block" id="AppletSerializer._serializeToHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer._serializeToHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">_serializeToHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroup</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
 
-<div class="viewcode-block" id="AppletSerializer._serializeToHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer._serializeToHdf5">[docs]</a>        <span class="sd">&quot;&quot;&quot;Child classes should override this function, if</span>
+        <span class="sd">&quot;&quot;&quot;Child classes should override this function, if</span>
 <span class="sd">        necessary.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
-
-    <span class="k">def</span> <span class="nf">_deserializeFromHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroup</span><span class="p">,</span> <span class="n">groupVersion</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span>
-                             <span class="n">projectFilePath</span><span class="p">):</span></div>
-<div class="viewcode-block" id="AppletSerializer._deserializeFromHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer._deserializeFromHdf5">[docs]</a>        <span class="sd">&quot;&quot;&quot;Child classes should override this function, if</span>
+</div>
+<div class="viewcode-block" id="AppletSerializer._deserializeFromHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer._deserializeFromHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">_deserializeFromHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroup</span><span class="p">,</span> <span class="n">groupVersion</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span>
+                             <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Child classes should override this function, if</span>
 <span class="sd">        necessary.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -490,9 +495,9 @@
     <span class="c">#############################</span>
     <span class="c"># Base class implementation #</span>
     <span class="c">#############################</span>
-
+</div>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroupName</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">operator</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Constructor. Subclasses must call this method in their own</span></div>
+        <span class="sd">&quot;&quot;&quot;Constructor. Subclasses must call this method in their own</span>
 <span class="sd">        __init__ functions. If they fail to do so, the shell raises an</span>
 <span class="sd">        exception.</span>
 
@@ -508,19 +513,19 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">serialSlots</span> <span class="o">=</span> <span class="n">maybe</span><span class="p">(</span><span class="n">slots</span><span class="p">,</span> <span class="p">[])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">operator</span><span class="o">=</span><span class="n">operator</span>
 
-    <span class="k">def</span> <span class="nf">isDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="AppletSerializer.isDirty"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.isDirty">[docs]</a>    <span class="k">def</span> <span class="nf">isDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Returns true if the current state of this item (in memory)</span>
-<div class="viewcode-block" id="AppletSerializer.isDirty"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.isDirty">[docs]</a><span class="sd">        does not match the state of the HDF5 group on disk.</span>
+<span class="sd">        does not match the state of the HDF5 group on disk.</span>
 
 <span class="sd">        Subclasses only need override this method if ORing the flags</span>
 <span class="sd">        is not enough.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">ss</span><span class="o">.</span><span class="n">dirty</span> <span class="k">for</span> <span class="n">ss</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">serialSlots</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="AppletSerializer.unload"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.unload">[docs]</a>    <span class="k">def</span> <span class="nf">unload</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Called if either</span>
 
-    <span class="k">def</span> <span class="nf">unload</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Called if either</span></div>
-<div class="viewcode-block" id="AppletSerializer.unload"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.unload">[docs]</a>
 <span class="sd">        (1) the user closed the project or</span>
 
 <span class="sd">        (2) the project opening process needs to be aborted for some</span>
@@ -533,10 +538,10 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">ss</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">serialSlots</span><span class="p">:</span>
             <span class="n">ss</span><span class="o">.</span><span class="n">unload</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="AppletSerializer.progressIncrement"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.progressIncrement">[docs]</a>    <span class="k">def</span> <span class="nf">progressIncrement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the percentage progress for each slot.</span>
 
-    <span class="k">def</span> <span class="nf">progressIncrement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Get the percentage progress for each slot.</span></div>
-<div class="viewcode-block" id="AppletSerializer.progressIncrement"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.progressIncrement">[docs]</a>
 <span class="sd">        :param group: If None, all all slots are assumed to be</span>
 <span class="sd">            processed. Otherwise, decides for each slot by calling</span>
 <span class="sd">            slot.shouldSerialize(group).</span>
@@ -549,10 +554,10 @@
         <span class="k">if</span> <span class="n">nslots</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="mi">0</span>
         <span class="k">return</span> <span class="nb">divmod</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">nslots</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="AppletSerializer.serializeToHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.serializeToHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">serializeToHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Serialize the current applet state to the given hdf5 file.</span>
 
-    <span class="k">def</span> <span class="nf">serializeToHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Serialize the current applet state to the given hdf5 file.</span></div>
-<div class="viewcode-block" id="AppletSerializer.serializeToHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.serializeToHdf5">[docs]</a>
 <span class="sd">        Subclasses should **not** override this method. Instead,</span>
 <span class="sd">        subclasses override the &#39;private&#39; version, *_serializetoHdf5*</span>
 
@@ -575,10 +580,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 
         <span class="c"># Set the version</span>
-        <span class="k">if</span> <span class="s">&#39;StorageVersion&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">topGroup</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="n">topGroup</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s">&#39;StorageVersion&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">topGroup</span><span class="p">[</span><span class="s">&#39;StorageVersion&#39;</span><span class="p">][()]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">version</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s">&#39;StorageVersion&#39;</span>
+        <span class="n">deleteIfPresent</span><span class="p">(</span><span class="n">topGroup</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="n">topGroup</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="n">inc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">progressIncrement</span><span class="p">(</span><span class="n">topGroup</span><span class="p">)</span>
@@ -591,10 +595,10 @@
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
 
-
-    <span class="k">def</span> <span class="nf">deserializeFromHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Read the the current applet state from the given hdf5File</span></div>
-<div class="viewcode-block" id="AppletSerializer.deserializeFromHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.deserializeFromHdf5">[docs]</a><span class="sd">        handle, which should already be open.</span>
+</div>
+<div class="viewcode-block" id="AppletSerializer.deserializeFromHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.deserializeFromHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">deserializeFromHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Read the the current applet state from the given hdf5File</span>
+<span class="sd">        handle, which should already be open.</span>
 
 <span class="sd">        Subclasses should **not** override this method. Instead,</span>
 <span class="sd">        subclasses override the &#39;private&#39; version,</span>
@@ -641,14 +645,14 @@
     <span class="c">#######################</span>
     <span class="c"># Optional methods    #</span>
     <span class="c">#######################</span>
-
-    <span class="k">def</span> <span class="nf">initWithoutTopGroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Optional override for subclasses. Called when there is no</span></div>
-<div class="viewcode-block" id="AppletSerializer.initWithoutTopGroup"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.initWithoutTopGroup">[docs]</a><span class="sd">        top group to deserialize.</span>
+</div>
+<div class="viewcode-block" id="AppletSerializer.initWithoutTopGroup"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.initWithoutTopGroup">[docs]</a>    <span class="k">def</span> <span class="nf">initWithoutTopGroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Optional override for subclasses. Called when there is no</span>
+<span class="sd">        top group to deserialize.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">pass</span>
-</pre></div></div></div>
+        <span class="k">pass</span></div></div>
+</pre></div>
 
           </div>
         </div>
@@ -678,13 +682,13 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

@@ -3,13 +3,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Utility Classes &mdash; ilastik v0.6.0 documentation</title>
+    <title>Utility Classes &mdash; ilastik 0.6.0 documentation</title>
+    
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
@@ -22,7 +25,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="ilastik v0.6.0 documentation" href="index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
     <link rel="next" title="Appendix: Development Dependencies" href="dependencies.html" />
     <link rel="prev" title="Project Manager" href="projectManager.html" /> 
   </head>
@@ -39,7 +42,7 @@
         <li class="right" >
           <a href="projectManager.html" title="Project Manager"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">ilastik v0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -108,7 +111,7 @@ No fine-grained unsubcribe mechanism.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>totalPath</strong> &#8211; The entire path to the dataset, including any internal path (e.g. the path to an hdf5 dataset).
 For example, <tt class="docutils literal"><span class="pre">totalPath='/some/path/to/file.h5/with/internal/dataset'</span></tt></li>
 <li><strong>cwd</strong> &#8211; If provided, relative paths will be converted to absolute paths using this arg as the working directory.</li>
@@ -121,49 +124,49 @@ For example, <tt class="docutils literal"><span class="pre">totalPath='/some/pat
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.extension">
-<tt class="descname">extension</tt><a class="headerlink" href="#ilastik.utility.PathComponents.extension" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">extension</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.extension" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">.h5</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.externalPath">
-<tt class="descname">externalPath</tt><a class="headerlink" href="#ilastik.utility.PathComponents.externalPath" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">externalPath</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.externalPath" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/some/path/to/file.h5</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.internalPath">
-<tt class="descname">internalPath</tt><a class="headerlink" href="#ilastik.utility.PathComponents.internalPath" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">internalPath</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.internalPath" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/with/internal/dataset</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.internalDatasetName">
-<tt class="descname">internalDatasetName</tt><a class="headerlink" href="#ilastik.utility.PathComponents.internalDatasetName" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">internalDatasetName</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.internalDatasetName" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/dataset</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.internalDirectory">
-<tt class="descname">internalDirectory</tt><a class="headerlink" href="#ilastik.utility.PathComponents.internalDirectory" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">internalDirectory</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.internalDirectory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/some/path/to/file.h5/with/internal</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.externalDirectory">
-<tt class="descname">externalDirectory</tt><a class="headerlink" href="#ilastik.utility.PathComponents.externalDirectory" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">externalDirectory</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.externalDirectory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">/some/path/to</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.filename">
-<tt class="descname">filename</tt><a class="headerlink" href="#ilastik.utility.PathComponents.filename" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">filename</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.filename" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">file.h5</span></tt></p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ilastik.utility.PathComponents.filenameBase">
-<tt class="descname">filenameBase</tt><a class="headerlink" href="#ilastik.utility.PathComponents.filenameBase" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">filenameBase</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.filenameBase" title="Permalink to this definition">¶</a></dt>
 <dd><p>Example: <tt class="docutils literal"><span class="pre">file</span></tt></p>
 </dd></dl>
 
@@ -193,7 +196,7 @@ Non-multislot members will not be replaced.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>op</strong> &#8211; The operator to view.</li>
 <li><strong>index</strong> &#8211; The index of this subview.  All multislots of the original 
 operator will be replaced with the corresponding subslot at this index.</li>
@@ -294,7 +297,7 @@ This mechanism is slow, and should only be used for functions that MUST execute 
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>parent</strong> &#8211; The parent object, which whose thread will be used for all <a class="reference internal" href="#ilastik.utility.gui.threadRouted" title="ilastik.utility.gui.threadRouted"><tt class="xref py py-func docutils literal"><span class="pre">&#64;threadRouted</span></tt></a> functions.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>parent</strong> &#8211; The parent object, which whose thread will be used for all <a class="reference internal" href="#ilastik.utility.gui.threadRouted" title="ilastik.utility.gui.threadRouted"><tt class="xref py py-func docutils literal"><span class="pre">&#64;threadRouted</span></tt></a> functions.</td>
 </tr>
 </tbody>
 </table>
@@ -359,12 +362,12 @@ This mechanism is slow, and should only be used for functions that MUST execute 
         <li class="right" >
           <a href="projectManager.html" title="Project Manager"
              >previous</a> |</li>
-        <li><a href="index.html">ilastik v0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

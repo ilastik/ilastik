@@ -3,13 +3,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Workflow Design &mdash; ilastik v0.6.0 documentation</title>
+    <title>Workflow Design &mdash; ilastik 0.6.0 documentation</title>
+    
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '',
@@ -22,9 +25,9 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="ilastik v0.6.0 documentation" href="index.html" />
-    <link rel="next" title="Applet API" href="applet_api.html" />
-    <link rel="prev" title="Overview" href="overview.html" /> 
+    <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
+    <link rel="next" title="Applet Library" href="applet_library.html" />
+    <link rel="prev" title="Applet Library" href="applet_library.html" /> 
   </head>
   <body>
     <div class="related">
@@ -34,12 +37,12 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="applet_api.html" title="Applet API"
+          <a href="applet_library.html" title="Applet Library"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="overview.html" title="Overview"
+          <a href="applet_library.html" title="Applet Library"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">ilastik v0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -81,8 +84,7 @@ To be an effective workflow designer, you need to have a solid grasp of lazyflow
 </div>
 <p>The operator above can be represented graphically with the following diagram:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/opSum.svg"><object data="_images/opSum.svg" type="image/svg+xml"><embed src="_images/opSum.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/opSum.svg"><img alt="Simple addition operator" src="_images/opSum.svg" /></a>
 </div>
 <p>What if you want to add three images?  You could connect two OpSum operators together, like so:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">op1</span> <span class="o">=</span> <span class="n">OpSum</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
@@ -100,8 +102,7 @@ To be an effective workflow designer, you need to have a solid grasp of lazyflow
 </pre></div>
 </div>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/twoSums.svg"><object data="_images/twoSums.svg" type="image/svg+xml"><embed src="_images/twoSums.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/twoSums.svg"><img alt="Simple addition operator" src="_images/twoSums.svg" /></a>
 </div>
 </div>
 <div class="section" id="higher-level-slots">
@@ -136,8 +137,7 @@ Graphically, we use circles for level-0 slots, and rectangles to represent slots
 </div>
 <p>Graphically, the OpMultiSum operator looks like this:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/opMultiSumEmpty.svg"><object data="_images/opMultiSumEmpty.svg" type="image/svg+xml"><embed src="_images/opMultiSumEmpty.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/opMultiSumEmpty.svg"><img alt="Addition of N images" src="_images/opMultiSumEmpty.svg" /></a>
 </div>
 <p>Notice that our input slot has no capacity yet.  We can change that by resizing it with the number of slots we intend to connect:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">opMultiSum</span> <span class="o">=</span> <span class="n">OpMultiSum</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
@@ -145,25 +145,21 @@ Graphically, we use circles for level-0 slots, and rectangles to represent slots
 </pre></div>
 </div>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/opMultiSum.svg"><object data="_images/opMultiSum.svg" type="image/svg+xml"><embed src="_images/opMultiSum.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/opMultiSum.svg"><img alt="Addition of 4 images" src="_images/opMultiSum.svg" /></a>
 </div>
 <p>Alternatively, the input slot will be automatically resized to match its upstream partner as soon as you connect it.</p>
 <p>Before connection:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/multi_connect_before.svg"><object data="_images/multi_connect_before.svg" type="image/svg+xml"><embed src="_images/multi_connect_before.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/multi_connect_before.svg"><img alt="Before connecting multi-slots" src="_images/multi_connect_before.svg" /></a>
 </div>
 <p>After connection:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/multi_connect_after.svg"><object data="_images/multi_connect_after.svg" type="image/svg+xml"><embed src="_images/multi_connect_after.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/multi_connect_after.svg"><img alt="After connecting multi-slots" src="_images/multi_connect_after.svg" /></a>
 </div>
 <p>When two multi-slots are connected, their subslots are internally connected to eachother.  For clarity, those connections aren&#8217;t typicaly shown in graphical diagrams.
 When you see two connected multi-slots, you can imagine their subslot connections looking like this:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/multi_connect_detail.svg"><object data="_images/multi_connect_detail.svg" type="image/svg+xml"><embed src="_images/multi_connect_detail.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/multi_connect_detail.svg"><img alt="Subslot connections in a multi-slot connection" src="_images/multi_connect_detail.svg" /></a>
 </div>
 </div>
 <div class="section" id="composite-operators">
@@ -189,13 +185,11 @@ When you see two connected multi-slots, you can imagine their subslot connection
 </pre></div>
 </div>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/opThreshold.svg"><object data="_images/opThreshold.svg" type="image/svg+xml"><embed src="_images/opThreshold.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/opThreshold.svg"><img alt="Simple Threshold Operator" src="_images/opThreshold.svg" /></a>
 </div>
 <p>That works for a single image, but what if we have multiple images to threshold?  We need to implement an operator with this interface:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/opMultiThreshold.svg"><object data="_images/opMultiThreshold.svg" type="image/svg+xml"><embed src="_images/opMultiThreshold.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/opMultiThreshold.svg"><img alt="Simple Threshold Operator for Multiple Images" src="_images/opMultiThreshold.svg" /></a>
 </div>
 <p>A naive approach is to re-implement the original (single-image) operator from scratch:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">OpMultiThreshold</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
@@ -263,8 +257,7 @@ When you see two connected multi-slots, you can imagine their subslot connection
 <p>Okay, at least we&#8217;re not duplicating the execute function, which is the meat of the operator&#8217;s implementation.  But it&#8217;s still a lot of code!  Read the next section for an easier implementation.</p>
 <p>By the way, here&#8217;s what this composite operator&#8217;s diagram looks like:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/opMultiThreshold_composite.svg"><object data="_images/opMultiThreshold_composite.svg" type="image/svg+xml"><embed src="_images/opMultiThreshold_composite.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/opMultiThreshold_composite.svg"><img alt="Threshold Operator for Multiple Images implemented as a composite operator" src="_images/opMultiThreshold_composite.svg" /></a>
 </div>
 <p>Notice that the <tt class="docutils literal"><span class="pre">ThresholdLevel</span></tt> slot is shared among all the internal thresholding operators.</p>
 </div>
@@ -278,16 +271,14 @@ Lazyflow offers a handy generic utility for creating such operators known as the
 </div>
 <p>With no inputs, your diagram looks mostly empty.  Notice that the new operator has the same inputs and outputs as the single-image version, but each slot is one-level higher (they are lists).</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/wrapped_opThreshold_empty.svg"><object data="_images/wrapped_opThreshold_empty.svg" type="image/svg+xml"><embed src="_images/wrapped_opThreshold_empty.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/wrapped_opThreshold_empty.svg"><img alt="Threshold Operator for Multiple Images implemented as a composite operator" src="_images/wrapped_opThreshold_empty.svg" /></a>
 </div>
 <p>When we add some inputs, we can see that our OperatorWrapper instance creates internal operators as necessary:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">opMultiThreshold</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/wrapped_opThreshold_with_inputs.svg"><object data="_images/wrapped_opThreshold_with_inputs.svg" type="image/svg+xml"><embed src="_images/wrapped_opThreshold_with_inputs.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/wrapped_opThreshold_with_inputs.svg"><img alt="Threshold Operator for Multiple Images implemented as a composite operator (shown with 2 inputs)" src="_images/wrapped_opThreshold_with_inputs.svg" /></a>
 </div>
 <p>This is <em>almost</em> what we wanted.  Notice that the operator&#8217;s <tt class="docutils literal"><span class="pre">ThresholdLevel</span></tt> slot has level=1.  Furthermore, each internal operator&#8217;s <tt class="docutils literal"><span class="pre">ThresholdLevel</span></tt> slot is
 connected to a separate <tt class="docutils literal"><span class="pre">ThresholdLevel</span></tt> subslot.  This means that it would be possible to
@@ -299,8 +290,7 @@ We specify this by passing a list of slot names to &#8216;promote&#8217; (i.e. l
 </pre></div>
 </div>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/wrapped_opThreshold_with_shared_threshold.svg"><object data="_images/wrapped_opThreshold_with_shared_threshold.svg" type="image/svg+xml"><embed src="_images/wrapped_opThreshold_with_shared_threshold.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/wrapped_opThreshold_with_shared_threshold.svg"><img alt="Wrapped OpThreshold with shared ThresholdLevel" src="_images/wrapped_opThreshold_with_shared_threshold.svg" /></a>
 </div>
 <p>Now only the <tt class="docutils literal"><span class="pre">Input</span></tt> slot has been &#8216;promoted&#8217; to a list input.  The other slot, <tt class="docutils literal"><span class="pre">ThresholdLevel</span></tt> remains a level-0 slot, which is shared with all internal operators.</p>
 </div>
@@ -311,16 +301,14 @@ The applet GUI should be a thin layer of code that simply configures the applet&
 <p>The ilastik-shell is designed to handle computation pipelines that handle multiple images at once.  For that reason, it is always expected that applets pass their results via multi-slots (i.e. slots of level &gt;= 1).
 The multi-slot is always indexed by the image index.  As an example, here&#8217;s the diagram for the ThresholdMasking example workflow, shown with two images loaded:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/ThresholdMaskingWorkflow_low_detail.svg"><object data="_images/ThresholdMaskingWorkflow_low_detail.svg" type="image/svg+xml"><embed src="_images/ThresholdMaskingWorkflow_low_detail.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/ThresholdMaskingWorkflow_low_detail.svg"><img alt="Wrapped OpThreshold with shared ThresholdLevel" src="_images/ThresholdMaskingWorkflow_low_detail.svg" /></a>
 </div>
 <p>There are two applets in this workflow: DataSelection and ThresholdMasking.  Notice that the top-level operator for
 the DataSelection applet passes its output as a list of images (i.e. a slot of level=1) to the next applet in the workflow.</p>
 <p>Notice that these operators were implemented as simple single-image operators which simplifies their implementations.  The applet uses an OperatorWrapper to achieve the multi-image functionality.
 The figure above omits the internal operators.  Here&#8217;s a more detailed figure:</p>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/ThresholdMaskingWorkflow_with_internal_ops.svg"><object data="_images/ThresholdMaskingWorkflow_with_internal_ops.svg" type="image/svg+xml"><embed src="_images/ThresholdMaskingWorkflow_with_internal_ops.svg" type="image/svg+xml" /></object>
-</a>
+<a class="reference internal image-reference" href="_images/ThresholdMaskingWorkflow_with_internal_ops.svg"><img alt="Wrapped OpThreshold with shared ThresholdLevel" src="_images/ThresholdMaskingWorkflow_with_internal_ops.svg" /></a>
 </div>
 </div>
 </div>
@@ -345,11 +333,11 @@ The figure above omits the internal operators.  Here&#8217;s a more detailed fig
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="overview.html"
-                        title="previous chapter">Overview</a></p>
+  <p class="topless"><a href="applet_library.html"
+                        title="previous chapter">Applet Library</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="applet_api.html"
-                        title="next chapter">Applet API</a></p>
+  <p class="topless"><a href="applet_library.html"
+                        title="next chapter">Applet Library</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/workflow_design.txt"
@@ -379,17 +367,17 @@ The figure above omits the internal operators.  Here&#8217;s a more detailed fig
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="applet_api.html" title="Applet API"
+          <a href="applet_library.html" title="Applet Library"
              >next</a> |</li>
         <li class="right" >
-          <a href="overview.html" title="Overview"
+          <a href="applet_library.html" title="Applet Library"
              >previous</a> |</li>
-        <li><a href="index.html">ilastik v0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

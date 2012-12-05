@@ -3,13 +3,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
+
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.workflow &mdash; ilastik v0.6.0 documentation</title>
+    <title>ilastik.workflow &mdash; ilastik 0.6.0 documentation</title>
+    
     <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../',
@@ -22,7 +25,7 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="ilastik v0.6.0 documentation" href="../../index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="../../index.html" />
     <link rel="up" title="Module code" href="../index.html" /> 
   </head>
   <body>
@@ -32,7 +35,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -43,36 +46,39 @@
           <div class="body">
             
   <h1>Source code for ilastik.workflow</h1><div class="highlight"><pre>
-<span class="k">class</span> <span class="nc">Workflow</span><span class="p">(</span> <span class="n">Operator</span> <span class="p">):</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">abstractproperty</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Operator</span>
+
+<div class="viewcode-block" id="Workflow"><a class="viewcode-back" href="../../applet_api.html#ilastik.workflow.Workflow">[docs]</a><span class="k">class</span> <span class="nc">Workflow</span><span class="p">(</span> <span class="n">Operator</span> <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Base class for all workflows.</span>
-<div class="viewcode-block" id="Workflow"><a class="viewcode-back" href="../../applet_api.html#ilastik.workflow.Workflow">[docs]</a><span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     
     <span class="c">###############################</span>
     <span class="c"># Abstract methods/properties #</span>
     <span class="c">###############################</span>
     
     <span class="nd">@abstractproperty</span>
-    <span class="k">def</span> <span class="nf">applets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Workflow.applets"><a class="viewcode-back" href="../../applet_api.html#ilastik.workflow.Workflow.applets">[docs]</a>    <span class="k">def</span> <span class="nf">applets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Abstract property. Return the list of applets that are owned by this workflow.</span>
-<div class="viewcode-block" id="Workflow.applets"><a class="viewcode-back" href="../../applet_api.html#ilastik.workflow.Workflow.applets">[docs]</a><span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">[]</span>
-
+</div>
     <span class="nd">@abstractproperty</span>
-    <span class="k">def</span> <span class="nf">imageNameListSlot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="Workflow.imageNameListSlot"><a class="viewcode-back" href="../../applet_api.html#ilastik.workflow.Workflow.imageNameListSlot">[docs]</a>    <span class="k">def</span> <span class="nf">imageNameListSlot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Abstract property.  Return the &quot;image name list&quot; slot, which lists the names of </span>
-<div class="viewcode-block" id="Workflow.imageNameListSlot"><a class="viewcode-back" href="../../applet_api.html#ilastik.workflow.Workflow.imageNameListSlot">[docs]</a><span class="sd">        all image lanes (i.e. files) currently loaded by the workflow.</span>
+<span class="sd">        all image lanes (i.e. files) currently loaded by the workflow.</span>
 <span class="sd">        This slot is typically provided by the DataSelection applet via its ImageName slot.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">None</span>
-
+</div>
     <span class="nd">@abstractmethod</span>
-    <span class="k">def</span> <span class="nf">connectLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="Workflow.connectLane"><a class="viewcode-back" href="../../applet_api.html#ilastik.workflow.Workflow.connectLane">[docs]</a>    <span class="k">def</span> <span class="nf">connectLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        When a new image lane has been added to the workflow, this workflow base class does the following:</span>
-<div class="viewcode-block" id="Workflow.connectLane"><a class="viewcode-back" href="../../applet_api.html#ilastik.workflow.Workflow.connectLane">[docs]</a><span class="sd">        </span>
+<span class="sd">        </span>
 <span class="sd">        1) Create room for the new image lane by adding a lane to each applet&#39;s topLevelOperator</span>
 <span class="sd">        2) Ask the subclass to hook up the new image lane by calling this function.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -81,23 +87,23 @@
     <span class="c">##################</span>
     <span class="c"># Public methods #</span>
     <span class="c">##################</span>
-
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">headless</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+</div>
+<div class="viewcode-block" id="Workflow.__init__"><a class="viewcode-back" href="../../applet_api.html#ilastik.workflow.Workflow.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">headless</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Constructor.  Subclasses MUST call this in their own ``__init__`` functions.</span></div>
-<div class="viewcode-block" id="Workflow.__init__"><a class="viewcode-back" href="../../applet_api.html#ilastik.workflow.Workflow.__init__">[docs]</a><span class="sd">        The args and kwargs parameters will be passed directly to the Operator base class.</span>
+<span class="sd">        Constructor.  Subclasses MUST call this in their own ``__init__`` functions.</span>
+<span class="sd">        The args and kwargs parameters will be passed directly to the Operator base class.</span>
 <span class="sd">        The graph argument should be included.</span>
 <span class="sd">        </span>
 <span class="sd">        :param headless: Set to True if this workflow is being instantiated by a &quot;headless&quot; script, </span>
-<span class="sd">        in which case the workflow should not attempt to access applet GUIs.</span>
+<span class="sd">                         in which case the workflow should not attempt to access applet GUIs.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">Workflow</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_headless</span> <span class="o">=</span> <span class="n">headless</span>
-
-    <span class="k">def</span> <span class="nf">cleanUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</div>
+<div class="viewcode-block" id="Workflow.cleanUp"><a class="viewcode-back" href="../../applet_api.html#ilastik.workflow.Workflow.cleanUp">[docs]</a>    <span class="k">def</span> <span class="nf">cleanUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        The user closed the project, so this workflow is being destroyed.  </span></div>
-<div class="viewcode-block" id="Workflow.cleanUp"><a class="viewcode-back" href="../../applet_api.html#ilastik.workflow.Workflow.cleanUp">[docs]</a><span class="sd">        Tell the applet GUIs to stop processing data, and free any resources that are owned by this workflow or its applets.</span>
+<span class="sd">        The user closed the project, so this workflow is being destroyed.  </span>
+<span class="sd">        Tell the applet GUIs to stop processing data, and free any resources that are owned by this workflow or its applets.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_headless</span><span class="p">:</span>
             <span class="c"># Stop and clean up the GUIs before we invalidate the operators they depend on.</span>
@@ -110,10 +116,10 @@
     <span class="c">###################</span>
     <span class="c"># Private methods #</span>
     <span class="c">###################</span>
-
+</div>
     <span class="k">def</span> <span class="nf">_after_init</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Overridden from Operator.</span></div>
+<span class="sd">        Overridden from Operator.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">Operator</span><span class="o">.</span><span class="n">_after_init</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
@@ -130,15 +136,23 @@
                 <span class="n">a</span><span class="o">.</span><span class="n">topLevelOperator</span><span class="o">.</span><span class="n">addLane</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
         
         <span class="bp">self</span><span class="o">.</span><span class="n">connectLane</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_headless</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">applets</span><span class="p">:</span>
+                <span class="n">a</span><span class="o">.</span><span class="n">getMultiLaneGui</span><span class="p">()</span><span class="o">.</span><span class="n">imageLaneAdded</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
     
     <span class="k">def</span> <span class="nf">_removeImageLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">multislot</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        An image lane is being removed from the workflow.  Remove it from each of the applets.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_headless</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">applets</span><span class="p">:</span>
+                <span class="n">a</span><span class="o">.</span><span class="n">getMultiLaneGui</span><span class="p">()</span><span class="o">.</span><span class="n">imageLaneRemoved</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">)</span>
+
         <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">applets</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">syncWithImageIndex</span> <span class="ow">and</span> <span class="n">a</span><span class="o">.</span><span class="n">topLevelOperator</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-                <span class="n">a</span><span class="o">.</span><span class="n">topLevelOperator</span><span class="o">.</span><span class="n">removeLane</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">)</span>
-</pre></div></div>
+                <span class="n">a</span><span class="o">.</span><span class="n">topLevelOperator</span><span class="o">.</span><span class="n">removeLane</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">)</span></div>
+</pre></div>
 
           </div>
         </div>
@@ -168,13 +182,13 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>

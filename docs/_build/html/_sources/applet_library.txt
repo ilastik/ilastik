@@ -13,7 +13,7 @@ Threshold Masking
 
 .. figure:: images/ThresholdMasking-Top-Level-Operator.svg
    :scale: 100  %
-   :alt: Batch Output Top-Level Operator
+   :alt: Threshold Masking Top-Level Operator
 
 .. currentmodule:: ilastik.applets.thresholdMasking.thresholdMaskingApplet
 .. autoclass:: ThresholdMaskingApplet
@@ -22,10 +22,13 @@ Threshold Masking
 Deviation From Mean
 -------------------
 
+.. figure:: images/DeviationFromMean-Top-Level-Operator.svg
+   :scale: 100  %
+   :alt: Deviation-From-Mean Top-Level Operator
+
 .. currentmodule:: ilastik.applets.deviationFromMean.deviationFromMeanApplet
 .. autoclass:: DeviationFromMeanApplet
    :members:
-
 
 Useful Base Classes
 ===================
@@ -147,7 +150,7 @@ Watershed Viewer
 
 .. figure:: images/VigraWatershedViewer-Top-Level-Operator.svg
    :scale: 100  %
-   :alt: Pixel Classification Top-Level Operator
+   :alt: Watershed Viewer Top-Level Operator
 
 .. currentmodule:: ilastik.applets.vigraWatershedViewer.vigraWatershedViewerApplet
 .. autoclass:: VigraWatershedViewerApplet
