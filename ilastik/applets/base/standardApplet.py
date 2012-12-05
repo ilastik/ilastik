@@ -1,5 +1,5 @@
+from ilastik.utility import MultiLaneOperatorABC, OpAutoMultiLane
 from ilastik.applets.base.applet import Applet
-from ilastik.applets.base.multiLaneOperator import MultiLaneOperatorABC, OpAutoMultiLane
 from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
 
 class StandardApplet( Applet ):

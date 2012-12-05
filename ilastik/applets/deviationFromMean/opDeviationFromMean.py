@@ -1,7 +1,6 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from ilastik.applets.base.multiLaneOperator import MultiLaneOperatorABC
 import numpy
-from ilastik.utility.operatorSubView import OperatorSubView
+from ilastik.utility import MultiLaneOperatorABC, OperatorSubView
 
 class OpDeviationFromMean(Operator):
     """
