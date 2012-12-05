@@ -1,4 +1,5 @@
 from lazyflow.graph import OperatorWrapper, InputDict, OutputDict
+from ilastik.utility import MultiLaneOperatorABC
 
 class OperatorSubViewMetaclass(type):
     """
@@ -35,8 +36,8 @@ class OperatorSubView(object):
                       operator will be replaced with the corresponding subslot at this index.
         """
         self.__op = op
-        self.__index = index
         self.__slots = {}
+        self.__innerOp = None # Used if op is an OperatorWrapper
 
         self.inputs = InputDict(self)
         for slot in op.inputs.values():
@@ -60,21 +61,34 @@ class OperatorSubView(object):
 
         self.outputSlots = list( self.inputs.values() )
 
+        # If we're an OperatorWrapper, save the inner operator at this index.
+        if isinstance(self.__op, OperatorWrapper):
+            self.__innerOp = self.__op.innerOperators[index]
+
+        for name, member in self.__op.__dict__.items():
+            # If any of our members happens to itself be a multi-lane operator,
+            #  then keep a view on it instead of the original.
+            if name != '_parent' and isinstance(member, MultiLaneOperatorABC):
+                setattr(self, name, OperatorSubView(member, index) )
+
     def __getattribute__(self, name):
         try:
-            # If we have this attr, return it.
+            # If we have this attr, use it.  It's either a slot, an inner operator, a  view itself.
             return object.__getattribute__(self, name)
         except:
             # Special case for OperatorWrappers: Get the member from the appropriate inner operator.
+            # This means that the actual OperatorWrapper members aren't accessible via this view.
             if isinstance(self.__op, OperatorWrapper):
-                return getattr(self.__op.innerOperators[self.__index], name)
+                return getattr(self.__innerOp, name)
 
             # Get the member from the operator directly.
             return getattr(self.__op, name)
 
 if __name__ == "__main__":
     
+    import random
     from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
+    from ilastik.utility import OpAutoMultiLane
 
     class OpSum(Operator):
         InputA = InputSlot()
@@ -84,7 +98,7 @@ if __name__ == "__main__":
         
         def __init__(self, *args, **kwargs):
             super(OpSum, self).__init__(*args, **kwargs)
-            self.hello = "Heya heya"
+            self.rand = random.random()
     
         def setupOutputs(self):
             assert self.InputA.meta.shape == self.InputB.meta.shape, "Can't add images of different shapes!"
@@ -134,13 +148,20 @@ if __name__ == "__main__":
     assert subView0.InputA == opWrappedSum.InputA[0]
     assert subView0.InputB == opWrappedSum.InputB[0]
     assert subView0.Output == opWrappedSum.Output[0]
-    assert subView0.hello == opWrappedSum.innerOperators[0].hello
+    assert subView0.rand == opWrappedSum.innerOperators[0].rand
     
     subView1 = OperatorSubView(opWrappedSum, 1)
     assert subView1.InputA == opWrappedSum.InputA[1]
     assert subView1.InputB == opWrappedSum.InputB[1]
     assert subView1.Output == opWrappedSum.Output[1]
-    assert subView1.hello == opWrappedSum.innerOperators[1].hello
+    assert subView1.rand == opWrappedSum.innerOperators[1].rand
+
+    # When a slot is removed, the view should follow the same slots as they slide down the list.
+    opWrappedSum.InputA.removeSlot(0, 2)
+    assert subView1.InputA == opWrappedSum.InputA[0]
+    assert subView1.InputB == opWrappedSum.InputB[0]
+    assert subView1.Output == opWrappedSum.Output[0]
+    assert subView1.rand == opWrappedSum.innerOperators[0].rand
     
     opMultiThreshold = OpMultiThreshold(graph=graph)
     opMultiThreshold.Inputs.resize(3)
@@ -151,3 +172,51 @@ if __name__ == "__main__":
     assert subThresholdView.Inputs == opMultiThreshold.Inputs[1]
     assert subThresholdView.Outputs == opMultiThreshold.Outputs[1]
     assert subThresholdView.hello == opMultiThreshold.hello
+    
+    
+    class OpNestedMultiOps(Operator):
+        InputA = InputSlot(level=1)
+        InputB = InputSlot(level=1)
+    
+        Output = OutputSlot(level=1)
+
+        def __init__(self, *args, **kwargs):
+            super(OpNestedMultiOps, self).__init__(*args, **kwargs)
+            self.opSum1 = OpAutoMultiLane( OpSum, parent=self )
+            self.opSum2 = OpAutoMultiLane( OpSum, parent=self )
+            self.opSum3 = OpAutoMultiLane( OpSum, parent=self )
+
+            self.opSum1.InputA.connect( self.InputA )
+            self.opSum1.InputB.connect( self.InputB )
+
+            self.opSum2.InputA.connect( self.InputA )
+            self.opSum2.InputB.connect( self.InputB )
+
+            self.opSum3.InputA.connect( self.opSum1.Output )
+            self.opSum3.InputB.connect( self.opSum2.Output )
+
+            self.Output.connect( self.opSum3.Output )
+
+
+    opNested = OpNestedMultiOps( graph=graph )
+    opNested.InputA.resize( 3 )
+    assert len( opNested.InputB ) == 3
+    
+    opNestedView = OperatorSubView( opNested, 1 )
+    
+    assert opNestedView.opSum1.rand == opNested.opSum1.innerOperators[1].rand
+    assert opNestedView.opSum2.rand == opNested.opSum2.innerOperators[1].rand
+
+    # View should follow the slots as they change index
+    opNested.InputA.removeSlot(0, 2)
+    assert opNestedView.opSum1.rand == opNested.opSum1.innerOperators[0].rand
+    assert opNestedView.opSum2.rand == opNested.opSum2.innerOperators[0].rand
+
+    assert isinstance(opNestedView.opSum1, OperatorSubView)
+    assert opNestedView.opSum1.InputA.level == 0
+    
+    
+
+
+
+
