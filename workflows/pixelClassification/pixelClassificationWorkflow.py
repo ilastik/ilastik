@@ -21,7 +21,7 @@ class PixelClassificationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, appendBatchOperators=False, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
         super( PixelClassificationWorkflow, self ).__init__( graph=graph, *args, **kwargs )
@@ -39,16 +39,17 @@ class PixelClassificationWorkflow(Workflow):
         self._applets.append(self.featureSelectionApplet)
         self._applets.append(self.pcApplet)
 
-        # Create applets for batch workflow
-        self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
-        self.batchResultsApplet = BatchIoApplet(self, "Batch Prediction Output Locations")
-
-        # Expose in shell        
-        self._applets.append(self.batchInputApplet)
-        self._applets.append(self.batchResultsApplet)
-
-        # Connect batch workflow (NOT lane-based)
-        self._initBatchWorkflow()
+        if appendBatchOperators:
+            # Create applets for batch workflow
+            self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
+            self.batchResultsApplet = BatchIoApplet(self, "Batch Prediction Output Locations")
+    
+            # Expose in shell        
+            self._applets.append(self.batchInputApplet)
+            self._applets.append(self.batchResultsApplet)
+    
+            # Connect batch workflow (NOT lane-based)
+            self._initBatchWorkflow()
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator
