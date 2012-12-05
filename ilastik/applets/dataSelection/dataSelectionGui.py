@@ -73,6 +73,17 @@ class DataSelectionGui(QMainWindow):
 
     def stopAndCleanUp(self):
         pass
+
+    def imageLaneAdded(self, laneIndex):
+        # We assume that there's nothing to do here because THIS GUI initiated the lane addition
+        if self.guiMode != GuiMode.Batch:
+            assert len(self.topLevelOperator.Dataset) == laneIndex+1
+
+    def imageLaneRemoved(self, laneIndex, finalLength):
+        # We assume that there's nothing to do here because THIS GUI initiated the lane removal
+        if self.guiMode != GuiMode.Batch:
+            assert len(self.topLevelOperator.Dataset) == finalLength
+    
         
     ###########################################
     ###########################################
@@ -93,8 +104,11 @@ class DataSelectionGui(QMainWindow):
             self.initAppletDrawerUic()
             self.initCentralUic()
     
-            def handleNewDataset( multislot, index ):
-                with Tracer(traceLogger):
+            def handleNewDataset( multislot, index, finalSize):
+                # Subtlety here: This if statement is needed due to the fact that
+                #  This code is hit twice on startup: Once in response to a ImageName resize 
+                #  (during construction) and once for Dataset resize.
+                if self.fileInfoTableWidget.rowCount() < finalSize:
                     assert multislot == self.topLevelOperator.Dataset
                     # Make room in the table
                     self.fileInfoTableWidget.insertRow( index )
@@ -107,14 +121,13 @@ class DataSelectionGui(QMainWindow):
             
             # For each dataset that already exists, update the GUI
             for i, subslot in enumerate(self.topLevelOperator.Dataset):
-                handleNewDataset( self.topLevelOperator.Dataset, i )
+                handleNewDataset( self.topLevelOperator.Dataset, i, len(self.topLevelOperator.Dataset) )
                 if subslot.ready():
                     self.updateTableForSlot(subslot)
         
-            def handleDatasetRemoved( multislot, index ):
-                with Tracer(traceLogger):
-                    assert multislot == self.topLevelOperator.Dataset
-                    
+            def handleDatasetRemoved( multislot, index, finalLength ):
+                assert multislot == self.topLevelOperator.Dataset
+                if self.fileInfoTableWidget.rowCount() > finalLength:
                     # Simply remove the row we don't need any more
                     self.fileInfoTableWidget.removeRow( index )
     

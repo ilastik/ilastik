@@ -5,8 +5,8 @@ class SingleToMultiGuiAdapter( object ):
     """
     def __init__(self, singleImageGuiFactory, topLevelOperator):
         self.singleImageGuiFactory = singleImageGuiFactory
-        self._imageIndex = None
-        self._guis = {}
+        self._imageLaneIndex = None
+        self._guis = []
         self.topLevelOperator = topLevelOperator
 
     def currentGui(self):
@@ -14,12 +14,13 @@ class SingleToMultiGuiAdapter( object ):
         Return the single-image GUI for the currently selected image lane.
         If it doesn't exist yet, create it.
         """
-        if self._imageIndex is None:
+        if self._imageLaneIndex is None:
             return None
+
         # Create first if necessary
-        if self._imageIndex not in self._guis:
-            self._guis[self._imageIndex] = self.singleImageGuiFactory( self._imageIndex )
-        return self._guis[self._imageIndex]
+        if self._guis[self._imageLaneIndex] is None:
+            self._guis[self._imageLaneIndex] = self.singleImageGuiFactory( self._imageLaneIndex )
+        return self._guis[self._imageLaneIndex]
 
     def appletDrawer(self):
         """
@@ -59,11 +60,31 @@ class SingleToMultiGuiAdapter( object ):
         """
         Called by the shell when the user has changed the currently selected image lane.
         """
-        self._imageIndex = imageIndex
+        self._imageLaneIndex = imageIndex
 
     def stopAndCleanUp(self):
         """
         Called by the workflow when the project is closed and the GUIs are about to be discarded.
         """
-        for gui in self._guis.values():
-            gui.stopAndCleanUp()
+        for gui in self._guis:
+            if gui is not None:
+                gui.stopAndCleanUp()
+
+    def imageLaneAdded(self, laneIndex):
+        """
+        Called by the workflow when a new image lane has been created.
+        """
+        assert len(self._guis) == laneIndex
+        # We DELAY creating the GUI for this lane until the shell actually needs to view it.
+        self._guis.append(None)
+
+    def imageLaneRemoved(self, laneIndex, finalLength):
+        """
+        Called by the workflow when an image lane has been destroyed.
+        """
+        if len(self._guis) > finalLength:
+            # Remove the GUI and clean it up.
+            gui = self._guis.pop(laneIndex)
+            if gui is not None:
+                gui.stopAndCleanUp()
+    

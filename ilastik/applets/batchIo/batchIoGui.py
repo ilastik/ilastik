@@ -54,6 +54,12 @@ class BatchIoGui(QMainWindow):
     def stopAndCleanUp(self):
         pass
 
+    def imageLaneAdded(self, laneIndex):
+        pass
+
+    def imageLaneRemoved(self, laneIndex, finalLength):
+        pass
+
     ###########################################
     ###########################################
     

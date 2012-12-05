@@ -88,11 +88,19 @@ class Workflow( Operator ):
                 a.topLevelOperator.addLane(index)
         
         self.connectLane(index)
+
+        if not self._headless:
+            for a in self.applets:
+                a.getMultiLaneGui().imageLaneAdded(index)
     
     def _removeImageLane(self, multislot, index, finalLength):
         """
         An image lane is being removed from the workflow.  Remove it from each of the applets.
         """
+        if not self._headless:
+            for a in self.applets:
+                a.getMultiLaneGui().imageLaneRemoved(index, finalLength)
+
         for a in self.applets:
             if a.syncWithImageIndex and a.topLevelOperator is not None:
                 a.topLevelOperator.removeLane(index, finalLength)

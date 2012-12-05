@@ -65,6 +65,14 @@ class AppletGuiInterface():
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def laneAdded(self):
+        raise NotImplementedError
+
+    @abstractmethod    
+    def laneRemoved(self, laneIndex, finalLength):
+        raise NotImplementedError
+
     @classmethod
     def __subclasshook__(cls, C):
         if cls is AppletGuiInterface:
