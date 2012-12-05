@@ -32,6 +32,27 @@ When the user adds a new input image to the workflow, the workflow creates a new
 This is done by calling ``addLane`` on every applet's topLevelOperator, and then calling ``connectLane`` to connect together the lanes from each applet.
 See :py:class:`MultiLaneOperatorABC<ilastik.utility.MultiLaneOperatorABC>` for more details. 
 
+Many applet GUIs can be written without regard to the fact that the applet's top-level operator handles multiple image lanes at once.  
+In fact, most applet GUIs are written to handle only a single lane of the applet's top-level operator.  
+Instead of manipulating the top-level operator directly, most GUIs manipulate a *view* of the top-level 
+operator for a particular image lane.
+
+For example, consider this top-level operator diagram (the `Workflow Design` page explains how to interpret operator diagrams).
+
+.. figure:: images/DeviationFromMean-Top-Level-Operator.svg
+   :scale: 200  %
+   :alt: Deviation-From-Mean Top-Level Operator
+
+If the Applet GUI is only interested in dealing with a single image (say, the second one), it can be written to use a *view*.
+In that case, the GUI is provided with an object that looks like this:
+
+.. figure:: images/DeviationFromMean-View.svg
+   :scale: 200  %
+   :alt: Deviation-From-Mean Top-Level Operator (View)
+
+Notice that the view object has no multi-slots. As far as the GUI is concerned, there is only one image lane.  
+(The dotted lines are just shown for comparison with the previous diagram.  Click on the diagram and zoom in for better rendering.)
+
 The Workflow Base Class
 =======================
 

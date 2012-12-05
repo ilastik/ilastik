@@ -78,6 +78,21 @@ He selects which lane to view using the shell&#8217;s &#8220;Current View&#8221;
 <p>When the user adds a new input image to the workflow, the workflow creates a new image lane in <em>each applet</em> to process it.
 This is done by calling <tt class="docutils literal"><span class="pre">addLane</span></tt> on every applet&#8217;s topLevelOperator, and then calling <tt class="docutils literal"><span class="pre">connectLane</span></tt> to connect together the lanes from each applet.
 See <a class="reference internal" href="utilities.html#ilastik.utility.MultiLaneOperatorABC" title="ilastik.utility.MultiLaneOperatorABC"><tt class="xref py py-class docutils literal"><span class="pre">MultiLaneOperatorABC</span></tt></a> for more details.</p>
+<p>Many applet GUIs can be written without regard to the fact that the applet&#8217;s top-level operator handles multiple image lanes at once.
+In fact, most applet GUIs are written to handle only a single lane of the applet&#8217;s top-level operator.
+Instead of manipulating the top-level operator directly, most GUIs manipulate a <em>view</em> of the top-level
+operator for a particular image lane.</p>
+<p>For example, consider this top-level operator diagram (the <cite>Workflow Design</cite> page explains how to interpret operator diagrams).</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/DeviationFromMean-Top-Level-Operator.svg"><img alt="Deviation-From-Mean Top-Level Operator" src="_images/DeviationFromMean-Top-Level-Operator.svg" /></a>
+</div>
+<p>If the Applet GUI is only interested in dealing with a single image (say, the second one), it can be written to use a <em>view</em>.
+In that case, the GUI is provided with an object that looks like this:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/DeviationFromMean-View.svg"><img alt="Deviation-From-Mean Top-Level Operator (View)" src="_images/DeviationFromMean-View.svg" /></a>
+</div>
+<p>Notice that the view object has no multi-slots. As far as the GUI is concerned, there is only one image lane.
+(The dotted lines are just shown for comparison with the previous diagram.)</p>
 </div>
 </div>
 <div class="section" id="the-workflow-base-class">
