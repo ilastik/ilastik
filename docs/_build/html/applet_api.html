@@ -60,7 +60,7 @@ A workflow is created when the user loads a project, and destroyed when the proj
 <p>The workflow has three main responsibilities:</p>
 <ul class="simple">
 <li>Instantiate a set of applets, and expose them as a list for the ilastik shell to display.</li>
-<li>Build up a complete computational pipeline, one <em>image lane</em> at a time.  This is done by connecting an individual <em>image lane</em> from each applet&#8217;s <cite>Top-Level Operator&lt;Top-Level Operators&gt;</cite>. (More on that in a bit.)</li>
+<li>Build up a complete computational pipeline, one <em>image lane</em> at a time.  This is done by connecting an individual <em>image lane</em> from each applet&#8217;s <em class="xref std std-ref">Top-Level Operator</em>. (More on that in a bit.)</li>
 <li>Select a particular slot to serve as the &#8220;image name slot&#8221; for the shell.  The shell uses this slot as the &#8220;master list&#8221; of all image lanes present in the workflow at any time.</li>
 </ul>
 <div class="section" id="image-lanes">
@@ -92,7 +92,7 @@ In that case, the GUI is provided with an object that looks like this:</p>
 <a class="reference internal image-reference" href="_images/DeviationFromMean-View.svg"><img alt="Deviation-From-Mean Top-Level Operator (View)" src="_images/DeviationFromMean-View.svg" /></a>
 </div>
 <p>Notice that the view object has no multi-slots. As far as the GUI is concerned, there is only one image lane.
-(The dotted lines are just shown for comparison with the previous diagram.)</p>
+(The dotted lines are just shown for comparison with the previous diagram.  Click on the diagram and zoom in for better rendering.)</p>
 </div>
 </div>
 <div class="section" id="the-workflow-base-class">
