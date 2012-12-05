@@ -85,13 +85,13 @@ class LayerViewerGui(QMainWindow):
     ###########################################
 
     @traceLogged(traceLogger)
-    def __init__(self, topLevelOperator, additionalMonitoredSlots=[]):
+    def __init__(self, topLevelOperatorView, additionalMonitoredSlots=[]):
         """
-        Constructor.  **All** slots of the provided *topLevelOperator* will be monitored for changes.
+        Constructor.  **All** slots of the provided *topLevelOperatorView* will be monitored for changes.
         Changes include slot resize events, and slot ready/unready status changes.
         When a change is detected, the `setupLayers()` function is called, and the result is used to update the list of layers shown in the central widget.
 
-        :param topLevelOperator: The top-level operator for the applet this GUI belongs to.
+        :param topLevelOperatorView: The top-level operator for the applet this GUI belongs to.
         """
         super(LayerViewerGui, self).__init__()
 
@@ -100,11 +100,11 @@ class LayerViewerGui(QMainWindow):
 
         self.threadRouter = ThreadRouter(self) # For using @threadRouted
 
-        self.topLevelOperator = topLevelOperator
+        self.topLevelOperatorView = topLevelOperatorView
 
         observedSlots = []
 
-        for slot in topLevelOperator.inputs.values() + topLevelOperator.outputs.values():
+        for slot in topLevelOperatorView.inputs.values() + topLevelOperatorView.outputs.values():
             if slot.level == 0 or slot.level == 1:
                 observedSlots.append(slot)
         
@@ -145,7 +145,7 @@ class LayerViewerGui(QMainWindow):
         """
         Create a list of layers to be displayed in the central widget.
         Subclasses should override this method to create the list of layers that can be displayed.
-        For debug and development purposes, the base class implementation simply generates layers for all topLevelOperator slots.
+        For debug and development purposes, the base class implementation simply generates layers for all topLevelOperatorView slots.
         """
         layers = []
         for multiLayerSlot in self.observedSlots:

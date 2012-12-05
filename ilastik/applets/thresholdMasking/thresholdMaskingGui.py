@@ -29,12 +29,12 @@ class ThresholdMaskingGui(LayerViewerGui):
     ###########################################
     ###########################################
     
-    def __init__(self, mainOperator):
+    def __init__(self, topLevelOperatorView):
         """
         """
         with Tracer(traceLogger):
-            self.mainOperator = mainOperator
-            super(ThresholdMaskingGui, self).__init__(self.mainOperator)
+            self.topLevelOperatorView = topLevelOperatorView
+            super(ThresholdMaskingGui, self).__init__(self.topLevelOperatorView)
             
     def initAppletDrawerUi(self):
         with Tracer(traceLogger):
@@ -53,21 +53,21 @@ class ThresholdMaskingGui(LayerViewerGui):
             def updateDrawerFromOperator():
                 minValue, maxValue = (0,255)
 
-                if self.mainOperator.MinValue.ready():
-                    minValue = self.mainOperator.MinValue.value
-                if self.mainOperator.MaxValue.ready():
-                    maxValue = self.mainOperator.MaxValue.value
+                if self.topLevelOperatorView.MinValue.ready():
+                    minValue = self.topLevelOperatorView.MinValue.value
+                if self.topLevelOperatorView.MaxValue.ready():
+                    maxValue = self.topLevelOperatorView.MaxValue.value
 
                 thresholdWidget.setValue(minValue, maxValue)
                 
-            self.mainOperator.MinValue.notifyDirty( bind(updateDrawerFromOperator) )
-            self.mainOperator.MaxValue.notifyDirty( bind(updateDrawerFromOperator) )
+            self.topLevelOperatorView.MinValue.notifyDirty( bind(updateDrawerFromOperator) )
+            self.topLevelOperatorView.MaxValue.notifyDirty( bind(updateDrawerFromOperator) )
             updateDrawerFromOperator()
             
     def handleThresholdGuiValuesChanged(self, minVal, maxVal):
         with Tracer(traceLogger):
-            self.mainOperator.MinValue.setValue(minVal)
-            self.mainOperator.MaxValue.setValue(maxVal)
+            self.topLevelOperatorView.MinValue.setValue(minVal)
+            self.topLevelOperatorView.MaxValue.setValue(maxVal)
     
     def getAppletDrawerUi(self):
         return self._drawer
@@ -77,7 +77,7 @@ class ThresholdMaskingGui(LayerViewerGui):
             layers = []
     
             # Show the thresholded data
-            outputImageSlot = self.mainOperator.Output
+            outputImageSlot = self.topLevelOperatorView.Output
             if outputImageSlot.ready():
                 outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
                 outputLayer.name = "min <= x <= max"
@@ -86,7 +86,7 @@ class ThresholdMaskingGui(LayerViewerGui):
                 layers.append(outputLayer)
             
             # Show the  data
-            invertedOutputSlot = self.mainOperator.InvertedOutput
+            invertedOutputSlot = self.topLevelOperatorView.InvertedOutput
             if invertedOutputSlot.ready():
                 invertedLayer = self.createStandardLayerFromSlot( invertedOutputSlot )
                 invertedLayer.name = "(x < min) U (x > max)"
@@ -95,7 +95,7 @@ class ThresholdMaskingGui(LayerViewerGui):
                 layers.append(invertedLayer)
             
             # Show the raw input data
-            inputImageSlot = self.mainOperator.InputImage
+            inputImageSlot = self.topLevelOperatorView.InputImage
             if inputImageSlot.ready():
                 inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
                 inputLayer.name = "Raw Input"

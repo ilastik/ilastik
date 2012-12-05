@@ -13,6 +13,9 @@ class AppletGuiInterface():
 
     __metaclass__ = ABCMeta
 
+    def __init__(self, topLevelOperatorView):
+        pass
+
     @abstractmethod
     def centralWidget( self ):
         """

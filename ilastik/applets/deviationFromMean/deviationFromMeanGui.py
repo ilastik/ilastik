@@ -22,11 +22,11 @@ class DeviationFromMeanGui(LayerViewerGui):
     ###########################################
     ###########################################
     
-    def __init__(self, mainOperator):
+    def __init__(self, topLevelOperatorView):
         """
         """
-        self.mainOperator = mainOperator
-        super(DeviationFromMeanGui, self).__init__(mainOperator)
+        self.topLevelOperatorView = topLevelOperatorView
+        super(DeviationFromMeanGui, self).__init__(topLevelOperatorView)
             
     def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
@@ -39,29 +39,29 @@ class DeviationFromMeanGui(LayerViewerGui):
         def updateDrawerFromOperator():
             scalingFactor, offset = (0,0)
 
-            if self.mainOperator.ScalingFactor.ready():
-                scalingFactor = self.mainOperator.ScalingFactor.value
-            if self.mainOperator.Offset.ready():
-                offset = self.mainOperator.Offset.value
+            if self.topLevelOperatorView.ScalingFactor.ready():
+                scalingFactor = self.topLevelOperatorView.ScalingFactor.value
+            if self.topLevelOperatorView.Offset.ready():
+                offset = self.topLevelOperatorView.Offset.value
 
             self._drawer.scalingFactorSpinBox.setValue(scalingFactor)
             self._drawer.offsetSpinBox.setValue(offset)
             
-        self.mainOperator.ScalingFactor.notifyDirty( bind(updateDrawerFromOperator) )
-        self.mainOperator.Offset.notifyDirty( bind(updateDrawerFromOperator) )
+        self.topLevelOperatorView.ScalingFactor.notifyDirty( bind(updateDrawerFromOperator) )
+        self.topLevelOperatorView.Offset.notifyDirty( bind(updateDrawerFromOperator) )
         updateDrawerFromOperator()
 
         # Provide defaults if the operator isn't already configured..
-        if not self.mainOperator.ScalingFactor.ready():
+        if not self.topLevelOperatorView.ScalingFactor.ready():
             self.updateOperatorScalingFactor(1)
-        if not self.mainOperator.Offset.ready():
+        if not self.topLevelOperatorView.Offset.ready():
             self.updateOperatorOffset(0)
         
     def updateOperatorScalingFactor(self, scalingFactor):
-        self.mainOperator.ScalingFactor.setValue(scalingFactor)
+        self.topLevelOperatorView.ScalingFactor.setValue(scalingFactor)
     
     def updateOperatorOffset(self, offset):
-        self.mainOperator.Offset.setValue(offset)
+        self.topLevelOperatorView.Offset.setValue(offset)
     
     def getAppletDrawerUi(self):
         return self._drawer
@@ -70,7 +70,7 @@ class DeviationFromMeanGui(LayerViewerGui):
         layers = []
 
         # Show the Output data
-        outputImageSlot = self.mainOperator.Output
+        outputImageSlot = self.topLevelOperatorView.Output
         if outputImageSlot.ready():
             outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
             outputLayer.name = "Deviation From Mean"
@@ -79,7 +79,7 @@ class DeviationFromMeanGui(LayerViewerGui):
             layers.append(outputLayer)
 
         # Show the mean image
-        meanImageSlot = self.mainOperator.Mean
+        meanImageSlot = self.topLevelOperatorView.Mean
         if meanImageSlot.ready():
             meanLayer = self.createStandardLayerFromSlot(meanImageSlot)
             meanLayer.name = "Mean"
@@ -88,7 +88,7 @@ class DeviationFromMeanGui(LayerViewerGui):
             layers.append(meanLayer)
         
         # Show the raw input data as a convenience for the user
-        inputImageSlot = self.mainOperator.Input
+        inputImageSlot = self.topLevelOperatorView.Input
         if inputImageSlot.ready():
             inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
             inputLayer.name = "Input"

@@ -112,12 +112,12 @@ class LabelingGui(LayerViewerGui):
             self.labelsAllowed = None # labelsAllowed.value == True
 
     @traceLogged(traceLogger)
-    def __init__(self, labelingSlots, topLevelOperator, drawerUiPath=None, rawInputSlot=None ):
+    def __init__(self, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None ):
         """
         Constructor.
 
         :param labelingSlots: Provides the slots needed for sourcing/sinking label data.  See LabelingGui.LabelingSlots class source for details.
-        :param topLevelOperator: is provided to the LayerViewerGui (the base class)
+        :param topLevelOperatorView: is provided to the LayerViewerGui (the base class)
         :param drawerUiPath: can be given if you provide an extended drawer UI file.  Otherwise a default one is used.
         :param rawInputSlot: Data from the rawInputSlot parameter will be displayed directly underneath the labels (if provided).
         """
@@ -143,7 +143,7 @@ class LabelingGui(LayerViewerGui):
         self._initLabelUic(drawerUiPath)
 
         # Init base class
-        super(LabelingGui, self).__init__( topLevelOperator, [labelingSlots.labelInput, labelingSlots.labelOutput] )
+        super(LabelingGui, self).__init__( topLevelOperatorView, [labelingSlots.labelInput, labelingSlots.labelOutput] )
 
         self.__initShortcuts()
         self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)

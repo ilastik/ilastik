@@ -57,13 +57,13 @@ class BatchIoGui(QMainWindow):
     ###########################################
     ###########################################
     
-    def __init__(self, dataSelectionOperator, guiControlSignal, progressSignal, title):
+    def __init__(self, topLevelOperator, guiControlSignal, progressSignal, title):
         with Tracer(traceLogger):
             super(BatchIoGui, self).__init__()
     
             self.title = title
             self.drawer = None
-            self.mainOperator = dataSelectionOperator
+            self.topLevelOperator = topLevelOperator
             
             self.initAppletDrawerUic()
             self.initCentralUic()
@@ -80,17 +80,17 @@ class BatchIoGui(QMainWindow):
                 # We can't bind in the row here because the row may change in the meantime.
                 multislot[index].notifyDirty( bind( self.updateTableForSlot ) )
     
-            self.mainOperator.OutputDataPath.notifyInserted( bind( handleNewDataset ) )
+            self.topLevelOperator.OutputDataPath.notifyInserted( bind( handleNewDataset ) )
             
             def handleDatasetRemoved( multislot, index ):
                 # Simply remove the row we don't need any more
                 self.batchOutputTableWidget.removeRow( index )
     
-            self.mainOperator.OutputDataPath.notifyRemove( bind( handleDatasetRemoved ) )
+            self.topLevelOperator.OutputDataPath.notifyRemove( bind( handleDatasetRemoved ) )
             
-            self.mainOperator.Suffix.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
-            self.mainOperator.ExportDirectory.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
-            self.mainOperator.Format.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
+            self.topLevelOperator.Suffix.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
+            self.topLevelOperator.ExportDirectory.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
+            self.topLevelOperator.Format.notifyDirty( self.updateDrawerGuiFromOperatorSettings )
             self.updateDrawerGuiFromOperatorSettings()
         
     def initAppletDrawerUic(self):
@@ -152,16 +152,16 @@ class BatchIoGui(QMainWindow):
             saveWithInput = self.drawer.saveWithInputButton.isChecked()
             if saveWithInput:
                 # Set to '', which means export data is stored in the input data directory
-                self.mainOperator.ExportDirectory.setValue('')
+                self.topLevelOperator.ExportDirectory.setValue('')
             else:
-                self.mainOperator.ExportDirectory.setValue(self.chosenExportDirectory)
+                self.topLevelOperator.ExportDirectory.setValue(self.chosenExportDirectory)
     
-            for index, slot in enumerate(self.mainOperator.OutputDataPath):
+            for index, slot in enumerate(self.topLevelOperator.OutputDataPath):
                 self.updateTableForSlot(slot)
     
     def handleExportFormatChanged(self, index):
         with Tracer(traceLogger):
-            self.mainOperator.Format.setValue( index )
+            self.topLevelOperator.Format.setValue( index )
     
     def chooseNewExportDirectory(self):
         """
@@ -188,10 +188,10 @@ class BatchIoGui(QMainWindow):
         with Tracer(traceLogger):
             suffix = str( self.drawer.outputSuffixEdit.text() )
             
-            self.mainOperator.Suffix.setValue( suffix )
+            self.topLevelOperator.Suffix.setValue( suffix )
     
             # Update every row of the GUI        
-            for index, slot in enumerate(self.mainOperator.OutputDataPath):
+            for index, slot in enumerate(self.topLevelOperator.OutputDataPath):
                 self.updateTableForSlot(slot)
 
     def getSlotIndex(self, multislot, subslot ):
@@ -207,34 +207,34 @@ class BatchIoGui(QMainWindow):
             """
             Update the table row that corresponds to the given slot of the top-level operator (could be either input slot)
             """
-            row = self.getSlotIndex( self.mainOperator.OutputDataPath, slot )
+            row = self.getSlotIndex( self.topLevelOperator.OutputDataPath, slot )
             assert row != -1, "Unknown input slot!"
             
-            datasetPath = self.mainOperator.DatasetPath[row].value
-            outputDataPath = self.mainOperator.OutputDataPath[row].value
+            datasetPath = self.topLevelOperator.DatasetPath[row].value
+            outputDataPath = self.topLevelOperator.OutputDataPath[row].value
                     
             self.batchOutputTableWidget.setItem( row, Column.Dataset, QTableWidgetItem(datasetPath) )
             self.batchOutputTableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( outputDataPath ) )
     
             exportNowButton = QPushButton("Export")
             exportNowButton.setToolTip("Generate individual batch output dataset.")
-            exportNowButton.clicked.connect( bind(self.exportResultsForSlot, self.mainOperator.ExportResult[row], self.mainOperator.ProgressSignal[row] ) )
+            exportNowButton.clicked.connect( bind(self.exportResultsForSlot, self.topLevelOperator.ExportResult[row], self.topLevelOperator.ProgressSignal[row] ) )
             self.batchOutputTableWidget.setCellWidget( row, Column.Action, exportNowButton )
 
     def updateDrawerGuiFromOperatorSettings(self, *args):
         with Tracer(traceLogger):
-            if self.mainOperator.Suffix.ready():
-                self.drawer.outputSuffixEdit.setText( self.mainOperator.Suffix.value )
+            if self.topLevelOperator.Suffix.ready():
+                self.drawer.outputSuffixEdit.setText( self.topLevelOperator.Suffix.value )
             
-            if self.mainOperator.ExportDirectory.ready():
-                self.drawer.outputDirEdit.setText( self.mainOperator.ExportDirectory.value )
-                self.drawer.saveToDirButton.setChecked( self.mainOperator.ExportDirectory.value != '' )
-                self.drawer.saveWithInputButton.setChecked( self.mainOperator.ExportDirectory.value == '' )
+            if self.topLevelOperator.ExportDirectory.ready():
+                self.drawer.outputDirEdit.setText( self.topLevelOperator.ExportDirectory.value )
+                self.drawer.saveToDirButton.setChecked( self.topLevelOperator.ExportDirectory.value != '' )
+                self.drawer.saveWithInputButton.setChecked( self.topLevelOperator.ExportDirectory.value == '' )
                 self.drawer.outputDirChooseButton.setEnabled( self.drawer.saveToDirButton.isChecked() )
                 self.drawer.outputDirEdit.setEnabled( self.drawer.saveToDirButton.isChecked() )
             
-            if self.mainOperator.Format.ready():
-                formatId = self.mainOperator.Format.value
+            if self.topLevelOperator.Format.ready():
+                formatId = self.topLevelOperator.Format.value
                 self.drawer.exportFormatCombo.setCurrentIndex( formatId )
 
     def handleTableSelectionChange(self):
@@ -306,12 +306,12 @@ class BatchIoGui(QMainWindow):
     def exportAllResults(self):
         with Tracer(traceLogger):
             # Do this in a separate thread so the UI remains responsive
-            exportThread = threading.Thread(target=bind(self.exportSlots, self.mainOperator.ExportResult, self.mainOperator.ProgressSignal), name="BatchIOExportThread")
+            exportThread = threading.Thread(target=bind(self.exportSlots, self.topLevelOperator.ExportResult, self.topLevelOperator.ProgressSignal), name="BatchIOExportThread")
             exportThread.start()
 
     def deleteAllResults(self):
         with Tracer(traceLogger):
-            for slot in self.mainOperator.OutputDataPath:
+            for slot in self.topLevelOperator.OutputDataPath:
                 os.remove(slot.value)
 
 

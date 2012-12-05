@@ -51,23 +51,23 @@ class PixelClassificationGui(LabelingGui):
     ###########################################
 
     @traceLogged(traceLogger)
-    def __init__(self, pipeline, shellRequestSignal, guiControlSignal, predictionSerializer ):
+    def __init__(self, topLevelOperatorView, shellRequestSignal, guiControlSignal, predictionSerializer ):
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
-        labelSlots.labelInput = pipeline.LabelInputs
-        labelSlots.labelOutput = pipeline.LabelImages
-        labelSlots.labelEraserValue = pipeline.opLabelArray.eraser
-        labelSlots.labelDelete = pipeline.opLabelArray.deleteLabel
-        labelSlots.maxLabelValue = pipeline.MaxLabelValue
-        labelSlots.labelsAllowed = pipeline.LabelsAllowedFlags
+        labelSlots.labelInput = topLevelOperatorView.LabelInputs
+        labelSlots.labelOutput = topLevelOperatorView.LabelImages
+        labelSlots.labelEraserValue = topLevelOperatorView.opLabelArray.eraser
+        labelSlots.labelDelete = topLevelOperatorView.opLabelArray.deleteLabel
+        labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
+        labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
         
         # Base class init
-        super(PixelClassificationGui, self).__init__( labelSlots, pipeline, labelingDrawerUiPath )
+        super(PixelClassificationGui, self).__init__( labelSlots, topLevelOperatorView, labelingDrawerUiPath )
         
-        self.pipeline = pipeline
+        self.topLevelOperatorView = topLevelOperatorView
         self.shellRequestSignal = shellRequestSignal
         self.guiControlSignal = guiControlSignal
         self.predictionSerializer = predictionSerializer
@@ -78,7 +78,7 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.savePredictionsButton.clicked.connect(self.onSavePredictionsButtonClicked)
         self.labelingDrawerUi.savePredictionsButton.setIcon( QIcon(ilastikIcons.Save) )
 
-        self.pipeline.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
+        self.topLevelOperatorView.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
         
         self._initShortcuts()
         
@@ -149,7 +149,7 @@ class PixelClassificationGui(LabelingGui):
         layers = super(PixelClassificationGui, self).setupLayers()
 
         # Add the uncertainty estimate layer
-        uncertaintySlot = self.pipeline.UncertaintyEstimate
+        uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate
         if uncertaintySlot.ready():
             uncertaintySrc = LazyflowSource(uncertaintySlot)
             uncertaintyLayer = AlphaModulatedLayer( uncertaintySrc,
@@ -168,7 +168,7 @@ class PixelClassificationGui(LabelingGui):
 
         # Add each of the predictions
         labels = self.labelListData
-        for channel, predictionSlot in enumerate(self.pipeline.PredictionProbabilityChannels):
+        for channel, predictionSlot in enumerate(self.topLevelOperatorView.PredictionProbabilityChannels):
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
@@ -192,7 +192,7 @@ class PixelClassificationGui(LabelingGui):
                 layers.append(predictLayer)
 
         # Add each of the segementations
-        for channel, segmentationSlot in enumerate(self.pipeline.SegmentationChannels):
+        for channel, segmentationSlot in enumerate(self.topLevelOperatorView.SegmentationChannels):
             if segmentationSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 segsrc = LazyflowSource(segmentationSlot)
@@ -216,7 +216,7 @@ class PixelClassificationGui(LabelingGui):
                 layers.append(segLayer)
 
         # Add the raw data last (on the bottom)
-        inputDataSlot = self.pipeline.InputImages
+        inputDataSlot = self.topLevelOperatorView.InputImages
         if inputDataSlot.ready():
             inputLayer = self.createStandardLayerFromSlot( inputDataSlot )
             inputLayer.name = "Input Data"
@@ -248,8 +248,8 @@ class PixelClassificationGui(LabelingGui):
         logger.debug("toggling interactive mode to '%r'" % checked)
         
         if checked==True:
-            if not self.pipeline.FeatureImages.ready() \
-            or self.pipeline.FeatureImages.meta.shape==None:
+            if not self.topLevelOperatorView.FeatureImages.ready() \
+            or self.topLevelOperatorView.FeatureImages.meta.shape==None:
                 self._viewerControlUi.liveUpdateButton.setChecked(False)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
@@ -257,7 +257,7 @@ class PixelClassificationGui(LabelingGui):
                 return
 
         self.labelingDrawerUi.savePredictionsButton.setEnabled(not checked)
-        self.pipeline.FreezePredictions.setValue( not checked )
+        self.topLevelOperatorView.FreezePredictions.setValue( not checked )
 
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
@@ -338,10 +338,10 @@ class PixelClassificationGui(LabelingGui):
     @traceLogged(traceLogger)
     def handleLabelSelectionChange(self):
         enabled = False
-        if self.pipeline.MaxLabelValue.ready():
+        if self.topLevelOperatorView.MaxLabelValue.ready():
             enabled = True
-            enabled &= self.pipeline.MaxLabelValue.value >= 2
-            enabled &= numpy.prod(self.pipeline.CachedFeatureImages.meta.shape) > 0
+            enabled &= self.topLevelOperatorView.MaxLabelValue.value >= 2
+            enabled &= numpy.prod(self.topLevelOperatorView.CachedFeatureImages.meta.shape) > 0
         
         self.labelingDrawerUi.savePredictionsButton.setEnabled(enabled)
         self._viewerControlUi.liveUpdateButton.setEnabled(enabled)
@@ -354,15 +354,15 @@ class PixelClassificationGui(LabelingGui):
     def onSavePredictionsButtonClicked(self):
         """
         The user clicked "Train and Predict".
-        Handle this event by asking the pipeline for a prediction over the entire output region.
+        Handle this event by asking the topLevelOperatorView for a prediction over the entire output region.
         """
         # The button does double-duty as a cancel button while predictions are being stored
         if self._currentlySavingPredictions:
             self.predictionSerializer.cancel()
         else:
             # Compute new predictions as needed
-            predictionsFrozen = self.pipeline.FreezePredictions.value
-            self.pipeline.FreezePredictions.setValue(False)
+            predictionsFrozen = self.topLevelOperatorView.FreezePredictions.value
+            self.topLevelOperatorView.FreezePredictions.setValue(False)
             self._currentlySavingPredictions = True
             
             originalButtonText = "Full Volume Predict and Save"
@@ -400,7 +400,7 @@ class PixelClassificationGui(LabelingGui):
 
                 # Restore original states (must use events for UI calls)
                 self.thunkEventHandler.post(self.labelingDrawerUi.savePredictionsButton.setText, originalButtonText)
-                self.pipeline.FreezePredictions.setValue(predictionsFrozen)
+                self.topLevelOperatorView.FreezePredictions.setValue(predictionsFrozen)
                 self._currentlySavingPredictions = False
 
                 # Re-enable our controls
@@ -420,7 +420,7 @@ class PixelClassificationGui(LabelingGui):
 
     def getNextLabelName(self):
         numLabels = self.labelListData.rowCount()
-        labelNames = self.pipeline.LabelNames.value
+        labelNames = self.topLevelOperatorView.LabelNames.value
         if numLabels < len(labelNames):
             return labelNames[numLabels]
         else:
@@ -429,11 +429,11 @@ class PixelClassificationGui(LabelingGui):
     def onLabelNameChanged(self):
         super( PixelClassificationGui, self ).onLabelNameChanged()
         labelNames = map( lambda l: l.name, self.labelListData )
-        self.pipeline.LabelNames.setValue( labelNames )
+        self.topLevelOperatorView.LabelNames.setValue( labelNames )
 
     def getNextLabelColor(self):
         numLabels = self.labelListData.rowCount()
-        labelColors = self.pipeline.LabelColors.value
+        labelColors = self.topLevelOperatorView.LabelColors.value
         if numLabels < len(labelColors):
             return QColor( *labelColors[numLabels] )
         else:
@@ -442,7 +442,7 @@ class PixelClassificationGui(LabelingGui):
     def onLabelColorChanged(self):
         super( PixelClassificationGui, self ).onLabelColorChanged()
         labelColors = map( lambda l: (l.color.red(), l.color.green(), l.color.blue()), self.labelListData )
-        self.pipeline.LabelColors.setValue( labelColors )
+        self.topLevelOperatorView.LabelColors.setValue( labelColors )
 
 
 

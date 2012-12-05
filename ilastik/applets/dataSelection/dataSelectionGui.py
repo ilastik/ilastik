@@ -84,7 +84,7 @@ class DataSelectionGui(QMainWindow):
             self.title = title
     
             self.drawer = None
-            self.mainOperator = dataSelectionOperator
+            self.topLevelOperator = dataSelectionOperator
             self.guiMode = guiMode
             self.serializer = serializer
             self.guiControlSignal = guiControlSignal
@@ -95,30 +95,30 @@ class DataSelectionGui(QMainWindow):
     
             def handleNewDataset( multislot, index ):
                 with Tracer(traceLogger):
-                    assert multislot == self.mainOperator.Dataset
+                    assert multislot == self.topLevelOperator.Dataset
                     # Make room in the table
                     self.fileInfoTableWidget.insertRow( index )
                     
                     # Update the table row data when this slot has new data
                     # We can't bind in the row here because the row may change in the meantime.
-                    self.mainOperator.Dataset[index].notifyDirty( self.updateTableForSlot )
+                    self.topLevelOperator.Dataset[index].notifyDirty( self.updateTableForSlot )
     
-            self.mainOperator.Dataset.notifyInserted( bind( handleNewDataset ) )
+            self.topLevelOperator.Dataset.notifyInserted( bind( handleNewDataset ) )
             
             # For each dataset that already exists, update the GUI
-            for i, subslot in enumerate(self.mainOperator.Dataset):
-                handleNewDataset( self.mainOperator.Dataset, i )
+            for i, subslot in enumerate(self.topLevelOperator.Dataset):
+                handleNewDataset( self.topLevelOperator.Dataset, i )
                 if subslot.ready():
                     self.updateTableForSlot(subslot)
         
             def handleDatasetRemoved( multislot, index ):
                 with Tracer(traceLogger):
-                    assert multislot == self.mainOperator.Dataset
+                    assert multislot == self.topLevelOperator.Dataset
                     
                     # Simply remove the row we don't need any more
                     self.fileInfoTableWidget.removeRow( index )
     
-            self.mainOperator.Dataset.notifyRemove( bind( handleDatasetRemoved ) )
+            self.topLevelOperator.Dataset.notifyRemove( bind( handleDatasetRemoved ) )
         
     def initAppletDrawerUic(self):
         """
@@ -302,14 +302,14 @@ class DataSelectionGui(QMainWindow):
         """
         with Tracer(traceLogger):
             # Allocate additional subslots in the operator inputs.
-            oldNumFiles = len(self.mainOperator.Dataset)
-            self.mainOperator.Dataset.resize( oldNumFiles+len(fileNames) )
+            oldNumFiles = len(self.topLevelOperator.Dataset)
+            self.topLevelOperator.Dataset.resize( oldNumFiles+len(fileNames) )
     
             # Assign values to the new inputs we just allocated.
             # The GUI will be updated by callbacks that are listening to slot changes
             for i, filePath in enumerate(fileNames):
                 datasetInfo = DatasetInfo()
-                cwd = self.mainOperator.WorkingDirectory.value
+                cwd = self.topLevelOperator.WorkingDirectory.value
                 absPath, relPath = getPathVariants(filePath, cwd)
 
                 # Relative by default, unless the file is in a totally different tree from the working directory.
@@ -329,7 +329,7 @@ class DataSelectionGui(QMainWindow):
                 # Allow labels by default if this gui isn't being used for batch data.
                 datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
 
-                self.mainOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
+                self.topLevelOperator.Dataset[i+oldNumFiles].setValue( datasetInfo )
 
     @threadRouted
     def updateTableForSlot(self, slot, *args):
@@ -344,14 +344,14 @@ class DataSelectionGui(QMainWindow):
             
             # Which index is this slot?
             row = -1
-            for i in range( len(self.mainOperator.Dataset) ):
-                if slot == self.mainOperator.Dataset[i]:
+            for i in range( len(self.topLevelOperator.Dataset) ):
+                if slot == self.topLevelOperator.Dataset[i]:
                     row = i
                     break
     
             assert row != -1, "Unknown input slot!"
             
-            totalPath = self.mainOperator.Dataset[row].value.filePath
+            totalPath = self.topLevelOperator.Dataset[row].value.filePath
             lastDotIndex = totalPath.rfind('.')
             extensionAndInternal = totalPath[lastDotIndex:]
             extension = extensionAndInternal.split('/')[0]
@@ -382,9 +382,9 @@ class DataSelectionGui(QMainWindow):
             if self.guiMode != GuiMode.Batch:
                 # Create and add the checkbox for the 'allow labels' option
                 allowLabelsCheckbox = QCheckBox()
-                allowLabelsCheckbox.setChecked( self.mainOperator.Dataset[row].value.allowLabels )
+                allowLabelsCheckbox.setChecked( self.topLevelOperator.Dataset[row].value.allowLabels )
                 tableWidget.setCellWidget( row, Column.LabelsAllowed, allowLabelsCheckbox )
-                allowLabelsCheckbox.stateChanged.connect( partial(self.handleAllowLabelsCheckbox, self.mainOperator.Dataset[row]) )
+                allowLabelsCheckbox.stateChanged.connect( partial(self.handleAllowLabelsCheckbox, self.topLevelOperator.Dataset[row]) )
                 
             # Update the operator, in case we need to select a new internal path based on the updated combo options
             # (Won't have any effect if nothing changed this time around.)
@@ -410,7 +410,7 @@ class DataSelectionGui(QMainWindow):
         """
         with Tracer(traceLogger):
             # Determine the relative path to this file
-            absPath, relPath = getPathVariants(filePath, self.mainOperator.WorkingDirectory.value)
+            absPath, relPath = getPathVariants(filePath, self.topLevelOperator.WorkingDirectory.value)
             # Add a prefixes to make the options clear
             absPath = "Absolute Link: " + absPath
             relPath = "Relative Link: <project directory>/" + relPath
@@ -427,13 +427,13 @@ class DataSelectionGui(QMainWindow):
                 combo.addItem(text, option)
     
             # Select the combo index that matches the current setting
-            location = self.mainOperator.Dataset[row].value.location
+            location = self.topLevelOperator.Dataset[row].value.location
     
             if location == DatasetInfo.Location.ProjectInternal:
                 comboData = LocationOptions.Project
             elif location == DatasetInfo.Location.FileSystem:
                 # Determine if the path is relative or absolute
-                if os.path.isabs(self.mainOperator.Dataset[row].value.filePath[0]):
+                if os.path.isabs(self.topLevelOperator.Dataset[row].value.filePath[0]):
                     comboData = LocationOptions.AbsolutePath
                 else:
                     comboData = LocationOptions.RelativePath
@@ -450,7 +450,7 @@ class DataSelectionGui(QMainWindow):
             datasetNames = []
     
             # Make sure we're dealing with the absolute path (to make this simple)
-            absPath, relPath = getPathVariants(externalPath, self.mainOperator.WorkingDirectory.value)
+            absPath, relPath = getPathVariants(externalPath, self.topLevelOperator.WorkingDirectory.value)
             ext = os.path.splitext(absPath)[1]
             h5Exts = ['.ilp', '.h5', '.hdf5']
             if ext in h5Exts:
@@ -511,10 +511,10 @@ class DataSelectionGui(QMainWindow):
         Update the operator's filePath input to match the gui
         """
         with Tracer(traceLogger):
-            oldLocationSetting = self.mainOperator.Dataset[index].value.location
+            oldLocationSetting = self.topLevelOperator.Dataset[index].value.location
             
             # Get the directory by inspecting the original operator path
-            oldTotalPath = self.mainOperator.Dataset[index].value.filePath
+            oldTotalPath = self.topLevelOperator.Dataset[index].value.filePath
             # Split into directory, filename, extension, and internal path
             lastDotIndex = oldTotalPath.rfind('.')
             extensionAndInternal = oldTotalPath[lastDotIndex:]
@@ -538,7 +538,7 @@ class DataSelectionGui(QMainWindow):
                     newTotalPath += '/'
                 newTotalPath += internalPath
     
-            cwd = self.mainOperator.WorkingDirectory.value
+            cwd = self.topLevelOperator.WorkingDirectory.value
             absTotalPath, relTotalPath = getPathVariants( newTotalPath, cwd )
     
             # Check the location setting
@@ -557,12 +557,12 @@ class DataSelectionGui(QMainWindow):
             
             if newTotalPath != oldTotalPath or newLocationSetting != oldLocationSetting:
                 # Be sure to copy so the slot notices the change when we setValue()
-                datasetInfo = copy.copy(self.mainOperator.Dataset[index].value)
+                datasetInfo = copy.copy(self.topLevelOperator.Dataset[index].value)
                 datasetInfo.filePath = newTotalPath
                 datasetInfo.location = newLocationSetting
         
                 # TODO: First check to make sure this file exists!
-                self.mainOperator.Dataset[index].setValue( datasetInfo )
+                self.topLevelOperator.Dataset[index].setValue( datasetInfo )
         
                 # Update the storage option combo to show the new path        
                 self.updateStorageOptionComboBox(index, newFileNamePath)
@@ -585,11 +585,11 @@ class DataSelectionGui(QMainWindow):
                 # Remove from the GUI
                 self.fileInfoTableWidget.removeRow(row)
                 # Remove from the operator input
-                finalSize = len(self.mainOperator.Dataset) - 1
-                self.mainOperator.Dataset.removeSlot(row, finalSize)
+                finalSize = len(self.topLevelOperator.Dataset) - 1
+                self.topLevelOperator.Dataset.removeSlot(row, finalSize)
                 
             # The gui and the operator should be in sync
-            assert self.fileInfoTableWidget.rowCount() == len(self.mainOperator.Dataset)
+            assert self.fileInfoTableWidget.rowCount() == len(self.topLevelOperator.Dataset)
 
     def handleComboSelectionChanged(self, combo, index):
         """
