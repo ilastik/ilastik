@@ -9,6 +9,7 @@ import traceback
 import hashlib
 import glob
 import pickle
+import functools
 
 # Third-party
 import h5py
@@ -83,7 +84,7 @@ def runWorkflow(parsed_args):
             raise RuntimeError("Could not find one or more batch inputs.  See logged errors.")
 
     # Instantiate 'shell'
-    shell = HeadlessShell( PixelClassificationWorkflow )
+    shell = HeadlessShell( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True) )
     
     if args.assume_old_ilp_axes:
         # Special hack for Janelia: 

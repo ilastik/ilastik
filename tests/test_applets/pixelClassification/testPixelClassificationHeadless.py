@@ -3,6 +3,7 @@ import numpy
 import h5py
 import unittest
 import tempfile
+import functools
 
 from ilastik.utility.slicingtools import sl, slicing2shape
 from workflows.pixelClassification import PixelClassificationWorkflow
@@ -49,7 +50,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
     @classmethod
     def create_new_tst_project(cls):
         # Instantiate 'shell'
-        shell = HeadlessShell( PixelClassificationWorkflow )
+        shell = HeadlessShell( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True) )
         
         # Create a blank project file and load it.
         newProjectFilePath = cls.PROJECT_FILE
