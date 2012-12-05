@@ -32,7 +32,8 @@ class DeviationFromMeanGui(LayerViewerGui):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
-        
+
+        # If the user changes a setting the GUI, update the appropriate operator slot.        
         self._drawer.scalingFactorSpinBox.valueChanged.connect(self.updateOperatorScalingFactor)
         self._drawer.offsetSpinBox.valueChanged.connect(self.updateOperatorOffset)
 
@@ -46,12 +47,17 @@ class DeviationFromMeanGui(LayerViewerGui):
 
             self._drawer.scalingFactorSpinBox.setValue(scalingFactor)
             self._drawer.offsetSpinBox.setValue(offset)
-            
+
+        # If the operator is changed *outside* the GUI (e.g. the project is loaded),
+        #  then update the GUI to match the new operator slot values.            
         self.topLevelOperatorView.ScalingFactor.notifyDirty( bind(updateDrawerFromOperator) )
         self.topLevelOperatorView.Offset.notifyDirty( bind(updateDrawerFromOperator) )
+        
+        # Initialize the GUI with the operator's initial state.
         updateDrawerFromOperator()
 
-        # Provide defaults if the operator isn't already configured..
+        # Provide defaults if the operator isn't already configured.
+        #  (e.g. if it's a blank project, then the operator won't have any setup yet.)
         if not self.topLevelOperatorView.ScalingFactor.ready():
             self.updateOperatorScalingFactor(1)
         if not self.topLevelOperatorView.Offset.ready():
@@ -67,6 +73,10 @@ class DeviationFromMeanGui(LayerViewerGui):
         return self._drawer
     
     def setupLayers(self):
+        """
+        The LayerViewer base class calls this function to obtain the list of layers that 
+        should be displayed in the central viewer.
+        """
         layers = []
 
         # Show the Output data

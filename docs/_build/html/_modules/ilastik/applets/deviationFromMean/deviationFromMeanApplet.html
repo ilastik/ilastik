@@ -1,0 +1,113 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.applets.deviationFromMean.deviationFromMeanApplet &mdash; ilastik v0.6.0 documentation</title>
+    <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="top" title="ilastik v0.6.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for ilastik.applets.deviationFromMean.deviationFromMeanApplet</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">deviationFromMeanSerializer</span> <span class="kn">import</span> <span class="n">DeviationFromMeanSerializer</span>
+
+<span class="k">class</span> <span class="nc">DeviationFromMeanApplet</span><span class="p">(</span> <span class="n">StandardApplet</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="DeviationFromMeanApplet"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.deviationFromMean.deviationFromMeanApplet.DeviationFromMeanApplet">[docs]</a><span class="sd">    This applet serves as an example multi-image-lane applet.</span>
+<span class="sd">    The GUI is not aware of multiple image lanes (it is written as if the applet were single-image only).</span>
+<span class="sd">    The top-level operator is explicitly multi-image (it is not wrapped in an operatorwrapper).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">,</span> <span class="n">projectFileGroupName</span> <span class="p">):</span>
+        <span class="c"># Multi-image operator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span> <span class="o">=</span> <span class="n">OpDeviationFromMean</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="n">workflow</span><span class="p">)</span>
+        
+        <span class="c"># Base class</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">DeviationFromMeanApplet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="s">&quot;Deviation From Mean&quot;</span><span class="p">,</span> <span class="n">workflow</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span> <span class="o">=</span> <span class="p">[</span> <span class="n">DeviationFromMeanSerializer</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span><span class="p">,</span> <span class="n">projectFileGroupName</span> <span class="p">)</span> <span class="p">]</span>
+            
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">topLevelOperator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">singleLaneGuiClass</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">deviationFromMeanGui</span> <span class="kn">import</span> <span class="n">DeviationFromMeanGui</span>
+        <span class="k">return</span> <span class="n">DeviationFromMeanGui</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dataSerializers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span>
+</pre></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+    </div>
+  </body>
+</html>

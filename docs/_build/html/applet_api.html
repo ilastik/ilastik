@@ -50,21 +50,35 @@
             
   <div class="section" id="applet-api">
 <h1>Applet API<a class="headerlink" href="#applet-api" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="workflows">
-<h2>Workflows<a class="headerlink" href="#workflows" title="Permalink to this headline">¶</a></h2>
-<p>A workflow represents a list of applets to display in the shell.  It is created when a project is loaded,
-and destroyed when the project is closed.
-If the user opens more than one image in a workflow, then the workflow is said to have multiple <em>image lanes</em>.
-Each <em>image lane</em> is named according to the name of the input image it processes.
-The workflow provides the list of currently loaded image lanes to the shell
-via a special slot known as the &#8220;image name list&#8221;.  The shell GUI presents this list of image names to the user,
-allowing him to select which image lane he wants to view.</p>
-<p>When the user opens a new image in the workflow, the workflow creates a new image lane to process it.  This is done by calling
-<tt class="docutils literal"><span class="pre">addLane</span></tt> on every applet&#8217;s topLevelOperator, and then calling <tt class="docutils literal"><span class="pre">connectLane</span></tt> to connect together the lanes from each applet.
+<div class="section" id="workflow-concepts">
+<h2>Workflow Concepts<a class="headerlink" href="#workflow-concepts" title="Permalink to this headline">¶</a></h2>
+<p>A <a class="reference internal" href="#ilastik.workflow.Workflow" title="ilastik.workflow.Workflow"><tt class="xref py py-class docutils literal"><span class="pre">Workflow</span></tt></a> combines a set of applets together to form an entire computational pipeline, along with the GUI to configure it.
+A workflow is created when the user loads a project, and destroyed when the project is closed.</p>
+<p>The workflow has three main responsibilities:</p>
+<ul class="simple">
+<li>Instantiate a set of applets, and expose them as a list for the ilastik shell to display.</li>
+<li>Build up a complete computational pipeline, one <em>image lane</em> at a time.  This is done by connecting an individual <em>image lane</em> from each applet&#8217;s <cite>Top-Level Operator&lt;Top-Level Operators&gt;</cite>. (More on that in a bit.)</li>
+<li>Select a particular slot to serve as the &#8220;image name slot&#8221; for the shell.  The shell uses this slot as the &#8220;master list&#8221; of all image lanes present in the workflow at any time.</li>
+</ul>
+<div class="section" id="image-lanes">
+<h3>Image Lanes<a class="headerlink" href="#image-lanes" title="Permalink to this headline">¶</a></h3>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This section explains how multi-image support is implemented in ilastik.
+Most beginning developers don&#8217;t need to sweat the details here.  Simple workflows can be designed with the assumption that only one image lane will be active.
+The <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet" title="ilastik.applets.base.standardApplet.StandardApplet"><tt class="xref py py-class docutils literal"><span class="pre">StandardApplet</span></tt></a> base class handles multi-image support for you.</p>
+</div>
+<p>Workflows in ilastik are designed to work with an arbitrary number of input images.
+In the ilastik Applet/Workflow API, each image is said to occupy an <em>image lane</em> of the workflow.
+In the ilastik shell GUI, the user can view the results of only one lane at a time.
+He selects which lane to view using the shell&#8217;s &#8220;Current View&#8221; dropdown menu.</p>
+<p>When the user adds a new input image to the workflow, the workflow creates a new image lane in <em>each applet</em> to process it.
+This is done by calling <tt class="docutils literal"><span class="pre">addLane</span></tt> on every applet&#8217;s topLevelOperator, and then calling <tt class="docutils literal"><span class="pre">connectLane</span></tt> to connect together the lanes from each applet.
 See <a class="reference internal" href="utilities.html#ilastik.utility.MultiLaneOperatorABC" title="ilastik.utility.MultiLaneOperatorABC"><tt class="xref py py-class docutils literal"><span class="pre">MultiLaneOperatorABC</span></tt></a> for more details.</p>
-<p>A workflow is instantiated when a project is loaded, and it is destroyed (it&#8217;s <tt class="docutils literal"><span class="pre">cleanUp</span></tt> method is called)
-when the project is closed.  The cleanUp function is responsible for freeing all resources owned by the
-applets, including GUI resources.</p>
+</div>
+</div>
+<div class="section" id="the-workflow-base-class">
+<h2>The Workflow Base Class<a class="headerlink" href="#the-workflow-base-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="ilastik.workflow.Workflow">
 <em class="property">class </em><tt class="descclassname">ilastik.workflow.</tt><tt class="descname">Workflow</tt><big>(</big><em>headless</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/workflow.html#Workflow"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.workflow.Workflow" title="Permalink to this definition">¶</a></dt>
@@ -130,6 +144,9 @@ Tell the applet GUIs to stop processing data, and free any resources that are ow
 </ul>
 <p>Applets must inherit from the Applet abstract base class.  Subclasses should override the appropriate properties.
 The base class provides a few signals, which applets can use to communicate with the shell.</p>
+</div>
+<div class="section" id="applet-base-class">
+<h2>Applet Base Class<a class="headerlink" href="#applet-base-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="ilastik.applets.base.applet.Applet">
 <em class="property">class </em><tt class="descclassname">ilastik.applets.base.applet.</tt><tt class="descname">Applet</tt><big>(</big><em>name</em>, <em>syncWithImageIndex=True</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/applet.html#Applet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.applet.Applet" title="Permalink to this definition">¶</a></dt>
@@ -257,13 +274,15 @@ At the moment, there is only one supported action.</p>
 
 </dd></dl>
 
+</div>
+<div class="section" id="standardapplet-base-class">
+<h2>StandardApplet Base Class<a class="headerlink" href="#standardapplet-base-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="ilastik.applets.base.standardApplet.StandardApplet">
 <em class="property">class </em><tt class="descclassname">ilastik.applets.base.standardApplet.</tt><tt class="descname">StandardApplet</tt><big>(</big><em>name</em>, <em>workflow=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/standardApplet.html#StandardApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.standardApplet.StandardApplet" title="Permalink to this definition">¶</a></dt>
 <dd><p>In most cases, it is easiest to use StandardApplet as a base class for your custom applet.
-StandardApplet provides default implementations for the methods required by the Applet base
-class, provided that the StandardApplet subclass overrides a couple (simple) methods.</p>
-<p>StandardApplet subclasses may expose their top-level operator in one of two ways:</p>
+StandardApplets are designed two simplify two tasks for most use-cases: Creating a <em>top-level operator</em> and creating a GUI.</p>
+<p>StandardApplet subclasses may expose their <em>top-level operator</em> in one of two ways:</p>
 <ol class="arabic simple">
 <li>(Advanced) Override the <a class="reference internal" href="#ilastik.applets.base.applet.Applet.topLevelOperator" title="ilastik.applets.base.applet.Applet.topLevelOperator"><tt class="xref py py-attr docutils literal"><span class="pre">Applet.topLevelOperator</span></tt></a> property directly.</li>
 <li>(Simple) Override BOTH <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet.singleLaneOperatorClass" title="ilastik.applets.base.standardApplet.StandardApplet.singleLaneOperatorClass"><tt class="xref py py-attr docutils literal"><span class="pre">singleLaneOperatorClass</span></tt></a> and <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet.broadcastingSlots" title="ilastik.applets.base.standardApplet.StandardApplet.broadcastingSlots"><tt class="xref py py-attr docutils literal"><span class="pre">broadcastingSlots</span></tt></a>, in which case a default implementation of <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet.topLevelOperator" title="ilastik.applets.base.standardApplet.StandardApplet.topLevelOperator"><tt class="xref py py-attr docutils literal"><span class="pre">topLevelOperator</span></tt></a> is provided for you.</li>
@@ -277,9 +296,19 @@ class, provided that the StandardApplet subclass overrides a couple (simple) met
 <dl class="method">
 <dt id="ilastik.applets.base.standardApplet.StandardApplet.__init__">
 <tt class="descname">__init__</tt><big>(</big><em>name</em>, <em>workflow=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/standardApplet.html#StandardApplet.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.standardApplet.StandardApplet.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Constructor.
-:param name: The applet&#8217;s name as it will appear in the GUI (e.g. the Applet Drawer title).
-:param workflow: The workflow this applet belongs to (not required if the subclass provides its own topLevelOperator).</p>
+<dd><p>Constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> &#8211; The applet&#8217;s name as it will appear in the GUI (e.g. the Applet Drawer title).</li>
+<li><strong>workflow</strong> &#8211; The workflow this applet belongs to (not required if the subclass provides its own topLevelOperator).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="attribute">
@@ -340,7 +369,8 @@ which is what the Applet interface expects.</p>
 It is typically the keeper of all state associated with the applet.
 The top-level operators that the workflow and shell see must be capbable of handling multiple image lanes.
 That is, they must adhere to the <a class="reference internal" href="utilities.html#ilastik.utility.MultiLaneOperatorABC" title="ilastik.utility.MultiLaneOperatorABC"><tt class="xref py py-class docutils literal"><span class="pre">MultiLaneOperatorABC</span></tt></a>.
-If your applet inherits from <tt class="docutils literal"><span class="pre">StandardApplet</span></tt>, then your single-lane top-level operator can be automatically adapted to the multi-lane interface.</p>
+If your applet inherits from <a class="reference internal" href="#ilastik.applets.base.standardApplet.StandardApplet" title="ilastik.applets.base.standardApplet.StandardApplet"><tt class="xref py py-class docutils literal"><span class="pre">StandardApplet</span></tt></a>,
+then your single-lane top-level operator can be automatically adapted to the multi-lane interface.</p>
 <p>The applet GUI and the applet serializers both make changes to the top-level operator and listen for changes made to the top-level operator.
 Here&#8217;s an example timeline, showing a typical sequence of interactions.</p>
 <ol class="arabic">
@@ -635,9 +665,14 @@ can be serialized. If None, defaults to [].</li>
 <dl class="method">
 <dt id="ilastik.applets.base.appletSerializer.SerialSlot._serialize">
 <tt class="descname">_serialize</tt><big>(</big><em>group</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/appletSerializer.html#SerialSlot._serialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.appletSerializer.SerialSlot._serialize" title="Permalink to this definition">¶</a></dt>
-<dd><p>&#8221;
-:param group: The parent group.
-:type group: h5py.Group</p>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>group</strong> (<em>h5py.Group</em>) &#8211; The parent group.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -647,9 +682,7 @@ can be serialized. If None, defaults to [].</li>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>subgroup</strong> &#8211; <em>not</em> the parent group. This slot&#8217;s group.</td>
-</tr>
-<tr class="field"><th class="field-name">Typpe subgroup:</th><td class="field-body">h5py.Group</td>
+<tr class="field"><th class="field-name">Parameters:</th><td class="field-body"><strong>subgroup</strong> (<em>h5py.Group</em>) &#8211; <em>not</em> the parent group. This slot&#8217;s group.</td>
 </tr>
 </tbody>
 </table>
@@ -791,15 +824,10 @@ It is intended to be used as a base class for almost all user-defined applets.</
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="applet_library.html">Applet Library</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="applet_library.html#project-metadata">Project Metadata</a></li>
-<li class="toctree-l2"><a class="reference internal" href="applet_library.html#data-selection">Data Selection</a></li>
-<li class="toctree-l2"><a class="reference internal" href="applet_library.html#layer-viewer">Layer Viewer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="applet_library.html#labeling">Labeling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="applet_library.html#batch-output">Batch Output</a></li>
-<li class="toctree-l2"><a class="reference internal" href="applet_library.html#threshold-masking">Threshold Masking</a></li>
-<li class="toctree-l2"><a class="reference internal" href="applet_library.html#feature-selection">Feature Selection</a></li>
-<li class="toctree-l2"><a class="reference internal" href="applet_library.html#pixel-classification">Pixel Classification</a></li>
-<li class="toctree-l2"><a class="reference internal" href="applet_library.html#watershed-viewer">Watershed Viewer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#example-applets">Example Applets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#useful-base-classes">Useful Base Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#standard-applets">Standard Applets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="applet_library.html#workflow-specific-applets">Workflow-specific Applets</a></li>
 </ul>
 </li>
 </ul>
@@ -816,8 +844,14 @@ It is intended to be used as a base class for almost all user-defined applets.</
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Applet API</a><ul>
-<li><a class="reference internal" href="#workflows">Workflows</a></li>
+<li><a class="reference internal" href="#workflow-concepts">Workflow Concepts</a><ul>
+<li><a class="reference internal" href="#image-lanes">Image Lanes</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#the-workflow-base-class">The Workflow Base Class</a></li>
 <li><a class="reference internal" href="#applets">Applets</a></li>
+<li><a class="reference internal" href="#applet-base-class">Applet Base Class</a></li>
+<li><a class="reference internal" href="#standardapplet-base-class">StandardApplet Base Class</a></li>
 <li><a class="reference internal" href="#top-level-operators">Top-level Operators</a></li>
 <li><a class="reference internal" href="#applet-guis">Applet GUIs</a></li>
 <li><a class="reference internal" href="#applet-serializers">Applet Serializers</a></li>

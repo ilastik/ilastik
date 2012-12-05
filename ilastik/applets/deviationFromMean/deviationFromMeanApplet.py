@@ -6,7 +6,7 @@ class DeviationFromMeanApplet( StandardApplet ):
     """
     This applet serves as an example multi-image-lane applet.
     The GUI is not aware of multiple image lanes (it is written as if the applet were single-image only).
-    The top-level operator is multi-image.
+    The top-level operator is explicitly multi-image (it is not wrapped in an operatorwrapper).
     """
     def __init__( self, workflow, projectFileGroupName ):
         # Multi-image operator
@@ -18,7 +18,6 @@ class DeviationFromMeanApplet( StandardApplet ):
             
     @property
     def topLevelOperator(self):
-        # Override from base class.
         return self._topLevelOperator
 
     @property

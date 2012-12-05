@@ -50,39 +50,40 @@
             
   <div class="section" id="applet-library">
 <h1>Applet Library<a class="headerlink" href="#applet-library" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="project-metadata">
-<h2>Project Metadata<a class="headerlink" href="#project-metadata" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="ilastik.applets.projectMetadata.projectMetadataApplet.ProjectMetadataApplet">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.projectMetadata.projectMetadataApplet.</tt><tt class="descname">ProjectMetadataApplet</tt><a class="reference internal" href="_modules/ilastik/applets/projectMetadata/projectMetadataApplet.html#ProjectMetadataApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.projectMetadata.projectMetadataApplet.ProjectMetadataApplet" title="Permalink to this definition">¶</a></dt>
-<dd><p>This applet allows the user to enter project metadata (e.g. Project name, labeler name, etc.).</p>
-<p>Note that this applet does not affect the processing pipeline and has no top-level operator.</p>
-</dd></dl>
-
-</div>
-<div class="section" id="data-selection">
-<h2>Data Selection<a class="headerlink" href="#data-selection" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="example-applets">
+<h2>Example Applets<a class="headerlink" href="#example-applets" title="Permalink to this headline">¶</a></h2>
+<p>These applets aren&#8217;t very useful, but they have simple, clean implementations.
+Their source files are the right place to look if you&#8217;re just getting started.</p>
+<div class="section" id="threshold-masking">
+<h3>Threshold Masking<a class="headerlink" href="#threshold-masking" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/DataSelection-Top-level-Operator.svg"><object data="_images/DataSelection-Top-level-Operator.svg" type="image/svg+xml"><embed src="_images/DataSelection-Top-level-Operator.svg" type="image/svg+xml" /></object>
+<a class="reference internal image-reference" href="_images/ThresholdMasking-Top-Level-Operator.svg"><object data="_images/ThresholdMasking-Top-Level-Operator.svg" type="image/svg+xml"><embed src="_images/ThresholdMasking-Top-Level-Operator.svg" type="image/svg+xml" /></object>
 </a>
 </div>
 <dl class="class">
-<dt id="ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.dataSelection.dataSelectionApplet.</tt><tt class="descname">DataSelectionApplet</tt><big>(</big><em>workflow</em>, <em>title</em>, <em>projectFileGroupName</em>, <em>supportIlastik05Import=False</em>, <em>batchDataGui=False</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/dataSelection/dataSelectionApplet.html#DataSelectionApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet" title="Permalink to this definition">¶</a></dt>
-<dd><p>This applet allows the user to select sets of input data, 
-which are provided as outputs in the corresponding top-level applet operator.</p>
-</dd></dl>
-
-<dl class="class">
-<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.dataSelection.opDataSelection.</tt><tt class="descname">OpDataSelection</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/dataSelection/opDataSelection.html#OpDataSelection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection" title="Permalink to this definition">¶</a></dt>
-<dd><p>The top-level operator for the data selection applet, implemented as a single-image operator.
-The applet uses an OperatorWrapper to make it suitable for use in a workflow.</p>
+<dt id="ilastik.applets.thresholdMasking.thresholdMaskingApplet.ThresholdMaskingApplet">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.thresholdMasking.thresholdMaskingApplet.</tt><tt class="descname">ThresholdMaskingApplet</tt><big>(</big><em>workflow</em>, <em>guiName</em>, <em>projectFileGroupName</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/thresholdMasking/thresholdMaskingApplet.html#ThresholdMaskingApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.thresholdMasking.thresholdMaskingApplet.ThresholdMaskingApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a simple thresholding applet</p>
 </dd></dl>
 
 </div>
+<div class="section" id="deviation-from-mean">
+<h3>Deviation From Mean<a class="headerlink" href="#deviation-from-mean" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="ilastik.applets.deviationFromMean.deviationFromMeanApplet.DeviationFromMeanApplet">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.deviationFromMean.deviationFromMeanApplet.</tt><tt class="descname">DeviationFromMeanApplet</tt><big>(</big><em>workflow</em>, <em>projectFileGroupName</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/deviationFromMean/deviationFromMeanApplet.html#DeviationFromMeanApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.deviationFromMean.deviationFromMeanApplet.DeviationFromMeanApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This applet serves as an example multi-image-lane applet.
+The GUI is not aware of multiple image lanes (it is written as if the applet were single-image only).
+The top-level operator is explicitly multi-image (it is not wrapped in an operatorwrapper).</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="useful-base-classes">
+<h2>Useful Base Classes<a class="headerlink" href="#useful-base-classes" title="Permalink to this headline">¶</a></h2>
+<p>Many applets or applet GUIs are based on these classes.</p>
 <div class="section" id="layer-viewer">
-<span id="id1"></span><h2>Layer Viewer<a class="headerlink" href="#layer-viewer" title="Permalink to this headline">¶</a></h2>
+<span id="id1"></span><h3>Layer Viewer<a class="headerlink" href="#layer-viewer" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
 <a class="reference internal image-reference" href="_images/LayerViewer-Top-Level-Operator.svg"><object data="_images/LayerViewer-Top-Level-Operator.svg" type="image/svg+xml"><embed src="_images/LayerViewer-Top-Level-Operator.svg" type="image/svg+xml" /></object>
 </a>
@@ -179,7 +180,7 @@ Override this in a subclass to get a real applet drawer.</p>
 
 </div>
 <div class="section" id="labeling">
-<h2>Labeling<a class="headerlink" href="#labeling" title="Permalink to this headline">¶</a></h2>
+<h3>Labeling<a class="headerlink" href="#labeling" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
 <a class="reference internal image-reference" href="_images/Labeling-Top-Level-Operator.svg"><object data="_images/Labeling-Top-Level-Operator.svg" type="image/svg+xml"><embed src="_images/Labeling-Top-Level-Operator.svg" type="image/svg+xml" /></object>
 </a>
@@ -305,8 +306,43 @@ he <strong>must</strong> call this function explicitly.</p>
 </dd></dl>
 
 </div>
+</div>
+<div class="section" id="standard-applets">
+<h2>Standard Applets<a class="headerlink" href="#standard-applets" title="Permalink to this headline">¶</a></h2>
+<p>These applets are likely to be re-used in many, if not most, worklows.</p>
+<div class="section" id="project-metadata">
+<h3>Project Metadata<a class="headerlink" href="#project-metadata" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="ilastik.applets.projectMetadata.projectMetadataApplet.ProjectMetadataApplet">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.projectMetadata.projectMetadataApplet.</tt><tt class="descname">ProjectMetadataApplet</tt><a class="reference internal" href="_modules/ilastik/applets/projectMetadata/projectMetadataApplet.html#ProjectMetadataApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.projectMetadata.projectMetadataApplet.ProjectMetadataApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This applet allows the user to enter project metadata (e.g. Project name, labeler name, etc.).</p>
+<p>Note that this applet does not affect the processing pipeline and has no top-level operator.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="data-selection">
+<h3>Data Selection<a class="headerlink" href="#data-selection" title="Permalink to this headline">¶</a></h3>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/DataSelection-Top-level-Operator.svg"><object data="_images/DataSelection-Top-level-Operator.svg" type="image/svg+xml"><embed src="_images/DataSelection-Top-level-Operator.svg" type="image/svg+xml" /></object>
+</a>
+</div>
+<dl class="class">
+<dt id="ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.dataSelection.dataSelectionApplet.</tt><tt class="descname">DataSelectionApplet</tt><big>(</big><em>workflow</em>, <em>title</em>, <em>projectFileGroupName</em>, <em>supportIlastik05Import=False</em>, <em>batchDataGui=False</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/dataSelection/dataSelectionApplet.html#DataSelectionApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This applet allows the user to select sets of input data, 
+which are provided as outputs in the corresponding top-level applet operator.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.dataSelection.opDataSelection.</tt><tt class="descname">OpDataSelection</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/dataSelection/opDataSelection.html#OpDataSelection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection" title="Permalink to this definition">¶</a></dt>
+<dd><p>The top-level operator for the data selection applet, implemented as a single-image operator.
+The applet uses an OperatorWrapper to make it suitable for use in a workflow.</p>
+</dd></dl>
+
+</div>
 <div class="section" id="batch-output">
-<h2>Batch Output<a class="headerlink" href="#batch-output" title="Permalink to this headline">¶</a></h2>
+<h3>Batch Output<a class="headerlink" href="#batch-output" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
 <a class="reference internal image-reference" href="_images/BatchOutput-Top-Level-Operator.svg"><object data="_images/BatchOutput-Top-Level-Operator.svg" type="image/svg+xml"><embed src="_images/BatchOutput-Top-Level-Operator.svg" type="image/svg+xml" /></object>
 </a>
@@ -319,21 +355,12 @@ which are provided as outputs in the corresponding top-level applet operator.</p
 </dd></dl>
 
 </div>
-<div class="section" id="threshold-masking">
-<h2>Threshold Masking<a class="headerlink" href="#threshold-masking" title="Permalink to this headline">¶</a></h2>
-<div class="figure">
-<a class="reference internal image-reference" href="_images/ThresholdMasking-Top-Level-Operator.svg"><object data="_images/ThresholdMasking-Top-Level-Operator.svg" type="image/svg+xml"><embed src="_images/ThresholdMasking-Top-Level-Operator.svg" type="image/svg+xml" /></object>
-</a>
 </div>
-<dl class="class">
-<dt id="ilastik.applets.thresholdMasking.thresholdMaskingApplet.ThresholdMaskingApplet">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.thresholdMasking.thresholdMaskingApplet.</tt><tt class="descname">ThresholdMaskingApplet</tt><big>(</big><em>workflow</em>, <em>guiName</em>, <em>projectFileGroupName</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/thresholdMasking/thresholdMaskingApplet.html#ThresholdMaskingApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.thresholdMasking.thresholdMaskingApplet.ThresholdMaskingApplet" title="Permalink to this definition">¶</a></dt>
-<dd><p>This is a simple thresholding applet</p>
-</dd></dl>
-
-</div>
+<div class="section" id="workflow-specific-applets">
+<h2>Workflow-specific Applets<a class="headerlink" href="#workflow-specific-applets" title="Permalink to this headline">¶</a></h2>
+<p>These applets were designed with particular workflows in mind, but they could be used with future workflows, too.</p>
 <div class="section" id="feature-selection">
-<h2>Feature Selection<a class="headerlink" href="#feature-selection" title="Permalink to this headline">¶</a></h2>
+<h3>Feature Selection<a class="headerlink" href="#feature-selection" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
 <a class="reference internal image-reference" href="_images/Wrapped-OpFeatureSelection.svg"><object data="_images/Wrapped-OpFeatureSelection.svg" type="image/svg+xml"><embed src="_images/Wrapped-OpFeatureSelection.svg" type="image/svg+xml" /></object>
 </a>
@@ -347,7 +374,7 @@ which are provided as outputs in the corresponding top-level applet operator.</p
 
 </div>
 <div class="section" id="pixel-classification">
-<h2>Pixel Classification<a class="headerlink" href="#pixel-classification" title="Permalink to this headline">¶</a></h2>
+<h3>Pixel Classification<a class="headerlink" href="#pixel-classification" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
 <a class="reference internal image-reference" href="_images/opPixelClassification.svg"><object data="_images/opPixelClassification.svg" type="image/svg+xml"><embed src="_images/opPixelClassification.svg" type="image/svg+xml" /></object>
 </a>
@@ -360,7 +387,7 @@ which are provided as outputs in the corresponding top-level applet operator.</p
 
 </div>
 <div class="section" id="watershed-viewer">
-<h2>Watershed Viewer<a class="headerlink" href="#watershed-viewer" title="Permalink to this headline">¶</a></h2>
+<h3>Watershed Viewer<a class="headerlink" href="#watershed-viewer" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
 <a class="reference internal image-reference" href="_images/VigraWatershedViewer-Top-Level-Operator.svg"><object data="_images/VigraWatershedViewer-Top-Level-Operator.svg" type="image/svg+xml"><embed src="_images/VigraWatershedViewer-Top-Level-Operator.svg" type="image/svg+xml" /></object>
 </a>
@@ -373,6 +400,7 @@ which are provided as outputs in the corresponding top-level applet operator.</p
 
 </div>
 </div>
+</div>
 
 
           </div>
@@ -383,15 +411,28 @@ which are provided as outputs in the corresponding top-level applet operator.</p
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Applet Library</a><ul>
-<li><a class="reference internal" href="#project-metadata">Project Metadata</a></li>
-<li><a class="reference internal" href="#data-selection">Data Selection</a></li>
+<li><a class="reference internal" href="#example-applets">Example Applets</a><ul>
+<li><a class="reference internal" href="#threshold-masking">Threshold Masking</a></li>
+<li><a class="reference internal" href="#deviation-from-mean">Deviation From Mean</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#useful-base-classes">Useful Base Classes</a><ul>
 <li><a class="reference internal" href="#layer-viewer">Layer Viewer</a></li>
 <li><a class="reference internal" href="#labeling">Labeling</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#standard-applets">Standard Applets</a><ul>
+<li><a class="reference internal" href="#project-metadata">Project Metadata</a></li>
+<li><a class="reference internal" href="#data-selection">Data Selection</a></li>
 <li><a class="reference internal" href="#batch-output">Batch Output</a></li>
-<li><a class="reference internal" href="#threshold-masking">Threshold Masking</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#workflow-specific-applets">Workflow-specific Applets</a><ul>
 <li><a class="reference internal" href="#feature-selection">Feature Selection</a></li>
 <li><a class="reference internal" href="#pixel-classification">Pixel Classification</a></li>
 <li><a class="reference internal" href="#watershed-viewer">Watershed Viewer</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

@@ -2,26 +2,39 @@
 Applet API
 ==========
 
-Workflows
-=========
-
-A workflow represents a list of applets to display in the shell.  It is created when a project is loaded, 
-and destroyed when the project is closed.
-If the user opens more than one image in a workflow, then the workflow is said to have multiple *image lanes*.
-Each *image lane* is named according to the name of the input image it processes.  
-The workflow provides the list of currently loaded image lanes to the shell 
-via a special slot known as the "image name list".  The shell GUI presents this list of image names to the user, 
-allowing him to select which image lane he wants to view.
-
-When the user opens a new image in the workflow, the workflow creates a new image lane to process it.  This is done by calling 
-``addLane`` on every applet's topLevelOperator, and then calling ``connectLane`` to connect together the lanes from each applet.
-See :py:class:`MultiLaneOperatorABC<ilastik.utility.MultiLaneOperatorABC>` for more details. 
-
-A workflow is instantiated when a project is loaded, and it is destroyed (it's ``cleanUp`` method is called)
-when the project is closed.  The cleanUp function is responsible for freeing all resources owned by the 
-applets, including GUI resources.
+Workflow Concepts
+=================
 
 .. currentmodule:: ilastik.workflow
+
+A :py:class:`Workflow` combines a set of applets together to form an entire computational pipeline, along with the GUI to configure it.
+A workflow is created when the user loads a project, and destroyed when the project is closed.
+
+The workflow has three main responsibilities:
+
+* Instantiate a set of applets, and expose them as a list for the ilastik shell to display.
+* Build up a complete computational pipeline, one *image lane* at a time.  This is done by connecting an individual *image lane* from each applet's `Top-Level Operator<Top-Level Operators>`. (More on that in a bit.) 
+* Select a particular slot to serve as the "image name slot" for the shell.  The shell uses this slot as the "master list" of all image lanes present in the workflow at any time.
+
+Image Lanes
+-----------
+
+.. note:: This section explains how multi-image support is implemented in ilastik.
+   Most beginning developers don't need to sweat the details here.  Simple workflows can be designed with the assumption that only one image lane will be active.  
+   The :py:class:`StandardApplet<ilastik.applets.base.standardApplet.StandardApplet>` base class handles multi-image support for you.
+
+Workflows in ilastik are designed to work with an arbitrary number of input images.
+In the ilastik Applet/Workflow API, each image is said to occupy an *image lane* of the workflow.
+In the ilastik shell GUI, the user can view the results of only one lane at a time.  
+He selects which lane to view using the shell's "Current View" dropdown menu.
+
+When the user adds a new input image to the workflow, the workflow creates a new image lane in *each applet* to process it.
+This is done by calling ``addLane`` on every applet's topLevelOperator, and then calling ``connectLane`` to connect together the lanes from each applet.
+See :py:class:`MultiLaneOperatorABC<ilastik.utility.MultiLaneOperatorABC>` for more details. 
+
+The Workflow Base Class
+=======================
+
 .. autoclass:: Workflow
    :members:
    
@@ -39,6 +52,9 @@ Applet classes do not have much functionality, but instead serve as a container 
 Applets must inherit from the Applet abstract base class.  Subclasses should override the appropriate properties.  
 The base class provides a few signals, which applets can use to communicate with the shell. 
 
+Applet Base Class
+=================
+
 .. currentmodule:: ilastik.applets.base.applet
 .. autoclass:: Applet
    :members:
@@ -50,6 +66,9 @@ The base class provides a few signals, which applets can use to communicate with
 
 .. autoclass:: ShellRequest
    :members:
+
+StandardApplet Base Class
+=========================
 
 .. currentmodule:: ilastik.applets.base.standardApplet
 .. autoclass:: StandardApplet
@@ -65,7 +84,8 @@ Everything an applet does is centered around the applet's top-level operator.
 It is typically the keeper of all state associated with the applet.
 The top-level operators that the workflow and shell see must be capbable of handling multiple image lanes.
 That is, they must adhere to the :py:class:`MultiLaneOperatorABC<ilastik.utility.MultiLaneOperatorABC>`.
-If your applet inherits from ``StandardApplet``, then your single-lane top-level operator can be automatically adapted to the multi-lane interface.
+If your applet inherits from :py:class:`StandardApplet<ilastik.applets.base.standardApplet.StandardApplet>`,
+then your single-lane top-level operator can be automatically adapted to the multi-lane interface.
 
 The applet GUI and the applet serializers both make changes to the top-level operator and listen for changes made to the top-level operator.
 Here's an example timeline, showing a typical sequence of interactions.

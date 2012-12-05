@@ -6,7 +6,7 @@ class OpDeviationFromMean(Operator):
     """
     Multi-image operator.
     Calculates the pixelwise mean of a set of images, and produces a set of corresponding images for the difference from the mean.
-    Inputs must all have the same shape.
+    Note: Inputs must all have the same shape.
     """    
     ScalingFactor = InputSlot() # Scale after subtraction
     Offset = InputSlot()        # Offset final results

@@ -2,33 +2,40 @@
 Applet Library
 ==============
 
-Project Metadata
-================
+Example Applets
+===============
 
-.. currentmodule:: ilastik.applets.projectMetadata.projectMetadataApplet
-.. autoclass:: ProjectMetadataApplet
-   :members:
+These applets aren't very useful, but they have simple, clean implementations.
+Their source files are the right place to look if you're just getting started.
 
-Data Selection
-==============
+Threshold Masking
+-----------------
 
-.. figure:: images/DataSelection-Top-level-Operator.svg
+.. figure:: images/ThresholdMasking-Top-Level-Operator.svg
    :scale: 100  %
-   :alt: DataSelection Top-Level Operator
+   :alt: Batch Output Top-Level Operator
 
-.. currentmodule:: ilastik.applets.dataSelection.dataSelectionApplet
-.. autoclass:: DataSelectionApplet
+.. currentmodule:: ilastik.applets.thresholdMasking.thresholdMaskingApplet
+.. autoclass:: ThresholdMaskingApplet
    :members:
 
-.. currentmodule:: ilastik.applets.dataSelection.opDataSelection
-.. autoclass:: OpDataSelection
+Deviation From Mean
+-------------------
+
+.. currentmodule:: ilastik.applets.deviationFromMean.deviationFromMeanApplet
+.. autoclass:: DeviationFromMeanApplet
    :members:
 
+
+Useful Base Classes
+===================
+
+Many applets or applet GUIs are based on these classes.
 
 .. _layer-viewer:
 
 Layer Viewer
-============
+------------
 
 .. figure:: images/LayerViewer-Top-Level-Operator.svg
    :scale: 100  %
@@ -49,7 +56,7 @@ Layer Viewer
    .. automethod:: __init__
 
 Labeling
-========
+--------
 
 .. figure:: images/Labeling-Top-Level-Operator.svg
    :scale: 100  %
@@ -69,8 +76,35 @@ Labeling
    
    .. automethod:: __init__
 
+Standard Applets
+================
+
+These applets are likely to be re-used in many, if not most, worklows.
+
+Project Metadata
+----------------
+
+.. currentmodule:: ilastik.applets.projectMetadata.projectMetadataApplet
+.. autoclass:: ProjectMetadataApplet
+   :members:
+
+Data Selection
+--------------
+
+.. figure:: images/DataSelection-Top-level-Operator.svg
+   :scale: 100  %
+   :alt: DataSelection Top-Level Operator
+
+.. currentmodule:: ilastik.applets.dataSelection.dataSelectionApplet
+.. autoclass:: DataSelectionApplet
+   :members:
+
+.. currentmodule:: ilastik.applets.dataSelection.opDataSelection
+.. autoclass:: OpDataSelection
+   :members:
+
 Batch Output
-============
+------------
 
 .. figure:: images/BatchOutput-Top-Level-Operator.svg
    :scale: 100  %
@@ -80,19 +114,14 @@ Batch Output
 .. autoclass:: BatchIoApplet
    :members:
 
-Threshold Masking
-=================
 
-.. figure:: images/ThresholdMasking-Top-Level-Operator.svg
-   :scale: 100  %
-   :alt: Batch Output Top-Level Operator
+Workflow-specific Applets
+=========================
 
-.. currentmodule:: ilastik.applets.thresholdMasking.thresholdMaskingApplet
-.. autoclass:: ThresholdMaskingApplet
-   :members:
+These applets were designed with particular workflows in mind, but they could be used with future workflows, too.
 
 Feature Selection
-=================
+-----------------
 
 .. figure:: images/Wrapped-OpFeatureSelection.svg
    :scale: 100  %
@@ -103,7 +132,7 @@ Feature Selection
    :members:
 
 Pixel Classification
-====================
+--------------------
 
 .. figure:: images/opPixelClassification.svg
    :scale: 100  %
@@ -114,7 +143,7 @@ Pixel Classification
    :members:
 
 Watershed Viewer
-================
+----------------
 
 .. figure:: images/VigraWatershedViewer-Top-Level-Operator.svg
    :scale: 100  %
@@ -123,5 +152,4 @@ Watershed Viewer
 .. currentmodule:: ilastik.applets.vigraWatershedViewer.vigraWatershedViewerApplet
 .. autoclass:: VigraWatershedViewerApplet
    :members:
-
 

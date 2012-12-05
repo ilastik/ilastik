@@ -5,10 +5,9 @@ from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
 class StandardApplet( Applet ):
     """
     In most cases, it is easiest to use StandardApplet as a base class for your custom applet.
-    StandardApplet provides default implementations for the methods required by the Applet base
-    class, provided that the StandardApplet subclass overrides a couple (simple) methods.
+    StandardApplets are designed two simplify two tasks for most use-cases: Creating a *top-level operator* and creating a GUI.
     
-    StandardApplet subclasses may expose their top-level operator in one of two ways:
+    StandardApplet subclasses may expose their *top-level operator* in one of two ways:
     
     1) (Advanced) Override the :py:attr:`Applet.topLevelOperator<ilastik.applets.base.applet.Applet.topLevelOperator>` property directly.
     2) (Simple) Override BOTH :py:attr:`singleLaneOperatorClass` and :py:attr:`broadcastingSlots`, in which case a default implementation of :py:attr:`topLevelOperator` is provided for you.
@@ -23,6 +22,7 @@ class StandardApplet( Applet ):
     def __init__(self, name, workflow=None):
         """
         Constructor.
+
         :param name: The applet's name as it will appear in the GUI (e.g. the Applet Drawer title).
         :param workflow: The workflow this applet belongs to (not required if the subclass provides its own topLevelOperator).
         """
