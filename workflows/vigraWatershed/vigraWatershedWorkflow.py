@@ -3,8 +3,7 @@ from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.vigraWatershedViewer import VigraWatershedViewerApplet
 
-from lazyflow.graph import Graph, OperatorWrapper
-from lazyflow.operators import OpAttributeSelector
+from lazyflow.graph import Graph
 
 class VigraWatershedWorkflow(Workflow):
 

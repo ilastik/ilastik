@@ -1,36 +1,24 @@
-from ilastik.workflow import Workflow
 from workflows.pixelClassification import PixelClassificationWorkflow
 from ilastik.applets.vigraWatershedViewer import VigraWatershedViewerApplet
 
-from lazyflow.graph import Graph
-
-class PixelClassificationWithVigraWatershedWorkflow(Workflow):
+class PixelClassificationWithVigraWatershedWorkflow(PixelClassificationWorkflow):
     
     def __init__( self, *args, **kwargs ):
-        graph = Graph()
-        self._pixelClassificationWorkflow = PixelClassificationWorkflow(graph=graph, *args, **kwargs)
-        super(PixelClassificationWithVigraWatershedWorkflow, self).__init__( graph=graph )
-        self.dataSelectionApplet = self._pixelClassificationWorkflow.dataSelectionApplet
+        super(PixelClassificationWithVigraWatershedWorkflow, self).__init__( appendBatchOperators=False, *args, **kwargs )
 
         # Create applets
         self.watershedApplet = VigraWatershedViewerApplet(self, "Watershed", "Watershed")
         
-        # Connect top-level operators
-        pixelClassificationApplet = self._pixelClassificationWorkflow.pcApplet
-        opPixelClassification = pixelClassificationApplet.topLevelOperator
-
-        opWatershedViewer = self.watershedApplet.topLevelOperator
-        opWatershedViewer.InputImage.connect( opPixelClassification.CachedPredictionProbabilities )
-        opWatershedViewer.RawImage.connect( opPixelClassification.InputImages )
-
-        self._applets = []
-        self._applets += self._pixelClassificationWorkflow.applets[0:4]
+        # Expose for shell
         self._applets.append(self.watershedApplet)
 
-    @property
-    def applets(self):
-        return self._applets
+    def connectLane(self, laneIndex):
+        super( PixelClassificationWithVigraWatershedWorkflow, self ).connectLane( laneIndex )
 
-    @property
-    def imageNameListSlot(self):
-        return self._pixelClassificationWorkflow.imageNameListSlot
+        # Get the right lane from each operator
+        opPixelClassification = self.pcApplet.topLevelOperator.getLane(laneIndex)
+        opWatershedViewer = self.watershedApplet.topLevelOperator.getLane(laneIndex)
+
+        # Connect them up
+        opWatershedViewer.InputImage.connect( opPixelClassification.CachedPredictionProbabilities )
+        opWatershedViewer.RawImage.connect( opPixelClassification.InputImages )
