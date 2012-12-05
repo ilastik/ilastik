@@ -531,10 +531,9 @@ class AppletSerializer(object):
         self.progressSignal.emit(0)
 
         # Set the version
-        if 'StorageVersion' not in topGroup.keys():
-            topGroup.create_dataset('StorageVersion', data=self.version)
-        else:
-            topGroup['StorageVersion'][()] = self.version
+        key = 'StorageVersion'
+        deleteIfPresent(topGroup, key)
+        topGroup.create_dataset(key, data=self.version)
 
         try:
             inc = self.progressIncrement(topGroup)
