@@ -57,8 +57,11 @@ class TestFeatureSelectionSerializer(object):
             deserializer = FeatureSelectionSerializer(operatorToLoad, 'FeatureSelections')
             deserializer.deserializeFromHdf5(testProject, testProjectName)
             
-            assert (operatorToLoad.Scales.value == scales).all()
-            assert (operatorToLoad.FeatureIds.value == featureIds).all()
+            assert isinstance(operatorToLoad.Scales.value, list)
+            assert isinstance(operatorToLoad.FeatureIds.value, list)
+
+            assert (operatorToLoad.Scales.value == scales)
+            assert (operatorToLoad.FeatureIds.value == featureIds)
             assert (operatorToLoad.SelectionMatrix.value == selectionMatrix).all()
 
         os.remove(testProjectName)
