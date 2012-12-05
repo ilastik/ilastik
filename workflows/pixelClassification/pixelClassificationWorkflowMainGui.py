@@ -1,5 +1,6 @@
 from ilastik.shell.gui.startShellGui import startShellGui
 from pixelClassificationWorkflow import PixelClassificationWorkflow
+import functools
 
 def debug_with_existing(shell, workflow):
     """
@@ -96,18 +97,18 @@ if __name__ == "__main__":
     if len(args) == 1:
         def loadProject(shell, workflow):
             shell.openProjectFile(args[0])
-        startShellGui( PixelClassificationWorkflow, loadProject )
+        startShellGui( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True), loadProject )
     elif len(args) == 0:
-        startShellGui( PixelClassificationWorkflow )
+        startShellGui( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True) )
     else:
         parser.error("incorrect number of arguments")
 
     # Start the GUI with a debug project    
 
-    #startShellGui( PixelClassificationWorkflow )    
-    #startShellGui( PixelClassificationWorkflow, debug_with_existing )
-    #startShellGui( PixelClassificationWorkflow, debug_with_new )
+    #startShellGui( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True) )    
+    #startShellGui( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True), debug_with_existing )
+    #startShellGui( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True), debug_with_new )
 
     # Test special transpose-on-import feature
-    #startShellGui( PixelClassificationWorkflow, debug_with_imported )
+    #startShellGui( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True), debug_with_imported )
  
