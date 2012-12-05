@@ -7,21 +7,45 @@ from volumina.adaptors import Op5ifyer
 
 from opCarving import OpCarving
 
+from ilastik.utility import OperatorSubView, OpAutoMultiLane
+
 class OpCarvingTopLevel(Operator):
     name = "OpCarvingTopLevel"
     
     RawData = InputSlot(level=1)
+    
+    Segmentation = OutputSlot(level=1)
+    DoneObjects = OutputSlot(level=1)
+    HintOverlay = OutputSlot(level=1)
+    DoneSegmentation = OutputSlot(level=1)
+    Supervoxels = OutputSlot(level=1)
 
+    ###
+    # Multi-lane Operator
+    ###
+    
+    def addLane(self, laneIndex):
+        # Just add to our input slot, which will propagate to the rest of the internal connections
+        assert len(self.RawData) == laneIndex
+        self.RawData.resize(laneIndex+1)
+
+    def removeLane(self, index, final_length):
+        # Just remove from our input slot, which will propagate to the rest of the internal connections
+        assert len(self.RawData) == final_length + 1
+        self.RawData.removeSlot( index, final_length )
+
+    def getLane(self, laneIndex):
+        return OperatorSubView(self, laneIndex)
 
     def __init__(self, parent=None, labelingOperator=None, carvingGraphFile=None, hintOverlayFile=None):
         super(OpCarvingTopLevel, self).__init__(parent=parent)
 
         # Convert data to 5d before giving it to the real operators
-        op5 = OperatorWrapper( Op5ifyer, parent=self, graph=self.graph )
+        op5 = OpAutoMultiLane( Op5ifyer, parent=self, graph=self.graph )
         op5.input.connect( self.RawData )
         
         a = operator_kwargs={'carvingGraphFilename': carvingGraphFile, 'hintOverlayFile': hintOverlayFile}
-        self.opCarving = OperatorWrapper( OpCarving, operator_kwargs=a, parent=self )
+        self.opCarving = OpAutoMultiLane( OpCarving, operator_kwargs=a, parent=self )
         
         self.opLabeling = labelingOperator
         self.opLabeling.InputImages.connect( op5.output )
@@ -29,29 +53,18 @@ class OpCarvingTopLevel(Operator):
         self.opCarving.RawData.connect( op5.output )
         
         self.opCarving.WriteSeeds.connect(self.opLabeling.LabelInputs)
+
+        # The GUI monitors all top-level slots to decide when to refresh.
+        # Hook up these top-level slots so the GUI can find them.
+        self.Segmentation.connect( self.opCarving.Segmentation )
+        self.DoneObjects.connect( self.opCarving.DoneObjects )
+        self.HintOverlay.connect( self.opCarving.HintOverlay )
+        self.DoneSegmentation.connect( self.opCarving.DoneSegmentation )
+        self.Supervoxels.connect( self.opCarving.Supervoxels )
         
         #for each imageindex, keep track of a set of object names that have changed since
         #the last serialization of this object to disk
         self._dirtyObjects = defaultdict(set)
-
-    def hasCurrentObject(self, imageIndex):
-        return self.opCarving.innerOperators[imageIndex].hasCurrentObject()
-    
-    def currentObjectName(self, imageIndex):
-        return self.opCarving.innerOperators[imageIndex].currentObjectName()
-
-    def saveCurrentObject(self, imageIndex):  
-        assert self.hasCurrentObject(imageIndex)
-        name = self.currentObjectName(imageIndex) 
-        assert name
-        self.saveObjectAs(name, imageIndex)
-        return name
-    
-    def clearCurrentLabeling(self, imageIndex):
-        self._clear()
-        self.opCarving.innerOperators[imageIndex].clearCurrentLabeling()
-        # trigger a re-computation
-        self.opCarving.innerOperators[imageIndex].Trigger.setDirty(slice(None))
     
     def _clear(self):
         #clear the labels 
@@ -59,7 +72,15 @@ class OpCarvingTopLevel(Operator):
         self.opLabeling.LabelDelete.setValue(1)
         self.opLabeling.LabelDelete.setValue(-1)
         
-    def saveObjectAs(self, name, imageIndex):
+    def saveObjectAs(self, name, opSubView):
+        """
+        TODO: This function should ideally be part of the single-image operator (opCarving),
+        not this top-level operator.  For now, we have to pass in a sub-view that we can 
+        use to determine which image index the GUI is using.
+        """
+        # Determine the image index we're dealing with.
+        imageIndex = self.RawData.index( opSubView.RawData )
+        
         # first, save the object under "name"
         self.opCarving.innerOperators[imageIndex].saveCurrentObjectAs(name)
         # Sparse label array automatically shifts label values down 1
@@ -94,18 +115,23 @@ class OpCarvingTopLevel(Operator):
         self.opCarving.innerOperators[imageIndex].Trigger.setDirty(slice(None))
         
         self._dirtyObjects[imageIndex].add(name)
-    
-    def doneObjectNamesForPosition(self, position3d, imageIndex):
-        return self.opCarving.innerOperators[imageIndex].doneObjectNamesForPosition(position3d)
-    
-    def loadObject(self, name, imageIndex):
+        
+    def loadObject(self, name, opSubView):
+        """
+        TODO: This function should ideally be part of the single-image operator (opCarving),
+        not this top-level operator.  For now, we have to pass in a sub-view that we can 
+        use to determine which image index the GUI is using.
+        """
+        # Determine the image index we're dealing with.
+        imageIndex = self.RawData.index( opSubView.RawData )
+
         print "want to load object with name = %s" % name
         if not self.opCarving.innerOperators[imageIndex].hasObjectWithName(name):
             print "  --> no such object '%s'" % name 
             return False
         
-        if self.hasCurrentObject(imageIndex):
-            self.saveCurrentObject(imageIndex)
+        if opSubView.opCarving.hasCurrentObject():
+            opSubView.opCarving.saveCurrentObject()
         self._clear()
         
         fgVoxels, bgVoxels = self.opCarving.innerOperators[imageIndex].loadObject(name)
@@ -139,7 +165,15 @@ class OpCarvingTopLevel(Operator):
         
         return True
         
-    def deleteObject(self, name, imageIndex):
+    def deleteObject(self, name, opSubView):
+        """
+        TODO: This function should ideally be part of the single-image operator (opCarving),
+        not this top-level operator.  For now, we have to pass in a sub-view that we can 
+        use to determine which image index the GUI is using.
+        """
+        # Determine the image index we're dealing with.
+        imageIndex = self.RawData.index( opSubView.RawData )
+
         print "want to delete object with name = %s" % name
         if not self.opCarving.innerOperators[imageIndex].hasObjectWithName(name):
             print "  --> no such object '%s'" % name 

@@ -1,4 +1,5 @@
-from ilastik.applets.base.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
+import numpy
 
 class CarvingSerializer( AppletSerializer ):
     def __init__(self, carvingTopLevelOperator, *args, **kwargs):
@@ -6,7 +7,7 @@ class CarvingSerializer( AppletSerializer ):
         self._o = carvingTopLevelOperator 
         
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
-        obj = self.getOrCreateGroup(topGroup, "objects")
+        obj = getOrCreateGroup(topGroup, "objects")
         
         imageIndex = 0 #FIXME
         
@@ -22,16 +23,16 @@ class CarvingSerializer( AppletSerializer ):
             else:
                 print "  -> added"
                 
-            g = self.getOrCreateGroup(obj, name)
-            self.deleteIfPresent(g, "fg_voxels")
-            self.deleteIfPresent(g, "bg_voxels")
-            self.deleteIfPresent(g, "sv")
-            self.deleteIfPresent(g, "bg_prio")
-            self.deleteIfPresent(g, "no_bias_below")
+            g = getOrCreateGroup(obj, name)
+            deleteIfPresent(g, "fg_voxels")
+            deleteIfPresent(g, "bg_voxels")
+            deleteIfPresent(g, "sv")
+            deleteIfPresent(g, "bg_prio")
+            deleteIfPresent(g, "no_bias_below")
             
             if not name in mst.object_seeds_fg_voxels:
                 #this object was deleted
-                self.deleteIfPresent(obj, name)
+                deleteIfPresent(obj, name)
                 continue
            
             v = mst.object_seeds_fg_voxels[name]

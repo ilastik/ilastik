@@ -4,6 +4,8 @@ import time
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 
+import copy
+
 from cylemon.segmentation import MSTSegmentor
 
 class OpCarving(Operator):
@@ -47,10 +49,10 @@ class OpCarving(Operator):
     #contains an array with where all objects done so far are labeled the same
     DoneSegmentation = OutputSlot()
     
-    CurrentObjectName = OutputSlot(stype=Opaque)
+    CurrentObjectName = OutputSlot(stype='string')
     
     #current object has an actual segmentation
-    HasSegmentation   = OutputSlot(stype=Opaque)
+    HasSegmentation   = OutputSlot(stype='bool')
     
     #Hint Overlay
     HintOverlay = OutputSlot()

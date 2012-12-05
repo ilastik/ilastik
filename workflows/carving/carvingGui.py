@@ -13,14 +13,14 @@ from volumina.layer import ColortableLayer, GrayscaleLayer
 from ilastik.applets.labeling.labelingGui import LabelingGui
 
 class CarvingGui(LabelingGui):
-    def __init__(self, labelingSlots, observedSlots, drawerUiPath=None, rawInputSlot=None,
-                 carvingApplet=None):
+    def __init__(self, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None ):
+        self.topLevelOperatorView = topLevelOperatorView
+
         # We provide our own UI file (which adds an extra control for interactive mode)
         directory = os.path.split(__file__)[0]
         carvingDrawerUiPath = os.path.join(directory, 'carvingDrawer.ui')
 
-        super(CarvingGui, self).__init__(labelingSlots, observedSlots, carvingDrawerUiPath, rawInputSlot)
-        self._carvingApplet = carvingApplet
+        super(CarvingGui, self).__init__(labelingSlots, topLevelOperatorView, carvingDrawerUiPath, rawInputSlot)
         
         #set up keyboard shortcuts
         c = QShortcut(QKeySequence("3"), self, member=self.labelingDrawerUi.segment.click, ambiguousMember=self.labelingDrawerUi.segment.click)
@@ -34,46 +34,46 @@ class CarvingGui(LabelingGui):
 
         def onSegmentButton():
             print "segment button clicked"
-            self._carvingApplet.topLevelOperator.opCarving.Trigger[0].setDirty(slice(None))
+            self.topLevelOperatorView.opCarving.Trigger.setDirty(slice(None))
         self.labelingDrawerUi.segment.clicked.connect(onSegmentButton)
         self.labelingDrawerUi.segment.setEnabled(True)
         
         def onBackgroundPrioritySpin(value):
             print "background priority changed to %f" % value
-            self._carvingApplet.topLevelOperator.opCarving.BackgroundPriority.setValue(value)
+            self.topLevelOperatorView.opCarving.BackgroundPriority.setValue(value)
         self.labelingDrawerUi.backgroundPrioritySpin.valueChanged.connect(onBackgroundPrioritySpin)
         
         def onBackgroundPriorityDirty(slot, roi):
             oldValue = self.labelingDrawerUi.backgroundPrioritySpin.value()
-            newValue = self._carvingApplet.topLevelOperator.opCarving.BackgroundPriority.value
+            newValue = self.topLevelOperatorView.opCarving.BackgroundPriority.value
             if  newValue != oldValue:
                 self.labelingDrawerUi.backgroundPrioritySpin.setValue(newValue)
-        self._carvingApplet.topLevelOperator.opCarving.BackgroundPriority.notifyDirty(onBackgroundPriorityDirty)
+        self.topLevelOperatorView.opCarving.BackgroundPriority.notifyDirty(onBackgroundPriorityDirty)
         
         def onNoBiasBelowDirty(slot, roi):
             oldValue = self.labelingDrawerUi.noBiasBelowSpin.value()
-            newValue = self._carvingApplet.topLevelOperator.opCarving.NoBiasBelow.value
+            newValue = self.topLevelOperatorView.opCarving.NoBiasBelow.value
             if  newValue != oldValue:
                 self.labelingDrawerUi.noBiasBelowSpin.setValue(newValue)
-        self._carvingApplet.topLevelOperator.opCarving.NoBiasBelow.notifyDirty(onNoBiasBelowDirty)
+        self.topLevelOperatorView.opCarving.NoBiasBelow.notifyDirty(onNoBiasBelowDirty)
         
         def onNoBiasBelowSpin(value):
             print "background priority changed to %f" % value
-            self._carvingApplet.topLevelOperator.opCarving.NoBiasBelow.setValue(value)
+            self.topLevelOperatorView.opCarving.NoBiasBelow.setValue(value)
         self.labelingDrawerUi.noBiasBelowSpin.valueChanged.connect(onNoBiasBelowSpin)
         
         def onSaveAsButton():
             print "save object as?"
-            if self._carvingApplet.topLevelOperator.opCarving[self.imageIndex].dataIsStorable():
+            if self.topLevelOperatorView.opCarving.dataIsStorable():
                 name, ok = QInputDialog.getText(self, 'Save Object As', 'object name') 
                 name = str(name)
                 if not ok:
                     return
-                self._carvingApplet.topLevelOperator.saveObjectAs(name, self.imageIndex)
+                self.topLevelOperatorView.saveObjectAs(name, self.topLevelOperatorView)
                 print "save object as %s" % name
             else:
                 msgBox = QMessageBox(self)
-                msgBox.setText("The data does no seem fit to be stored.")
+                msgBox.setText("The data does not seem fit to be stored.")
                 msgBox.setWindowTitle("Lousy Data")
                 msgBox.setIcon(2)
                 msgBox.exec_()
@@ -88,15 +88,16 @@ class CarvingGui(LabelingGui):
             print "delete object %s" % name
             if not ok:
                 return
-            success = self._carvingApplet.topLevelOperator.deleteObject(name, self.imageIndex)
+            success = self.topLevelOperatorView.deleteObject(name, self.topLevelOperatorView)
             if not success:
                 QMessageBox.critical(self, "Delete Object", "Could not delete object named '%s'" % name)
         self.labelingDrawerUi.deleteObject.clicked.connect(onDeleteButton)
         
         def onSaveButton():
-            if self._carvingApplet.topLevelOperator.opCarving[self.imageIndex].dataIsStorable():
-                if self._carvingApplet.topLevelOperator.hasCurrentObject(self.imageIndex):
-                    self._carvingApplet.topLevelOperator.saveCurrentObject(self.imageIndex)
+            if self.topLevelOperatorView.opCarving.dataIsStorable():
+                if self.topLevelOperatorView.opCarving.hasCurrentObject():
+                    name = self.topLevelOperatorView.opCarving.currentObjectName()
+                    self.topLevelOperatorView.saveObjectAs( name, self.topLevelOperatorView )
                 else:
                     onSaveAsButton()
             else:
@@ -110,7 +111,10 @@ class CarvingGui(LabelingGui):
         self.labelingDrawerUi.save.setEnabled(False) #initially, the user need to use "Save As"
         
         def onClearButton():
-            self._carvingApplet.topLevelOperator.clearCurrentLabeling(self.imageIndex)
+            self.topLevelOperatorView._clear()
+            self.topLevelOperatorView.opCarving.clearCurrentLabeling()
+            # trigger a re-computation
+            self.topLevelOperatorView.opCarving.Trigger.setDirty(slice(None))
         self.labelingDrawerUi.clear.clicked.connect(onClearButton)
         self.labelingDrawerUi.clear.setEnabled(True)
         
@@ -120,7 +124,7 @@ class CarvingGui(LabelingGui):
             name = str(name)
             print "load object %s" % name
             if ok:
-                success = self._carvingApplet.topLevelOperator.loadObject(name, self.imageIndex)
+                success = self.topLevelOperatorView.loadObject(name, self.topLevelOperatorView)
                 if not success:
                     QMessageBox.critical(self, "Load Object", "Could not load object named '%s'" % name)
                 
@@ -180,7 +184,7 @@ class CarvingGui(LabelingGui):
         self.labelingDrawerUi.randomizeColors.clicked.connect(onRandomizeColors)
       
     def _updateVolumeRendering(self):    
-        op = self._carvingApplet.topLevelOperator.opCarving[0]
+        op = self.topLevelOperatorView.opCarving
         if not self._volumeRenderingInitialized:
             a = time.time()
             from volumina.view3d.volumeRendering import makeVolumeRenderingPipeline
@@ -197,10 +201,10 @@ class CarvingGui(LabelingGui):
         self._volumeRendering.Update() 
         self.editor.view3d.qvtk.update()
         
-    def handleEditorRightClick(self, currentImageIndex, position5d, globalWindowCoordinate):
-        names = self._carvingApplet.topLevelOperator.doneObjectNamesForPosition(position5d[1:4], currentImageIndex)
+    def handleEditorRightClick(self, position5d, globalWindowCoordinate):
+        names = self.topLevelOperatorView.opCarving.doneObjectNamesForPosition(position5d[1:4])
        
-        op = self._carvingApplet.topLevelOperator.opCarving[self.imageIndex]
+        op = self.topLevelOperatorView.opCarving
         
         m = QMenu(self)
         m.addAction("position %d %d %d" % (position5d[1], position5d[2], position5d[3]))
@@ -215,9 +219,9 @@ class CarvingGui(LabelingGui):
         act = m.exec_(globalWindowCoordinate) 
         for n in names:
             if act is not None and act.text() == "edit %s" %n:
-                self._carvingApplet.topLevelOperator.loadObject(n, self.imageIndex)
+                self.topLevelOperatorView.loadObject(n, self.topLevelOperatorView)
             elif act is not None and act.text() =="delete %s" % n:
-                self._carvingApplet.topLevelOperator.deleteObject(n,self.imageIndex) 
+                self.topLevelOperatorView.deleteObject(n,self.topLevelOperatorView) 
             elif act is not None and act.text() == "show 3D %s" % n:
                
                 self._updateVolumeRendering()
@@ -269,13 +273,13 @@ class CarvingGui(LabelingGui):
     def appletDrawers(self):
         return [ ("Carving", self._labelControlUi) ]
 
-    def setupLayers( self, currentImageIndex ):
+    def setupLayers( self ):
         layers = []
        
         def onButtonsEnabled(slot, roi):
-            currObj = self._carvingApplet.topLevelOperator.opCarving[currentImageIndex].CurrentObjectName.value
-            hasSeg  = self._carvingApplet.topLevelOperator.opCarving[currentImageIndex].HasSegmentation.value
-            nzLB    = self._carvingApplet.topLevelOperator.opLabeling.NonzeroLabelBlocks[currentImageIndex][:].wait()[0]
+            currObj = self.topLevelOperatorView.opCarving.CurrentObjectName.value
+            hasSeg  = self.topLevelOperatorView.opCarving.HasSegmentation.value
+            nzLB    = self.topLevelOperatorView.opLabeling.NonzeroLabelBlocks[:].wait()[0]
             
             self.labelingDrawerUi.currentObjectLabel.setText("current object: %s" % currObj)
             self.labelingDrawerUi.save.setEnabled(currObj != "" and hasSeg)
@@ -283,21 +287,21 @@ class CarvingGui(LabelingGui):
             #rethink this
             #self.labelingDrawerUi.segment.setEnabled(len(nzLB) > 0)
             #self.labelingDrawerUi.clear.setEnabled(len(nzLB) > 0)
-        self._carvingApplet.topLevelOperator.opCarving[currentImageIndex].CurrentObjectName.notifyDirty(onButtonsEnabled)
-        self._carvingApplet.topLevelOperator.opCarving[currentImageIndex].HasSegmentation.notifyDirty(onButtonsEnabled)
-        self._carvingApplet.topLevelOperator.opLabeling.NonzeroLabelBlocks[currentImageIndex].notifyDirty(onButtonsEnabled)
+        self.topLevelOperatorView.opCarving.CurrentObjectName.notifyDirty(onButtonsEnabled)
+        self.topLevelOperatorView.opCarving.HasSegmentation.notifyDirty(onButtonsEnabled)
+        self.topLevelOperatorView.opLabeling.NonzeroLabelBlocks.notifyDirty(onButtonsEnabled)
         
         # Labels
-        labellayer, labelsrc = self.createLabelLayer(currentImageIndex, direct=True)
+        labellayer, labelsrc = self.createLabelLayer(direct=True)
         if labellayer is not None:
             layers.append(labellayer)
             # Tell the editor where to draw label data
             self.editor.setLabelSink(labelsrc)
        
         #segmentation 
-        seg = self._carvingApplet.topLevelOperator.opCarving.Segmentation[currentImageIndex]
+        seg = self.topLevelOperatorView.opCarving.Segmentation
         
-        #seg = self._carvingApplet.topLevelOperator.opCarving[0]._mst.segmentation
+        #seg = self.topLevelOperatorView.opCarving._mst.segmentation
         #temp = self._done_lut[self._mst.regionVol[sl[1:4]]]
         if seg.ready(): 
             #source = RelabelingArraySource(seg)
@@ -314,7 +318,7 @@ class CarvingGui(LabelingGui):
             layers.append(layer)
         
         #done 
-        done = self._carvingApplet.topLevelOperator.opCarving.DoneObjects[currentImageIndex]
+        done = self.topLevelOperatorView.opCarving.DoneObjects
         if done.ready(): 
             colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,255).rgba()]
             for i in range(254-len(colortable)):
@@ -331,10 +335,10 @@ class CarvingGui(LabelingGui):
         useLazyflow = True
         ctable = [QColor(0,0,0,0).rgba(), QColor(255,0,0).rgba()]
         if useLazyflow:
-            hints = self._carvingApplet.topLevelOperator.opCarving.HintOverlay[currentImageIndex]
+            hints = self.topLevelOperatorView.opCarving.HintOverlay
             layer = ColortableLayer(LazyflowSource(hints), ctable, direct=True)
         else:
-            hints = self._carvingApplet.topLevelOperator.opCarving[currentImageIndex]._hints
+            hints = self.topLevelOperatorView.opCarving._hints
             layer = ColortableLayer(ArraySource(hints), ctable, direct=True)
         if not useLazyflow or hints.ready():
             layer.name = "hints"
@@ -343,7 +347,7 @@ class CarvingGui(LabelingGui):
             layers.append(layer)
         
         #done seg
-        doneSeg = self._carvingApplet.topLevelOperator.opCarving.DoneSegmentation[currentImageIndex]
+        doneSeg = self.topLevelOperatorView.opCarving.DoneSegmentation
         if doneSeg.ready(): 
             layer = ColortableLayer(LazyflowSource(doneSeg), self._doneSegmentationColortable, direct=True)
             layer.name = "done seg"
@@ -353,7 +357,7 @@ class CarvingGui(LabelingGui):
             layers.append(layer)
             
         #supervoxel
-        sv = self._carvingApplet.topLevelOperator.opCarving.Supervoxels[currentImageIndex]
+        sv = self.topLevelOperatorView.opCarving.Supervoxels
         if sv.ready():
             for i in range(256):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
@@ -376,7 +380,7 @@ class CarvingGui(LabelingGui):
         #
         # here we load the actual raw data from an ArraySource rather than from a LazyflowSource for speed reasons
         #
-        raw = self._carvingApplet.topLevelOperator.opCarving[0]._mst.raw
+        raw = self.topLevelOperatorView.opCarving._mst.raw
         raw5D = numpy.zeros((1,)+raw.shape+(1,), dtype=raw.dtype)
         raw5D[0,:,:,:,0] = raw[:,:,:]
         layer = GrayscaleLayer(ArraySource(raw5D), direct=True)

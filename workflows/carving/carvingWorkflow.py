@@ -10,19 +10,24 @@ from carvingApplet import CarvingApplet
 
 class CarvingWorkflow(Workflow):
 
-    def __init__(self, carvingGraphFile=None, hintoverlayFile=None):
+    @property
+    def applets(self):
+        return self._applets
+
+    @property
+    def imageNameListSlot(self):
+        return self.dataSelectionApplet.topLevelOperator.ImageName
+
+    def __init__(self, carvingGraphFile=None, hintoverlayFile=None, *args, **kwargs):
         if carvingGraphFile is not None:
             assert isinstance(carvingGraphFile, str), "carvingGraphFile should be a string, not '%s'" % type(carvingGraphFile)
         if hintoverlayFile is not None:
             assert isinstance(hintoverlayFile, str), "hintoverlayFile should be a string, not '%s'" % type(hintoverlayFile)
-        #super(CarvingWorkflow, self).__init__()
-        self._applets = []
 
         graph = Graph()
         
-        super(CarvingWorkflow, self).__init__(graph=graph)
+        super(CarvingWorkflow, self).__init__(graph=graph, *args, **kwargs)
         
-        self._applets = []
 
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
@@ -32,35 +37,20 @@ class CarvingWorkflow(Workflow):
                                            projectFileGroupName="carving",
                                            carvingGraphFile = carvingGraphFile,
                                            hintOverlayFile=hintoverlayFile)
-        self.carvingApplet.topLevelOperator.RawData.connect( self.dataSelectionApplet.topLevelOperator.Image )
-        self.carvingApplet.topLevelOperator.opLabeling.LabelsAllowedFlags.connect( self.dataSelectionApplet.topLevelOperator.AllowLabels )
-        self.carvingApplet.gui.minLabelNumber = 2
-        self.carvingApplet.gui.maxLabelNumber = 2
-
-        ## Access applet operators
-        opData = self.dataSelectionApplet.topLevelOperator
-        
-        ## Connect operators ##
-        
+        # Expose to shell
+        self._applets = []
         self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.carvingApplet)
 
-        # The shell needs a slot from which he can read the list of image names to switch between.
-        # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
-        opSelectFilename = OperatorWrapper( OpAttributeSelector, graph=graph )
-        opSelectFilename.InputObject.connect( opData.Dataset )
-        opSelectFilename.AttributeName.setValue( 'filePath' )
-
-        self._imageNameListSlot = opSelectFilename.Result
+    def connectLane(self, laneIndex):
+        ## Access applet operators
+        opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opCarving = self.carvingApplet.topLevelOperator.getLane(laneIndex)
+        
+        ## Connect operators ##
+        opCarving.RawData.connect( opData.Image )
+        opCarving.opLabeling.LabelsAllowedFlags.connect(opData.AllowLabels )
 
     def setCarvingGraphFile(self, fname):
         self.carvingApplet.topLevelOperator.opCarving.CarvingGraphFile.setValue(fname)
-
-    @property
-    def applets(self):
-        return self._applets
-
-    @property
-    def imageNameListSlot(self):
-        return self._imageNameListSlot
