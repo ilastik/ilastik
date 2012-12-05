@@ -1,4 +1,4 @@
-from ilastik.utility import MultiLaneOperatorABC, OpAutoMultiLane
+from ilastik.utility import MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
 
@@ -132,7 +132,7 @@ class StandardApplet( Applet ):
             message += "Please initialize StandardApplet base class with a workflow object."
             raise NotImplementedError(message)
         
-        self.__topLevelOperator = OpAutoMultiLane(self.singleLaneOperatorClass,
+        self.__topLevelOperator = OpMultiLaneWrapper(self.singleLaneOperatorClass,
                                                   parent=self.__workflow,
                                                   broadcastingSlotNames=self.broadcastingSlots)
 

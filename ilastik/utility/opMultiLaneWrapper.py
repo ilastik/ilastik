@@ -1,8 +1,7 @@
 from lazyflow.graph import OperatorWrapper
 from ilastik.utility import OperatorSubView
 
-
-class OpAutoMultiLane( OperatorWrapper ):
+class OpMultiLaneWrapper( OperatorWrapper ):
     """
     An extension of the OperatorWrapper that provides the functions needed to satisfy MultiLaneOperatorABC.
     """
@@ -33,6 +32,6 @@ if __name__ == "__main__":
         Input = InputSlot()
     
     graph = Graph()
-    op = OpAutoMultiLane( Op, graph=graph )
+    op = OpMultiLaneWrapper( Op, graph=graph )
     
     assert isinstance( op, MultiLaneOperatorABC )

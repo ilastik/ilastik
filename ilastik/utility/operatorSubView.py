@@ -88,7 +88,7 @@ if __name__ == "__main__":
     
     import random
     from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
-    from ilastik.utility import OpAutoMultiLane
+    from ilastik.utility import OpMultiLaneWrapper
 
     class OpSum(Operator):
         InputA = InputSlot()
@@ -182,9 +182,9 @@ if __name__ == "__main__":
 
         def __init__(self, *args, **kwargs):
             super(OpNestedMultiOps, self).__init__(*args, **kwargs)
-            self.opSum1 = OpAutoMultiLane( OpSum, parent=self )
-            self.opSum2 = OpAutoMultiLane( OpSum, parent=self )
-            self.opSum3 = OpAutoMultiLane( OpSum, parent=self )
+            self.opSum1 = OpMultiLaneWrapper( OpSum, parent=self )
+            self.opSum2 = OpMultiLaneWrapper( OpSum, parent=self )
+            self.opSum3 = OpMultiLaneWrapper( OpSum, parent=self )
 
             self.opSum1.InputA.connect( self.InputA )
             self.opSum1.InputB.connect( self.InputB )

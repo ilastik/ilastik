@@ -7,7 +7,7 @@ from volumina.adaptors import Op5ifyer
 
 from opCarving import OpCarving
 
-from ilastik.utility import OperatorSubView, OpAutoMultiLane
+from ilastik.utility import OperatorSubView, OpMultiLaneWrapper
 
 class OpCarvingTopLevel(Operator):
     name = "OpCarvingTopLevel"
@@ -41,11 +41,11 @@ class OpCarvingTopLevel(Operator):
         super(OpCarvingTopLevel, self).__init__(parent=parent)
 
         # Convert data to 5d before giving it to the real operators
-        op5 = OpAutoMultiLane( Op5ifyer, parent=self, graph=self.graph )
+        op5 = OpMultiLaneWrapper( Op5ifyer, parent=self, graph=self.graph )
         op5.input.connect( self.RawData )
         
         a = operator_kwargs={'carvingGraphFilename': carvingGraphFile, 'hintOverlayFile': hintOverlayFile}
-        self.opCarving = OpAutoMultiLane( OpCarving, operator_kwargs=a, parent=self )
+        self.opCarving = OpMultiLaneWrapper( OpCarving, operator_kwargs=a, parent=self )
         
         self.opLabeling = labelingOperator
         self.opLabeling.InputImages.connect( op5.output )
