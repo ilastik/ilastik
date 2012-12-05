@@ -12,9 +12,9 @@ if __name__ == "__main__":
     from ilastik.shell.gui.startShellGui import startShellGui
     import socket
 
-    import sys
-    sys.argv.append( "/magnetic/denk.h5" )
-    sys.argv.append( "/magnetic/carving_test.ilp" )
+#    import sys
+#    sys.argv.append( "/magnetic/denk.h5" )
+#    sys.argv.append( "/magnetic/carving_test.ilp" )
 
     graph = lazyflow.graph.Graph()
     
