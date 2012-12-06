@@ -9,6 +9,7 @@ from math import sqrt
 from functools import partial
 from lazyflow.roi import roiToSlice,sliceToRoi
 import collections
+import warnings
 
 class OpBaseVigraFilter(Operator):
     
@@ -540,7 +541,11 @@ class OpPixelFeaturesPresmoothed(Operator):
                 self.smoother.Sigma.setValue(self.incrSigmas[sig])
                 if self.smoother.Input.connected: 
                     self.smoother.Input.disconnect()
+                    
+
+                warnings.warn("FIXME: Can't use an operator like this in execute!  This won't work for parallel calls to execute()")                
                 self.smoother.Input.setValue(source)
+                
                 source = self.smoother.Output().wait()
                 source = vigra.VigraArray(source,axistags=axistags)
                 for op in xrange(len(opM[sig])): #for each operator with this sigma
@@ -551,7 +556,10 @@ class OpPixelFeaturesPresmoothed(Operator):
                     if opM[sig][op] is not None and pos[1] > cstart and pos[0] < cstop:
                         if opM[sig][op].Input.connected():
                             opM[sig][op].Input.disconnect()
+                            
+                            warnings.warn("FIXME: Can't use an operator like this in execute!  This won't work for parallel calls to execute()")                
                             opM[sig][op].Input.setValue(source)
+                            
                         currCStart,currCStop = max(cstart,pos[0]),min(cstop,pos[1])
                         currCRange = currCStop-currCStart
                         resSlicing = list(origRoi.copy().toSlice())
