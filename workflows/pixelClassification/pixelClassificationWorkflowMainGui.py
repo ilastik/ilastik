@@ -1,6 +1,8 @@
 from ilastik.shell.gui.startShellGui import startShellGui
 from pixelClassificationWorkflow import PixelClassificationWorkflow
 
+import argparse
+
 def debug_with_existing(shell, workflow):
     """
     (Function for debug and testing.)
@@ -76,12 +78,27 @@ def debug_with_imported(shell, workflow):
     # Select the labeling drawer
     shell.setSelectedAppletDrawer(3)
 
-if __name__ == "__main__":
-    from optparse import OptionParser
-    usage = "%prog [options] filename"
-    parser = OptionParser(usage)
+def getArgParser():
+    parser = argparse.ArgumentParser(description = "Pixel Classiflication Prediction GUI")
+    parser.add_argument('--project', help='Path to an .ilp file to be loaded. If not specified, start with an empty proejct', default = '')
+    parser.add_argument('--screen', help='Select screen to be displayed on startup', default = '0')
+    return parser
 
-    (options, args) = parser.parse_args()
+def loadProject(shell, workflow):
+            print "Opening existing project '" + project + "'"
+            shell.openProjectFile(project)
+            shell.setSelectedAppletDrawer(screen)
+
+def loadNew(shell, worfklow):
+            shell.setSelectedAppletDrawer(screen)
+
+if __name__ == "__main__":
+    
+    usage = "%prog [options] [filename]"
+    parser = getArgParser()
+    options = vars(parser.parse_args())
+    screen = int(options['screen'])
+    project = options['project']
 
     # Start the GUI
 #    if len(args) == 1:
@@ -96,7 +113,20 @@ if __name__ == "__main__":
     # Start the GUI with a debug project    
     #startShellGui( PixelClassificationWorkflow )    
     #startShellGui( PixelClassificationWorkflow, debug_with_existing )
-    startShellGui( PixelClassificationWorkflow, debug_with_new )
+    #startShellGui( PixelClassificationWorkflow, debug_with_new )
+
+    # Test special transpose-on-import feature
+    #startShellGui( PixelClassificationWorkflow, debug_with_imported )
+    
+
+    # Start GUI with command line arguments. To extend the options, edit getArgParser
+    startupFunct = None
+    if project != '':
+        startupFunct = loadProject
+    else:
+        startupFunct = loadNew
+    startShellGui( PixelClassificationWorkflow, startupFunct )
+        
 
     # Test special transpose-on-import feature
     #startShellGui( PixelClassificationWorkflow, debug_with_imported )
