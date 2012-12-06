@@ -3,7 +3,7 @@ import os
 import numpy
 import h5py
 import vigra
-from ilastik.applets.base.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent, slicingToString, stringToSlicing
 from ilastik.utility import bind
 from lazyflow.operators import OpH5WriterBigDataset
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader
@@ -102,7 +102,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
     def _serializeLabels(self, topGroup):
         with Tracer(traceLogger):
             # Delete all labels from the file
-            self.deleteIfPresent(topGroup, 'LabelSets')
+            deleteIfPresent(topGroup, 'LabelSets')
             labelSetDir = topGroup.create_group('LabelSets')
     
             numImages = len(self.mainOperator.NonzeroLabelBlocks)
@@ -128,7 +128,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
 
     def _serializeClassifiers(self, topGroup):
         with Tracer(traceLogger):
-            self.deleteIfPresent(topGroup, 'Classifiers')
+            deleteIfPresent(topGroup, 'Classifiers')
             self._dirtyFlags[Section.Classifiers] = False
     
             if not self.mainOperator.Classifiers.ready():
@@ -170,9 +170,9 @@ class AutocontextClassificationSerializer(AppletSerializer):
         """
         with Tracer(traceLogger):
             # If the predictions are missing, then maybe the user wants them stored (even if they aren't dirty)
-            if self._dirtyFlags[Section.Predictions] or 'Predictions' not in topGroup.keys():
+            if self._dirtyFlags[Section.Predictions] or 'Pdigital signal processing bookredictions' not in topGroup.keys():
 
-                self.deleteIfPresent(topGroup, 'Predictions')
+                deleteIfPresent(topGroup, 'Predictions')
                 
                 # Disconnect the precomputed prediction inputs.
                 for i,slot in enumerate( self.mainOperator.PredictionsFromDisk ):
@@ -231,7 +231,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
                     finally:
                         # If we were cancelled, delete the predictions we just started
                         if not self.predictionStorageEnabled or failedToSave:
-                            self.deleteIfPresent(predictionDir, datasetName)
+                            deleteIfPresent(predictionDir, datasetName)
                             self._predictionsPresent = False
                             startProgress = progress[0]
                         else:
