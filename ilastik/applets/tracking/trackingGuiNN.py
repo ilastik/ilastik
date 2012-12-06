@@ -49,13 +49,14 @@ class TrackingGuiNN( QWidget ):
         # self.layerstack.append( layerraw )
 
         self.objectssrc = LazyflowSource( mainOperator.LabelImage )
-        ct = colortables.create_default_8bit()
+#        ct = colortables.create_default_8bit()
+        ct = colortables.create_random_8bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         layer = ColortableLayer( self.objectssrc, ct )
         layer.name = "Objects"
         self.layerstack.append(layer)
 
-        ct[255] = QColor(0,0,0,255).rgba() # misdetections        
+        ct[255] = QColor(255,255,255,230).rgba() # misdetections
         self.trackingsrc = LazyflowSource( mainOperator.Output )
         layer = ColortableLayer( self.trackingsrc, ct )
         layer.name = "Tracking"
