@@ -88,7 +88,6 @@ class OpBaseVigraFilter(Operator):
         source = self.Input(roi.start,roi.stop).wait()
         source = vigra.VigraArray(source,axistags=axistags)
         
-        
         #set up the grid for the iterator, and the iterator
         srcGrid = [source.shape[i] if i!= channelIndex else channelRes for i in range(len(source.shape))]
         trgtGrid = [inputShape[i]  if i != channelIndex else self.channelsPerChannel() for i in range(len(source.shape))]
@@ -214,12 +213,12 @@ class OpLaplacianOfGaussian(OpBaseVigraFilter):
     def channelsPerChannel(self):
         return 1
 
-class OpStructureTensorEigenvalues(OpBaseVigraFilter):
+class OpStructureTensorEigenvaluesSummedChannels(OpBaseVigraFilter):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float"),InputSlot("Sigma2", stype = "float")]
     name = "StructureTensorEigenvalues"
     
     def __init__(self, *args, **kwargs):
-        super(OpStructureTensorEigenvalues, self).__init__(*args, **kwargs)
+        super(OpStructureTensorEigenvaluesSummedChannels, self).__init__(*args, **kwargs)
     
     def getChannelResolution(self):
         return self.Input.meta.shape[self.Input.meta.axistags.channelIndex]
@@ -250,6 +249,40 @@ class OpStructureTensorEigenvalues(OpBaseVigraFilter):
     def channelsPerChannel(self):
         return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)
     
+class OpStructureTensorEigenvalues(OpBaseVigraFilter):
+    inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float"),InputSlot("Sigma2", stype = "float")]
+    name = "StructureTensorEigenvalues"
+    
+    def __init__(self, *args, **kwargs):
+        super(OpStructureTensorEigenvalues, self).__init__(*args, **kwargs)
+    
+    def calculateHalo(self, sigma):
+        sigma1 = self.Sigma.value
+        sigma2 = self.Sigma2.value
+        return int(numpy.ceil(sigma1*self.windowSize))+int(numpy.ceil(sigma2*self.windowSize))
+        
+    def setupFilter(self):
+        innerScale = self.Sigma.value
+        outerScale = self.inputs["Sigma2"].value
+        
+        def tmpFilter(source,innerScale,outerScale,window_size,roi):
+            tmpfilter = vigra.filters.structureTensorEigenvalues
+            return tmpfilter(image=source,innerScale=innerScale,outerScale=outerScale,window_size=window_size,roi=(roi.start,roi.stop))
+
+        self.vigraFilter = partial(tmpFilter,innerScale=innerScale,outerScale=outerScale,window_size=self.windowSize)
+
+        return max(innerScale,outerScale)
+    
+    def setupIterator(self, source, result):
+        self.iterator = AxisIterator(source,'spatial',result,'spatial',[(),({'c':self.channelsPerChannel()})])   
+        
+    def resultingChannels(self):
+        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)*self.Input.meta.shape[self.Input.meta.axistags.channelIndex]
+    
+    def channelsPerChannel(self):
+        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)
+
+
 class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float")]
     name = "HessianOfGaussianEigenvalues"
