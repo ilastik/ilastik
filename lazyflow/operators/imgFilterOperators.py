@@ -425,13 +425,16 @@ class OpPixelFeaturesPresmoothed(Operator):
         featureCount = 0
         self.featureOutputChannels = []
         k=0
+
+        totalFeatureCount = (self.inMatrix == True).sum()
+        self.Features.resize( totalFeatureCount )
+
         for i in xrange(len(self.inMatrix)): #Cycle through operators == i
             for j in xrange(len(self.inMatrix[i])): #Cycle through sigmas == j
                 if self.inMatrix[i][j]:
                     self.operatorMatrix[i][j] = self.FeatureInfos[self.features[i]][0](graph=self.graph)
                     self.operatorMatrix[i][j].Input.connect(self.Input)
                     self.operatorMatrix[i][j].Sigma.setValue(self.inScales[i])
-                    self.operatorMatrix[i][j].Output.meta.description = self.FeatureInfos[self.features[i]][2].format(self.inScales[j])
                     if self.FeatureInfos[self.features[i]][1]:
                         self.operatorMatrix[i][j].Sigma2.setValue(self.inScales[i]*self.FeatureInfos[self.features[i]][1])
                     self.multi.inputs["Input%02d"%(k)].connect(self.operatorMatrix[i][j].Output)
@@ -439,17 +442,20 @@ class OpPixelFeaturesPresmoothed(Operator):
                     
                     # Prepare the individual features
                     featureCount += 1
-                    self.Features.resize( featureCount )
 
                     featureMeta = self.operatorMatrix[i][j].Output.meta
                     featureChannels = featureMeta.shape[ featureMeta.axistags.index('c') ]
                     self.Features[featureCount-1].meta.assignFrom( featureMeta )
+                    self.Features[featureCount-1].meta.description = self.FeatureInfos[self.features[i]][2].format(self.inScales[j])
                     self.featureOutputChannels.append( (channelCount, channelCount + featureChannels) )
                     self.positionMatrix[i][j] = [channelCount,None]
                     channelCount += featureChannels
                     self.positionMatrix[i][j][1] = channelCount
                 else:
                     self.positionMatrix[i][j] = [0,0]
+        
+        for index, slot in enumerate(self.Features):
+            assert slot.meta.description is not None, "Feature {} has no description!".format(index)
         
         self.stacker.AxisFlag.setValue('c')
         self.stacker.AxisIndex.setValue(self.Input.meta.axistags.index('c'))
@@ -596,8 +602,8 @@ class OpPixelFeaturesPresmoothed(Operator):
                     self.Output.setDirty(dirtyRoi)
 
         elif (slot == self.Matrix
-              or inputSlot == self.Scales
-              or inputSlot == self.FeatureIds):
+              or slot == self.Scales
+              or slot == self.FeatureIds):
             self.Output.setDirty(slice(None))
         else:
             assert False, "Unknown dirty input slot."
