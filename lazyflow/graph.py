@@ -1230,7 +1230,7 @@ from abc import ABCMeta
 class OperatorMetaClass(ABCMeta):
 
     def __new__(cls,name,bases,classDict):
-        cls = ABCMeta.__new__(cls,name,bases,classDict)
+        cls = super(OperatorMetaClass, cls).__new__(cls,name,bases,classDict)
 
         setattr(cls,"inputSlots", list(cls.inputSlots))
         setattr(cls,"outputSlots", list(cls.outputSlots))

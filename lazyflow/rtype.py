@@ -10,7 +10,7 @@ class RoiMeta(type):
     subclasses for string serialization via Roi._registerSubclass.
     """
     def __new__(cls, name, bases, classDict):
-        cls = type.__new__(cls, name, bases, classDict)
+        cls = super(RoiMeta, cls).__new__(cls, name, bases, classDict)
         # Don't register the Roi baseclass itself.
         if bases[0] != object > 1:
             Roi._registerSubclass(cls)
