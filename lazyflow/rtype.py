@@ -174,7 +174,7 @@ class SubRegion(Roi):
         self.stop = TinyVector(stop)
         return self
         
-    def adjustRoi(self,halo):
+    def adjustRoi(self,halo,cIndex=None):
         if type(halo) != list:
             halo = [halo]*len(self.start)
         s = self.inputShape

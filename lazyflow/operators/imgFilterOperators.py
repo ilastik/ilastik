@@ -1,13 +1,14 @@
 from lazyflow.graph import Operator,InputSlot,OutputSlot
 from lazyflow.helpers import newIterator
 from lazyflow.operators.obsolete.generic import OpMultiArrayStacker
-from lazyflow.operators.obsolete.vigraOperators import Op50ToMulti,\
-    OpGaussianGradientMagnitude
+from lazyflow.operators.obsolete.vigraOperators import Op50ToMulti
+from lazyflow.rtype import SubRegion
 import numpy
 import vigra
 from math import sqrt
 from functools import partial
-from lazyflow.roi import roiToSlice
+from lazyflow.roi import roiToSlice,sliceToRoi
+import collections
 
 class OpBaseVigraFilter(Operator):
     
@@ -46,7 +47,7 @@ class OpBaseVigraFilter(Operator):
         """
         calculates halo, depends on the filter
         """
-        return self.windowSize*sigma
+        return 2*numpy.ceil(sigma*self.windowSize)+1
     
     def propagateDirty(self,slot,subindex,roi):
         if slot == self.Input:
@@ -60,13 +61,14 @@ class OpBaseVigraFilter(Operator):
         self.iterator = AxisIterator(source,'spatialc',result,'spatialc',[(),(1,1,1,1,self.resultingChannels())])
     
     def setupOutputs(self):
-        inputSlot = self.inputs["Input"]
-        outputSlot = self.outputs["Output"]
+        inputSlot = self.Input
+        outputSlot = self.Output
         channelNum = self.resultingChannels()
         outputSlot.meta.assignFrom(inputSlot.meta)
         outputSlot.setShapeAtAxisTo('c', channelNum)
         
     def execute(self, slot, subindex, roi, result):
+        
         #request,set or compute the necessary parameters
         axistags = self.Input.meta.axistags
         inputShape  = self.Input.meta.shape
@@ -83,7 +85,7 @@ class OpBaseVigraFilter(Operator):
         
         #set up the roi to get the necessary source
         roi.expandByShape(halo,channelIndex,timeIndex).adjustChannel(channelsPerC,channelIndex,channelRes)
-        source = self.inputs["Input"](roi.start,roi.stop).wait()
+        source = self.Input(roi.start,roi.stop).wait()
         source = vigra.VigraArray(source,axistags=axistags)
         
         #set up the grid for the iterator, and the iterator
@@ -106,6 +108,7 @@ class OpBaseVigraFilter(Operator):
         origRoi.adjustRoi(halo)
         
         #iterate over the requested volumes
+        
         for src,trgt,mask in nIt:
             result[trgt] = self.vigraFilter(source = source[src],window_size=self.windowSize,roi=origRoi)[mask]
         return result
@@ -131,7 +134,7 @@ class OpGaussianSmoothing(OpBaseVigraFilter):
         return sigma
         
     def resultingChannels(self):
-        return self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.index('c')]
+        return self.Input.meta.shape[self.Input.meta.axistags.index('c')]
     
     def channelsPerChannel(self):
         return 1
@@ -155,7 +158,7 @@ class OpDifferenceOfGaussians(OpBaseVigraFilter):
         return max(sigma0,sigma1)
     
     def resultingChannels(self):
-        return self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.index('c')]
+        return self.Input.meta.shape[self.Input.meta.axistags.index('c')]
     
     def channelsPerChannel(self):
         return 1
@@ -182,10 +185,10 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
         return sigma
         
     def resultingChannels(self):
-        return self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
+        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
     
     def channelsPerChannel(self):
-        return self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
+        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
     
 class OpLaplacianOfGaussian(OpBaseVigraFilter):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float")]
@@ -205,17 +208,17 @@ class OpLaplacianOfGaussian(OpBaseVigraFilter):
         return scale
     
     def resultingChannels(self):
-        return self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.index('c')]
+        return self.Input.meta.shape[self.Input.meta.axistags.index('c')]
     
     def channelsPerChannel(self):
         return 1
 
-class OpStructureTensorEigenvalues(OpBaseVigraFilter):
+class OpStructureTensorEigenvaluesSummedChannels(OpBaseVigraFilter):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float"),InputSlot("Sigma2", stype = "float")]
     name = "StructureTensorEigenvalues"
     
     def __init__(self, *args, **kwargs):
-        super(OpStructureTensorEigenvalues, self).__init__(*args, **kwargs)
+        super(OpStructureTensorEigenvaluesSummedChannels, self).__init__(*args, **kwargs)
     
     def getChannelResolution(self):
         return self.Input.meta.shape[self.Input.meta.axistags.channelIndex]
@@ -241,11 +244,45 @@ class OpStructureTensorEigenvalues(OpBaseVigraFilter):
         self.iterator = AxisIterator(source,'spatial',result,'spatial',[(),({'c':self.channelsPerChannel()})])   
         
     def resultingChannels(self):
-        return self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
+        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)
     
     def channelsPerChannel(self):
-        return self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
+        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)
     
+class OpStructureTensorEigenvalues(OpBaseVigraFilter):
+    inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float"),InputSlot("Sigma2", stype = "float")]
+    name = "StructureTensorEigenvalues"
+    
+    def __init__(self, *args, **kwargs):
+        super(OpStructureTensorEigenvalues, self).__init__(*args, **kwargs)
+    
+    def calculateHalo(self, sigma):
+        sigma1 = self.Sigma.value
+        sigma2 = self.Sigma2.value
+        return int(numpy.ceil(sigma1*self.windowSize))+int(numpy.ceil(sigma2*self.windowSize))
+        
+    def setupFilter(self):
+        innerScale = self.Sigma.value
+        outerScale = self.inputs["Sigma2"].value
+        
+        def tmpFilter(source,innerScale,outerScale,window_size,roi):
+            tmpfilter = vigra.filters.structureTensorEigenvalues
+            return tmpfilter(image=source,innerScale=innerScale,outerScale=outerScale,window_size=window_size,roi=(roi.start,roi.stop))
+
+        self.vigraFilter = partial(tmpFilter,innerScale=innerScale,outerScale=outerScale,window_size=self.windowSize)
+
+        return max(innerScale,outerScale)
+    
+    def setupIterator(self, source, result):
+        self.iterator = AxisIterator(source,'spatial',result,'spatial',[(),({'c':self.channelsPerChannel()})])   
+        
+    def resultingChannels(self):
+        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)*self.Input.meta.shape[self.Input.meta.axistags.channelIndex]
+    
+    def channelsPerChannel(self):
+        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)
+
+
 class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float")]
     name = "HessianOfGaussianEigenvalues"
@@ -268,10 +305,10 @@ class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
         self.iterator = AxisIterator(source,'spatial',result,'spatial',[(),({'c':self.channelsPerChannel()})])   
   
     def resultingChannels(self):
-        return self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)*self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.channelIndex]
+        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)*self.Input.meta.shape[self.Input.meta.axistags.channelIndex]
     
     def channelsPerChannel(self):
-        return self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
+        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)
     
 class OpGaussianGradientMagnitude(OpBaseVigraFilter):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float")]
@@ -291,148 +328,291 @@ class OpGaussianGradientMagnitude(OpBaseVigraFilter):
         return sigma
 
     def resultingChannels(self):
-        return self.inputs["Input"].meta.shape[self.inputs["Input"].meta.axistags.index('c')]
+        return self.Input.meta.shape[self.Input.meta.axistags.index('c')]
     
     def channelsPerChannel(self):
         return 1
     
 
-class OpPixelFeaturesPresmoothed(Operator):
-    
-    name="OpPixelFeaturesPresmoothed"
-    inputSlots = [InputSlot("Input"), InputSlot("Matrix"), InputSlot("Scales")]
-    outputSlots = [OutputSlot("Output"), OutputSlot("arrayOfOperators")]
-    
-    def __init__(self,parent):
-        Operator.__init__(self, parent, register=True)
-        
-        self.multi = Op50ToMulti(graph=self.graph)
-        self.stacker = OpMultiArrayStacker(graph=self.graph)
-        self.smoother = OpGaussianSmoothing(graph=self.graph)
-        self.destSigma = 1.0
-        self.windowSize = 4
-        self.operatorList = [OpGaussianSmoothing,OpLaplacianOfGaussian,\
-                        OpStructureTensorEigenvalues,OpHessianOfGaussianEigenvalues,\
-                        OpGaussianGradientMagnitude,OpDifferenceOfGaussians]
-        self.opInstances = []
-    
-    def propagateDirty(self,slot,roi):
-        if self.Input is not None and self.Matrix is not None:
-            scaleMultiplyList = [False,False,0.5,False,False,0.66]
-            opInstances = []
-            for i in range(len(self.operatorList)):
-                op = self.operatorList[i](self.graph)
-                op.inputs["Input"].connect(self.inputs["Input"])
-                op.inputs["Sigma"].setValue(1.0)#dummy
-                if scaleMultiplyList[i]:
-                    op.inputs["Sigma2"].setValue(2.0)#dummy
-                opInstances.append(op)
-            self.opInstances = opInstances
 
-            if slot == self.inputs["Input"]:
-                cIndex = self.inputs["Input"].axistags.channelIndex
-                inMatrix = self.inputs["Matrix"].value
-                usedOperators = [reduce(lambda x,y: x or y,operator,False) for operator in inMatrix]
-                cCount = 0
-                for i in range(len(usedOperators)):
-                    if usedOperators[i]:
-                        roiCopy = roi.copy()
-                        roiCopy.start[cIndex] = cCount + roi.start[cIndex]*opInstances[i].channelsPerChannel()
-                        roiCopy.stop[cIndex] = cCount + roi.stop[cIndex]*opInstances[i].channelsPerChannel()
-                        self.outputs["Output"].setDirty(roiCopy)
-                    cCount += (roi.stop[cIndex]-roi.start[cIndex])*opInstances[i].channelsPerChannel()
-            
+class OpPixelFeaturesPresmoothed(Operator):
+    name="OpPixelFeaturesPresmoothed"
+    category = "Vigra filter"
+
+    inputSlots = [InputSlot("Input"),
+                  InputSlot("Matrix"),
+                  InputSlot("Scales"),
+                  InputSlot("FeatureIds")] # The selection of features to compute
+
+    outputSlots = [OutputSlot("Output"), # The entire block of features as a single image (many channels)
+                   OutputSlot("Features", level=1)] # Each feature image listed separately, with feature name provided in metadata
+
+    # Specify a default set & order for the features we compute
+    DefaultFeatureIds = [ 'GaussianSmoothing',
+                          'LaplacianOfGaussian',
+                          'StructureTensorEigenvalues',
+                          'HessianOfGaussianEigenvalues',
+                          'GaussianGradientMagnitude',
+                          'DifferenceOfGaussians' ]
+    #set Operators
+    FeatureInfos = collections.OrderedDict(
+                    # FeatureId : (Operator class, sigma2, name format)
+                    [ ('GaussianSmoothing' , (OpGaussianSmoothing, False, "Gaussian Smoothing (s={})")),
+                      ('LaplacianOfGaussian' , (OpLaplacianOfGaussian, False, "Laplacian of Gaussian (s={})")),
+                      ('StructureTensorEigenvalues' , (OpStructureTensorEigenvalues, 0.5, "Structure Tensor Eigenvalues (s={})")),
+                      ('HessianOfGaussianEigenvalues' , (OpHessianOfGaussianEigenvalues, False, "Hessian of Gaussian Eigenvalues (s={})")),
+                      ('GaussianGradientMagnitude' , (OpGaussianGradientMagnitude, False, "Gaussian Gradient Magnitude (s={})")),
+                      ('DifferenceOfGaussians' , (OpDifferenceOfGaussians, 0.66, "Difference of Gaussians (s={})")) ] )
+    
+    def __init__(self, *args, **kwargs):
+        super(OpPixelFeaturesPresmoothed, self).__init__(*args, **kwargs)
+
+        #set up basic operators
+        self.stacker = OpMultiArrayStacker(parent=self)
+        self.multi = Op50ToMulti(parent=self)
+        self.stacker.Images.connect(self.multi.Outputs)
+        self.smoother = OpGaussianSmoothing(parent=self)
+        self.smoother.Input.connect(self.Input)
+        
+        # Defaults
+        self.inputs["FeatureIds"].setValue( self.DefaultFeatureIds )
+        self.destSigma = 1.0
+        self.windowSize = 4.0
+        
     def setupOutputs(self):
         
-        #TODO: Different assertions and stuff.
-        self.inMatrix = self.inputs["Matrix"].value
-        self.inScales = self.inputs["Scales"].value
-        self.modSigmas = [0]*len(self.inScales)
+        self.features = self.FeatureIds.value
+        self.inScales = self.Scales.value
+        self.inMatrix = self.Matrix.value
+        
+        #####
+        #    check the input
+        #####
+        
+        #Check for the correct type of the input
+        if not isinstance(self.inMatrix, numpy.ndarray):
+            raise RuntimeError("OpPixelFeatures: Please input a numpy.ndarray as 'Matrix'")
+        if not isinstance(self.inScales, list):
+            raise RuntimeError("OpPixelFeatures: Please input a list as 'Scales'")
+        if not isinstance(self.features, list):
+            raise RuntimeError("OpPixelFeatures: Please input a list as 'FeatureIds'")
+        
+        #Check for the correct form of the input
+        if not self.inMatrix.shape == (len(self.features),len(self.inScales)):
+            raise RuntimeError("OpPixelFeatures: Please input numpy.ndarray as 'Matrix', which has the form %sx%s."%(len(self.inScales),len(self.features)))
+        
+        #Check for the correct content of the input
+        if not reduce(lambda x,y: True if x and y else False,[True if fId in self.DefaultFeatureIds else False for fId in self.features],True):
+            raise RuntimeError("OpPixelFeatures: Please use only one of the following strings as a featureId:\n%s)"%(self.DefaultFeatureIds))
+        if not reduce(lambda x,y: True if x and y else False,[True if type(s) in [float,int] else False for s in self.inScales],True):
+            raise RuntimeError("OpPixelFeatures: Please use only one of the following types as a scale:\n int,float")
+        if not reduce(lambda x,y: True if x and y else False,[True if m in [1.0,0.0] else False for m in self.inMatrix.flatten()],True):
+            raise RuntimeError("OpPixelFeatures: Please use only one of the following values as a matrix entry:\n 0,1")
+        
+        #####
+        #    calculate and set the meta data for the output slot
+        #####
+        
+        #this matrix will contain the instances of the operators
+        self.operatorMatrix = [[None]*len(self.inMatrix[0]) for i in xrange(len(self.inMatrix))]
+        #this matrix will contain the start and stop position in the channel dimension of the ouput
+        #for each op/sig combination. Roughly equivalent to self.featureOutputChannels
+        self.positionMatrix = numpy.zeros_like(self.operatorMatrix)
+
+        
+        #fill the operatorMatrix according to self.inMatrix
+        channelCount = 0
+        featureCount = 0
+        self.featureOutputChannels = []
+        k=0
+        for i in xrange(len(self.inMatrix)): #Cycle through operators == i
+            for j in xrange(len(self.inMatrix[i])): #Cycle through sigmas == j
+                if self.inMatrix[i][j]:
+                    self.operatorMatrix[i][j] = self.FeatureInfos[self.features[i]][0](graph=self.graph)
+                    self.operatorMatrix[i][j].Input.connect(self.Input)
+                    self.operatorMatrix[i][j].Sigma.setValue(self.inScales[i])
+                    self.operatorMatrix[i][j].Output.meta.description = self.FeatureInfos[self.features[i]][2].format(self.inScales[j])
+                    if self.FeatureInfos[self.features[i]][1]:
+                        self.operatorMatrix[i][j].Sigma2.setValue(self.inScales[i]*self.FeatureInfos[self.features[i]][1])
+                    self.multi.inputs["Input%02d"%(k)].connect(self.operatorMatrix[i][j].Output)
+                    k += 1
+                    
+                    # Prepare the individual features
+                    featureCount += 1
+                    self.Features.resize( featureCount )
+
+                    featureMeta = self.operatorMatrix[i][j].Output.meta
+                    featureChannels = featureMeta.shape[ featureMeta.axistags.index('c') ]
+                    self.Features[featureCount-1].meta.assignFrom( featureMeta )
+                    self.featureOutputChannels.append( (channelCount, channelCount + featureChannels) )
+                    self.positionMatrix[i][j] = [channelCount,None]
+                    channelCount += featureChannels
+                    self.positionMatrix[i][j][1] = channelCount
+                else:
+                    self.positionMatrix[i][j] = [0,0]
+        
+        self.stacker.AxisFlag.setValue('c')
+        self.stacker.AxisIndex.setValue(self.Input.meta.axistags.index('c'))
+        self.stacker.Images.connect(self.multi.Outputs)
+        
+        self.Output.meta.axistags = self.stacker.Output.meta.axistags
+        self.Output.meta.shape = self.stacker.Output.meta.shape
+        self.Output.meta.dtype = numpy.float32
+        
+        
+        #####
+        #    preparations for the execute method
+        #####
+        
+        #transpose operatorMatrix and positionMatrix for better handling
+        self.operatorMatrix = zip(*self.operatorMatrix)
+        self.operatorMatrix = [list(t) for t in self.operatorMatrix]
+        self.positionMatrix = zip(*self.positionMatrix)
+        self.positionMatrix = [list(t) for t in self.positionMatrix]
+        
+        #cast the scales to float
+        self.inScales = [float(s) for s in self.inScales]
+        
+        #calculate the sigmas
         self.maxSigma = numpy.max(self.inScales)
         self.incrSigmas = [0]*len(self.inScales)
+        self.modSigmas = [0]*len(self.inScales)
         
         #set modified sigmas
         for i in xrange(len(self.inScales)):
             if self.inScales[i] > self.destSigma:
                 self.modSigmas[i]=(sqrt(self.inScales[i]**2-self.destSigma**2))
-                
+            else:
+                self.modSigmas[i]=self.inScales[i]
+        
         self.modSigmas.insert(0,0)
         for i in xrange(len(self.modSigmas)-1):
             self.incrSigmas[i]=sqrt(self.modSigmas[i+1]**2-self.modSigmas[i]**2)
         self.modSigmas.remove(0)
-            
-        #set Operators
-        operatorList = self.operatorList
         
-        scaleMultiplyList = [False,False,0.5,False,False,0.66]
-        
-        self.operatorMatrix = [[None]*len(self.inMatrix[i]) for i in xrange(len(self.inMatrix))]
-        
-        
-        k=0
-        for i in xrange(len(self.inMatrix)): #Cycle through operators == i
-            for j in xrange(len(self.inMatrix[i])): #Cycle through sigmas == j
-                if self.inMatrix[i][j]:
-                    self.operatorMatrix[i][j] = operatorList[i](graph=self.graph)
-                    self.operatorMatrix[i][j].inputs["Input"].connect(self.inputs["Input"])
-                    self.operatorMatrix[i][j].inputs["Sigma"].setValue(self.destSigma)
-                    if scaleMultiplyList[i]:
-                        self.operatorMatrix[i][j].inputs["Sigma2"].setValue(self.destSigma*scaleMultiplyList[i])
-                    self.multi.inputs["Input%02d"%(k)].connect(self.operatorMatrix[i][j].outputs["Output"])
-                    k += 1
-                    
-        self.stacker.inputs["AxisFlag"].setValue('c')
-        self.stacker.inputs["AxisIndex"].setValue(self.inputs["Input"].meta.axistags.index('c'))
-        self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
-        
-        self.outputs["Output"].meta.axistags = self.stacker.outputs["Output"].meta.axistags
-        self.outputs["Output"].meta.shape = self.stacker.outputs["Output"].meta.shape
-        self.outputs["Output"].meta.dtype = numpy.float32 
-        
-        #transpose operatorMatrix for better handling
-        opMatrix = self.operatorMatrix
-        newOpMatrix = [[None]*len(opMatrix) for i in xrange(len(opMatrix[0]))]
-        opList = []
-        for l in opMatrix:
-            opList += l
-        for i in xrange(len(opList)):
-            newOpMatrix[i/len(opMatrix)][i%len(opMatrix)] = opList[i]
-        self.operatorMatrix = newOpMatrix
-        
-        
-    def execute(self,slot,roi,result):
-        
-        #Get axistags and inputShape
-        axistags = self.Input.meta.axistags
-        inputShape  = self.Input.meta.shape
-        resultCIndex = self.Output.meta.axistags.channelIndex
-        
-        #Set up roi 
-        roi.setInputShape(inputShape)
+    def execute(self,slot,subindex,roi,result):
 
-        #Request Required Region
-        srcRoi = roi.expandByShape(self.maxSigma*self.windowSize,cIndex)
-        source = self.inputs["Input"](srcRoi.start,srcRoi.stop).wait()
+        #####
+        #    OutputSlot: "Output"
+        #####
         
-        #disconnect all operators
-        opM = self.operatorMatrix
-        cIter = 0
-        for sig in xrange(len(opM)):#for each sigma
-            self.smoother.inputs["Sigma"].setValue(self.incrSigmas[sig])
-            self.smoother.inputs["Input"].setValue(source)
-            source = self.smoother.outputs["Output"]().wait()
-            for op in xrange(len(opM[sig])):#for each operator with this sigma
-                if opM[sig][op] is not None:
-                    opM[sig][op].inputs["Input"].disconnect()
-                    opM[sig][op].inputs["Input"].setValue(source)
-                    cIndex = opM[sig][op].outputs["Output"].meta.axistags.channelIndex
-                    cSize  = opM[sig][op].outputs["Output"].shape[cIndex]
-                    slicing = [slice(0,result.shape[i],None) if i != cIndex \
-                               else slice(cIter,cIter+cSize,None) for i in \
-                               range(len(result.shape))]
-                    result[slicing] = opM[sig][op].outputs["Output"]().wait()
-                    cIter += cSize
-        return result     
+        if slot == self.Output:
+            
+            #Get axistags, inputShape, cIndex and if possible tIndex
+            axistags = self.Input.meta.axistags
+            inputShape  = self.Input.meta.shape
+            cIndex = self.Output.meta.axistags.index('c')
+            if axistags.axisTypeCount(vigra.AxisType.Time) > 0:
+                tIndex = self.Output.meta.axistags.index('t')
+            else:
+                tIndex = None
+            
+            #Set up roi 
+            roi.setInputShape(inputShape)
     
+            ################ Request Required Source Region ##################
+            
+            origRoi = roi.copy()
+            #get the maximum halo 
+            halo = 0
+            opM = self.operatorMatrix
+            for sig in xrange(len(opM)):#for each sigma
+                for op in xrange(len(opM[sig])): #for each operator with this sig
+                    if opM[sig][op] is not None:
+                        halo=max(halo,opM[sig][op].calculateHalo(opM[sig][op].setupFilter()))
+            #check smoothing operations halo
+            halo = max(halo,self.smoother.calculateHalo(max(self.incrSigmas)))
+            roi.expandByShape(halo,cIndex,tIndex)
+            roi.setDim(cIndex,0,inputShape[cIndex])
+            source = self.Input(roi.start,roi.stop).wait()
+            source = vigra.VigraArray(source,axistags=axistags)
+
+            opM = self.operatorMatrix
+            resIter = 0
+            cstart,cstop = origRoi.start[cIndex],origRoi.stop[cIndex]
+            for sig in xrange(len(opM)):#for each sigma
+                self.smoother.Sigma.setValue(self.incrSigmas[sig])
+                if self.smoother.Input.connected: 
+                    self.smoother.Input.disconnect()
+                self.smoother.Input.setValue(source)
+                source = self.smoother.Output().wait()
+                source = vigra.VigraArray(source,axistags=axistags)
+                for op in xrange(len(opM[sig])): #for each operator with this sigma
+                    try:
+                        pos = self.positionMatrix[sig][op]
+                    except:
+                        print sig,op
+                    if opM[sig][op] is not None and pos[1] > cstart and pos[0] < cstop:
+                        if opM[sig][op].Input.connected():
+                            opM[sig][op].Input.disconnect()
+                            opM[sig][op].Input.setValue(source)
+                        currCStart,currCStop = max(cstart,pos[0]),min(cstop,pos[1])
+                        currCRange = currCStop-currCStart
+                        resSlicing = list(origRoi.copy().toSlice())
+                        resSlicing = [ slice(resIter,resIter+currCRange,None) if i == cIndex\
+                                      else slice(0,None) for i in range(len(resSlicing))]
+                        resIter += currCRange
+                        opCStart = currCStart - pos[0]
+                        opCStop = currCStop - pos[0]
+                        opRoi = origRoi.copy()
+                        opRoi.start[cIndex],opRoi.stop[cIndex] = opCStart,opCStop
+                        result[resSlicing] = opM[sig][op].Output(opRoi.start,opRoi.stop).wait()
+            return result
+        
+        #####
+        #    OutputSlot: "Features"
+        #####
+        
+        elif slot == self.Features:
+            index = subindex[0]
+            cIndex = self.Input.meta.axistags.index('c')
+            roi.setDim(cIndex,self.featureOutputChannels[index][0] + roi.start[cIndex],\
+                              self.featureOutputChannels[index][0] + roi.stop[cIndex])
+            return self.execute(self.Output,(), roi, result)
+
+    def propagateDirty(self,slot,subindex,roi):
+   
+        if slot == self.Input:
+            channelAxis = self.Input.meta.axistags.index('c')
+            numChannels = self.Input.meta.shape[channelAxis]
+            dirtyChannels = roi.stop[channelAxis] - roi.start[channelAxis]
+            
+            # If all the input channels were dirty, the dirty output region is a contiguous block
+            if dirtyChannels == numChannels:
+                dirtyKey = roiToSlice(roi.start, roi.stop)
+                dirtyKey[channelAxis] = slice(None)
+                dirtyRoi = sliceToRoi(dirtyKey, self.Output.meta.shape)
+                self.Output.setDirty(dirtyRoi[0], dirtyRoi[1])
+            else:
+                # Only some input channels were dirty,
+                # so we must mark each dirty output region separately.
+                numFeatures = self.Output.meta.shape[channelAxis] / numChannels
+                for featureIndex in range(numFeatures):
+                    startChannel = numChannels*featureIndex + roi.start[channelAxis]
+                    stopChannel = startChannel + roi.stop[channelAxis]
+                    dirtyRoi = copy.copy(roi)
+                    dirtyRoi.start[channelAxis] = startChannel
+                    dirtyRoi.stop[channelAxis] = stopChannel
+                    self.Output.setDirty(dirtyRoi)
+
+        elif (slot == self.Matrix
+              or inputSlot == self.Scales
+              or inputSlot == self.FeatureIds):
+            self.Output.setDirty(slice(None))
+        else:
+            assert False, "Unknown dirty input slot."
+
 if __name__ == "__main__":
-    pass
+    from lazyflow.graph import Graph
+    
+    g = Graph()
+    v = vigra.VigraArray(1000*numpy.random.rand(10,10,4),axistags = vigra.defaultAxistags('xyc'))
+    op = OpPixelFeaturesPresmoothed(graph = g)
+    op.FeatureIds.setValue(["GaussianSmoothing","StructureTensorEigenvalues"])
+    op.Scales.setValue([1.5,2.0])
+    op.Input.setValue(v)
+    n = numpy.ndarray((2,2))
+    n[:] = [[1,1],[1,1]] 
+    op.Matrix.setValue(n)
+    w = op.Output([0,0,9],[10,10,10]).wait()
+    f = op.Features[2]([0,0,1],[10,10,2]).wait()

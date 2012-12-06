@@ -6,9 +6,9 @@ from functools import partial
 from lazyflow.roi import TinyVector, roiToSlice
 from lazyflow.graph import Graph
 from lazyflow.operators.imgFilterOperators import OpGaussianSmoothing,\
-     OpLaplacianOfGaussian, OpStructureTensorEigenvalues,\
+     OpLaplacianOfGaussian, OpStructureTensorEigenvaluesSummedChannels,\
      OpHessianOfGaussianEigenvalues, OpGaussianGradientMagnitude,\
-     OpDifferenceOfGaussians, OpHessianOfGaussian
+     OpDifferenceOfGaussians, OpHessianOfGaussian, OpStructureTensorEigenvalues
 from lazyflow.operators.obsolete import vigraOperators
 
 # Change this to view debug output files
@@ -75,14 +75,16 @@ class TestOpBaseVigraFilter(unittest.TestCase):
         
     def compareToFilter(self,op,Filter):
         for dim in self.testDimensions:
-            max = 50
+            max = 15
             testArray = vigra.VigraArray(numpy.random.rand(*(max,)*len(dim)),axistags=vigra.VigraArray.defaultAxistags(dim))
             op.Input.setValue(testArray)
             for i in range(10):
                 start = [numpy.random.randint(0,max-1) for i in range(len(dim))]
                 stop = [numpy.random.randint(start[i]+1,max) for i in range(len(dim))]
+                start = list((0,)*len(dim))
+                stop = list((max,)*(len(dim)-1)+(3,))
                 #adjust rois for structureTensoreEigenvalues
-                if Filter.func.__name__ == "structureTensorEigenvalues":
+                if Filter.func.__name__ == "structureTensorEigenvaluesSummedChannels":
                     start[-1] = numpy.random.randint(0,testArray.axistags.axisTypeCount(vigra.AxisType.Space)-1)
                     stop[-1] = numpy.random.randint(start[-1]+1,testArray.axistags.axisTypeCount(vigra.AxisType.Space))
                 resOp = op.Output(start,stop).wait()
@@ -93,11 +95,13 @@ class TestOpBaseVigraFilter(unittest.TestCase):
                     resF = numpy.zeros_like(resOp)
                     #cPerC > 1
                     if op.channelsPerChannel() > 1:
-                        if Filter.func.__name__ == "structureTensorEigenvalues":
+                        if Filter.func.__name__ == "structureTensorEigenvaluesSummedChannels":
                             for j in range(0,tstop-tstart):
                                 resF[(j,)+(slice(0,None),)*(len(dim)-1)] = Filter(testArray[(j+tstart,)+(slice(0,None),)*(len(dim)-1)],roi=(start,stop))[(slice(0,None),)*(len(dim)-2)+(slice(cstart,cstop),)]
                             self.assertTrue(numpy.allclose(resOp,resF))
                             continue
+                        if Filter.func.__name__ == "structureTensorEigenvalues":
+                            pass
                         cPerC = op.channelsPerChannel()
                         if cstop%cPerC == 0:
                             reqCstart,reqCstop = cstart/cPerC,cstop/cPerC
@@ -127,12 +131,13 @@ class TestOpBaseVigraFilter(unittest.TestCase):
                 else:
                     #cPerC > 1
                     if op.channelsPerChannel() > 1:
-                        #handle structureTensorEigenvalues
-                        if Filter.func.__name__ == "structureTensorEigenvalues":
+                        #handle structureTensorEigenvaluesSummedChannels
+                        if Filter.func.__name__ == "structureTensorEigenvaluesSummedChannels":
                             resF = Filter(testArray,roi=(start,stop))[(slice(0,None),)*(len(dim)-1)+(slice(cstart,cstop),)]
                             self.assertTrue(numpy.allclose(resOp,resF))
                             continue
                         cPerC = op.channelsPerChannel()
+                        
                         if cstop%cPerC == 0:
                             reqCstart,reqCstop = cstart/cPerC,cstop/cPerC
                         else:
@@ -164,7 +169,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
             return tmpfilter(array=source,sigma=sigma,window_size=window_size,roi=(roi[0],roi[1]))
         gaussianSmoothingFilter = partial(tmpFilter,sigma=2.0,window_size=4)
         self.generalOperatorTest(opGaussianSmoothing)
-        self.visualTest(opGaussianSmoothing)
+        #self.visualTest(opGaussianSmoothing)
         self.compareToFilter(opGaussianSmoothing,gaussianSmoothingFilter)
         
     def test_DifferenceOfGaussians(self):
@@ -177,7 +182,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
                    -tmpfilter(array=source,sigma=s1,window_size=window_size,roi=(roi[0],roi[1]))
         gaussianSmoothingFilter = partial(tmpFilter,s0=2.0,s1=3.0,window_size=4)
         self.generalOperatorTest(opDifferenceOfGaussians)
-        self.visualTest(opDifferenceOfGaussians)
+        #self.visualTest(opDifferenceOfGaussians)
         self.compareToFilter(opDifferenceOfGaussians,gaussianSmoothingFilter)
 
     def test_LaplacianOfGaussian(self):
@@ -188,7 +193,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
             return tmpfilter(array=source,scale=sigma,window_size=window_size,roi=(roi[0],roi[1]))
         laplacianofGaussianFilter = partial(tmpFilter,sigma=2.0,window_size=4)
         self.generalOperatorTest(opLaplacianOfGaussian)
-        self.visualTest(opLaplacianOfGaussian)
+        #self.visualTest(opLaplacianOfGaussian)
         self.compareToFilter(opLaplacianOfGaussian, laplacianofGaussianFilter)
         
     def test_GaussianGradientMagnitude(self):
@@ -199,11 +204,23 @@ class TestOpBaseVigraFilter(unittest.TestCase):
             return tmpfilter(source,sigma=sigma,window_size=window_size,roi=(roi[0],roi[1]))
         gaussianGradientMagnitudeFilter = partial(gaussianGradientMagnitude,sigma=2.0,window_size=4)
         self.generalOperatorTest(opGaussianGradientMagnitude)
-        self.visualTest(opGaussianGradientMagnitude)
+        #self.visualTest(opGaussianGradientMagnitude)
         self.compareToFilter(opGaussianGradientMagnitude, gaussianGradientMagnitudeFilter)
 
+    def test_StructureTensorEigenvaluesSummedChannels(self):
+        opStructureTensorEigenvaluesSummedChannels = OpStructureTensorEigenvaluesSummedChannels(graph=self.graph)
+        opStructureTensorEigenvaluesSummedChannels.Sigma.setValue(1.5)
+        opStructureTensorEigenvaluesSummedChannels.Sigma2.setValue(2.0)
+        def structureTensorEigenvaluesSummedChannels(source,innerScale,outerScale,window_size,roi):
+            tmpfilter = vigra.filters.structureTensorEigenvalues
+            return tmpfilter(image=source,innerScale=innerScale,outerScale=outerScale,window_size=window_size,roi=(roi[0],roi[1]))
+        structureTensorEigenvaluesSummedChannelsFilter = partial(structureTensorEigenvaluesSummedChannels,innerScale=1.5,outerScale=2.0,window_size=4)
+        self.compareToFilter(opStructureTensorEigenvaluesSummedChannels,structureTensorEigenvaluesSummedChannelsFilter)
+        self.generalOperatorTest(opStructureTensorEigenvaluesSummedChannels)
+        #self.visualTest(opStructureTensorEigenvaluesSummedChannels)
+        
     def test_StructureTensorEigenvalues(self):
-        opStructureTensorEigenvalues = OpStructureTensorEigenvalues(graph = self.graph)
+        opStructureTensorEigenvalues = OpStructureTensorEigenvalues(graph=self.graph)
         opStructureTensorEigenvalues.Sigma.setValue(1.5)
         opStructureTensorEigenvalues.Sigma2.setValue(2.0)
         def structureTensorEigenvalues(source,innerScale,outerScale,window_size,roi):
@@ -225,7 +242,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
                 return tmpfilter(volume=source,sigma=sigma,window_size=window_size,roi=(roi[0],roi[1]))
         hessianOfGaussianFilter = partial(hessianOfGaussianFilter,sigma=2.0,window_size=4)
         self.generalOperatorTest(opHessianOfGaussian)
-        self.visualTest(opHessianOfGaussian)
+        #self.visualTest(opHessianOfGaussian)
         self.compareToFilter(opHessianOfGaussian, hessianOfGaussianFilter)
         
     def test_HessianOfGaussianEigenvalues(self):
@@ -236,5 +253,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
             return tmpfilter(source,scale=sigma,window_size=window_size,roi=(roi[0],roi[1]))
         hessianOfGaussianEigenvaluesFilter = partial(tmpFilter,sigma=2.0,window_size=4)
         self.generalOperatorTest(opHessianOfGaussianEigenvalues)
-        self.visualTest(opHessianOfGaussianEigenvalues)
+        #self.visualTest(opHessianOfGaussianEigenvalues)
         self.compareToFilter(opHessianOfGaussianEigenvalues,hessianOfGaussianEigenvaluesFilter)
+
+
