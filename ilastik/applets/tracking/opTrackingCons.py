@@ -19,7 +19,21 @@ def relabel(volume, replace):
 #    mp[replace.keys()] = replace.values()
     return mp[volume]
 
-class OpTrackingNN(Operator):
+def relabelMerger(volume, merger):
+    mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)    
+    mp[:] = 0
+    labels = np.unique(volume)
+    for label in labels:
+        if label > 0:
+            if label in merger:
+                mp[label] = merger[label]
+            else:
+                mp[label] = 1
+    return mp[volume]
+    
+    
+
+class OpTrackingCons(Operator):
     name = "Tracking"
     category = "other"
 
@@ -29,10 +43,11 @@ class OpTrackingNN(Operator):
     RegionLocalCenters = InputSlot(stype=Opaque, rtype=List)
 
     Output = OutputSlot()
+    MergerOutput = OutputSlot()
 #    LineageTrees = OutputSlot()
     
     def __init__(self, parent=None, graph=None):
-        super(OpTrackingNN, self).__init__(parent=parent, graph=graph)
+        super(OpTrackingCons, self).__init__(parent=parent, graph=graph)
         self.label2color = []
         self.last_timerange = ()
         self.last_x_range = ()
@@ -43,6 +58,7 @@ class OpTrackingNN(Operator):
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta)
+        self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
 #        self.LineageTrees.meta.axistags = vigra.defaultAxistags('txyzc');
     
     def execute(self, slot, subindex, roi, result):
@@ -55,9 +71,17 @@ class OpTrackingNN(Operator):
             else:
                 result[...] = 0
             return result
-        if slot is self.LineageTrees:
-            tree = self._createLineageTrees()            
-            return tree
+#        if slot is self.LineageTrees:
+#            tree = self._createLineageTrees()            
+#            return tree
+        if slot is self.MergerOutput:
+            result = self.LabelImage.get(roi).wait()
+            t = roi.start[0]
+            if (self.last_timerange and t <= self.last_timerange[-1] and t >= self.last_timerange[0]):
+                result[0,...,0] = relabelMerger(result[0,...,0], self.mergers[t])
+            else:
+                result[...] = 0
+            return result
             
             
         
@@ -74,26 +98,20 @@ class OpTrackingNN(Operator):
             x_scale=1.0,
             y_scale=1.0,
             z_scale=1.0,
-            divDist=30,
-            movDist=10,
-            divThreshold=0.5,
-            distanceFeatures=["com"],
-            splitterHandling=True,
-            mergerHandling=True):
-        
-        distFeatureVector = ctracking.VectorOfString();
-        for d in distanceFeatures:
-            distFeatureVector.append(d) 
+            maxDist=30,     
+            maxObj=2,       
+            divThreshold=0.5
+            ):
                 
         ts, filtered_labels, empty_frame, max_traxel_id_at = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
         if empty_frame:
             print 'cannot track frames with 0 objects, abort.'
             return
 #        tracker = ctracking.NNTracking(float(divDist), float(movDist), distFeatureVector, float(divThreshold), splitterHandling, mergerHandling, max_traxel_id_at)                    
-        max_number_objects = 2
+        
         ep_gap = 0.05
-        tracker = ctracking.ConsTracking(max_number_objects,
-                                         float(divDist),
+        tracker = ctracking.ConsTracking(maxObj,
+                                         float(maxDist),
                                          float(divThreshold),
                                          "none",  # detection_rf_filename
                                          False,   # cellness_by_rf
@@ -105,6 +123,8 @@ class OpTrackingNN(Operator):
         self.events = tracker(ts)
         label2color = []
         label2color.append({})
+        mergers = []
+        mergers.append({})
 
         # handle start time offsets
         for i in range(time_range[0]):
@@ -136,9 +156,10 @@ class OpTrackingNN(Operator):
             print
             
             label2color.append({})
+            mergers.append({})
             #for e in dis:
             #    label2color[-2][e[0]] = 255 # mark disapps
-
+            merger
             for e in app:
                 label2color[-1][e[0]] = np.random.randint(1, 255)
 
@@ -154,7 +175,9 @@ class OpTrackingNN(Operator):
                 label2color[-1][e[1]] = ancestor_color
                 label2color[-1][e[2]] = ancestor_color
             
-#            for e in merger:
+            for e in merger:
+                mergers[-2][e[0]] = e[1]
+                
                 
 
         # mark the filtered objects
@@ -163,9 +186,10 @@ class OpTrackingNN(Operator):
             fl_at = filtered_labels[t]
             for l in fl_at:
                 assert(l not in label2color[int(t)])
-                label2color[int(t)][l] = 255
+                label2color[int(t)][l] = 255                
 
         self.label2color = label2color
+        self.mergers = mergers
         self.last_timerange = time_range
         self.last_x_range = x_range
         self.last_y_range = y_range

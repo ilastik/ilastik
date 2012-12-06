@@ -2,12 +2,13 @@ import ilastik.utility.monkey_patches # Must be the first import
 
 from ilastik.shell.gui.startShellGui import startShellGui
 from trackingWorkflow import TrackingWorkflow
-from trackingWorkflowNN import TrackingWorkflowNN
+from trackingWorkflowCons import TrackingWorkflowCons
 
 
 debug_testing = True
 #method = 'chaingraph'
-method = 'nearest_neighbor'
+#method = 'nearest_neighbor'
+method = 'conservation_tracking'
 
 if debug_testing:
     def test(shell, workflow):
@@ -29,15 +30,19 @@ if debug_testing:
         #opDataSelection = workflow.dataSelectionApplet.topLevelOperator
         #opDataSelection.Dataset.resize(1)
         #opDataSelection.Dataset[0].setValue(info)
-        shell.setSelectedAppletDrawer(1)
+        shell.setSelectedAppletDrawer(2)
     
     if method == 'nearest_neighbor':
         startShellGui( TrackingWorkflowNN, test )
     elif method == 'chaingraph':
         startShellGui( TrackingWorkflow, test )
+    elif method == 'conservation_tracking':
+        startShellGui( TrackingWorkflowCons, test )
 
 else:
     if method == 'nearest_neighbor':
         startShellGui( TrackingWorkflowNN )
     elif method == 'chaingraph':
         startShellGui( TrackingWorkflow )
+    elif method == 'conservation_tracking':
+        startShellGui( TrackingWorkflowCons )

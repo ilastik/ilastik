@@ -21,7 +21,7 @@ import numpy as np
 import h5py
 import vigra
 
-class TrackingGuiNN( QWidget ):
+class TrackingGuiCons( QWidget ):
     """
     """
     
@@ -64,7 +64,7 @@ class TrackingGuiNN( QWidget ):
         
         ct = colortables.create_default_8bit()
         for i in range(7):
-            ct[i] = self.mergerColors[i]
+            ct[i] = self.mergerColors[i].rgba()
         self.mergersrc = LazyflowSource( mainOperator.MergerOutput )
         layer = ColortableLayer( self.mergersrc, ct )
         layer.name = "Merger"
@@ -105,14 +105,14 @@ class TrackingGuiNN( QWidget ):
     
     def initColors(self):
         self.mergerColors = [
-                             QColor(0,0,0,0).rgba(),
-                             QColor(1,1,1,255).rgba(),
-                             QColor(255,0,0,255).rgba(),
-                             QColor(0,255,0,255).rgba(),
-                             QColor(0,0,255,255).rgba(),
-                             QColor(255,128,128,255).rgba(),
-                             QColor(128,255,128,255).rgba(),
-                             QColor(128,128,255,255).rgba()
+                             QColor(0,0,0,0),
+                             QColor(1,1,1,0),
+                             QColor(255,0,0,255),
+                             QColor(0,255,0,255),
+                             QColor(0,0,255,255),
+                             QColor(255,128,128,255),
+                             QColor(128,255,128,255),
+                             QColor(128,128,255,255)
                              ]
         
         
@@ -125,7 +125,7 @@ class TrackingGuiNN( QWidget ):
     def __init__(self, mainOperator):
         """
         """
-        super(TrackingGuiNN, self).__init__()
+        super(TrackingGuiCons, self).__init__()
         self.mainOperator = mainOperator
         self.layerstack = LayerStackModel()
 
@@ -186,11 +186,27 @@ class TrackingGuiNN( QWidget ):
 
         self.editor._lastImageViewFocus = 0
 
+    def _labelSetStyleSheet(self, qlabel, qcolor):        
+        qlabel.setAutoFillBackground(True)                 
+        values = "{r}, {g}, {b}, {a}".format(r = qcolor.red(),
+                                     g = qcolor.green(),
+                                     b = qcolor.blue(),
+                                     a = qcolor.alpha()
+                                     )
+        qlabel.setStyleSheet("QLabel { color: rgba(0,0,0,255); background-color: rgba("+values+"); }")
             
+    def _setMergerLegend(self, labels, selection):        
+        for i in range(1,len(labels)+1):
+            if i <= selection:
+                labels[i-1].setVisible(True)
+            else:
+                labels[i-1].setVisible(False)
+        
+        
     def _initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        self._drawer = uic.loadUi(localDir+"/drawerNN.ui")
+        self._drawer = uic.loadUi(localDir+"/drawerCons.ui")
 
         self._drawer.TrackButton.pressed.connect(self._onTrackButtonPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
@@ -198,12 +214,28 @@ class TrackingGuiNN( QWidget ):
         self._drawer.lineageTreeButton.pressed.connect(self._onLineageTreeButtonPressed)
         self._drawer.lineageFileNameButton.pressed.connect(self._onLineageFileNameButton)
         self._drawer.lineageFileNameEdit.setText(os.getenv('HOME') + '/lineage.png')
+        
+        self.mergerLabels = [self._drawer.merg1,
+                             self._drawer.merg2,
+                             self._drawer.merg3,
+                             self._drawer.merg4,
+                             self._drawer.merg5,
+                             self._drawer.merg6,
+                             self._drawer.merg7]
+        for i in range(len(self.mergerLabels)):
+            self._labelSetStyleSheet(self.mergerLabels[i], self.mergerColors[i+1])
+        
+        self._onMaxObjectsBoxChanged()
+        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
+
 
     def _initViewerControlUi( self ):
         p = os.path.split(__file__)[0]+'/'
         if p == "/": p = "."+p
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
+    def _onMaxObjectsBoxChanged(self):
+        self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
 
     def _onExportButtonPressed(self):
         directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
@@ -275,9 +307,9 @@ class TrackingGuiNN( QWidget ):
         
         
         
-    def _onTrackButtonPressed( self ):
-        divDist = self._drawer.divDistBox.value()
-        movDist = self._drawer.movDistBox.value()        
+    def _onTrackButtonPressed( self ):        
+        maxDist = self._drawer.maxDistBox.value()
+        maxObj = self._drawer.maxObjectsBox.value()        
         divThreshold = self._drawer.divThreshBox.value()
         
         from_t = self._drawer.from_time.value()
@@ -289,18 +321,7 @@ class TrackingGuiNN( QWidget ):
         from_z = self._drawer.from_z.value()
         to_z = self._drawer.to_z.value()        
         from_size = self._drawer.from_size.value()
-        to_size = self._drawer.to_size.value()
-        distanceFeatures = []
-        if self._drawer.comCheckBox.isChecked():
-            distanceFeatures.append("com")
-        if self._drawer.volCheckBox.isChecked():
-            distanceFeatures.append("count")
-        
-        if len(distanceFeatures) == 0:
-            self._drawer.comCheckBox.setChecked(True)
-            distanceFeatures.append("com")
-        splitterHandling = self._drawer.splitterHandlingBox.isChecked()
-        mergerHandling = self._drawer.mergerHandlingBox.isChecked()
+        to_size = self._drawer.to_size.value()     
         
         self.time_range =  range(from_t, to_t + 1)
         
@@ -313,12 +334,9 @@ class TrackingGuiNN( QWidget ):
             x_scale = self._drawer.x_scale.value(),
             y_scale = self._drawer.y_scale.value(),
             z_scale = self._drawer.z_scale.value(),
-            divDist=divDist,
-            movDist=movDist,
-            distanceFeatures=distanceFeatures,
-            divThreshold=divThreshold,
-            splitterHandling=splitterHandling,
-            mergerHandling=mergerHandling
+            maxDist=maxDist,         
+            maxObj = maxObj,               
+            divThreshold=divThreshold            
             )
         
         self._drawer.exportButton.setEnabled(True)
