@@ -110,6 +110,7 @@ class OpBaseVigraFilter(Operator):
         
         #iterate over the requested volumes
         
+        warnings.warn("FIXME: This loop could be parallelized for better performance.")
         for src,trgt,mask in nIt:
             result[trgt] = self.vigraFilter(source = source[src],window_size=self.windowSize,roi=origRoi)[mask]
         return result
@@ -538,15 +539,20 @@ class OpPixelFeaturesPresmoothed(Operator):
             resIter = 0
             cstart,cstop = origRoi.start[cIndex],origRoi.stop[cIndex]
             for sig in xrange(len(opM)):#for each sigma
+
+                warnings.warn("FIXME: Can't use an operator like this in execute!  This won't work for parallel calls to execute()")                
                 self.smoother.Sigma.setValue(self.incrSigmas[sig])
+                
                 if self.smoother.Input.connected: 
                     self.smoother.Input.disconnect()
-                    
 
                 warnings.warn("FIXME: Can't use an operator like this in execute!  This won't work for parallel calls to execute()")                
                 self.smoother.Input.setValue(source)
                 
+                warnings.warn("FIXME: Parallelize these requests for better performance.")
                 source = self.smoother.Output().wait()
+                
+                
                 source = vigra.VigraArray(source,axistags=axistags)
                 for op in xrange(len(opM[sig])): #for each operator with this sigma
                     try:
@@ -570,6 +576,8 @@ class OpPixelFeaturesPresmoothed(Operator):
                         opCStop = currCStop - pos[0]
                         opRoi = origRoi.copy()
                         opRoi.start[cIndex],opRoi.stop[cIndex] = opCStart,opCStop
+                        
+                        warnings.warn("FIXME: Parallelize these requests for better performance.")
                         result[resSlicing] = opM[sig][op].Output(opRoi.start,opRoi.stop).wait()
             return result
         
