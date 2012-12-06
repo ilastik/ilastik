@@ -50,7 +50,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
     @classmethod
     def create_new_tst_project(cls):
         # Instantiate 'shell'
-        shell = HeadlessShell( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True) )
+        shell = HeadlessShell( PixelClassificationWorkflow )
         
         # Create a blank project file and load it.
         newProjectFilePath = cls.PROJECT_FILE
