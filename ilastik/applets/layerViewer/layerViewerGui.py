@@ -36,7 +36,7 @@ class LayerViewerGuiMetaclass(type(QMainWindow)):
         """
         # Base class first. (type is our baseclass)
         # type.__call__ calls instance.__init__ internally
-        instance = type(QMainWindow).__call__(cls,*args,**kwargs)
+        instance = super(LayerViewerGuiMetaclass, cls).__call__(*args,**kwargs)
         instance._after_init()
         return instance
 

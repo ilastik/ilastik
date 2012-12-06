@@ -19,7 +19,7 @@ class SubclassRegistryMeta(ABCMeta):
     """
     
     def __new__(cls, name, bases, classDict):
-        classType = ABCMeta.__new__(cls, name, bases, classDict)
+        classType = super(SubclassRegistryMeta, cls).__new__(cls, name, bases, classDict)
         assert cls != SubclassRegistryMeta, "You can't use this metaclass directly.  You must subclass it.  See docstring."
         assert issubclass(cls, SubclassRegistryMeta)
         if ( '__metaclass__' in classDict and 

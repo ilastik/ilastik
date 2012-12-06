@@ -1,8 +1,9 @@
 from abc import abstractproperty, abstractmethod
-from lazyflow.graph import Operator
+from lazyflow.graph import Operator, OperatorMetaClass
 from ilastik.utility.subclassRegistry import SubclassRegistryMeta
 
-class WorkflowMeta(SubclassRegistryMeta):
+# This metaclass provides automatic factory registration and still allows us to inherit from Operator
+class WorkflowMeta(SubclassRegistryMeta, OperatorMetaClass):
     pass
 
 class Workflow( Operator ):
@@ -45,15 +46,6 @@ class Workflow( Operator ):
         """
         raise NotImplementedError
 
-    @classmethod
-    def getSubclass(cls, name):
-        for subcls in cls.all_subclasses:
-            if subcls.__name__ == name:
-                return subcls
-        raise RuntimeError("No known workflow class has name " + name)
-
-
-
     ##################
     # Public methods #
     ##################
@@ -82,6 +74,13 @@ class Workflow( Operator ):
         
         # Clean up the graph as usual.
         super(Workflow, self).cleanUp()
+
+    @classmethod
+    def getSubclass(cls, name):
+        for subcls in cls.all_subclasses:
+            if subcls.__name__ == name:
+                return subcls
+        raise RuntimeError("No known workflow class has name " + name)
 
     ###################
     # Private methods #
