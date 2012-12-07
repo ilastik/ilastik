@@ -69,8 +69,8 @@ class SerialPredictionSlot(SerialSlot):
             num = len(self.slot)
             if num > 0:
                 increment = 100 / float(num)
-            progress = [0]
 
+            progress = 0
             for imageIndex in range(num):
                 # Have we been cancelled?
                 if not self.predictionStorageEnabled:
@@ -87,8 +87,8 @@ class SerialPredictionSlot(SerialSlot):
                 def handleProgress(percent):
                     # Stop sending progress if we were cancelled
                     if self.predictionStorageEnabled:
-                        progress[0] = percent * (increment / 100.0)
-                        self.progressSignal.emit(progress[0])
+                        curprogress = progress + percent * (increment / 100.0)
+                        self.progressSignal.emit(curprogress)
                 opWriter.progressSignal.subscribe(handleProgress)
 
                 # Create the request
@@ -106,6 +106,7 @@ class SerialPredictionSlot(SerialSlot):
                 self._predictionStorageRequest.notify(handleFinish)
                 self._predictionStorageRequest.onCancel(handleCancel)
                 finishedEvent.wait()
+                progress += increment
         except:
             failedToSave = True
             raise

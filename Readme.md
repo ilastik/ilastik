@@ -13,7 +13,12 @@ General Dependencies
 * hdf5
 * Qt4
 * Vigra
-* VTK
+* VTK, compiled with the following options:
+    * VTK_WRAP_PYTHON
+    * VTK_WRAP_PYTHON_SIP
+    * VTK_USE_QT
+    * VTK_USE_QVTK_QTOPENGL
+
 
 Python Dependencies
 ===================

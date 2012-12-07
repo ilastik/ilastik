@@ -25,7 +25,7 @@ class SerialDatasetPath(SerialSlot):
         for index in range(len(self.slot)):
             groupName = self.subname.format(index)
             dataGroup = subgroup.create_group(groupName)
-            dataGroup.create_dataset('Dirty', data=self.dirtyslot[index])
+            dataGroup.create_dataset('Dirty', data=self.dirtyslot[index].value)
 
     def deserialize(self, group):
         # override to ensure nothing happens, since this is not implemented.
