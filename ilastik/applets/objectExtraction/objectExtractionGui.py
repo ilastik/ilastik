@@ -176,10 +176,10 @@ class ObjectExtractionGui( QWidget ):
         self.curOp._opObjectExtractionDiv._opLabelImage._fixed = False
 
         for t in range(maxt):            
-            reqs.append(self.curOp._opObjectExtractionBg._opLabelImage.LabelImage([t]))
+            reqs.append(self.curOp._opObjectExtractionBg._opLabelImage.LabelImageComputation([t]))
             reqs[-1].submit()
 
-            reqs.append(self.curOp._opObjectExtractionDiv._opLabelImage.LabelImage([t]))
+            reqs.append(self.curOp._opObjectExtractionDiv._opLabelImage.LabelImageComputation([t]))
             reqs[-1].submit()
 
                         
