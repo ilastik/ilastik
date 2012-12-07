@@ -189,7 +189,6 @@ class ObjectExtractionGui( QWidget ):
         
         roi = SubRegion(self.curOp.LabelImage, start=5*(0,), stop=m.shape)
         self.curOp.LabelImage.setDirty(roi)
-#        self.curOp.LabelImage.setDirty(SubRegion(self.curOp.LabelImage))
         
         print 'Label Segmentation: done.'
 
