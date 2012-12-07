@@ -85,7 +85,7 @@ class OpTrackingCons(Operator):
             
             
         
-    def propagateDirty(self, inputSlot, roi):
+    def propagateDirty(self, inputSlot, subindex, roi):        
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
 

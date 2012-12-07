@@ -13,7 +13,6 @@ class TrackingAppletCons( Applet ):
         # Wrap the top-level operator, since the GUI supports multiple images
         self._topLevelOperator = OperatorWrapper(OpTrackingCons, graph=graph)
 
-#        self._gui = TrackingTabsGui(self._topLevelOperator)
         self._gui = None
         
         self._serializableItems = [ TrackingSerializerNN(self._topLevelOperator, projectFileGroupName) ]

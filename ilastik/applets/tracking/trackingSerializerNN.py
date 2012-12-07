@@ -1,5 +1,4 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer
-import vigra
 
 class TrackingSerializerNN(AppletSerializer):
     SerializerVersion = 0.1
@@ -19,7 +18,7 @@ class TrackingSerializerNN(AppletSerializer):
 
     def isDirty(self):
         return True
-        return self._dirty
+#        return self._dirty
 
     def handleDirty(self, slot, roi):
         self._dirty = True

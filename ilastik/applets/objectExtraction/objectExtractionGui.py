@@ -1,23 +1,18 @@
-from PyQt4.QtGui import QWidget, QColor, QVBoxLayout, QProgressDialog
+from PyQt4.QtGui import QWidget, QColor, QProgressDialog
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QString
 
-from lazyflow.rtype import SubRegion, Everything
-
+from lazyflow.rtype import SubRegion
 import os
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
-                         AlphaModulatedLayer, LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
+                         LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
 import volumina.colortables as colortables
 
 
 import logging
-from lazyflow.roi import sliceToRoi
-import numpy
-import vigra
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.tracer import Tracer
 
 
 class ObjectExtractionGui( QWidget ):
@@ -193,11 +188,8 @@ class ObjectExtractionGui( QWidget ):
         progress.setValue(maxt * 2)        
         
         roi = SubRegion(self.curOp.LabelImage, start=5*(0,), stop=m.shape)
-        # TODO: set LabelImage dirty to update the result for the current view!
-        try:         
-            self.curOp.LabelImage.setDirty(roi)
-        except:
-            print "TODO: set LabelImage dirty to update the result for the current view"
+        self.curOp.LabelImage.setDirty(roi)
+#        self.curOp.LabelImage.setDirty(SubRegion(self.curOp.LabelImage))
         
         print 'Label Segmentation: done.'
 
@@ -244,7 +236,6 @@ class ObjectExtractionGui( QWidget ):
         progress.forceShow()
 
         reqs = []
-#        self.curOp._opClassExtraction.fixed = False
         for t in range(maxt):
             reqs.append(self.curOp._opClassExtraction.ClassMapping([t]))
             reqs[-1].submit()
@@ -255,8 +246,10 @@ class ObjectExtractionGui( QWidget ):
             else:
                 req.wait()
         
-#        self.curOp._opClassExtraction.fixed = True
         progress.setValue(maxt)
+        
+        roi = SubRegion(self.curOp.ClassMapping, start=5*(0,), stop=m.shape)
+        self.curOp.ClassMapping.setDirty(roi)
         
         print 'Merge Segmentation: done.'
         
@@ -285,6 +278,7 @@ class ObjectExtractionGui( QWidget ):
         
         roi = SubRegion(self.curOp.DistanceTransform, start=5*(0,), stop=m.shape)
         self.curOp.DistanceTransform.setDirty(roi)
+                
         print "Distance Transform: done."
     
     def _onMaximumImageButtonPressed(self):
@@ -309,6 +303,7 @@ class ObjectExtractionGui( QWidget ):
             else:
                 req.wait()
         self.curOp._opRegionalMaximum._fixed = False
+        
         roi = SubRegion(self.curOp.MaximumDistanceTransform, start=5*(0,), stop=m.shape)
         self.curOp.MaximumDistanceTransform.setDirty(roi)
                          
@@ -325,9 +320,9 @@ class ObjectExtractionGui( QWidget ):
             else:
                 req.wait()                                        
         progress.setValue(2*maxt)
-        
                     
         print 'Maximum image: done'
+        
         
     def _onDoAllButtonPressed(self):    
         self._onLabelImageButtonPressed()

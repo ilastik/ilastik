@@ -1,11 +1,9 @@
-import ilastik.utility.monkey_patches # Must be the first import
-
 from ilastik.shell.gui.startShellGui import startShellGui
 from trackingWorkflow import TrackingWorkflow
 from trackingWorkflowCons import TrackingWorkflowCons
 
 
-debug_testing = True
+debug_testing = False
 #method = 'chaingraph'
 #method = 'nearest_neighbor'
 method = 'conservation_tracking'

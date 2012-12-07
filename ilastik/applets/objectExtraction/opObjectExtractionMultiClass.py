@@ -72,7 +72,6 @@ class OpObjectExtractionMultiClass(Operator):
         self.MaximumDistanceTransform.connect(self._opRegionalMaximum.MaximumImage)
 
     def setupOutputs(self):
-        print "OpObjectExtractionMultiClass::setupOutputs: Inputs.shape " + str(self.Images.meta.shape)
         # TODO: set values to channel 0 (if label 0 == bg)
         # assumes that background == label 0, assumes t,x,y,z,c        
         backgroundlabel = 0
@@ -89,23 +88,7 @@ class OpObjectExtractionMultiClass(Operator):
         self._opSubRegionDivImage.inputs["Stop"].setValue(tuple(stop))        
         
         self.MaximumDistanceTransform.meta.assignFrom(self.DistanceTransform.meta)
-    
-    def execute(self, slot, subindex, roi, result):
-        pass       
-
-    def propagateDirty(self, inputSlot, roi):
-        raise NotImplementedError
-
-#    def updateLabelImageAt( self, t, c ):        
-#        if c == 0: 
-#            print 'updating labels for background binary image'
-#            return self._opObjectExtractionBg.updateLabelImageAt(t)
-#        elif c == 2:
-#            print 'updating labels for division binary image'
-#            return self._opObjectExtractionDiv.updateLabelImageAt(t)
-#        else:
-#            raise Exception, 'invalid channel'
-        
+            
 
 class OpClassExtraction(Operator):    
     name = "Class Extraction"
@@ -118,13 +101,9 @@ class OpClassExtraction(Operator):
     ClassMapping = OutputSlot(stype=Opaque, rtype=List)
     
     def __init__( self, parent=None, graph=None ):
-        super(OpClassExtraction, self).__init__(parent=parent,
-                                              graph=graph)
+        super(OpClassExtraction, self).__init__(parent=parent, graph=graph)
         self._cache = {}
-#        self.fixed = True
     
-    def setupOutputs(self):
-        pass
     
     def execute(self, slot, subindex, roi, result):
         def extract( labelImageBg, labelImageDiv, regionFeaturesBg, regionFeaturesDiv ):
@@ -152,11 +131,9 @@ class OpClassExtraction(Operator):
             
         probs = {}
         for t in roi:
-            print "Class Extraction at", t
+            print "Class Extraction at " + str(t) + " "
             if t in self._cache:
                 probs_at = self._cache[t]
-#            elif self.fixed:
-#                probs_at = numpy.asarray([])
             elif t == self.LabelImageBg.meta.shape[0] - 1:
                 rfBg = self.RegionFeaturesBg.get([t]).wait()
                 prob = [[1,0]] * (len(rfBg[0]['Count']) - 1)            
@@ -176,11 +153,7 @@ class OpClassExtraction(Operator):
                 self._cache[t] = probs_at
             probs[t] = probs_at
 
-        return probs
-    
-    
-    def propagateDirty(self, slot, subindex, roi):
-        pass
+        return probs        
         
 
 class OpThresholding(Operator):
@@ -203,9 +176,6 @@ class OpThresholding(Operator):
             self.maximum = numpy.ceil(numpy.max(img))
         threshold *= self.maximum            
         return (img > threshold)        
-    
-    def propagateDirty(self, slot, subindex, roi):
-        pass
 
 
 class OpDistanceTransform3D( Operator ):
@@ -228,7 +198,7 @@ class OpDistanceTransform3D( Operator ):
         self.DistanceTransformImage.meta.assignFrom( self.Image.meta )
         self.DistanceTransformImage.meta.dtype = numpy.uint8
         m = self.DistanceTransformImage.meta   
-        print "OpDistanceTransform3D::setupOutputs: " + str(m)     
+             
         self._mem_h5.create_dataset( 'DistanceTransform', shape=m.shape, dtype=numpy.float, compression=1 )
         self.DistanceTransformComputation.meta.dtype = numpy.float
         self.DistanceTransformComputation.meta.shape = [0]
@@ -238,8 +208,7 @@ class OpDistanceTransform3D( Operator ):
         
     def execute( self, slot, subindex, roi, destination ):        
         if slot is self.DistanceTransformImage:
-            if self._fixed:        
-                print 'Distance Transform Image not computed yet.'        
+            if self._fixed:
                 destination[:] = 255
                 return destination
             
@@ -250,7 +219,7 @@ class OpDistanceTransform3D( Operator ):
             # assumes t,x,y,z,c           
             for t in range(roi.start[0],roi.stop[0]):            
                 if t not in self._processedTimeSteps:
-                    print "Computing Distance Transform Image at", t
+                    print "Computing Distance Transform Image at " + str(t) + " "
                     sroi = SubRegion(self.Image, start=[t,0,0,0,0], stop=[t+1,] + list(self.Image.meta.shape[1:]))   
                     a = self.Image.get(sroi).wait()
                     a = a[0,...,0].astype(numpy.float32)                    
@@ -303,7 +272,7 @@ class OpRegionalMaximum( Operator ):
             # assumes t,x,y,z,c           
             for t in range(roi.start[0],roi.stop[0]):            
                 if t not in self._processedTimeSteps:
-                    print "Computing Maximum Image at", t
+                    print "Computing Maximum Image at " + str(t) + " "
                     sroi = SubRegion(self.Image, start=[t,0,0,0,0], stop=[t+1,] + list(self.Image.meta.shape[1:]))   
                     a = self.Image.get(sroi).wait()
                     a = a[0,...,0].astype(numpy.float32)
@@ -315,7 +284,6 @@ class OpRegionalMaximum( Operator ):
                 # label 0 is not used                
                 feat = [ [] for i in range(numpy.max(labelImg)+1) ]
                 idxes = numpy.where(maximumImg>0)
-#                idxes = maximumImg.astype(numpy.bool)
                 labels = labelImg[idxes]
                 for idx, coord in enumerate(zip(idxes[0],idxes[1],idxes[2])):
                     l = labels[idx]
@@ -328,7 +296,7 @@ class OpRegionalMaximum( Operator ):
             
             feats = {}
             for t in roi:
-                print "Extracting RegionLocalCenters for t = ", t
+                print "Extracting RegionLocalCenters at t = " + str(t) + " "
                 if str(t) in self._cache:
                     feats_at = self._cache[str(t)]                    
                 else:

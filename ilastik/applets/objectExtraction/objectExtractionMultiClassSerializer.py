@@ -1,5 +1,5 @@
-from ilastik.applets.base.appletSerializer import AppletSerializer
-import numpy
+from ilastik.applets.base.appletSerializer import AppletSerializer, deleteIfPresent,\
+    getOrCreateGroup
 
 class ObjectExtractionMultiClassSerializer(AppletSerializer):
     """
@@ -9,7 +9,8 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
     def __init__(self, mainOperator, projectFileGroupName):
         super( ObjectExtractionMultiClassSerializer, self ).__init__( projectFileGroupName )
         self.mainOperator = mainOperator
-
+        self._dirty = False
+            
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         op = self.mainOperator.innerOperators[0]
         print "object extraction multi class: serializeToHdf5", topGroup, hdf5File, projectFilePath
@@ -18,12 +19,12 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
             print "object extraction multi class: saving label image"        
             src = op._opObjectExtractionBg._opLabelImage._mem_h5
             # TODO: only save the label image if all the time steps are processed?
-            self.deleteIfPresent( topGroup, "LabelImage")
+            deleteIfPresent( topGroup, "LabelImage")
             src.copy('/LabelImage', topGroup) 
 
         print "object extraction multi class: saving region features"
-        self.deleteIfPresent( topGroup, "samples")
-        samples_gr = self.getOrCreateGroup( topGroup, "samples" )
+        deleteIfPresent( topGroup, "samples")
+        samples_gr = getOrCreateGroup( topGroup, "samples" )
         for t in op._opObjectExtractionBg._opRegFeats._cache.keys():
             t_gr = samples_gr.create_group(str(t))
             t_gr.create_dataset(name="RegionCenter", data=op._opObjectExtractionBg._opRegFeats._cache[t]['RegionCenter'])
@@ -31,34 +32,34 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
             t_gr.create_dataset(name="CoordArgMaxWeight", data=op._opObjectExtractionBg._opRegFeats._cache[t]['Coord<ArgMaxWeight>'])
 
         print "object extraction multi class: class probabilities"
-        self.deleteIfPresent(topGroup, "ClassProbabilities")
-        classprob_gr = self.getOrCreateGroup(topGroup, "ClassProbabilities")
+        deleteIfPresent(topGroup, "ClassProbabilities")
+        classprob_gr = getOrCreateGroup(topGroup, "ClassProbabilities")
         for t in op._opClassExtraction._cache.keys():
             classprob_gr.create_dataset(name=str(t), data=op._opClassExtraction._cache[t])        
         
         if len(self.mainOperator.innerOperators[0]._opDistanceTransform._processedTimeSteps) > 0:
             print "object extraction multi class: distance transform"
             src = op._opDistanceTransform._mem_h5
-            self.deleteIfPresent(topGroup, "DistanceTransform")
+            deleteIfPresent(topGroup, "DistanceTransform")
             src.copy('/DistanceTransform', topGroup)
         
         if len(self.mainOperator.innerOperators[0]._opRegionalMaximum._processedTimeSteps) > 0:
             print "object extraction multi class: maximum image"
             src = op._opRegionalMaximum._mem_h5
-            self.deleteIfPresent(topGroup, "MaximumImage")
+            deleteIfPresent(topGroup, "MaximumImage")
             src.copy('/MaximumImage', topGroup)
         
         ## Do not save the region local centers, it takes ages! In fact, they are computed quite fast...
 #        print "object extraction multi class: region local centers"
-#        self.deleteIfPresent( topGroup, "RegionLocalCenters")
-#        samples_gr = self.getOrCreateGroup( topGroup, "RegionLocalCenters" )        
+#        deleteIfPresent( topGroup, "RegionLocalCenters")
+#        samples_gr = getOrCreateGroup( topGroup, "RegionLocalCenters" )        
 #        for t in op._opRegionalMaximum._cache.keys():       
 #            t_gr = samples_gr.create_group(str(t))
 #            for label,rlc in enumerate(op._opRegionalMaximum._cache[t]):
 #                if len(rlc) > 0:
 #                    t_gr.create_dataset(name=str(label), data=rlc, dtype=numpy.uint8,compression=1)
 #        print "region local centers: done"  
-         
+        self._dirty = False 
 
         
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
@@ -122,10 +123,15 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
 #                    cache[int(t)][label] = topGroup["RegionLocalCenters"][t][label].value
 #            self.mainOperator.innerOperators[0]._opRegionalMaximum._cache = cache
         
+        self._dirty = False
+        
+        
     def isDirty(self):
-#        return True
-        pass
-    
+        return True
+#        return self._dirty
+        
+    def handleDirty(self, slot, roi):
+        self._dirty = True
     
     def unload(self):
         print "ObjExtraction.unload not implemented" 

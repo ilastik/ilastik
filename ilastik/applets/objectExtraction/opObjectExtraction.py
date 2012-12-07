@@ -5,6 +5,7 @@ import vigra.analysis
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
+import sys
 
 
 
@@ -49,12 +50,21 @@ class OpLabelImage( Operator ):
             # assumes t,x,y,z,c
             for t in range(roi.start[0],roi.stop[0]):
                 if t not in self._processedTimeSteps:
-                    print "Calculating LabelImage at", t
+                    print "Calculating LabelImage at " + str(t) + " "                    
                     sroi = SubRegion(self.BinaryImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.BinaryImage.meta.shape[1:]))                    
                     a = self.BinaryImage.get(sroi).wait()        
                     a = a[0,...,0]        
                     self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a, background_value = self.BackgroundLabel.value )                     
                     self._processedTimeSteps.append(t)
+  
+    def propagateDirty(self, slot, subindex, roi):        
+        if slot is self.BinaryImage:
+            self.LabelImage.setDirty(roi)
+        elif slot is self.BackgroundLabel: 
+            self.LabelImage.setDirty(roi)
+        else:
+            print "Unknown dirty input slot: " + str(slot.name)
+            
 
 
 class OpRegionFeatures( Operator ):
@@ -82,16 +92,13 @@ class OpRegionFeatures( Operator ):
                 return centers
                 
             feats = {}
-            for t in roi:
-                print "RegionFeatures at", t
-                if t in self._cache:
-                    print "RegionFeatures from Cache"
+            for t in roi:                
+                if t in self._cache:                    
                     feats_at = self._cache[t]
-                elif self.fixed:                    
-                    print "RegionFeatures fixed"
+                elif self.fixed:
                     feats_at = { 'RegionCenter': numpy.asarray([]), 'Count': numpy.asarray([]), 'Coord<ArgMaxWeight>': numpy.asarray([]) }                    
-                else:                    
-                    print "Extracting RegionFeatures"
+                else:    
+                    print "RegionFeatures at " + str(t) + " "                                    
                     troi = SubRegion( self.LabelImage, start = [t,] + (len(self.LabelImage.meta.shape) - 1) * [0,], stop = [t+1,] + list(self.LabelImage.meta.shape[1:]))
                     a = self.LabelImage.get(troi).wait()
                     a = a[0,...,0] # assumes t,x,y,z,c
@@ -104,7 +111,6 @@ class OpRegionFeatures( Operator ):
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.LabelImage:
             self.Output.setDirty(List(self.Output, range(roi.start[0], roi.stop[0]))) 
-
 
 
 class OpRegionCenters( Operator ):
@@ -133,13 +139,13 @@ class OpRegionCenters( Operator ):
                 return centers
                 
             centers = {}
-            for t in roi:
-                print "RegionCenters at", t
+            for t in roi:                
                 if t in self._cache:
                     centers_at = self._cache[t]
                 elif self.fixed:
                     centers_at = numpy.asarray([], dtype=numpy.uint16)
                 else:
+                    print "RegionCenters at " + str(t) + " "
                     troi = SubRegion( self.LabelImage, start = [t,] + (len(self.LabelImage.meta.shape) - 1) * [0,], stop = [t+1,] + list(self.LabelImage.meta.shape[1:]))
                     a = self.LabelImage.get(troi).wait()
                     a = a[0,...,0] # assumes t,x,y,z,c
@@ -153,13 +159,13 @@ class OpRegionCenters( Operator ):
         if slot is self.LabelImage:
             self.Output.setDirty(List(self.Output, range(roi.start[0], roi.stop[0]))) 
 
+
 class OpObjectExtraction( Operator ):
     name = "Object Extraction"
 
     #RawData = InputSlot()
     BinaryImage = InputSlot()
     BackgroundLabel = InputSlot()
-    #FeatureNames = InputSlot( stype=Opaque )
 
     LabelImage = OutputSlot()
     ObjectCenterImage = OutputSlot()
@@ -169,7 +175,6 @@ class OpObjectExtraction( Operator ):
     def __init__( self, parent = None, graph = None ):
         super(OpObjectExtraction, self).__init__(parent=parent,graph=graph)
 
-#        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
         self._reg_cents = {}
 
         self._opLabelImage = OpLabelImage( graph = graph )
@@ -182,18 +187,9 @@ class OpObjectExtraction( Operator ):
 
         self._opRegFeats = OpRegionFeatures( graph = graph )
         self._opRegFeats.LabelImage.connect( self.LabelImage )
-        
-    
-#    def __del__( self ):
-#        self._mem_h5.close()
 
     def setupOutputs(self):        
-        print 'OpObjectExtraction::setupOutputs'
-#        self._opLabelImage.setupOutputs()
-#        self.LabelImage.meta.assignFrom(self.BinaryImage.meta)
-#        m = self.LabelImage.meta
         m = self.BinaryImage.meta
-#        self._mem_h5.create_dataset( 'LabelImage', shape=m.shape, dtype=numpy.uint32, compression=1 )
 
         self._reg_cents = dict.fromkeys(xrange(m.shape[0]), numpy.asarray([], dtype=numpy.uint16))        
         self.ObjectCenterImage.meta.assignFrom(self.BinaryImage.meta)
@@ -201,39 +197,12 @@ class OpObjectExtraction( Operator ):
     def execute(self, slot, subindex, roi, result):        
         if slot is self.ObjectCenterImage:
             return self._execute_ObjectCenterImage( roi, result )
-#        if slot is self.LabelImage:
-#            result = self._mem_h5['LabelImage'][roi.toSlice()]
-#            return result
         if slot is self.RegionCenters:
             res = self._opRegCent.Output.get( roi ).wait()
             return res
         if slot is self.RegionFeatures:
             res = self._opRegFeats.Output.get( roi ).wait()
             return res
-
-    def propagateDirty(self, inputSlot, subindex, roi):
-        raise NotImplementedError
-
-#    def updateLabelImage( self ):
-#        m = self.LabelImage.meta        
-#        for t in range(m.shape[0]):
-#            print "Calculating LabelImage at", t
-#            start = [t,] + (len(m.shape) - 1) * [0,]
-#            stop = [t+1,] + list(m.shape[1:])            
-#            a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()
-#            a = a[0,...,0]
-#            self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a )
-#        roi = SubRegion(self.LabelImage, start=5*(0,), stop=m.shape)
-#        self.LabelImage.setDirty(roi)
-#
-#    def updateLabelImageAt( self, t ):
-#        m = self.LabelImage.meta        
-#        print "Calculating LabelImage at", t
-#        start = [t,] + (len(m.shape) - 1) * [0,]
-#        stop = [t+1,] + list(m.shape[1:])        
-#        a = self.BinaryImage.get(SubRegion(self.BinaryImage, start=start, stop=stop)).wait()        
-#        a = a[0,...,0]        
-#        self._mem_h5['LabelImage'][t,...,0] = vigra.analysis.labelVolumeWithBackground( a, background_value = self.BackgroundLabel.value )
 
     def __contained_in_subregion( self, roi, coords ):
         b = True

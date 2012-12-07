@@ -1,4 +1,5 @@
-from ilastik.applets.base.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import AppletSerializer,\
+    deleteIfPresent, getOrCreateGroup
 
 class ObjectExtractionSerializer(AppletSerializer):
     """
@@ -12,12 +13,12 @@ class ObjectExtractionSerializer(AppletSerializer):
         print "object extraction: serializeToHdf5", topGroup, hdf5File, projectFilePath
         print "object extraction: saving label image"
         src = op._opObjectExtractionBg._mem_h5
-        self.deleteIfPresent( topGroup, "LabelImage")
+        deleteIfPresent( topGroup, "LabelImage")
         src.copy('/LabelImage', topGroup) 
 
         print "object extraction: saving region features"
-        self.deleteIfPresent( topGroup, "samples")
-        samples_gr = self.getOrCreateGroup( topGroup, "samples" )
+        deleteIfPresent( topGroup, "samples")
+        samples_gr = getOrCreateGroup( topGroup, "samples" )
         for t in op._opObjectExtractionBg._opRegFeats._cache.keys():
             t_gr = samples_gr.create_group(str(t))
             t_gr.create_dataset(name="RegionCenter", data=op._opObjectExtractionBg._opRegFeats._cache[t]['RegionCenter'])
