@@ -45,9 +45,8 @@ class OpLabelImage( Operator ):
                                         
             destination = self._mem_h5['LabelImage'][roi.toSlice()]
             return destination
-        
         if slot is self.LabelImageComputation:
-            # assumes t,x,y,z,c
+             # assumes t,x,y,z,c
             for t in range(roi.start[0],roi.stop[0]):
                 if t not in self._processedTimeSteps:
                     print "Calculating LabelImage at " + str(t) + " "                    
