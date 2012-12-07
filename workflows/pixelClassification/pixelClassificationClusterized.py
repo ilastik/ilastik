@@ -6,6 +6,7 @@ import sys
 import argparse
 import logging
 import traceback
+import functools
 
 # Third-party
 import h5py
@@ -17,7 +18,7 @@ from lazyflow.operators.ioOperators import OpStackToH5Writer
 # ilastik
 from ilastik.workflow import Workflow
 import ilastik.utility.monkey_patches
-from ilastik.shell.headless.startShellHeadless import startShellHeadless
+from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.applets.batchIo.opBatchIo import ExportFormat
 from ilastik.utility import PathComponents
@@ -27,6 +28,10 @@ import workflows # Load all known workflow modules
 
 from ilastik.clusterOps import OpClusterize, OpTaskWorker
 from lazyflow.graph import OperatorWrapper
+
+import ilastik.ilastik_logging
+ilastik.ilastik_logging.default_config.init()
+ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
 
 logger = logging.getLogger(__name__)
 
@@ -65,20 +70,28 @@ def runWorkflow(parsed_args):
         raise RuntimeError("Project file '" + args.project + "' does not exist.")
 
     # Instantiate 'shell'
-    shell, workflow = startShellHeadless( Workflow.getSubclass(args.workflow_type) )
+    shell = HeadlessShell( functools.partial(Workflow.getSubclass(args.workflow_type), appendBatchOperators=False) )
+    
+    # Load project (auto-import it if necessary)
+    logger.info("Opening project: '" + args.project + "'")
+    shell.openProjectPath(args.project)
+
+    workflow = shell.projectManager.workflow
     
     assert workflow.finalOutputSlot is not None
         
     # Attach cluster operators
     resultSlot = None
     finalOutputSlot = workflow.finalOutputSlot
-    if args._node_work_:
+    clusterOperator = None
+    if args._node_work_ is not None:
         # We're doing node work
         opClusterTaskWorker = OperatorWrapper( OpTaskWorker, graph=finalOutputSlot.graph )
         opClusterTaskWorker.ScratchDirectory.setValue( args.scratch_directory )
         opClusterTaskWorker.RoiString.setValue( args._node_work_ )
         opClusterTaskWorker.Input.connect( workflow.finalOutputSlot )
         resultSlot = opClusterTaskWorker.ReturnCode
+        clusterOperator = opClusterTaskWorker
     else:
         # We're the master
         opClusterizeMaster = OperatorWrapper( OpClusterize, graph=finalOutputSlot.graph )
@@ -90,23 +103,29 @@ def runWorkflow(parsed_args):
         opClusterizeMaster.NumJobs.setValue( args.num_jobs )
         opClusterizeMaster.Input.connect( workflow.finalOutputSlot )
         resultSlot = opClusterizeMaster.ReturnCode
+        clusterOperator = opClusterizeMaster
     
-    # Load project (auto-import it if necessary)
-    logger.info("Opening project: '" + args.project + "'")
-    shell.openProjectPath(args.project)
-
     # Get the result
     logger.info("Starting task")
     result = resultSlot[0].value
 
+    logger.info("Cleaning up")
+    clusterOperator.cleanUp()
+
     logger.info("Closing project...")
-    shell.projectManager.closeCurrentProject()
+    del shell
     
     assert result    
     
     logger.info("FINISHED with result {}".format(result))
         
 if __name__ == "__main__":
+
+    #make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+
     # DEBUG ARGS
     if False:
 #        args = ""
@@ -122,12 +141,13 @@ if __name__ == "__main__":
         #args += " --generate_project_predictions"
         #args += " /home/bergs/synapse_small.npy"
 
-#        args = []
-#        args.append("--project=/home/bergs/synapse_small.ilp")
-#        args.append("--scratch_directory=/magnetic/scratch")
-#        args.append("--output_file=/magnetic/CLUSTER_RESULTS.h5")
-#        args.append('--command_format="/home/bergs/workspace/applet-workflows/workflows/pixelClassification/pixelClassificationClusterized.py {}"')
-#        args.append("--num_jobs=4")
+        args = []
+        args.append("--project=/magnetic/synapse_small.ilp")
+        args.append("--workflow_type=PixelClassificationWorkflow")
+        args.append("--scratch_directory=/magnetic/scratch")
+        args.append("--output_file=/magnetic/CLUSTER_RESULTS.h5")
+        args.append('--command_format=/Users/bergs/ilastik-build/bin/python /Users/bergs/Documents/workspace/ilastik/workflows/pixelClassification/pixelClassificationClusterized.py {}')
+        args.append("--num_jobs=8")
 
         # --project=/home/bergs/synapse_small.ilp --scratch_directory=/magnetic/scratch --output_file=/magnetic/CLUSTER_RESULTS.h5 --command_format="/home/bergs/workspace/applet-workflows/workflows/pixelClassification/pixelClassificationClusterized.py {}" --num_jobs=4 
 
@@ -138,7 +158,7 @@ if __name__ == "__main__":
         
         #print s
 
-#        sys.argv += args
+        sys.argv += args
 
     if False:
         sys.argv += ['--project=/magnetic/synapse_small.ilp', "--_node_work_=ccopy_reg\n_reconstructor\np1\n(clazyflow.rtype\nSubRegion\np2\nc__builtin__\nobject\np3\nNtRp4\n(dp5\nS'slot'\np6\nNsS'start'\np7\ng1\n(clazyflow.roi\nTinyVector\np8\nc__builtin__\nlist\np9\n(lp10\ncnumpy.core.multiarray\nscalar\np11\n(cnumpy\ndtype\np12\n(S'i8'\nI0\nI1\ntRp13\n(I3\nS'<'\nNNNI-1\nI-1\nI0\ntbS'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp14\nag11\n(g13\nS'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp15\nag11\n(g13\nS'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp16\nag11\n(g13\nS'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp17\nag11\n(g13\nS'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp18\natRp19\nsS'stop'\np20\ng1\n(g8\ng9\n(lp21\ng11\n(g13\nS'\\x01\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp22\nag11\n(g13\nS'\\x90\\x01\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp23\nag11\n(g13\nS'\\x90\\x01\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp24\nag11\n(g13\nS'2\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp25\nag11\n(g13\nS'\\x02\\x00\\x00\\x00\\x00\\x00\\x00\\x00'\ntRp26\natRp27\nsS'dim'\np28\nI5\nsb.", '--scratch_directory=/magnetic/scratch']

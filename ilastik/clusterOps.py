@@ -92,6 +92,7 @@ class OpClusterize(Operator):
     def execute(self, slot, subindex, roi, result):
         # Divide up the workload into large pieces
         rois = self.getRoiList()
+        logger.info( "Dividing into {} node jobs.".format( len(rois) ) )
                 
         commandFormat = self.CommandFormat.value
 
@@ -199,7 +200,7 @@ class OpClusterize(Operator):
         spaceDims = filter( lambda (key, dim): key in 'xyz' and dim > 1, taggedShape.items() ) 
         numJobs = self.NumJobs.value
         numJobsPerSpaceDim = math.pow(numJobs, 1.0/len(spaceDims))
-        numJobsPerSpaceDim = int(numJobsPerSpaceDim)
+        numJobsPerSpaceDim = int(round(numJobsPerSpaceDim))
 
         roiShape = []
         for key, dim in taggedShape.items():
@@ -222,9 +223,6 @@ class OpClusterize(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         self.ReturnCode.setDirty( slice(None) )
-
-
-
 
 
 
