@@ -97,7 +97,7 @@ class OpLabelingSingleLane( Operator ):
     LabelInput = InputSlot(optional = True) #: Input for providing label data from an external source
     
     LabelsAllowedFlag = InputSlot(stype='bool') #: Specifies which images are permitted to be labeled 
-    LabelEraserValue = InputSlot() #: The label value that signifies the 'eraser', i.e. voxels to clear labels from
+    LabelEraserValue = InputSlot(value=255) #: The label value that signifies the 'eraser', i.e. voxels to clear labels from
     LabelDelete = InputSlot() #: When this input is set to a value, all labels of that value are deleted from the operator's data.
 
     # Output slots
@@ -142,9 +142,6 @@ class OpLabelingSingleLane( Operator ):
         self.setupCache(self._blockDims)
 
     def setupInputMeta(self):
-        if not self.LabelInput.ready():
-            self.LabelInput.connect( self.InputImage )
-
         # Special case: We have to set up the shape of our label *input* according to our image input shape
         shapeList = list(self.InputImage.meta.shape)
         try:
