@@ -1757,6 +1757,9 @@ class OperatorWrapper(Operator):
                     partner = outerSlot[index]
                 else:
                     partner = outerSlot
+                if op.inputs[key].partner is not None:
+                    msg = "Can't set up OperatorWrapper connections. Input slot {} is already connected to a partner (must have happened in {}'s constructor".format( key, op.name )
+                    raise RuntimeError(msg)
                 op.inputs[key].connect(partner)
 
             # Connect our outer output slots to the inner operator's output slots.
