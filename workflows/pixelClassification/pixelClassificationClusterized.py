@@ -60,10 +60,15 @@ def getArgParser():
     parser.add_argument('--num_jobs', type=int, help='Number of jobs', required=False)
     parser.add_argument('--output_file', help='The file to create', required=False)
     parser.add_argument('--_node_work_', help='Internal use only', required=False)
+    parser.add_argument('--process_name', help='A name for this process (for logging purposes)', required=False)
     return parser
 
 def runWorkflow(parsed_args):
     args = parsed_args
+
+    # If we've got a process name, re-initialize the logger from scratch
+    if args.process_name is not None:
+        ilastik.ilastik_logging.default_config.init(args.process_name + ' ')
     
     # Make sure project file exists.
     if not os.path.exists(args.project):
@@ -127,7 +132,7 @@ if __name__ == "__main__":
 
 
     # DEBUG ARGS
-    if False:
+    if True:
 #        args = ""
 #        args += " --project=/home/bergs/tinyfib/boundary_training/pred.ilp"
 #        args += " --batch_output_dataset_name=/volume/pred_volume"
@@ -148,6 +153,7 @@ if __name__ == "__main__":
         args.append("--output_file=/magnetic/CLUSTER_RESULTS.h5")
         args.append('--command_format=/Users/bergs/ilastik-build/bin/python /Users/bergs/Documents/workspace/ilastik/workflows/pixelClassification/pixelClassificationClusterized.py {}')
         args.append("--num_jobs=8")
+        args.append("--process_name=MASTER")
 
         # --project=/home/bergs/synapse_small.ilp --scratch_directory=/magnetic/scratch --output_file=/magnetic/CLUSTER_RESULTS.h5 --command_format="/home/bergs/workspace/applet-workflows/workflows/pixelClassification/pixelClassificationClusterized.py {}" --num_jobs=4 
 

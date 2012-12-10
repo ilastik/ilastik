@@ -103,7 +103,7 @@ class OpClusterize(Operator):
             subregion = None
         
         taskInfos = {}
-        for roi in rois:
+        for roiIndex, roi in enumerate(rois):
             roi = ( tuple(roi[0]), tuple(roi[1]) )
             taskInfo = TaskInfo()
             taskInfo.subregion = SubRegion( None, start=roi[0], stop=roi[1] )
@@ -119,6 +119,7 @@ class OpClusterize(Operator):
             commandArgs.append( "--project=" + self.ProjectFilePath.value )
             commandArgs.append( "--scratch_directory=" + self.ScratchDirectory.value )
             commandArgs.append( "--_node_work_=\"" + Roi.dumps( taskInfo.subregion ) + "\"" )
+            commandArgs.append( "--process_name=TASK_{}".format(roiIndex)  )
             
             # Check the command format string: We need to know where to put our args...
             assert commandFormat.find("{}") != -1
