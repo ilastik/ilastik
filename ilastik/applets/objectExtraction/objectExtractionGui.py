@@ -135,6 +135,7 @@ class ObjectExtractionGui( QWidget ):
         self._viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
 
         self.editor._lastImageViewFocus = 0
+        
 
             
     def _initAppletDrawerUi(self):
