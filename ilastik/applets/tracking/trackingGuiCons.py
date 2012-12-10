@@ -324,6 +324,7 @@ class TrackingGuiCons( QWidget ):
         to_size = self._drawer.to_size.value()     
         
         self.time_range =  range(from_t, to_t + 1)
+        avgSize = self._drawer.avgSizeBox.value()
         
         self.mainOperator.innerOperators[0].track(
             time_range = self.time_range,
@@ -336,7 +337,8 @@ class TrackingGuiCons( QWidget ):
             z_scale = self._drawer.z_scale.value(),
             maxDist=maxDist,         
             maxObj = maxObj,               
-            divThreshold=divThreshold            
+            divThreshold=divThreshold,
+            avgSize=avgSize
             )
         
         self._drawer.exportButton.setEnabled(True)

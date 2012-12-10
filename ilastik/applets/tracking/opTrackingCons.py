@@ -100,25 +100,30 @@ class OpTrackingCons(Operator):
             z_scale=1.0,
             maxDist=30,     
             maxObj=2,       
-            divThreshold=0.5
+            divThreshold=0.5,
+            avgSize=0
             ):
-                
-        ts, filtered_labels, empty_frame, max_traxel_id_at = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
+        
+        ts, filtered_labels, empty_frame, max_traxel_id_at, avg_obj_size = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
         if empty_frame:
             print 'cannot track frames with 0 objects, abort.'
             return
 #        tracker = ctracking.NNTracking(float(divDist), float(movDist), distFeatureVector, float(divThreshold), splitterHandling, mergerHandling, max_traxel_id_at)                    
         
+        if avgSize > 0:
+            avg_obj_size = avgSize
+            
         ep_gap = 0.05
         tracker = ctracking.ConsTracking(maxObj,
                                          float(maxDist),
                                          float(divThreshold),
                                          "none",  # detection_rf_filename
-                                         False,   # cellness_by_rf
+                                         True,   # size_dependent_detection_prob
                                          0,       # forbidden_cost
                                          True,    # with_constraints
                                          False,   # fixed_detections
-                                         float(ep_gap))
+                                         float(ep_gap),
+                                         float(avg_obj_size))
         
         self.events = tracker(ts)
         label2color = []
@@ -217,6 +222,8 @@ class OpTrackingCons(Operator):
         ts = ctracking.TraxelStore()
         max_traxel_id_at = ctracking.VectorOfInt();
         filtered_labels = {}
+        avg_obj_size = 0
+        total_count = 0
         empty_frame = False
         for t in feats.keys():
             rc = feats[t]['RegionCenter']
@@ -265,16 +272,18 @@ class OpTrackingCons(Operator):
 #                    tr.set_feature_value("localCentersZ", i, float(v[2]))                
                 
                 tr.add_feature_array("count", 1)
-                tr.set_feature_value("count", 0, float(size))                
+                tr.set_feature_value("count", 0, float(size))
+                avg_obj_size += size
                 ts.add(tr)   
                          
             print "at timestep ", t, count, "traxels passed filter"            
             max_traxel_id_at.append(int(rc.shape[0]))
             if count == 0:
                 empty_frame = True
-        return ts, filtered_labels, empty_frame, max_traxel_id_at
-
+            total_count += count
+                
+        avg_obj_size /= total_count
         
-    
-    
-    
+        print 'average object size = ' + str(avg_obj_size)
+        
+        return ts, filtered_labels, empty_frame, max_traxel_id_at, avg_obj_size
