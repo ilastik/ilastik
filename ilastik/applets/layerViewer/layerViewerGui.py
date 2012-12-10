@@ -11,6 +11,7 @@ from lazyflow.graph import OperatorWrapper
 from lazyflow.operators import OpSingleChannelSelector, Op1ToMulti
 
 import os
+from functools import partial
 from volumina.utility import ShortcutManager
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
@@ -440,6 +441,10 @@ class LayerViewerGui(QMainWindow):
             dlg.exec_()
             self.editor.cacheSize = cache_size[0]
 
+        def enablePrefetching( enable ):
+            for scene in self.editor.imageScenes:
+                scene.setPrefetchingEnabled( enable )
+
         def fitToScreen():
             shape = self.editor.posModel.shape
             for i, v in enumerate(self.editor.imageViews):
@@ -504,6 +509,7 @@ class LayerViewerGui(QMainWindow):
         self.menuGui.actionReset_zoom.triggered.connect(restoreImageToOriginalSize)
         self.menuGui.actionRubberBandZoom.triggered.connect(rubberBandZoom)
         self.menuGui.actionSetCacheSize.triggered.connect(setCacheSize)
+        self.menuGui.actionUsePrefetching.toggled.connect(enablePrefetching)
 
     @traceLogged(traceLogger)
     def _initEditor(self):
