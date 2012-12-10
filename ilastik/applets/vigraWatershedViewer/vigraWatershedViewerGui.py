@@ -8,9 +8,12 @@ import copy
 import threading
 from functools import partial
 
+import numpy
+
 from volumina.utility import PreferencesManager
 from ilastik.applets.layerViewer import LayerViewerGui
 from ilastik.utility import bind
+from ilastik.utility.gui import ThunkEventHandler
 
 from volumina.slicingtools import index2slice
 
@@ -74,6 +77,8 @@ class VigraWatershedViewerGui(LayerViewerGui):
         self.topLevelOperatorView.InputChannelIndexes.setValue( [0] )
         self.topLevelOperatorView.InputImage.notifyMetaChanged( bind(self.updateInputChannelGui) )
         self.updateInputChannelGui()
+
+        self.thunkEventHandler = ThunkEventHandler(self)
     
     @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
@@ -215,6 +220,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
             Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
             """
             self.topLevelOperatorView.FreezeCache.setValue(False)
+            self.topLevelOperatorView.opWatershed.clearMaxLabels()
 
             # Force the cache to update.
             self.topLevelOperatorView.InputImage.setDirty( slice(None) )
@@ -225,8 +231,32 @@ class VigraWatershedViewerGui(LayerViewerGui):
                 imgView.scene().joinRendering()
             self.topLevelOperatorView.FreezeCache.setValue(True)
 
+            self.updateSupervoxelStats()
+
         th = threading.Thread(target=updateThread)
         th.start()
+
+    def updateSupervoxelStats(self):
+        """
+        Use the accumulated state in the watershed operator to display the stats for the most recent watershed computation.
+        """
+        totalVolume = 0
+        totalCount = 0
+        for (start, stop), maxLabel in  self.topLevelOperatorView.opWatershed.maxLabels.items():
+            blockshape = numpy.subtract(stop, start)
+            vol = numpy.prod(blockshape)
+            totalVolume += vol
+            
+            totalCount += maxLabel
+        
+        vol_caption = "Refresh Volume: {} megavox".format( totalVolume / float(1000 * 1000) )
+        count_caption = "Supervoxel Count: {}".format( totalCount )
+        density_caption = "Density: {} supervox/megavox".format( totalCount * float(1000 * 1000) / totalVolume )
+        
+        # Update the GUI text, but do it in the GUI thread (even if we were called from a worker thread)
+        self.thunkEventHandler.post( self._drawer.refreshVolumeLabel.setText,  vol_caption )
+        self.thunkEventHandler.post( self._drawer.superVoxelCountLabel.setText,  count_caption )
+        self.thunkEventHandler.post( self._drawer.densityLabel.setText,  density_caption )
 
     def getLabelAt(self, position5d):
         labelSlot = self.topLevelOperatorView.WatershedLabels

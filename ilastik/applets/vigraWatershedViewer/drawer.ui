@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>303</width>
-    <height>210</height>
+    <height>335</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -341,6 +341,36 @@
      <property name="text">
       <string>Update Watersheds</string>
      </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="statsGroupBox">
+     <property name="title">
+      <string>Stats</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <widget class="QLabel" name="refreshVolumeLabel">
+        <property name="text">
+         <string>Refresh Volume:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="superVoxelCountLabel">
+        <property name="text">
+         <string>Supervoxel Count:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="densityLabel">
+        <property name="text">
+         <string>Density:</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>
