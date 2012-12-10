@@ -46,11 +46,11 @@ class CarvingWorkflow(Workflow):
     def connectLane(self, laneIndex):
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        opCarving = self.carvingApplet.topLevelOperator.getLane(laneIndex)
+        opCarvingTopLevel = self.carvingApplet.topLevelOperator.getLane(laneIndex)
         
         ## Connect operators ##
-        opCarving.RawData.connect( opData.Image )
-        opCarving.opLabeling.LabelsAllowedFlags.connect(opData.AllowLabels )
+        opCarvingTopLevel.RawData.connect( opData.Image )
+        opCarvingTopLevel.opCarving.opLabeling.LabelsAllowedFlag.connect( opData.AllowLabels )
 
     def setCarvingGraphFile(self, fname):
         self.carvingApplet.topLevelOperator.opCarving.CarvingGraphFile.setValue(fname)

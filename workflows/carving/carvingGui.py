@@ -69,7 +69,7 @@ class CarvingGui(LabelingGui):
                 name = str(name)
                 if not ok:
                     return
-                self.topLevelOperatorView.saveObjectAs(name, self.topLevelOperatorView)
+                self.topLevelOperatorView.opCarving.saveObjectAs(name)
                 print "save object as %s" % name
             else:
                 msgBox = QMessageBox(self)
@@ -88,7 +88,7 @@ class CarvingGui(LabelingGui):
             print "delete object %s" % name
             if not ok:
                 return
-            success = self.topLevelOperatorView.deleteObject(name, self.topLevelOperatorView)
+            success = self.topLevelOperatorView.opCarving.deleteObject(name)
             if not success:
                 QMessageBox.critical(self, "Delete Object", "Could not delete object named '%s'" % name)
         self.labelingDrawerUi.deleteObject.clicked.connect(onDeleteButton)
@@ -97,7 +97,7 @@ class CarvingGui(LabelingGui):
             if self.topLevelOperatorView.opCarving.dataIsStorable():
                 if self.topLevelOperatorView.opCarving.hasCurrentObject():
                     name = self.topLevelOperatorView.opCarving.currentObjectName()
-                    self.topLevelOperatorView.saveObjectAs( name, self.topLevelOperatorView )
+                    self.topLevelOperatorView.opCarving.saveObjectAs( name )
                 else:
                     onSaveAsButton()
             else:
@@ -124,7 +124,7 @@ class CarvingGui(LabelingGui):
             name = str(name)
             print "load object %s" % name
             if ok:
-                success = self.topLevelOperatorView.loadObject(name, self.topLevelOperatorView)
+                success = self.topLevelOperatorView.opCarving.loadObject(name)
                 if not success:
                     QMessageBox.critical(self, "Load Object", "Could not load object named '%s'" % name)
                 
@@ -219,9 +219,9 @@ class CarvingGui(LabelingGui):
         act = m.exec_(globalWindowCoordinate) 
         for n in names:
             if act is not None and act.text() == "edit %s" %n:
-                self.topLevelOperatorView.loadObject(n, self.topLevelOperatorView)
+                self.topLevelOperatorView.opCarving.loadObject(n)
             elif act is not None and act.text() =="delete %s" % n:
-                self.topLevelOperatorView.deleteObject(n,self.topLevelOperatorView) 
+                self.topLevelOperatorView.opCarving.deleteObject(n) 
             elif act is not None and act.text() == "show 3D %s" % n:
                
                 self._updateVolumeRendering()
@@ -279,7 +279,7 @@ class CarvingGui(LabelingGui):
         def onButtonsEnabled(slot, roi):
             currObj = self.topLevelOperatorView.opCarving.CurrentObjectName.value
             hasSeg  = self.topLevelOperatorView.opCarving.HasSegmentation.value
-            nzLB    = self.topLevelOperatorView.opLabeling.NonzeroLabelBlocks[:].wait()[0]
+            nzLB    = self.topLevelOperatorView.opCarving.opLabeling.NonzeroLabelBlocks[:].wait()[0]
             
             self.labelingDrawerUi.currentObjectLabel.setText("current object: %s" % currObj)
             self.labelingDrawerUi.save.setEnabled(currObj != "" and hasSeg)
@@ -289,7 +289,7 @@ class CarvingGui(LabelingGui):
             #self.labelingDrawerUi.clear.setEnabled(len(nzLB) > 0)
         self.topLevelOperatorView.opCarving.CurrentObjectName.notifyDirty(onButtonsEnabled)
         self.topLevelOperatorView.opCarving.HasSegmentation.notifyDirty(onButtonsEnabled)
-        self.topLevelOperatorView.opLabeling.NonzeroLabelBlocks.notifyDirty(onButtonsEnabled)
+        self.topLevelOperatorView.opCarving.opLabeling.NonzeroLabelBlocks.notifyDirty(onButtonsEnabled)
         
         # Labels
         labellayer, labelsrc = self.createLabelLayer(direct=True)

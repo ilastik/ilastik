@@ -1,6 +1,5 @@
 from ilastik.applets.labeling.labelingApplet import LabelingApplet
 from ilastik.applets.labeling.labelingGui import LabelingGui
-from ilastik.applets.labeling.opLabeling import OpLabeling
 
 from opCarvingTopLevel import OpCarvingTopLevel
 from carvingSerializer import CarvingSerializer
@@ -12,9 +11,7 @@ class CarvingApplet(LabelingApplet):
         if hintOverlayFile is not None:
             assert isinstance(hintOverlayFile, str)
 
-        blockDims = {'c': 1, 'x':512, 'y': 512, 'z': 512, 't': 1}
-        labelingOperator = OpLabeling(parent=workflow, blockDims=blockDims)
-        self._topLevelOperator = OpCarvingTopLevel( parent=workflow, labelingOperator=labelingOperator, carvingGraphFile=carvingGraphFile, hintOverlayFile=hintOverlayFile )
+        self._topLevelOperator = OpCarvingTopLevel( parent=workflow, carvingGraphFile=carvingGraphFile, hintOverlayFile=hintOverlayFile )
         self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
         self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
 
@@ -39,12 +36,12 @@ class CarvingApplet(LabelingApplet):
         topLevelOperatorView = self.topLevelOperator.getLane(laneIndex)
 
         labelingSlots = LabelingGui.LabelingSlots()
-        labelingSlots.labelInput = topLevelOperatorView.opLabeling.LabelInputs
-        labelingSlots.labelOutput = topLevelOperatorView.opLabeling.LabelImages
-        labelingSlots.labelEraserValue = topLevelOperatorView.opLabeling.LabelEraserValue
-        labelingSlots.labelDelete = topLevelOperatorView.opLabeling.LabelDelete
-        labelingSlots.maxLabelValue = topLevelOperatorView.opLabeling.MaxLabelValue
-        labelingSlots.labelsAllowed = topLevelOperatorView.opLabeling.LabelsAllowedFlags
+        labelingSlots.labelInput = topLevelOperatorView.opCarving.WriteSeeds
+        labelingSlots.labelOutput = topLevelOperatorView.opCarving.opLabeling.LabelImage
+        labelingSlots.labelEraserValue = topLevelOperatorView.opCarving.opLabeling.LabelEraserValue
+        labelingSlots.labelDelete = topLevelOperatorView.opCarving.opLabeling.LabelDelete
+        labelingSlots.maxLabelValue = topLevelOperatorView.opCarving.opLabeling.MaxLabelValue
+        labelingSlots.labelsAllowed = topLevelOperatorView.opCarving.opLabeling.LabelsAllowedFlag
         
         gui = CarvingGui( labelingSlots,
                           topLevelOperatorView,

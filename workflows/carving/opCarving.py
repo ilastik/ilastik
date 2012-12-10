@@ -4,6 +4,8 @@ import time
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 
+from ilastik.applets.labeling import OpLabelingSingleLane
+
 import copy
 
 from cylemon.segmentation import MSTSegmentor
@@ -59,6 +61,14 @@ class OpCarving(Operator):
     
     def __init__(self, graph=None, carvingGraphFilename=None, hintOverlayFile=None, parent=None):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
+   
+        blockDims = {'c': 1, 'x':512, 'y': 512, 'z': 512, 't': 1}
+        self.opLabeling = OpLabelingSingleLane(parent=self, blockDims=blockDims)
+        
+        self.opLabeling.LabelInput.connect( self.RawData )
+        self.opLabeling.InputImage.connect( self.RawData )
+        self.opLabeling.LabelDelete.setValue(-1)
+        
         print "[Carving id=%d] CONSTRUCTOR" % id(self) 
         self._mst = MSTSegmentor.loadH5(carvingGraphFilename,  "graph")
         self._hintOverlayFile = hintOverlayFile
@@ -80,6 +90,16 @@ class OpCarving(Operator):
         #for volume rendering 
         self._volumeRenderingVolume = numpy.zeros(self._mst.raw.shape, dtype=numpy.uint8)
         self._shownObjects3D = dict()
+        
+        # keep track of a set of object names that have changed since
+        # the last serialization of this object to disk
+        self._dirtyObjects = set()
+        
+    def _clear(self):
+        #clear the labels 
+        self.opLabeling.LabelDelete.setValue(2)
+        self.opLabeling.LabelDelete.setValue(1)
+        self.opLabeling.LabelDelete.setValue(-1)
         
     def _getVolumeRenderingLabel(self):
         if len(self._shownObjects3D) == 0:
@@ -192,7 +212,7 @@ class OpCarving(Operator):
         lut_seeds[:] = 0
         self.HasSegmentation.setValue(False)
                 
-    def loadObject(self, name):
+    def loadObject_impl(self, name):
         """
         Loads a single object called name to be the currently edited object. Its
         not part of the done segmentation anymore. 
@@ -232,8 +252,54 @@ class OpCarving(Operator):
         self._buildDone()
         return (fgVoxels, bgVoxels)
     
+    def loadObject(self, name):
+        """
+        TODO: This function should ideally be part of the single-image operator (opCarving),
+        not this top-level operator.  For now, we have to pass in a sub-view that we can 
+        use to determine which image index the GUI is using.
+        """
+        print "want to load object with name = %s" % name
+        if not self.hasObjectWithName(name):
+            print "  --> no such object '%s'" % name 
+            return False
+        
+        if self.hasCurrentObject():
+            self.saveCurrentObject()
+        self._clear()
+        
+        fgVoxels, bgVoxels = self.loadObject_impl(name)
+        
+        #if we want to supervoxelize the seeds, do this:
+        #self.opLabeling.LabelInput[:] = self._mst.seeds[:]
+        
+        #else:
+        shape = self.opLabeling.LabelImage.meta.shape
+        dtype = self.opLabeling.LabelImage.meta.dtype
+        z = numpy.zeros(shape, dtype=dtype)
+        z[0][fgVoxels] = 2
+        z[0][bgVoxels] = 1
+        self.WriteSeeds[0:1, :shape[1],:shape[2],:shape[3]] = z[:,:,:]
+        
+        #restore the correct parameter values 
+        mst = self._mst
+        
+        assert name in mst.object_lut
+        assert name in mst.object_seeds_fg_voxels
+        assert name in mst.object_seeds_bg_voxels
+        assert name in mst.bg_priority
+        assert name in mst.no_bias_below
+
+        assert name in mst.bg_priority 
+        assert name in mst.no_bias_below 
+        
+        self.BackgroundPriority.setValue( mst.bg_priority[name] )
+        self.NoBiasBelow.setValue( mst.no_bias_below[name] )
+        
+        return True
+
+    
     @Operator.forbidParallelExecute
-    def deleteObject(self, name):
+    def deleteObject_impl(self, name):
         """
         Deletes an object called name.
         """
@@ -252,6 +318,26 @@ class OpCarving(Operator):
         
         #now that 'name' has been deleted, rebuild the done overlay 
         self._buildDone()
+    
+    def deleteObject(self, name):
+        """
+        TODO: This function should ideally be part of the single-image operator (opCarving),
+        not this top-level operator.  For now, we have to pass in a sub-view that we can 
+        use to determine which image index the GUI is using.
+        """
+        print "want to delete object with name = %s" % name
+        if not self.hasObjectWithName(name):
+            print "  --> no such object '%s'" % name 
+            return False
+        
+        self.deleteObject_impl(name)
+        #clear the user labels 
+        self._clear()
+        # trigger a re-computation
+        self.Trigger.setDirty(slice(None))
+        self._dirtyObjects.add(name)
+        
+        return True
     
     @Operator.forbidParallelExecute
     def saveCurrentObject(self):
@@ -315,6 +401,47 @@ class OpCarving(Operator):
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay 
         self._buildDone()
     
+    def saveObjectAs(self, name):
+        """
+        TODO: This function should ideally be part of the single-image operator (opCarving),
+        not this top-level operator.  For now, we have to pass in a sub-view that we can 
+        use to determine which image index the GUI is using.
+        """        
+        # first, save the object under "name"
+        self.saveCurrentObjectAs(name)
+        # Sparse label array automatically shifts label values down 1
+        
+        nonzeroSlicings = self.opLabeling.NonzeroLabelBlocks[:].wait()[0]
+        
+        #the voxel coordinates of fg and bg labels
+        def coordinateList(): 
+            coors1 = [[], [], []]
+            coors2 = [[], [], []]
+            for sl in nonzeroSlicings:
+                a = self.opLabeling.LabelImage[sl].wait()
+                w1 = numpy.where(a == 1)
+                w2 = numpy.where(a == 2)
+                w1 = [w1[i] + sl[i].start for i in range(1,4)]
+                w2 = [w2[i] + sl[i].start for i in range(1,4)]
+                for i in range(3):
+                    coors1[i].append( w1[i] )
+                    coors2[i].append( w2[i] )
+            
+            for i in range(3):
+                coors1[i] = numpy.concatenate(coors1[i])
+                coors2[i] = numpy.concatenate(coors2[i])
+            return (coors2, coors1)
+        fgVoxels, bgVoxels = coordinateList()
+        
+        self.attachVoxelLabelsToObject(name, fgVoxels=fgVoxels, bgVoxels=bgVoxels)
+       
+        self._clear()
+         
+        # trigger a re-computation
+        self.Trigger.setDirty(slice(None))
+        
+        self._dirtyObjects.add(name)
+
     def execute(self, slot, subindex, roi, result):
         start = time.time()
         
@@ -360,6 +487,8 @@ class OpCarving(Operator):
     def setInSlot(self, slot, subindex, roi, value):
         key = roi.toSlice()
         if slot == self.WriteSeeds: 
+            self.opLabeling.LabelInput[roi.toSlice()] = value
+            
             assert self._mst is not None
         
             value = numpy.where(value == 100, 255, value[:])
