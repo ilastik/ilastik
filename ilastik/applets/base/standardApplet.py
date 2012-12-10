@@ -5,7 +5,7 @@ from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
 class StandardApplet( Applet ):
     """
     In most cases, it is easiest to use StandardApplet as a base class for your custom applet.
-    StandardApplets are designed two simplify two tasks for most use-cases: Creating a *top-level operator* and creating a GUI.
+    StandardApplets are designed to simplify two tasks for most use-cases: Creating a *top-level operator* and creating a GUI.
     
     StandardApplet subclasses may expose their *top-level operator* in one of two ways:
     
