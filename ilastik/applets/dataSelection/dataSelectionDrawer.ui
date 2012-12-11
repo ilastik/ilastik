@@ -6,15 +6,26 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>184</width>
-    <height>134</height>
+    <width>226</width>
+    <height>152</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <widget class="QWidget" name="">
+  <widget class="QWidget" name="layoutWidget">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>221</width>
+     <height>151</height>
+    </rect>
+   </property>
    <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="rightMargin">
+     <number>12</number>
+    </property>
     <item>
      <widget class="QPushButton" name="addFileButton">
       <property name="toolTip">
@@ -27,8 +38,11 @@
        <iconset>
         <normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</normaloff>../../../gui/icons/32x32/actions/media-seek-forward.png</iconset>
       </property>
+      <property name="autoDefault">
+       <bool>true</bool>
+      </property>
       <property name="default">
-       <bool>false</bool>
+       <bool>true</bool>
       </property>
       <property name="flat">
        <bool>false</bool>
@@ -42,6 +56,9 @@
       </property>
       <property name="text">
        <string>Import Stack Directory</string>
+      </property>
+      <property name="autoDefault">
+       <bool>true</bool>
       </property>
       <property name="default">
        <bool>false</bool>
@@ -59,6 +76,9 @@
       <property name="text">
        <string>Import Stack Files...</string>
       </property>
+      <property name="autoDefault">
+       <bool>true</bool>
+      </property>
      </widget>
     </item>
     <item>
@@ -73,7 +93,23 @@
        <iconset>
         <normaloff>../../../gui/icons/32x32/actions/media-seek-backward.png</normaloff>../../../gui/icons/32x32/actions/media-seek-backward.png</iconset>
       </property>
+      <property name="autoDefault">
+       <bool>true</bool>
+      </property>
      </widget>
+    </item>
+    <item>
+     <spacer name="verticalSpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
+       <size>
+        <width>20</width>
+        <height>0</height>
+       </size>
+      </property>
+     </spacer>
     </item>
    </layout>
   </widget>

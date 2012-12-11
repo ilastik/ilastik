@@ -12,6 +12,7 @@
         "lazyflow.operators.obsolete.classifierOperators":              { "level":"INFO", "propagate": false },
         "ilastik":                                                      { "level":"INFO", "propagate": false },
         "ilastik.applets":                                              { "level":"INFO", "propagate": false },
+        "ilastik.applets.pixelClassification":                          { "level":"INFO", "propagate": false },
         "ilastik.shell":                                                { "level":"INFO", "propagate": false },
         "ilastik.widgets":                                              { "level":"INFO", "propagate": false },
         "volumina":                                                     { "level":"INFO", "propagate": false },

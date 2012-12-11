@@ -1,6 +1,8 @@
+from functools import partial
 import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from ilastik.utility.operatorSubView import OperatorSubView
 
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpPrecomputedInput, OpPixelOperator
@@ -179,6 +181,20 @@ class OpPixelClassification( Operator ):
                 
         self.InputImages.notifyInserted( handleNewInputImage )
 
+        # All input multi-slots should be kept in sync
+        # Output multi-slots will auto-sync via the graph
+        multiInputs = filter( lambda s: s.level >= 1, self.inputs.values() )
+        for s1 in multiInputs:
+            for s2 in multiInputs:
+                if s1 != s2:
+                    def insertSlot( a, b, position, finalsize ):
+                        a.insertSlot(position, finalsize)
+                    s1.notifyInserted( partial(insertSlot, s2 ) )
+                    
+                    def removeSlot( a, b, position, finalsize ):
+                        a.removeSlot(position, finalsize)
+                    s1.notifyRemoved( partial(removeSlot, s2 ) )
+
     def setupCaches(self, imageIndex):
         numImages = len(self.InputImages)
         inputSlot = self.InputImages[imageIndex]
@@ -254,6 +270,18 @@ class OpPixelClassification( Operator ):
         # Nothing to do here: All outputs are directly connected to 
         #  internal operators that handle their own dirty propagation.
         pass
+
+    def addLane(self, laneIndex):
+        numLanes = len(self.InputImages)
+        assert numLanes == laneIndex, "Image lanes must be appended."        
+        self.InputImages.resize(numLanes+1)
+        
+    def removeLane(self, laneIndex, finalLength):
+        self.InputImages.removeSlot(laneIndex, finalLength)
+
+    def getLane(self, laneIndex):
+        return OperatorSubView(self, laneIndex)
+
 
 class OpShapeReader(Operator):
     """

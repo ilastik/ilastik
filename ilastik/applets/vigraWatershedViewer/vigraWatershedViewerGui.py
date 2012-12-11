@@ -8,9 +8,12 @@ import copy
 import threading
 from functools import partial
 
+import numpy
+
 from volumina.utility import PreferencesManager
 from ilastik.applets.layerViewer import LayerViewerGui
 from ilastik.utility import bind
+from ilastik.utility.gui import ThunkEventHandler
 
 from volumina.slicingtools import index2slice
 
@@ -27,8 +30,8 @@ class VigraWatershedViewerGui(LayerViewerGui):
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
     
-    def appletDrawers(self):
-        return [ ("Watershed Viewer", self.getAppletDrawerUi() ) ]
+    def appletDrawer(self):
+        return self.getAppletDrawerUi()
 
     # (Other methods already provided by our base class)
 
@@ -36,46 +39,46 @@ class VigraWatershedViewerGui(LayerViewerGui):
     ###########################################
     
     @traceLogged(traceLogger)
-    def __init__(self, mainOperator):
+    def __init__(self, topLevelOperatorView):
         """
         """
-        super(VigraWatershedViewerGui, self).__init__( mainOperator )
-        self.mainOperator = mainOperator
+        super(VigraWatershedViewerGui, self).__init__( topLevelOperatorView )
+        self.topLevelOperatorView = topLevelOperatorView
         
-        self.mainOperator.FreezeCache.setValue(True)
-        self.mainOperator.OverrideLabels.setValue( { 0: (0,0,0,0) } )
+        self.topLevelOperatorView.FreezeCache.setValue(True)
+        self.topLevelOperatorView.OverrideLabels.setValue( { 0: (0,0,0,0) } )
 
         # Default settings (will be overwritten by serializer)
-        self.mainOperator.InputChannelIndexes.setValue( [] )
-        self.mainOperator.SeedThresholdValue.setValue( 0.0 )
-        self.mainOperator.MinSeedSize.setValue( 0 )
+        self.topLevelOperatorView.InputChannelIndexes.setValue( [] )
+        self.topLevelOperatorView.SeedThresholdValue.setValue( 0.0 )
+        self.topLevelOperatorView.MinSeedSize.setValue( 0 )
 
         # Init padding gui updates
         blockPadding = PreferencesManager().get( 'vigra watershed viewer', 'block padding', 10)
-        self.mainOperator.WatershedPadding.notifyDirty( self.updatePaddingGui )
-        self.mainOperator.WatershedPadding.setValue(blockPadding)
+        self.topLevelOperatorView.WatershedPadding.notifyDirty( self.updatePaddingGui )
+        self.topLevelOperatorView.WatershedPadding.setValue(blockPadding)
         self.updatePaddingGui()
         
         # Init block shape gui updates
         cacheBlockShape = PreferencesManager().get( 'vigra watershed viewer', 'cache block shape', (256, 10))
-        self.mainOperator.CacheBlockShape.notifyDirty( self.updateCacheBlockGui )
-        self.mainOperator.CacheBlockShape.setValue( cacheBlockShape )
+        self.topLevelOperatorView.CacheBlockShape.notifyDirty( self.updateCacheBlockGui )
+        self.topLevelOperatorView.CacheBlockShape.setValue( cacheBlockShape )
         self.updateCacheBlockGui()
 
         # Init seeds gui updates
-        self.mainOperator.SeedThresholdValue.notifyDirty( self.updateSeedGui )
-        self.mainOperator.SeedThresholdValue.notifyReady( self.updateSeedGui )
-        self.mainOperator.SeedThresholdValue.notifyUnready( self.updateSeedGui )
-        self.mainOperator.MinSeedSize.notifyDirty( self.updateSeedGui )
+        self.topLevelOperatorView.SeedThresholdValue.notifyDirty( self.updateSeedGui )
+        self.topLevelOperatorView.SeedThresholdValue.notifyReady( self.updateSeedGui )
+        self.topLevelOperatorView.SeedThresholdValue.notifyUnready( self.updateSeedGui )
+        self.topLevelOperatorView.MinSeedSize.notifyDirty( self.updateSeedGui )
         self.updateSeedGui()
         
         # Init input channel gui updates
-        self.mainOperator.InputChannelIndexes.notifyDirty( self.updateInputChannelGui )
-        self.mainOperator.InputChannelIndexes.setValue( [0] )
-        def subscribeToInputMetaChanges(multislot, index):
-            multislot[index].notifyMetaChanged( self.updateInputChannelGui )
-        self.mainOperator.InputImage.notifyInserted( bind(subscribeToInputMetaChanges) )
+        self.topLevelOperatorView.InputChannelIndexes.notifyDirty( self.updateInputChannelGui )
+        self.topLevelOperatorView.InputChannelIndexes.setValue( [0] )
+        self.topLevelOperatorView.InputImage.notifyMetaChanged( bind(self.updateInputChannelGui) )
         self.updateInputChannelGui()
+
+        self.thunkEventHandler = ThunkEventHandler(self)
     
     @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
@@ -122,19 +125,20 @@ class VigraWatershedViewerGui(LayerViewerGui):
         This GUI is being hidden because the user selected another applet or the window is closing.
         Save all preferences.
         """
-        with PreferencesManager() as prefsMgr:
-            prefsMgr.set( 'vigra watershed viewer', 'cache block shape', self.mainOperator.CacheBlockShape.value )
-            prefsMgr.set( 'vigra watershed viewer', 'block padding', self.mainOperator.WatershedPadding.value )
+        if self.topLevelOperatorView.CacheBlockShape.ready() and self.topLevelOperatorView.WatershedPadding.ready():
+            with PreferencesManager() as prefsMgr:
+                prefsMgr.set( 'vigra watershed viewer', 'cache block shape', self.topLevelOperatorView.CacheBlockShape.value )
+                prefsMgr.set( 'vigra watershed viewer', 'block padding', self.topLevelOperatorView.WatershedPadding.value )
         super( VigraWatershedViewerGui, self ).hideEvent(event)
     
     @traceLogged(traceLogger)
-    def setupLayers(self, currentImageIndex):
+    def setupLayers(self):
         layers = []
 
         self.updateInputChannelGui()
         
         # Show the watershed data
-        outputImageSlot = self.mainOperator.ColoredPixels[ currentImageIndex ]
+        outputImageSlot = self.topLevelOperatorView.ColoredPixels
         if outputImageSlot.ready():
             outputLayer = self.createStandardLayerFromSlot( outputImageSlot, lastChannelIsAlpha=True )
             outputLayer.name = "Watershed"
@@ -148,7 +152,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
             layers.append(outputLayer)
         
         # Show the watershed seeds
-        seedSlot = self.mainOperator.ColoredSeeds[ currentImageIndex ]
+        seedSlot = self.topLevelOperatorView.ColoredSeeds
         if seedSlot.ready():
             seedLayer = self.createStandardLayerFromSlot( seedSlot, lastChannelIsAlpha=True )
             seedLayer.name = "Watershed Seeds"
@@ -161,11 +165,11 @@ class VigraWatershedViewerGui(LayerViewerGui):
                 seedLayer )
             layers.append(seedLayer)
 
-        selectedInputImageSlot = self.mainOperator.SelectedInputChannels[ currentImageIndex ]
+        selectedInputImageSlot = self.topLevelOperatorView.SelectedInputChannels
         if selectedInputImageSlot.ready():
             # Show the summed input if there's more than one input channel 
             if len(selectedInputImageSlot) > 1:
-                summedSlot = self.mainOperator.SummedInput[ currentImageIndex ]
+                summedSlot = self.topLevelOperatorView.SummedInput
                 if summedSlot.ready():
                     sumLayer = self.createStandardLayerFromSlot( summedSlot )
                     sumLayer.name = "Summed Input"
@@ -174,7 +178,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
                     layers.append(sumLayer)
 
             # Show selected input channels
-            inputChannelIndexes = self.mainOperator.InputChannelIndexes.value
+            inputChannelIndexes = self.topLevelOperatorView.InputChannelIndexes.value
             for channel, slot in enumerate(selectedInputImageSlot):
                 inputLayer = self.createStandardLayerFromSlot( slot )
                 inputLayer.name = "Input (Ch.{})".format(inputChannelIndexes[channel])
@@ -183,7 +187,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
                 layers.append(inputLayer)
 
         # Show the raw input (if provided) 
-        rawImageSlot = self.mainOperator.RawImage[ currentImageIndex ]
+        rawImageSlot = self.topLevelOperatorView.RawImage
         if rawImageSlot.ready():
             rawLayer = self.createStandardLayerFromSlot( rawImageSlot )
             rawLayer.name = "Raw Image"
@@ -215,50 +219,74 @@ class VigraWatershedViewerGui(LayerViewerGui):
             """
             Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
             """
-            self.mainOperator.FreezeCache.setValue(False)
+            self.topLevelOperatorView.FreezeCache.setValue(False)
+            self.topLevelOperatorView.opWatershed.clearMaxLabels()
 
             # Force the cache to update.
-            self.mainOperator.InputImage[self.imageIndex].setDirty( slice(None) )
+            self.topLevelOperatorView.InputImage.setDirty( slice(None) )
             
             # Wait for the image to be rendered into all three image views
             time.sleep(2)
             for imgView in self.editor.imageViews:
                 imgView.scene().joinRendering()
-            self.mainOperator.FreezeCache.setValue(True)
+            self.topLevelOperatorView.FreezeCache.setValue(True)
 
-        if self.imageIndex >= 0:
-            th = threading.Thread(target=updateThread)
-            th.start()
+            self.updateSupervoxelStats()
 
-    def getLabelAt(self, currentImageIndex, position5d):
-        labelSlot = self.mainOperator.WatershedLabels[currentImageIndex]
+        th = threading.Thread(target=updateThread)
+        th.start()
+
+    def updateSupervoxelStats(self):
+        """
+        Use the accumulated state in the watershed operator to display the stats for the most recent watershed computation.
+        """
+        totalVolume = 0
+        totalCount = 0
+        for (start, stop), maxLabel in  self.topLevelOperatorView.opWatershed.maxLabels.items():
+            blockshape = numpy.subtract(stop, start)
+            vol = numpy.prod(blockshape)
+            totalVolume += vol
+            
+            totalCount += maxLabel
+        
+        vol_caption = "Refresh Volume: {} megavox".format( totalVolume / float(1000 * 1000) )
+        count_caption = "Supervoxel Count: {}".format( totalCount )
+        density_caption = "Density: {} supervox/megavox".format( totalCount * float(1000 * 1000) / totalVolume )
+        
+        # Update the GUI text, but do it in the GUI thread (even if we were called from a worker thread)
+        self.thunkEventHandler.post( self._drawer.refreshVolumeLabel.setText,  vol_caption )
+        self.thunkEventHandler.post( self._drawer.superVoxelCountLabel.setText,  count_caption )
+        self.thunkEventHandler.post( self._drawer.densityLabel.setText,  density_caption )
+
+    def getLabelAt(self, position5d):
+        labelSlot = self.topLevelOperatorView.WatershedLabels
         if labelSlot.ready():
             labelData = labelSlot[ index2slice(position5d) ].wait()
             return labelData.squeeze()[()]
         else:
             return None
 
-    def handleEditorLeftClick(self, currentImageIndex, position5d, globalWindowCoordinate):
+    def handleEditorLeftClick(self, position5d, globalWindowCoordinate):
         """
         This is an override from the base class.  Called when the user clicks in the volume.
         
         For left clicks, we highlight the clicked label.
         """
-        label = self.getLabelAt(currentImageIndex, position5d)
+        label = self.getLabelAt(position5d)
         if label != 0 and label is not None:
-            overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
+            overrideSlot = self.topLevelOperatorView.OverrideLabels
             overrides = copy.copy(overrideSlot.value)
             overrides[label] = (255, 255, 255, 255)
             overrideSlot.setValue(overrides)
             
-    def handleEditorRightClick(self, currentImageIndex, position5d, globalWindowCoordinate):
+    def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         """
         This is an override from the base class.  Called when the user clicks in the volume.
         
         For right clicks, we un-highlight the clicked label.
         """
-        label = self.getLabelAt(currentImageIndex, position5d)
-        overrideSlot = self.mainOperator.OverrideLabels[currentImageIndex]
+        label = self.getLabelAt(position5d)
+        overrideSlot = self.topLevelOperatorView.OverrideLabels
         overrides = copy.copy(overrideSlot.value)
         if label != 0 and label in overrides:
             del overrides[label]
@@ -268,25 +296,26 @@ class VigraWatershedViewerGui(LayerViewerGui):
     ## GUI -> Operator
     ##
     def onPaddingChanged(self, value):
-        self.mainOperator.WatershedPadding.setValue(value)
+        self.topLevelOperatorView.WatershedPadding.setValue(value)
 
     def onBlockShapeChanged(self, value):
         width = self._drawer.blockWidthSpinBox.value()
         depth = self._drawer.blockDepthSpinBox.value()
-        self.mainOperator.CacheBlockShape.setValue( (width, depth) )
+        self.topLevelOperatorView.CacheBlockShape.setValue( (width, depth) )
     
     def onInputSelectionsChanged(self):
-        if 0 <= self.imageIndex < len(self.mainOperator.InputImage):
-            inputImageSlot = self.mainOperator.InputImage[self.imageIndex]
-            if inputImageSlot.ready():
-                channelAxis = inputImageSlot.meta.axistags.channelIndex
-                numInputChannels = inputImageSlot.meta.shape[channelAxis]
-            channels = []
-            for i, checkbox in enumerate( self._inputChannelCheckboxes[0:numInputChannels] ):
-                if checkbox.isChecked():
-                    channels.append(i)
-            
-            self.mainOperator.InputChannelIndexes.setValue( channels )
+        inputImageSlot = self.topLevelOperatorView.InputImage
+        if inputImageSlot.ready():
+            channelAxis = inputImageSlot.meta.axistags.channelIndex
+            numInputChannels = inputImageSlot.meta.shape[channelAxis]
+        else:
+            numInputChannels = 0
+        channels = []
+        for i, checkbox in enumerate( self._inputChannelCheckboxes[0:numInputChannels] ):
+            if checkbox.isChecked():
+                channels.append(i)
+        
+        self.topLevelOperatorView.InputChannelIndexes.setValue( channels )
     
     def onUseSeedsToggled(self):
         self.updateSeeds()
@@ -304,51 +333,50 @@ class VigraWatershedViewerGui(LayerViewerGui):
         if useSeeds:
             threshold = self._drawer.seedThresholdSpinBox.value()
             minSize = self._drawer.seedSizeSpinBox.value()
-            self.mainOperator.SeedThresholdValue.setValue( threshold )
-            self.mainOperator.MinSeedSize.setValue( minSize )
+            self.topLevelOperatorView.SeedThresholdValue.setValue( threshold )
+            self.topLevelOperatorView.MinSeedSize.setValue( minSize )
         else:
-            self.mainOperator.SeedThresholdValue.disconnect()
+            self.topLevelOperatorView.SeedThresholdValue.disconnect()
 
     ##
     ## Operator -> GUI
     ##
     def updatePaddingGui(self, *args):
-        padding = self.mainOperator.WatershedPadding.value
+        padding = self.topLevelOperatorView.WatershedPadding.value
         self._drawer.paddingSlider.setValue( padding )
         self._drawer.paddingSpinBox.setValue( padding )
 
     def updateCacheBlockGui(self, *args):
-        width, depth = self.mainOperator.CacheBlockShape.value
+        width, depth = self.topLevelOperatorView.CacheBlockShape.value
         self._drawer.blockWidthSpinBox.setValue( width )
         self._drawer.blockDepthSpinBox.setValue( depth )
 
     def updateSeedGui(self, *args):
-        useSeeds = self.mainOperator.SeedThresholdValue.ready()
+        useSeeds = self.topLevelOperatorView.SeedThresholdValue.ready()
         self._drawer.seedThresholdSpinBox.setEnabled(useSeeds)
         self._drawer.seedSizeSpinBox.setEnabled(useSeeds)
         self._drawer.useSeedsCheckbox.setChecked(useSeeds)
         if useSeeds:
-            threshold = self.mainOperator.SeedThresholdValue.value
-            minSize = self.mainOperator.MinSeedSize.value
+            threshold = self.topLevelOperatorView.SeedThresholdValue.value
+            minSize = self.topLevelOperatorView.MinSeedSize.value
             self._drawer.seedThresholdSpinBox.setValue( threshold )
             self._drawer.seedSizeSpinBox.setValue( minSize )
 
     def updateInputChannelGui(self, *args):
         # Show only checkboxes that can be used (limited by number of input channels)
         numChannels = 0
-        if 0 <= self.imageIndex < len(self.mainOperator.InputImage):
-            inputImageSlot = self.mainOperator.InputImage[self.imageIndex]
-            if inputImageSlot.ready():
-                channelAxis = inputImageSlot.meta.axistags.channelIndex
-                numChannels = inputImageSlot.meta.shape[channelAxis]
+        inputImageSlot = self.topLevelOperatorView.InputImage
+        if inputImageSlot.ready():
+            channelAxis = inputImageSlot.meta.axistags.channelIndex
+            numChannels = inputImageSlot.meta.shape[channelAxis]
         for i, checkbox in enumerate(self._inputChannelCheckboxes):
 #            if i >= numChannels:
 #                checkbox.setChecked(False)
             checkbox.setVisible( i < numChannels )
 
         # Make sure the correct boxes are checked
-        if self.mainOperator.InputChannelIndexes.ready():
-            inputChannels = self.mainOperator.InputChannelIndexes.value
+        if self.topLevelOperatorView.InputChannelIndexes.ready():
+            inputChannels = self.topLevelOperatorView.InputChannelIndexes.value
             for i, checkbox in enumerate( self._inputChannelCheckboxes ):
                 checkbox.setChecked( i in inputChannels )
 
