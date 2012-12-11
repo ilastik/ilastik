@@ -299,7 +299,7 @@ At the moment, there is only one supported action.</p>
 <dt id="ilastik.applets.base.standardApplet.StandardApplet">
 <em class="property">class </em><tt class="descclassname">ilastik.applets.base.standardApplet.</tt><tt class="descname">StandardApplet</tt><big>(</big><em>name</em>, <em>workflow=None</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/base/standardApplet.html#StandardApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.base.standardApplet.StandardApplet" title="Permalink to this definition">¶</a></dt>
 <dd><p>In most cases, it is easiest to use StandardApplet as a base class for your custom applet.
-StandardApplets are designed two simplify two tasks for most use-cases: Creating a <em>top-level operator</em> and creating a GUI.</p>
+StandardApplets are designed to simplify two tasks for most use-cases: Creating a <em>top-level operator</em> and creating a GUI.</p>
 <p>StandardApplet subclasses may expose their <em>top-level operator</em> in one of two ways:</p>
 <ol class="arabic simple">
 <li>(Advanced) Override the <a class="reference internal" href="#ilastik.applets.base.applet.Applet.topLevelOperator" title="ilastik.applets.base.applet.Applet.topLevelOperator"><tt class="xref py py-attr docutils literal"><span class="pre">Applet.topLevelOperator</span></tt></a> property directly.</li>
@@ -382,7 +382,7 @@ which is what the Applet interface expects.</p>
 
 </div>
 <div class="section" id="top-level-operators">
-<h2>Top-level Operators<a class="headerlink" href="#top-level-operators" title="Permalink to this headline">¶</a></h2>
+<span id="top-level-ops"></span><h2>Top-level Operators<a class="headerlink" href="#top-level-operators" title="Permalink to this headline">¶</a></h2>
 <p>Everything an applet does is centered around the applet&#8217;s top-level operator.
 It is typically the keeper of all state associated with the applet.
 The top-level operators that the workflow and shell see must be capbable of handling multiple image lanes.

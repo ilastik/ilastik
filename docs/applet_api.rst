@@ -13,7 +13,7 @@ A workflow is created when the user loads a project, and destroyed when the proj
 The workflow has three main responsibilities:
 
 * Instantiate a set of applets, and expose them as a list for the ilastik shell to display.
-* Build up a complete computational pipeline, one *image lane* at a time.  This is done by connecting an individual *image lane* from each applet's :ref:`Top-Level Operator<Top-Level Operators>`. (More on that in a bit.) 
+* Build up a complete computational pipeline, one *image lane* at a time.  This is done by connecting an individual *image lane* from each applet's :ref:`Top-Level Operator <_top_level_ops>`. (More on that in a bit.) 
 * Select a particular slot to serve as the "image name slot" for the shell.  The shell uses this slot as the "master list" of all image lanes present in the workflow at any time.
 
 Image Lanes
@@ -97,6 +97,7 @@ StandardApplet Base Class
    
    .. automethod:: __init__
 
+.. _top_level_ops:
 
 Top-level Operators
 ===================

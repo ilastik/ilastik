@@ -70,7 +70,11 @@ Labeling
    :members:
 
 .. currentmodule:: ilastik.applets.labeling.opLabeling
-.. autoclass:: OpLabeling
+
+.. autoclass:: OpLabelingSingleLane
+   :members:
+
+.. autoclass:: OpLabelingTopLevel
    :members:
 
 .. currentmodule:: ilastik.applets.labeling.labelingGui

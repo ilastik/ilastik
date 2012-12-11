@@ -195,67 +195,117 @@ Override this in a subclass to get a real applet drawer.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.labeling.opLabeling.</tt><tt class="descname">OpLabeling</tt><big>(</big><em>blockDims=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabeling"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling" title="Permalink to this definition">¶</a></dt>
-<dd><p>Top-level operator for the labeling base class.
-Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.</p>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.labeling.opLabeling.</tt><tt class="descname">OpLabelingSingleLane</tt><big>(</big><em>blockDims=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabelingSingleLane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a single-lane operator that can be used with the labeling applet gui.
+It is basically a wrapper around the <tt class="docutils literal"><span class="pre">OpBlockedSparseLabelArray</span></tt> (lazyflow), 
+with the &#8216;shape&#8217; and &#8216;blockshape&#8217; input slots taken care of for you.</p>
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.InputImages">
-<tt class="descname">InputImages</tt><em class="property"> = InputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.InputImages" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.InputImage">
+<tt class="descname">InputImage</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.InputImage" title="Permalink to this definition">¶</a></dt>
 <dd><p>Original input data.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.LabelInputs">
-<tt class="descname">LabelInputs</tt><em class="property"> = InputSlot(optional=True, level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.LabelInputs" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelInput">
+<tt class="descname">LabelInput</tt><em class="property"> = InputSlot(optional=True)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelInput" title="Permalink to this definition">¶</a></dt>
 <dd><p>Input for providing label data from an external source</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.LabelsAllowedFlags">
-<tt class="descname">LabelsAllowedFlags</tt><em class="property"> = InputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.LabelsAllowedFlags" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelsAllowedFlag">
+<tt class="descname">LabelsAllowedFlag</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelsAllowedFlag" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specifies which images are permitted to be labeled</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.LabelEraserValue">
-<tt class="descname">LabelEraserValue</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.LabelEraserValue" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelEraserValue">
+<tt class="descname">LabelEraserValue</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelEraserValue" title="Permalink to this definition">¶</a></dt>
 <dd><p>The label value that signifies the &#8216;eraser&#8217;, i.e. voxels to clear labels from</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.LabelDelete">
-<tt class="descname">LabelDelete</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.LabelDelete" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelDelete">
+<tt class="descname">LabelDelete</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelDelete" title="Permalink to this definition">¶</a></dt>
 <dd><p>When this input is set to a value, all labels of that value are deleted from the operator&#8217;s data.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.MaxLabelValue">
-<tt class="descname">MaxLabelValue</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.MaxLabelValue" title="Permalink to this definition">¶</a></dt>
-<dd><p>The highest label value currently stored in the array of labels</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.LabelImages">
-<tt class="descname">LabelImages</tt><em class="property"> = OutputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.LabelImages" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelImage">
+<tt class="descname">LabelImage</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelImage" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stored labels from the user</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.NonzeroLabelBlocks">
-<tt class="descname">NonzeroLabelBlocks</tt><em class="property"> = OutputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.NonzeroLabelBlocks" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.NonzeroLabelBlocks">
+<tt class="descname">NonzeroLabelBlocks</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.NonzeroLabelBlocks" title="Permalink to this definition">¶</a></dt>
 <dd><p>A list if slices that contain non-zero label values</p>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.labeling.opLabeling.</tt><tt class="descname">OpLabelingTopLevel</tt><big>(</big><em>blockDims=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabelingTopLevel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Top-level operator for the labelingApplet base class.
+Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.</p>
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.InputImages">
+<tt class="descname">InputImages</tt><em class="property"> = InputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.InputImages" title="Permalink to this definition">¶</a></dt>
+<dd><p>Original input data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelInputs">
+<tt class="descname">LabelInputs</tt><em class="property"> = InputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelInputs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Input for providing label data from an external source</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelsAllowedFlags">
+<tt class="descname">LabelsAllowedFlags</tt><em class="property"> = InputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelsAllowedFlags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specifies which images are permitted to be labeled</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelEraserValue">
+<tt class="descname">LabelEraserValue</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelEraserValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>The label value that signifies the &#8216;eraser&#8217;, i.e. voxels to clear labels from</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelDelete">
+<tt class="descname">LabelDelete</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelDelete" title="Permalink to this definition">¶</a></dt>
+<dd><p>When this input is set to a value, all labels of that value are deleted from the operator&#8217;s data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelImages">
+<tt class="descname">LabelImages</tt><em class="property"> = OutputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelImages" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stored labels from the user</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.NonzeroLabelBlocks">
+<tt class="descname">NonzeroLabelBlocks</tt><em class="property"> = OutputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.NonzeroLabelBlocks" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list if slices that contain non-zero label values</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.MaxLabelValue">
+<tt class="descname">MaxLabelValue</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.MaxLabelValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>The highest label value currently stored in the array of labels</p>
+</dd></dl>
+
 <dl class="method">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.addLane">
-<tt class="descname">addLane</tt><big>(</big><em>laneIndex</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabeling.addLane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.addLane" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.addLane">
+<tt class="descname">addLane</tt><big>(</big><em>laneIndex</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabelingTopLevel.addLane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.addLane" title="Permalink to this definition">¶</a></dt>
 <dd><p>Add an image lane.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.removeLane">
-<tt class="descname">removeLane</tt><big>(</big><em>laneIndex</em>, <em>finalLength</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabeling.removeLane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.removeLane" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.removeLane">
+<tt class="descname">removeLane</tt><big>(</big><em>laneIndex</em>, <em>finalLength</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabelingTopLevel.removeLane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.removeLane" title="Permalink to this definition">¶</a></dt>
 <dd><p>Remove an image lane.</p>
 </dd></dl>
 

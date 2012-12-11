@@ -90,6 +90,11 @@ class OpLabelingTopLevel( Operator ):
         return OperatorSubView(self, laneIndex)
 
 class OpLabelingSingleLane( Operator ):
+    """
+    This is a single-lane operator that can be used with the labeling applet gui.
+    It is basically a wrapper around the ``OpBlockedSparseLabelArray`` (lazyflow), 
+    with the 'shape' and 'blockshape' input slots taken care of for you.
+    """
     name="OpLabelingSingleLane"
 
     # Input slots

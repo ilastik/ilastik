@@ -59,6 +59,7 @@
 <span class="kn">from</span> <span class="nn">lazyflow.operators</span> <span class="kn">import</span> <span class="n">OpSingleChannelSelector</span><span class="p">,</span> <span class="n">Op1ToMulti</span>
 
 <span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
 <span class="kn">from</span> <span class="nn">volumina.utility</span> <span class="kn">import</span> <span class="n">ShortcutManager</span>
 <span class="kn">from</span> <span class="nn">ilastik.utility</span> <span class="kn">import</span> <span class="n">bind</span>
 <span class="kn">from</span> <span class="nn">ilastik.utility.gui</span> <span class="kn">import</span> <span class="n">ThreadRouter</span><span class="p">,</span> <span class="n">threadRouted</span>
@@ -488,6 +489,10 @@
             <span class="n">dlg</span><span class="o">.</span><span class="n">exec_</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">cacheSize</span> <span class="o">=</span> <span class="n">cache_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
+        <span class="k">def</span> <span class="nf">enablePrefetching</span><span class="p">(</span> <span class="n">enable</span> <span class="p">):</span>
+            <span class="k">for</span> <span class="n">scene</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageScenes</span><span class="p">:</span>
+                <span class="n">scene</span><span class="o">.</span><span class="n">setPrefetchingEnabled</span><span class="p">(</span> <span class="n">enable</span> <span class="p">)</span>
+
         <span class="k">def</span> <span class="nf">fitToScreen</span><span class="p">():</span>
             <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">posModel</span><span class="o">.</span><span class="n">shape</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">):</span>
@@ -552,6 +557,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionReset_zoom</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">restoreImageToOriginalSize</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionRubberBandZoom</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">rubberBandZoom</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionSetCacheSize</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">setCacheSize</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionUsePrefetching</span><span class="o">.</span><span class="n">toggled</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">enablePrefetching</span><span class="p">)</span>
 
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">_initEditor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
