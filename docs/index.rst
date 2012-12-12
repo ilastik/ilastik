@@ -18,6 +18,7 @@ Contents:
    projectManager
    utilities
    dependencies
+   testing
 
 
 Indices and tables

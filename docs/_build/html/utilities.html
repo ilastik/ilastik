@@ -238,8 +238,8 @@ These two utility classes provide mechanisms for forcing code to be called from 
 post <tt class="docutils literal"><span class="pre">ThunkEvents</span></tt>, which execute a given callable in the GUI event loop.
 The callable will NOT be called synchronously.  It will be called when the QT 
 event system eventually passes the event to the GUI object&#8217;s event filters.</p>
-<p>In the following example, <tt class="docutils literal"><span class="pre">C.setCaption()</span></tt> can be called from ANY thread safely.
-The widget&#8217;s text will ONLY be updated in the main thread, at some point in the future.</p>
+<p>In the following example, C.setText() can be called from ANY thread safely.
+The widget&#8217;s text will ONLY be updated in the main thread.</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">C</span><span class="p">(</span><span class="n">QObject</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
         <span class="n">QObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
