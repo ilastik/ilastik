@@ -1,4 +1,4 @@
-**ilastik - interactive learning and segmentation toolkit (and more)**
+**ilastik - interactive learning and segmentation toolkit**
 =============================================
 
 [![Build Status](https://travis-ci.org/ilastik/ilastik.png?branch=master)](https://travis-ci.org/ilastik/ilastik)
