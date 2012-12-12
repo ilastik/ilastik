@@ -1,4 +1,4 @@
-**Applet-Workflows**
+**ilastik - interactive learning and segmentation toolkit (and more)**
 =============================================
 
 [![Build Status](https://travis-ci.org/ilastik/ilastik.png?branch=master)](https://travis-ci.org/ilastik/ilastik)
@@ -48,4 +48,15 @@ Testing Dependencies
 ====================
 * nosetests
 
+Calling the tests
+=================
+Unit tests are executed by nosetests:
+
+    $ python setup.py nosetests
+
+There some special tests that can't be executed by nose.
+Call them manually:
+
+    $ python tests/test_applets/pixelClassification/testPixelClassificationGui.py
+    $ python tests/test_applets/pixelClassification/testPixelClassificationMultiImageGui.py
 
