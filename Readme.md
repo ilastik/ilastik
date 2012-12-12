@@ -54,7 +54,7 @@ Unit tests are executed by nosetests:
 
     $ python setup.py nosetests
 
-There some special tests that can't be executed by nose.
+There are some special GUI tests that can't be executed by nose.
 Call them manually:
 
     $ python tests/test_applets/pixelClassification/testPixelClassificationGui.py
