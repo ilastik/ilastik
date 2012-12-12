@@ -1,7 +1,7 @@
 **Applet-Workflows**
 =============================================
 
-[![Build Status](https://secure.travis-ci.org/Ilastik/applet-workflows.png)](http://travis-ci.org/Ilastik/applet-workflows)
+[![Build Status](https://travis-ci.org/ilastik/ilastik.png?branch=master)](https://travis-ci.org/ilastik/ilastik)
 
 General Dependencies
 ====================
