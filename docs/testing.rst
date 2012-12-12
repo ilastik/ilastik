@@ -25,7 +25,7 @@ Sometimes it's convenient to run the test scripts one at a time.  A convenience 
     $ cd ilastik/tests
     $ ./testeach.sh .
 
-..note:: The ``testeach.sh`` script MUST be run from within the tests directory.  It takes an optional argument for the subdirectory to run.
+.. note:: The ``testeach.sh`` script MUST be run from within the tests directory.  It takes an optional argument for the subdirectory to run.
 
 GUI tests
 =========
