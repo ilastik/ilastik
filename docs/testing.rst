@@ -2,7 +2,7 @@
 Appendix: Testing Ilastik
 =========================
 
-ilastik comes with a set of unit/regression tests.  You must have `nosetests<https://nose.readthedocs.org/en/latest/>` installed to run the tests.
+ilastik comes with a set of unit/regression tests.  You must have `nosetests <https://nose.readthedocs.org/en/latest/>`_ installed to run the tests.
 
 Non-gui tests
 =============
