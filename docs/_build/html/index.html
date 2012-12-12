@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Welcome to lazyflow’s documentation! &mdash; lazyflow 0.1 documentation</title>
+    <title>lazyflow developer documentation &mdash; lazyflow 0.1 documentation</title>
     
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -25,7 +25,8 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="lazyflow 0.1 documentation" href="#" /> 
+    <link rel="top" title="lazyflow 0.1 documentation" href="#" />
+    <link rel="next" title="Installation" href="installation.html" /> 
   </head>
   <body>
     <div class="related">
@@ -34,6 +35,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             accesskey="N">next</a> |</li>
         <li><a href="#">lazyflow 0.1 documentation</a> &raquo;</li> 
       </ul>
     </div>  
@@ -43,11 +47,33 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="welcome-to-lazyflow-s-documentation">
-<h1>Welcome to lazyflow&#8217;s documentation!<a class="headerlink" href="#welcome-to-lazyflow-s-documentation" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="lazyflow-developer-documentation">
+<h1>lazyflow developer documentation<a class="headerlink" href="#lazyflow-developer-documentation" title="Permalink to this headline">¶</a></h1>
+<p>Lazyflow is a python library for multithreaded computations.
+Data dependencies are expressed as a data flow graph which is evaluated
+in a lazy manner.
+I.e. when the user requests a result or a small part of a result only the computations neccessary to
+produce the requested part of the result are carried out.</p>
 <p>Contents:</p>
 <div class="toctree-wrapper compound">
-<ul class="simple">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#connecting-operators-and-providing-input">Connecting operators and providing input</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#performing-calculations">Performing calculations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#request-objects">Request objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#meta-data">Meta data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#propagating-changes-in-the-inputs">Propagating changes in the inputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#wrapup-writing-an-operator">Wrapup: Writing an Operator</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced.html">Advanced Concepts</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="advanced.html#simple-binary-operator">Simple Binary Operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced.html#higher-level-slots">Higher-level Slots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced.html#composite-operators">Composite Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced.html#the-operatorwrapper-class">The OperatorWrapper class</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -68,12 +94,15 @@
         <div class="sphinxsidebarwrapper">
   <h3><a href="#">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Welcome to lazyflow&#8217;s documentation!</a><ul>
+<li><a class="reference internal" href="#">lazyflow developer documentation</a><ul>
 </ul>
 </li>
 <li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
 </ul>
 
+  <h4>Next topic</h4>
+  <p class="topless"><a href="installation.html"
+                        title="next chapter">Installation</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/index.txt"
@@ -102,6 +131,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             >next</a> |</li>
         <li><a href="#">lazyflow 0.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
