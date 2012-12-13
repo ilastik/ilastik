@@ -14,3 +14,5 @@ class SimpleSignal(object):
         for f in self.subscribers:
             f(*args, **kwargs)
 
+    def __repr__(self):
+        return "SimpleSignal"

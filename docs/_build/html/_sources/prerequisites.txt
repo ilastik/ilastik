@@ -1,0 +1,31 @@
+=============
+Prerequisites
+=============
+
+Before we begin, make sure you know how to write a simple lazyflow operator.  Details can be found in lazyflow/Readme.md.
+
+Consider this simple example operator::
+
+    class OpSum(Operator):
+        InputA = InputSlot()
+        InputB = InputSlot()
+        
+        Output = OutputSlot()
+    
+        def setupOutputs(self):
+            assert self.InputA.meta.shape == self.InputB.meta.shape, "Can't add images of different shapes!"
+            self.Output.meta.assignFrom(self.InputA.meta)
+    
+        def execute(self, slot, subindex, roi, result):
+            a = self.InputA.get(roi).wait()
+            b = self.InputB.get(roi).wait()
+            result[...] = a+b
+            return result
+
+The operator above can be represented graphically with the following diagram:
+
+.. figure:: images/opSum.svg
+   :scale: 100  %
+   :alt: Simple addition operator
+
+

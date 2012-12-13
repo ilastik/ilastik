@@ -4,7 +4,9 @@ from projectMetadata import ProjectMetadata
 
 class ProjectMetadataApplet( Applet ):
     """
-    This applet allows the user to enter project metadata (e.g. Project name, labeler name, etc.)
+    This applet allows the user to enter project metadata (e.g. Project name, labeler name, etc.).
+    
+    Note that this applet does not affect the processing pipeline and has no top-level operator.
     """
     def __init__( self ):
         Applet.__init__( self, "Project Metadata" )

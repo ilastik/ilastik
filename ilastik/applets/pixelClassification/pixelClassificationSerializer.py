@@ -42,6 +42,9 @@ class PixelClassificationSerializer(AppletSerializer):
     
             def handleNewImage(section, slot, index):
                 slot[index].notifyDirty( bind(handleDirty, section) )
+                # New label images need to be 'serialized' as an empty group.
+                if section == Section.Labels:
+                    handleDirty(Section.Labels)
     
             # These are multi-slots, so subscribe to dirty callbacks on each of their subslots as they are created
             self.mainOperator.LabelImages.notifyInserted( bind(handleNewImage, Section.Labels) )

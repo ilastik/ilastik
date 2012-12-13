@@ -917,9 +917,9 @@ class CarvingGui(LabelingGui):
         #
         # load additional layer: features / probability map
         #
-        import h5py
-        f = h5py.File("pmap.h5")
-        pmap = f["data"].value
+#        import h5py
+#        f = h5py.File("pmap.h5")
+#        pmap = f["data"].value
         
         #
         # here we load the actual raw data from an ArraySource rather than from a LazyflowSource for speed reasons
@@ -940,10 +940,10 @@ class CarvingGui(LabelingGui):
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class CarvingApplet(LabelingApplet):
-    def __init__(self, graph, projectFileGroupName, carvingGraphFile):
-        super(CarvingApplet, self).__init__(graph, projectFileGroupName)
+    def __init__(self, workflow, projectFileGroupName, carvingGraphFile):
+        super(CarvingApplet, self).__init__(workflow, projectFileGroupName)
 
-        self._topLevelOperator = OpCarvingTopLevel( carvingGraphFile, graph=graph )
+        self._topLevelOperator = OpCarvingTopLevel( carvingGraphFile, parent=workflow )
         self._topLevelOperator.opCarving.BackgroundPriority.setValue(0.95)
         self._topLevelOperator.opCarving.NoBiasBelow.setValue(64)
 
@@ -974,17 +974,15 @@ class CarvingApplet(LabelingApplet):
 class CarvingWorkflow(Workflow):
     
     def __init__(self, carvingGraphFile):
-        super(CarvingWorkflow, self).__init__()
-        self._applets = []
-
         graph = Graph()
-        self._graph = graph
+        super(CarvingWorkflow, self).__init__(graph=graph)
+        self._applets = []
 
         ## Create applets 
         self.projectMetadataApplet = ProjectMetadataApplet()
-        self.dataSelectionApplet = DataSelectionApplet(graph, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
 
-        self.carvingApplet = CarvingApplet(graph, "xxx", carvingGraphFile)
+        self.carvingApplet = CarvingApplet(self, "xxx", carvingGraphFile)
         self.carvingApplet.topLevelOperator.RawData.connect( self.dataSelectionApplet.topLevelOperator.Image )
         self.carvingApplet.topLevelOperator.opLabeling.LabelsAllowedFlags.connect( self.dataSelectionApplet.topLevelOperator.AllowLabels )
         self.carvingApplet.gui.minLabelNumber = 2
@@ -1017,11 +1015,6 @@ class CarvingWorkflow(Workflow):
     @property
     def imageNameListSlot(self):
         return self._imageNameListSlot
-    
-    @property
-    def graph( self ):
-        '''the lazyflow graph shared by the applets'''
-        return self._graph
 
 if __name__ == "__main__":
     import lazyflow
@@ -1035,9 +1028,9 @@ if __name__ == "__main__":
     usage = "%prog [options] <carving graph filename> <project filename to be created>"
     parser = OptionParser(usage)
 
-#    import sys
-#    sys.argv.append("/magnetic/denk.h5")
-#    sys.argv.append("/magnetic/carving_test.ilp")
+    import sys
+    sys.argv.append("/magnetic/denk.h5")
+    sys.argv.append("/magnetic/carving_test.ilp")
 
     (options, args) = parser.parse_args()
     

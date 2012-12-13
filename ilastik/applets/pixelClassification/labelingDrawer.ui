@@ -146,7 +146,7 @@
     <item>
      <widget class="QPushButton" name="savePredictionsButton">
       <property name="toolTip">
-       <string>Comput predictions for your entire dataset (all images) and save the project</string>
+       <string>Compute predictions for your entire dataset (all images) and save the project</string>
       </property>
       <property name="text">
        <string>Save Predictions Now</string>
@@ -219,6 +219,13 @@
        </widget>
       </item>
      </layout>
+    </item>
+    <item>
+     <widget class="QPushButton" name="svgButton">
+      <property name="text">
+       <string>SVG</string>
+      </property>
+     </widget>
     </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_2"/>

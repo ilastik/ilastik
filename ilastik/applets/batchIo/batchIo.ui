@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <widget class="QTableWidget" name="tableWidget">
+  <widget class="QTableWidget" name="batchOutputTableWidget">
    <property name="enabled">
     <bool>true</bool>
    </property>

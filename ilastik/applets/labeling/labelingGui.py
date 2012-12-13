@@ -50,16 +50,16 @@ class LabelingGui(LayerViewerGui):
 
     def reset(self):
         # Clear the label list GUI
-        self.clearLabelListGui()
+        self._clearLabelListGui()
         
         # Start in navigation mode (not painting)
-        self.changeInteractionMode(Tool.Navigation)
+        self._changeInteractionMode(Tool.Navigation)
 
     def setImageIndex(self, index):
         super(LabelingGui, self).setImageIndex(index)
         
         # Reset the GUI for "labels allowed" status
-        self.changeInteractionMode(self._toolId)
+        self._changeInteractionMode(self._toolId)
 
     ###########################################
     ###########################################
@@ -71,7 +71,7 @@ class LabelingGui(LayerViewerGui):
     def minLabelNumber(self, n):
         self._minLabelNumer = n
         while self._labelControlUi.labelListModel.rowCount() < n:
-            self.addNewLabel()
+            self._addNewLabel()
     @property
     def maxLabelNumber(self):
         return self._maxLabelNumber
@@ -79,7 +79,7 @@ class LabelingGui(LayerViewerGui):
     def maxLabelNumber(self, n):
         self._maxLabelNumber = n
         while self._labelControlUi.labelListModel.rowCount() < n:
-            self.removeLastLabel()
+            self._removeLastLabel()
 
     @property
     def labelingDrawerUi(self):
@@ -95,6 +95,10 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.labelListModel.select(labelIndex)
     
     class LabelingSlots(object):
+        """
+        This class serves as the parameter for the LabelingGui constructor.  
+        It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the user's mouse clicks.
+        """
         def __init__(self):
             # Label slots are multi (level=1) and accessed as shown.
             # Slot to insert labels onto
@@ -114,11 +118,12 @@ class LabelingGui(LayerViewerGui):
     @traceLogged(traceLogger)
     def __init__(self, labelingSlots, topLevelOperator, drawerUiPath=None, rawInputSlot=None ):
         """
-        See LabelingSlots class (above) for expected type of labelingSlots parameter.
-        
-        observedSlots is the same as in the LayerViewer constructor.
-        drawerUiPath can be given if you provide an extended drawer UI file.  Otherwise a default one is used.
-        Data from the rawInputSlot parameter will be displayed directly underneatch the labels (if provided).
+        Constructor.
+
+        :param labelingSlots: Provides the slots needed for sourcing/sinking label data.  See LabelingGui.LabelingSlots class source for details.
+        :param topLevelOperator: is provided to the LayerViewerGui (the base class)
+        :param drawerUiPath: can be given if you provide an extended drawer UI file.  Otherwise a default one is used.
+        :param rawInputSlot: Data from the rawInputSlot parameter will be displayed directly underneath the labels (if provided).
         """
         # Do have have all the slots we need?
         assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
@@ -134,7 +139,7 @@ class LabelingGui(LayerViewerGui):
 
         self._labelingSlots = labelingSlots
         self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)
-        self._labelingSlots.maxLabelValue.notifyDirty( bind(self.updateLabelList) )
+        self._labelingSlots.maxLabelValue.notifyDirty( bind(self._updateLabelList) )
 
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
@@ -145,14 +150,14 @@ class LabelingGui(LayerViewerGui):
         if drawerUiPath is None:
             # Default ui file
             drawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
-        self.initLabelUic(drawerUiPath)
+        self._initLabelUic(drawerUiPath)
         
-        self.changeInteractionMode(Tool.Navigation)
+        self._changeInteractionMode(Tool.Navigation)
         
         self.__initShortcuts()
 
     @traceLogged(traceLogger)
-    def initLabelUic(self, drawerUiPath):
+    def _initLabelUic(self, drawerUiPath):
         _labelControlUi = uic.loadUi(drawerUiPath)
 
         # We own the applet bar ui
@@ -162,8 +167,8 @@ class LabelingGui(LayerViewerGui):
         model = LabelListModel()
         _labelControlUi.labelListView.setModel(model)
         _labelControlUi.labelListModel=model
-        _labelControlUi.labelListModel.rowsRemoved.connect(self.onLabelRemoved)
-        _labelControlUi.labelListModel.labelSelected.connect(self.onLabelSelected)
+        _labelControlUi.labelListModel.rowsRemoved.connect(self._onLabelRemoved)
+        _labelControlUi.labelListModel.labelSelected.connect(self._onLabelSelected)
         
         @traceLogged(traceLogger)
         def onDataChanged(topLeft, bottomRight):
@@ -183,7 +188,7 @@ class LabelingGui(LayerViewerGui):
                 self.editor.brushingModel.setBrushColor(color)
                 
                 # Update the label layer colortable to match the list entry
-                labellayer = self.getLabelLayer()
+                labellayer = self._getLabelLayer()
                 labellayer.colorTable = self._colorTable16                
             else:
                 #this column is used for the 'delete' buttons, we don't care
@@ -191,7 +196,7 @@ class LabelingGui(LayerViewerGui):
                 pass
 
         # Connect Applet GUI to our event handlers
-        _labelControlUi.AddLabelButton.clicked.connect( bind(self.addNewLabel) )
+        _labelControlUi.AddLabelButton.clicked.connect( bind(self._addNewLabel) )
         _labelControlUi.labelListModel.dataChanged.connect(onDataChanged)
         
         # Initialize the arrow tool button with an icon and handler
@@ -199,21 +204,21 @@ class LabelingGui(LayerViewerGui):
         arrowIcon = QIcon(iconPath)
         _labelControlUi.arrowToolButton.setIcon(arrowIcon)
         _labelControlUi.arrowToolButton.setCheckable(True)
-        _labelControlUi.arrowToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Navigation) )
+        _labelControlUi.arrowToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Navigation) )
 
         # Initialize the paint tool button with an icon and handler
         paintBrushIconPath = os.path.split(__file__)[0] + "/icons/paintbrush.png"
         paintBrushIcon = QIcon(paintBrushIconPath)
         _labelControlUi.paintToolButton.setIcon(paintBrushIcon)
         _labelControlUi.paintToolButton.setCheckable(True)
-        _labelControlUi.paintToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Paint) )
+        _labelControlUi.paintToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Paint) )
 
         # Initialize the erase tool button with an icon and handler
         eraserIconPath = os.path.split(__file__)[0] + "/icons/eraser.png"
         eraserIcon = QIcon(eraserIconPath)
         _labelControlUi.eraserToolButton.setIcon(eraserIcon)
         _labelControlUi.eraserToolButton.setCheckable(True)
-        _labelControlUi.eraserToolButton.clicked.connect( lambda checked: self.handleToolButtonClicked(checked, Tool.Erase) )
+        _labelControlUi.eraserToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Erase) )
         
         # This maps tool types to the buttons that enable them
         self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
@@ -232,7 +237,7 @@ class LabelingGui(LayerViewerGui):
         for size, name in self.brushSizes:
             _labelControlUi.brushSizeComboBox.addItem( str(size) + " " + name )
         
-        _labelControlUi.brushSizeComboBox.currentIndexChanged.connect(self.onBrushSizeChange)
+        _labelControlUi.brushSizeComboBox.currentIndexChanged.connect(self._onBrushSizeChange)
 
         self.paintBrushSizeIndex = PreferencesManager().get( 'labeling', 'paint brush size', default=0 )
         self.eraserSizeIndex = PreferencesManager().get( 'labeling', 'eraser brush size', default=4 )
@@ -295,6 +300,7 @@ class LabelingGui(LayerViewerGui):
 
     def hideEvent(self, event):
         """
+        QT event handler.
         The user has selected another applet or is closing the whole app.
         Save all preferences.
         """
@@ -304,7 +310,7 @@ class LabelingGui(LayerViewerGui):
         super(LabelingGui, self).hideEvent(event)
 
     @traceLogged(traceLogger)
-    def handleToolButtonClicked(self, checked, toolId):
+    def _handleToolButtonClicked(self, checked, toolId):
         """
         Called when the user clicks any of the "tool" buttons in the label applet bar GUI.
         """
@@ -314,11 +320,11 @@ class LabelingGui(LayerViewerGui):
             self.toolButtons[toolId].setChecked(True)
         else:
             # If the user is checking a new button
-            self.changeInteractionMode( toolId )
+            self._changeInteractionMode( toolId )
 
     @threadRouted
     @traceLogged(traceLogger)
-    def changeInteractionMode( self, toolId ):
+    def _changeInteractionMode( self, toolId ):
         """
         Implement the GUI's response to the user selecting a new tool.
         """
@@ -407,7 +413,7 @@ class LabelingGui(LayerViewerGui):
         self._toolId = toolId
 
     @traceLogged(traceLogger)
-    def onBrushSizeChange(self, index):
+    def _onBrushSizeChange(self, index):
         """
         Handle the user's new brush size selection.
         Note: The editor's brushing model currently maintains only a single 
@@ -424,11 +430,11 @@ class LabelingGui(LayerViewerGui):
             self.editor.brushingModel.setBrushSize(newSize)
 
     @traceLogged(traceLogger)
-    def onLabelSelected(self, row):
+    def _onLabelSelected(self, row):
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
 
         # If the user is selecting a label, he probably wants to be in paint mode
-        self.changeInteractionMode(Tool.Paint)
+        self._changeInteractionMode(Tool.Paint)
 
         #+1 because first is transparent
         #FIXME: shouldn't be just row+1 here
@@ -436,16 +442,16 @@ class LabelingGui(LayerViewerGui):
         self.editor.brushingModel.setBrushColor(self._labelControlUi.labelListModel[row].color)
 
     @traceLogged(traceLogger)
-    def resetLabelSelection(self):
+    def _resetLabelSelection(self):
         logger.debug("Resetting label selection")
         if len(self._labelControlUi.labelListModel) > 0:
             self._labelControlUi.labelListView.selectRow(0)
         else:
-            self.changeInteractionMode(Tool.Navigation)
+            self._changeInteractionMode(Tool.Navigation)
         return True
     
     @traceLogged(traceLogger)
-    def updateLabelList(self):
+    def _updateLabelList(self):
         """
         This function is called when the number of labels has changed without our knowledge.
         We need to add/remove labels until we have the right number
@@ -458,12 +464,12 @@ class LabelingGui(LayerViewerGui):
 
         # Add rows until we have the right number
         while self._labelControlUi.labelListModel.rowCount() < numLabels:
-            self.addNewLabel()
+            self._addNewLabel()
        
         self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
     
     @traceLogged(traceLogger)
-    def addNewLabel(self):
+    def _addNewLabel(self):
         """
         Add a new label to the label list GUI control.
         Return the new number of labels in the control.
@@ -478,7 +484,7 @@ class LabelingGui(LayerViewerGui):
         color = QColor()
         color.setRgba(self._colorTable16[numLabels+1]) # First entry is transparent (for zero label)
 
-        label = Label(self.getNextLabelName(), color)
+        label = Label(self._getNextLabelName(), color)
         label.nameChanged.connect(self._updateLabelShortcuts)
         self._labelControlUi.labelListModel.insertRow( self._labelControlUi.labelListModel.rowCount(), label )
         nlabels = self._labelControlUi.labelListModel.rowCount()
@@ -489,7 +495,7 @@ class LabelingGui(LayerViewerGui):
         
         self._updateLabelShortcuts()
 
-    def getNextLabelName(self):
+    def _getNextLabelName(self):
         maxNum = 0
         for index, label in enumerate(self._labelControlUi.labelListModel):
             nums = re.findall("\d+", label.name)
@@ -498,26 +504,26 @@ class LabelingGui(LayerViewerGui):
         return "Label {}".format(maxNum+1)
     
     @traceLogged(traceLogger)
-    def removeLastLabel(self):
+    def _removeLastLabel(self):
         """
         Programmatically (i.e. not from the GUI) reduce the size of the label list by one.
         """
         self._programmaticallyRemovingLabels = True
         numRows = self._labelControlUi.labelListModel.rowCount()
-        # This will trigger the signal that calls onLabelRemoved()
+        # This will trigger the signal that calls _onLabelRemoved()
         self._labelControlUi.labelListModel.removeRow(numRows-1)
         self._updateLabelShortcuts()
     
         self._programmaticallyRemovingLabels = False
     
     @traceLogged(traceLogger)
-    def clearLabelListGui(self):
+    def _clearLabelListGui(self):
         # Remove rows until we have the right number
         while self._labelControlUi.labelListModel.rowCount() > 0:
-            self.removeLastLabel()
+            self._removeLastLabel()
 
     @traceLogged(traceLogger)
-    def onLabelRemoved(self, parent, start, end):
+    def _onLabelRemoved(self, parent, start, end):
         # Don't respond unless this actually came from the GUI
         if self._programmaticallyRemovingLabels:
             return
@@ -535,13 +541,13 @@ class LabelingGui(LayerViewerGui):
         self._colorTable16.insert(oldcount, oldColor)
 
         # Update the labellayer colortable with the new color mapping
-        labellayer = self.getLabelLayer()
+        labellayer = self._getLabelLayer()
         labellayer.colorTable = self._colorTable16
 
         currentSelection = self._labelControlUi.labelListModel.selectedRow()
         if currentSelection == -1:
             # If we're deleting the currently selected row, then switch to a different row
-            self.thunkEventHandler.post( self.resetLabelSelection )
+            self.thunkEventHandler.post( self._resetLabelSelection )
 
         # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
         #  to search through the entire list of labels and delete the entries for the matching label.
@@ -552,7 +558,7 @@ class LabelingGui(LayerViewerGui):
         #  (Only *changes* to the input are acted upon.)
         self._labelingSlots.labelDelete.setValue(-1)
         
-    def getLabelLayer(self):
+    def _getLabelLayer(self):
         # Find the labellayer in the viewer stack
         try:
             labellayer = itertools.ifilter(lambda l: l.name == "Labels", self.layerstack).next()
@@ -584,9 +590,9 @@ class LabelingGui(LayerViewerGui):
     @traceLogged(traceLogger)
     def setupLayers(self, currentImageIndex):
         """
-        Sets up the label layer for display by our base class (layerviewer).
+        Sets up the label layer for display by our base class (LayerViewerGui).
         If our subclass overrides this function to add his own layers,
-        he must call this function explicitly.
+        he **must** call this function explicitly.
         """
         layers = []
 
@@ -600,13 +606,13 @@ class LabelingGui(LayerViewerGui):
 
         # Side effect 1: We want to guarantee that the label list 
         #  is up-to-date before our subclass adds his layers
-        self.updateLabelList()
+        self._updateLabelList()
         
         # Side effect 2: Switch to navigation mode if labels aren't 
         #  allowed on this image.
         labelsAllowedSlot = self._labelingSlots.labelsAllowed[self.imageIndex]
         if labelsAllowedSlot.ready() and not labelsAllowedSlot.value:
-            self.changeInteractionMode(Tool.Navigation)
+            self._changeInteractionMode(Tool.Navigation)
 
         # Raw Input Layer
         if self._rawInputSlot is not None and self._rawInputSlot[currentImageIndex].ready():

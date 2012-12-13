@@ -1,0 +1,267 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.applets.labeling.opLabeling &mdash; applet-workflows 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="top" title="applet-workflows 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for ilastik.applets.labeling.opLabeling</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span><span class="p">,</span> <span class="n">OperatorWrapper</span>
+
+<span class="kn">from</span> <span class="nn">lazyflow.operators</span> <span class="kn">import</span> <span class="n">OpBlockedSparseLabelArray</span>
+
+<div class="viewcode-block" id="OpLabeling"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabeling">[docs]</a><span class="k">class</span> <span class="nc">OpLabeling</span><span class="p">(</span> <span class="n">Operator</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Top-level operator for the labeling base class.</span>
+<span class="sd">    Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s">&quot;OpLabeling&quot;</span>
+    <span class="n">category</span> <span class="o">=</span> <span class="s">&quot;Top-level&quot;</span>
+
+    <span class="c"># Input slots    </span>
+    <span class="n">InputImages</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#: Original input data.</span>
+    <span class="n">LabelInputs</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">optional</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#: Input for providing label data from an external source</span>
+    
+    <span class="n">LabelsAllowedFlags</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;bool&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#: Specifies which images are permitted to be labeled </span>
+    <span class="n">LabelEraserValue</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span> <span class="c">#: The label value that signifies the &#39;eraser&#39;, i.e. voxels to clear labels from</span>
+    <span class="n">LabelDelete</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span> <span class="c">#: When this input is set to a value, all labels of that value are deleted from the operator&#39;s data.</span>
+
+    <span class="c"># Output slots</span>
+    <span class="n">MaxLabelValue</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c">#: The highest label value currently stored in the array of labels</span>
+    <span class="n">LabelImages</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#: Stored labels from the user</span>
+    <span class="n">NonzeroLabelBlocks</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#: A list if slices that contain non-zero label values</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Instantiate all internal operators and connect them together.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpLabeling</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
+
+        <span class="c"># Create internal operators</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opInputShapeReader</span> <span class="o">=</span> <span class="n">OperatorWrapper</span><span class="p">(</span> <span class="n">OpShapeReader</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span> <span class="o">=</span> <span class="n">OperatorWrapper</span><span class="p">(</span> <span class="n">OpBlockedSparseLabelArray</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="p">)</span>
+
+        <span class="c"># NOT wrapped</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span> <span class="o">=</span> <span class="n">OpMaxValue</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+
+        <span class="c"># Set up label cache shape input</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opInputShapeReader</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;shape&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opInputShapeReader</span><span class="o">.</span><span class="n">OutputShape</span> <span class="p">)</span>
+
+        <span class="c"># Set up other label cache inputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">eraser</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelEraserValue</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelEraserValue</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span>
+                
+        <span class="c"># Initialize the delete input to -1, which means &quot;no label&quot;.</span>
+        <span class="c"># Now changing this input to a positive value will cause label deletions.</span>
+        <span class="c"># (The deleteLabel input is monitored for changes.)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">deleteLabel</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelDelete</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelDelete</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="c"># Find the highest label in all the label images</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span><span class="o">.</span><span class="n">Inputs</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="s">&#39;maxLabel&#39;</span><span class="p">]</span> <span class="p">)</span>
+
+        <span class="c"># Connect our internal outputs to our external outputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelImages</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">MaxLabelValue</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span><span class="o">.</span><span class="n">Output</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">NonzeroLabelBlocks</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">nonzeroBlocks</span><span class="p">)</span>
+        
+        <span class="k">def</span> <span class="nf">inputResizeHandler</span><span class="p">(</span> <span class="n">slot</span><span class="p">,</span> <span class="n">oldsize</span><span class="p">,</span> <span class="n">newsize</span> <span class="p">):</span>
+            <span class="k">if</span> <span class="p">(</span> <span class="n">newsize</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">LabelImages</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">NonzeroLabelBlocks</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="o">.</span><span class="n">notifyResized</span><span class="p">(</span> <span class="n">inputResizeHandler</span> <span class="p">)</span>
+
+        <span class="c"># Check to make sure the non-wrapped operators stayed that way.</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span><span class="o">.</span><span class="n">Inputs</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span>
+        
+        <span class="k">def</span> <span class="nf">handleNewInputImage</span><span class="p">(</span> <span class="n">multislot</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span> <span class="p">):</span>
+            <span class="k">def</span> <span class="nf">handleInputReady</span><span class="p">(</span><span class="n">slot</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">setupCaches</span><span class="p">(</span> <span class="n">multislot</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span> <span class="p">)</span>
+            <span class="n">multislot</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">notifyReady</span><span class="p">(</span><span class="n">handleInputReady</span><span class="p">)</span>
+                
+        <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="o">.</span><span class="n">notifyInserted</span><span class="p">(</span> <span class="n">handleNewInputImage</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setupCaches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageIndex</span><span class="p">):</span>
+        <span class="n">numImages</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">)</span>
+        <span class="n">inputSlot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">numImages</span><span class="p">)</span>
+
+        <span class="c"># Special case: We have to set up the shape of our label *input* according to our image input shape</span>
+        <span class="n">shapeList</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">channelIndex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">)</span>
+            <span class="n">shapeList</span><span class="p">[</span><span class="n">channelIndex</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">shapeList</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="n">inputSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span>
+
+        <span class="c"># Set the blockshapes for each input image separately, depending on which axistags it has.</span>
+        <span class="n">axisOrder</span> <span class="o">=</span> <span class="p">[</span> <span class="n">tag</span><span class="o">.</span><span class="n">key</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">inputSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="p">]</span>
+        
+        <span class="c">## Label Array blocks</span>
+        <span class="n">blockDims</span> <span class="o">=</span> <span class="p">{</span> <span class="s">&#39;t&#39;</span> <span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;x&#39;</span> <span class="p">:</span> <span class="mi">32</span><span class="p">,</span> <span class="s">&#39;y&#39;</span> <span class="p">:</span> <span class="mi">32</span><span class="p">,</span> <span class="s">&#39;z&#39;</span> <span class="p">:</span> <span class="mi">32</span><span class="p">,</span> <span class="s">&#39;c&#39;</span> <span class="p">:</span> <span class="mi">1</span> <span class="p">}</span>
+        <span class="n">blockShape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span> <span class="n">blockDims</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">axisOrder</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">blockShape</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="n">blockShape</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="c"># Nothing to do here: All outputs are directly connected to </span>
+        <span class="c">#  internal operators that handle their own dirty propagation.</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">setInSlot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c"># Nothing to do here: All inputs that support __setitem__</span>
+        <span class="c">#   are directly connected to internal operators.</span>
+        <span class="k">pass</span>
+</div>
+<span class="k">class</span> <span class="nc">OpShapeReader</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This operator outputs the shape of its input image, except the number of channels is set to 1.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Input</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span>
+    <span class="n">OutputShape</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;shapetuple&#39;</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpShapeReader</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">OutputShape</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">OutputShape</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="s">&#39;shapetuple&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">OutputShape</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">tuple</span>
+        
+        <span class="c"># Our output is simply the shape of our input, but with only one channel</span>
+        <span class="n">shapeList</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">channelIndex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">)</span>
+            <span class="n">shapeList</span><span class="p">[</span><span class="n">channelIndex</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">OutputShape</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">shapeList</span><span class="p">)</span> <span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">False</span><span class="p">,</span> <span class="s">&quot;Shouldn&#39;t get here.  Output is assigned a value in setupOutputs()&quot;</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="c"># Our output changes when the input changed shape, not when it becomes dirty.</span>
+        <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">OpMaxValue</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Accepts a list of non-array values as an input and outputs the max of the list.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Inputs</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c"># A list of non-array values</span>
+    <span class="n">Output</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpMaxValue</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output</span> <span class="o">=</span> <span class="mi">0</span>
+        
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateOutput</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_output</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputSlot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateOutput</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_output</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">updateOutput</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Return the max value of all our inputs</span>
+        <span class="n">maxValue</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">inputSubSlot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Inputs</span><span class="p">):</span>
+            <span class="c"># Only use inputs that are actually configured</span>
+            <span class="k">if</span> <span class="n">inputSubSlot</span><span class="o">.</span><span class="n">ready</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">maxValue</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="n">maxValue</span> <span class="o">=</span> <span class="n">inputSubSlot</span><span class="o">.</span><span class="n">value</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">maxValue</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">maxValue</span><span class="p">,</span> <span class="n">inputSubSlot</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output</span> <span class="o">=</span> <span class="n">maxValue</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
