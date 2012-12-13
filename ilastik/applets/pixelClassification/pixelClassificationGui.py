@@ -22,6 +22,11 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
 
+try:
+    from volumina.view3d.volumeRendering import RenderingManager
+except:
+    pass
+
 # Loggers
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -43,7 +48,7 @@ class PixelClassificationGui(LabelingGui):
         self._viewerControlUi.checkShowPredictions.setChecked(False)
         self._viewerControlUi.checkShowSegmentation.setChecked(False)
         self.toggleInteractive(False)
-        
+
     def viewerControlWidget(self):
         return self._viewerControlUi
 
@@ -63,7 +68,7 @@ class PixelClassificationGui(LabelingGui):
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
-        
+
         # Base class init
         super(PixelClassificationGui, self).__init__( labelSlots, topLevelOperatorView, labelingDrawerUiPath )
         
@@ -71,7 +76,7 @@ class PixelClassificationGui(LabelingGui):
         self.shellRequestSignal = shellRequestSignal
         self.guiControlSignal = guiControlSignal
         self.predictionSerializer = predictionSerializer
-        
+
         self.interactiveModeActive = False
         self._currentlySavingPredictions = False
 
@@ -81,7 +86,17 @@ class PixelClassificationGui(LabelingGui):
         self.topLevelOperatorView.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
         
         self._initShortcuts()
-        
+
+        try:
+            self.render = True
+            self._renderedLayers = {} # (layer name, label number)
+            self._renderMgr = RenderingManager(
+                renderer=self.editor.view3d.qvtk.renderer,
+                qvtk=self.editor.view3d.qvtk)
+        except:
+            self.render = False
+
+
     @traceLogged(traceLogger)
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
@@ -90,8 +105,8 @@ class PixelClassificationGui(LabelingGui):
         # Connect checkboxes
         def nextCheckState(checkbox):
             checkbox.setChecked( not checkbox.isChecked() )
-        self._viewerControlUi.checkShowPredictions.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowPredictions) 
-        self._viewerControlUi.checkShowSegmentation.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowSegmentation) 
+        self._viewerControlUi.checkShowPredictions.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowPredictions)
+        self._viewerControlUi.checkShowSegmentation.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowSegmentation)
 
         self._viewerControlUi.checkShowPredictions.clicked.connect( self.handleShowPredictionsClicked )
         self._viewerControlUi.checkShowSegmentation.clicked.connect( self.handleShowSegmentationClicked )
@@ -125,19 +140,34 @@ class PixelClassificationGui(LabelingGui):
         mgr.register( shortcutGroupName,
                       "Toggle Prediction Layer Visibility",
                       togglePredictions,
-                      self._viewerControlUi.checkShowPredictions )        
+                      self._viewerControlUi.checkShowPredictions )
 
         toggleSegmentation = QShortcut( QKeySequence("s"), self, member=self._viewerControlUi.checkShowSegmentation.click )
         mgr.register( shortcutGroupName,
                       "Toggle Segmentaton Layer Visibility",
                       toggleSegmentation,
-                      self._viewerControlUi.checkShowSegmentation )        
+                      self._viewerControlUi.checkShowSegmentation )
 
         toggleLivePredict = QShortcut( QKeySequence("l"), self, member=self._viewerControlUi.liveUpdateButton.toggle )
         mgr.register( shortcutGroupName,
                       "Toggle Live Prediction Mode",
                       toggleLivePredict,
                       self._viewerControlUi.liveUpdateButton )
+
+    def _setup_contexts(self, layer):
+        def callback(pos, clayer=layer):
+            name = clayer.name
+            if name in self._renderedLayers:
+                label = self._renderedLayers.pop(name)
+                self._renderMgr.removeObject(label)
+                self._update_rendering()
+            else:
+                label = self._renderMgr.addObject()
+                self._renderedLayers[clayer.name] = label
+                self._update_rendering()
+
+        if self.render:
+            layer.contexts.append(('Toggle 3D rendering', callback))
 
     @traceLogged(traceLogger)
     def setupLayers(self):
@@ -180,16 +210,18 @@ class PixelClassificationGui(LabelingGui):
                 predictLayer.visible = self._viewerControlUi.liveUpdateButton.isChecked()
                 predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
-                def setLayerColor(c):
+                def setLayerColor(c, predictLayer=predictLayer):
                     predictLayer.tintColor = c
-                def setLayerName(n):
-                    newName = "Prediction for %s" % ref_label.name
-                    predictLayer.name = newName
-                setLayerName(ref_label.name)
 
+                def setLayerName(n, predictLayer=predictLayer):
+                    newName = "Prediction for %s" % n
+                    predictLayer.name = newName
+
+                setLayerName(ref_label.name)
                 ref_label.colorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)
                 layers.append(predictLayer)
+
 
         # Add each of the segementations
         for channel, segmentationSlot in enumerate(self.topLevelOperatorView.SegmentationChannels):
@@ -200,20 +232,32 @@ class PixelClassificationGui(LabelingGui):
                                                 tintColor=ref_label.color,
                                                 range=(0.0, 1.0),
                                                 normalize=(0.0, 1.0) )
+
                 segLayer.opacity = 1
                 segLayer.visible = self._viewerControlUi.liveUpdateButton.isChecked()
                 segLayer.visibleChanged.connect(self.updateShowSegmentationCheckbox)
 
-                def setLayerColor(c):
+                def setLayerColor(c, segLayer=segLayer):
                     segLayer.tintColor = c
-                def setLayerName(n):
-                    newName = "Segmentation (%s)" % ref_label.name
+                    self._update_rendering()
+
+                def setLayerName(n, segLayer=segLayer):
+                    oldname = segLayer.name
+                    newName = "Segmentation (%s)" % n
                     segLayer.name = newName
+                    if not self.render:
+                        return
+                    if oldname in self._renderedLayers:
+                        label = self._renderedLayers.pop(oldname)
+                        self._renderedLayers[newName] = label
+
                 setLayerName(ref_label.name)
 
                 ref_label.colorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setLayerName)
+                self._setup_contexts(segLayer)
                 layers.append(segLayer)
+
 
         # Add the raw data last (on the bottom)
         inputDataSlot = self.topLevelOperatorView.InputImages
@@ -222,7 +266,7 @@ class PixelClassificationGui(LabelingGui):
             inputLayer.name = "Input Data"
             inputLayer.visible = True
             inputLayer.opacity = 1.0
-            
+
             def toggleTopToBottom():
                 index = self.layerstack.layerIndex( inputLayer )
                 self.layerstack.selectRow( index )
@@ -237,7 +281,7 @@ class PixelClassificationGui(LabelingGui):
                 QShortcut( QKeySequence("i"), self.viewerControlWidget(), toggleTopToBottom),
                 inputLayer )
             layers.append(inputLayer)
-        
+
         return layers
 
     @traceLogged(traceLogger)
@@ -246,7 +290,7 @@ class PixelClassificationGui(LabelingGui):
         If enable
         """
         logger.debug("toggling interactive mode to '%r'" % checked)
-        
+
         if checked==True:
             if not self.topLevelOperatorView.FeatureImages.ready() \
             or self.topLevelOperatorView.FeatureImages.meta.shape==None:
@@ -281,7 +325,7 @@ class PixelClassificationGui(LabelingGui):
         for layer in self.layerstack:
             if "Prediction" in layer.name:
                 layer.visible = checked
-        
+
         # If we're being turned off, turn off live prediction mode, too.
         if not checked and self._viewerControlUi.liveUpdateButton.isChecked():
             self._viewerControlUi.liveUpdateButton.setChecked(False)
@@ -348,7 +392,7 @@ class PixelClassificationGui(LabelingGui):
         self._viewerControlUi.pauseUpdateButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
         self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
-    
+
     @pyqtSlot()
     @traceLogged(traceLogger)
     def onSavePredictionsButtonClicked(self):
@@ -364,13 +408,13 @@ class PixelClassificationGui(LabelingGui):
             predictionsFrozen = self.topLevelOperatorView.FreezePredictions.value
             self.topLevelOperatorView.FreezePredictions.setValue(False)
             self._currentlySavingPredictions = True
-            
+
             originalButtonText = "Full Volume Predict and Save"
             self.labelingDrawerUi.savePredictionsButton.setText("Cancel Full Predict")
 
             @traceLogged(traceLogger)
             def saveThreadFunc():
-                # Disable all other applets                    
+                # Disable all other applets
                 self.guiControlSignal.emit( ControlCommand.DisableUpstream )
                 self.guiControlSignal.emit( ControlCommand.DisableDownstream )
 
@@ -380,7 +424,7 @@ class PixelClassificationGui(LabelingGui):
                             child.setEnabled(False)
                         else:
                             disableAllInWidgetButName(child, exceptName)
-                        
+
                 # Disable everything in our drawer *except* the cancel button
                 disableAllInWidgetButName(self.labelingDrawerUi, "savePredictionsButton")
 
@@ -391,7 +435,7 @@ class PixelClassificationGui(LabelingGui):
                 # During a regular save, predictions are not saved to the project file.
                 # (It takes too much time if the user only needs the classifier.)
                 self.shellRequestSignal.emit( ShellRequest.RequestSave )
-                
+
                 # Enable prediction storage and ask the shell to save the project again.
                 # (This way the second save will occupy the whole progress bar.)
                 self.predictionSerializer.predictionStorageEnabled = True
@@ -444,32 +488,39 @@ class PixelClassificationGui(LabelingGui):
         labelColors = map( lambda l: (l.color.red(), l.color.green(), l.color.blue()), self.labelListData )
         self.topLevelOperatorView.LabelColors.setValue( labelColors )
 
+    def _update_rendering(self):
+        if not self.render:
+            return
+        shape = self.topLevelOperatorView.InputImages.meta.shape[1:4]
+        time = self.editor.posModel.slicingPos5D[0]
+        if not self._renderMgr.ready:
+            self._renderMgr.setup(shape)
 
+        layernames = set(layer.name for layer in self.layerstack)
+        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.iteritems()
+                                if k in layernames)
 
+        newvolume = numpy.zeros(shape, dtype=numpy.uint8)
+        for layer in self.layerstack:
+            try:
+                label = self._renderedLayers[layer.name]
+            except KeyError:
+                continue
+            for ds in layer.datasources:
+                vol = ds.dataSlot.value[time, ..., 0]
+                indices = numpy.where(vol != 0)
+                newvolume[indices] = label
 
+        self._renderMgr.volume = newvolume
+        self._update_colors()
+        self._renderMgr.update()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def _update_colors(self):
+        for layer in self.layerstack:
+            try:
+                label = self._renderedLayers[layer.name]
+            except KeyError:
+                continue
+            color = layer.tintColor
+            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            self._renderMgr.setColor(label, color)
