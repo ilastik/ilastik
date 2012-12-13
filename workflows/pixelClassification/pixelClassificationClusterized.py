@@ -38,14 +38,17 @@ logger = logging.getLogger(__name__)
 def main(argv):
     logger.info( "Launching with sys.argv: {}".format(sys.argv) )
     parser = getArgParser()
+
+    ilastik.utility.monkey_patches.extend_arg_parser(parser)
+
     parsed_args = parser.parse_args(argv[1:])
 
-    #ilastik.utility.monkey_patches.init_with_args(parsed_args)
+    ilastik.utility.monkey_patches.init_with_args(parsed_args)
 
     try:
         runWorkflow(parsed_args)
     except:
-        tb = traceback.format_exc()
+        tb = traceback.print_exc()
         logger.error(tb)
         return 1
     
@@ -61,13 +64,16 @@ def getArgParser():
     parser.add_argument('--output_file', help='The file to create', required=False)
     parser.add_argument('--_node_work_', help='Internal use only', required=False)
     parser.add_argument('--process_name', help='A name for this process (for logging purposes)', required=False)
+    parser.add_argument('--task_timeout_secs', type=int, default=10*60, help='Seconds to give all tasks to complete before giving up.', required=False)
     return parser
 
 def runWorkflow(parsed_args):
     args = parsed_args
 
     # If we've got a process name, re-initialize the logger from scratch
+    task_name = "node"
     if args.process_name is not None:
+        task_name = args.process_name
         ilastik.ilastik_logging.default_config.init(args.process_name + ' ')
     
     # Make sure project file exists.
@@ -92,6 +98,7 @@ def runWorkflow(parsed_args):
     if args._node_work_ is not None:
         # We're doing node work
         opClusterTaskWorker = OperatorWrapper( OpTaskWorker, graph=finalOutputSlot.graph )
+        opClusterTaskWorker.TaskName.setValue( task_name )
         opClusterTaskWorker.ScratchDirectory.setValue( args.scratch_directory )
         opClusterTaskWorker.RoiString.setValue( args._node_work_ )
         opClusterTaskWorker.Input.connect( workflow.finalOutputSlot )
@@ -106,6 +113,7 @@ def runWorkflow(parsed_args):
         opClusterizeMaster.OutputFilePath.setValue( args.output_file )
         opClusterizeMaster.CommandFormat.setValue( args.command_format )
         opClusterizeMaster.NumJobs.setValue( args.num_jobs )
+        opClusterizeMaster.TaskTimeoutSeconds.setValue( args.task_timeout_secs )
         opClusterizeMaster.Input.connect( workflow.finalOutputSlot )
         resultSlot = opClusterizeMaster.ReturnCode
         clusterOperator = opClusterizeMaster
@@ -132,7 +140,7 @@ if __name__ == "__main__":
 
 
     # DEBUG ARGS
-    if True:
+    if True and len(sys.argv) == 1:
 #        args = ""
 #        args += " --project=/home/bergs/tinyfib/boundary_training/pred.ilp"
 #        args += " --batch_output_dataset_name=/volume/pred_volume"
@@ -147,16 +155,27 @@ if __name__ == "__main__":
         #args += " /home/bergs/synapse_small.npy"
 
         args = []
-        args.append("--project=/magnetic/synapse_small.ilp")
-        args.append("--workflow_type=PixelClassificationWorkflow")
-        args.append("--scratch_directory=/magnetic/scratch")
-        args.append("--output_file=/magnetic/CLUSTER_RESULTS.h5")
-        args.append('--command_format=/Users/bergs/ilastik-build/bin/python /Users/bergs/Documents/workspace/ilastik/workflows/pixelClassification/pixelClassificationClusterized.py {}')
-        args.append("--num_jobs=8")
-        args.append("--process_name=MASTER")
+        #args.append("--project=/groups/flyem/data/bergs_scratch/project_files/synapse_small.ilp")
+        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
+        args.append( "--workflow_type=PixelClassificationWorkflow")
+        args.append( "--sys_tmp_dir=/scratch/bergs")
+        args.append( "--scratch_directory=/home/bergs/clusterstuff/scratch")
+        args.append( "--output_file=/home/bergs/clusterstuff/results/GIGACUBE_RESULTS.h5")
+        args.append( "--num_jobs={}".format( 4**3 ) )
+        args.append( "--process_name=MASTER")
+        args.append( "--task_timeout_secs={}".format( 5*60 ) )
+        args.append( "--command_format=qsub \
+-pe batch 4 \
+-l short=true \
+-N {task_name} \
+-j y \
+-b y \
+-cwd \
+-V \
+'/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik_clusterized {args}'")
+        #args.append('--command_format=/Users/bergs/ilastik-build/bin/python /Users/bergs/Documents/workspace/ilastik/workflows/pixelClassification/pixelClassificationClusterized.py {}')
 
         # --project=/home/bergs/synapse_small.ilp --scratch_directory=/magnetic/scratch --output_file=/magnetic/CLUSTER_RESULTS.h5 --command_format="/home/bergs/workspace/applet-workflows/workflows/pixelClassification/pixelClassificationClusterized.py {}" --num_jobs=4 
-
 
         s = ""
         for arg in args:

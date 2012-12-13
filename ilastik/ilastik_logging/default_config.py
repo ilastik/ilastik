@@ -59,6 +59,7 @@ def get_default_config(prefix=""):
             "py.warnings":                             {  "level":"WARN", "handlers":["console_warning_module"], "propagate": False },
     
             # When copying to a json file, remember to remove comments and change True/False to true/false
+            "__main__":                             {  "level":"DEBUG", "handlers":["console","console_warn"], "propagate": False },
             "lazyflow":                             {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
             "lazyflow.graph":                       {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
             "lazyflow.graph.Slot":                  {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
@@ -67,6 +68,7 @@ def get_default_config(prefix=""):
             "lazyflow.operators.obsolete.vigraOperators":         { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
             "lazyflow.operators.obsolete.classifierOperators":    { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
             "ilastik":                              {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
+            "ilastik.clusterOps":                   {  "level":"DEBUG", "handlers":["console","console_warn"], "propagate": False },
             "ilastik.applets":                      {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
             "ilastik.applets.pixelClassification":  {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
             "ilastik.shell":                        {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },

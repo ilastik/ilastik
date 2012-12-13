@@ -11,6 +11,7 @@
         "lazyflow.operators.obsolete.vigraOperators":                   { "level":"INFO", "propagate": false },
         "lazyflow.operators.obsolete.classifierOperators":              { "level":"INFO", "propagate": false },
         "ilastik":                                                      { "level":"INFO", "propagate": false },
+        "ilastik.clusterOps":                                           { "level":"DEBUG", "propagate": false },
         "ilastik.applets":                                              { "level":"INFO", "propagate": false },
         "ilastik.applets.pixelClassification":                          { "level":"INFO", "propagate": false },
         "ilastik.shell":                                                { "level":"INFO", "propagate": false },

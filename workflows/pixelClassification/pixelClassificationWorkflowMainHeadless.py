@@ -35,6 +35,9 @@ logger = logging.getLogger(__name__)
 
 def main(argv):
     parser = getArgParser()
+
+    ilastik.utility.monkey_patches.extend_arg_parser(parser)
+
     parsed_args = parser.parse_args(argv[1:])
 
     ilastik.utility.monkey_patches.init_with_args(parsed_args)
@@ -55,7 +58,6 @@ def getArgParser():
     parser.add_argument('--batch_export_dir', default='', help='A directory to save batch outputs. (Default saves with input files)')
     parser.add_argument('--batch_output_suffix', default='_prediction', help='Suffix for batch output filenames (before extension).')
     parser.add_argument('--batch_output_dataset_name', default='/volume/prediction', help='HDF5 internal dataset path')
-    parser.add_argument('--sys_tmp_dir', help='Override the default directory for temporary file storage.')
     parser.add_argument('--assume_old_ilp_axes', action='store_true', help='When importing 0.5 project files, assume axes are in the wrong order and need to be transposed.')
     parser.add_argument('--stack_volume_cache_dir', default='/tmp', help='The preprocessing step converts image stacks to hdf5 volumes.  The volumes will be saved to this directory.')
     parser.add_argument('batch_inputs', nargs='*', help='List of input files to process. Supported filenames: .h5, .npy, or globstring for stacks (e.g. *.png)')
