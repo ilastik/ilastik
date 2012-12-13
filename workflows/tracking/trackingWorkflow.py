@@ -15,15 +15,17 @@ import ctracking
 from lazyflow.operators.obsolete.valueProviders import OpAttributeSelector
 
 class TrackingWorkflow( Workflow ):
-    def __init__( self ):
-        # Create a graph to be shared by all operators
-        graph = Graph()
+    def __init__( self, *args, **kwargs ):
+        if 'graph' not in kwargs:
+            # Create a graph to be shared by all operators
+            graph = Graph()
+        else:
+            graph = kwargs['graph']
         
-        super(TrackingWorkflow, self).__init__(graph=graph)
+        super(TrackingWorkflow, self).__init__(graph=graph, *args, **kwargs)
         
         self._applets = []
         self._imageNameListSlot = None
-#        self._graph = None
 
         ######################
         # Interactive workflow
@@ -66,3 +68,5 @@ class TrackingWorkflow( Workflow ):
     def imageNameListSlot(self):
         return self._imageNameListSlot
     
+    def connectLane( self, laneIndex ):
+        raise NotImplementedError
