@@ -1326,9 +1326,10 @@ class Operator(object):
 
     def __init__( self, parent = None, graph = None ):
         if not( parent is None or isinstance(parent, Operator) ):
-            assert False, "parent of operator name='%s' must be an operator, not %r of type %s" % (self.name, parent, type(parent))
+            raise Exception("parent of operator name='%s' must be an operator, not %r of type %s" % (self.name, parent, type(parent)))
         if graph is None:
-            assert parent is not None, "parent of operator name='%s' is set to None in constructor" % self.name
+            if parent is None: 
+                raise Exception("Operator.__init__() [self.name='%s']: parent and graph can't be both None" % self.name)
             graph=parent.graph
         
         self.graph = graph
