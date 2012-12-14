@@ -199,6 +199,13 @@ class OpBatchIoSelective(Operator):
 
                 print "computing predictions for the selected slices:"
                 self.ImageCache.fixAtCurrent.setValue(False)
+                #check readiness
+                for inp in self.ImageCache.inputs:
+                    print inp, self.ImageCache.inputs[inp].ready()
+                
+                print "input shape:", self.ImageCache.Input.meta.shape
+                print "output shape:", self.ImageCache.Output.meta.shape
+                
                 selectedSlices = self.SelectedSlices.value
                 zaxis = self.ImageToExport.meta.axistags.index('z')
                 for isl, sl in enumerate(selectedSlices):

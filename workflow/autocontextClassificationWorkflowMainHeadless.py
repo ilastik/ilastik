@@ -151,6 +151,7 @@ def generateBatchPredictions(workflow, batchInputPaths, batchExportDir, batchOut
     opBatchResults.Format.setValue(ExportFormat.H5)
     opBatchResults.Suffix.setValue(batchOutputSuffix)
     opBatchResults.InternalPath.setValue(exportedDatasetName)
+    opBatchResults.SelectedSlices.setValue([30])
     
     logger.info( "Exporting data to " + opBatchResults.OutputDataPath[0].value )
 

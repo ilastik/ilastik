@@ -71,11 +71,11 @@ def slicePredictions(graph, opReaderPred, name, layerstack):
 def showStuff():
 
     graph = Graph()
-    rawfile = "/home/akreshuk/data/dbock/substack_05_41_aligned_elastic.h5/volume/data"
-    predictions = "/home/akreshuk/data/dbock/substack_05_41_rec_pred.h5/volume/data"
-    predictions2 = "/home/akreshuk/data/dbock/substack_05_41_rec_pred2.h5/volume/data"
-    predictions3 = "/home/akreshuk/ilastik/substack_05_41_aligned_elastic_res_from_Training_2.h5/volume/data"
-    predictions4 = "/home/akreshuk/ilastik/substack_05_41_aligned_elastic_res_from_Training_2_noint.h5/volume/data"
+    rawfile = "/home/akreshuk/data/training_old/dbock/substack_05_41_aligned_elastic.h5/volume/data"
+    predictions = "/home/akreshuk/data/training_old/dbock/results/substack_05_41_aligned_elastic_res_from_Training_2.h5/volume/data"
+    predictions2 = "/home/akreshuk/data/training_old/dbock/results/substack_05_41_aligned_elastic_results_Training_more_labels_mito.h5/volume/data"
+    #predictions3 = "/home/akreshuk/ilastik/substack_05_41_aligned_elastic_res_from_Training_2.h5/volume/data"
+    #predictions4 = "/home/akreshuk/ilastik/substack_05_41_aligned_elastic_res_from_Training_2_noint.h5/volume/data"
 
     opReaderRaw = OpInputDataReader(graph=graph)
     opReaderRaw.FilePath.setValue(rawfile)
@@ -86,11 +86,11 @@ def showStuff():
     opReaderPred2 = OpInputDataReader(graph=graph)
     opReaderPred2.FilePath.setValue(predictions2)
     
-    opReaderPred3 = OpInputDataReader(graph=graph)
-    opReaderPred3.FilePath.setValue(predictions3)
+    #opReaderPred3 = OpInputDataReader(graph=graph)
+    #opReaderPred3.FilePath.setValue(predictions3)
     
-    opReaderPred4 = OpInputDataReader(graph=graph)
-    opReaderPred4.FilePath.setValue(predictions4)
+    #opReaderPred4 = OpInputDataReader(graph=graph)
+    #opReaderPred4.FilePath.setValue(predictions4)
 
     app = QApplication([])
     v = Viewer()
@@ -105,10 +105,10 @@ def showStuff():
     lraw.name = "raw"
     v.layerstack.append(lraw)
     
-    #layers = slicePredictions(graph, opReaderPred, "", v.layerstack)
-    #layers = slicePredictions(graph, opReaderPred2, "ml", v.layerstack)
-    layers = slicePredictions(graph, opReaderPred3, "ml_inter", v.layerstack)
-    layers = slicePredictions(graph, opReaderPred4, "ml", v.layerstack)
+    layers = slicePredictions(graph, opReaderPred, "", v.layerstack)
+    layers = slicePredictions(graph, opReaderPred2, "mito", v.layerstack)
+    #layers = slicePredictions(graph, opReaderPred3, "ml_inter", v.layerstack)
+    #layers = slicePredictions(graph, opReaderPred4, "ml", v.layerstack)
         
     v.show()
     app.exec_()

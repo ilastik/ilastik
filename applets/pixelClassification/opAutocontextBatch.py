@@ -14,6 +14,7 @@ class OpAutocontextBatch( Operator ):
     AutocontextIterations = InputSlot()
     
     PredictionProbabilities = OutputSlot()
+    #PixelOnlyPredictions = OutputSlot()
     
     def __init__(self, *args, **kwargs):
         super(OpAutocontextBatch, self).__init__(*args, **kwargs)
@@ -23,7 +24,6 @@ class OpAutocontextBatch( Operator ):
         
     def setupOperators(self, *args, **kwargs):
     
-        print "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCC, setting up operators"
         self.predictors = []
         self.prediction_caches = []
         
@@ -81,8 +81,9 @@ class OpAutocontextBatch( Operator ):
         self.predictors[0].inputs['Image'].connect(self.FeatureImage)
         for i in range(1, niter):
             self.predictors[i].inputs['Image'].connect(self.autocontext_caches[i-1].outputs["Output"])
-            
-        self.PredictionProbabilities.connect(self.predictors[-1].PMaps)
+        
+        #self.PixelOnlyPredictions.connect(self.predictors[-1].PMaps)    
+        self.PredictionProbabilities.connect(self.predictors[0].PMaps)
         
     def setupOutputs(self):
         print "calling setupOutputs"

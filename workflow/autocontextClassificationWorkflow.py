@@ -15,6 +15,7 @@ from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
 #from context.applets.featureSelection import FeatureSelectionAutocontextApplet
 from context.applets.pixelClassification import AutocontextClassificationApplet
 from context.applets.pixelClassification.opAutocontextBatch import OpAutocontextBatch
+from context.applets.pixelClassification.opBatchIoSelective import OpBatchIoSelective
 
 class AutocontextClassificationWorkflow(Workflow):
     
@@ -92,24 +93,16 @@ class AutocontextClassificationWorkflow(Workflow):
         opBatchPredictor.MaxLabelValue.connect( opClassify.MaxLabelValue )
         opBatchPredictor.AutocontextIterations.connect( opClassify.AutocontextIterations )
         
+        
+        
         # Connect Image pathway:
         # Input Image -> Features Op -> Prediction Op -> Export
         opBatchFeatures.InputImage.connect( opBatchInputs.Image )
         opBatchPredictor.FeatureImage.connect( opBatchFeatures.OutputImage )
         opBatchResults.ImageToExport.connect( opBatchPredictor.PredictionProbabilities )
+        opBatchResults.SelectedSlices.setValue([30])
+        #opBatchResults.ImageToExport2.connect( opBatchPredictor.PixelOnlyPredictions )
         
-        #TEST
-        '''
-        opBatchResults.Scales.connect( opBatchFeatures.Scales )
-        opBatchResults.FeatureIds.connect( opBatchFeatures.FeatureIds )
-        opBatchResults.SelectionMatrix.connect( opBatchFeatures.SelectionMatrix )
-        opBatchResults.InputImage.connect( opBatchFeatures.InputImage )
-        
-        opBatchResults.Classifiers.connect( opBatchPredictor.Classifiers )
-        opBatchResults.MaxLabelValue.connect( opBatchPredictor.MaxLabelValue )
-        opBatchResults.AutocontextIterations.connect( opBatchPredictor.AutocontextIterations )
-        opBatchPredictor.FeatureImage.connect( opBatchFeatures.OutputImage )
-        '''
         ## Create applets
 
         self._applets.append(self.projectMetadataApplet)
