@@ -237,6 +237,10 @@ def fastWhere(cond, A, B, dtype):
 
 class ArrayCacheMemoryMgr(threading.Thread):
 
+    loggingName = __name__ + ".ArrayCacheMemoryMgr"
+    logger = logging.getLogger(loggingName)
+    traceLogger = logging.getLogger("TRACE." + loggingName)
+
     def __init__(self):
         threading.Thread.__init__(self)
         self.daemon = True
@@ -254,17 +258,15 @@ class ArrayCacheMemoryMgr(threading.Thread):
         return blist.sortedlist((), getPrio)
 
     def add(self, array_cache):
-        self._lock.acquire()
-        self.caches.add(array_cache)
-        self._lock.release()
+        with self._lock:
+            self.caches.add(array_cache)
 
     def remove(self, array_cache):
-        self._lock.acquire()
-        try:
-            self.caches.remove(array_cache)
-        except ValueError:
-            pass
-        self._lock.release()
+        with self._lock:
+            try:
+                self.caches.remove(array_cache)
+            except ValueError:
+                pass
 
     def run(self):
         while True:
@@ -273,35 +275,38 @@ class ArrayCacheMemoryMgr(threading.Thread):
 
             delta = abs(self._last_usage - mem_usage)
             if delta > 10:
-                logger.info("Memory Manager: usage = %f%%" % mem_usage)
+                self.logger.info("usage = %f%%" % mem_usage)
                 self._last_usage = mem_usage
 
             if mem_usage > self._max_usage:
-                logger.info("Memory Manager: freeing memory...")
-                self._lock.acquire()
-                count = 0
-                not_freed = []
-                old_length = len(self.caches)
-                new_caches = self._new_list()
-                for c in iter(self.caches):
-                    c._updatePriority(c._last_access)
-                    new_caches.add(c)
-                self.caches = new_caches
-                gc.collect()
-                while mem_usage > self._target_usage and len(self.caches) > 0:
-                    last_cache = self.caches.pop(-1)
-                    freed = last_cache._freeMemory(refcheck = False)
-                    mem_usage = psutil.phymem_usage().percent
-                    count += 1
-                    if freed == 0:
-                        # store the caches which could not be freed
-                        not_freed.append(last_cache)
-                self._lock.release()
+                self.logger.info("freeing memory...")
+                with self._lock:
+                    count = 0
+                    not_freed = []
+                    old_length = len(self.caches)
+                    new_caches = self._new_list()
+                    self.traceLogger.debug("Updating {} caches".format( len(self.caches) ))
+                    for c in iter(self.caches):
+                        c._updatePriority(c._last_access)
+                        new_caches.add(c)
+                    self.caches = new_caches
+                    gc.collect()
+                    self.traceLogger.debug("Target mem usage: {}".format(self._target_usage))
+                    while mem_usage > self._target_usage and len(self.caches) > 0:
+                        self.traceLogger.debug("Mem usage: {}".format(mem_usage))
+                        last_cache = self.caches.pop(-1)
+                        freed = last_cache._freeMemory(refcheck = False)
+                        self.traceLogger.debug("Freed: {}".format(freed))
+                        mem_usage = psutil.phymem_usage().percent
+                        count += 1
+                        if freed == 0:
+                            # store the caches which could not be freed
+                            not_freed.append(last_cache)
                 gc.collect()
                 if mem_usage < self._target_usage:
-                    logger.info("Memory Manager: freed %d/%d blocks, new usage = %f%%" % (count,old_length, mem_usage))
+                    self.logger.info("freed %d/%d blocks, new usage = %f%%" % (count,old_length, mem_usage))
                 else:
-                    logger.info("Memory Manager: freed all (%d/%d) blocks, new usage = %f%%, failed goal of %f since all other blocks are currently in use." % (count, old_length,mem_usage, self._target_usage))
+                    self.logger.info("freed all (%d/%d) blocks, new usage = %f%%, failed goal of %f since all other blocks are currently in use." % (count, old_length,mem_usage, self._target_usage))
                 
                 for c in not_freed:
                     # add the caches which could not be freed
@@ -346,7 +351,7 @@ class OpArrayCache(OpArrayPiper):
             self._fixed = False
             self._cache = None
             self._lock = Lock()
-            self._cacheLock = threading.Lock()#greencall.Lock()
+            self._cacheLock = request.Lock()#greencall.Lock()
             self._lazyAlloc = True
             self._cacheHits = 0
             self.graph._registerCache(self)
@@ -362,8 +367,7 @@ class OpArrayCache(OpArrayPiper):
             return 0
 
     def _freeMemory(self, refcheck = True):
-        with Tracer(self.traceLogger):
-            self._cacheLock.acquire()
+        with self._cacheLock:
             freed  = self._memorySize()
             if self._cache is not None:
                 fshape = self._cache.shape
@@ -382,7 +386,6 @@ class OpArrayCache(OpArrayPiper):
                     del self._cache
                     self._cache = None
                     self._lock.release()
-            self._cacheLock.release()
             return freed
 
     def _allocateManagementStructures(self):
@@ -425,8 +428,7 @@ class OpArrayCache(OpArrayPiper):
 
 
     def _allocateCache(self):
-        with Tracer(self.traceLogger):
-            self._cacheLock.acquire()
+        with self._cacheLock:
             self._last_access = None
             self._cache_priority = 0
             self._running = 0
@@ -440,7 +442,6 @@ class OpArrayCache(OpArrayPiper):
                     self._allocateManagementStructures()
                 self._cache = mem
             self._memory_manager.add(self)
-            self._cacheLock.release()
 
     def setupOutputs(self):
         with Tracer(self.traceLogger):
