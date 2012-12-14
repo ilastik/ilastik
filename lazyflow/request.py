@@ -346,6 +346,14 @@ class Lock(object):
             # indicate that this Lock object can be acquired again
             self.lock1.acquire()
 
+    def __enter__(self):
+        self.acquire()
+        return self
+    
+    def __exit__(self, *args):
+        self.release()
+    
+
 class Pool(object):
     """
     Request pool class for handling many requests jointly
