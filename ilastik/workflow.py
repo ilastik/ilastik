@@ -5,6 +5,7 @@ class Workflow( Operator ):
     """
     Base class for all workflows.
     """
+    name = "Workflow (base class)"
     
     ###############################
     # Abstract methods/properties #
