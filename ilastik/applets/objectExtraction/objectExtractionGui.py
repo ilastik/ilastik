@@ -6,6 +6,8 @@ from lazyflow.rtype import SubRegion
 
 import os
 
+from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
+
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
                          AlphaModulatedLayer, LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
 import volumina.colortables as colortables
@@ -17,18 +19,21 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 from lazyflow.tracer import Tracer
 
 
+
 class ObjectExtractionGui( QWidget ):
     """
     """
-    
+   
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
+
     def centralWidget( self ):
+        """ Return the widget that will be displayed in the main viewer area. """ 
         return self.volumeEditorWidget
 
-    def appletDrawers( self ):
-        return [ ("Object Extraction", self._drawer ) ]
+    def appletDrawer( self ):
+        return self._drawer
 
     def menus( self ):
         return []
@@ -36,9 +41,42 @@ class ObjectExtractionGui( QWidget ):
     def viewerControlWidget( self ):
         return self._viewerControlWidget
 
-    def setImageIndex( self, imageIndex ):
-        mainOperator = self.mainOperator.innerOperators[imageIndex]
-        self.curOp = mainOperator
+    def stopAndCleanUp( self ):
+        pass
+
+    ###########################################
+    ###########################################
+    
+    def __init__(self, topLevelOperatorView):
+        """
+        """
+        super(ObjectExtractionGui, self).__init__()
+        self.mainOperator = topLevelOperatorView
+        self.curOp = None
+        self.layerstack = LayerStackModel()
+
+        #self.rawsrc = LazyflowSource( self.mainOperator.RawData )
+        #layerraw = GrayscaleLayer( self.rawsrc )
+        #layerraw.name = "Raw"
+        #self.layerstack.append( layerraw )
+
+        self._viewerControlWidget = None
+        self._initViewerControlUi()
+
+        self.editor = None
+        self._initEditor()
+
+        self._initAppletDrawerUi()
+        assert(self.appletDrawer() is not None)
+        self._initViewer()
+
+    def _onMetaChanged( self, slot ):
+        if slot is self.mainOperator.BinaryImage:
+            if slot.meta.shape:
+                self.editor.dataShape = slot.meta.shape
+
+    def _initViewer( self ):
+        mainOperator = self.mainOperator
 
         ct = colortables.create_default_8bit()
         self.binaryimagesrc = LazyflowSource( mainOperator.BinaryImage )
@@ -62,38 +100,6 @@ class ObjectExtractionGui( QWidget ):
         if mainOperator.BinaryImage.meta.shape:
             self.editor.dataShape = mainOperator.LabelImage.meta.shape
         mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged )            
-
-    def reset( self ):
-        print "reset(): not implemented"
-
-    ###########################################
-    ###########################################
-    
-    def __init__(self, mainOperator):
-        """
-        """
-        super(ObjectExtractionGui, self).__init__()
-        self.mainOperator = mainOperator
-        self.curOp = None
-        self.layerstack = LayerStackModel()
-
-        #self.rawsrc = LazyflowSource( self.mainOperator.RawData )
-        #layerraw = GrayscaleLayer( self.rawsrc )
-        #layerraw.name = "Raw"
-        #self.layerstack.append( layerraw )
-
-        self._viewerControlWidget = None
-        self._initViewerControlUi()
-
-        self.editor = None
-        self._initEditor()
-
-        self._initAppletDrawerUi()
-
-    def _onMetaChanged( self, slot ):
-        if slot is self.curOp.BinaryImage:
-            if slot.meta.shape:
-                self.editor.dataShape = slot.meta.shape
  
     def _initEditor(self):
         """
