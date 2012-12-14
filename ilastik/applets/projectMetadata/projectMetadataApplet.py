@@ -18,12 +18,7 @@ class ProjectMetadataApplet( Applet ):
         self._serializableItems = [ ProjectMetadataSerializer(self._projectMetadata, "ProjectMetadata"),
                                     Ilastik05ProjectMetadataDeserializer(self._projectMetadata) ]
 
-    @property
-    def dataSerializers(self):
-        return self._serializableItems
-
-    @property
-    def gui(self):
+    def getMultiLaneGui(self):
         if self._gui is None:
             from projectMetadataGui import ProjectMetadataGui
             self._gui = ProjectMetadataGui(self._projectMetadata)
@@ -34,6 +29,6 @@ class ProjectMetadataApplet( Applet ):
         # This applet provides a GUI and serializers, but does not affect the graph in any way.
         return None
 
-
-
-
+    @property
+    def dataSerializers(self):
+        return self._serializableItems

@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.applets.batchIo.batchIoApplet &mdash; applet-workflows 0.6.0 documentation</title>
+    <title>ilastik.applets.batchIo.batchIoApplet &mdash; ilastik 0.6.0 documentation</title>
     
     <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
-    <link rel="top" title="applet-workflows 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
     <link rel="up" title="Module code" href="../../../index.html" /> 
   </head>
   <body>
@@ -35,7 +35,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -60,13 +60,8 @@
 <span class="sd">    which are provided as outputs in the corresponding top-level applet operator.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">,</span> <span class="n">title</span> <span class="p">):</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">BatchIoApplet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span> <span class="o">=</span> <span class="n">OperatorWrapper</span><span class="p">(</span> <span class="n">OpBatchIo</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">workflow</span><span class="p">,</span> <span class="n">promotedSlotNames</span><span class="o">=</span><span class="nb">set</span><span class="p">([</span><span class="s">&#39;DatasetPath&#39;</span><span class="p">,</span> <span class="s">&#39;ImageToExport&#39;</span><span class="p">])</span> <span class="p">)</span>
-        
-        <span class="c"># Ensure the operator has no length yet.</span>
-        <span class="c"># FIXME: Why is this necessary??!?! Shouldn&#39;t it be zero anyway?</span>
-        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span><span class="o">.</span><span class="n">ImageToExport</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span> <span class="o">=</span> <span class="n">OperatorWrapper</span><span class="p">(</span> <span class="n">OpBatchIo</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">workflow</span><span class="p">,</span> <span class="n">promotedSlotNames</span><span class="o">=</span><span class="nb">set</span><span class="p">([</span><span class="s">&#39;DatasetPath&#39;</span><span class="p">,</span> <span class="s">&#39;ImageToExport&#39;</span><span class="p">,</span> <span class="s">&#39;OutputFileNameBase&#39;</span><span class="p">])</span> <span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">BatchIoApplet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">syncWithImageIndex</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span> <span class="o">=</span> <span class="p">[</span> <span class="n">BatchIoSerializer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span><span class="p">,</span> <span class="n">title</span><span class="p">)</span> <span class="p">]</span>
 
@@ -81,8 +76,7 @@
     <span class="k">def</span> <span class="nf">topLevelOperator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span>
 
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">gui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">getMultiLaneGui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
             <span class="kn">from</span> <span class="nn">batchIoGui</span> <span class="kn">import</span> <span class="n">BatchIoGui</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span> <span class="o">=</span> <span class="n">BatchIoGui</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">guiControlSignal</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_title</span> <span class="p">)</span>
@@ -117,7 +111,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>

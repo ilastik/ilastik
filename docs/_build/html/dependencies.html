@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Appendix: Development Dependencies &mdash; applet-workflows 0.6.0 documentation</title>
+    <title>Appendix: Development Dependencies &mdash; ilastik 0.6.0 documentation</title>
     
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -25,8 +25,9 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="applet-workflows 0.6.0 documentation" href="index.html" />
-    <link rel="prev" title="&lt;no title&gt;" href="prerequisites.html" /> 
+    <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
+    <link rel="next" title="Appendix: Testing Ilastik" href="testing.html" />
+    <link rel="prev" title="Utility Classes" href="utilities.html" /> 
   </head>
   <body>
     <div class="related">
@@ -36,9 +37,12 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="prerequisites.html" title="&lt;no title&gt;"
+          <a href="testing.html" title="Appendix: Testing Ilastik"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="utilities.html" title="Utility Classes"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -49,18 +53,42 @@
             
   <div class="section" id="appendix-development-dependencies">
 <h1>Appendix: Development Dependencies<a class="headerlink" href="#appendix-development-dependencies" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The <a class="reference external" href="http://github.com/janelia-flyem/buildem">buildem</a> project uses ilastik as one of its sub-projects.
+If you&#8217;re having trouble building any of these dependencies, you might try checking buildem&#8217;s <a class="reference external" href="https://github.com/janelia-flyem/buildem/blob/master/ilastik-gui.cmake">ilastik-gui.cmake</a>
+script (and it&#8217;s include files) for hints on the correct build configuration settings.</p>
+</div>
 <div class="section" id="general">
 <h2>General<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
-<li>boost-python</li>
-<li>libjpeg</li>
-<li>libtiff</li>
-<li>libpng</li>
-<li>fftw3</li>
-<li>hdf5</li>
-<li>Qt4</li>
-<li>Vigra</li>
-<li>VTK</li>
+<ul>
+<li><p class="first">boost-python</p>
+</li>
+<li><p class="first">libjpeg</p>
+</li>
+<li><p class="first">libtiff</p>
+</li>
+<li><p class="first">libpng</p>
+</li>
+<li><p class="first">fftw3</p>
+</li>
+<li><p class="first">hdf5</p>
+</li>
+<li><p class="first">Qt4</p>
+</li>
+<li><p class="first">Vigra</p>
+</li>
+<li><dl class="first docutils">
+<dt>VTK, compiled with the following options:</dt>
+<dd><ul class="first last simple">
+<li>VTK_WRAP_PYTHON</li>
+<li>VTK_WRAP_PYTHON_SIP</li>
+<li>VTK_USE_QT</li>
+<li>VTK_USE_QVTK_QTOPENGL</li>
+</ul>
+</dd>
+</dl>
+</li>
 </ul>
 </div>
 <div class="section" id="python">
@@ -120,8 +148,11 @@
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="prerequisites.html"
-                        title="previous chapter">&lt;no title&gt;</a></p>
+  <p class="topless"><a href="utilities.html"
+                        title="previous chapter">Utility Classes</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="testing.html"
+                        title="next chapter">Appendix: Testing Ilastik</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/dependencies.txt"
@@ -151,9 +182,12 @@
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="prerequisites.html" title="&lt;no title&gt;"
+          <a href="testing.html" title="Appendix: Testing Ilastik"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="utilities.html" title="Utility Classes"
              >previous</a> |</li>
-        <li><a href="index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

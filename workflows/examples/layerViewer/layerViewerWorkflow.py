@@ -6,10 +6,10 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.layerViewer import LayerViewerApplet
 
 class LayerViewerWorkflow(Workflow):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(LayerViewerWorkflow, self).__init__(graph=graph)
+        super(LayerViewerWorkflow, self).__init__(graph=graph, *args, **kwargs)
         self._applets = []
 
         # Create applets 
@@ -18,9 +18,13 @@ class LayerViewerWorkflow(Workflow):
 
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.viewerApplet )
-        
+
+    def connectLane(self, laneIndex):
+        opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opLayerViewer = self.viewerApplet.topLevelOperator.getLane(laneIndex)
+
         # Connect top-level operators
-        self.viewerApplet.topLevelOperator.RawInput.connect( self.dataSelectionApplet.topLevelOperator.Image )
+        opLayerViewer.RawInput.connect( opDataSelection.Image )
 
     @property
     def applets(self):
@@ -29,3 +33,4 @@ class LayerViewerWorkflow(Workflow):
     @property
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
+

@@ -52,7 +52,7 @@ class TestDataSelectionSerializer(object):
             graph = Graph()
             operatorToSave = OperatorWrapper( OpDataSelection, graph=graph )
             serializer = DataSelectionSerializer(operatorToSave, 'DataSelectionTest')
-            assert serializer._base_initialized
+            assert serializer.base_initialized
         
             operatorToSave.ProjectFile.setValue(testProject)
             operatorToSave.WorkingDirectory.setValue( os.path.split(__file__)[0] )
@@ -100,7 +100,7 @@ class TestDataSelectionSerializer(object):
             operatorToLoad = OperatorWrapper( OpDataSelection, graph=graph )
             
             deserializer = DataSelectionSerializer(operatorToLoad, serializer.topGroupName) # Copy the group name from the serializer we used.
-            assert deserializer._base_initialized
+            assert deserializer.base_initialized
             deserializer.deserializeFromHdf5(testProject, self.testProjectName)
             
             assert len(operatorToLoad.Dataset) == len(operatorToSave.Dataset)

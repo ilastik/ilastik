@@ -1,32 +1,26 @@
-from ilastik.applets.base.applet import Applet
+from ilastik.applets.base.standardApplet import StandardApplet
 
 from opObjectExtraction import OpObjectExtraction
 from objectExtractionGui import ObjectExtractionGui
 from objectExtractionSerializer import ObjectExtractionSerializer
 
-from lazyflow.graph import OperatorWrapper
-
-class ObjectExtractionApplet( Applet ):
-    def __init__( self, graph, guiName="Object Extraction", projectFileGroupName="ObjectExtraction" ):
-        super(ObjectExtractionApplet, self).__init__( guiName )
-        self._topLevelOperator = OperatorWrapper(OpObjectExtraction, graph=graph)
-
-        self._gui = ObjectExtractionGui(self._topLevelOperator)
-        
-        self._serializableItems = [ ObjectExtractionSerializer(self._topLevelOperator, projectFileGroupName) ]
+class ObjectExtractionApplet( StandardApplet ):
+    def __init__( self, name="Object Extraction", workflow=None, projectFileGroupName="ObjectExtraction" ):
+        super(ObjectExtractionApplet, self).__init__( name=name, workflow=workflow )
+        self._serializableItems = [ ObjectExtractionSerializer(self.topLevelOperator, projectFileGroupName) ]
 
     @property
-    def topLevelOperator(self):
-        return self._topLevelOperator
+    def singleLaneOperatorClass( self ):
+        return OpObjectExtraction
+
+    @property
+    def broadcastingSlots( self ):
+        return []
+
+    @property
+    def singleLaneGuiClass( self ):
+        return ObjectExtractionGui
 
     @property
     def dataSerializers(self):
         return self._serializableItems
-
-    @property
-    def viewerControlWidget(self):
-        return self._centralWidget.viewerControlWidget
-
-    @property
-    def gui(self):
-        return self._gui

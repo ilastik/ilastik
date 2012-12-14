@@ -1,8 +1,7 @@
-from PyQt4.QtGui import QTableView, QColorDialog, QAbstractItemView, QGroupBox, QHBoxLayout, QVBoxLayout, QPushButton, QColor, QWidget, \
-                        QHeaderView
-from PyQt4.QtCore import Qt, QSize
+from PyQt4.QtGui import QTableView, QColorDialog, QAbstractItemView, QVBoxLayout, QPushButton, QColor, QWidget, \
+                        QHeaderView, QSizePolicy
+from PyQt4.QtCore import Qt
 from labelListModel import LabelListModel, Label
-import sys
 
 class LabelListView(QTableView):
 
@@ -56,10 +55,23 @@ class LabelListView(QTableView):
     def allowDelete(self, allow):
         self.setColumnHidden(LabelListView.ColumnID.Delete, not allow)
         
+    def minimumSizeHint(self):
+        #http://www.qtcentre.org/threads/14764-QTableView-sizeHint%28%29-issues
+        vHeader = self.verticalHeader()
+        hHeader = self.horizontalHeader()    
+        doubleFrame = 2*self.frameWidth()
+        w = hHeader.length() + vHeader.width() + doubleFrame;
+        h = vHeader.length() + hHeader.height() + doubleFrame;
+        from PyQt4.QtCore import QSize
+        return QSize(w,h)
+    def sizeHint(self):
+        return self.minimumSizeHint()
 
 if __name__ == '__main__':
     import numpy
+    import sys
     from PyQt4.QtGui import QApplication
+    
     app = QApplication(sys.argv)
 
     red   = QColor(255,0,0)

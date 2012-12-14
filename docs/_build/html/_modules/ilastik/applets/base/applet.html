@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.applets.base.applet &mdash; applet-workflows 0.6.0 documentation</title>
+    <title>ilastik.applets.base.applet &mdash; ilastik 0.6.0 documentation</title>
     
     <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
-    <link rel="top" title="applet-workflows 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
     <link rel="up" title="Module code" href="../../../index.html" /> 
   </head>
   <body>
@@ -35,7 +35,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -47,86 +47,109 @@
             
   <h1>Source code for ilastik.applets.base.applet</h1><div class="highlight"><pre>
 <span class="kn">from</span> <span class="nn">ilastik.utility.simpleSignal</span> <span class="kn">import</span> <span class="n">SimpleSignal</span>
-
-<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABCMeta</span><span class="p">,</span> <span class="n">abstractproperty</span>
-
-<span class="k">class</span> <span class="nc">ControlCommand</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="c"># An enum of commands that applets can use to request that other applet GUIs become disabled</span>
-    <span class="n">Pop</span> <span class="o">=</span> <span class="mi">0</span>                 <span class="c"># Undo the most recent command that the issuing applet sent</span>
-    <span class="n">DisableAll</span> <span class="o">=</span> <span class="mi">1</span>          <span class="c"># Disable all applets in the workflow</span>
-    <span class="n">DisableUpstream</span> <span class="o">=</span> <span class="mi">2</span>     <span class="c"># Disable applets that come before the applet that is issuing the command</span>
-    <span class="n">DisableDownstream</span> <span class="o">=</span> <span class="mi">3</span>   <span class="c"># Disable applets that come after the applet that is issuing the command</span>
-    <span class="n">DisableSelf</span> <span class="o">=</span> <span class="mi">4</span>         <span class="c"># Disable the applet that is issuing the command</span>
-
-<span class="k">class</span> <span class="nc">ShellRequest</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="c"># These are the things an applet can ask the shell to do via the shellRequestSignal</span>
-    <span class="n">RequestSave</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABCMeta</span><span class="p">,</span> <span class="n">abstractproperty</span><span class="p">,</span> <span class="n">abstractmethod</span>
 
 <div class="viewcode-block" id="Applet"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet">[docs]</a><span class="k">class</span> <span class="nc">Applet</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
-    
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for all applets.  The shell and workflow depend on this interface only.</span>
+<span class="sd">    Applets can subclass from this class directly, but in most cases it is easier to </span>
+<span class="sd">    subclass :py:class:`StandardApplet&lt;ilastik.applets.base.standardApplet.StandardApplet&gt;`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">ABCMeta</span> <span class="c"># Force subclasses to override abstract methods and properties</span>
 
     <span class="n">_base_initialized</span> <span class="o">=</span> <span class="bp">False</span>
     
-<div class="viewcode-block" id="Applet.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">name</span> <span class="p">):</span>
+<div class="viewcode-block" id="Applet.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">syncWithImageIndex</span><span class="o">=</span><span class="bp">True</span> <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor.</span>
+<span class="sd">        Subclasses must call this base implementation in their own ``__init__`` methods.</span>
+<span class="sd">        If they fail to do so, the shell raises an exception.</span>
+<span class="sd">            </span>
+<span class="sd">        :param name: The applet&#39;s name, which will appear as the applet drawer title.</span>
+<span class="sd">        :param syncWithImageIndex: If True, the shell/workflow will add an image lane to this applet for each image in the interactive workflow. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">syncWithImageIndex</span> <span class="o">=</span> <span class="n">syncWithImageIndex</span>
 
-        <span class="c"># Status signal.</span>
-        <span class="c"># Shell uses it for the status bar.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">statusSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span> <span class="c"># Signature: emit(statusText)</span>
+        <span class="c">#: Progress signal.</span>
+        <span class="c">#: When the applet is doing something time-consuming, this signal tells the shell to show a progress bar.</span>
+        <span class="c">#: Signature: ``emit(percentComplete, canceled=false)``</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span>
         
-        <span class="c"># Progress signal.</span>
-        <span class="c"># When the applet is doing something time-consuming, this signal tells the shell.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span> <span class="c"># Signature: emit(percentComplete, canceled=false)</span>
-        
-        <span class="c"># GUI control signal</span>
-        <span class="c"># When an applet wants other applets in the shell to be disabled, he fires this signal.</span>
-        <span class="c"># The applet must fire it again with ControlState.EnableAll as the parameter to re-enable the other applets. </span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">guiControlSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span> <span class="c"># Signature: emit(controlState=ControlState.DisableAll)</span>
+        <span class="c">#: GUI control signal</span>
+        <span class="c">#: See the ControlCommand class (below) for an enumerated list of the commands supported by this signal)</span>
+        <span class="c">#: Signature: ``emit(command=ControlCommand.DisableAll)`` </span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">guiControlSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span>
 
-        <span class="c"># Shell request signal is used to trigger certain shell requests.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">shellRequestSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span> <span class="c"># Signature:emit(request)</span>
+        <span class="c">#: Shell request signal is used to trigger certain shell actions.</span>
+        <span class="c">#: Signature: ``emit(request)``</span>
+        <span class="c">#: where ``request`` is an integer corresponding to the action the shell should take.  The allowable actions are enumerated in the :py:class:`ShellRequest` class.</span>
+        <span class="c">#: Example invocation: ``self.shellRequest.emit(ShellRequest.RequestSave)``</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shellRequestSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_base_initialized</span> <span class="o">=</span> <span class="bp">True</span>
 </div>
     <span class="nd">@abstractproperty</span>
 <div class="viewcode-block" id="Applet.topLevelOperator"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet.topLevelOperator">[docs]</a>    <span class="k">def</span> <span class="nf">topLevelOperator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return the applet&#39;s Top Level Operator, which is a single operator for all computation performed by the applet.</span>
+<span class="sd">        Abstract property.</span>
+<span class="sd">        The applet&#39;s Top Level Operator, which is a single operator for all computation performed by the applet.</span>
 <span class="sd">        Each applet has exactly one top-level operator for performing computations.</span>
 <span class="sd">        Workflow managers can connect the top-level operator of one applet to others.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">None</span>
 </div>
-    <span class="nd">@abstractproperty</span>
-<div class="viewcode-block" id="Applet.gui"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet.gui">[docs]</a>    <span class="k">def</span> <span class="nf">gui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="Applet.getMultiLaneGui"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet.getMultiLaneGui">[docs]</a>    <span class="k">def</span> <span class="nf">getMultiLaneGui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Abstract method.</span>
+<span class="sd">        Provides the applet&#39;s GUI, which must be an instance of :py:class:`AppletGuiInterface&lt;ilastik.applets.base.appletGuiInterface.AppletGuiInterface&gt;`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 </div>
     <span class="nd">@property</span>
 <div class="viewcode-block" id="Applet.dataSerializers"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.Applet.dataSerializers">[docs]</a>    <span class="k">def</span> <span class="nf">dataSerializers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return a list of dataSerializer objects for loading/saving any project data the applet is responsible for.</span>
+<span class="sd">        A list of dataSerializer objects for loading/saving any project data the applet is responsible for.</span>
+<span class="sd">        Each serializer must be an instance of :py:class:`AppletSerializer&lt;ilastik.applets.base.appletSerializer.AppletSerializer&gt;`</span>
+<span class="sd">        Subclasses should override this property.  By default, returns [].</span>
 <span class="sd">        &quot;&quot;&quot;</span> 
         <span class="k">return</span> <span class="p">[]</span>
     </div>
     <span class="nd">@property</span>
-<div class="viewcode-block" id="Applet.appletPreferencesManager"><a class="viewcode-back" href="../../../../overview.html#ilastik.applets.base.applet.Applet.appletPreferencesManager">[docs]</a>    <span class="k">def</span> <span class="nf">appletPreferencesManager</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return the applet&#39;s preferences manager (if any).</span>
-<span class="sd">        </span>
-<span class="sd">        Applets with preferences or &quot;last state&quot; items that are independent </span>
-<span class="sd">        of project saved data may save/load that information via a preferences manager.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">None</span>
-</div>
-    <span class="nd">@property</span>
-<div class="viewcode-block" id="Applet.base_initialized"><a class="viewcode-back" href="../../../../overview.html#ilastik.applets.base.applet.Applet.base_initialized">[docs]</a>    <span class="k">def</span> <span class="nf">base_initialized</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Do not override this property.</span>
-<span class="sd">        Used by the shell to ensure that Applet.__init__ was called by your subclass.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">base_initialized</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Do not override this property.</span>
+        <span class="c"># Used by the shell to ensure that Applet.__init__ was called by your subclass.</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_initialized</span>
-</pre></div></div></div>
+</div>
+<div class="viewcode-block" id="ControlCommand"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.ControlCommand">[docs]</a><span class="k">class</span> <span class="nc">ControlCommand</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class enumerates the GUI control commands that applets can ask the shell to perform via :py:attr:`Applet.guiControlSignal`.</span>
+<span class="sd">    Gui control commands are used to prevent the user from altering upstream or downstream applet settings while an applet is performing some long-running task.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c">#: Undo the most recent command that the issuing applet sent</span>
+    <span class="n">Pop</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c">#: Disable all applets in the workflow</span>
+    <span class="n">DisableAll</span> <span class="o">=</span> <span class="mi">1</span>
+    
+    <span class="c">#: Disable applets that come before the applet that is issuing the command</span>
+    <span class="n">DisableUpstream</span> <span class="o">=</span> <span class="mi">2</span>
+    
+    <span class="c">#: Disable applets that come after the applet that is issuing the command</span>
+    <span class="n">DisableDownstream</span> <span class="o">=</span> <span class="mi">3</span>
+    
+    <span class="c">#: Disable the applet that is issuing the command</span>
+    <span class="n">DisableSelf</span> <span class="o">=</span> <span class="mi">4</span>
+</div>
+<div class="viewcode-block" id="ShellRequest"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.applet.ShellRequest">[docs]</a><span class="k">class</span> <span class="nc">ShellRequest</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class enumerates the actions that applets can ask the shell to perform via :py:attr:`Applet.shellRequestSignal`.</span>
+<span class="sd">    At the moment, there is only one supported action.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c">#: Request that the shell perform a &quot;save project&quot; action.</span>
+    <span class="n">RequestSave</span> <span class="o">=</span> <span class="mi">0</span>
+</pre></div></div>
 
           </div>
         </div>
@@ -156,7 +179,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>

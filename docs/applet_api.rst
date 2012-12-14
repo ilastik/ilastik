@@ -2,6 +2,65 @@
 Applet API
 ==========
 
+Workflow Concepts
+=================
+
+.. currentmodule:: ilastik.workflow
+
+A :py:class:`Workflow` combines a set of applets together to form an entire computational pipeline, along with the GUI to configure it.
+A workflow is created when the user loads a project, and destroyed when the project is closed.
+
+The workflow has three main responsibilities:
+
+* Instantiate a set of applets, and expose them as a list for the ilastik shell to display.
+* Build up a complete computational pipeline, one *image lane* at a time.  This is done by connecting an individual *image lane* from each applet's :ref:`Top-Level Operator <_top_level_ops>`. (More on that in a bit.) 
+* Select a particular slot to serve as the "image name slot" for the shell.  The shell uses this slot as the "master list" of all image lanes present in the workflow at any time.
+
+Image Lanes
+-----------
+
+.. note:: This section explains how multi-image support is implemented in ilastik.
+   Most beginning developers don't need to sweat the details here.  Simple workflows can be designed with the assumption that only one image lane will be active.  
+   The :py:class:`StandardApplet<ilastik.applets.base.standardApplet.StandardApplet>` base class handles multi-image support for you.
+
+Workflows in ilastik are designed to work with an arbitrary number of input images.
+In the ilastik Applet/Workflow API, each image is said to occupy an *image lane* of the workflow.
+In the ilastik shell GUI, the user can view the results of only one lane at a time.  
+He selects which lane to view using the shell's "Current View" dropdown menu.
+
+When the user adds a new input image to the workflow, the workflow creates a new image lane in *each applet* to process it.
+This is done by calling ``addLane`` on every applet's topLevelOperator, and then calling ``connectLane`` to connect together the lanes from each applet.
+See :py:class:`MultiLaneOperatorABC<ilastik.utility.MultiLaneOperatorABC>` for more details. 
+
+Many applet GUIs can be written without regard to the fact that the applet's top-level operator handles multiple image lanes at once.  
+In fact, most applet GUIs are written to handle only a single lane of the applet's top-level operator.  
+Instead of manipulating the top-level operator directly, most GUIs manipulate a *view* of the top-level 
+operator for a particular image lane.
+
+For example, consider this top-level operator diagram (the `Workflow Design` page explains how to interpret operator diagrams).
+
+.. figure:: images/DeviationFromMean-Top-Level-Operator.svg
+   :scale: 200  %
+   :alt: Deviation-From-Mean Top-Level Operator
+
+If the Applet GUI is only interested in dealing with a single image (say, the second one), it can be written to use a *view*.
+In that case, the GUI is provided with an object that looks like this:
+
+.. figure:: images/DeviationFromMean-View.svg
+   :scale: 200  %
+   :alt: Deviation-From-Mean Top-Level Operator (View)
+
+Notice that the view object has no multi-slots. As far as the GUI is concerned, there is only one image lane.  
+(The dotted lines are just shown for comparison with the previous diagram.  Click on the diagram and zoom in for better rendering.)
+
+The Workflow Base Class
+=======================
+
+.. autoclass:: Workflow
+   :members:
+   
+   .. automethod:: __init__
+
 Applets
 =======
 
@@ -14,17 +73,41 @@ Applet classes do not have much functionality, but instead serve as a container 
 Applets must inherit from the Applet abstract base class.  Subclasses should override the appropriate properties.  
 The base class provides a few signals, which applets can use to communicate with the shell. 
 
+Applet Base Class
+=================
+
 .. currentmodule:: ilastik.applets.base.applet
 .. autoclass:: Applet
    :members:
    
    .. automethod:: __init__
 
+.. autoclass:: ControlCommand
+   :members:
+
+.. autoclass:: ShellRequest
+   :members:
+
+StandardApplet Base Class
+=========================
+
+.. currentmodule:: ilastik.applets.base.standardApplet
+.. autoclass:: StandardApplet
+   :members:
+   
+   .. automethod:: __init__
+
+.. _top_level_ops:
+
 Top-level Operators
 ===================
 
-Everything an applet does is centered around the applet's top-level operator.  It is typically the keeper of all state associated with the applet.
-It should expose its image outputs as multi-slots, which are indexed according to the index of the currently loaded image.  See :ref:`basic-workflows` for details.
+Everything an applet does is centered around the applet's top-level operator.  
+It is typically the keeper of all state associated with the applet.
+The top-level operators that the workflow and shell see must be capbable of handling multiple image lanes.
+That is, they must adhere to the :py:class:`MultiLaneOperatorABC<ilastik.utility.MultiLaneOperatorABC>`.
+If your applet inherits from :py:class:`StandardApplet<ilastik.applets.base.standardApplet.StandardApplet>`,
+then your single-lane top-level operator can be automatically adapted to the multi-lane interface.
 
 The applet GUI and the applet serializers both make changes to the top-level operator and listen for changes made to the top-level operator.
 Here's an example timeline, showing a typical sequence of interactions.
@@ -34,7 +117,7 @@ Here's an example timeline, showing a typical sequence of interactions.
 2) The shell loads a project file
     * Calls each serializer to read settings from the project file and apply them to the appropriate slots of the top-level operator
 3) The GUI responds to the changes made to the top-level operator by updating the GUI appearance.
-    * Widgets in the applet drawer(s) for the applet are updated with the current operator slot values.
+    * Widgets in the applet drawer for the applet are updated with the current operator slot values.
 4) The user changes a setting in the GUI, which in turn changes a slot value on the applet's top-level operator.
     * The changes are propagated downstream from the top-level operator, possibly resulting in an update in the central widget.
     * The applet serializer also notices the change, and makes a note that the serializer is "dirty".
@@ -57,7 +140,7 @@ Here's a screenshot of the ilastik-shell gui:
    :scale: 100  %
    :alt: ilastik-shell screenshot
 
-In the following figure, the areas of the GUI are labeled according to the terminology used in the applet-workflows code base:
+In the following figure, the areas of the GUI are labeled according to the terminology used in the ilastik code base:
 
 .. figure:: images/ilastik-shell-gui-areas.png
    :scale: 100  %
@@ -80,10 +163,39 @@ Applet Serializers
    .. automethod:: _serializeToHdf5
    .. automethod:: _deserializeFromHdf5
 
+Serializable Slots
+==================
+
+.. currentmodule:: ilastik.applets.base.appletSerializer
+.. autoclass:: SerialSlot
+   :members:
+
+   .. automethod:: __init__
+   .. automethod:: _serialize
+   .. automethod:: _deserialize
+
+.. autoclass:: SerialListSlot
+   :members:
+
+   .. automethod:: __init__
+
+.. autoclass:: SerialBlockSlot
+   :members:
+
+   .. automethod:: __init__
+
+.. autoclass:: SerialClassifierSlot
+   :members:
+
+   .. automethod:: __init__
+   .. automethod:: _serialize
+   .. automethod:: _deserialize
+
+
 Applet Library
 ==============
 
-Finally, the applet-workflows project serves as a library of applets that are useful for many workflows.
+Finally, the ilastik project serves as a library of applets that are useful for many workflows.
 In particular, the :ref:`layer-viewer` applet is a base class that implements simple display of arbitrary slots from your top-level operator.  
 It is intended to be used as a base class for almost all user-defined applets.
 

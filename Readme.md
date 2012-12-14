@@ -1,46 +1,7 @@
-**Applet-Workflows**
+**ilastik - interactive learning and segmentation toolkit**
 =============================================
 
-[![Build Status](https://secure.travis-ci.org/Ilastik/applet-workflows.png)](http://travis-ci.org/Ilastik/applet-workflows)
+[![Build Status](https://travis-ci.org/ilastik/ilastik.png?branch=master)](https://travis-ci.org/ilastik/ilastik)
 
-General Dependencies
-====================
-* boost-python
-* libjpeg
-* libtiff
-* libpng
-* fftw3
-* hdf5
-* Qt4
-* Vigra
-* VTK
-
-Python Dependencies
-===================
-* Python 2.7
-* PyQt4
-* argparse
-* numpy
-* h5py 2.1
-* psutil
-* greenlet
-* blist
-* wsgiref
-* qimage2ndarray
-* vigranumpy
-
-Ilastik Sub-project Dependencies
-================================
-* lazyflow (with drtile)
-* volumina
-
-Development Dependencies
-========================
-* CMake
-* python-distribute
-
-Testing Dependencies
-====================
-* nosetests
-
+Please see the online [developer documentation](http://ilastik.github.com/ilastik/) for details regarding installation, testing, and writing your own workflows.
 

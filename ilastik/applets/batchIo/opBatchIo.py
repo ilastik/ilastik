@@ -32,14 +32,16 @@ class OpBatchIo(Operator):
     name = "OpBatchIo"
     category = "Top-level"
 
-    ExportDirectory = InputSlot(stype='filestring') # A separate directory to export to.  If '', then exports to the input data's directory
-    Format = InputSlot(stype='int')                 # The export format
-    Suffix = InputSlot(stype='string')              # Appended to the file name (before the extension)
+    ExportDirectory = InputSlot(stype='filestring', value='') # A separate directory to export to.  If '', then exports to the input data's directory
+    Format = InputSlot(stype='int', value=ExportFormat.H5)                 # The export format
+    Suffix = InputSlot(stype='string', value='_results')              # Appended to the file name (before the extension)
     
     InternalPath = InputSlot(stype='string', optional=True) # Hdf5 internal path
 
     DatasetPath = InputSlot(stype='string') # The path to the original the dataset we're saving
     ImageToExport = InputSlot()             # The image that needs to be saved
+
+    OutputFileNameBase = InputSlot(stype='string', optional=True) # Override for the file name base. (Input filename is used by default.)
 
     Dirty = OutputSlot(stype='bool')            # Whether or not the result currently matches what's on disk
     OutputDataPath = OutputSlot(stype='string')
@@ -56,11 +58,8 @@ class OpBatchIo(Operator):
         self.OutputDataPath.meta.dtype = object
         self.ExportResult.meta.shape = (1,)
         self.ExportResult.meta.dtype = object
-        
-        # Provide default values
-        self.ExportDirectory.setValue( '' )
-        self.Format.setValue( ExportFormat.H5 )
-        self.Suffix.setValue( '_results' )
+
+        # Default to Dirty        
         self.Dirty.setValue(True)
         
         self.progressSignal = OrderedSignal()
@@ -79,7 +78,12 @@ class OpBatchIo(Operator):
             outputPath = inputPathComponents.externalDirectory
         else:
             outputPath = self.ExportDirectory.value
-        outputPath = os.path.join(outputPath, inputPathComponents.filenameBase + self.Suffix.value + ext) 
+            
+        if self.OutputFileNameBase.ready():
+            filenameBase = PathComponents(self.OutputFileNameBase.value).filenameBase
+        else:
+            filenameBase = inputPathComponents.filenameBase
+        outputPath = os.path.join(outputPath, filenameBase + self.Suffix.value + ext) 
         
         # Set up the path for H5 export
         if formatId == ExportFormat.H5:

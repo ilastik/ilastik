@@ -13,48 +13,54 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <widget class="QTableWidget" name="batchOutputTableWidget">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
+  <widget class="QWidget" name="verticalLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>9</x>
-     <y>9</y>
-     <width>891</width>
-     <height>851</height>
+     <x>10</x>
+     <y>10</y>
+     <width>901</width>
+     <height>901</height>
     </rect>
    </property>
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
-   <property name="toolTip">
-    <string/>
-   </property>
-   <property name="styleSheet">
-    <string notr="true"/>
-   </property>
-   <property name="editTriggers">
-    <set>QAbstractItemView::NoEditTriggers</set>
-   </property>
-   <column>
-    <property name="text">
-     <string>Dataset</string>
-    </property>
-   </column>
-   <column>
-    <property name="text">
-     <string>Export Location</string>
-    </property>
-   </column>
-   <column>
-    <property name="text">
-     <string>Action</string>
-    </property>
-   </column>
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QTableWidget" name="batchOutputTableWidget">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="toolTip">
+       <string/>
+      </property>
+      <property name="styleSheet">
+       <string notr="true"/>
+      </property>
+      <property name="editTriggers">
+       <set>QAbstractItemView::NoEditTriggers</set>
+      </property>
+      <column>
+       <property name="text">
+        <string>Dataset</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Export Location</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Action</string>
+       </property>
+      </column>
+     </widget>
+    </item>
+   </layout>
   </widget>
  </widget>
  <resources/>

@@ -30,7 +30,30 @@ class ThunkEvent( QEvent ):
         QApplication.sendEvent(handlerObject, e)
 
 class ThunkEventHandler( QObject ):
+    """
+    GUI objects can instantiate an instance of this class and then start using it to 
+    post ``ThunkEvents``, which execute a given callable in the GUI event loop.
+    The callable will NOT be called synchronously.  It will be called when the QT 
+    event system eventually passes the event to the GUI object's event filters.
+
+    In the following example, C.setText() can be called from ANY thread safely.
+    The widget's text will ONLY be updated in the main thread.
+    
+    .. code-block:: python
+    
+       class C(QObject):
+           def __init__(self, parent):
+               QObject.__init__(self, parent=parent)
+               self.thunkEventHandler = ThunkEventHandler(self)
+        
+        
+           def setCaption(self, text):
+               self.thunkEventHandler.post( self.mywidget.setText, text )    
+    """
     def __init__(self, parent):
+        """
+        Create a ThunkEventHandler that installs itself in the event loop for ``parent``.
+        """
         QObject.__init__(self, parent)
         parent.installEventFilter(self)
     
@@ -42,8 +65,16 @@ class ThunkEventHandler( QObject ):
         else:
             return False
 
-    def post(self, *args):
-        ThunkEvent.post(self.parent(), *args)
+    def post(self, func, *args):
+        """
+        Post an event to the GUI event system that will eventually execute the given function with the given arguments.
+        This is implemented using ``QApplication.post()``
+        """
+        ThunkEvent.post(self.parent(), func, *args)
     
-    def send(self, *args):
-        ThunkEvent.send(self.parent(), *args)
+    def send(self, func, *args):
+        """
+        Send an event to the GUI event system that will eventually execute the given function with the given arguments.
+        Note that this is done using ``QApplication.send()``, which may not be what you wanted.
+        """
+        ThunkEvent.send(self.parent(), func, *args)

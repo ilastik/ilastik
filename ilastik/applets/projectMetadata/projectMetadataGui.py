@@ -19,20 +19,25 @@ class ProjectMetadataGui( QWidget ):
     def centralWidget( self ):
         return self
 
-    def appletDrawers(self):
-        return [ ( "Project Metadata", self.getAppletDrawerUi() ) ]
+    def appletDrawer(self):
+        return self.getAppletDrawerUi()
 
     def menus( self ):
         return []
 
     def viewerControlWidget(self):
-        return None # No viewer controls
+        return QWidget() # No viewer controls for this applet.
 
     def setImageIndex(self, index):
         pass # This applet does't deal with images.
     
-    def reset(self):
-        # Nothing to do (our drawer has no state and the central widget is dynamically loaded/unloaded when the project file is loaded)
+    def stopAndCleanUp(self):
+        pass
+
+    def imageLaneAdded(self, laneIndex):
+        pass
+
+    def imageLaneRemoved(self, laneIndex, finalLength):
         pass
 
     ###########################################

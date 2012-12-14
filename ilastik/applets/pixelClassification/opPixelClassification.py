@@ -1,6 +1,8 @@
+from functools import partial
 import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from ilastik.utility.operatorSubView import OperatorSubView
 
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpPrecomputedInput, OpPixelOperator
@@ -40,12 +42,19 @@ class OpPixelClassification( Operator ):
 
     UncertaintyEstimate = OutputSlot(level=1)
 
+    # GUI-only (not part of the pipeline, but saved to the project)
+    LabelNames = OutputSlot()
+    LabelColors = OutputSlot()
+
     def __init__( self, *args, **kwargs ):
         """
         Instantiate all internal operators and connect them together.
         """
         super(OpPixelClassification, self).__init__(*args, **kwargs)
-
+        
+        self.LabelNames.setValue( [] ) # Default
+        self.LabelColors.setValue( [] ) # Default
+        
         self.FreezePredictions.setValue(True) # Default
         
         # Create internal operators
@@ -172,6 +181,20 @@ class OpPixelClassification( Operator ):
                 
         self.InputImages.notifyInserted( handleNewInputImage )
 
+        # All input multi-slots should be kept in sync
+        # Output multi-slots will auto-sync via the graph
+        multiInputs = filter( lambda s: s.level >= 1, self.inputs.values() )
+        for s1 in multiInputs:
+            for s2 in multiInputs:
+                if s1 != s2:
+                    def insertSlot( a, b, position, finalsize ):
+                        a.insertSlot(position, finalsize)
+                    s1.notifyInserted( partial(insertSlot, s2 ) )
+                    
+                    def removeSlot( a, b, position, finalsize ):
+                        a.removeSlot(position, finalsize)
+                    s1.notifyRemoved( partial(removeSlot, s2 ) )
+
     def setupCaches(self, imageIndex):
         numImages = len(self.InputImages)
         inputSlot = self.InputImages[imageIndex]
@@ -248,21 +271,16 @@ class OpPixelClassification( Operator ):
         #  internal operators that handle their own dirty propagation.
         pass
 
-    def outputSvg(self):
-        from functools import partial
-        import lazyflow.tools.svg as svg
-        from lazyflow.tools.schematic import SvgOperator
-    
-        svgOp = SvgOperator(self, max_child_depth=2)
-    
-        canvas = svg.SvgCanvas("")
-        block = partial(svg.tagblock, canvas)
-        with block( svg.svg, x=0, y=0, width=7000, height=2000 ):
-            canvas += svg.inkscapeDefinitions()
-            svgOp.drawAt(canvas, (10, 10) )
-            svgOp.drawConnections(canvas)
-        with file("/Users/bergs/Documents/svgfiles/opPixelClassification.svg", 'w') as f:
-            f.write( canvas.getvalue() )
+    def addLane(self, laneIndex):
+        numLanes = len(self.InputImages)
+        assert numLanes == laneIndex, "Image lanes must be appended."        
+        self.InputImages.resize(numLanes+1)
+        
+    def removeLane(self, laneIndex, finalLength):
+        self.InputImages.removeSlot(laneIndex, finalLength)
+
+    def getLane(self, laneIndex):
+        return OperatorSubView(self, laneIndex)
 
 
 class OpShapeReader(Operator):

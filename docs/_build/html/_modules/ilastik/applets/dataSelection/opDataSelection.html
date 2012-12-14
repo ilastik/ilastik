@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>ilastik.applets.dataSelection.opDataSelection &mdash; applet-workflows 0.6.0 documentation</title>
+    <title>ilastik.applets.dataSelection.opDataSelection &mdash; ilastik 0.6.0 documentation</title>
     
     <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../../_static/doctools.js"></script>
-    <link rel="top" title="applet-workflows 0.6.0 documentation" href="../../../../index.html" />
+    <link rel="top" title="ilastik 0.6.0 documentation" href="../../../../index.html" />
     <link rel="up" title="Module code" href="../../../index.html" /> 
   </head>
   <body>
@@ -35,7 +35,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
-        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
     </div>  
@@ -46,9 +46,9 @@
           <div class="body">
             
   <h1>Source code for ilastik.applets.dataSelection.opDataSelection</h1><div class="highlight"><pre>
-<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span>
-
+<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span><span class="p">,</span> <span class="n">OperatorWrapper</span>
 <span class="kn">from</span> <span class="nn">lazyflow.operators.ioOperators</span> <span class="kn">import</span> <span class="n">OpStreamingHdf5Reader</span><span class="p">,</span> <span class="n">OpInputDataReader</span>
+<span class="kn">from</span> <span class="nn">ilastik.utility.operatorSubView</span> <span class="kn">import</span> <span class="n">OperatorSubView</span>
 
 <span class="kn">import</span> <span class="nn">uuid</span>
 
@@ -84,27 +84,27 @@
 
 <div class="viewcode-block" id="OpDataSelection"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.dataSelection.opDataSelection.OpDataSelection">[docs]</a><span class="k">class</span> <span class="nc">OpDataSelection</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The top-level operator for the data selection applet.</span>
-<span class="sd">    This implementation supports single images.</span>
-<span class="sd">    Use an OperatorWrapper to enable multi-image support.</span>
+<span class="sd">    The top-level operator for the data selection applet, implemented as a single-image operator.</span>
+<span class="sd">    The applet uses an OperatorWrapper to make it suitable for use in a workflow.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;OpDataSelection&quot;</span>
     <span class="n">category</span> <span class="o">=</span> <span class="s">&quot;Top-level&quot;</span>
     
     <span class="n">SupportedExtensions</span> <span class="o">=</span> <span class="n">OpInputDataReader</span><span class="o">.</span><span class="n">SupportedExtensions</span>
-    
+
+    <span class="c"># Inputs    </span>
     <span class="n">ProjectFile</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;object&#39;</span><span class="p">)</span> <span class="c">#: The project hdf5 File object (already opened)</span>
-    <span class="n">ProjectDataGroup</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;string&#39;</span><span class="p">)</span> <span class="c">#: The internal path to the hdf5 group where project-local \</span>
-                                                 <span class="c">#  datasets are stored within the project file</span>
+    <span class="n">ProjectDataGroup</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;string&#39;</span><span class="p">)</span> <span class="c">#: The internal path to the hdf5 group where project-local datasets are stored within the project file</span>
     <span class="n">WorkingDirectory</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;filestring&#39;</span><span class="p">)</span> <span class="c">#: The filesystem directory where the project file is located</span>
+    <span class="n">Dataset</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;object&#39;</span><span class="p">)</span> <span class="c">#: A DatasetInfo object</span>
 
-    <span class="c"># A dataset info object</span>
-    <span class="n">Dataset</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;object&#39;</span><span class="p">)</span>
+    <span class="c"># Outputs</span>
+    <span class="n">Image</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c">#: The output image</span>
+    <span class="n">AllowLabels</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;bool&#39;</span><span class="p">)</span> <span class="c">#: A bool indicating whether or not this image can be used for training</span>
 
-    <span class="c"># Output data</span>
-    <span class="n">ImageName</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;string&#39;</span><span class="p">)</span>
-    <span class="n">Image</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
-    <span class="n">AllowLabels</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;bool&#39;</span><span class="p">)</span>
+    <span class="c"># Must be declared last of all slots.</span>
+    <span class="c"># When the shell detects that this slot has been resized, it assumes all the others have already been resized.</span>
+    <span class="n">ImageName</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;string&#39;</span><span class="p">)</span> <span class="c">#: The name of the output image</span>
     
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">OpDataSelection</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -147,7 +147,34 @@
 
     <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
         <span class="c"># Output slots are directly connected to internal operators</span>
-        <span class="k">pass</span></div>
+        <span class="k">pass</span>
+</div>
+<span class="k">class</span> <span class="nc">OpMultiLaneDataSelection</span><span class="p">(</span> <span class="n">OperatorWrapper</span> <span class="p">):</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span> <span class="n">OpMultiLaneDataSelection</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">OpDataSelection</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span> <span class="n">broadcastingSlotNames</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;ProjectFile&#39;</span><span class="p">,</span> <span class="s">&#39;ProjectDataGroup&#39;</span><span class="p">,</span> <span class="s">&#39;WorkingDirectory&#39;</span><span class="p">]</span> <span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">addLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add an image lane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">innerOperators</span><span class="p">)</span>
+        
+        <span class="c"># Only add this lane if we don&#39;t already have it</span>
+        <span class="c"># We might be called from within the context of our own insertSlot signal.</span>
+        <span class="k">if</span> <span class="n">numLanes</span> <span class="o">==</span> <span class="n">laneIndex</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_insertInnerOperator</span><span class="p">(</span><span class="n">numLanes</span><span class="p">,</span> <span class="n">numLanes</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">removeLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove an image lane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">innerOperators</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">numLanes</span> <span class="o">&gt;</span> <span class="n">finalLength</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_removeInnerOperator</span><span class="p">(</span><span class="n">laneIndex</span><span class="p">,</span> <span class="n">numLanes</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">OperatorSubView</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">)</span>
 </pre></div>
 
           </div>
@@ -178,7 +205,7 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../../genindex.html" title="General Index"
              >index</a></li>
-        <li><a href="../../../../index.html">applet-workflows 0.6.0 documentation</a> &raquo;</li>
+        <li><a href="../../../../index.html">ilastik 0.6.0 documentation</a> &raquo;</li>
           <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
       </ul>
     </div>
