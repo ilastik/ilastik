@@ -104,14 +104,14 @@ class OpTrackingCons(Operator):
             avgSize=0
             ):
         
-        ts, filtered_labels, empty_frame, max_traxel_id_at, median_obj_size = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
+        ts, filtered_labels, empty_frame, max_traxel_id_at, avg_obj_size = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
         if empty_frame:
             print 'cannot track frames with 0 objects, abort.'
             return
 #        tracker = ctracking.NNTracking(float(divDist), float(movDist), distFeatureVector, float(divThreshold), splitterHandling, mergerHandling, max_traxel_id_at)                    
         
         if avgSize > 0:
-            median_obj_size = avgSize
+            avg_obj_size = avgSize
             
         ep_gap = 0.05
         tracker = ctracking.ConsTracking(maxObj,
@@ -123,7 +123,7 @@ class OpTrackingCons(Operator):
                                          True,    # with_constraints
                                          False,   # fixed_detections
                                          float(ep_gap),
-                                         float(median_obj_size))
+                                         float(avg_obj_size))
         
         self.events = tracker(ts)
         label2color = []
@@ -221,8 +221,8 @@ class OpTrackingCons(Operator):
         print "filling traxelstore"
         ts = ctracking.TraxelStore()
         max_traxel_id_at = ctracking.VectorOfInt();
-        filtered_labels = {}        
-        obj_sizes = []
+        filtered_labels = {}
+        avg_obj_size = 0
         total_count = 0
         empty_frame = False
         for t in feats.keys():
@@ -273,7 +273,7 @@ class OpTrackingCons(Operator):
                 
                 tr.add_feature_array("count", 1)
                 tr.set_feature_value("count", 0, float(size))
-                obj_sizes.append(float(size))
+                avg_obj_size += size
                 ts.add(tr)   
                          
             print "at timestep ", t, count, "traxels passed filter"            
@@ -282,8 +282,8 @@ class OpTrackingCons(Operator):
                 empty_frame = True
             total_count += count
                 
-        median_obj_size = np.median(np.array(obj_sizes),overwrite_input=True)
+        avg_obj_size /= total_count
         
-        print 'median object size = ' + str(median_obj_size)
+        print 'average object size = ' + str(avg_obj_size)
         
-        return ts, filtered_labels, empty_frame, max_traxel_id_at, median_obj_size
+        return ts, filtered_labels, empty_frame, max_traxel_id_at, avg_obj_size
