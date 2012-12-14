@@ -6,19 +6,17 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
 
 from lazyflow.operators.obsolete.valueProviders import OpAttributeSelector
-from ilastik.applets.tracking.trackingAppletNN import TrackingAppletNN
+from ilastik.applets.tracking.greedyNearestNeighbor.greedyNnTrackingApplet import GreedyNnTrackingApplet
 
-class TrackingWorkflowNN( Workflow ):
+class GreedyNnTrackingWorkflow( Workflow ):
     def __init__( self ):
         # Create a graph to be shared by all operators
         graph = Graph()
         
-        super(TrackingWorkflowNN, self).__init__(graph=graph)
+        super(GreedyNnTrackingWorkflow, self).__init__(graph=graph)
         self._applets = []
         self._imageNameListSlot = None
-#        self._graph = None
 
-    
         ######################
         # Interactive workflow
         ######################
@@ -27,7 +25,7 @@ class TrackingWorkflowNN( Workflow ):
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Segmentation", "Input Segmentation", batchDataGui=False)
 
         self.objectExtractionApplet = ObjectExtractionApplet( self )
-        self.trackingApplet = TrackingAppletNN( self )
+        self.trackingApplet = GreedyNnTrackingApplet( self )
 
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator

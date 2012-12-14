@@ -1,21 +1,19 @@
 from ilastik.applets.base.applet import Applet
-from trackingSerializerNN import TrackingSerializerNN
-from lazyflow.graph import OperatorWrapper
-from ilastik.applets.tracking.opTrackingCons import OpTrackingCons
 
-class TrackingAppletCons( Applet ):
-    """
-    This is a simple thresholding applet
-    """
+from lazyflow.graph import OperatorWrapper
+from ilastik.applets.tracking.chaingraph.opChaingraphTracking import OpChaingraphTracking
+from ilastik.applets.tracking.base.trackingSerializer import TrackingSerializer
+
+class ChaingraphTrackingApplet( Applet ):
     def __init__( self, graph, guiName="Tracking", projectFileGroupName="Tracking" ):
-        super(TrackingAppletCons, self).__init__( guiName )
+        super(ChaingraphTrackingApplet, self).__init__( guiName )
 
         # Wrap the top-level operator, since the GUI supports multiple images
-        self._topLevelOperator = OperatorWrapper(OpTrackingCons, graph=graph)
+        self._topLevelOperator = OperatorWrapper(OpChaingraphTracking, graph=graph)
 
         self._gui = None
         
-        self._serializableItems = [ TrackingSerializerNN(self._topLevelOperator, projectFileGroupName) ]
+        self._serializableItems = [ TrackingSerializer(self._topLevelOperator, projectFileGroupName) ]
 
     @property
     def topLevelOperator(self):
@@ -32,6 +30,6 @@ class TrackingAppletCons( Applet ):
     @property
     def gui(self):
         if self._gui is None:
-            from ilastik.applets.tracking.trackingGuiCons import TrackingGuiCons
-            self._gui = TrackingGuiCons(self._topLevelOperator)        
+            from ilastik.applets.tracking.chaingraph.chaingraphTrackingGui import ChaingraphTrackingGui
+            self._gui = ChaingraphTrackingGui(self._topLevelOperator)
         return self._gui

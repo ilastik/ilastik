@@ -1,20 +1,15 @@
 from ilastik.applets.base.applet import Applet
-
-from opTracking import OpTracking
-
-from trackingSerializer import TrackingSerializer
-
 from lazyflow.graph import OperatorWrapper
+from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
+from ilastik.applets.tracking.base.trackingSerializer import TrackingSerializer
 
-class TrackingApplet( Applet ):
-    """
-    This is a simple thresholding applet
-    """
+class ConservationTrackingApplet( Applet ):
+
     def __init__( self, graph, guiName="Tracking", projectFileGroupName="Tracking" ):
-        super(TrackingApplet, self).__init__( guiName )
+        super(ConservationTrackingApplet, self).__init__( guiName )
 
         # Wrap the top-level operator, since the GUI supports multiple images
-        self._topLevelOperator = OperatorWrapper(OpTracking, graph=graph)
+        self._topLevelOperator = OperatorWrapper(OpConservationTracking, graph=graph)
 
         self._gui = None
         
@@ -35,6 +30,6 @@ class TrackingApplet( Applet ):
     @property
     def gui(self):
         if self._gui is None:
-            from trackingGui import TrackingGui
-            self._gui = TrackingGui(self._topLevelOperator)
+            from ilastik.applets.tracking.conservation.conservationTrackingGui import ConservationTrackingGui            
+            self._gui = ConservationTrackingGui(self._topLevelOperator)        
         return self._gui

@@ -1,10 +1,9 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer
 
-class TrackingSerializerNN(AppletSerializer):
-    SerializerVersion = 0.1
+class TrackingSerializer(AppletSerializer):
     
     def __init__(self, mainOperator, projectFileGroupName):
-        super( TrackingSerializerNN, self ).__init__( projectFileGroupName )
+        super( TrackingSerializer, self ).__init__( projectFileGroupName )
         self.mainOperator = mainOperator
         self._dirty = False
     
@@ -18,12 +17,11 @@ class TrackingSerializerNN(AppletSerializer):
 
     def isDirty(self):
         return True
-#        return self._dirty
+        return self._dirty
 
     def handleDirty(self, slot, roi):
         self._dirty = True
 
     def unload(self):
-        print "TrackingSerializerNN::unload not implemented"
-        
+        pass
 

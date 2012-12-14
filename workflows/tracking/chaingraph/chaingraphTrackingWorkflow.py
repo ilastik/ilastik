@@ -4,21 +4,20 @@ from ilastik.workflow import Workflow
 
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
-
 from lazyflow.operators.obsolete.valueProviders import OpAttributeSelector
-from ilastik.applets.tracking.trackingAppletCons import TrackingAppletCons
+from ilastik.applets.tracking.chaingraph.chaingraphTrackingApplet import ChaingraphTrackingApplet
 
-class TrackingWorkflowCons( Workflow ):
+
+class ChaingraphTrackingWorkflow( Workflow ):
     def __init__( self ):
         # Create a graph to be shared by all operators
         graph = Graph()
         
-        super(TrackingWorkflowCons, self).__init__(graph=graph)
+        super(ChaingraphTrackingWorkflow, self).__init__(graph=graph)
+        
         self._applets = []
         self._imageNameListSlot = None
-#        self._graph = None
 
-    
         ######################
         # Interactive workflow
         ######################
@@ -27,7 +26,7 @@ class TrackingWorkflowCons( Workflow ):
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Segmentation", "Input Segmentation", batchDataGui=False)
 
         self.objectExtractionApplet = ObjectExtractionApplet( self )
-        self.trackingApplet = TrackingAppletCons( self )
+        self.trackingApplet = ChaingraphTrackingApplet( self )
 
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator
@@ -35,12 +34,10 @@ class TrackingWorkflowCons( Workflow ):
         opTracking = self.trackingApplet.topLevelOperator
         
         ## Connect operators ##
-        opObjExtraction.Images.connect( opData.Image )
-
+        opObjExtraction.Images.connect( opData.Image )                
+        
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
-        opTracking.ClassMapping.connect( opObjExtraction.ClassMapping )
-        opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )
 
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.objectExtractionApplet)
