@@ -1,5 +1,6 @@
 import os
 import math
+import json
 import numpy
 import subprocess
 from lazyflow.rtype import Roi, SubRegion
@@ -12,6 +13,7 @@ from functools import partial
 import tempfile
 import shutil
 import datetime
+from ilastik.utility import autoEval
 
 from lazyflow.operators import OpH5WriterBigDataset, OpSubRegion
 
@@ -42,10 +44,10 @@ STATUS_FILE_NAME_FORMAT = "{} status {}.txt"
 OUTPUT_FILE_NAME_FORMAT = "{} output {}.h5"
 
 class OpTaskWorker(Operator):
-    ScratchDirectory = InputSlot(stype='filestring')
     Input = InputSlot()
     RoiString = InputSlot(stype='string')
     TaskName = InputSlot(stype='string')
+    ConfigFilePath = InputSlot(stype='filestring')
     
     ReturnCode = OutputSlot()
 
@@ -58,6 +60,10 @@ class OpTaskWorker(Operator):
         self.ReturnCode.meta.shape = (1,)
     
     def execute(self, slot, subindex, roi, result):
+        configFilePath = self.ConfigFilePath.value
+        with open(configFilePath) as configFile:
+            configDict = { str(k) : str(v) for k,v in json.load( configFile ).items() }
+        
         roiString = self.RoiString.value
         roi = Roi.loads(roiString)
         logger.info( "Executing for roi: {}".format(roi) )
@@ -65,8 +71,8 @@ class OpTaskWorker(Operator):
         statusFileName = STATUS_FILE_NAME_FORMAT.format( self.TaskName.value, str(roituple) )
         outputFileName = OUTPUT_FILE_NAME_FORMAT.format( self.TaskName.value, str(roituple) )
 
-        statusFilePath = os.path.join( self.ScratchDirectory.value, statusFileName )
-        outputFilePath = os.path.join( self.ScratchDirectory.value, outputFileName )
+        statusFilePath = os.path.join( configDict['scratch_directory'], statusFileName )
+        outputFilePath = os.path.join( configDict['scratch_directory'], outputFileName )
 
         # Create a temporary file to generate the output
         tempDir = tempfile.mkdtemp()
@@ -119,16 +125,10 @@ class OpTaskWorker(Operator):
         self.ReturnCode.setDirty( slice(None) )
 
 class OpClusterize(Operator):
-    ProjectFilePath = InputSlot(stype='filestring')
-    ScratchDirectory = InputSlot(stype='filestring')
-    CommandFormat = InputSlot(stype='string') # Format string for spawning a node task.
-    WorkflowTypeName = InputSlot(stype='string')
-    NumJobs = InputSlot()
-    TaskTimeoutSeconds = InputSlot()
     Input = InputSlot()
-    TaskProgressCmd = InputSlot(stype='string', optional=True)
-
     OutputFilePath = InputSlot()
+    ProjectFilePath = InputSlot(stype='filestring')
+    ConfigFilePath = InputSlot(stype='filestring')
     
     ReturnCode = OutputSlot()
 
@@ -149,6 +149,10 @@ class OpClusterize(Operator):
     def execute(self, slot, subindex, roi, result):
         success = True
         
+        configFilePath = self.ConfigFilePath.value
+        with open(configFilePath) as configFile:
+            self._configDict = { str(k) : str(v) for k,v in json.load( configFile ).items() }
+
         taskInfos = self._prepareTaskInfos()
         
         # Spawn each task
@@ -162,7 +166,7 @@ class OpClusterize(Operator):
         # Create the destination file if necessary
         self._prepareDestination( taskInfos )
 
-        timeOut = self.TaskTimeoutSeconds.value
+        timeOut = autoEval( self._configDict['task_timeout_secs'], int )
         with Timer() as totalTimer:
             # When each task completes, it creates a status file.
             while len(taskInfos) > 0:
@@ -208,7 +212,7 @@ class OpClusterize(Operator):
         taggedShape = self.Input.meta.getTaggedShape()
 
         spaceDims = filter( lambda (key, dim): key in 'xyz' and dim > 1, taggedShape.items() ) 
-        numJobs = self.NumJobs.value
+        numJobs = autoEval(self._configDict['num_jobs'], int)
         numJobsPerSpaceDim = math.pow(numJobs, 1.0/len(spaceDims))
         numJobsPerSpaceDim = int(round(numJobsPerSpaceDim))
 
@@ -234,35 +238,27 @@ class OpClusterize(Operator):
         rois = self._getRoiList()
         logger.info( "Dividing into {} node jobs.".format( len(rois) ) )
                 
-        commandFormat = self.CommandFormat.value
-
         taskInfos = {}
         for roiIndex, roi in enumerate(rois):
             roi = ( tuple(roi[0]), tuple(roi[1]) )
             taskInfo = OpClusterize.TaskInfo()
             taskInfo.subregion = SubRegion( None, start=roi[0], stop=roi[1] )
             
-            taskName = "TASK_{:02}".format(roiIndex)
+            taskName = "JOB{:02}".format(roiIndex)
             statusFileName = STATUS_FILE_NAME_FORMAT.format( taskName, str(roi) )
             outputFileName = OUTPUT_FILE_NAME_FORMAT.format( taskName, str(roi) )
 
-            statusFilePath = os.path.join( self.ScratchDirectory.value, statusFileName )
-            outputFilePath = os.path.join( self.ScratchDirectory.value, outputFileName )
+            statusFilePath = os.path.join( self._configDict['scratch_directory'], statusFileName )
+            outputFilePath = os.path.join( self._configDict['scratch_directory'], outputFileName )
 
             commandArgs = []
-            commandArgs.append( "--workflow_type=" + self.WorkflowTypeName.value )
+            commandArgs.append( "--option_config_file=" + self.ConfigFilePath.value )
             commandArgs.append( "--project=" + self.ProjectFilePath.value )
-            commandArgs.append( "--scratch_directory=" + self.ScratchDirectory.value )
             commandArgs.append( "--_node_work_=\"" + Roi.dumps( taskInfo.subregion ) + "\"" )
             commandArgs.append( "--process_name={}".format(taskName)  )
-            if self.TaskProgressCmd.ready():
-                commandArgs.append( "--task_progress_update_command={}".format( self.TaskProgressCmd.value ) )
 
-            # If the user overrode the temp dir to use, override it for the worker processes, too.            
-            if tempfile.tempdir is not None:
-                commandArgs.append( "--sys_tmp_dir={}".format( tempfile.tempdir ))
-            
             # Check the command format string: We need to know where to put our args...
+            commandFormat = self._configDict['command_format']
             assert commandFormat.find("{args}") != -1
             
             allArgs = " " + " ".join(commandArgs) + " "

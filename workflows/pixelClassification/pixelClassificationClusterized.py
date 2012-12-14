@@ -10,9 +10,7 @@ import functools
 import subprocess
 import threading
 import Queue
-
-# Third-party
-import h5py
+import json
 
 # HCI
 from lazyflow.graph import Graph
@@ -24,7 +22,7 @@ import ilastik.utility.monkey_patches
 from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.applets.batchIo.opBatchIo import ExportFormat
-from ilastik.utility import PathComponents
+from ilastik.utility import PathComponents, autoEval
 import ilastik.utility.globals
 
 import workflows # Load all known workflow modules
@@ -43,10 +41,8 @@ def main(argv):
     parser = getArgParser()
 
     ilastik.utility.monkey_patches.extend_arg_parser(parser)
-
     parsed_args = parser.parse_args(argv[1:])
-
-    ilastik.utility.monkey_patches.init_with_args(parsed_args)
+    ilastik.utility.monkey_patches.apply_setting_dict( parsed_args.__dict__ )
 
     try:
         runWorkflow(parsed_args)
@@ -58,17 +54,19 @@ def main(argv):
     return 0
 
 def getArgParser():
-    parser = argparse.ArgumentParser(description="Pixel Classification Prediction Workflow")
+    parser = argparse.ArgumentParser( description="Pixel Classification Prediction Workflow" )
+    parser.add_argument('--process_name', default="MASTER", help='A name for this process (for logging purposes)', required=False)
+    parser.add_argument('--option_config_file', help='A json file with various settings', required=True)
     parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
-    parser.add_argument('--workflow_type', help='The name of the workflow class to load with this project', required=True)
-    parser.add_argument('--scratch_directory', help='Scratch directory for intermediate files', required=False)
-    parser.add_argument('--command_format', help='Format string for spawned tasks.  Replace argument list with a single {}', required=False)
-    parser.add_argument('--num_jobs', type=int, help='Number of jobs', required=False)
     parser.add_argument('--output_file', help='The file to create', required=False)
     parser.add_argument('--_node_work_', help='Internal use only', required=False)
-    parser.add_argument('--process_name', help='A name for this process (for logging purposes)', required=False)
-    parser.add_argument('--task_timeout_secs', type=int, default=10*60, help='Seconds to give all tasks to complete before giving up.', required=False)
-    parser.add_argument('--task_progress_update_command', help='A command to run to report job progress', required=False)
+
+    #parser.add_argument('--workflow_type', help='The name of the workflow class to load with this project', required=True)
+    #parser.add_argument('--scratch_directory', help='Scratch directory for intermediate files', required=False)
+    #parser.add_argument('--command_format', help='Format string for spawned tasks.  Replace argument list with a single {}', required=False)
+    #parser.add_argument('--num_jobs', type=int, help='Number of jobs', required=False)
+    #parser.add_argument('--task_timeout_secs', default="10*60", help='Seconds to give all tasks to complete before giving up.', required=False)
+    #parser.add_argument('--task_progress_update_command', help='A command to run to report job progress', required=False)
     return parser
 
 background_tasks = Queue.Queue()
@@ -85,6 +83,14 @@ background_thread.start()
 def runWorkflow(parsed_args):
     args = parsed_args
 
+    # Read the config file
+    configFilePath = args.option_config_file
+    with open(configFilePath) as configFile:
+        configDict = { str(k) : str(v) for k,v in json.load( configFile ).items() }
+
+    # Update the monkey_patch settings
+    ilastik.utility.monkey_patches.apply_setting_dict( configDict )
+
     # If we've got a process name, re-initialize the logger from scratch
     task_name = "node"
     if args.process_name is not None:
@@ -96,7 +102,7 @@ def runWorkflow(parsed_args):
         raise RuntimeError("Project file '" + args.project + "' does not exist.")
 
     # Instantiate 'shell'
-    shell = HeadlessShell( functools.partial(Workflow.getSubclass(args.workflow_type), appendBatchOperators=False) )
+    shell = HeadlessShell( functools.partial(Workflow.getSubclass(configDict['workflow_type']), appendBatchOperators=False) )
     
     # Load project (auto-import it if necessary)
     logger.info("Opening project: '" + args.project + "'")
@@ -110,57 +116,53 @@ def runWorkflow(parsed_args):
     resultSlot = None
     finalOutputSlot = workflow.finalOutputSlot
     clusterOperator = None
-    if args._node_work_ is not None:
-        # We're doing node work
-        opClusterTaskWorker = OperatorWrapper( OpTaskWorker, graph=finalOutputSlot.graph )
-        opClusterTaskWorker.TaskName.setValue( task_name )
-        opClusterTaskWorker.ScratchDirectory.setValue( args.scratch_directory )
-        opClusterTaskWorker.RoiString.setValue( args._node_work_ )
-        opClusterTaskWorker.Input.connect( workflow.finalOutputSlot )
-        
-        if args.task_progress_update_command is not None:
-            def report_progress( progress ):
-                cmd = args.task_progress_update_command + " {}".format( int(progress) )
-                def shell_call(shell_cmd):
-                    logger.debug( "Executing progress command: " + cmd )
-                    subprocess.call( shell_cmd, shell=True )
-                background_tasks.put( functools.partial( shell_call, cmd ) )
-            opClusterTaskWorker.innerOperators[0].progressSignal.subscribe( report_progress )
-        
-        resultSlot = opClusterTaskWorker.ReturnCode
-        clusterOperator = opClusterTaskWorker
-    else:
-        # We're the master
-        opClusterizeMaster = OperatorWrapper( OpClusterize, graph=finalOutputSlot.graph )
-        opClusterizeMaster.ProjectFilePath.setValue( args.project )
-        opClusterizeMaster.WorkflowTypeName.setValue( args.workflow_type )
-        opClusterizeMaster.ScratchDirectory.setValue( args.scratch_directory )
-        opClusterizeMaster.OutputFilePath.setValue( args.output_file )
-        opClusterizeMaster.CommandFormat.setValue( args.command_format )
-        opClusterizeMaster.NumJobs.setValue( args.num_jobs )
-        opClusterizeMaster.TaskTimeoutSeconds.setValue( args.task_timeout_secs )
-        opClusterizeMaster.Input.connect( workflow.finalOutputSlot )
-
-        if args.task_progress_update_command is not None:
-            opClusterizeMaster.TaskProgressCmd.setValue( args.task_progress_update_command )
-        
-        resultSlot = opClusterizeMaster.ReturnCode
-        clusterOperator = opClusterizeMaster
+    try:
+        if args._node_work_ is not None:
+            # We're doing node work
+            opClusterTaskWorker = OperatorWrapper( OpTaskWorker, graph=finalOutputSlot.graph )
+            opClusterTaskWorker.Input.connect( workflow.finalOutputSlot )
+            opClusterTaskWorker.TaskName.setValue( task_name )
+            opClusterTaskWorker.RoiString.setValue( args._node_work_ )
+            opClusterTaskWorker.ConfigFilePath.setValue( args.option_config_file )
     
-    # Get the result
-    logger.info("Starting task")
-    result = resultSlot[0].value
+            # If we have a way to report task progress (e.g. by updating the job name),
+            #  then subscribe to progress signals
+            if 'task_progress_update_command' in configDict:
+                def report_progress( progress ):
+                    cmd = configDict['task_progress_update_command'] + " {}".format( int(progress) )
+                    def shell_call(shell_cmd):
+                        logger.debug( "Executing progress command: " + cmd )
+                        subprocess.call( shell_cmd, shell=True )
+                    background_tasks.put( functools.partial( shell_call, cmd ) )
+                opClusterTaskWorker.innerOperators[0].progressSignal.subscribe( report_progress )
+            
+            resultSlot = opClusterTaskWorker.ReturnCode
+            clusterOperator = opClusterTaskWorker
+        else:
+            # We're the master
+            opClusterizeMaster = OperatorWrapper( OpClusterize, graph=finalOutputSlot.graph )
+            opClusterizeMaster.Input.connect( workflow.finalOutputSlot )
+            opClusterizeMaster.ProjectFilePath.setValue( args.project )
+            opClusterizeMaster.OutputFilePath.setValue( args.output_file )
+            opClusterizeMaster.ConfigFilePath.setValue( args.option_config_file )
 
-    logger.info("Cleaning up")
-    clusterOperator.cleanUp()
-    global stop_background_tasks
-    stop_background_tasks = True
+            resultSlot = opClusterizeMaster.ReturnCode
+            clusterOperator = opClusterizeMaster
+        
+        # Get the result
+        logger.info("Starting task")
+        result = resultSlot[0].value
+    finally:
+        logger.info("Cleaning up")
+        global stop_background_tasks
+        stop_background_tasks = True
+        if clusterOperator is not None:
+            clusterOperator.cleanUp()
 
-    logger.info("Closing project...")
-    del shell
+        logger.info("Closing project...")
+        del shell
     
     logger.info("FINISHED with result {}".format(result))
-
     if not result:
         logger.error( "FAILED TO COMPLETE!" )
         
@@ -187,25 +189,19 @@ if __name__ == "__main__":
         #args += " /home/bergs/synapse_small.npy"
 
         args = []
-        #args.append("--project=/groups/flyem/data/bergs_scratch/project_files/synapse_small.ilp")
-        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
-        args.append( "--workflow_type=PixelClassificationWorkflow")
-        args.append( "--sys_tmp_dir=/scratch/bergs")
-        args.append( "--scratch_directory=/home/bergs/clusterstuff/scratch")
-        args.append( "--output_file=/home/bergs/clusterstuff/results/GIGACUBE_RESULTS.h5")
-        args.append( "--num_jobs={}".format( 3**3 ) )
         args.append( "--process_name=MASTER")
-        args.append( "--task_timeout_secs={}".format( 20*60 ) )
-        args.append( "--task_progress_update_command=./update_job_name")
-        args.append( "--command_format=qsub \
--pe batch 4 \
--l short=true \
--N {task_name} \
--j y \
--b y \
--cwd \
--V \
-'/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik_clusterized {args}'")
+        args.append( "--option_config_file=/groups/flyem/data/bergs_scratch/options/cluster_options.json")
+        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
+        args.append( "--output_file=/home/bergs/clusterstuff/results/GIGACUBE_RESULTS.h5")
+        ##args.append( "--workflow_type=PixelClassificationWorkflow")
+        ##args.append( "--sys_tmp_dir=/scratch/bergs")
+        ##args.append( "--scratch_directory=/home/bergs/clusterstuff/scratch")
+        ##args.append( "--num_jobs={}".format( 3**3 ) )
+        ##args.append( "--task_timeout_secs={}".format( 20*60 ) )
+        ##args.append( "--task_progress_update_command=./update_job_name")
+        ##args.append( "--command_format=qsub -pe batch 4 -l short=true -N {task_name} -j y -b y -cwd -V '/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik_clusterized {args}'")
+
+        #args.append("--project=/groups/flyem/data/bergs_scratch/project_files/synapse_small.ilp")
         #args.append('--command_format=/Users/bergs/ilastik-build/bin/python /Users/bergs/Documents/workspace/ilastik/workflows/pixelClassification/pixelClassificationClusterized.py {}')
 
         # --project=/home/bergs/synapse_small.ilp --scratch_directory=/magnetic/scratch --output_file=/magnetic/CLUSTER_RESULTS.h5 --command_format="/home/bergs/workspace/applet-workflows/workflows/pixelClassification/pixelClassificationClusterized.py {}" --num_jobs=4 

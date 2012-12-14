@@ -1,0 +1,10 @@
+{
+	"workflow_type" : "PixelClassificationWorkflow",
+	"sys_tmp_dir" : "/scratch/bergs",
+	"scratch_directory" : "/home/bergs/clusterstuff/scratch",
+	"num_jobs" : "2**3",
+	"task_timeout_secs" : "20*60",
+	"task_progress_update_command" : "./update_job_name",
+	"command_format" : "qsub -pe batch 4 -l short=true -N {task_name} -j y -b y -cwd -V '/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik_clusterized {args}'"
+}
+
