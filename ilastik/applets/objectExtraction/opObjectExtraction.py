@@ -12,6 +12,7 @@ import ctracking
 
 
 class OpLabelImage( Operator ):
+    name = "Label Image Accessor"
     BinaryImage = InputSlot()
     LabelImageWithBackground = OutputSlot()
 
@@ -29,6 +30,8 @@ class OpLabelImage( Operator ):
 
 
 class OpRegionFeatures( Operator ):
+    name = "Region Features"
+
     LabelImage = InputSlot()
     Output = OutputSlot( stype=Opaque, rtype=List )
 
@@ -139,13 +142,13 @@ class OpObjectExtraction( Operator ):
         self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)
         self._reg_cents = {}
 
-        self._opLabelImage = OpLabelImage( graph = graph )
+        self._opLabelImage = OpLabelImage( parent=self, graph = graph )
         self._opLabelImage.BinaryImage.connect( self.BinaryImage )
 
-        self._opRegCent = OpRegionCenters( graph = graph )
+        self._opRegCent = OpRegionCenters( parent=self, graph = graph )
         self._opRegCent.LabelImage.connect( self.LabelImage )
 
-        self._opRegFeats = OpRegionFeatures( graph = graph )
+        self._opRegFeats = OpRegionFeatures( parent=self, graph = graph )
         self._opRegFeats.LabelImage.connect( self.LabelImage )
 
     
