@@ -81,7 +81,7 @@ class StandardApplet( Applet ):
     def singleLaneGuiClass(self):
         """
         Return the class that will be instantiated for each image lane the applet needs.
-        The class constructure should accept a single parameter: a single-lane of the top-level operator.
+        The class constructor should accept a single parameter: a single-lane of the top-level operator.
         """
         return NotImplemented
 
