@@ -53,9 +53,8 @@ class ShellGuiTestCaseBase(object):
         """
         init_complete = threading.Event()
         
-        def initTest(shell, workflow):
+        def initTest(shell):
             cls.shell = shell
-            cls.workflow = workflow
             init_complete.set()
 
         appCreationEvent = threading.Event()

@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>1339</width>
-     <height>19</height>
+     <height>29</height>
     </rect>
    </property>
    <property name="nativeMenuBar">
@@ -36,6 +36,7 @@
     <addaction name="actionCenterAllImages"/>
     <addaction name="actionShowDebugPatches"/>
     <addaction name="actionSetCacheSize"/>
+    <addaction name="actionUsePrefetching"/>
     <addaction name="separator"/>
     <addaction name="actionOnly_for_current_view"/>
     <addaction name="actionFitImage"/>
@@ -233,6 +234,33 @@
   <action name="actionResetAxes">
    <property name="text">
     <string>Reset axes</string>
+   </property>
+  </action>
+  <action name="actonPrefetchingDisabled">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Disabled</string>
+   </property>
+  </action>
+  <action name="action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Enabled</string>
+   </property>
+  </action>
+  <action name="actionUsePrefetching">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Use Prefetching</string>
    </property>
   </action>
  </widget>

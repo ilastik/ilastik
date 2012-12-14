@@ -5,6 +5,31 @@ class PathComponents(object):
     Provides a convenient access to path components of a combined external/internal path to a dataset.
     """
     def __init__(self, totalPath, cwd=None):
+        """
+        Initialize the path components.
+        
+        :param totalPath: The entire path to the dataset, including any internal path (e.g. the path to an hdf5 dataset).
+                          For example, ``totalPath='/some/path/to/file.h5/with/internal/dataset'``
+
+        :param cwd: If provided, relative paths will be converted to absolute paths using this arg as the working directory.
+        """
+        #: Example: ``/some/path/to/file.h5``
+        self.externalPath = None
+        #: Example: ``/some/path/to``
+        self.externalDirectory = None
+        #: Example: ``file.h5``
+        self.filename = None            
+        #: Example: ``file``
+        self.filenameBase = None
+        #: Example: ``.h5``
+        self.extension = None
+        #: Example: ``/with/internal/dataset``
+        self.internalPath = None
+        #: Example: ``/dataset``
+        self.internalDatasetName = None
+        #: Example: ``/some/path/to/file.h5/with/internal``
+        self.internalDirectory = None
+        
         # For hdf5 paths, split into external, extension, and internal paths
         h5Exts = ['.ilp', '.h5', '.hdf5']
         ext = None
@@ -47,6 +72,9 @@ class PathComponents(object):
         self.filenameBase = os.path.splitext(self.filename)[0]         # file
 
     def totalPath(self):
+        """
+        Return the (reconstructed) totalPath to the dataset.
+        """
         total = self.externalPath 
         if self.internalPath:
             total += self.internalPath

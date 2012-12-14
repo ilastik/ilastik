@@ -61,6 +61,9 @@
 
     <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">ABCMeta</span>
 
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topLevelOperatorView</span><span class="p">):</span>
+        <span class="k">pass</span>
+
     <span class="nd">@abstractmethod</span>
 <div class="viewcode-block" id="AppletGuiInterface.centralWidget"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.centralWidget">[docs]</a>    <span class="k">def</span> <span class="nf">centralWidget</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -69,9 +72,9 @@
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 </div>
     <span class="nd">@abstractmethod</span>
-<div class="viewcode-block" id="AppletGuiInterface.appletDrawers"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.appletDrawers">[docs]</a>    <span class="k">def</span> <span class="nf">appletDrawers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="AppletGuiInterface.appletDrawer"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.appletDrawer">[docs]</a>    <span class="k">def</span> <span class="nf">appletDrawer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Abstract method.  Return a list of (drawer title, drawer widget) pairs for this applet.</span>
+<span class="sd">        Abstract method.  Return the drawer widget for this applet.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
     </div>
@@ -97,15 +100,35 @@
 <span class="sd">        Abstract method.</span>
 <span class="sd">        Called by the shell when the user has switched the input image he wants to view.</span>
 <span class="sd">        The GUI should respond by updating the content of the central widget.</span>
+<span class="sd">        Note: Single-image GUIs do not need to provide this function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</div>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="AppletGuiInterface.laneAdded"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.laneAdded">[docs]</a>    <span class="k">def</span> <span class="nf">laneAdded</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Abstract method.</span>
+<span class="sd">        Called when a new image lane has been added to the workflow, and the GUI should respond appropriately.</span>
+<span class="sd">        Note: The default GUI provided by StandardApplet overrides this for you. </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 </div>
     <span class="nd">@abstractmethod</span>    
-<div class="viewcode-block" id="AppletGuiInterface.reset"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="AppletGuiInterface.laneRemoved"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.laneRemoved">[docs]</a>    <span class="k">def</span> <span class="nf">laneRemoved</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Abstract method.</span>
-<span class="sd">        Called by the shell when the current project has been unloaded.</span>
-<span class="sd">        The GUI should reset itself to its initial state, whatever that is.</span>
+<span class="sd">        Called when a new image lane is about to be removed from the workflow, and the GUI should respond appropriately.</span>
+<span class="sd">        The GUI should clean up any resourecs it owns.</span>
+<span class="sd">        Note: The default GUI provided by StandardApplet overrides this for you. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</div>
+    <span class="nd">@abstractmethod</span>    
+<div class="viewcode-block" id="AppletGuiInterface.stopAndCleanUp"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletGuiInterface.AppletGuiInterface.stopAndCleanUp">[docs]</a>    <span class="k">def</span> <span class="nf">stopAndCleanUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Abstract method.</span>
+<span class="sd">        Called when the GUI is about to be destroyed.</span>
+<span class="sd">        The gui should stop updating all data views and should clean up any resources it created (e.g. orphan operators).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
 </div>

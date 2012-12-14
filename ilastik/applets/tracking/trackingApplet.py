@@ -1,37 +1,29 @@
-from ilastik.applets.base.applet import Applet
+from ilastik.applets.base.standardApplet import StandardApplet
 
 from opTracking import OpTracking
 from trackingGui import TrackingGui
 from trackingSerializer import TrackingSerializer
 
-from lazyflow.graph import OperatorWrapper
-
-class TrackingApplet( Applet ):
+class TrackingApplet( StandardApplet ):
     """
     This is a simple thresholding applet
     """
-    def __init__( self, graph, guiName="Tracking", projectFileGroupName="Tracking" ):
-        super(TrackingApplet, self).__init__( guiName )
-
-        # Wrap the top-level operator, since the GUI supports multiple images
-        self._topLevelOperator = OperatorWrapper(OpTracking, graph=graph)
-
-        self._gui = TrackingGui(self._topLevelOperator)
-        
-        self._serializableItems = [ TrackingSerializer(self._topLevelOperator, projectFileGroupName) ]
+    def __init__( self, name="Tracking", workflow=None, projectFileGroupName="Tracking" ):
+        super(TrackingApplet, self).__init__( name=name, workflow=workflow )
+        self._serializableItems = [ TrackingSerializer(self.topLevelOperator, projectFileGroupName) ]
 
     @property
-    def topLevelOperator(self):
-        return self._topLevelOperator
+    def singleLaneOperatorClass( self ):
+        return OpTracking
+
+    @property
+    def broadcastingSlots( self ):
+        return []
+
+    @property
+    def singleLaneGuiClass( self ):
+        return TrackingGui
 
     @property
     def dataSerializers(self):
         return self._serializableItems
-
-    @property
-    def viewerControlWidget(self):
-        return self._centralWidget.viewerControlWidget
-
-    @property
-    def gui(self):
-        return self._gui

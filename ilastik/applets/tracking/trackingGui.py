@@ -28,8 +28,8 @@ class TrackingGui( QWidget ):
     def centralWidget( self ):
         return self.volumeEditorWidget
 
-    def appletDrawers( self ):
-        return [ ("Tracking", self._drawer ) ]
+    def appletDrawer( self ):
+        return self._drawer
 
     def menus( self ):
         return []
@@ -37,8 +37,49 @@ class TrackingGui( QWidget ):
     def viewerControlWidget( self ):
         return self._viewerControlWidget
 
-    def setImageIndex( self, imageIndex ):
-        mainOperator = self.mainOperator.innerOperators[imageIndex]
+    def stopAndCleanUp( self ):
+        pass
+
+    def reset( self ):
+        print "TrackinGui.reset(): not implemented"
+
+    ###########################################
+    ###########################################
+    
+    def __init__(self, mainOperator):
+        """
+        """
+        super(TrackingGui, self).__init__()
+        self.mainOperator = mainOperator
+        self.layerstack = LayerStackModel()
+
+        self._viewerControlWidget = None
+        self._initViewerControlUi()
+
+        self.editor = None
+        self._initEditor()
+
+        self._initAppletDrawerUi()
+        
+        if self.mainOperator.LabelImage.meta.shape:
+            self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
+        self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
+        self._initViewer()
+
+    def _onMetaChanged( self, slot ):
+        if slot is self.mainOperator.LabelImage:
+            if slot.meta.shape:
+                print slot.meta.shape
+                self.editor.dataShape = slot.meta.shape
+
+                maxt = slot.meta.shape[0]
+                self._drawer.from_time.setRange(0,maxt-1)
+                self._drawer.from_time.setValue(0)
+                self._drawer.to_time.setRange(0,maxt-1)
+                self._drawer.to_time.setValue(maxt-1)       
+
+    def _initViewer( self ):
+        mainOperator = self.mainOperator
 
         # self.rawsrc = LazyflowSource( mainOperator.RawData )
         # layerraw = GrayscaleLayer( self.rawsrc )
@@ -84,44 +125,6 @@ class TrackingGui( QWidget ):
             self._drawer.from_z.setValue(0)
             self._drawer.to_z.setRange(0,maxz-1)
             self._drawer.to_z.setValue(maxz-1)       
-
-    def reset( self ):
-        print "TrackinGui.reset(): not implemented"
-
-    ###########################################
-    ###########################################
-    
-    def __init__(self, mainOperator):
-        """
-        """
-        super(TrackingGui, self).__init__()
-        self.mainOperator = mainOperator
-        self.layerstack = LayerStackModel()
-
-        self._viewerControlWidget = None
-        self._initViewerControlUi()
-
-        self.editor = None
-        self._initEditor()
-
-        self._initAppletDrawerUi()
-        
-        if self.mainOperator.LabelImage.meta.shape:
-            self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
-        self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
-
-
-    def _onMetaChanged( self, slot ):
-        if slot is self.mainOperator.LabelImage:
-            if slot.meta.shape:
-                print slot.meta.shape
-                self.editor.dataShape = slot.meta.shape
-
-                maxt = slot.meta.shape[0]
-                self._drawer.from_time.setRange(0,maxt-1)
-                self._drawer.from_time.setValue(0)
-                self._drawer.to_time.setRange(0,maxt-1)
-                self._drawer.to_time.setValue(maxt-1)       
 
     def _initEditor(self):
         """
@@ -184,7 +187,7 @@ class TrackingGui( QWidget ):
         from_size = self._drawer.from_size.value()
         to_size = self._drawer.to_size.value()        
 
-        self.mainOperator.innerOperators[0].track(
+        self.mainOperator.track(
             time_range = range(from_t, to_t + 1),
             x_range = (from_x, to_x + 1),
             y_range = (from_y, to_y + 1),
@@ -205,39 +208,6 @@ class TrackingGui( QWidget ):
             self.mainOperator.MinValue.setValue(minVal)
             self.mainOperator.MaxValue.setValue(maxVal)
     
-    def setupLayers(self, currentImageIndex):
-        print "tracking: setupLayers"
-        with Tracer(traceLogger):
-            layers = []
-    
-            # Show the thresholded data
-            outputImageSlot = self.mainOperator.Output
-            if outputImageSlot.ready():
-                outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
-                outputLayer.name = "min <= x <= max"
-                outputLayer.visible = True                
-                outputLayer.opacity = 1.0
-                layers.append(outputLayer)
-            
-            # # Show the  data
-            # invertedOutputSlot = self.mainOperator.InvertedOutput[ currentImageIndex ]
-            # if invertedOutputSlot.ready():
-            #     invertedLayer = self.createStandardLayerFromSlot( invertedOutputSlot )
-            #     invertedLayer.name = "(x < min) U (x > max)"
-            #     invertedLayer.visible = True
-            #     invertedLayer.opacity = 0.25
-            #     layers.append(invertedLayer)
-            
-            # # Show the raw input data
-            # inputImageSlot = self.mainOperator.InputImage[ currentImageIndex ]
-            # if inputImageSlot.ready():
-            #     inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
-            #     inputLayer.name = "Raw Input"
-            #     inputLayer.visible = True
-            #     inputLayer.opacity = 1.0
-            #     layers.append(inputLayer)
-    
-            return layers
 
 
 

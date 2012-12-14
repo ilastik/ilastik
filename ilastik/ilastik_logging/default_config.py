@@ -67,6 +67,7 @@ default_log_config = {
         "lazyflow.operators.obsolete.classifierOperators":    { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "ilastik":                              {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "ilastik.applets":                      {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
+        "ilastik.applets.pixelClassification":  {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "ilastik.shell":                        {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "ilastik.widgets":                      {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
         "volumina":                             {  "level":"INFO", "handlers":["console","console_warn"], "propagate": False },

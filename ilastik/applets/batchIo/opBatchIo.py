@@ -32,9 +32,9 @@ class OpBatchIo(Operator):
     name = "OpBatchIo"
     category = "Top-level"
 
-    ExportDirectory = InputSlot(stype='filestring') # A separate directory to export to.  If '', then exports to the input data's directory
-    Format = InputSlot(stype='int')                 # The export format
-    Suffix = InputSlot(stype='string')              # Appended to the file name (before the extension)
+    ExportDirectory = InputSlot(stype='filestring', value='') # A separate directory to export to.  If '', then exports to the input data's directory
+    Format = InputSlot(stype='int', value=ExportFormat.H5)                 # The export format
+    Suffix = InputSlot(stype='string', value='_results')              # Appended to the file name (before the extension)
     
     InternalPath = InputSlot(stype='string', optional=True) # Hdf5 internal path
 
@@ -58,11 +58,8 @@ class OpBatchIo(Operator):
         self.OutputDataPath.meta.dtype = object
         self.ExportResult.meta.shape = (1,)
         self.ExportResult.meta.dtype = object
-        
-        # Provide default values
-        self.ExportDirectory.setValue( '' )
-        self.Format.setValue( ExportFormat.H5 )
-        self.Suffix.setValue( '_results' )
+
+        # Default to Dirty        
         self.Dirty.setValue(True)
         
         self.progressSignal = OrderedSignal()

@@ -1,6 +1,4 @@
-from ilastik.applets.base.appletSerializer import \
-    AppletSerializer, stringToSlicing, slicingToString, \
-    deleteIfPresent, SerialBlockSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialBlockSlot
 
 class LabelingSerializer(AppletSerializer):
     """Encapsulate the serialization scheme for pixel classification
@@ -13,4 +11,4 @@ class LabelingSerializer(AppletSerializer):
                                  operator.NonzeroLabelBlocks,
                                  name=('LabelSets', 'labels{:03d}'))
         ]
-        super(LabelingSerializer, self).__init__(projectFileGroupName)
+        super(LabelingSerializer, self).__init__(projectFileGroupName, slots=slots)

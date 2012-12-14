@@ -1,44 +1,29 @@
-from ilastik.applets.base.applet import Applet
+from ilastik.applets.base.standardApplet import StandardApplet
 
 from opVigraWatershedViewer import OpVigraWatershedViewer
-#from vigraWatershedSerializer import VigraWatershedSerializer
+from vigraWatershedViewerSerializer import VigraWatershedViewerSerializer
 
-from lazyflow.graph import OperatorWrapper
-
-class VigraWatershedViewerApplet( Applet ):
+class VigraWatershedViewerApplet( StandardApplet ):
     """
     Viewer for watershed results, with minimal configuration controls.
     """
     def __init__( self, workflow, guiName, projectFileGroupName ):
-        super(VigraWatershedViewerApplet, self).__init__(guiName)
-
-        # Wrap the top-level operator, since the GUI supports multiple images
-        self._topLevelOperator = OperatorWrapper( OpVigraWatershedViewer,
-                                                  parent=workflow,
-                                                  promotedSlotNames=['RawImage', 'InputImage', 'OverrideLabels'] )
-
-        self._topLevelOperator.name = "VigraWatershedViewer Top-Level Operator"
-        
-        self._gui = None # Created on first access
-        
-        self._serializableItems = []
-        #self._serializableItems = [ VigraWatershedSerializer(self._topLevelOperator, projectFileGroupName) ]
+        super(VigraWatershedViewerApplet, self).__init__(guiName, workflow)
+        self._serializableItems = [ VigraWatershedViewerSerializer(self.topLevelOperator, projectFileGroupName) ]
         
     @property
-    def topLevelOperator(self):
-        return self._topLevelOperator
+    def singleLaneOperatorClass(self):
+        return OpVigraWatershedViewer
+
+    @property
+    def broadcastingSlots(self):
+        return ['InputChannelIndexes', 'WatershedPadding', 'FreezeCache', 'CacheBlockShape', 'SeedThresholdValue', 'MinSeedSize' ]
+    
+    @property
+    def singleLaneGuiClass(self):
+        from vigraWatershedViewerGui import VigraWatershedViewerGui
+        return VigraWatershedViewerGui
 
     @property
     def dataSerializers(self):
         return self._serializableItems
-
-    @property
-    def viewerControlWidget(self):
-        return self._centralWidget.viewerControlWidget
-
-    @property
-    def gui(self):
-        if self._gui is None:
-            from vigraWatershedViewerGui import VigraWatershedViewerGui
-            self._gui = VigraWatershedViewerGui(self._topLevelOperator)
-        return self._gui

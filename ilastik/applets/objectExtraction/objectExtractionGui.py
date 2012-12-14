@@ -6,6 +6,8 @@ from lazyflow.rtype import SubRegion
 
 import os
 
+from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
+
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
                          AlphaModulatedLayer, LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
 import volumina.colortables as colortables
@@ -17,18 +19,21 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 from lazyflow.tracer import Tracer
 
 
+
 class ObjectExtractionGui( QWidget ):
     """
     """
-    
+   
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
+
     def centralWidget( self ):
+        """ Return the widget that will be displayed in the main viewer area. """ 
         return self.volumeEditorWidget
 
-    def appletDrawers( self ):
-        return [ ("Object Extraction", self._drawer ) ]
+    def appletDrawer( self ):
+        return self._drawer
 
     def menus( self ):
         return []
@@ -36,9 +41,41 @@ class ObjectExtractionGui( QWidget ):
     def viewerControlWidget( self ):
         return self._viewerControlWidget
 
-    def setImageIndex( self, imageIndex ):
-        mainOperator = self.mainOperator.innerOperators[imageIndex]
-        self.curOp = mainOperator
+    def stopAndCleanUp( self ):
+        pass
+
+    ###########################################
+    ###########################################
+    
+    def __init__(self, topLevelOperatorView):
+        """
+        """
+        super(ObjectExtractionGui, self).__init__()
+        self.mainOperator = topLevelOperatorView
+        self.layerstack = LayerStackModel()
+
+        #self.rawsrc = LazyflowSource( self.mainOperator.RawData )
+        #layerraw = GrayscaleLayer( self.rawsrc )
+        #layerraw.name = "Raw"
+        #self.layerstack.append( layerraw )
+
+        self._viewerControlWidget = None
+        self._initViewerControlUi()
+
+        self.editor = None
+        self._initEditor()
+
+        self._initAppletDrawerUi()
+        assert(self.appletDrawer() is not None)
+        self._initViewer()
+
+    def _onMetaChanged( self, slot ):
+        if slot is self.mainOperator.BinaryImage:
+            if slot.meta.shape:
+                self.editor.dataShape = slot.meta.shape
+
+    def _initViewer( self ):
+        mainOperator = self.mainOperator
 
         ct = colortables.create_default_8bit()
         self.binaryimagesrc = LazyflowSource( mainOperator.BinaryImage )
@@ -62,38 +99,6 @@ class ObjectExtractionGui( QWidget ):
         if mainOperator.BinaryImage.meta.shape:
             self.editor.dataShape = mainOperator.LabelImage.meta.shape
         mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged )            
-
-    def reset( self ):
-        print "reset(): not implemented"
-
-    ###########################################
-    ###########################################
-    
-    def __init__(self, mainOperator):
-        """
-        """
-        super(ObjectExtractionGui, self).__init__()
-        self.mainOperator = mainOperator
-        self.curOp = None
-        self.layerstack = LayerStackModel()
-
-        #self.rawsrc = LazyflowSource( self.mainOperator.RawData )
-        #layerraw = GrayscaleLayer( self.rawsrc )
-        #layerraw.name = "Raw"
-        #self.layerstack.append( layerraw )
-
-        self._viewerControlWidget = None
-        self._initViewerControlUi()
-
-        self.editor = None
-        self._initEditor()
-
-        self._initAppletDrawerUi()
-
-    def _onMetaChanged( self, slot ):
-        if slot is self.curOp.BinaryImage:
-            if slot.meta.shape:
-                self.editor.dataShape = slot.meta.shape
  
     def _initEditor(self):
         """
@@ -136,7 +141,7 @@ class ObjectExtractionGui( QWidget ):
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
     def _onLabelImageButtonPressed( self ):
-        m = self.curOp.LabelImage.meta
+        m = self.mainOperator.LabelImage.meta
         maxt = m.shape[0]
         progress = QProgressDialog("Labelling Binary Image...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
@@ -149,22 +154,22 @@ class ObjectExtractionGui( QWidget ):
             if progress.wasCanceled():
                 break
             else:
-                self.curOp.updateLabelImageAt( t )
+                self.mainOperator.updateLabelImageAt( t )
         progress.setValue(maxt)                
-        roi = SubRegion(self.curOp.LabelImage, start=5*(0,), stop=m.shape)
-        self.curOp.LabelImage.setDirty(roi)
+        roi = SubRegion(self.mainOperator.LabelImage, start=5*(0,), stop=m.shape)
+        self.mainOperator.LabelImage.setDirty(roi)
 
     def _onExtractObjectsButtonPressed( self ):
-        maxt = self.curOp.LabelImage.meta.shape[0]
+        maxt = self.mainOperator.LabelImage.meta.shape[0]
         progress = QProgressDialog("Extracting objects...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())
 
         reqs = []
-        self.curOp._opRegFeats.fixed = False
+        self.mainOperator._opRegFeats.fixed = False
         for t in range(maxt):
-            reqs.append(self.curOp.RegionFeatures([t]))
+            reqs.append(self.mainOperator.RegionFeatures([t]))
             reqs[-1].submit()
         for i, req in enumerate(reqs):
             progress.setValue(i)
@@ -173,6 +178,6 @@ class ObjectExtractionGui( QWidget ):
             else:
                 req.wait()
                 
-        self.curOp._opRegFeats.fixed = True 
+        self.mainOperator._opRegFeats.fixed = True 
         progress.setValue(maxt)
-        self.curOp.ObjectCenterImage.setDirty( SubRegion(self.curOp.ObjectCenterImage))
+        self.mainOperator.ObjectCenterImage.setDirty( SubRegion(self.mainOperator.ObjectCenterImage))
