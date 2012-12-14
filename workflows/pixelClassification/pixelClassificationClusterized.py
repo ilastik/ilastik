@@ -7,6 +7,9 @@ import argparse
 import logging
 import traceback
 import functools
+import subprocess
+import threading
+import Queue
 
 # Third-party
 import h5py
@@ -65,7 +68,19 @@ def getArgParser():
     parser.add_argument('--_node_work_', help='Internal use only', required=False)
     parser.add_argument('--process_name', help='A name for this process (for logging purposes)', required=False)
     parser.add_argument('--task_timeout_secs', type=int, default=10*60, help='Seconds to give all tasks to complete before giving up.', required=False)
+    parser.add_argument('--task_progress_update_command', help='A command to run to report job progress', required=False)
     return parser
+
+background_tasks = Queue.Queue()
+stop_background_tasks = False
+def do_tasks():
+    while not stop_background_tasks:
+        task = background_tasks.get()
+        task()
+
+background_thread = threading.Thread( target=do_tasks )
+background_thread.daemon = True
+background_thread.start()
 
 def runWorkflow(parsed_args):
     args = parsed_args
@@ -102,6 +117,16 @@ def runWorkflow(parsed_args):
         opClusterTaskWorker.ScratchDirectory.setValue( args.scratch_directory )
         opClusterTaskWorker.RoiString.setValue( args._node_work_ )
         opClusterTaskWorker.Input.connect( workflow.finalOutputSlot )
+        
+        if args.task_progress_update_command is not None:
+            def report_progress( progress ):
+                cmd = args.task_progress_update_command + " {}".format( int(progress) )
+                def shell_call(shell_cmd):
+                    logger.debug( "Executing progress command: " + cmd )
+                    subprocess.call( shell_cmd, shell=True )
+                background_tasks.put( functools.partial( shell_call, cmd ) )
+            opClusterTaskWorker.innerOperators[0].progressSignal.subscribe( report_progress )
+        
         resultSlot = opClusterTaskWorker.ReturnCode
         clusterOperator = opClusterTaskWorker
     else:
@@ -115,6 +140,10 @@ def runWorkflow(parsed_args):
         opClusterizeMaster.NumJobs.setValue( args.num_jobs )
         opClusterizeMaster.TaskTimeoutSeconds.setValue( args.task_timeout_secs )
         opClusterizeMaster.Input.connect( workflow.finalOutputSlot )
+
+        if args.task_progress_update_command is not None:
+            opClusterizeMaster.TaskProgressCmd.setValue( args.task_progress_update_command )
+        
         resultSlot = opClusterizeMaster.ReturnCode
         clusterOperator = opClusterizeMaster
     
@@ -124,13 +153,16 @@ def runWorkflow(parsed_args):
 
     logger.info("Cleaning up")
     clusterOperator.cleanUp()
+    global stop_background_tasks
+    stop_background_tasks = True
 
     logger.info("Closing project...")
     del shell
     
-    assert result    
-    
     logger.info("FINISHED with result {}".format(result))
+
+    if not result:
+        logger.error( "FAILED TO COMPLETE!" )
         
 if __name__ == "__main__":
 
@@ -161,9 +193,10 @@ if __name__ == "__main__":
         args.append( "--sys_tmp_dir=/scratch/bergs")
         args.append( "--scratch_directory=/home/bergs/clusterstuff/scratch")
         args.append( "--output_file=/home/bergs/clusterstuff/results/GIGACUBE_RESULTS.h5")
-        args.append( "--num_jobs={}".format( 4**3 ) )
+        args.append( "--num_jobs={}".format( 3**3 ) )
         args.append( "--process_name=MASTER")
-        args.append( "--task_timeout_secs={}".format( 5*60 ) )
+        args.append( "--task_timeout_secs={}".format( 20*60 ) )
+        args.append( "--task_progress_update_command=./update_job_name")
         args.append( "--command_format=qsub \
 -pe batch 4 \
 -l short=true \

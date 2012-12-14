@@ -3,7 +3,7 @@ import math
 import numpy
 import subprocess
 from lazyflow.rtype import Roi, SubRegion
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 import itertools
 import h5py
 import time
@@ -49,6 +49,10 @@ class OpTaskWorker(Operator):
     
     ReturnCode = OutputSlot()
 
+    def __init__(self, *args, **kwargs):
+        super( OpTaskWorker, self ).__init__( *args, **kwargs )
+        self.progressSignal = OrderedSignal()
+
     def setupOutputs(self):
         self.ReturnCode.meta.dtype = bool
         self.ReturnCode.meta.shape = (1,)
@@ -86,8 +90,11 @@ class OpTaskWorker(Operator):
             opH5Writer.hdf5File.setValue( outputFile )
             opH5Writer.hdf5Path.setValue( 'node_result' )
             opH5Writer.Image.connect( opSubRegion.Output )
-    
+
             assert opH5Writer.WriteImage.ready()
+
+            # Forward progress from the writer to our own progress signal
+            opH5Writer.progressSignal.subscribe( self.progressSignal )
 
             with Timer() as computeTimer:
                 result[0] = opH5Writer.WriteImage.value
@@ -102,6 +109,9 @@ class OpTaskWorker(Operator):
         # Now create the status file to show that we're finished.
         statusFile = file(statusFilePath, 'w')
         statusFile.write('Yay!')
+
+        # Delete the tempfile
+        os.remove( tmpOutputFile )
         
         return result
 
@@ -116,10 +126,14 @@ class OpClusterize(Operator):
     NumJobs = InputSlot()
     TaskTimeoutSeconds = InputSlot()
     Input = InputSlot()
+    TaskProgressCmd = InputSlot(stype='string', optional=True)
 
     OutputFilePath = InputSlot()
     
     ReturnCode = OutputSlot()
+
+    # Constants
+    FINAL_DATASET_NAME = 'cluster_result'
 
     class TaskInfo():
         taskName = None
@@ -144,6 +158,9 @@ class OpClusterize(Operator):
             # This shouldn't add much overhead, and we won't block if the command that actually spawns the work is blocking.
             th = threading.Thread( target=partial(subprocess.call, taskInfo.command, shell=True  ) )
             th.start()
+
+        # Create the destination file if necessary
+        self._prepareDestination( taskInfos )
 
         timeOut = self.TaskTimeoutSeconds.value
         with Timer() as totalTimer:
@@ -225,13 +242,12 @@ class OpClusterize(Operator):
             taskInfo = OpClusterize.TaskInfo()
             taskInfo.subregion = SubRegion( None, start=roi[0], stop=roi[1] )
             
-            taskName = "TASK_{}".format(roiIndex)
+            taskName = "TASK_{:02}".format(roiIndex)
             statusFileName = STATUS_FILE_NAME_FORMAT.format( taskName, str(roi) )
             outputFileName = OUTPUT_FILE_NAME_FORMAT.format( taskName, str(roi) )
 
             statusFilePath = os.path.join( self.ScratchDirectory.value, statusFileName )
             outputFilePath = os.path.join( self.ScratchDirectory.value, outputFileName )
-
 
             commandArgs = []
             commandArgs.append( "--workflow_type=" + self.WorkflowTypeName.value )
@@ -239,6 +255,8 @@ class OpClusterize(Operator):
             commandArgs.append( "--scratch_directory=" + self.ScratchDirectory.value )
             commandArgs.append( "--_node_work_=\"" + Roi.dumps( taskInfo.subregion ) + "\"" )
             commandArgs.append( "--process_name={}".format(taskName)  )
+            if self.TaskProgressCmd.ready():
+                commandArgs.append( "--task_progress_update_command={}".format( self.TaskProgressCmd.value ) )
 
             # If the user overrode the temp dir to use, override it for the worker processes, too.            
             if tempfile.tempdir is not None:
@@ -262,9 +280,44 @@ class OpClusterize(Operator):
 
         return taskInfos
 
+    def _prepareDestination(self, taskInfos):
+        with h5py.File( self.OutputFilePath.value ) as destinationFile:
+            if OpClusterize.FINAL_DATASET_NAME not in destinationFile.keys():
+                dtypeBytes = self._getDtypeBytes()
+    
+                taggedShape = self.Input.meta.getTaggedShape()
+                numChannels = taggedShape['c']
+                cubeDim = math.pow( 300000 / (numChannels * dtypeBytes), (1/3.0) )
+                cubeDim = int(cubeDim)
+        
+                chunkDims = {}
+                chunkDims['t'] = 1
+                chunkDims['x'] = cubeDim
+                chunkDims['y'] = cubeDim
+                chunkDims['z'] = cubeDim
+                chunkDims['c'] = numChannels
+                
+                # h5py guide to chunking says chunks of 300k or less "work best"
+                assert chunkDims['x'] * chunkDims['y'] * chunkDims['z'] * numChannels * dtypeBytes  <= 300000
+        
+                chunkShape = map( lambda (key, dim): min(chunkDims[key], dim),
+                                  taggedShape.items() )
+                chunkShape = tuple(chunkShape)
+        
+                resultDataset = destinationFile.create_dataset(OpClusterize.FINAL_DATASET_NAME,
+                                                               shape=self.Input.meta.shape,
+                                                               dtype=self.Input.meta.dtype,
+                                                               chunks=chunkShape)
+
+                missingRois = map( lambda taskInfo: Roi.dumps( taskInfo.subregion ), taskInfos.values() )
+                resultDataset.attrs['missingRois'] = missingRois
+    
+
     def _copyFinishedResults(self, taskInfos):
         finished_rois = []
         destinationFile = None
+        resultDataset = None
+        missingRois = None
         for roi, taskInfo in taskInfos.items():
             # Has the task completed yet?
             #logger.debug( "Checking for file: {}".format( taskInfo.statusFilePath ) )
@@ -275,43 +328,58 @@ class OpClusterize(Operator):
             if not os.path.exists( taskInfo.outputFilePath ):
                 raise RuntimeError( "Error: Could not locate output file from spawned task: " + taskInfo.outputFilePath )
 
-            # Open the file
-            f = h5py.File( taskInfo.outputFilePath, 'r' )
-
-            # Check the result
-            assert 'node_result' in f.keys()
-            assert numpy.all(f['node_result'].shape == numpy.subtract(roi[1], roi[0]))
-            assert f['node_result'].dtype == self.Input.meta.dtype
-            assert f['node_result'].attrs['axistags'] == self.Input.meta.axistags.toJSON()
-
             # Open the destination file if necessary
             if destinationFile is None:
                 destinationFile = h5py.File( self.OutputFilePath.value )
-                if 'cluster_result' not in destinationFile.keys():
-                    destinationFile.create_dataset('cluster_result', shape=self.Input.meta.shape, dtype=self.Input.meta.dtype)
+                resultDataset = destinationFile[OpClusterize.FINAL_DATASET_NAME]
+                assert 'missingRois' in resultDataset.attrs
+                missingRois = set( resultDataset.attrs['missingRois'] )
 
-            # Copy the data into our result (which might be an h5py dataset...)
-            key = taskInfo.subregion.toSlice()
+            roiString = Roi.dumps( taskInfo.subregion )
+            if roiString in missingRois:
+                with Timer() as fileCopyTimer:
+                    # Copy the scratch file to local scratch area before we open it with h5py
+                    tempDir = tempfile.mkdtemp()
+                    roiString = Roi.dumps( taskInfo.subregion )
+                    tmpOutputFilePath = os.path.join(tempDir, roiString + ".h5")
+    
+                    logger.info( "Copying {} to {}...".format(taskInfo.outputFilePath, tmpOutputFilePath) )
+                    shutil.copyfile(taskInfo.outputFilePath, tmpOutputFilePath)
+                    logger.info( "Finished copying after {} seconds".format( fileCopyTimer.seconds() ) )
+    
+                # Open the file
+                with h5py.File( tmpOutputFilePath, 'r' ) as f:
+                    # Check the result
+                    assert 'node_result' in f.keys()
+                    assert numpy.all(f['node_result'].shape == numpy.subtract(roi[1], roi[0]))
+                    assert f['node_result'].dtype == self.Input.meta.dtype
+                    assert f['node_result'].attrs['axistags'] == self.Input.meta.axistags.toJSON()
+        
+                    shape = f['node_result'][:].shape
+    
+                    dtypeBytes = self._getDtypeBytes()
+                    
+                    # Copy the data into our result (which might be an h5py dataset...)
+                    key = taskInfo.subregion.toSlice()
+        
+                    with Timer() as copyTimer:
+                        resultDataset[key] = f['node_result'][:]
+        
+                    totalBytes = dtypeBytes * numpy.prod(shape)
+                    totalMB = totalBytes / (1000*1000)
+        
+                    logger.info( "Copying {} MB hdf5 slice took {} seconds".format(totalMB, copyTimer.seconds() ) )
+                    finished_rois.append(roi)
+    
+                    # Remove the roi from the list of remaining rois
+                    missingRois.remove( Roi.dumps(taskInfo.subregion) )
 
-            with Timer() as copyTimer:
-                destinationFile['cluster_result'][key] = f['node_result'][:]
-
-            shape = f['node_result'][:].shape
-            dtype = f['node_result'][:].dtype
-            if type(dtype) is numpy.dtype:
-                # Make sure we're dealing with a type (e.g. numpy.float64),
-                #  not a numpy.dtype
-                dtype = dtype.type
-            
-            dtypeBytes = dtype().nbytes
-            totalBytes = dtypeBytes * numpy.prod(shape)
-            totalMB = totalBytes / 1000
-
-            logger.info( "Copying {} MB took {} seconds".format(totalMB, copyTimer.seconds() ) )
-            finished_rois.append(roi)
+                os.remove(tmpOutputFilePath)
 
         # For now, we close the file after every pass in case something goes horribly wrong...
         if destinationFile is not None:
+            # Update the list of rois that are still missing from the output file.
+            resultDataset.attrs['missingRois'] = list(missingRois)
             destinationFile.close()
 
         return finished_rois
@@ -323,9 +391,17 @@ class OpClusterize(Operator):
         self.ReturnCode.setDirty( slice(None) )
 
 
-
-
-
+    def _getDtypeBytes(self):
+        """
+        Return the size of the dataset dtype in bytes.
+        """
+        dtype = self.Input.meta.dtype
+        if type(dtype) is numpy.dtype:
+            # Make sure we're dealing with a type (e.g. numpy.float64),
+            #  not a numpy.dtype
+            dtype = dtype.type
+        
+        return dtype().nbytes
 
 
 
