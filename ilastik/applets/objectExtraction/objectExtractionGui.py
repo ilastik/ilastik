@@ -52,7 +52,6 @@ class ObjectExtractionGui( QWidget ):
         """
         super(ObjectExtractionGui, self).__init__()
         self.mainOperator = topLevelOperatorView
-        self.curOp = None
         self.layerstack = LayerStackModel()
 
         #self.rawsrc = LazyflowSource( self.mainOperator.RawData )
@@ -142,7 +141,7 @@ class ObjectExtractionGui( QWidget ):
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
     def _onLabelImageButtonPressed( self ):
-        m = self.curOp.LabelImage.meta
+        m = self.mainOperator.LabelImage.meta
         maxt = m.shape[0]
         progress = QProgressDialog("Labelling Binary Image...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
@@ -155,22 +154,22 @@ class ObjectExtractionGui( QWidget ):
             if progress.wasCanceled():
                 break
             else:
-                self.curOp.updateLabelImageAt( t )
+                self.mainOperator.updateLabelImageAt( t )
         progress.setValue(maxt)                
-        roi = SubRegion(self.curOp.LabelImage, start=5*(0,), stop=m.shape)
-        self.curOp.LabelImage.setDirty(roi)
+        roi = SubRegion(self.mainOperator.LabelImage, start=5*(0,), stop=m.shape)
+        self.mainOperator.LabelImage.setDirty(roi)
 
     def _onExtractObjectsButtonPressed( self ):
-        maxt = self.curOp.LabelImage.meta.shape[0]
+        maxt = self.mainOperator.LabelImage.meta.shape[0]
         progress = QProgressDialog("Extracting objects...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())
 
         reqs = []
-        self.curOp._opRegFeats.fixed = False
+        self.mainOperator._opRegFeats.fixed = False
         for t in range(maxt):
-            reqs.append(self.curOp.RegionFeatures([t]))
+            reqs.append(self.mainOperator.RegionFeatures([t]))
             reqs[-1].submit()
         for i, req in enumerate(reqs):
             progress.setValue(i)
@@ -179,6 +178,6 @@ class ObjectExtractionGui( QWidget ):
             else:
                 req.wait()
                 
-        self.curOp._opRegFeats.fixed = True 
+        self.mainOperator._opRegFeats.fixed = True 
         progress.setValue(maxt)
-        self.curOp.ObjectCenterImage.setDirty( SubRegion(self.curOp.ObjectCenterImage))
+        self.mainOperator.ObjectCenterImage.setDirty( SubRegion(self.mainOperator.ObjectCenterImage))
