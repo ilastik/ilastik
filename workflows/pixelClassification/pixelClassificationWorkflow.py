@@ -110,4 +110,4 @@ class PixelClassificationWorkflow(Workflow):
 
     @property
     def finalOutputSlot(self):
-        return self.pcApplet.topLevelOperator.PredictionProbabilities
+        return self.pcApplet.topLevelOperator.HeadlessPredictionProbabilities
