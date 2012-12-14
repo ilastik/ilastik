@@ -36,13 +36,7 @@ class FeatureSelectionGui(LayerViewerGui):
     FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),
                       ( "Edge",    [ "LaplacianOfGaussian", "GaussianGradientMagnitude", "DifferenceOfGaussians" ] ),
                       ( "Texture", [ "StructureTensorEigenvalues", "HessianOfGaussianEigenvalues" ] ),
-                      ( "Time",   [ "TempDifferenceGaussianSmoothing",
-                                   "TempDifferenceLaplacianOfGaussian",
-                                   "TempDifferenceGaussianGradientMagnitude",
-                                   "TempDifferenceDifferenceOfGaussians",
-#                                   "TempDifferenceStructureTensorEigenvalues",
-                                   "TempDifferenceHessianOfGaussianFirstEigenvalue"
-                                    ] ) ]
+                      ( "Time",   [ "BlurredTempDifference", "BlurredCrossCorrelation" ] ) ]
 
     # Map feature IDs to feature names
     FeatureNames = { 'GaussianSmoothing' : 'Gaussian Smoothing',
@@ -51,14 +45,8 @@ class FeatureSelectionGui(LayerViewerGui):
                      'DifferenceOfGaussians' : "Difference of Gaussians",
                      'StructureTensorEigenvalues' : "Structure Tensor EigenValues",
                      'HessianOfGaussianEigenvalues' : "Hessian of Gaussian Eigenvalues",
-                     'TempDifferenceGaussianSmoothing' : "Temp. Difference Gaussian Smoothing",
-                     'TempDifferenceLaplacianOfGaussian' : "Temp. Difference Laplacian Of Gaussian",
-                     'TempDifferenceGaussianGradientMagnitude' : "Temp. Diff. Gaussian Gradient Magn.",
-                     'TempDifferenceDifferenceOfGaussians' : "Temp. Diff. Difference of Gaussians",
-#                     'TempDifferenceStructureTensorEigenvalues' : "Temp. Difference Structure Tensor EVs",
-                     'TempDifferenceHessianOfGaussianFirstEigenvalue' : "Temp. Diff. Hessian of Gaussian EV1"                     
-                      }
-#                     'BlurredCrossCorrelation' : "Blurred Cross Correlation" }
+                     'BlurredTempDifference' : "Blurred Temporal Difference",
+                     'BlurredCrossCorrelation' : "Blurred Cross Correlation" }
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
