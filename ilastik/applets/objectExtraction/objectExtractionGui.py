@@ -58,25 +58,10 @@ class ObjectExtractionGui( QWidget ):
         layer.name = "Object Centers"
         layer.visible = False
         self.layerstack.append( layer )
-                
-        self.distanceTransform = LazyflowSource( mainOperator.DistanceTransform )        
-        # FIXME range/normalize: magic numbers
-        layer = GrayscaleLayer( self.distanceTransform, range=(0,100), normalize=(0,5) )
-        layer.name = "Distance Transform Image"
-        self.layerstack.append(layer)
-        
-        self.maxDistanceTransform = LazyflowSource( mainOperator.MaximumDistanceTransform )          
-        ct = colortables.create_default_8bit()
-        ct[1] = QColor(0,255,0,0).rgb() # make 1 green
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        ct[255] = QColor(255,255,255,0).rgba() # make 255 transparent
-        layer = ColortableLayer( self.maxDistanceTransform, ct )
-        layer.name = "Maximum Distance Image"
-        self.layerstack.append(layer)
-
-        if mainOperator.Images.meta.shape:
+                        
+        if mainOperator.BinaryImage.meta.shape:
             self.editor.dataShape = mainOperator.LabelImage.meta.shape
-        mainOperator.Images.notifyMetaChanged( self._onMetaChanged )            
+        mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged )            
 
     def reset( self ):
         print "reset(): not implemented"
@@ -144,10 +129,7 @@ class ObjectExtractionGui( QWidget ):
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
 
         self._drawer.labelImageButton.pressed.connect(self._onLabelImageButtonPressed)
-        self._drawer.extractObjectsButton.pressed.connect(self._onExtractObjectsButtonPressed)
-        self._drawer.mergeSegmentationsButton.pressed.connect(self._onMergeSegmentationsButtonPressed)
-        self._drawer.distanceTransformButton.pressed.connect(self._onDistanceTransformButtonPressed)
-        self._drawer.maximumImageButton.pressed.connect(self._onMaximumImageButtonPressed)
+        self._drawer.extractObjectsButton.pressed.connect(self._onExtractObjectsButtonPressed)        
         
         self._drawer.doAllButton.pressed.connect(self._onDoAllButtonPressed)
 
@@ -160,25 +142,18 @@ class ObjectExtractionGui( QWidget ):
     def _onLabelImageButtonPressed( self ):
         m = self.curOp.LabelImage.meta
         maxt = m.shape[0] - 1 # the last time frame will be dropped
-        progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt * 2)
+        progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())
         progress.forceShow()
 
-        # LabelImage for background/non-background (channel 0) and division/non-division (channel 2)        
+        self.curOp._opLabelImage._fixed = False
         reqs = []
-        self.curOp._opObjectExtractionBg._opLabelImage._fixed = False
-        self.curOp._opObjectExtractionDiv._opLabelImage._fixed = False
-
         for t in range(maxt):            
-            reqs.append(self.curOp._opObjectExtractionBg._opLabelImage.LabelImageComputation([t]))
-            reqs[-1].submit()
+            reqs.append(self.curOp._opLabelImage.LabelImageComputation([t]))
+            reqs[-1].submit()            
 
-            reqs.append(self.curOp._opObjectExtractionDiv._opLabelImage.LabelImageComputation([t]))
-            reqs[-1].submit()
-
-                        
         for i, req in enumerate(reqs):
             progress.setValue(i)
             if progress.wasCanceled():
@@ -186,7 +161,7 @@ class ObjectExtractionGui( QWidget ):
             else:
                 req.wait()
                 
-        progress.setValue(maxt * 2)        
+        progress.setValue(maxt)        
         
         roi = SubRegion(self.curOp.LabelImage, start=5*(0,), stop=m.shape)
         self.curOp.LabelImage.setDirty(roi)
@@ -202,13 +177,11 @@ class ObjectExtractionGui( QWidget ):
         progress.setCancelButtonText(QString())
 
         reqs = []
-        self.curOp._opObjectExtractionBg._opRegFeats.fixed = False
-        self.curOp._opObjectExtractionDiv._opRegFeats.fixed = False
+        self.curOp._opRegFeats.fixed = False
         for t in range(maxt):
-            reqs.append(self.curOp._opObjectExtractionBg.RegionFeatures([t]))
+            reqs.append(self.curOp.RegionFeatures([t]))
             reqs[-1].submit()
-            reqs.append(self.curOp._opObjectExtractionDiv.RegionFeatures([t]))
-            reqs[-1].submit()
+            
         for i, req in enumerate(reqs):
             progress.setValue(i)
             if progress.wasCanceled():
@@ -216,119 +189,16 @@ class ObjectExtractionGui( QWidget ):
             else:
                 req.wait()
                 
-        self.curOp._opObjectExtractionBg._opRegFeats.fixed = True 
-        self.curOp._opObjectExtractionDiv._opRegFeats.fixed = True
+        self.curOp._opRegFeats.fixed = True         
         progress.setValue(maxt)
         
-        self.curOp._opObjectExtractionBg.ObjectCenterImage.setDirty( SubRegion(self.curOp._opObjectExtractionBg.ObjectCenterImage))
-        self.curOp._opObjectExtractionDiv.ObjectCenterImage.setDirty( SubRegion(self.curOp._opObjectExtractionDiv.ObjectCenterImage))
+        self.curOp.ObjectCenterImage.setDirty( SubRegion(self.curOp.ObjectCenterImage))        
                 
         print 'Object Extraction: done.'
 
-
-    def _onMergeSegmentationsButtonPressed(self):
-        m = self.curOp.LabelImage.meta
-        maxt = m.shape[0] -1 # the last time frame will be dropped
-        progress = QProgressDialog("Merging Background and Division Segmentations...", "Stop", 0, maxt)
-        progress.setWindowModality(Qt.ApplicationModal)
-        progress.setMinimumDuration(0)
-        progress.setCancelButtonText(QString())
-        progress.forceShow()
-
-        reqs = []
-        for t in range(maxt):
-            reqs.append(self.curOp._opClassExtraction.ClassMapping([t]))
-            reqs[-1].submit()
-        for i, req in enumerate(reqs):
-            progress.setValue(i)
-            if progress.wasCanceled():
-                req.cancel()
-            else:
-                req.wait()
-        
-        progress.setValue(maxt)
-        
-        roi = SubRegion(self.curOp.ClassMapping, start=5*(0,), stop=m.shape)
-        self.curOp.ClassMapping.setDirty(roi)
-        
-        print 'Merge Segmentation: done.'
-        
-    def _onDistanceTransformButtonPressed(self):       
-        m = self.curOp.LabelImage.meta
-        maxt = m.shape[0] -1 # the last time frame will be dropped
-        progress = QProgressDialog("Computing the distance transform...", "Stop", 0, maxt)
-        progress.setWindowModality(Qt.ApplicationModal)
-        progress.setMinimumDuration(0)
-        progress.setCancelButtonText(QString())
-        progress.forceShow()        
-                
-        reqs = []        
-        for t in range(maxt):
-            reqs.append(self.curOp._opDistanceTransform.DistanceTransformComputation([t]))
-            reqs[-1].submit()
-        for i, req in enumerate(reqs):
-            progress.setValue(i)
-            if progress.wasCanceled():
-                req.cancel()
-            else:
-                req.wait()
-                
-        progress.setValue(maxt)
-        self.curOp._opDistanceTransform._fixed = False
-        
-        roi = SubRegion(self.curOp.DistanceTransform, start=5*(0,), stop=m.shape)
-        self.curOp.DistanceTransform.setDirty(roi)
-                
-        print "Distance Transform: done."
-    
-    def _onMaximumImageButtonPressed(self):
-        m = self.curOp.LabelImage.meta
-        maxt = m.shape[0] -1 # the last time frame will be dropped
-        progress = QProgressDialog("Computing maximum distance transform...", "Stop", 0, 2*maxt)
-        progress.setWindowModality(Qt.ApplicationModal)
-        progress.setMinimumDuration(0)
-        progress.setCancelButtonText(QString())
-        progress.forceShow()        
-        
-        print "Computing Maximum Images"
-        reqs = []        
-        for t in range(maxt):
-            reqs.append(self.curOp._opRegionalMaximum.MaximumImageComputation([t]))
-            reqs[-1].submit()
-            
-        for i, req in enumerate(reqs):
-            progress.setValue(i)
-            if progress.wasCanceled():
-                req.cancel()
-            else:
-                req.wait()
-        self.curOp._opRegionalMaximum._fixed = False
-        
-        roi = SubRegion(self.curOp.MaximumDistanceTransform, start=5*(0,), stop=m.shape)
-        self.curOp.MaximumDistanceTransform.setDirty(roi)
-                         
-        print "Computing Local Center Features"
-        reqs = []
-        for t in range(maxt):
-            reqs.append(self.curOp._opRegionalMaximum.RegionLocalCenters([t]))
-            reqs[-1].submit()
-            
-        for i, req in enumerate(reqs):
-            progress.setValue(maxt+i)
-            if progress.wasCanceled():
-                req.cancel()
-            else:
-                req.wait()                                        
-        progress.setValue(2*maxt)
-                    
-        print 'Maximum image: done'
-        
         
     def _onDoAllButtonPressed(self):    
         self._onLabelImageButtonPressed()
         self._onExtractObjectsButtonPressed()
-        self._onMergeSegmentationsButtonPressed()
-        self._onDistanceTransformButtonPressed()
-        self._onMaximumImageButtonPressed()
         
         

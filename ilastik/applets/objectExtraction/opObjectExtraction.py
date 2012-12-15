@@ -189,7 +189,7 @@ class OpObjectExtraction( Operator ):
 
     def setupOutputs(self):        
         m = self.BinaryImage.meta
-
+        
         self._reg_cents = dict.fromkeys(xrange(m.shape[0]), numpy.asarray([], dtype=numpy.uint16))        
         self.ObjectCenterImage.meta.assignFrom(self.BinaryImage.meta)
     

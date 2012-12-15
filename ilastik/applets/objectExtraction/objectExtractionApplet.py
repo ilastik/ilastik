@@ -1,17 +1,17 @@
 from ilastik.applets.base.applet import Applet
 
 from lazyflow.graph import OperatorWrapper
-from ilastik.applets.objectExtraction.opObjectExtractionMultiClass import OpObjectExtractionMultiClass
-from ilastik.applets.objectExtraction.objectExtractionMultiClassSerializer import ObjectExtractionMultiClassSerializer
+from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
+from ilastik.applets.objectExtraction.objectExtractionSerializer import ObjectExtractionSerializer
 
 class ObjectExtractionApplet( Applet ):
     def __init__( self, graph, guiName="Object Extraction", projectFileGroupName="ObjectExtraction" ):
         super(ObjectExtractionApplet, self).__init__( guiName )
-        self._topLevelOperator = OperatorWrapper(OpObjectExtractionMultiClass, graph=graph)        
+        self._topLevelOperator = OperatorWrapper(OpObjectExtraction, graph=graph)        
 
         self._gui = None
         
-        self._serializableItems = [ ObjectExtractionMultiClassSerializer(self._topLevelOperator, projectFileGroupName) ]
+        self._serializableItems = [ ObjectExtractionSerializer(self._topLevelOperator, projectFileGroupName) ]
 
     @property
     def topLevelOperator(self):

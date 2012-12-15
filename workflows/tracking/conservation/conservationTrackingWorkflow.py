@@ -7,6 +7,7 @@ from ilastik.applets.objectExtraction import ObjectExtractionApplet
 
 from lazyflow.operators.obsolete.valueProviders import OpAttributeSelector
 from ilastik.applets.tracking.conservation.conservationTrackingApplet import ConservationTrackingApplet
+from ilastik.applets.objectExtractionMultiClass.objectExtractionMultiClassApplet import ObjectExtractionMultiClassApplet
 
 class ConservationTrackingWorkflow( Workflow ):
     def __init__( self ):
@@ -24,7 +25,7 @@ class ConservationTrackingWorkflow( Workflow ):
         ## Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Segmentation", "Input Segmentation", batchDataGui=False)
 
-        self.objectExtractionApplet = ObjectExtractionApplet( self )
+        self.objectExtractionApplet = ObjectExtractionMultiClassApplet( self )
         self.trackingApplet = ConservationTrackingApplet( self )
 
         ## Access applet operators

@@ -34,7 +34,7 @@ class ChaingraphTrackingWorkflow( Workflow ):
         opTracking = self.trackingApplet.topLevelOperator
         
         ## Connect operators ##
-        opObjExtraction.Images.connect( opData.Image )                
+        opObjExtraction.BinaryImage.connect( opData.Image )                
         
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
