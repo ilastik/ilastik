@@ -9,7 +9,7 @@ from lazyflow.rtype import SubRegion, List
 class OpLabelImage( Operator ):
     name = "Label Image Accessor"
     BinaryImage = InputSlot()
-    BackgroundLabel = InputSlot()
+    BackgroundLabel = InputSlot( stype="opaque" )
     
     LabelImage = OutputSlot()
     # Pull the following output slot to compute the label image.
@@ -22,7 +22,6 @@ class OpLabelImage( Operator ):
         super(OpLabelImage, self).__init__(parent=parent,graph=graph)
         self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)        
         self._processedTimeSteps = []
-        self._fixed = True
         
     def setupOutputs( self ):
         self.LabelImage.meta.assignFrom( self.BinaryImage.meta )
@@ -35,13 +34,16 @@ class OpLabelImage( Operator ):
     def __del__( self ):
         self._mem_h5.close()
         
-    def execute( self, slot, subindex, roi, destination ):        
+    def execute( self, slot, subindex, roi, destination ):
         if slot is self.LabelImage:        
-            if self._fixed:                
-                destination[:] = 0
-                return destination
-                                        
-            destination = self._mem_h5['LabelImage'][roi.toSlice()]
+            destination[:] = 0
+            return destination
+
+            for t in range(roi.start[0],roi.stop[0]):
+                if t not in self._processedTimeSteps:
+                    destination[t-roi.start[0],...] = 0
+                else:
+                    destination[t-roi.start[0],...] = self._mem_h5['LabelImage'][roi.toSlice()]
             return destination
         if slot is self.LabelImageComputation:
             # assumes t,x,y,z,c
@@ -166,7 +168,7 @@ class OpObjectExtraction( Operator ):
 
     RawImage = InputSlot()# optional=True )
     BinaryImage = InputSlot()
-    BackgroundLabel = InputSlot()
+    BackgroundLabel = InputSlot( stype='opaque' )
 
     LabelImage = OutputSlot()
     ObjectCenterImage = OutputSlot()
