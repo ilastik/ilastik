@@ -26,6 +26,7 @@ class OpTracking(Operator):
     name = "Tracking"
     category = "other"
 
+    RawImage = InputSlot()
     LabelImage = InputSlot()
     ObjectFeatures = InputSlot( stype=Opaque, rtype=List )
 

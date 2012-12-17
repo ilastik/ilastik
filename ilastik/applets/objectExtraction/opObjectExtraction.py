@@ -127,7 +127,7 @@ class OpRegionCenters( Operator ):
 class OpObjectExtraction( Operator ):
     name = "Object Extraction"
 
-    #RawData = InputSlot()
+    RawImage = InputSlot()# optional=True )
     BinaryImage = InputSlot()
     #FeatureNames = InputSlot( stype=Opaque )
 

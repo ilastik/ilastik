@@ -126,6 +126,13 @@ class TrackingGui( QWidget ):
             self._drawer.to_z.setRange(0,maxz-1)
             self._drawer.to_z.setValue(maxz-1)       
 
+        ## raw data layer
+        self.rawsrc = None
+        self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+        layerraw = GrayscaleLayer( self.rawsrc )
+        layerraw.name = "Raw"
+        self.layerstack.insert( len(self.layerstack), layerraw )
+
     def _initEditor(self):
         """
         Initialize the Volume Editor GUI.

@@ -54,11 +54,6 @@ class ObjectExtractionGui( QWidget ):
         self.mainOperator = topLevelOperatorView
         self.layerstack = LayerStackModel()
 
-        #self.rawsrc = LazyflowSource( self.mainOperator.RawData )
-        #layerraw = GrayscaleLayer( self.rawsrc )
-        #layerraw.name = "Raw"
-        #self.layerstack.append( layerraw )
-
         self._viewerControlWidget = None
         self._initViewerControlUi()
 
@@ -74,12 +69,29 @@ class ObjectExtractionGui( QWidget ):
             if slot.meta.shape:
                 self.editor.dataShape = slot.meta.shape
 
+        if slot is self.mainOperator.RawImage:
+            if slot.meta.shape and not self.rawsrc:
+                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+                layerraw = GrayscaleLayer( self.rawsrc )
+                layerraw.name = "Raw"
+                self.layerstack.append( layerraw )
+
+    def _onReady( self, slot ):
+        if slot is self.mainOperator.RawImage:
+            if slot.meta.shape and not self.rawsrc:
+                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+                layerraw = GrayscaleLayer( self.rawsrc )
+                layerraw.name = "Raw"
+                self.layerstack.append( layerraw )
+
     def _initViewer( self ):
         mainOperator = self.mainOperator
 
         ct = colortables.create_default_8bit()
+        ct = [QColor(0,0,0,0).rgba(), QColor(0,0,255,255).rgba()]
         self.binaryimagesrc = LazyflowSource( mainOperator.BinaryImage )
-        layer = GrayscaleLayer( self.binaryimagesrc, range=(0,1), normalize=(0,1) )
+        #layer = GrayscaleLayer( self.binaryimagesrc, range=(0,1), normalize=(0,1) )
+        layer = ColortableLayer( self.binaryimagesrc, ct )
         layer.name = "Binary Image"
         self.layerstack.append(layer)
 
@@ -96,9 +108,22 @@ class ObjectExtractionGui( QWidget ):
         layer.name = "Object Centers"
         self.layerstack.append( layer )
 
+
+        ## raw data layer
+        self.rawsrc = None
+        #if mainOperator.RawImage.meta.shape:
+        self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+        layerraw = GrayscaleLayer( self.rawsrc )
+        layerraw.name = "Raw"
+        self.layerstack.insert( len(self.layerstack), layerraw )
+
+        mainOperator.RawImage.notifyReady( self._onReady )
+        mainOperator.RawImage.notifyMetaChanged( self._onMetaChanged )           
+
+
         if mainOperator.BinaryImage.meta.shape:
-            self.editor.dataShape = mainOperator.LabelImage.meta.shape
-        mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged )            
+            self.editor.dataShape = mainOperator.BinaryImage.meta.shape
+        mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged )
  
     def _initEditor(self):
         """
