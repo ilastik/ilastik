@@ -29,8 +29,8 @@ class TrackingWorkflow( Workflow ):
         self.trackingApplet = TrackingApplet( workflow=self )
 
         self._applets = []
-        self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.rawDataSelectionApplet)
+        self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.trackingApplet)
 

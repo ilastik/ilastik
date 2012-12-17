@@ -88,8 +88,10 @@ class ObjectExtractionGui( QWidget ):
         mainOperator = self.mainOperator
 
         ct = colortables.create_default_8bit()
+        ct = [QColor(0,0,0,0).rgba(), QColor(0,0,255,255).rgba()]
         self.binaryimagesrc = LazyflowSource( mainOperator.BinaryImage )
-        layer = GrayscaleLayer( self.binaryimagesrc, range=(0,1), normalize=(0,1) )
+        #layer = GrayscaleLayer( self.binaryimagesrc, range=(0,1), normalize=(0,1) )
+        layer = ColortableLayer( self.binaryimagesrc, ct )
         layer.name = "Binary Image"
         self.layerstack.append(layer)
 
