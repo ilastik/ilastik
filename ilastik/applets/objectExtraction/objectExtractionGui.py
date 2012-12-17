@@ -86,18 +86,13 @@ class ObjectExtractionGui( QWidget ):
     def _initViewer( self ):
         mainOperator = self.mainOperator
 
-#        ct = [QColor(0,0,0,0).rgba(), QColor(0,0,255,255).rgba()]
-#        self.binaryimagesrc = LazyflowSource( mainOperator.BinaryImage )        
-#        layer = ColortableLayer( self.binaryimagesrc, ct )
-#        layer.name = "Binary Image"
-#        self.layerstack.append(layer)
-        
-        self.binaryimages = LazyflowSource( mainOperator.BinaryImage )
-        self.binaryimages.setObjectName("Binary LazyflowSrc")
-        layer = GrayscaleLayer( self.binaryimages, range=(0,1), normalize=(0,1) )
+        ct = [QColor(0,0,0,0).rgba(), QColor(0,0,255,255).rgba()] # blue foreground on transparent background
+        self.binaryimagesrc = LazyflowSource( mainOperator.BinaryImage )        
+        self.binaryimagesrc.setObjectName("Binary LazyflowSrc")
+        layer = ColortableLayer( self.binaryimagesrc, ct )
         layer.name = "Binary Image"
         self.layerstack.append(layer)
-                
+
         ct = colortables.create_default_16bit()
         self.objectssrc = LazyflowSource( mainOperator.LabelImage )
         self.objectssrc.setObjectName("LabelImage LazyflowSrc")
