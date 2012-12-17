@@ -54,11 +54,6 @@ class ObjectExtractionGui( QWidget ):
         self.mainOperator = topLevelOperatorView
         self.layerstack = LayerStackModel()
 
-        #self.rawsrc = LazyflowSource( self.mainOperator.RawData )
-        #layerraw = GrayscaleLayer( self.rawsrc )
-        #layerraw.name = "Raw"
-        #self.layerstack.append( layerraw )
-
         self._viewerControlWidget = None
         self._initViewerControlUi()
 
@@ -73,6 +68,21 @@ class ObjectExtractionGui( QWidget ):
         if slot is self.mainOperator.BinaryImage:
             if slot.meta.shape:
                 self.editor.dataShape = slot.meta.shape
+
+        if slot is self.mainOperator.RawImage:
+            if slot.meta.shape and not self.rawsrc:
+                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+                layerraw = GrayscaleLayer( self.rawsrc )
+                layerraw.name = "Raw"
+                self.layerstack.append( layerraw )
+
+    def _onReady( self, slot ):
+        if slot is self.mainOperator.RawImage:
+            if slot.meta.shape and not self.rawsrc:
+                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+                layerraw = GrayscaleLayer( self.rawsrc )
+                layerraw.name = "Raw"
+                self.layerstack.append( layerraw )
 
     def _initViewer( self ):
         mainOperator = self.mainOperator
@@ -96,9 +106,22 @@ class ObjectExtractionGui( QWidget ):
         layer.name = "Object Centers"
         self.layerstack.append( layer )
 
+
+        ## raw data layer
+        self.rawsrc = None
+        #if mainOperator.RawImage.meta.shape:
+        self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+        layerraw = GrayscaleLayer( self.rawsrc )
+        layerraw.name = "Raw"
+        self.layerstack.insert( len(self.layerstack), layerraw )
+
+        mainOperator.RawImage.notifyReady( self._onReady )
+        mainOperator.RawImage.notifyMetaChanged( self._onMetaChanged )           
+
+
         if mainOperator.BinaryImage.meta.shape:
-            self.editor.dataShape = mainOperator.LabelImage.meta.shape
-        mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged )            
+            self.editor.dataShape = mainOperator.BinaryImage.meta.shape
+        mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged )
  
     def _initEditor(self):
         """
