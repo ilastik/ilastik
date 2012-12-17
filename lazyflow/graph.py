@@ -660,6 +660,8 @@ class Slot(object):
             # --> just relay the request
             return self.partner.get(roi, destination)
         else:
+            assert self.ready(), "Can't get data from slot {}.{} yet.  It isn't ready.".format(self.getRealOperator().__class__, self.name)
+
             # If someone is asking for data from an inputslot that has no value and no partner,
             #  then something is wrong.
             assert self._type != "input", "This inputSlot has no value and no partner.  You can't ask for its data yet!"
