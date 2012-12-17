@@ -72,11 +72,13 @@ class ObjectExtractionMultiClassGui( QWidget ):
         self.binaryimages = LazyflowSource( mainOperator.BinaryImage )
         layer = GrayscaleLayer( self.binaryimages, range=(0,1), normalize=(0,1) )
         layer.name = "Input Image"
+        layer.opacity = 0.5
+        layer.visible = False        
         self.layerstack.append(layer)
 
         ct = colortables.create_default_16bit()
         self.objectssrc = LazyflowSource( mainOperator.LabelImage )
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
         layer = ColortableLayer( self.objectssrc, ct )
         layer.name = "Label Image"
         layer.opacity = 0.5
@@ -92,6 +94,7 @@ class ObjectExtractionMultiClassGui( QWidget ):
         # FIXME range/normalize: magic numbers
         layer = GrayscaleLayer( self.distanceTransform, range=(0,100), normalize=(0,5) )
         layer.name = "Distance Transform Image"
+        layer.visible = False
         self.layerstack.append(layer)
         
         self.maxDistanceTransform = LazyflowSource( mainOperator.MaximumDistanceTransform )          
@@ -101,6 +104,7 @@ class ObjectExtractionMultiClassGui( QWidget ):
         ct[255] = QColor(255,255,255,0).rgba() # make 255 transparent
         layer = ColortableLayer( self.maxDistanceTransform, ct )
         layer.name = "Maximum Distance Image"
+        layer.visible = False
         self.layerstack.append(layer)
 
         ## raw data layer
