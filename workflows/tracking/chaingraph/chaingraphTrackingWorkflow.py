@@ -42,7 +42,8 @@ class ChaingraphTrackingWorkflow( Workflow ):
         ## Connect operators ##
         opObjExtraction.RawImage.connect( opRawData.Image )
         opObjExtraction.BinaryImage.connect( opData.Image )
-        
+        opObjExtraction.BackgroundLabel.setValue( 0 )
+
         opTracking.RawImage.connect( opRawData.Image )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
