@@ -77,7 +77,10 @@ class DataSelectionGui(QMainWindow):
     def imageLaneAdded(self, laneIndex):
         # We assume that there's nothing to do here because THIS GUI initiated the lane addition
         if self.guiMode != GuiMode.Batch:
-            assert len(self.topLevelOperator.Dataset) == laneIndex+1
+            if(len(self.topLevelOperator.Dataset) != laneIndex+1):
+                import warnings
+                warnings.warn("DataSelectionGui.imageLaneAdded(): length of dataset multislot out of sync with laneindex [%s != %s + 1]" % (len(self.topLevelOperator.Dataset), laneIndex))
+
 
     def imageLaneRemoved(self, laneIndex, finalLength):
         # We assume that there's nothing to do here because THIS GUI initiated the lane removal
