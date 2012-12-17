@@ -1,22 +1,22 @@
 from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.tracking.greedyNearestNeighbor.greedyNnTrackingApplet import GreedyNnTrackingApplet
+from ilastik.applets.tracking.fastApproximate.fastApproximateTrackingApplet import FastApproximateTrackingApplet
 from ilastik.applets.objectExtractionMultiClass.objectExtractionMultiClassApplet import ObjectExtractionMultiClassApplet
 
-class GreedyNnTrackingWorkflow( Workflow ):
-    name = "Greedy Nearest Neighbor Tracking Workflow"
+class FastApproximateTrackingWorkflow( Workflow ):
+    name = "Fast Approximate Tracking Workflow"
     
     def __init__( self, headless, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
-        super(GreedyNnTrackingWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
+        super(FastApproximateTrackingWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
         
         ## Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, "Input: Segmentation", "Input Segmentation", batchDataGui=False)
         self.rawDataSelectionApplet = DataSelectionApplet(self, "Input: Raw Data", "Input Raw", batchDataGui=False)
         self.objectExtractionApplet = ObjectExtractionMultiClassApplet( name="Object Extraction Multi-Class", workflow=self )
-        self.trackingApplet = GreedyNnTrackingApplet( workflow=self )
+        self.trackingApplet = FastApproximateTrackingApplet( workflow=self )
         
         self._applets = []        
         self._applets.append(self.rawDataSelectionApplet)

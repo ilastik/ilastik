@@ -6,7 +6,7 @@ from ilastik.applets.tracking.base.trackingGuiBase import TrackingGuiBase
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-class GreedyNnTrackingGui( TrackingGuiBase ):
+class FastApproximateTrackingGui( TrackingGuiBase ):
 
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)

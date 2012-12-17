@@ -1,5 +1,5 @@
 from ilastik.shell.gui.startShellGui import startShellGui
-from workflows.tracking.greedyNearestNeighbor.greedyNnTrackingWorkflow import GreedyNnTrackingWorkflow
+from workflows.tracking.fastApproximate.fastApproximateTrackingWorkflow import FastApproximateTrackingWorkflow
 
 
 debug_testing = False
@@ -24,8 +24,8 @@ if debug_testing:
         #opDataSelection.Dataset[0].setValue(info)
         shell.setSelectedAppletDrawer(2)
     
-    startShellGui( GreedyNnTrackingWorkflow, test )
+    startShellGui( FastApproximateTrackingWorkflow, test )
 
 else:
-    startShellGui( GreedyNnTrackingWorkflow )
+    startShellGui( FastApproximateTrackingWorkflow )
  

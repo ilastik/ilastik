@@ -1,17 +1,17 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.tracking.base.trackingSerializer import TrackingSerializer
-from ilastik.applets.tracking.greedyNearestNeighbor.opGreedyNnTracking import OpGreedyNnTracking
-from ilastik.applets.tracking.greedyNearestNeighbor.greedyNnTrackingGui import GreedyNnTrackingGui
+from ilastik.applets.tracking.fastApproximate.opFastApproximateTracking import OpFastApproximateTracking
+from ilastik.applets.tracking.fastApproximate.fastApproximateTrackingGui import FastApproximateTrackingGui
 
 
-class GreedyNnTrackingApplet( StandardApplet ):
+class FastApproximateTrackingApplet( StandardApplet ):
     def __init__( self, name="Tracking", workflow=None, projectFileGroupName="Tracking" ):
-        super(GreedyNnTrackingApplet, self).__init__( name=name, workflow=workflow )        
+        super(FastApproximateTrackingApplet, self).__init__( name=name, workflow=workflow )        
         self._serializableItems = [ TrackingSerializer(self.topLevelOperator, projectFileGroupName) ]
 
     @property
     def singleLaneOperatorClass( self ):
-        return OpGreedyNnTracking
+        return OpFastApproximateTracking
 
     @property
     def broadcastingSlots( self ):
@@ -19,7 +19,7 @@ class GreedyNnTrackingApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass( self ):
-        return GreedyNnTrackingGui
+        return FastApproximateTrackingGui
 
     @property
     def dataSerializers(self):
