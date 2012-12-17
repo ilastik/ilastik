@@ -93,12 +93,14 @@ class ObjectExtractionGui( QWidget ):
 #        self.layerstack.append(layer)
         
         self.binaryimages = LazyflowSource( mainOperator.BinaryImage )
+        self.binaryimages.setObjectName("Binary LazyflowSrc")
         layer = GrayscaleLayer( self.binaryimages, range=(0,1), normalize=(0,1) )
         layer.name = "Binary Image"
         self.layerstack.append(layer)
                 
         ct = colortables.create_default_16bit()
         self.objectssrc = LazyflowSource( mainOperator.LabelImage )
+        self.objectssrc.setObjectName("LabelImage LazyflowSrc")
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         layer = ColortableLayer( self.objectssrc, ct )
         layer.name = "Label Image"
@@ -114,6 +116,7 @@ class ObjectExtractionGui( QWidget ):
         ## raw data layer
         self.rawsrc = None        
         self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+        self.rawsrc.setObjectName("Raw Lazyflow Src")
         layerraw = GrayscaleLayer( self.rawsrc )
         layerraw.name = "Raw"
         self.layerstack.insert( len(self.layerstack), layerraw )
