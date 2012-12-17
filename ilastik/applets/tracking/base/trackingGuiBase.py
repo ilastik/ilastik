@@ -13,6 +13,7 @@ import os
 import numpy as np
 import vigra
 from ilastik.applets.tracking.base.trackingUtilities import relabel,write_events
+from volumina.layer import GrayscaleLayer
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -84,15 +85,11 @@ class TrackingGuiBase( QWidget ):
                 self._drawer.lineageToBox.setRange(0,maxt-2)
                 self._drawer.lineageFromBox.setValue(0)
                 self._drawer.lineageToBox.setValue(maxt-2)
+        
 
 
     def _initViewer( self ):
         mainOperator = self.mainOperator
-
-        # self.rawsrc = LazyflowSource( mainOperator.RawData )
-        # layerraw = GrayscaleLayer( self.rawsrc )
-        # layerraw.name = "Raw"
-        # self.layerstack.append( layerraw )
 
         self.objectssrc = LazyflowSource( mainOperator.LabelImage )
 #        ct = colortables.create_default_8bit()
@@ -148,7 +145,14 @@ class TrackingGuiBase( QWidget ):
             self._drawer.lineageFromBox.setRange(0,maxt-1)
             self._drawer.lineageFromBox.setValue(0)
             self._drawer.lineageToBox.setRange(0,maxt-2)
-            self._drawer.lineageToBox.setValue(maxt-2)       
+            self._drawer.lineageToBox.setValue(maxt-2)    
+        
+        ## raw data layer
+        self.rawsrc = None
+        self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+        layerraw = GrayscaleLayer( self.rawsrc )
+        layerraw.name = "Raw"
+        self.layerstack.insert( len(self.layerstack), layerraw )   
     
 
     def initColors(self):

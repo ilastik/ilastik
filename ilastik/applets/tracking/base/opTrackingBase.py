@@ -14,6 +14,7 @@ class OpTrackingBase(Operator):
     LabelImage = InputSlot()
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)    
     RegionLocalCenters = InputSlot(stype=Opaque, rtype=List)
+    RawImage = InputSlot()
 
     Output = OutputSlot()
     

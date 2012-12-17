@@ -13,6 +13,7 @@ class OpObjectExtractionMultiClass(Operator):
     
     # not necessarily a binary image (will be thresholded in the first step)
     Images = InputSlot()
+    RawImage = InputSlot()
 
     LabelImage = OutputSlot()
     ObjectCenterImage = OutputSlot()

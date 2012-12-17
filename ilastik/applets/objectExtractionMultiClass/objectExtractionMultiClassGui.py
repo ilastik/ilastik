@@ -103,6 +103,17 @@ class ObjectExtractionMultiClassGui( QWidget ):
         layer.name = "Maximum Distance Image"
         self.layerstack.append(layer)
 
+        ## raw data layer
+        self.rawsrc = None        
+        self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+        layerraw = GrayscaleLayer( self.rawsrc )
+        layerraw.name = "Raw"
+        self.layerstack.insert( len(self.layerstack), layerraw )
+
+        mainOperator.RawImage.notifyReady( self._onReady )
+        mainOperator.RawImage.notifyMetaChanged( self._onMetaChanged )
+        
+        
         if mainOperator.Images.meta.shape:
             self.editor.dataShape = mainOperator.LabelImage.meta.shape
         mainOperator.Images.notifyMetaChanged( self._onMetaChanged )
@@ -112,6 +123,21 @@ class ObjectExtractionMultiClassGui( QWidget ):
         if slot is self.mainOperator.Images:
             if slot.meta.shape:
                 self.editor.dataShape = slot.meta.shape
+                
+        if slot is self.mainOperator.RawImage:
+            if slot.meta.shape and not self.rawsrc:
+                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+                layerraw = GrayscaleLayer( self.rawsrc )
+                layerraw.name = "Raw"
+                self.layerstack.append( layerraw )
+    
+    def _onReady( self, slot ):
+        if slot is self.mainOperator.RawImage:
+            if slot.meta.shape and not self.rawsrc:
+                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+                layerraw = GrayscaleLayer( self.rawsrc )
+                layerraw.name = "Raw"
+                self.layerstack.append( layerraw )
  
     def _initEditor(self):
         """

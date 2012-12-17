@@ -13,11 +13,13 @@ class GreedyNnTrackingWorkflow( Workflow ):
         super(GreedyNnTrackingWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
         
         ## Create applets 
-        self.dataSelectionApplet = DataSelectionApplet(self, "Input Segmentation", "Input Segmentation", batchDataGui=False)
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input: Segmentation", "Input Segmentation", batchDataGui=False)
+        self.rawDataSelectionApplet = DataSelectionApplet(self, "Input: Raw Data", "Input Raw", batchDataGui=False)
         self.objectExtractionApplet = ObjectExtractionMultiClassApplet( name="Object Extraction Multi-Class", workflow=self )
         self.trackingApplet = GreedyNnTrackingApplet( workflow=self )
         
-        self._applets = []
+        self._applets = []        
+        self._applets.append(self.rawDataSelectionApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.trackingApplet)
@@ -31,14 +33,18 @@ class GreedyNnTrackingWorkflow( Workflow ):
         return self.dataSelectionApplet.topLevelOperator.ImageName
     
     def connectLane(self, laneIndex):        
-        opData = self.dataSelectionApplet.topLevelOperator
-        opObjExtraction = self.objectExtractionApplet.topLevelOperator
-        opTracking = self.trackingApplet.topLevelOperator
+        opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opRawData = self.rawDataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)    
+        opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
         
         ## Connect operators ##
         opObjExtraction.Images.connect( opData.Image )
+        opObjExtraction.RawImage.connect( opRawData.Image )
 
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
         opTracking.ClassMapping.connect( opObjExtraction.ClassMapping )
         opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )
+        opTracking.RawImage.connect( opRawData.Image )
+        
