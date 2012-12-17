@@ -1,0 +1,145 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Appendix: Testing Ilastik &mdash; ilastik 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
+    <link rel="prev" title="Appendix: Development Dependencies" href="dependencies.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="dependencies.html" title="Appendix: Development Dependencies"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="appendix-testing-ilastik">
+<h1>Appendix: Testing Ilastik<a class="headerlink" href="#appendix-testing-ilastik" title="Permalink to this headline">¶</a></h1>
+<p>ilastik comes with a set of unit/regression tests.  You must have <a class="reference external" href="https://nose.readthedocs.org/en/latest/">nosetests</a> installed to run the tests.</p>
+<div class="section" id="non-gui-tests">
+<h2>Non-gui tests<a class="headerlink" href="#non-gui-tests" title="Permalink to this headline">¶</a></h2>
+<p>To run all the non-gui tests in one go, use nosetests:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span><span class="nb">cd </span>ilastik/tests
+<span class="nv">$ </span>nosetests --nologcapture
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">ilastik and lazyflow make extensive use of the python logger.  Unfortunately, nosetests sets the default
+logging level to DEBUG, which causes a lot of unecessary output for failed tests.
+Use the <tt class="docutils literal"><span class="pre">--nologcapture</span></tt> option to disable logger output.</p>
+</div>
+<p>Sometimes it&#8217;s convenient to run the test scripts one at a time.  A convenience script for that is included in the tests directory:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span><span class="nb">cd </span>ilastik/tests
+<span class="nv">$ </span>./testeach.sh .
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The <tt class="docutils literal"><span class="pre">testeach.sh</span></tt> script MUST be run from within the tests directory.  It takes an optional argument for the subdirectory to run.</p>
+</div>
+</div>
+<div class="section" id="gui-tests">
+<h2>GUI tests<a class="headerlink" href="#gui-tests" title="Permalink to this headline">¶</a></h2>
+<p>The ilastik GUI tests cannot be run using nosetests.  You must run them directly as python scripts (they use nosetests internally, but from a different thread).</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span><span class="nb">cd </span>ilastik/tests
+<span class="nv">$ </span>python test_applets/pixelClassification/testPixelClassificationGui.py
+<span class="nv">$ </span>python test_applets/pixelClassification/testPixelClassificationMultiImageGui.py
+</pre></div>
+</div>
+<p>Because of this limitation, the GUI tests are not executed using the travis-CI tool.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Appendix: Testing Ilastik</a><ul>
+<li><a class="reference internal" href="#non-gui-tests">Non-gui tests</a></li>
+<li><a class="reference internal" href="#gui-tests">GUI tests</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="dependencies.html"
+                        title="previous chapter">Appendix: Development Dependencies</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/testing.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="dependencies.html" title="Appendix: Development Dependencies"
+             >previous</a> |</li>
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

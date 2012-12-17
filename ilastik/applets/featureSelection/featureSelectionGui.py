@@ -52,8 +52,8 @@ class FeatureSelectionGui(LayerViewerGui):
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
     
-    def appletDrawers(self):
-        return [ ("Feature Selection", self.drawer ) ]
+    def appletDrawer(self):
+        return self.drawer
 
     def viewerControlWidget(self):
         return self._viewerControlWidget
@@ -72,13 +72,14 @@ class FeatureSelectionGui(LayerViewerGui):
     ###########################################
     
     @traceLogged(traceLogger)
-    def __init__(self, mainOperator):
+    def __init__(self, topLevelOperatorView):
         """
         """
-        super(FeatureSelectionGui, self).__init__(mainOperator)
-        self.mainOperator = mainOperator
+        self.topLevelOperatorView = topLevelOperatorView
+        super(FeatureSelectionGui, self).__init__(topLevelOperatorView)
 
-        self.mainOperator.SelectionMatrix.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
+        self.topLevelOperatorView.SelectionMatrix.notifyDirty( bind(self.onFeaturesSelectionsChanged) )
+        self.onFeaturesSelectionsChanged()
 
         # Init feature dialog
         self.initFeatureDlg()
@@ -90,8 +91,8 @@ class FeatureSelectionGui(LayerViewerGui):
         return featureIrdOrder
 
     def initFeatureOrder(self):
-        self.mainOperator.Scales.setValue( self.ScalesList )
-        self.mainOperator.FeatureIds.setValue( self.getFeatureIdOrder() )
+        self.topLevelOperatorView.Scales.setValue( self.ScalesList )
+        self.topLevelOperatorView.FeatureIds.setValue( self.getFeatureIdOrder() )
             
     @traceLogged(traceLogger)
     def initAppletDrawerUi(self):
@@ -143,10 +144,10 @@ class FeatureSelectionGui(LayerViewerGui):
         layerListWidget.currentRowChanged.connect( handleSelectionChanged )
     
     @traceLogged(traceLogger)
-    def setupLayers(self, currentImageIndex):
+    def setupLayers(self):
         layers = []
         
-        opFeatureSelection = self.operatorForCurrentImage()
+        opFeatureSelection = self.topLevelOperatorView
 
         inputSlot = opFeatureSelection.InputImage
         featureMultiSlot = opFeatureSelection.FeatureLayers
@@ -184,7 +185,7 @@ class FeatureSelectionGui(LayerViewerGui):
             if numInputChannels > 3:
                 featureName += " (Ch. {})".format(inputChannel)
 
-            opSubRegion = OpSubRegion(graph=self.mainOperator.graph)
+            opSubRegion = OpSubRegion(graph=self.topLevelOperatorView.graph)
             opSubRegion.Input.connect( featureSlot )
             start = [0] * len(featureSlot.meta.shape)
             start[channelAxis] = inputChannel * featureChannelsPerInputChannel
@@ -224,8 +225,8 @@ class FeatureSelectionGui(LayerViewerGui):
         self.featureDlg.setImageToPreView(None)
 
         # Init with no features
-        rows = len(self.mainOperator.FeatureIds.value)
-        cols = len(self.mainOperator.Scales.value)
+        rows = len(self.topLevelOperatorView.FeatureIds.value)
+        cols = len(self.topLevelOperatorView.Scales.value)
         defaultFeatures = numpy.zeros((rows,cols), dtype=bool)
         self.featureDlg.selectedFeatureBoolMatrix = defaultFeatures
 
@@ -234,10 +235,10 @@ class FeatureSelectionGui(LayerViewerGui):
     def onFeatureButtonClicked(self):
         # Refresh the feature matrix in case it has changed since the last time we were opened
         # (e.g. if the user loaded a project from disk)
-        if self.mainOperator.SelectionMatrix.ready() and self.mainOperator.FeatureIds.ready():
+        if self.topLevelOperatorView.SelectionMatrix.ready() and self.topLevelOperatorView.FeatureIds.ready():
             # Re-order the feature matrix using the loaded feature ids
-            matrix = self.mainOperator.SelectionMatrix.value
-            featureOrdering = self.mainOperator.FeatureIds.value
+            matrix = self.topLevelOperatorView.SelectionMatrix.value
+            featureOrdering = self.topLevelOperatorView.FeatureIds.value
             
             reorderedMatrix = numpy.zeros(matrix.shape, dtype=bool)
             newrow = 0
@@ -253,7 +254,7 @@ class FeatureSelectionGui(LayerViewerGui):
         self.featureDlg.exec_()
 
     def onNewFeaturesFromFeatureDlg(self):
-        opFeatureSelection = self.operatorForCurrentImage()
+        opFeatureSelection = self.topLevelOperatorView
         if opFeatureSelection is not None:
             # Re-initialize the scales and features
             self.initFeatureOrder()
@@ -272,12 +273,12 @@ class FeatureSelectionGui(LayerViewerGui):
         Handles changes to our top-level operator's matrix of feature selections.
         """
         # Update the drawer caption
-        if not self.mainOperator.SelectionMatrix.ready():
+        if not self.topLevelOperatorView.SelectionMatrix.ready():
             self.drawer.caption.setText( "(No features selected)" )
             self.layerstack.clear()
         else:
             self.initFeatureOrder()
-            matrix = self.mainOperator.SelectionMatrix.value
+            matrix = self.topLevelOperatorView.SelectionMatrix.value
             self.drawer.caption.setText( "(Selected %d features)" % numpy.sum(matrix) )
 
 

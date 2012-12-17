@@ -12,26 +12,29 @@ class ObjectExtractionSerializer(AppletSerializer):
         op = self.mainOperator.innerOperators[0]
         print "object extraction: serializeToHdf5", topGroup, hdf5File, projectFilePath
         print "object extraction: saving label image"
-        src = op._opObjectExtractionBg._mem_h5
+        src = op._opLabelImage._mem_h5
         deleteIfPresent( topGroup, "LabelImage")
         src.copy('/LabelImage', topGroup) 
 
         print "object extraction: saving region features"
         deleteIfPresent( topGroup, "samples")
         samples_gr = getOrCreateGroup( topGroup, "samples" )
-        for t in op._opObjectExtractionBg._opRegFeats._cache.keys():
+        for t in op._opRegFeats._cache.keys():
             t_gr = samples_gr.create_group(str(t))
-            t_gr.create_dataset(name="RegionCenter", data=op._opObjectExtractionBg._opRegFeats._cache[t]['RegionCenter'])
-            t_gr.create_dataset(name="Count", data=op._opObjectExtractionBg._opRegFeats._cache[t]['Count'])            
+            t_gr.create_dataset(name="RegionCenter", data=op._opRegFeats._cache[t]['RegionCenter'])
+            t_gr.create_dataset(name="Count", data=op._opRegFeats._cache[t]['Count'])            
             
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         print "objectExtraction: deserializeFromHdf5", topGroup, groupVersion, hdf5File, projectFilePath
 
         print "objectExtraction: loading label image"
-        dest = self.mainOperator.innerOperators[0]._opObjectExtractionBg._mem_h5        
+        dest = self.mainOperator.innerOperators[0]._opLabelImage._mem_h5        
 
-        del dest['LabelImage']
+        try:
+            del dest['LabelImage']
+        except:
+            pass
         topGroup.copy('LabelImage', dest)
 
         print "objectExtraction: loading region features"
@@ -44,7 +47,7 @@ class ObjectExtractionSerializer(AppletSerializer):
                     cache[int(t)]['RegionCenter'] = topGroup["samples"][t]['RegionCenter'].value
                 if 'Count' in topGroup["samples"][t].keys():                    
                     cache[int(t)]['Count'] = topGroup["samples"][t]['Count'].value                
-            self.mainOperator.innerOperators[0]._opObjectExtractionBg._opRegFeats._cache = cache
+            self.mainOperator.innerOperators[0]._opRegFeats._cache = cache
 
     def isDirty(self):
         return True

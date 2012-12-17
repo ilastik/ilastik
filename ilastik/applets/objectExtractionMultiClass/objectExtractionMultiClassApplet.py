@@ -1,33 +1,25 @@
-from ilastik.applets.base.applet import Applet
-
-from lazyflow.graph import OperatorWrapper
+from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.objectExtractionMultiClass.opObjectExtractionMultiClass import OpObjectExtractionMultiClass
 from ilastik.applets.objectExtractionMultiClass.objectExtractionMultiClassSerializer import ObjectExtractionMultiClassSerializer
+from ilastik.applets.objectExtractionMultiClass.objectExtractionMultiClassGui import ObjectExtractionMultiClassGui
 
-class ObjectExtractionMultiClassApplet( Applet ):
-    def __init__( self, graph, guiName="Object Extraction", projectFileGroupName="ObjectExtraction" ):
-        super(ObjectExtractionMultiClassApplet, self).__init__( guiName )
-        self._topLevelOperator = OperatorWrapper(OpObjectExtractionMultiClass, graph=graph)        
-
-        self._gui = None
-        
-        self._serializableItems = [ ObjectExtractionMultiClassSerializer(self._topLevelOperator, projectFileGroupName) ]
+class ObjectExtractionMultiClassApplet( StandardApplet ):
+    def __init__( self, name="Object Extraction Multi-Class", workflow=None, projectFileGroupName="ObjectExtractionMultiClass" ):
+        super(ObjectExtractionMultiClassApplet, self).__init__( name=name, workflow=workflow )
+        self._serializableItems = [ ObjectExtractionMultiClassSerializer(self.topLevelOperator, projectFileGroupName) ]
 
     @property
-    def topLevelOperator(self):
-        return self._topLevelOperator
+    def singleLaneOperatorClass( self ):
+        return OpObjectExtractionMultiClass
+
+    @property
+    def broadcastingSlots( self ):
+        return []
+
+    @property
+    def singleLaneGuiClass( self ):
+        return ObjectExtractionMultiClassGui
 
     @property
     def dataSerializers(self):
         return self._serializableItems
-
-    @property
-    def viewerControlWidget(self):
-        return self._centralWidget.viewerControlWidget
-
-    @property
-    def gui(self):
-        if self._gui is None:
-            from ilastik.applets.objectExtractionMultiClass.objectExtractionMultiClassGui import ObjectExtractionMultiClassGui            
-            self._gui = ObjectExtractionMultiClassGui(self._topLevelOperator)        
-        return self._gui

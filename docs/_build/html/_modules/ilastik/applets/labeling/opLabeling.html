@@ -46,106 +46,177 @@
           <div class="body">
             
   <h1>Source code for ilastik.applets.labeling.opLabeling</h1><div class="highlight"><pre>
-<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span><span class="p">,</span> <span class="n">OperatorWrapper</span>
-
+<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span>
 <span class="kn">from</span> <span class="nn">lazyflow.operators</span> <span class="kn">import</span> <span class="n">OpBlockedSparseLabelArray</span>
+<span class="kn">from</span> <span class="nn">ilastik.utility.operatorSubView</span> <span class="kn">import</span> <span class="n">OperatorSubView</span>
+<span class="kn">from</span> <span class="nn">ilastik.utility</span> <span class="kn">import</span> <span class="n">OpMultiLaneWrapper</span>
 
-<div class="viewcode-block" id="OpLabeling"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabeling">[docs]</a><span class="k">class</span> <span class="nc">OpLabeling</span><span class="p">(</span> <span class="n">Operator</span> <span class="p">):</span>
+<div class="viewcode-block" id="OpLabelingTopLevel"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel">[docs]</a><span class="k">class</span> <span class="nc">OpLabelingTopLevel</span><span class="p">(</span> <span class="n">Operator</span> <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Top-level operator for the labeling base class.</span>
+<span class="sd">    Top-level operator for the labelingApplet base class.</span>
 <span class="sd">    Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">name</span><span class="o">=</span><span class="s">&quot;OpLabeling&quot;</span>
-    <span class="n">category</span> <span class="o">=</span> <span class="s">&quot;Top-level&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;OpLabelingTopLevel&quot;</span>
 
-    <span class="c"># Input slots    </span>
+    <span class="c"># Input slots</span>
     <span class="n">InputImages</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#: Original input data.</span>
-    <span class="n">LabelInputs</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">optional</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#: Input for providing label data from an external source</span>
+    <span class="n">LabelInputs</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#: Input for providing label data from an external source</span>
     
-    <span class="n">LabelsAllowedFlags</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;bool&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#: Specifies which images are permitted to be labeled </span>
-    <span class="n">LabelEraserValue</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span> <span class="c">#: The label value that signifies the &#39;eraser&#39;, i.e. voxels to clear labels from</span>
+    <span class="n">LabelsAllowedFlags</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stype</span><span class="o">=</span><span class="s">&#39;bool&#39;</span><span class="p">)</span> <span class="c">#: Specifies which images are permitted to be labeled </span>
+    <span class="n">LabelEraserValue</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span> <span class="c">#: The label value that signifies the &#39;eraser&#39;, i.e. voxels to clear labels from</span>
     <span class="n">LabelDelete</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span> <span class="c">#: When this input is set to a value, all labels of that value are deleted from the operator&#39;s data.</span>
 
     <span class="c"># Output slots</span>
-    <span class="n">MaxLabelValue</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c">#: The highest label value currently stored in the array of labels</span>
     <span class="n">LabelImages</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#: Stored labels from the user</span>
     <span class="n">NonzeroLabelBlocks</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c">#: A list if slices that contain non-zero label values</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Instantiate all internal operators and connect them together.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">OpLabeling</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
+    <span class="n">MaxLabelValue</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c">#: The highest label value currently stored in the array of labels</span>
 
-        <span class="c"># Create internal operators</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opInputShapeReader</span> <span class="o">=</span> <span class="n">OperatorWrapper</span><span class="p">(</span> <span class="n">OpShapeReader</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span> <span class="o">=</span> <span class="n">OperatorWrapper</span><span class="p">(</span> <span class="n">OpBlockedSparseLabelArray</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span> <span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blockDims</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span> <span class="n">OpLabelingTopLevel</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
 
-        <span class="c"># NOT wrapped</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span> <span class="o">=</span> <span class="n">OpMaxValue</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+        <span class="c"># Use a wrapper to create a labeling operator for each image lane</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span> <span class="o">=</span> <span class="n">OpMultiLaneWrapper</span><span class="p">(</span> <span class="n">OpLabelingSingleLane</span><span class="p">,</span> <span class="n">operator_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s">&#39;blockDims&#39;</span> <span class="p">:</span> <span class="n">blockDims</span><span class="p">},</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span> <span class="p">)</span>
 
-        <span class="c"># Set up label cache shape input</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opInputShapeReader</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span> <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">inputs</span><span class="p">[</span><span class="s">&quot;shape&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opInputShapeReader</span><span class="o">.</span><span class="n">OutputShape</span> <span class="p">)</span>
-
-        <span class="c"># Set up other label cache inputs</span>
+        <span class="c"># Special connection: Label Input must get its metadata (shape, axistags) from the main input image.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span> <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span> <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">eraser</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelEraserValue</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">LabelEraserValue</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span>
-                
+
+        <span class="c"># Connect external inputs -&gt; internal inputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">InputImage</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">LabelInput</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">LabelsAllowedFlag</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelsAllowedFlags</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">LabelEraserValue</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelEraserValue</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">LabelDelete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelDelete</span> <span class="p">)</span>
+
         <span class="c"># Initialize the delete input to -1, which means &quot;no label&quot;.</span>
         <span class="c"># Now changing this input to a positive value will cause label deletions.</span>
         <span class="c"># (The deleteLabel input is monitored for changes.)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">deleteLabel</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelDelete</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">LabelDelete</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-        
-        <span class="c"># Find the highest label in all the label images</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span><span class="o">.</span><span class="n">Inputs</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="s">&#39;maxLabel&#39;</span><span class="p">]</span> <span class="p">)</span>
 
-        <span class="c"># Connect our internal outputs to our external outputs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">LabelImages</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">Output</span><span class="p">)</span>
+        <span class="c"># Connect internal outputs -&gt; external outputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelImages</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">LabelImage</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">NonzeroLabelBlocks</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">NonzeroLabelBlocks</span> <span class="p">)</span>
+
+        <span class="c"># Use an OpMaxValue to find the highest label in all the label image lanes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span> <span class="o">=</span> <span class="n">OpMaxValue</span><span class="p">(</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span><span class="o">.</span><span class="n">Inputs</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">MaxLabelValue</span> <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">MaxLabelValue</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span><span class="o">.</span><span class="n">Output</span> <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">NonzeroLabelBlocks</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">nonzeroBlocks</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="c"># Nothing to do here: All outputs are directly connected to </span>
+        <span class="c">#  internal operators that handle their own dirty propagation.</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">setInSlot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c"># Nothing to do here: All inputs that support __setitem__</span>
+        <span class="c">#   are directly connected to internal operators.</span>
+        <span class="k">pass</span>
+
+    <span class="c">###</span>
+    <span class="c"># MultiLaneOperatorABC</span>
+    <span class="c">###</span>
+
+<div class="viewcode-block" id="OpLabelingTopLevel.addLane"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.addLane">[docs]</a>    <span class="k">def</span> <span class="nf">addLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add an image lane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">laneIndex</span> <span class="o">==</span> <span class="n">numLanes</span><span class="p">,</span> <span class="s">&quot;Lanes must be appended&quot;</span>
+
+        <span class="c"># Just resize one of our multi-inputs.</span>
+        <span class="c"># The others will resize automatically</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">numLanes</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="OpLabelingTopLevel.removeLane"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.removeLane">[docs]</a>    <span class="k">def</span> <span class="nf">removeLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove an image lane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="o">.</span><span class="n">removeSlot</span><span class="p">(</span><span class="n">laneIndex</span><span class="p">,</span> <span class="n">numLanes</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">getLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">OperatorSubView</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="OpLabelingSingleLane"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane">[docs]</a><span class="k">class</span> <span class="nc">OpLabelingSingleLane</span><span class="p">(</span> <span class="n">Operator</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This is a single-lane operator that can be used with the labeling applet gui.</span>
+<span class="sd">    It is basically a wrapper around the ``OpBlockedSparseLabelArray`` (lazyflow), </span>
+<span class="sd">    with the &#39;shape&#39; and &#39;blockshape&#39; input slots taken care of for you.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s">&quot;OpLabelingSingleLane&quot;</span>
+
+    <span class="c"># Input slots</span>
+    <span class="n">InputImage</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span> <span class="c">#: Original input data.</span>
+    <span class="n">LabelInput</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">optional</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span> <span class="c">#: Input for providing label data from an external source</span>
+    
+    <span class="n">LabelsAllowedFlag</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;bool&#39;</span><span class="p">)</span> <span class="c">#: Specifies which images are permitted to be labeled </span>
+    <span class="n">LabelEraserValue</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span> <span class="c">#: The label value that signifies the &#39;eraser&#39;, i.e. voxels to clear labels from</span>
+    <span class="n">LabelDelete</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span> <span class="c">#: When this input is set to a value, all labels of that value are deleted from the operator&#39;s data.</span>
+
+    <span class="c"># Output slots</span>
+    <span class="n">LabelImage</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c">#: Stored labels from the user</span>
+    <span class="n">NonzeroLabelBlocks</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c">#: A list if slices that contain non-zero label values</span>
+
+    <span class="n">MaxLabelValue</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blockDims</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Instantiate all internal operators and connect them together.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpLabelingSingleLane</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
+
+        <span class="c"># Configuration options</span>
+        <span class="k">if</span> <span class="n">blockDims</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">blockDims</span> <span class="o">=</span> <span class="p">{</span> <span class="s">&#39;t&#39;</span> <span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;x&#39;</span> <span class="p">:</span> <span class="mi">32</span><span class="p">,</span> <span class="s">&#39;y&#39;</span> <span class="p">:</span> <span class="mi">32</span><span class="p">,</span> <span class="s">&#39;z&#39;</span> <span class="p">:</span> <span class="mi">32</span><span class="p">,</span> <span class="s">&#39;c&#39;</span> <span class="p">:</span> <span class="mi">1</span> <span class="p">}</span> 
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">blockDims</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_blockDims</span> <span class="o">=</span> <span class="n">blockDims</span>
+
+        <span class="c"># Create internal operators</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opInputShapeReader</span> <span class="o">=</span> <span class="n">OpShapeReader</span><span class="p">(</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span> <span class="o">=</span> <span class="n">OpBlockedSparseLabelArray</span><span class="p">(</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span> <span class="p">)</span>
+
+        <span class="c"># Set up label cache shape input</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opInputShapeReader</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImage</span> <span class="p">)</span>
+        <span class="c"># Note: &#39;shape&#39; is a (poorly named) INPUT SLOT here</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">shape</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opInputShapeReader</span><span class="o">.</span><span class="n">OutputShape</span> <span class="p">)</span>
+
+        <span class="c"># Set up other label cache inputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelInput</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">eraser</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelEraserValue</span><span class="p">)</span>                
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">deleteLabel</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelDelete</span><span class="p">)</span>
         
-        <span class="k">def</span> <span class="nf">inputResizeHandler</span><span class="p">(</span> <span class="n">slot</span><span class="p">,</span> <span class="n">oldsize</span><span class="p">,</span> <span class="n">newsize</span> <span class="p">):</span>
-            <span class="k">if</span> <span class="p">(</span> <span class="n">newsize</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">LabelImages</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">NonzeroLabelBlocks</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="o">.</span><span class="n">notifyResized</span><span class="p">(</span> <span class="n">inputResizeHandler</span> <span class="p">)</span>
-
-        <span class="c"># Check to make sure the non-wrapped operators stayed that way.</span>
-        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span><span class="o">.</span><span class="n">Inputs</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">opMaxLabel</span>
+        <span class="c"># Connect our internal outputs to our external outputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelImage</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">Output</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">NonzeroLabelBlocks</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">nonzeroBlocks</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">MaxLabelValue</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">maxLabel</span> <span class="p">)</span>
         
-        <span class="k">def</span> <span class="nf">handleNewInputImage</span><span class="p">(</span> <span class="n">multislot</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span> <span class="p">):</span>
-            <span class="k">def</span> <span class="nf">handleInputReady</span><span class="p">(</span><span class="n">slot</span><span class="p">):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">setupCaches</span><span class="p">(</span> <span class="n">multislot</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span> <span class="p">)</span>
-            <span class="n">multislot</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">notifyReady</span><span class="p">(</span><span class="n">handleInputReady</span><span class="p">)</span>
-                
-        <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="o">.</span><span class="n">notifyInserted</span><span class="p">(</span> <span class="n">handleNewInputImage</span> <span class="p">)</span>
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setupInputMeta</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setupCache</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_blockDims</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">setupCaches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageIndex</span><span class="p">):</span>
-        <span class="n">numImages</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">)</span>
-        <span class="n">inputSlot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">numImages</span><span class="p">)</span>
-
+    <span class="k">def</span> <span class="nf">setupInputMeta</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c"># Special case: We have to set up the shape of our label *input* according to our image input shape</span>
-        <span class="n">shapeList</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">shapeList</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InputImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">channelIndex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">)</span>
+            <span class="c"># If present, LabelInput channel dim must be 1</span>
+            <span class="n">channelIndex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s">&#39;c&#39;</span><span class="p">)</span>
             <span class="n">shapeList</span><span class="p">[</span><span class="n">channelIndex</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-        <span class="k">except</span><span class="p">:</span>
+        <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
             <span class="k">pass</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">shapeList</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="p">[</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="n">inputSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInput</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">shapeList</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInput</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span>
 
+    <span class="k">def</span> <span class="nf">setupCache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blockDims</span><span class="p">):</span>
         <span class="c"># Set the blockshapes for each input image separately, depending on which axistags it has.</span>
-        <span class="n">axisOrder</span> <span class="o">=</span> <span class="p">[</span> <span class="n">tag</span><span class="o">.</span><span class="n">key</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">inputSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="p">]</span>
+        <span class="n">axisOrder</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">tag</span><span class="p">:</span> <span class="n">tag</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="p">)</span>
         
         <span class="c">## Label Array blocks</span>
-        <span class="n">blockDims</span> <span class="o">=</span> <span class="p">{</span> <span class="s">&#39;t&#39;</span> <span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&#39;x&#39;</span> <span class="p">:</span> <span class="mi">32</span><span class="p">,</span> <span class="s">&#39;y&#39;</span> <span class="p">:</span> <span class="mi">32</span><span class="p">,</span> <span class="s">&#39;z&#39;</span> <span class="p">:</span> <span class="mi">32</span><span class="p">,</span> <span class="s">&#39;c&#39;</span> <span class="p">:</span> <span class="mi">1</span> <span class="p">}</span>
         <span class="n">blockShape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span> <span class="n">blockDims</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">axisOrder</span> <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">blockShape</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="n">blockShape</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">cleanUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInput</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">(</span> <span class="n">OpLabelingSingleLane</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">cleanUp</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
         <span class="c"># Nothing to do here: All outputs are directly connected to </span>

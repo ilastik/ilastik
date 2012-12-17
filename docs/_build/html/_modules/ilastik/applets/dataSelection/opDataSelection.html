@@ -46,9 +46,9 @@
           <div class="body">
             
   <h1>Source code for ilastik.applets.dataSelection.opDataSelection</h1><div class="highlight"><pre>
-<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span>
-
+<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span><span class="p">,</span> <span class="n">OperatorWrapper</span>
 <span class="kn">from</span> <span class="nn">lazyflow.operators.ioOperators</span> <span class="kn">import</span> <span class="n">OpStreamingHdf5Reader</span><span class="p">,</span> <span class="n">OpInputDataReader</span>
+<span class="kn">from</span> <span class="nn">ilastik.utility.operatorSubView</span> <span class="kn">import</span> <span class="n">OperatorSubView</span>
 
 <span class="kn">import</span> <span class="nn">uuid</span>
 
@@ -99,9 +99,12 @@
     <span class="n">Dataset</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;object&#39;</span><span class="p">)</span> <span class="c">#: A DatasetInfo object</span>
 
     <span class="c"># Outputs</span>
-    <span class="n">ImageName</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;string&#39;</span><span class="p">)</span> <span class="c">#: The name of the output image</span>
     <span class="n">Image</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c">#: The output image</span>
     <span class="n">AllowLabels</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;bool&#39;</span><span class="p">)</span> <span class="c">#: A bool indicating whether or not this image can be used for training</span>
+
+    <span class="c"># Must be declared last of all slots.</span>
+    <span class="c"># When the shell detects that this slot has been resized, it assumes all the others have already been resized.</span>
+    <span class="n">ImageName</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s">&#39;string&#39;</span><span class="p">)</span> <span class="c">#: The name of the output image</span>
     
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">OpDataSelection</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -144,7 +147,34 @@
 
     <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
         <span class="c"># Output slots are directly connected to internal operators</span>
-        <span class="k">pass</span></div>
+        <span class="k">pass</span>
+</div>
+<span class="k">class</span> <span class="nc">OpMultiLaneDataSelection</span><span class="p">(</span> <span class="n">OperatorWrapper</span> <span class="p">):</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span> <span class="n">OpMultiLaneDataSelection</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">OpDataSelection</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span> <span class="n">broadcastingSlotNames</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;ProjectFile&#39;</span><span class="p">,</span> <span class="s">&#39;ProjectDataGroup&#39;</span><span class="p">,</span> <span class="s">&#39;WorkingDirectory&#39;</span><span class="p">]</span> <span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">addLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add an image lane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">innerOperators</span><span class="p">)</span>
+        
+        <span class="c"># Only add this lane if we don&#39;t already have it</span>
+        <span class="c"># We might be called from within the context of our own insertSlot signal.</span>
+        <span class="k">if</span> <span class="n">numLanes</span> <span class="o">==</span> <span class="n">laneIndex</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_insertInnerOperator</span><span class="p">(</span><span class="n">numLanes</span><span class="p">,</span> <span class="n">numLanes</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">removeLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove an image lane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">innerOperators</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">numLanes</span> <span class="o">&gt;</span> <span class="n">finalLength</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_removeInnerOperator</span><span class="p">(</span><span class="n">laneIndex</span><span class="p">,</span> <span class="n">numLanes</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">OperatorSubView</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">)</span>
 </pre></div>
 
           </div>

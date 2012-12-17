@@ -47,13 +47,8 @@
             
   <h1>Source code for ilastik.applets.dataSelection.dataSelectionApplet</h1><div class="highlight"><pre>
 <span class="kn">from</span> <span class="nn">ilastik.applets.base.applet</span> <span class="kn">import</span> <span class="n">Applet</span>
-
-<span class="kn">from</span> <span class="nn">opDataSelection</span> <span class="kn">import</span> <span class="n">OpDataSelection</span>
-
+<span class="kn">from</span> <span class="nn">opDataSelection</span> <span class="kn">import</span> <span class="n">OpMultiLaneDataSelection</span>
 <span class="kn">from</span> <span class="nn">dataSelectionSerializer</span> <span class="kn">import</span> <span class="n">DataSelectionSerializer</span><span class="p">,</span> <span class="n">Ilastik05DataSelectionDeserializer</span>
-<span class="kn">from</span> <span class="nn">dataSelectionPreferencesManager</span> <span class="kn">import</span> <span class="n">DataSelectionPreferencesManager</span>
-
-<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="kn">import</span> <span class="n">OperatorWrapper</span>
 
 <div class="viewcode-block" id="DataSelectionApplet"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet">[docs]</a><span class="k">class</span> <span class="nc">DataSelectionApplet</span><span class="p">(</span> <span class="n">Applet</span> <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -61,43 +56,41 @@
 <span class="sd">    which are provided as outputs in the corresponding top-level applet operator.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">projectFileGroupName</span><span class="p">,</span> <span class="n">supportIlastik05Import</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">batchDataGui</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">DataSelectionApplet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__topLevelOperator</span> <span class="o">=</span> <span class="n">OpMultiLaneDataSelection</span><span class="p">(</span> <span class="n">parent</span><span class="o">=</span><span class="n">workflow</span> <span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">DataSelectionApplet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="n">title</span><span class="p">,</span> <span class="n">syncWithImageIndex</span><span class="o">=</span><span class="bp">False</span> <span class="p">)</span>
 
-        <span class="c"># Our top-level operator is wrapped to enable multi-image support.</span>
-        <span class="c"># All inputs are common to all inputs except for the &#39;Dataset&#39; input, which is unique for each image.</span>
-        <span class="c"># Hence, &#39;Dataset&#39; is the only &#39;promoted&#39; slot.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span> <span class="o">=</span> <span class="n">OperatorWrapper</span><span class="p">(</span> <span class="n">OpDataSelection</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">workflow</span><span class="p">,</span> <span class="n">promotedSlotNames</span><span class="o">=</span><span class="nb">set</span><span class="p">([</span><span class="s">&#39;Dataset&#39;</span><span class="p">])</span> <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;DataSelection Top-level Operator&quot;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span> <span class="o">=</span> <span class="p">[</span> <span class="n">DataSelectionSerializer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span><span class="p">,</span> <span class="n">projectFileGroupName</span><span class="p">)</span> <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span> <span class="o">=</span> <span class="p">[</span> <span class="n">DataSelectionSerializer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">topLevelOperator</span><span class="p">,</span> <span class="n">projectFileGroupName</span><span class="p">)</span> <span class="p">]</span>
         <span class="k">if</span> <span class="n">supportIlastik05Import</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Ilastik05DataSelectionDeserializer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Ilastik05DataSelectionDeserializer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">topLevelOperator</span><span class="p">))</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span> <span class="o">=</span> <span class="bp">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">batchDataGui</span> <span class="o">=</span> <span class="n">batchDataGui</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">_preferencesManager</span> <span class="o">=</span> <span class="n">DataSelectionPreferencesManager</span><span class="p">()</span>
-    
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">gui</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_batchDataGui</span> <span class="o">=</span> <span class="n">batchDataGui</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_title</span> <span class="o">=</span> <span class="n">title</span>
+
+    <span class="c">#</span>
+    <span class="c"># GUI</span>
+    <span class="c">#</span>
+    <span class="k">def</span> <span class="nf">getMultiLaneGui</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
             <span class="kn">from</span> <span class="nn">dataSelectionGui</span> <span class="kn">import</span> <span class="n">DataSelectionGui</span><span class="p">,</span> <span class="n">GuiMode</span>
-            <span class="n">guiMode</span> <span class="o">=</span> <span class="p">{</span> <span class="bp">True</span><span class="p">:</span> <span class="n">GuiMode</span><span class="o">.</span><span class="n">Batch</span><span class="p">,</span> <span class="bp">False</span><span class="p">:</span> <span class="n">GuiMode</span><span class="o">.</span><span class="n">Normal</span> <span class="p">}[</span><span class="bp">self</span><span class="o">.</span><span class="n">batchDataGui</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span> <span class="o">=</span> <span class="n">DataSelectionGui</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">guiControlSignal</span><span class="p">,</span> <span class="n">guiMode</span> <span class="p">)</span>
+            <span class="n">guiMode</span> <span class="o">=</span> <span class="p">{</span> <span class="bp">True</span><span class="p">:</span> <span class="n">GuiMode</span><span class="o">.</span><span class="n">Batch</span><span class="p">,</span> <span class="bp">False</span><span class="p">:</span> <span class="n">GuiMode</span><span class="o">.</span><span class="n">Normal</span> <span class="p">}[</span><span class="bp">self</span><span class="o">.</span><span class="n">_batchDataGui</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span> <span class="o">=</span> <span class="n">DataSelectionGui</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">topLevelOperator</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">guiControlSignal</span><span class="p">,</span> <span class="n">guiMode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_title</span> <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span>
 
+    <span class="c">#</span>
+    <span class="c"># Top-level operator</span>
+    <span class="c">#</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">topLevelOperator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__topLevelOperator</span> 
+
+    <span class="c">#</span>
+    <span class="c"># Project serialization</span>
+    <span class="c">#</span>
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">dataSerializers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_serializableItems</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">topLevelOperator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_topLevelOperator</span>
-    
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">appletPreferencesManager</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_preferencesManager</span></div>
-</pre></div>
+</pre></div></div>
 
           </div>
         </div>

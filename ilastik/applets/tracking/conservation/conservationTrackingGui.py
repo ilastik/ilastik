@@ -61,7 +61,7 @@ class ConservationTrackingGui( TrackingGuiBase ):
         self.time_range =  range(from_t, to_t + 1)
         avgSize = self._drawer.avgSizeBox.value()
         
-        self.mainOperator.innerOperators[0].track(
+        self.mainOperator.track(
             time_range = self.time_range,
             x_range = (from_x, to_x + 1),
             y_range = (from_y, to_y + 1),

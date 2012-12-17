@@ -1,37 +1,39 @@
-from lazyflow.graph import Graph, OperatorWrapper
-
+from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
-
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.objectExtraction import ObjectExtractionApplet
-
-from lazyflow.operators.obsolete.valueProviders import OpAttributeSelector
 from ilastik.applets.tracking.conservation.conservationTrackingApplet import ConservationTrackingApplet
 from ilastik.applets.objectExtractionMultiClass.objectExtractionMultiClassApplet import ObjectExtractionMultiClassApplet
 
 class ConservationTrackingWorkflow( Workflow ):
-    def __init__( self ):
-        # Create a graph to be shared by all operators
-        graph = Graph()
-        
-        super(ConservationTrackingWorkflow, self).__init__(graph=graph)
-        self._applets = []
-        self._imageNameListSlot = None
-    
-        ######################
-        # Interactive workflow
-        ######################
+    name = "Conservation Tracking Workflow"
+
+    def __init__( self, headless, *args, **kwargs ):
+        graph = kwargs['graph'] if 'graph' in kwargs else Graph()
+        if 'graph' in kwargs: del kwargs['graph']
+        super(ConservationTrackingWorkflow, self).__init__(headless=headless, graph=graph, *args, **kwargs)
         
         ## Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Segmentation", "Input Segmentation", batchDataGui=False)
-
-        self.objectExtractionApplet = ObjectExtractionMultiClassApplet( self )
-        self.trackingApplet = ConservationTrackingApplet( self )
-
-        ## Access applet operators
-        opData = self.dataSelectionApplet.topLevelOperator
-        opObjExtraction = self.objectExtractionApplet.topLevelOperator
-        opTracking = self.trackingApplet.topLevelOperator
+        self.objectExtractionApplet = ObjectExtractionMultiClassApplet( name="Object Extraction Multi-Class", workflow=self )
+        self.trackingApplet = ConservationTrackingApplet( workflow=self )
+        
+        self._applets = []
+        self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.objectExtractionApplet)
+        self._applets.append(self.trackingApplet)
+        
+    @property
+    def applets(self):
+        return self._applets
+    
+    @property
+    def imageNameListSlot(self):
+        return self.dataSelectionApplet.topLevelOperator.ImageName
+    
+    def connectLane(self, laneIndex):
+        opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)    
+        opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
         
         ## Connect operators ##
         opObjExtraction.Images.connect( opData.Image )
@@ -40,24 +42,4 @@ class ConservationTrackingWorkflow( Workflow ):
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
         opTracking.ClassMapping.connect( opObjExtraction.ClassMapping )
         opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )
-
-        self._applets.append(self.dataSelectionApplet)
-        self._applets.append(self.objectExtractionApplet)
-        self._applets.append(self.trackingApplet)
-
-        # The shell needs a slot from which he can read the list of image names to switch between.
-        # Use an OpAttributeSelector to create a slot containing just the filename from the OpDataSelection's DatasetInfo slot.
-        opSelectFilename = OperatorWrapper( OpAttributeSelector, parent=self )
-        opSelectFilename.InputObject.connect( opData.Dataset )
-        opSelectFilename.AttributeName.setValue( 'filePath' )
-
-        self._imageNameListSlot = opSelectFilename.Result
-
-    @property
-    def applets(self):
-        return self._applets
-
-    @property
-    def imageNameListSlot(self):
-        return self._imageNameListSlot
     

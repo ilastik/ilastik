@@ -59,8 +59,10 @@
 <span class="kn">from</span> <span class="nn">lazyflow.operators</span> <span class="kn">import</span> <span class="n">OpSingleChannelSelector</span><span class="p">,</span> <span class="n">Op1ToMulti</span>
 
 <span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">volumina.utility</span> <span class="kn">import</span> <span class="n">ShortcutManager</span>
 <span class="kn">from</span> <span class="nn">ilastik.utility</span> <span class="kn">import</span> <span class="n">bind</span>
-<span class="kn">from</span> <span class="nn">ilastik.utility.gui</span> <span class="kn">import</span> <span class="n">ThreadRouter</span><span class="p">,</span> <span class="n">threadRouted</span><span class="p">,</span> <span class="n">ShortcutManager</span>
+<span class="kn">from</span> <span class="nn">ilastik.utility.gui</span> <span class="kn">import</span> <span class="n">ThreadRouter</span><span class="p">,</span> <span class="n">threadRouted</span>
 
 <span class="kn">from</span> <span class="nn">volumina.adaptors</span> <span class="kn">import</span> <span class="n">Op5ifyer</span>
 
@@ -71,24 +73,41 @@
 <span class="n">traceLogger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s">&#39;TRACE.&#39;</span> <span class="o">+</span> <span class="n">__name__</span><span class="p">)</span>
 <span class="kn">from</span> <span class="nn">lazyflow.tracer</span> <span class="kn">import</span> <span class="n">traceLogged</span><span class="p">,</span> <span class="n">Tracer</span>
 
+<span class="k">class</span> <span class="nc">LayerViewerGuiMetaclass</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">QMainWindow</span><span class="p">)):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Custom metaclass to enable the _after_init function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This is where __init__ is called.</span>
+<span class="sd">        Here we can call code to execute immediately before or after the *subclass* __init__ function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># Base class first. (type is our baseclass)</span>
+        <span class="c"># type.__call__ calls instance.__init__ internally</span>
+        <span class="n">instance</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">QMainWindow</span><span class="p">)</span><span class="o">.</span><span class="n">__call__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">instance</span><span class="o">.</span><span class="n">_after_init</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">instance</span>
+
 <div class="viewcode-block" id="LayerViewerGui"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui">[docs]</a><span class="k">class</span> <span class="nc">LayerViewerGui</span><span class="p">(</span><span class="n">QMainWindow</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Implements an applet GUI whose central widget is a VolumeEditor </span>
+<span class="sd">    Implements an applet GUI whose central widget is a VolumeEditor</span>
 <span class="sd">    and whose layer controls simply contains a layer list widget.</span>
 <span class="sd">    Intended to be used as a subclass for applet GUI objects.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Provides: Central widget (viewer), View Menu, and Layer controls</span>
 <span class="sd">    Provides an EMPTY applet drawer widget.  Subclasses should replace it with their own applet drawer.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">LayerViewerGuiMetaclass</span>
+    
     <span class="c">###########################################</span>
     <span class="c">### AppletGuiInterface Concrete Methods ###</span>
     <span class="c">###########################################</span>
-    
+
     <span class="k">def</span> <span class="nf">centralWidget</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span>
 
-    <span class="k">def</span> <span class="nf">appletDrawers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">[(</span><span class="s">&#39;Viewer&#39;</span><span class="p">,</span> <span class="n">QWidget</span><span class="p">())]</span>
+    <span class="k">def</span> <span class="nf">appletDrawer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">QWidget</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">menus</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
         <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">menuView</span><span class="p">]</span> <span class="c"># From the .ui file</span>
@@ -96,156 +115,113 @@
     <span class="k">def</span> <span class="nf">viewerControlWidget</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span>
 
-    <span class="k">def</span> <span class="nf">setImageIndex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_setImageIndex</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
-        
-    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">stopAndCleanUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stopped</span> <span class="o">=</span> <span class="bp">True</span>
+
         <span class="c"># Remove all layers</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">layerstack</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-    
-    <span class="c">###########################################</span>
-    <span class="c">###########################################</span>
 
-    <span class="k">def</span> <span class="nf">operatorForCurrentImage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">topLevelOperator</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span><span class="p">]</span>
-        <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">None</span>
+        <span class="c"># Stop rendering</span>
+        <span class="k">for</span> <span class="n">scene</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageScenes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">scene</span><span class="o">.</span><span class="n">_tileProvider</span><span class="p">:</span>
+                <span class="n">scene</span><span class="o">.</span><span class="n">_tileProvider</span><span class="o">.</span><span class="n">notifyThreadsToStop</span><span class="p">()</span>
+            <span class="n">scene</span><span class="o">.</span><span class="n">joinRendering</span><span class="p">()</span>
+            
+        <span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orphanOperators</span><span class="p">:</span>
+            <span class="n">op</span><span class="o">.</span><span class="n">cleanUp</span><span class="p">()</span>
+
+    <span class="c">###########################################</span>
+    <span class="c">###########################################</span>
 
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-<div class="viewcode-block" id="LayerViewerGui.__init__"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topLevelOperator</span><span class="p">):</span>
+<div class="viewcode-block" id="LayerViewerGui.__init__"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topLevelOperatorView</span><span class="p">,</span> <span class="n">additionalMonitoredSlots</span><span class="o">=</span><span class="p">[]):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Constructor.  **All** slots of the provided *topLevelOperator* will be monitored for changes.</span>
+<span class="sd">        Constructor.  **All** slots of the provided *topLevelOperatorView* will be monitored for changes.</span>
 <span class="sd">        Changes include slot resize events, and slot ready/unready status changes.</span>
 <span class="sd">        When a change is detected, the `setupLayers()` function is called, and the result is used to update the list of layers shown in the central widget.</span>
-<span class="sd">        </span>
-<span class="sd">        :param topLevelOperator: The top-level operator for the applet this GUI belongs to.</span>
+
+<span class="sd">        :param topLevelOperatorView: The top-level operator for the applet this GUI belongs to.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">LayerViewerGui</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stopped</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="bp">False</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">threadRouter</span> <span class="o">=</span> <span class="n">ThreadRouter</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="c"># For using @threadRouted</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">topLevelOperator</span> <span class="o">=</span> <span class="n">topLevelOperator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">topLevelOperatorView</span> <span class="o">=</span> <span class="n">topLevelOperatorView</span>
 
         <span class="n">observedSlots</span> <span class="o">=</span> <span class="p">[]</span>
 
-        <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="n">topLevelOperator</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="o">+</span> <span class="n">topLevelOperator</span><span class="o">.</span><span class="n">outputs</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="n">topLevelOperatorView</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="o">+</span> <span class="n">topLevelOperatorView</span><span class="o">.</span><span class="n">outputs</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="n">observedSlots</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span>
         
-        <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span> <span class="o">=</span> <span class="p">[]</span>        
+        <span class="n">observedSlots</span> <span class="o">+=</span> <span class="n">additionalMonitoredSlots</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_orphanOperators</span> <span class="o">=</span> <span class="p">[]</span> <span class="c"># Operators that are owned by this GUI directly (not owned by the top-level operator)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="n">observedSlots</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="c"># The user gave us a slot that is indexed as slot[image]</span>
-                <span class="c"># Wrap the operator so it has the right level.  Indexed as: slot[image][0]</span>
-                <span class="n">opPromoteInput</span> <span class="o">=</span> <span class="n">OperatorWrapper</span><span class="p">(</span> <span class="n">Op1ToMulti</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="n">slot</span><span class="o">.</span><span class="n">operator</span><span class="o">.</span><span class="n">graph</span> <span class="p">)</span>
+            <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c"># To be monitored and updated correctly by this GUI, slots must have level=1, but this slot is of level 0.</span>
+                <span class="c"># Pass it through a trivial &quot;up-leveling&quot; operator so it will have level 1 for our purposes.</span>
+                <span class="n">opPromoteInput</span> <span class="o">=</span> <span class="n">Op1ToMulti</span><span class="p">(</span><span class="n">graph</span><span class="o">=</span><span class="n">slot</span><span class="o">.</span><span class="n">operator</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
                 <span class="n">opPromoteInput</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span>
                 <span class="n">slot</span> <span class="o">=</span> <span class="n">opPromoteInput</span><span class="o">.</span><span class="n">Outputs</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_orphanOperators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">opPromoteInput</span> <span class="p">)</span>
 
-            <span class="c"># Each slot should now be indexed as slot[image][sub_index]</span>
-            <span class="k">assert</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">2</span>
+            <span class="c"># Each slot should now be indexed as slot[layer_index]</span>
+            <span class="k">assert</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">1</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">slot</span> <span class="p">)</span>
-
+            <span class="n">slot</span><span class="o">.</span><span class="n">notifyInserted</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handleLayerInsertion</span><span class="p">)</span> <span class="p">)</span>
+            <span class="n">slot</span><span class="o">.</span><span class="n">notifyRemoved</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handleLayerRemoval</span><span class="p">)</span> <span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">slot</span><span class="p">)):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_handleLayerInsertion</span><span class="p">(</span><span class="n">slot</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+ 
         <span class="bp">self</span><span class="o">.</span><span class="n">layerstack</span> <span class="o">=</span> <span class="n">LayerStackModel</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">initAppletDrawerUi</span><span class="p">()</span> <span class="c"># Default implementation loads a blank drawer.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_initCentralUic</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span> <span class="o">=</span> <span class="bp">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">initViewerControlUi</span><span class="p">()</span>
-        
         <span class="bp">self</span><span class="o">.</span><span class="n">_initEditor</span><span class="p">()</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">lastUpdateImageIndex</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-        
-        <span class="k">def</span> <span class="nf">handleDatasetInsertion</span><span class="p">(</span><span class="n">slot</span><span class="p">,</span> <span class="n">imageIndex</span><span class="p">):</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_areProvidersInSync</span><span class="p">():</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">setImageIndex</span><span class="p">(</span> <span class="n">imageIndex</span> <span class="p">)</span>
-        
-        <span class="k">for</span> <span class="n">provider</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span><span class="p">:</span>
-            <span class="n">provider</span><span class="o">.</span><span class="n">notifyInserted</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span> <span class="n">handleDatasetInsertion</span> <span class="p">)</span> <span class="p">)</span>
-        
-        <span class="k">def</span> <span class="nf">handleDatasetRemoval</span><span class="p">(</span><span class="n">slot</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">finalsize</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">finalsize</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="c"># Clear everything</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">setImageIndex</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">index</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span><span class="p">:</span>
-                <span class="c"># Our currently displayed image is being removed.</span>
-                <span class="c"># Switch to the first image (unless that&#39;s the one being removed!)</span>
-                <span class="n">newIndex</span> <span class="o">=</span> <span class="mi">0</span>
-                <span class="k">if</span> <span class="n">index</span> <span class="o">==</span> <span class="n">newIndex</span><span class="p">:</span>
-                    <span class="n">newIndex</span> <span class="o">=</span> <span class="mi">1</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">setImageIndex</span><span class="p">(</span><span class="n">newIndex</span><span class="p">)</span>
-            
-        <span class="k">for</span> <span class="n">provider</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span><span class="p">:</span>
-            <span class="n">provider</span><span class="o">.</span><span class="n">notifyRemove</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span> <span class="n">handleDatasetRemoval</span> <span class="p">)</span> <span class="p">)</span>
-</div>
-<div class="viewcode-block" id="LayerViewerGui.setupLayers"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.setupLayers">[docs]</a>    <span class="k">def</span> <span class="nf">setupLayers</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">currentImageIndex</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initViewerControlUi</span><span class="p">()</span> <span class="c"># Might be overridden in a subclass. Default implementation loads a standard layer widget.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initAppletDrawerUi</span><span class="p">()</span> <span class="c"># Default implementation loads a blank drawer.</span>
+        </div>
+    <span class="k">def</span> <span class="nf">_after_init</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateAllLayers</span><span class="p">()</span>
+
+<div class="viewcode-block" id="LayerViewerGui.setupLayers"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.setupLayers">[docs]</a>    <span class="k">def</span> <span class="nf">setupLayers</span><span class="p">(</span> <span class="bp">self</span> <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Create a list of layers to be displayed in the central widget.</span>
 <span class="sd">        Subclasses should override this method to create the list of layers that can be displayed.</span>
-<span class="sd">        For debug and development purposes, the base class implementation simply generates layers for all topLevelOperator slots. </span>
-<span class="sd">        </span>
-<span class="sd">        :param currentImageIndex: The index of the shell&#39;s currently selected image.</span>
+<span class="sd">        For debug and development purposes, the base class implementation simply generates layers for all topLevelOperatorView slots.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">layers</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">multiImageSlot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span><span class="p">:</span>
-            <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">currentImageIndex</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">multiImageSlot</span><span class="p">):</span>
-                <span class="n">multiLayerSlot</span> <span class="o">=</span> <span class="n">multiImageSlot</span><span class="p">[</span><span class="n">currentImageIndex</span><span class="p">]</span>
-                <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">slot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">multiLayerSlot</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">ready</span><span class="p">():</span>
-                        <span class="n">layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">createStandardLayerFromSlot</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span>
-                        <span class="n">layer</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">multiImageSlot</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
-                        <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span>        
+        <span class="k">for</span> <span class="n">multiLayerSlot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">slot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">multiLayerSlot</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">ready</span><span class="p">():</span>
+                    <span class="n">layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">createStandardLayerFromSlot</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span>
+                    <span class="n">layer</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">multiLayerSlot</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+                    <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">layers</span>
 </div>
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">_setImageIndex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageIndex</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">provider</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span><span class="p">:</span>
-                <span class="c"># We&#39;re switching datasets.  Unsubscribe from the old one&#39;s notifications.</span>
-                <span class="n">provider</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">unregisterInserted</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handleLayerInsertion</span><span class="p">)</span> <span class="p">)</span>
-                <span class="n">provider</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">unregisterRemove</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handleLayerRemoval</span><span class="p">)</span> <span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span> <span class="o">=</span> <span class="n">imageIndex</span>
-        
-        <span class="c"># Don&#39;t repopulate the GUI if there isn&#39;t a current dataset.  Stop now. </span>
-        <span class="k">if</span> <span class="n">imageIndex</span> <span class="ow">is</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">layerstack</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-            <span class="k">return</span>
-
-        <span class="c"># Update the GUI for all layers in the current dataset</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">updateAllLayers</span><span class="p">()</span>
-
-        <span class="c"># For layers that already exist, subscribe to ready notifications</span>
-        <span class="k">for</span> <span class="n">provider</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">slotIndex</span><span class="p">,</span> <span class="n">slot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">provider</span><span class="p">):</span>
-                <span class="n">slot</span><span class="o">.</span><span class="n">notifyReady</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">updateAllLayers</span><span class="p">)</span> <span class="p">)</span>
-                <span class="n">slot</span><span class="o">.</span><span class="n">notifyUnready</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">updateAllLayers</span><span class="p">)</span> <span class="p">)</span>
-        
-        <span class="c"># Make sure we&#39;re notified if a layer is inserted in the future so we can subscribe to its ready notifications</span>
-        <span class="k">for</span> <span class="n">provider</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">provider</span><span class="p">):</span>
-                <span class="n">provider</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">notifyInserted</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handleLayerInsertion</span><span class="p">)</span> <span class="p">)</span>
-                <span class="n">provider</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span><span class="p">]</span><span class="o">.</span><span class="n">notifyRemoved</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_handleLayerRemoval</span><span class="p">)</span> <span class="p">)</span>
-
     <span class="k">def</span> <span class="nf">_handleLayerInsertion</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">slotIndex</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        The multislot providing our layers has a new item.</span>
 <span class="sd">        Make room for it in the layer GUI and subscribe to updates.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">with</span> <span class="n">Tracer</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">):</span>
-            <span class="c"># When the slot is ready, we&#39;ll replace the blank layer with real data</span>
-            <span class="n">slot</span><span class="p">[</span><span class="n">slotIndex</span><span class="p">]</span><span class="o">.</span><span class="n">notifyReady</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">updateAllLayers</span><span class="p">)</span> <span class="p">)</span>
-            <span class="n">slot</span><span class="p">[</span><span class="n">slotIndex</span><span class="p">]</span><span class="o">.</span><span class="n">notifyUnready</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">updateAllLayers</span><span class="p">)</span> <span class="p">)</span>
-    
+        <span class="c"># When the slot is ready, we&#39;ll replace the blank layer with real data</span>
+        <span class="n">slot</span><span class="p">[</span><span class="n">slotIndex</span><span class="p">]</span><span class="o">.</span><span class="n">notifyReady</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">updateAllLayers</span><span class="p">)</span> <span class="p">)</span>
+        <span class="n">slot</span><span class="p">[</span><span class="n">slotIndex</span><span class="p">]</span><span class="o">.</span><span class="n">notifyUnready</span><span class="p">(</span> <span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">updateAllLayers</span><span class="p">)</span> <span class="p">)</span>
+
+    <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">_handleLayerRemoval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">slotIndex</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        An item is about to be removed from the multislot that is providing our layers.</span>
 <span class="sd">        Remove the layer from the GUI.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">with</span> <span class="n">Tracer</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">updateAllLayers</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateAllLayers</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">generateAlphaModulatedLayersFromChannels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
         <span class="c"># TODO</span>
@@ -257,11 +233,11 @@
 <span class="sd">        Convenience function.</span>
 <span class="sd">        Generates a volumina layer using the given slot.</span>
 <span class="sd">        Chooses between grayscale or RGB depending on the number of channels in the slot.</span>
-<span class="sd">        </span>
+
 <span class="sd">        * If *slot* has 1 channel, a GrayscaleLayer is created.</span>
 <span class="sd">        * If *slot* has 2 non-alpha channels, an RGBALayer is created with R and G channels.</span>
-<span class="sd">        * If *slot* has 3 non-alpha channels, an RGBALayer is created with R,G, and B channels. </span>
-<span class="sd">        </span>
+<span class="sd">        * If *slot* has 3 non-alpha channels, an RGBALayer is created with R,G, and B channels.</span>
+
 <span class="sd">        :param slot: The slot to generate a layer from</span>
 <span class="sd">        :param lastChannelIsAlpha: If True, the last channel in the slot is assumed to be an alpha channel.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -287,7 +263,7 @@
             <span class="n">numChannels</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="n">channelAxisIndex</span><span class="p">]</span>
         <span class="k">except</span><span class="p">:</span>
             <span class="n">numChannels</span> <span class="o">=</span> <span class="mi">1</span>
-        
+
         <span class="k">if</span> <span class="n">lastChannelIsAlpha</span><span class="p">:</span>
             <span class="k">assert</span> <span class="n">numChannels</span> <span class="o">&lt;=</span> <span class="mi">4</span><span class="p">,</span> <span class="s">&quot;Can&#39;t display a standard layer with more than four channels (with alpha).  Your image has {} channels.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">numChannels</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
@@ -305,13 +281,13 @@
         <span class="n">redProvider</span><span class="o">.</span><span class="n">Index</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="mi">0</span> <span class="p">)</span>
         <span class="n">redSource</span> <span class="o">=</span> <span class="n">LazyflowSource</span><span class="p">(</span> <span class="n">redProvider</span><span class="o">.</span><span class="n">Output</span> <span class="p">)</span>
         <span class="n">redNormSource</span> <span class="o">=</span> <span class="n">NormalizingSource</span><span class="p">(</span> <span class="n">redSource</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">normalize</span> <span class="p">)</span>
-        
+
         <span class="n">greenProvider</span> <span class="o">=</span> <span class="n">OpSingleChannelSelector</span><span class="p">(</span><span class="n">graph</span><span class="o">=</span><span class="n">slot</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
         <span class="n">greenProvider</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span>
         <span class="n">greenProvider</span><span class="o">.</span><span class="n">Index</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="mi">1</span> <span class="p">)</span>
         <span class="n">greenSource</span> <span class="o">=</span> <span class="n">LazyflowSource</span><span class="p">(</span> <span class="n">greenProvider</span><span class="o">.</span><span class="n">Output</span> <span class="p">)</span>
         <span class="n">greenNormSource</span> <span class="o">=</span> <span class="n">NormalizingSource</span><span class="p">(</span> <span class="n">greenSource</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">normalize</span> <span class="p">)</span>
-                        
+
         <span class="n">blueNormSource</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="k">if</span> <span class="n">numChannels</span> <span class="o">&gt;</span> <span class="mi">3</span> <span class="ow">or</span> <span class="p">(</span><span class="n">numChannels</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">lastChannelIsAlpha</span><span class="p">):</span>
             <span class="n">blueProvider</span> <span class="o">=</span> <span class="n">OpSingleChannelSelector</span><span class="p">(</span><span class="n">graph</span><span class="o">=</span><span class="n">slot</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
@@ -327,83 +303,39 @@
             <span class="n">alphaProvider</span><span class="o">.</span><span class="n">Index</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="n">numChannels</span><span class="o">-</span><span class="mi">1</span> <span class="p">)</span>
             <span class="n">alphaSource</span> <span class="o">=</span> <span class="n">LazyflowSource</span><span class="p">(</span> <span class="n">alphaProvider</span><span class="o">.</span><span class="n">Output</span> <span class="p">)</span>
             <span class="n">alphaNormSource</span> <span class="o">=</span> <span class="n">NormalizingSource</span><span class="p">(</span> <span class="n">alphaSource</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">normalize</span> <span class="p">)</span>
-        
+
         <span class="n">layer</span> <span class="o">=</span> <span class="n">RGBALayer</span><span class="p">(</span> <span class="n">red</span><span class="o">=</span><span class="n">redNormSource</span><span class="p">,</span> <span class="n">green</span><span class="o">=</span><span class="n">greenNormSource</span><span class="p">,</span> <span class="n">blue</span><span class="o">=</span><span class="n">blueNormSource</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alphaNormSource</span> <span class="p">)</span>
         <span class="k">return</span> <span class="n">layer</span>
 </div>
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">_areProvidersInSync</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        When an image is appended to the workflow, not all slots are resized simultaneously.</span>
-<span class="sd">        We should avoid calling setupLayers() until all the slots have been resized with the new image.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">numImages</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span> <span class="c"># observedSlots is empty</span>
-            <span class="k">pass</span>
-
-        <span class="n">inSync</span> <span class="o">=</span> <span class="bp">True</span>
-        <span class="k">for</span> <span class="n">slot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span><span class="p">:</span>
-            <span class="c"># Check each slot for out-of-sync status except:</span>
-            <span class="c"># - slots that are optional and unconnected</span>
-            <span class="c"># - slots that are not images (e.g. a classifier or other object)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">slot</span><span class="o">.</span><span class="n">_optional</span> <span class="ow">and</span> <span class="n">slot</span><span class="o">.</span><span class="n">partner</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">):</span>
-                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">inSync</span> <span class="o">=</span> <span class="bp">False</span>
-                    <span class="k">break</span>
-                <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">slot</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">slot</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-                    <span class="n">inSync</span> <span class="o">&amp;=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span> <span class="o">==</span> <span class="n">numImages</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">inSync</span>
-
-    <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
     <span class="nd">@threadRouted</span>
     <span class="k">def</span> <span class="nf">updateAllLayers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c"># Check to make sure all layers are in sync</span>
-        <span class="c"># (During image insertions, outputs are resized one at a time.)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_areProvidersInSync</span><span class="p">():</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stopped</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span><span class="p">:</span>
             <span class="k">return</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>        
-            <span class="c"># Ask the subclass for the updated layer list</span>
-            <span class="n">newGuiLayers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setupLayers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">newGuiLayers</span> <span class="o">=</span> <span class="p">[]</span>
-            
+        <span class="c"># Ask for the updated layer list (usually provided by the subclass)</span>
+        <span class="n">newGuiLayers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setupLayers</span><span class="p">()</span>
+
         <span class="n">newNames</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">l</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">newGuiLayers</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">newNames</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">newGuiLayers</span><span class="p">):</span>
             <span class="n">msg</span> <span class="o">=</span> <span class="s">&quot;All layers must have unique names.</span><span class="se">\n</span><span class="s">&quot;</span>
             <span class="n">msg</span> <span class="o">+=</span> <span class="s">&quot;You&#39;re attempting to use these layer names:</span><span class="se">\n</span><span class="s">&quot;</span>
-            <span class="n">msg</span> <span class="o">+=</span> <span class="p">[</span><span class="n">l</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">newGuiLayers</span><span class="p">]</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">()</span>
+            <span class="n">msg</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span> <span class="p">[</span><span class="n">l</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">newGuiLayers</span><span class="p">]</span> <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
-        <span class="c"># Copy the old visibilities and opacities</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lastUpdateImageIndex</span><span class="p">:</span>
-            <span class="n">existing</span> <span class="o">=</span> <span class="p">{</span><span class="n">l</span><span class="o">.</span><span class="n">name</span> <span class="p">:</span> <span class="n">l</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerstack</span><span class="p">}</span>
-            <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">newGuiLayers</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">layer</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">existing</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                    <span class="n">layer</span><span class="o">.</span><span class="n">visible</span> <span class="o">=</span> <span class="n">existing</span><span class="p">[</span><span class="n">layer</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">visible</span>
-                    <span class="n">layer</span><span class="o">.</span><span class="n">opacity</span> <span class="o">=</span> <span class="n">existing</span><span class="p">[</span><span class="n">layer</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">opacity</span>
-
-            <span class="c"># Clear all existing layers.</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">layerstack</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">lastUpdateImageIndex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span>
-
-            <span class="c"># Zoom at a 1-1 scale to avoid loading big datasets entirely...</span>
-            <span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">:</span>
-                <span class="n">view</span><span class="o">.</span><span class="n">doScaleTo</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-        
         <span class="c"># If the datashape changed, tell the editor</span>
+        <span class="c"># FIXME: This may not be necessary now that this gui doesn&#39;t handle the multi-image case...</span>
         <span class="n">newDataShape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">determineDatashape</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">newDataShape</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">dataShape</span> <span class="o">!=</span> <span class="n">newDataShape</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">dataShape</span> <span class="o">=</span> <span class="n">newDataShape</span>
             <span class="c"># Find the xyz midpoint</span>
             <span class="n">midpos5d</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">/</span><span class="mi">2</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">newDataShape</span><span class="p">]</span>
             <span class="n">midpos3d</span> <span class="o">=</span> <span class="n">midpos5d</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span>
-            
+
             <span class="c"># Start in the center of the volume</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">posModel</span><span class="o">.</span><span class="n">slicingPos</span> <span class="o">=</span> <span class="n">midpos3d</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">navCtrl</span><span class="o">.</span><span class="n">panSlicingViews</span><span class="p">(</span> <span class="n">midpos3d</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span> <span class="p">)</span>
-            
+
             <span class="c"># If one of the xyz dimensions is 1, the data is 2d.</span>
             <span class="n">singletonDims</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span> <span class="k">lambda</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">dim</span><span class="p">):</span> <span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">newDataShape</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">4</span><span class="p">])</span> <span class="p">)</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">singletonDims</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
@@ -437,7 +369,7 @@
             <span class="k">if</span> <span class="n">layer</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">existingNames</span><span class="p">:</span>
                 <span class="c"># Insert new</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">layerstack</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span> <span class="n">index</span><span class="p">,</span> <span class="n">layer</span> <span class="p">)</span>
-                
+
                 <span class="c"># If this layer has an associated shortcut, register it with the shortcut manager</span>
                 <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="s">&#39;shortcutRegistration&#39;</span><span class="p">):</span>
                     <span class="n">ShortcutManager</span><span class="p">()</span><span class="o">.</span><span class="n">register</span><span class="p">(</span> <span class="o">*</span><span class="n">layer</span><span class="o">.</span><span class="n">shortcutRegistration</span> <span class="p">)</span>
@@ -448,7 +380,7 @@
                     <span class="n">shortcut</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">shortcutRegistration</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
                     <span class="n">shortcut</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
 
-                <span class="c"># Move existing layer to the correct positon</span>
+                <span class="c"># Move existing layer to the correct position</span>
                 <span class="n">stackIndex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerstack</span><span class="o">.</span><span class="n">findMatchingIndex</span><span class="p">(</span><span class="k">lambda</span> <span class="n">l</span><span class="p">:</span> <span class="n">l</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">layer</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">layerstack</span><span class="o">.</span><span class="n">selectRow</span><span class="p">(</span><span class="n">stackIndex</span><span class="p">)</span>
                 <span class="k">while</span> <span class="n">stackIndex</span> <span class="o">&gt;</span> <span class="n">index</span><span class="p">:</span>
@@ -457,29 +389,25 @@
                 <span class="k">while</span> <span class="n">stackIndex</span> <span class="o">&lt;</span> <span class="n">index</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">layerstack</span><span class="o">.</span><span class="n">moveSelectedDown</span><span class="p">()</span>
                     <span class="n">stackIndex</span> <span class="o">+=</span> <span class="mi">1</span>
-                
+
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">determineDatashape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">None</span>
-
         <span class="n">newDataShape</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="k">for</span> <span class="n">provider</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observedSlots</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">provider</span><span class="p">):</span>
-                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">slot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">provider</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span><span class="p">]):</span>
-                    <span class="k">if</span> <span class="n">newDataShape</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">slot</span><span class="o">.</span><span class="n">ready</span><span class="p">()</span> <span class="ow">and</span> <span class="n">slot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-                        <span class="c"># Use an Op5ifyer adapter to transpose the shape for us.</span>
-                        <span class="n">op5</span> <span class="o">=</span> <span class="n">Op5ifyer</span><span class="p">(</span> <span class="n">graph</span><span class="o">=</span><span class="n">slot</span><span class="o">.</span><span class="n">graph</span> <span class="p">)</span>
-                        <span class="n">op5</span><span class="o">.</span><span class="n">input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">slot</span> <span class="p">)</span>
-                        <span class="n">newDataShape</span> <span class="o">=</span> <span class="n">op5</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>
-    
-                        <span class="c"># We just needed the operator to determine the transposed shape.</span>
-                        <span class="c"># Disconnect it so it can be garbage collected.</span>
-                        <span class="n">op5</span><span class="o">.</span><span class="n">input</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">slot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">provider</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">newDataShape</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">slot</span><span class="o">.</span><span class="n">ready</span><span class="p">()</span> <span class="ow">and</span> <span class="n">slot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="c"># Use an Op5ifyer adapter to transpose the shape for us.</span>
+                    <span class="n">op5</span> <span class="o">=</span> <span class="n">Op5ifyer</span><span class="p">(</span> <span class="n">graph</span><span class="o">=</span><span class="n">slot</span><span class="o">.</span><span class="n">graph</span> <span class="p">)</span>
+                    <span class="n">op5</span><span class="o">.</span><span class="n">input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">slot</span> <span class="p">)</span>
+                    <span class="n">newDataShape</span> <span class="o">=</span> <span class="n">op5</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span>
+
+                    <span class="c"># We just needed the operator to determine the transposed shape.</span>
+                    <span class="c"># Disconnect it so it can be garbage collected.</span>
+                    <span class="n">op5</span><span class="o">.</span><span class="n">input</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="n">newDataShape</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
             <span class="c"># For now, this base class combines multi-channel images into a single layer,</span>
-            <span class="c"># So, we want the volume editor to behave as though there is only one channel </span>
+            <span class="c"># So, we want the volume editor to behave as though there is only one channel</span>
             <span class="n">newDataShape</span> <span class="o">=</span> <span class="n">newDataShape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
         <span class="k">return</span> <span class="n">newDataShape</span>
 
@@ -492,6 +420,21 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">localDir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">__file__</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span> <span class="o">=</span> <span class="n">uic</span><span class="o">.</span><span class="n">loadUi</span><span class="p">(</span><span class="n">localDir</span> <span class="o">+</span> <span class="s">&quot;/viewerControls.ui&quot;</span><span class="p">)</span>
+
+        <span class="c"># The editor&#39;s layerstack is in charge of which layer movement buttons are enabled</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">layerStack</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">canMoveSelectedUp</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">UpButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">)</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">canMoveSelectedDown</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">DownButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">)</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">canDeleteSelected</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">DeleteButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">)</span>
+
+            <span class="c"># Connect our layer movement buttons to the appropriate layerstack actions</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">layerWidget</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">UpButton</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">moveSelectedUp</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">DownButton</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">moveSelectedDown</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">DeleteButton</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">deleteSelected</span><span class="p">)</span>
+
 </div>
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
 <div class="viewcode-block" id="LayerViewerGui.initAppletDrawerUi"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.initAppletDrawerUi">[docs]</a>    <span class="k">def</span> <span class="nf">initAppletDrawerUi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -502,7 +445,7 @@
         <span class="c"># Load the ui file (find it in our own directory)</span>
         <span class="n">localDir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">__file__</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_drawer</span> <span class="o">=</span> <span class="n">uic</span><span class="o">.</span><span class="n">loadUi</span><span class="p">(</span><span class="n">localDir</span><span class="o">+</span><span class="s">&quot;/drawer.ui&quot;</span><span class="p">)</span>
-    </div>
+</div>
     <span class="k">def</span> <span class="nf">getAppletDrawerUi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drawer</span>
 
@@ -519,10 +462,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span> <span class="o">=</span> <span class="n">uic</span><span class="o">.</span><span class="n">loadUi</span><span class="p">(</span><span class="n">localDir</span><span class="o">+</span><span class="s">&quot;/menu.ui&quot;</span><span class="p">)</span> <span class="c"># Save as member so it doesn&#39;t get picked up by GC</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">menuBar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">menuBar</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">menuView</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">menuView</span>
-            
+
         <span class="k">def</span> <span class="nf">toggleDebugPatches</span><span class="p">(</span><span class="n">show</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">showDebugPatches</span> <span class="o">=</span> <span class="n">show</span>
-        
+
         <span class="k">def</span> <span class="nf">setCacheSize</span><span class="p">(</span> <span class="n">cache_size</span> <span class="p">):</span>
             <span class="n">dlg</span> <span class="o">=</span> <span class="n">QDialog</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
             <span class="n">layout</span> <span class="o">=</span> <span class="n">QHBoxLayout</span><span class="p">()</span>
@@ -534,7 +477,7 @@
                     <span class="n">cache_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">strSize</span><span class="p">)</span>
                 <span class="k">except</span><span class="p">:</span>
                     <span class="k">pass</span>
-                
+
             <span class="n">edit</span> <span class="o">=</span> <span class="n">QLineEdit</span><span class="p">(</span> <span class="nb">str</span><span class="p">(</span><span class="n">cache_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">parent</span><span class="o">=</span><span class="n">dlg</span> <span class="p">)</span>
             <span class="n">edit</span><span class="o">.</span><span class="n">textChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">parseCacheSize</span> <span class="p">)</span>
             <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span> <span class="n">edit</span> <span class="p">)</span>
@@ -545,22 +488,26 @@
             <span class="n">dlg</span><span class="o">.</span><span class="n">setModal</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
             <span class="n">dlg</span><span class="o">.</span><span class="n">exec_</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">cacheSize</span> <span class="o">=</span> <span class="n">cache_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        
+
+        <span class="k">def</span> <span class="nf">enablePrefetching</span><span class="p">(</span> <span class="n">enable</span> <span class="p">):</span>
+            <span class="k">for</span> <span class="n">scene</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageScenes</span><span class="p">:</span>
+                <span class="n">scene</span><span class="o">.</span><span class="n">setPrefetchingEnabled</span><span class="p">(</span> <span class="n">enable</span> <span class="p">)</span>
+
         <span class="k">def</span> <span class="nf">fitToScreen</span><span class="p">():</span>
             <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">posModel</span><span class="o">.</span><span class="n">shape</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">):</span>
                 <span class="n">s</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
                 <span class="k">del</span> <span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-                <span class="n">v</span><span class="o">.</span><span class="n">changeViewPort</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">scene</span><span class="p">()</span><span class="o">.</span><span class="n">data2scene</span><span class="o">.</span><span class="n">mapRect</span><span class="p">(</span><span class="n">QRectF</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="o">*</span><span class="n">s</span><span class="p">)))</span>  
-                
+                <span class="n">v</span><span class="o">.</span><span class="n">changeViewPort</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">scene</span><span class="p">()</span><span class="o">.</span><span class="n">data2scene</span><span class="o">.</span><span class="n">mapRect</span><span class="p">(</span><span class="n">QRectF</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="o">*</span><span class="n">s</span><span class="p">)))</span>
+
         <span class="k">def</span> <span class="nf">fitImage</span><span class="p">():</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="p">,</span> <span class="s">&#39;_lastImageViewFocus&#39;</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">_lastImageViewFocus</span><span class="p">]</span><span class="o">.</span><span class="n">fitImage</span><span class="p">()</span>
-                
+
         <span class="k">def</span> <span class="nf">restoreImageToOriginalSize</span><span class="p">():</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="p">,</span> <span class="s">&#39;_lastImageViewFocus&#39;</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">_lastImageViewFocus</span><span class="p">]</span><span class="o">.</span><span class="n">doScaleTo</span><span class="p">()</span>
-                    
+
         <span class="k">def</span> <span class="nf">rubberBandZoom</span><span class="p">():</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="p">,</span> <span class="s">&#39;_lastImageViewFocus&#39;</span><span class="p">):</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">_lastImageViewFocus</span><span class="p">]</span><span class="o">.</span><span class="n">_isRubberBandZoom</span><span class="p">:</span>
@@ -570,36 +517,48 @@
                 <span class="k">else</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">_lastImageViewFocus</span><span class="p">]</span><span class="o">.</span><span class="n">_isRubberBandZoom</span> <span class="o">=</span> <span class="bp">False</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">_lastImageViewFocus</span><span class="p">]</span><span class="o">.</span><span class="n">setCursor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">_lastImageViewFocus</span><span class="p">]</span><span class="o">.</span><span class="n">_cursorBackup</span><span class="p">)</span>
-                
+
         <span class="k">def</span> <span class="nf">hideHud</span><span class="p">():</span>
             <span class="n">hide</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">_hud</span><span class="o">.</span><span class="n">isVisible</span><span class="p">()</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">):</span>
                 <span class="n">v</span><span class="o">.</span><span class="n">setHudVisible</span><span class="p">(</span><span class="n">hide</span><span class="p">)</span>
-                
+
         <span class="k">def</span> <span class="nf">toggleSelectedHud</span><span class="p">():</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="p">,</span> <span class="s">&#39;_lastImageViewFocus&#39;</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">_lastImageViewFocus</span><span class="p">]</span><span class="o">.</span><span class="n">toggleHud</span><span class="p">()</span>
-                
+
         <span class="k">def</span> <span class="nf">centerAllImages</span><span class="p">():</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">):</span>
                 <span class="n">v</span><span class="o">.</span><span class="n">centerImage</span><span class="p">()</span>
-                
+
         <span class="k">def</span> <span class="nf">centerImage</span><span class="p">():</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="p">,</span> <span class="s">&#39;_lastImageViewFocus&#39;</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">_lastImageViewFocus</span><span class="p">]</span><span class="o">.</span><span class="n">centerImage</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">actionOnly_for_current_view</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
-        
+
+        <span class="k">def</span> <span class="nf">resetAxes</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="p">,</span> <span class="s">&#39;_lastImageViewFocus&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageScenes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">_lastImageViewFocus</span><span class="p">]</span><span class="o">.</span><span class="n">resetAxes</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">actionOnly_for_current_view</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">resetAllAxes</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageScenes</span><span class="p">):</span>
+                <span class="n">s</span><span class="o">.</span><span class="n">resetAxes</span><span class="p">()</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionCenterAllImages</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">centerAllImages</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionCenterImage</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">centerImage</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionToggleAllHuds</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">hideHud</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionResetAllAxes</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">resetAllAxes</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionToggleSelectedHud</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">toggleSelectedHud</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionResetAxes</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">resetAxes</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionShowDebugPatches</span><span class="o">.</span><span class="n">toggled</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">toggleDebugPatches</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionFitToScreen</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">fitToScreen</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionFitImage</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">fitImage</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionReset_zoom</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">restoreImageToOriginalSize</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionRubberBandZoom</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">rubberBandZoom</span><span class="p">)</span>        
+        <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionRubberBandZoom</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">rubberBandZoom</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionSetCacheSize</span><span class="o">.</span><span class="n">triggered</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">setCacheSize</span><span class="p">)</span>
-                
+        <span class="bp">self</span><span class="o">.</span><span class="n">menuGui</span><span class="o">.</span><span class="n">actionUsePrefetching</span><span class="o">.</span><span class="n">toggled</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">enablePrefetching</span><span class="p">)</span>
+
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">_initEditor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -616,27 +575,17 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">newImageView2DFocus</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_setIconToViewMenu</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">setInteractionMode</span><span class="p">(</span> <span class="s">&#39;navigation&#39;</span> <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">volumeEditorWidget</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="p">)</span>
-        
-        <span class="c"># The editor&#39;s layerstack is in charge of which layer movement buttons are enabled</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">layerStack</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="n">model</span><span class="o">.</span><span class="n">canMoveSelectedUp</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">UpButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">)</span>
-            <span class="n">model</span><span class="o">.</span><span class="n">canMoveSelectedDown</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">DownButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">)</span>
-            <span class="n">model</span><span class="o">.</span><span class="n">canDeleteSelected</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">DeleteButton</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">)</span>     
-
-            <span class="c"># Connect our layer movement buttons to the appropriate layerstack actions</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">layerWidget</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">UpButton</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">moveSelectedUp</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">DownButton</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">moveSelectedDown</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__viewerControlWidget</span><span class="o">.</span><span class="n">DeleteButton</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">deleteSelected</span><span class="p">)</span>
-        
         <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">_lastImageViewFocus</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c"># Zoom at a 1-1 scale to avoid loading big datasets entirely...</span>
+        <span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">:</span>
+            <span class="n">view</span><span class="o">.</span><span class="n">doScaleTo</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">_setIconToViewMenu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        In the &quot;Only for Current View&quot; menu item of the View menu, </span>
+<span class="sd">        In the &quot;Only for Current View&quot; menu item of the View menu,</span>
 <span class="sd">        show the user which axis is the current one by changing the menu item icon.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">actionOnly_for_current_view</span><span class="o">.</span><span class="n">setIcon</span><span class="p">(</span><span class="n">QIcon</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">imageViews</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">editor</span><span class="o">.</span><span class="n">_lastImageViewFocus</span><span class="p">]</span><span class="o">.</span><span class="n">_hud</span><span class="o">.</span><span class="n">axisLabel</span><span class="o">.</span><span class="n">pixmap</span><span class="p">()))</span>
@@ -644,7 +593,7 @@
     <span class="nd">@traceLogged</span><span class="p">(</span><span class="n">traceLogger</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">_convertPositionToDataSpace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">voluminaPosition</span><span class="p">):</span>
         <span class="n">taggedPosition</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="n">p</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">p</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="s">&#39;txyzc&#39;</span><span class="p">,</span> <span class="n">voluminaPosition</span><span class="p">)}</span>
-        
+
         <span class="c"># Find the first lazyflow layer in the stack</span>
         <span class="c"># We assume that all lazyflow layers have the same axistags</span>
         <span class="n">dataTags</span> <span class="o">=</span> <span class="bp">None</span>
@@ -661,25 +610,25 @@
         <span class="n">position</span> <span class="o">=</span> <span class="p">()</span>
         <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">dataTags</span><span class="p">:</span>
             <span class="n">position</span> <span class="o">+=</span> <span class="p">(</span><span class="n">taggedPosition</span><span class="p">[</span><span class="n">tag</span><span class="o">.</span><span class="n">key</span><span class="p">],)</span>
-            
+
         <span class="k">return</span> <span class="n">position</span>
-    
+
     <span class="k">def</span> <span class="nf">_handleEditorRightClick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position5d</span><span class="p">,</span> <span class="n">globalWindowCoordinate</span><span class="p">):</span>
         <span class="n">dataPosition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convertPositionToDataSpace</span><span class="p">(</span><span class="n">position5d</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">handleEditorRightClick</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span><span class="p">,</span> <span class="n">dataPosition</span><span class="p">,</span> <span class="n">globalWindowCoordinate</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handleEditorRightClick</span><span class="p">(</span><span class="n">dataPosition</span><span class="p">,</span> <span class="n">globalWindowCoordinate</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_handleEditorLeftClick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position5d</span><span class="p">,</span> <span class="n">globalWindowCoordinate</span><span class="p">):</span>
         <span class="n">dataPosition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_convertPositionToDataSpace</span><span class="p">(</span><span class="n">position5d</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">handleEditorLeftClick</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imageIndex</span><span class="p">,</span> <span class="n">dataPosition</span><span class="p">,</span> <span class="n">globalWindowCoordinate</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handleEditorLeftClick</span><span class="p">(</span><span class="n">dataPosition</span><span class="p">,</span> <span class="n">globalWindowCoordinate</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">handleEditorRightClick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">currentImageIndex</span><span class="p">,</span> <span class="n">position5d</span><span class="p">,</span> <span class="n">globalWindowCoordinate</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">handleEditorRightClick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position5d</span><span class="p">,</span> <span class="n">globalWindowCoordinate</span><span class="p">):</span>
         <span class="c"># Override me</span>
         <span class="k">pass</span>
 
-    <span class="k">def</span> <span class="nf">handleEditorLeftClick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">currentImageIndex</span><span class="p">,</span> <span class="n">position5d</span><span class="p">,</span> <span class="n">globalWindowCoordiante</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">handleEditorLeftClick</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position5d</span><span class="p">,</span> <span class="n">globalWindowCoordiante</span><span class="p">):</span>
         <span class="c"># Override me</span>
-        <span class="k">pass</span>
-</pre></div></div>
+        <span class="k">pass</span></div>
+</pre></div>
 
           </div>
         </div>

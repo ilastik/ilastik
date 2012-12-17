@@ -26,8 +26,8 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
-    <link rel="next" title="Appendix: Development Dependencies" href="dependencies.html" />
-    <link rel="prev" title="Applet Library" href="" /> 
+    <link rel="next" title="Project Manager" href="projectManager.html" />
+    <link rel="prev" title="Advanced Workflow Design" href="workflow_design.html" /> 
   </head>
   <body>
     <div class="related">
@@ -37,10 +37,10 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="dependencies.html" title="Appendix: Development Dependencies"
+          <a href="projectManager.html" title="Project Manager"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="#" title="Applet Library"
+          <a href="workflow_design.html" title="Advanced Workflow Design"
              accesskey="P">previous</a> |</li>
         <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
       </ul>
@@ -53,80 +53,42 @@
             
   <div class="section" id="applet-library">
 <h1>Applet Library<a class="headerlink" href="#applet-library" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="project-metadata">
-<h2>Project Metadata<a class="headerlink" href="#project-metadata" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="ilastik.applets.projectMetadata.projectMetadataApplet.ProjectMetadataApplet">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.projectMetadata.projectMetadataApplet.</tt><tt class="descname">ProjectMetadataApplet</tt><a class="reference internal" href="_modules/ilastik/applets/projectMetadata/projectMetadataApplet.html#ProjectMetadataApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.projectMetadata.projectMetadataApplet.ProjectMetadataApplet" title="Permalink to this definition">¶</a></dt>
-<dd><p>This applet allows the user to enter project metadata (e.g. Project name, labeler name, etc.).</p>
-<p>Note that this applet does not affect the processing pipeline and has no top-level operator.</p>
-</dd></dl>
-
-</div>
-<div class="section" id="data-selection">
-<h2>Data Selection<a class="headerlink" href="#data-selection" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="example-applets">
+<h2>Example Applets<a class="headerlink" href="#example-applets" title="Permalink to this headline">¶</a></h2>
+<p>These applets aren&#8217;t very useful, but they have simple, clean implementations.
+Their source files are the right place to look if you&#8217;re just getting started.</p>
+<div class="section" id="threshold-masking">
+<h3>Threshold Masking<a class="headerlink" href="#threshold-masking" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/DataSelection-Top-level-Operator.svg"><img alt="DataSelection Top-Level Operator" src="_images/DataSelection-Top-level-Operator.svg" /></a>
+<a class="reference internal image-reference" href="_images/ThresholdMasking-Top-Level-Operator.svg"><img alt="Threshold Masking Top-Level Operator" src="_images/ThresholdMasking-Top-Level-Operator.svg" /></a>
 </div>
 <dl class="class">
-<dt id="ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.dataSelection.dataSelectionApplet.</tt><tt class="descname">DataSelectionApplet</tt><big>(</big><em>workflow</em>, <em>title</em>, <em>projectFileGroupName</em>, <em>supportIlastik05Import=False</em>, <em>batchDataGui=False</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/dataSelection/dataSelectionApplet.html#DataSelectionApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet" title="Permalink to this definition">¶</a></dt>
-<dd><p>This applet allows the user to select sets of input data, 
-which are provided as outputs in the corresponding top-level applet operator.</p>
-</dd></dl>
-
-<dl class="class">
-<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.dataSelection.opDataSelection.</tt><tt class="descname">OpDataSelection</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/dataSelection/opDataSelection.html#OpDataSelection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection" title="Permalink to this definition">¶</a></dt>
-<dd><p>The top-level operator for the data selection applet, implemented as a single-image operator.
-The applet uses an OperatorWrapper to make it suitable for use in a workflow.</p>
-<dl class="attribute">
-<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ProjectFile">
-<tt class="descname">ProjectFile</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ProjectFile" title="Permalink to this definition">¶</a></dt>
-<dd><p>The project hdf5 File object (already opened)</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ProjectDataGroup">
-<tt class="descname">ProjectDataGroup</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ProjectDataGroup" title="Permalink to this definition">¶</a></dt>
-<dd><p>The internal path to the hdf5 group where project-local datasets are stored within the project file</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.WorkingDirectory">
-<tt class="descname">WorkingDirectory</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.WorkingDirectory" title="Permalink to this definition">¶</a></dt>
-<dd><p>The filesystem directory where the project file is located</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.Dataset">
-<tt class="descname">Dataset</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.Dataset" title="Permalink to this definition">¶</a></dt>
-<dd><p>A DatasetInfo object</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ImageName">
-<tt class="descname">ImageName</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ImageName" title="Permalink to this definition">¶</a></dt>
-<dd><p>The name of the output image</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.Image">
-<tt class="descname">Image</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.Image" title="Permalink to this definition">¶</a></dt>
-<dd><p>The output image</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.AllowLabels">
-<tt class="descname">AllowLabels</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.AllowLabels" title="Permalink to this definition">¶</a></dt>
-<dd><p>A bool indicating whether or not this image can be used for training</p>
-</dd></dl>
-
+<dt id="ilastik.applets.thresholdMasking.thresholdMaskingApplet.ThresholdMaskingApplet">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.thresholdMasking.thresholdMaskingApplet.</tt><tt class="descname">ThresholdMaskingApplet</tt><big>(</big><em>workflow</em>, <em>guiName</em>, <em>projectFileGroupName</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/thresholdMasking/thresholdMaskingApplet.html#ThresholdMaskingApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.thresholdMasking.thresholdMaskingApplet.ThresholdMaskingApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a simple thresholding applet</p>
 </dd></dl>
 
 </div>
+<div class="section" id="deviation-from-mean">
+<h3>Deviation From Mean<a class="headerlink" href="#deviation-from-mean" title="Permalink to this headline">¶</a></h3>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/DeviationFromMean-Top-Level-Operator.svg"><img alt="Deviation-From-Mean Top-Level Operator" src="_images/DeviationFromMean-Top-Level-Operator.svg" /></a>
+</div>
+<dl class="class">
+<dt id="ilastik.applets.deviationFromMean.deviationFromMeanApplet.DeviationFromMeanApplet">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.deviationFromMean.deviationFromMeanApplet.</tt><tt class="descname">DeviationFromMeanApplet</tt><big>(</big><em>workflow</em>, <em>projectFileGroupName</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/deviationFromMean/deviationFromMeanApplet.html#DeviationFromMeanApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.deviationFromMean.deviationFromMeanApplet.DeviationFromMeanApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This applet serves as an example multi-image-lane applet.
+The GUI is not aware of multiple image lanes (it is written as if the applet were single-image only).
+The top-level operator is explicitly multi-image (it is not wrapped in an operatorwrapper).</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="useful-base-classes">
+<h2>Useful Base Classes<a class="headerlink" href="#useful-base-classes" title="Permalink to this headline">¶</a></h2>
+<p>Many applets or applet GUIs are based on these classes.</p>
 <div class="section" id="layer-viewer">
-<span id="id1"></span><h2>Layer Viewer<a class="headerlink" href="#layer-viewer" title="Permalink to this headline">¶</a></h2>
+<span id="id1"></span><h3>Layer Viewer<a class="headerlink" href="#layer-viewer" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
 <a class="reference internal image-reference" href="_images/LayerViewer-Top-Level-Operator.svg"><img alt="LayerViewer Top-Level Operator" src="_images/LayerViewer-Top-Level-Operator.svg" /></a>
 </div>
@@ -157,14 +119,14 @@ Provides an EMPTY applet drawer widget.  Subclasses should replace it with their
 <dl class="method">
 <dt id="ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.__init__">
 <tt class="descname">__init__</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Constructor.  <strong>All</strong> slots of the provided <em>topLevelOperator</em> will be monitored for changes.
+<dd><p>Constructor.  <strong>All</strong> slots of the provided <em>topLevelOperatorView</em> will be monitored for changes.
 Changes include slot resize events, and slot ready/unready status changes.
 When a change is detected, the <cite>setupLayers()</cite> function is called, and the result is used to update the list of layers shown in the central widget.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>topLevelOperator</strong> &#8211; The top-level operator for the applet this GUI belongs to.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>topLevelOperatorView</strong> &#8211; The top-level operator for the applet this GUI belongs to.</td>
 </tr>
 </tbody>
 </table>
@@ -172,18 +134,10 @@ When a change is detected, the <cite>setupLayers()</cite> function is called, an
 
 <dl class="method">
 <dt id="ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.setupLayers">
-<tt class="descname">setupLayers</tt><big>(</big><em>currentImageIndex</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui.setupLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.setupLayers" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">setupLayers</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui.setupLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.setupLayers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a list of layers to be displayed in the central widget.
 Subclasses should override this method to create the list of layers that can be displayed.
-For debug and development purposes, the base class implementation simply generates layers for all topLevelOperator slots.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>currentImageIndex</strong> &#8211; The index of the shell&#8217;s currently selected image.</td>
-</tr>
-</tbody>
-</table>
+For debug and development purposes, the base class implementation simply generates layers for all topLevelOperatorView slots.</p>
 </dd></dl>
 
 <dl class="method">
@@ -230,7 +184,7 @@ Override this in a subclass to get a real applet drawer.</p>
 
 </div>
 <div class="section" id="labeling">
-<h2>Labeling<a class="headerlink" href="#labeling" title="Permalink to this headline">¶</a></h2>
+<h3>Labeling<a class="headerlink" href="#labeling" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
 <a class="reference internal image-reference" href="_images/Labeling-Top-Level-Operator.svg"><img alt="Labeling Top-Level Operator" src="_images/Labeling-Top-Level-Operator.svg" /></a>
 </div>
@@ -241,56 +195,118 @@ Override this in a subclass to get a real applet drawer.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.labeling.opLabeling.</tt><tt class="descname">OpLabeling</tt><big>(</big><em>blockDims=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabeling"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling" title="Permalink to this definition">¶</a></dt>
-<dd><p>Top-level operator for the labeling base class.
-Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.</p>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.labeling.opLabeling.</tt><tt class="descname">OpLabelingSingleLane</tt><big>(</big><em>blockDims=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabelingSingleLane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a single-lane operator that can be used with the labeling applet gui.
+It is basically a wrapper around the <tt class="docutils literal"><span class="pre">OpBlockedSparseLabelArray</span></tt> (lazyflow), 
+with the &#8216;shape&#8217; and &#8216;blockshape&#8217; input slots taken care of for you.</p>
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.InputImages">
-<tt class="descname">InputImages</tt><em class="property"> = InputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.InputImages" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.InputImage">
+<tt class="descname">InputImage</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.InputImage" title="Permalink to this definition">¶</a></dt>
 <dd><p>Original input data.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.LabelInputs">
-<tt class="descname">LabelInputs</tt><em class="property"> = InputSlot(optional=True, level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.LabelInputs" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelInput">
+<tt class="descname">LabelInput</tt><em class="property"> = InputSlot(optional=True)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelInput" title="Permalink to this definition">¶</a></dt>
 <dd><p>Input for providing label data from an external source</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.LabelsAllowedFlags">
-<tt class="descname">LabelsAllowedFlags</tt><em class="property"> = InputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.LabelsAllowedFlags" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelsAllowedFlag">
+<tt class="descname">LabelsAllowedFlag</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelsAllowedFlag" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specifies which images are permitted to be labeled</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.LabelEraserValue">
-<tt class="descname">LabelEraserValue</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.LabelEraserValue" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelEraserValue">
+<tt class="descname">LabelEraserValue</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelEraserValue" title="Permalink to this definition">¶</a></dt>
 <dd><p>The label value that signifies the &#8216;eraser&#8217;, i.e. voxels to clear labels from</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.LabelDelete">
-<tt class="descname">LabelDelete</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.LabelDelete" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelDelete">
+<tt class="descname">LabelDelete</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelDelete" title="Permalink to this definition">¶</a></dt>
 <dd><p>When this input is set to a value, all labels of that value are deleted from the operator&#8217;s data.</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.MaxLabelValue">
-<tt class="descname">MaxLabelValue</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.MaxLabelValue" title="Permalink to this definition">¶</a></dt>
-<dd><p>The highest label value currently stored in the array of labels</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.LabelImages">
-<tt class="descname">LabelImages</tt><em class="property"> = OutputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.LabelImages" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelImage">
+<tt class="descname">LabelImage</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelImage" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stored labels from the user</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="ilastik.applets.labeling.opLabeling.OpLabeling.NonzeroLabelBlocks">
-<tt class="descname">NonzeroLabelBlocks</tt><em class="property"> = OutputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabeling.NonzeroLabelBlocks" title="Permalink to this definition">¶</a></dt>
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.NonzeroLabelBlocks">
+<tt class="descname">NonzeroLabelBlocks</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.NonzeroLabelBlocks" title="Permalink to this definition">¶</a></dt>
 <dd><p>A list if slices that contain non-zero label values</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.labeling.opLabeling.</tt><tt class="descname">OpLabelingTopLevel</tt><big>(</big><em>blockDims=None</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabelingTopLevel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Top-level operator for the labelingApplet base class.
+Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.</p>
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.InputImages">
+<tt class="descname">InputImages</tt><em class="property"> = InputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.InputImages" title="Permalink to this definition">¶</a></dt>
+<dd><p>Original input data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelInputs">
+<tt class="descname">LabelInputs</tt><em class="property"> = InputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelInputs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Input for providing label data from an external source</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelsAllowedFlags">
+<tt class="descname">LabelsAllowedFlags</tt><em class="property"> = InputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelsAllowedFlags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specifies which images are permitted to be labeled</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelEraserValue">
+<tt class="descname">LabelEraserValue</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelEraserValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>The label value that signifies the &#8216;eraser&#8217;, i.e. voxels to clear labels from</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelDelete">
+<tt class="descname">LabelDelete</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelDelete" title="Permalink to this definition">¶</a></dt>
+<dd><p>When this input is set to a value, all labels of that value are deleted from the operator&#8217;s data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelImages">
+<tt class="descname">LabelImages</tt><em class="property"> = OutputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelImages" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stored labels from the user</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.NonzeroLabelBlocks">
+<tt class="descname">NonzeroLabelBlocks</tt><em class="property"> = OutputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.NonzeroLabelBlocks" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list if slices that contain non-zero label values</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.MaxLabelValue">
+<tt class="descname">MaxLabelValue</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.MaxLabelValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>The highest label value currently stored in the array of labels</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.addLane">
+<tt class="descname">addLane</tt><big>(</big><em>laneIndex</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabelingTopLevel.addLane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.addLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an image lane.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.removeLane">
+<tt class="descname">removeLane</tt><big>(</big><em>laneIndex</em>, <em>finalLength</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabelingTopLevel.removeLane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.removeLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove an image lane.</p>
 </dd></dl>
 
 </dd></dl>
@@ -310,7 +326,7 @@ applet with the added functionality of labeling.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>labelingSlots</strong> &#8211; Provides the slots needed for sourcing/sinking label data.  See LabelingGui.LabelingSlots class source for details.</li>
-<li><strong>topLevelOperator</strong> &#8211; is provided to the LayerViewerGui (the base class)</li>
+<li><strong>topLevelOperatorView</strong> &#8211; is provided to the LayerViewerGui (the base class)</li>
 <li><strong>drawerUiPath</strong> &#8211; can be given if you provide an extended drawer UI file.  Otherwise a default one is used.</li>
 <li><strong>rawInputSlot</strong> &#8211; Data from the rawInputSlot parameter will be displayed directly underneath the labels (if provided).</li>
 </ul>
@@ -336,7 +352,7 @@ It provides the slots that the labeling GUI uses to source labels to the display
 
 <dl class="method">
 <dt id="ilastik.applets.labeling.labelingGui.LabelingGui.onLabelListDataChanged">
-<tt class="descclassname">LabelingGui.</tt><tt class="descname">onLabelListDataChanged</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelListDataChanged" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">LabelingGui.</tt><tt class="descname">onLabelListDataChanged</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.onLabelListDataChanged"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelListDataChanged" title="Permalink to this definition">¶</a></dt>
 <dd><p>Handle changes to the label list selections.</p>
 </dd></dl>
 
@@ -350,26 +366,26 @@ Save all preferences.</p>
 
 <dl class="method">
 <dt id="ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelName">
-<tt class="descclassname">LabelingGui.</tt><tt class="descname">getNextLabelName</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelName" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">LabelingGui.</tt><tt class="descname">getNextLabelName</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.getNextLabelName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelName" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a suitable name for the next label added by the user.
 Subclasses may override this.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelColor">
-<tt class="descclassname">LabelingGui.</tt><tt class="descname">getNextLabelColor</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelColor" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">LabelingGui.</tt><tt class="descname">getNextLabelColor</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.getNextLabelColor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelColor" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a QColor to use for the next label.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="ilastik.applets.labeling.labelingGui.LabelingGui.onLabelNameChanged">
-<tt class="descclassname">LabelingGui.</tt><tt class="descname">onLabelNameChanged</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelNameChanged" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">LabelingGui.</tt><tt class="descname">onLabelNameChanged</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.onLabelNameChanged"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelNameChanged" title="Permalink to this definition">¶</a></dt>
 <dd><p>Subclasses can override this to respond to changes in the label names.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="ilastik.applets.labeling.labelingGui.LabelingGui.onLabelColorChanged">
-<tt class="descclassname">LabelingGui.</tt><tt class="descname">onLabelColorChanged</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelColorChanged" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">LabelingGui.</tt><tt class="descname">onLabelColorChanged</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.onLabelColorChanged"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelColorChanged" title="Permalink to this definition">¶</a></dt>
 <dd><p>Subclasses can override this to respond to changes in the label colors.</p>
 </dd></dl>
 
@@ -391,8 +407,84 @@ he <strong>must</strong> call this function explicitly.</p>
 </dd></dl>
 
 </div>
+</div>
+<div class="section" id="standard-applets">
+<h2>Standard Applets<a class="headerlink" href="#standard-applets" title="Permalink to this headline">¶</a></h2>
+<p>These applets are likely to be re-used in many, if not most, worklows.</p>
+<div class="section" id="project-metadata">
+<h3>Project Metadata<a class="headerlink" href="#project-metadata" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="ilastik.applets.projectMetadata.projectMetadataApplet.ProjectMetadataApplet">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.projectMetadata.projectMetadataApplet.</tt><tt class="descname">ProjectMetadataApplet</tt><a class="reference internal" href="_modules/ilastik/applets/projectMetadata/projectMetadataApplet.html#ProjectMetadataApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.projectMetadata.projectMetadataApplet.ProjectMetadataApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This applet allows the user to enter project metadata (e.g. Project name, labeler name, etc.).</p>
+<p>Note that this applet does not affect the processing pipeline and has no top-level operator.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="data-selection">
+<h3>Data Selection<a class="headerlink" href="#data-selection" title="Permalink to this headline">¶</a></h3>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/DataSelection-Top-level-Operator.svg"><img alt="DataSelection Top-Level Operator" src="_images/DataSelection-Top-level-Operator.svg" /></a>
+</div>
+<dl class="class">
+<dt id="ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.dataSelection.dataSelectionApplet.</tt><tt class="descname">DataSelectionApplet</tt><big>(</big><em>workflow</em>, <em>title</em>, <em>projectFileGroupName</em>, <em>supportIlastik05Import=False</em>, <em>batchDataGui=False</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/dataSelection/dataSelectionApplet.html#DataSelectionApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This applet allows the user to select sets of input data, 
+which are provided as outputs in the corresponding top-level applet operator.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection">
+<em class="property">class </em><tt class="descclassname">ilastik.applets.dataSelection.opDataSelection.</tt><tt class="descname">OpDataSelection</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/dataSelection/opDataSelection.html#OpDataSelection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection" title="Permalink to this definition">¶</a></dt>
+<dd><p>The top-level operator for the data selection applet, implemented as a single-image operator.
+The applet uses an OperatorWrapper to make it suitable for use in a workflow.</p>
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ProjectFile">
+<tt class="descname">ProjectFile</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ProjectFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>The project hdf5 File object (already opened)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ProjectDataGroup">
+<tt class="descname">ProjectDataGroup</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ProjectDataGroup" title="Permalink to this definition">¶</a></dt>
+<dd><p>The internal path to the hdf5 group where project-local datasets are stored within the project file</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.WorkingDirectory">
+<tt class="descname">WorkingDirectory</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.WorkingDirectory" title="Permalink to this definition">¶</a></dt>
+<dd><p>The filesystem directory where the project file is located</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.Dataset">
+<tt class="descname">Dataset</tt><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.Dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>A DatasetInfo object</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.Image">
+<tt class="descname">Image</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.Image" title="Permalink to this definition">¶</a></dt>
+<dd><p>The output image</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.AllowLabels">
+<tt class="descname">AllowLabels</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.AllowLabels" title="Permalink to this definition">¶</a></dt>
+<dd><p>A bool indicating whether or not this image can be used for training</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ImageName">
+<tt class="descname">ImageName</tt><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ImageName" title="Permalink to this definition">¶</a></dt>
+<dd><p>The name of the output image</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
 <div class="section" id="batch-output">
-<h2>Batch Output<a class="headerlink" href="#batch-output" title="Permalink to this headline">¶</a></h2>
+<h3>Batch Output<a class="headerlink" href="#batch-output" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
 <a class="reference internal image-reference" href="_images/BatchOutput-Top-Level-Operator.svg"><img alt="Batch Output Top-Level Operator" src="_images/BatchOutput-Top-Level-Operator.svg" /></a>
 </div>
@@ -404,20 +496,12 @@ which are provided as outputs in the corresponding top-level applet operator.</p
 </dd></dl>
 
 </div>
-<div class="section" id="threshold-masking">
-<h2>Threshold Masking<a class="headerlink" href="#threshold-masking" title="Permalink to this headline">¶</a></h2>
-<div class="figure">
-<a class="reference internal image-reference" href="_images/ThresholdMasking-Top-Level-Operator.svg"><img alt="Batch Output Top-Level Operator" src="_images/ThresholdMasking-Top-Level-Operator.svg" /></a>
 </div>
-<dl class="class">
-<dt id="ilastik.applets.thresholdMasking.thresholdMaskingApplet.ThresholdMaskingApplet">
-<em class="property">class </em><tt class="descclassname">ilastik.applets.thresholdMasking.thresholdMaskingApplet.</tt><tt class="descname">ThresholdMaskingApplet</tt><big>(</big><em>workflow</em>, <em>guiName</em>, <em>projectFileGroupName</em><big>)</big><a class="reference internal" href="_modules/ilastik/applets/thresholdMasking/thresholdMaskingApplet.html#ThresholdMaskingApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.thresholdMasking.thresholdMaskingApplet.ThresholdMaskingApplet" title="Permalink to this definition">¶</a></dt>
-<dd><p>This is a simple thresholding applet</p>
-</dd></dl>
-
-</div>
+<div class="section" id="workflow-specific-applets">
+<h2>Workflow-specific Applets<a class="headerlink" href="#workflow-specific-applets" title="Permalink to this headline">¶</a></h2>
+<p>These applets were designed with particular workflows in mind, but they could be used with future workflows, too.</p>
 <div class="section" id="feature-selection">
-<h2>Feature Selection<a class="headerlink" href="#feature-selection" title="Permalink to this headline">¶</a></h2>
+<h3>Feature Selection<a class="headerlink" href="#feature-selection" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
 <a class="reference internal image-reference" href="_images/Wrapped-OpFeatureSelection.svg"><img alt="Feature Selection Top-Level Operator" src="_images/Wrapped-OpFeatureSelection.svg" /></a>
 </div>
@@ -430,7 +514,7 @@ which are provided as outputs in the corresponding top-level applet operator.</p
 
 </div>
 <div class="section" id="pixel-classification">
-<h2>Pixel Classification<a class="headerlink" href="#pixel-classification" title="Permalink to this headline">¶</a></h2>
+<h3>Pixel Classification<a class="headerlink" href="#pixel-classification" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
 <a class="reference internal image-reference" href="_images/opPixelClassification.svg"><img alt="Pixel Classification Top-Level Operator" src="_images/opPixelClassification.svg" /></a>
 </div>
@@ -442,9 +526,9 @@ which are provided as outputs in the corresponding top-level applet operator.</p
 
 </div>
 <div class="section" id="watershed-viewer">
-<h2>Watershed Viewer<a class="headerlink" href="#watershed-viewer" title="Permalink to this headline">¶</a></h2>
+<h3>Watershed Viewer<a class="headerlink" href="#watershed-viewer" title="Permalink to this headline">¶</a></h3>
 <div class="figure">
-<a class="reference internal image-reference" href="_images/VigraWatershedViewer-Top-Level-Operator.svg"><img alt="Pixel Classification Top-Level Operator" src="_images/VigraWatershedViewer-Top-Level-Operator.svg" /></a>
+<a class="reference internal image-reference" href="_images/VigraWatershedViewer-Top-Level-Operator.svg"><img alt="Watershed Viewer Top-Level Operator" src="_images/VigraWatershedViewer-Top-Level-Operator.svg" /></a>
 </div>
 <dl class="class">
 <dt id="ilastik.applets.vigraWatershedViewer.vigraWatershedViewerApplet.VigraWatershedViewerApplet">
@@ -452,6 +536,7 @@ which are provided as outputs in the corresponding top-level applet operator.</p
 <dd><p>Viewer for watershed results, with minimal configuration controls.</p>
 </dd></dl>
 
+</div>
 </div>
 </div>
 
@@ -464,25 +549,38 @@ which are provided as outputs in the corresponding top-level applet operator.</p
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Applet Library</a><ul>
-<li><a class="reference internal" href="#project-metadata">Project Metadata</a></li>
-<li><a class="reference internal" href="#data-selection">Data Selection</a></li>
+<li><a class="reference internal" href="#example-applets">Example Applets</a><ul>
+<li><a class="reference internal" href="#threshold-masking">Threshold Masking</a></li>
+<li><a class="reference internal" href="#deviation-from-mean">Deviation From Mean</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#useful-base-classes">Useful Base Classes</a><ul>
 <li><a class="reference internal" href="#layer-viewer">Layer Viewer</a></li>
 <li><a class="reference internal" href="#labeling">Labeling</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#standard-applets">Standard Applets</a><ul>
+<li><a class="reference internal" href="#project-metadata">Project Metadata</a></li>
+<li><a class="reference internal" href="#data-selection">Data Selection</a></li>
 <li><a class="reference internal" href="#batch-output">Batch Output</a></li>
-<li><a class="reference internal" href="#threshold-masking">Threshold Masking</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#workflow-specific-applets">Workflow-specific Applets</a><ul>
 <li><a class="reference internal" href="#feature-selection">Feature Selection</a></li>
 <li><a class="reference internal" href="#pixel-classification">Pixel Classification</a></li>
 <li><a class="reference internal" href="#watershed-viewer">Watershed Viewer</a></li>
 </ul>
 </li>
 </ul>
+</li>
+</ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href=""
-                        title="previous chapter">Applet Library</a></p>
+  <p class="topless"><a href="workflow_design.html"
+                        title="previous chapter">Advanced Workflow Design</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="dependencies.html"
-                        title="next chapter">Appendix: Development Dependencies</a></p>
+  <p class="topless"><a href="projectManager.html"
+                        title="next chapter">Project Manager</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/applet_library.txt"
@@ -512,10 +610,10 @@ which are provided as outputs in the corresponding top-level applet operator.</p
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="dependencies.html" title="Appendix: Development Dependencies"
+          <a href="projectManager.html" title="Project Manager"
              >next</a> |</li>
         <li class="right" >
-          <a href="#" title="Applet Library"
+          <a href="workflow_design.html" title="Advanced Workflow Design"
              >previous</a> |</li>
         <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
       </ul>

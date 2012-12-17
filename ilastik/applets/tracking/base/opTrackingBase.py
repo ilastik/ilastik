@@ -209,7 +209,7 @@ class OpTrackingBase(Operator):
             total_count += count
         
         if median_object_size is not None:
-            median_object_size = np.median(np.array(obj_sizes),overwrite_input=True)
-            print 'median object size = ' + str(median_object_size)
+            median_object_size[0] = np.median(np.array(obj_sizes),overwrite_input=True)
+            print 'median object size = ' + str(median_object_size[0])
         
         return ts, filtered_labels, empty_frame

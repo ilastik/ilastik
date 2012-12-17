@@ -44,7 +44,7 @@ class GreedyNnTrackingGui( TrackingGuiBase ):
         
         self.time_range =  range(from_t, to_t + 1)
         
-        self.mainOperator.innerOperators[0].track(
+        self.mainOperator.track(
             time_range = self.time_range,
             x_range = (from_x, to_x + 1),
             y_range = (from_y, to_y + 1),

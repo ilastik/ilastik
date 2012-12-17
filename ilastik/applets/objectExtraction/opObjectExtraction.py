@@ -5,11 +5,9 @@ import vigra.analysis
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
-import sys
-
-
 
 class OpLabelImage( Operator ):
+    name = "Label Image Accessor"
     BinaryImage = InputSlot()
     BackgroundLabel = InputSlot()
     
@@ -67,6 +65,8 @@ class OpLabelImage( Operator ):
 
 
 class OpRegionFeatures( Operator ):
+    name = "Region Features"
+
     LabelImage = InputSlot()
     Output = OutputSlot( stype=Opaque, rtype=List )
 
@@ -113,6 +113,8 @@ class OpRegionFeatures( Operator ):
 
 
 class OpRegionCenters( Operator ):
+    name = "Region Centers"
+    
     LabelImage = InputSlot()
     Output = OutputSlot( stype=Opaque, rtype=List )
 
@@ -176,15 +178,15 @@ class OpObjectExtraction( Operator ):
 
         self._reg_cents = {}
 
-        self._opLabelImage = OpLabelImage( graph = graph )
+        self._opLabelImage = OpLabelImage( parent=self, graph = graph )
         self._opLabelImage.BinaryImage.connect( self.BinaryImage )
         self._opLabelImage.BackgroundLabel.connect( self.BackgroundLabel)
         self.LabelImage.connect(self._opLabelImage.LabelImage)
         
-        self._opRegCent = OpRegionCenters( graph = graph )
+        self._opRegCent = OpRegionCenters( parent=self, graph = graph )
         self._opRegCent.LabelImage.connect( self.LabelImage )
 
-        self._opRegFeats = OpRegionFeatures( graph = graph )
+        self._opRegFeats = OpRegionFeatures( parent=self, graph = graph )
         self._opRegFeats.LabelImage.connect( self.LabelImage )
 
     def setupOutputs(self):        

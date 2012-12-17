@@ -25,21 +25,50 @@ class ObjectExtractionMultiClassGui( QWidget ):
     def centralWidget( self ):
         return self.volumeEditorWidget
 
-    def appletDrawers( self ):
-        return [ ("Object Extraction", self._drawer ) ]
+    def appletDrawer( self ):
+        return self._drawer
 
     def menus( self ):
         return []
 
     def viewerControlWidget( self ):
         return self._viewerControlWidget
+            
+    def stopAndCleanUp( self ):
+        pass
 
-    def setImageIndex( self, imageIndex ):
-        mainOperator = self.mainOperator.innerOperators[imageIndex]
-        self.curOp = mainOperator
-                
+    def reset( self ):
+        print "reset(): not implemented"
 
-        ct = colortables.create_default_8bit()
+    ###########################################
+    ###########################################
+    
+    def __init__(self, topLevelOperatorView):
+        """
+        """
+        super(ObjectExtractionMultiClassGui, self).__init__()
+        self.mainOperator = topLevelOperatorView        
+        self.layerstack = LayerStackModel()
+
+        #self.rawsrc = LazyflowSource( self.mainOperator.RawData )
+        #layerraw = GrayscaleLayer( self.rawsrc )
+        #layerraw.name = "Raw"
+        #self.layerstack.append( layerraw )
+
+        self._viewerControlWidget = None
+        self._initViewerControlUi()
+
+        self.editor = None
+        self._initEditor()
+
+        self._initAppletDrawerUi()
+        assert(self.appletDrawer() is not None)
+        self._initViewer()
+        
+
+    def _initViewer(self):
+        mainOperator = self.mainOperator        
+                   
         self.binaryimages = LazyflowSource( mainOperator.BinaryImage )
         layer = GrayscaleLayer( self.binaryimages, range=(0,1), normalize=(0,1) )
         layer.name = "Input Image"
@@ -76,37 +105,11 @@ class ObjectExtractionMultiClassGui( QWidget ):
 
         if mainOperator.Images.meta.shape:
             self.editor.dataShape = mainOperator.LabelImage.meta.shape
-        mainOperator.Images.notifyMetaChanged( self._onMetaChanged )            
-
-    def reset( self ):
-        print "reset(): not implemented"
-
-    ###########################################
-    ###########################################
-    
-    def __init__(self, mainOperator):
-        """
-        """
-        super(ObjectExtractionMultiClassGui, self).__init__()
-        self.mainOperator = mainOperator
-        self.curOp = None
-        self.layerstack = LayerStackModel()
-
-        #self.rawsrc = LazyflowSource( self.mainOperator.RawData )
-        #layerraw = GrayscaleLayer( self.rawsrc )
-        #layerraw.name = "Raw"
-        #self.layerstack.append( layerraw )
-
-        self._viewerControlWidget = None
-        self._initViewerControlUi()
-
-        self.editor = None
-        self._initEditor()
-
-        self._initAppletDrawerUi()
-
+        mainOperator.Images.notifyMetaChanged( self._onMetaChanged )
+        
+        
     def _onMetaChanged( self, slot ):
-        if slot is self.curOp.Images:
+        if slot is self.mainOperator.Images:
             if slot.meta.shape:
                 self.editor.dataShape = slot.meta.shape
  
@@ -158,7 +161,7 @@ class ObjectExtractionMultiClassGui( QWidget ):
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
     def _onLabelImageButtonPressed( self ):
-        m = self.curOp.LabelImage.meta
+        m = self.mainOperator.LabelImage.meta
         maxt = m.shape[0] - 1 # the last time frame will be dropped
         progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt * 2)
         progress.setWindowModality(Qt.ApplicationModal)
@@ -168,14 +171,14 @@ class ObjectExtractionMultiClassGui( QWidget ):
 
         # LabelImage for background/non-background (channel 0) and division/non-division (channel 2)        
         reqs = []
-        self.curOp._opObjectExtractionBg._opLabelImage._fixed = False
-        self.curOp._opObjectExtractionDiv._opLabelImage._fixed = False
+        self.mainOperator._opObjectExtractionBg._opLabelImage._fixed = False
+        self.mainOperator._opObjectExtractionDiv._opLabelImage._fixed = False
 
         for t in range(maxt):            
-            reqs.append(self.curOp._opObjectExtractionBg._opLabelImage.LabelImageComputation([t]))
+            reqs.append(self.mainOperator._opObjectExtractionBg._opLabelImage.LabelImageComputation([t]))
             reqs[-1].submit()
 
-            reqs.append(self.curOp._opObjectExtractionDiv._opLabelImage.LabelImageComputation([t]))
+            reqs.append(self.mainOperator._opObjectExtractionDiv._opLabelImage.LabelImageComputation([t]))
             reqs[-1].submit()
 
                         
@@ -188,26 +191,26 @@ class ObjectExtractionMultiClassGui( QWidget ):
                 
         progress.setValue(maxt * 2)        
         
-        roi = SubRegion(self.curOp.LabelImage, start=5*(0,), stop=m.shape)
-        self.curOp.LabelImage.setDirty(roi)
+        roi = SubRegion(self.mainOperator.LabelImage, start=5*(0,), stop=m.shape)
+        self.mainOperator.LabelImage.setDirty(roi)
         
         print 'Label Segmentation: done.'
 
 
     def _onExtractObjectsButtonPressed( self ):
-        maxt = self.curOp.LabelImage.meta.shape[0] - 1 # the last time frame will be dropped
+        maxt = self.mainOperator.LabelImage.meta.shape[0] - 1 # the last time frame will be dropped
         progress = QProgressDialog("Extracting objects...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())
 
         reqs = []
-        self.curOp._opObjectExtractionBg._opRegFeats.fixed = False
-        self.curOp._opObjectExtractionDiv._opRegFeats.fixed = False
+        self.mainOperator._opObjectExtractionBg._opRegFeats.fixed = False
+        self.mainOperator._opObjectExtractionDiv._opRegFeats.fixed = False
         for t in range(maxt):
-            reqs.append(self.curOp._opObjectExtractionBg.RegionFeatures([t]))
+            reqs.append(self.mainOperator._opObjectExtractionBg.RegionFeatures([t]))
             reqs[-1].submit()
-            reqs.append(self.curOp._opObjectExtractionDiv.RegionFeatures([t]))
+            reqs.append(self.mainOperator._opObjectExtractionDiv.RegionFeatures([t]))
             reqs[-1].submit()
         for i, req in enumerate(reqs):
             progress.setValue(i)
@@ -216,18 +219,18 @@ class ObjectExtractionMultiClassGui( QWidget ):
             else:
                 req.wait()
                 
-        self.curOp._opObjectExtractionBg._opRegFeats.fixed = True 
-        self.curOp._opObjectExtractionDiv._opRegFeats.fixed = True
+        self.mainOperator._opObjectExtractionBg._opRegFeats.fixed = True 
+        self.mainOperator._opObjectExtractionDiv._opRegFeats.fixed = True
         progress.setValue(maxt)
         
-        self.curOp._opObjectExtractionBg.ObjectCenterImage.setDirty( SubRegion(self.curOp._opObjectExtractionBg.ObjectCenterImage))
-        self.curOp._opObjectExtractionDiv.ObjectCenterImage.setDirty( SubRegion(self.curOp._opObjectExtractionDiv.ObjectCenterImage))
+        self.mainOperator._opObjectExtractionBg.ObjectCenterImage.setDirty( SubRegion(self.mainOperator._opObjectExtractionBg.ObjectCenterImage))
+        self.mainOperator._opObjectExtractionDiv.ObjectCenterImage.setDirty( SubRegion(self.mainOperator._opObjectExtractionDiv.ObjectCenterImage))
                 
         print 'Object Extraction: done.'
 
 
     def _onMergeSegmentationsButtonPressed(self):
-        m = self.curOp.LabelImage.meta
+        m = self.mainOperator.LabelImage.meta
         maxt = m.shape[0] -1 # the last time frame will be dropped
         progress = QProgressDialog("Merging Background and Division Segmentations...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
@@ -237,7 +240,7 @@ class ObjectExtractionMultiClassGui( QWidget ):
 
         reqs = []
         for t in range(maxt):
-            reqs.append(self.curOp._opClassExtraction.ClassMapping([t]))
+            reqs.append(self.mainOperator._opClassExtraction.ClassMapping([t]))
             reqs[-1].submit()
         for i, req in enumerate(reqs):
             progress.setValue(i)
@@ -248,13 +251,13 @@ class ObjectExtractionMultiClassGui( QWidget ):
         
         progress.setValue(maxt)
         
-        roi = SubRegion(self.curOp.ClassMapping, start=5*(0,), stop=m.shape)
-        self.curOp.ClassMapping.setDirty(roi)
+        roi = SubRegion(self.mainOperator.ClassMapping, start=5*(0,), stop=m.shape)
+        self.mainOperator.ClassMapping.setDirty(roi)
         
         print 'Merge Segmentation: done.'
         
     def _onDistanceTransformButtonPressed(self):       
-        m = self.curOp.LabelImage.meta
+        m = self.mainOperator.LabelImage.meta
         maxt = m.shape[0] -1 # the last time frame will be dropped
         progress = QProgressDialog("Computing the distance transform...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
@@ -264,7 +267,7 @@ class ObjectExtractionMultiClassGui( QWidget ):
                 
         reqs = []        
         for t in range(maxt):
-            reqs.append(self.curOp._opDistanceTransform.DistanceTransformComputation([t]))
+            reqs.append(self.mainOperator._opDistanceTransform.DistanceTransformComputation([t]))
             reqs[-1].submit()
         for i, req in enumerate(reqs):
             progress.setValue(i)
@@ -274,15 +277,15 @@ class ObjectExtractionMultiClassGui( QWidget ):
                 req.wait()
                 
         progress.setValue(maxt)
-        self.curOp._opDistanceTransform._fixed = False
+        self.mainOperator._opDistanceTransform._fixed = False
         
-        roi = SubRegion(self.curOp.DistanceTransform, start=5*(0,), stop=m.shape)
-        self.curOp.DistanceTransform.setDirty(roi)
+        roi = SubRegion(self.mainOperator.DistanceTransform, start=5*(0,), stop=m.shape)
+        self.mainOperator.DistanceTransform.setDirty(roi)
                 
         print "Distance Transform: done."
     
     def _onMaximumImageButtonPressed(self):
-        m = self.curOp.LabelImage.meta
+        m = self.mainOperator.LabelImage.meta
         maxt = m.shape[0] -1 # the last time frame will be dropped
         progress = QProgressDialog("Computing maximum distance transform...", "Stop", 0, 2*maxt)
         progress.setWindowModality(Qt.ApplicationModal)
@@ -293,7 +296,7 @@ class ObjectExtractionMultiClassGui( QWidget ):
         print "Computing Maximum Images"
         reqs = []        
         for t in range(maxt):
-            reqs.append(self.curOp._opRegionalMaximum.MaximumImageComputation([t]))
+            reqs.append(self.mainOperator._opRegionalMaximum.MaximumImageComputation([t]))
             reqs[-1].submit()
             
         for i, req in enumerate(reqs):
@@ -302,15 +305,15 @@ class ObjectExtractionMultiClassGui( QWidget ):
                 req.cancel()
             else:
                 req.wait()
-        self.curOp._opRegionalMaximum._fixed = False
+        self.mainOperator._opRegionalMaximum._fixed = False
         
-        roi = SubRegion(self.curOp.MaximumDistanceTransform, start=5*(0,), stop=m.shape)
-        self.curOp.MaximumDistanceTransform.setDirty(roi)
+        roi = SubRegion(self.mainOperator.MaximumDistanceTransform, start=5*(0,), stop=m.shape)
+        self.mainOperator.MaximumDistanceTransform.setDirty(roi)
                          
         print "Computing Local Center Features"
         reqs = []
         for t in range(maxt):
-            reqs.append(self.curOp._opRegionalMaximum.RegionLocalCenters([t]))
+            reqs.append(self.mainOperator._opRegionalMaximum.RegionLocalCenters([t]))
             reqs[-1].submit()
             
         for i, req in enumerate(reqs):

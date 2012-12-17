@@ -1,5 +1,6 @@
 from ilastik.shell.gui.startShellGui import startShellGui
 from pixelClassificationWorkflow import PixelClassificationWorkflow
+import functools
 
 import argparse
 
@@ -50,7 +51,7 @@ def debug_with_new(shell, workflow):
                                [False, False, False, False, False, False, False],
                                [False, False, False, False, False, False, False],
                                [True, False, False, False, True, False, False],   # tempDiff
-                               [True, False, False, False, True, False, False]] ) # crossCorr
+                               [False, False, False, False, False, False, False]] ) # crossCorr
     opFeatures.SelectionMatrix.setValue(selections)
 
     # Select the feature drawer
@@ -78,56 +79,36 @@ def debug_with_imported(shell, workflow):
     # Select the labeling drawer
     shell.setSelectedAppletDrawer(3)
 
-def getArgParser():
-    parser = argparse.ArgumentParser(description = "Pixel Classiflication Prediction GUI")
-    parser.add_argument('--project', help='Path to an .ilp file to be loaded. If not specified, start with an empty proejct', default = '')
-    parser.add_argument('--screen', help='Select screen to be displayed on startup', default = '0')
-    return parser
-
-def loadProject(shell, workflow):
-            print "Opening existing project '" + project + "'"
-            shell.openProjectFile(project)
-            shell.setSelectedAppletDrawer(screen)
-
-def loadNew(shell, worfklow):
-            shell.setSelectedAppletDrawer(screen)
 
 if __name__ == "__main__":
-    
-    usage = "%prog [options] [filename]"
-    parser = getArgParser()
-    options = vars(parser.parse_args())
-    screen = int(options['screen'])
-    project = options['project']
 
-    # Start the GUI
-#    if len(args) == 1:
-#        def loadProject(shell, workflow):
-#            shell.openProjectFile(args[0])
-#        startShellGui( PixelClassificationWorkflow, loadProject )
-#    elif len(args) == 0:
-#        startShellGui( PixelClassificationWorkflow )
-#    else:
-#        parser.error("incorrect number of arguments")
+    import warnings
+    warnings.warn("WARNING: Assuming a strange axis order when importing 0.5 projects!")
+    import ilastik.utility.globals
+    ilastik.utility.globals.ImportOptions.default_axis_order = 'tyxzc'
+
+    from optparse import OptionParser
+    usage = "%prog [options] filename"
+    parser = OptionParser(usage)
+   
+    (options, args) = parser.parse_args()
+
+    if len(args) == 1:
+        def loadProject(shell, workflow):
+            shell.openProjectFile(args[0])
+        startShellGui( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True), loadProject )
+    elif len(args) == 0:
+        startShellGui( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True) )
+    else:
+        parser.error("incorrect number of arguments")
 
     # Start the GUI with a debug project    
-    #startShellGui( PixelClassificationWorkflow )    
-    #startShellGui( PixelClassificationWorkflow, debug_with_existing )
-    #startShellGui( PixelClassificationWorkflow, debug_with_new )
+
+    #startShellGui( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True) )    
+    #startShellGui( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True), debug_with_existing )
+    #startShellGui( functools.partial(PixelClassificationWorkflow, appendBatchOperators=True), debug_with_new )
 
     # Test special transpose-on-import feature
     #startShellGui( PixelClassificationWorkflow, debug_with_imported )
     
 
-    # Start GUI with command line arguments. To extend the options, edit getArgParser
-    startupFunct = None
-    if project != '':
-        startupFunct = loadProject
-    else:
-        startupFunct = loadNew
-    startShellGui( PixelClassificationWorkflow, startupFunct )
-        
-
-    # Test special transpose-on-import feature
-    #startShellGui( PixelClassificationWorkflow, debug_with_imported )
- 

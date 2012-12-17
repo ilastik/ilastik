@@ -3,6 +3,7 @@ from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 import ctracking
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
+from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
 
 
 class OpConservationTracking(OpTrackingBase):
@@ -20,7 +21,7 @@ class OpConservationTracking(OpTrackingBase):
             result = self.LabelImage.get(roi).wait()
             t = roi.start[0]
             if (self.last_timerange and t <= self.last_timerange[-1] and t >= self.last_timerange[0]):
-                result[0,...,0] = self.relabelMergers(result[0,...,0], self.mergers[t])
+                result[0,...,0] = relabelMergers(result[0,...,0], self.mergers[t])
             else:
                 result[...] = 0
             return result    
@@ -40,7 +41,7 @@ class OpConservationTracking(OpTrackingBase):
             avgSize=0
             ):
         
-        median_obj_size = 0
+        median_obj_size = [0]
                 
         ts, filtered_labels, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
@@ -64,7 +65,7 @@ class OpConservationTracking(OpTrackingBase):
                                          True,    # with_constraints
                                          False,   # fixed_detections
                                          float(ep_gap),
-                                         float(median_obj_size))
+                                         float(median_obj_size[0]))
         
         self.events = tracker(ts)
         

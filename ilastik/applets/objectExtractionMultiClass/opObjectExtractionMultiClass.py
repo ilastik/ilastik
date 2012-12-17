@@ -28,30 +28,30 @@ class OpObjectExtractionMultiClass(Operator):
     def __init__(self, parent=None, graph=None):        
         super(OpObjectExtractionMultiClass, self).__init__(parent=parent, graph=graph)
         
-        self._opThresholding = OpThresholding(graph=graph)
+        self._opThresholding = OpThresholding(parent=self,graph=graph)
         self._opThresholding.Threshold.setValue(0.5)
         self._opThresholding.Input.connect(self.Images)
         self.BinaryImage.connect(self._opThresholding.BinaryImage)
         
         # TODO: generalize to m classes
-        self._opSubRegionBgImage = OpSubRegion(graph=graph)        
+        self._opSubRegionBgImage = OpSubRegion(parent=self, graph=graph)        
         self._opSubRegionBgImage.inputs["Input"].connect(self._opThresholding.BinaryImage)
                 
-        self._opSubRegionDivImage = OpSubRegion(graph=graph)
+        self._opSubRegionDivImage = OpSubRegion(parent=self,graph=graph)
         self._opSubRegionDivImage.inputs["Input"].connect(self._opThresholding.BinaryImage)        
         
-        self._opObjectExtractionBg = OpObjectExtraction(graph=graph)
+        self._opObjectExtractionBg = OpObjectExtraction(parent=self,graph=graph)
         self._opObjectExtractionBg.BinaryImage.connect(self._opSubRegionBgImage.outputs["Output"])    
         self._opObjectExtractionBg.BackgroundLabel.setValue(1)
         
-        self._opObjectExtractionDiv = OpObjectExtraction(graph=graph)
+        self._opObjectExtractionDiv = OpObjectExtraction(parent=self,graph=graph)
         self._opObjectExtractionDiv.BinaryImage.connect(self._opSubRegionDivImage.outputs["Output"])
         self._opObjectExtractionDiv.BackgroundLabel.setValue(0)
         
-        self._opDistanceTransform = OpDistanceTransform3D(graph=graph)
+        self._opDistanceTransform = OpDistanceTransform3D(parent=self,graph=graph)
         self._opDistanceTransform.Image.connect(self._opObjectExtractionBg.LabelImage)     
         
-        self._opRegionalMaximum = OpRegionalMaximum(graph=graph)
+        self._opRegionalMaximum = OpRegionalMaximum(parent=self,graph=graph)
         self._opRegionalMaximum.Image.connect(self._opDistanceTransform.DistanceTransformImage)
         self._opRegionalMaximum.LabelImage.connect(self._opObjectExtractionBg.LabelImage)   
         
@@ -60,7 +60,7 @@ class OpObjectExtractionMultiClass(Operator):
         self.RegionCenters.connect(self._opObjectExtractionBg.RegionCenters)
         self.RegionFeatures.connect(self._opObjectExtractionBg.RegionFeatures)        
         
-        self._opClassExtraction = OpClassExtraction(graph=graph)
+        self._opClassExtraction = OpClassExtraction(parent=self,graph=graph)
         self._opClassExtraction.LabelImageBg.connect(self._opObjectExtractionBg.LabelImage)
         self._opClassExtraction.LabelImageDiv.connect(self._opObjectExtractionDiv.LabelImage)
         self._opClassExtraction.RegionFeaturesBg.connect(self._opObjectExtractionBg.RegionFeatures)
@@ -179,6 +179,8 @@ class OpThresholding(Operator):
 
 
 class OpDistanceTransform3D( Operator ):
+    name = "Distance Transform 3D"
+    
     Image = InputSlot()    
     
     DistanceTransformImage = OutputSlot()
@@ -229,6 +231,8 @@ class OpDistanceTransform3D( Operator ):
             
             
 class OpRegionalMaximum( Operator ):
+    name = "Regional Maximum"
+    
     Image = InputSlot() # Distance Transform Image
     LabelImage = InputSlot()    
     

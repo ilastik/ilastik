@@ -27,8 +27,8 @@ class TrackingGuiBase( QWidget ):
     def centralWidget( self ):
         return self.volumeEditorWidget        
 
-    def appletDrawers( self ):
-        return [ ("Tracking", self._drawer ) ]
+    def appletDrawer( self ):
+        return self._drawer
 
     def menus( self ):
         return []
@@ -36,8 +36,58 @@ class TrackingGuiBase( QWidget ):
     def viewerControlWidget( self ):
         return self._viewerControlWidget
 
-    def setImageIndex( self, imageIndex ):
-        mainOperator = self.mainOperator.innerOperators[imageIndex]
+    def stopAndCleanUp( self ):
+        pass
+        
+    def reset( self ):
+        print "TrackinGui.reset(): not implemented"
+
+    
+    ###########################################
+    ###########################################
+    
+    def __init__(self, mainOperator):
+        """
+        """
+        super(TrackingGuiBase, self).__init__()
+        self.mainOperator = mainOperator
+        self.layerstack = LayerStackModel()
+
+        self._viewerControlWidget = None
+        self._initViewerControlUi()
+        
+        self.initColors()
+        
+        self.editor = None
+        self._initEditor()
+
+        self._initAppletDrawerUi()
+        
+        if self.mainOperator.LabelImage.meta.shape:
+            self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
+        self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
+        self._initViewer()
+
+
+    def _onMetaChanged( self, slot ):
+        if slot is self.mainOperator.LabelImage:
+            if slot.meta.shape:
+                print slot.meta.shape
+                self.editor.dataShape = slot.meta.shape
+
+                maxt = slot.meta.shape[0]
+                self._drawer.from_time.setRange(0,maxt-1)
+                self._drawer.from_time.setValue(0)
+                self._drawer.to_time.setRange(0,maxt-2)
+                self._drawer.to_time.setValue(maxt-2)
+                self._drawer.lineageFromBox.setRange(0,maxt-1)
+                self._drawer.lineageToBox.setRange(0,maxt-2)
+                self._drawer.lineageFromBox.setValue(0)
+                self._drawer.lineageToBox.setValue(maxt-2)
+
+
+    def _initViewer( self ):
+        mainOperator = self.mainOperator
 
         # self.rawsrc = LazyflowSource( mainOperator.RawData )
         # layerraw = GrayscaleLayer( self.rawsrc )
@@ -100,6 +150,7 @@ class TrackingGuiBase( QWidget ):
             self._drawer.lineageToBox.setRange(0,maxt-2)
             self._drawer.lineageToBox.setValue(maxt-2)       
     
+
     def initColors(self):
         self.mergerColors = [
                              QColor(0,0,0,0),
@@ -112,50 +163,6 @@ class TrackingGuiBase( QWidget ):
                              QColor(128,128,255,255)
                              ]
         
-        
-    def reset( self ):
-        print "TrackinGui.reset(): not implemented"
-
-    ###########################################
-    ###########################################
-    
-    def __init__(self, mainOperator):
-        """
-        """
-        super(TrackingGuiBase, self).__init__()
-        self.mainOperator = mainOperator
-        self.layerstack = LayerStackModel()
-
-        self._viewerControlWidget = None
-        self._initViewerControlUi()
-        
-        self.initColors()
-        
-        self.editor = None
-        self._initEditor()
-
-        self._initAppletDrawerUi()
-        
-        if self.mainOperator.LabelImage.meta.shape:
-            self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
-        self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
-
-
-    def _onMetaChanged( self, slot ):
-        if slot is self.mainOperator.LabelImage:
-            if slot.meta.shape:
-                print slot.meta.shape
-                self.editor.dataShape = slot.meta.shape
-
-                maxt = slot.meta.shape[0]
-                self._drawer.from_time.setRange(0,maxt-1)
-                self._drawer.from_time.setValue(0)
-                self._drawer.to_time.setRange(0,maxt-2)
-                self._drawer.to_time.setValue(maxt-2)
-                self._drawer.lineageFromBox.setRange(0,maxt-1)
-                self._drawer.lineageToBox.setRange(0,maxt-2)
-                self._drawer.lineageFromBox.setValue(0)
-                self._drawer.lineageToBox.setValue(maxt-2)
 
 
     def _initEditor(self):
@@ -221,20 +228,20 @@ class TrackingGuiBase( QWidget ):
         
         print "Saving first label image..."
         key = []
-        for idx, flag in enumerate(axisTagsToString(self.mainOperator.innerOperators[0].LabelImage.meta.axistags)):
+        for idx, flag in enumerate(axisTagsToString(self.mainOperator.LabelImage.meta.axistags)):
             if flag is 't':
                 key.append(slice(0,1))
             elif flag is 'c':
                 key.append(slice(0,1))                
             else:
-                key.append(slice(0,self.mainOperator.innerOperators[0].LabelImage.meta.shape[idx]))                        
+                key.append(slice(0,self.mainOperator.LabelImage.meta.shape[idx]))                        
         
-        roi = SubRegion(self.mainOperator.innerOperators[0].LabelImage, key)
-        labelImage = self.mainOperator.innerOperators[0].LabelImage.get(roi).wait()
+        roi = SubRegion(self.mainOperator.LabelImage, key)
+        labelImage = self.mainOperator.LabelImage.get(roi).wait()
         
         write_events([], str(directory), 0, labelImage)
         
-        events = self.mainOperator.innerOperators[0].events
+        events = self.mainOperator.events
         print "Saving events..."
         print "Length of events " + str(len(events))
         
@@ -251,14 +258,14 @@ class TrackingGuiBase( QWidget ):
         
         print 'Saving results as tiffs...'
         
-        label2color = self.mainOperator.innerOperators[0].label2color
-        lshape = list(self.mainOperator.innerOperators[0].LabelImage.meta.shape)
+        label2color = self.mainOperator.label2color
+        lshape = list(self.mainOperator.LabelImage.meta.shape)
     
         for t, label2color_at in enumerate(label2color):
             print 'exporting tiffs for t = ' + str(t)            
             
-            roi = SubRegion(self.mainOperator.innerOperators[0].LabelImage, start=[t,] + 4*[0,], stop=[t+1,] + list(lshape[1:]))
-            labelImage = self.mainOperator.innerOperators[0].LabelImage.get(roi).wait()
+            roi = SubRegion(self.mainOperator.LabelImage, start=[t,] + 4*[0,], stop=[t+1,] + list(lshape[1:]))
+            labelImage = self.mainOperator.LabelImage.get(roi).wait()
             relabeled = relabel(labelImage[0,...,0],label2color_at)
             for i in range(relabeled.shape[2]):
                 out_im = relabeled[:,:,i]
@@ -303,20 +310,5 @@ class TrackingGuiBase( QWidget ):
             self.mainOperator.MinValue.setValue(minVal)
             self.mainOperator.MaxValue.setValue(maxVal)
     
-    def setupLayers(self, currentImageIndex):
-        with Tracer(traceLogger):
-            layers = []
     
-            # Show the thresholded data
-            outputImageSlot = self.mainOperator.Output
-            if outputImageSlot.ready():
-                outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
-                outputLayer.name = "min <= x <= max"
-                outputLayer.visible = True                
-                outputLayer.opacity = 1.0
-                layers.append(outputLayer)
-                
-            return layers
-
-
     

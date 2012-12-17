@@ -135,6 +135,7 @@ class SerialSlot(object):
             slot.notifyDirty(self.setDirty)
         else:
             slot.notifyInserted(doMulti)
+            slot.notifyRemoved( self.setDirty )
 
     def shouldSerialize(self, group):
         """Whether to serialize or not."""
@@ -153,7 +154,7 @@ class SerialSlot(object):
         _serialize().
 
         :param group: The parent group in which to create this slot's
-            group.
+                      group.
         :type group: h5py.Group
 
         """
@@ -174,7 +175,7 @@ class SerialSlot(object):
         group.create_dataset(name, data=value)
 
     def _serialize(self, group):
-        """"
+        """
         :param group: The parent group.
         :type group: h5py.Group
 
@@ -207,7 +208,7 @@ class SerialSlot(object):
     def _deserialize(self, subgroup):
         """
         :param subgroup: *not* the parent group. This slot's group.
-        :typpe subgroup: h5py.Group
+        :type subgroup: h5py.Group
 
         """
         if self.slot.level == 0:
