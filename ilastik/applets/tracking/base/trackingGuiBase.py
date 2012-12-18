@@ -60,10 +60,10 @@ class TrackingGuiBase( LayerViewerGui ):
                 self._drawer.from_time.setValue(0)
                 self._drawer.to_time.setRange(0,maxt-2)
                 self._drawer.to_time.setValue(maxt-2)
-                self._drawer.lineageFromBox.setRange(0,maxt-1)
-                self._drawer.lineageToBox.setRange(0,maxt-2)
-                self._drawer.lineageFromBox.setValue(0)
-                self._drawer.lineageToBox.setValue(maxt-2)
+#                self._drawer.lineageFromBox.setRange(0,maxt-1)
+#                self._drawer.lineageToBox.setRange(0,maxt-2)
+#                self._drawer.lineageFromBox.setValue(0)
+#                self._drawer.lineageToBox.setValue(maxt-2)
             
         if slot is self.mainOperator.RawImage:    
             if slot.meta.shape and not self.rawsrc:    

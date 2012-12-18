@@ -22,15 +22,16 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
             deleteIfPresent( topGroup, "LabelImage")
             src.copy('/LabelImage', topGroup) 
 
-#        print "object extraction multi class: saving region features"
-#        deleteIfPresent( topGroup, "samples")
-#        samples_gr = getOrCreateGroup( topGroup, "samples" )
-##        for ch in op._opObjectExtraction.
-#        for t in op._opObjectExtraction._opRegFeats._cache.keys():            
-#            t_gr = samples_gr.create_group(str(t))
-#            t_gr.create_dataset(name="RegionCenter", data=op._opObjectExtraction._opRegFeats._cache[t]['RegionCenter'])
-#            t_gr.create_dataset(name="Count", data=op._opObjectExtraction._opRegFeats._cache[t]['Count'])
-#            t_gr.create_dataset(name="CoordArgMaxWeight", data=op._opObjectExtraction._opRegFeats._cache[t]['Coord<ArgMaxWeight>'])
+        print "object extraction multi class: saving region features"
+        deleteIfPresent( topGroup, "samples")
+        samples_gr = getOrCreateGroup( topGroup, "samples" )        
+        for t in op._opObjectExtraction._opRegFeats._cache.keys():
+            t_gr = samples_gr.create_group(str(t))
+            for ch in range(len(op._opObjectExtraction._opRegFeats._cache[t])):            
+                ch_gr = t_gr.create_group(str(ch))
+                ch_gr.create_dataset(name="RegionCenter", data=op._opObjectExtraction._opRegFeats._cache[t][ch]['RegionCenter'])
+                ch_gr.create_dataset(name="Count", data=op._opObjectExtraction._opRegFeats._cache[t][ch]['Count'])
+                ch_gr.create_dataset(name="CoordArgMaxWeight", data=op._opObjectExtraction._opRegFeats._cache[t][ch]['Coord<ArgMaxWeight>'])
 
         print "object extraction multi class: class probabilities"
         deleteIfPresent(topGroup, "ClassProbabilities")
@@ -76,19 +77,21 @@ class ObjectExtractionMultiClassSerializer(AppletSerializer):
             self.mainOperator.innerOperators[0]._opObjectExtraction._opLabelImage._processedTimeSteps = range(topGroup['LabelImage'].shape[0])            
 
 
-#        print "objectExtraction multi class: loading region features"
-#        if "samples" in topGroup.keys():
-#            cache = {}
-#
-#            for t in topGroup["samples"].keys():
-#                cache[int(t)] = dict()
-#                if 'RegionCenter' in topGroup["samples"][t].keys():
-#                    cache[int(t)]['RegionCenter'] = topGroup["samples"][t]['RegionCenter'].value
-#                if 'Count' in topGroup["samples"][t].keys():                    
-#                    cache[int(t)]['Count'] = topGroup["samples"][t]['Count'].value
-#                if 'CoordArgMaxWeight' in topGroup["samples"][t].keys():
-#                    cache[int(t)]['Coord<ArgMaxWeight>'] = topGroup["samples"][t]['CoordArgMaxWeight'].value            
-#            self.mainOperator.innerOperators[0]._opObjectExtraction._opRegFeats._cache = cache
+        print "objectExtraction multi class: loading region features"
+        if "samples" in topGroup.keys():
+            cache = {}
+            for t in topGroup["samples"].keys():
+                cache[int(t)] = []
+                for ch in sorted(topGroup["samples"][t].keys()):
+                    feat = dict()
+                    if 'RegionCenter' in topGroup["samples"][t][ch].keys():
+                        feat['RegionCenter'] = topGroup["samples"][t][ch]['RegionCenter'].value
+                    if 'Count' in topGroup["samples"][t][ch].keys():                    
+                        feat['Count'] = topGroup["samples"][t][ch]['Count'].value
+                    if 'CoordArgMaxWeight' in topGroup["samples"][t][ch].keys():
+                        feat['Coord<ArgMaxWeight>'] = topGroup["samples"][t][ch]['CoordArgMaxWeight'].value
+                    cache[int(t)].append(feat)            
+            self.mainOperator.innerOperators[0]._opObjectExtraction._opRegFeats._cache = cache
         
         print "objectExtraction multi class: loading class probabilities"        
         if "ClassProbabilities" in topGroup.keys():
