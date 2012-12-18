@@ -1,5 +1,5 @@
 from ilastik.shell.gui.startShellGui import startShellGui
-from workflows.tracking.conservation.conservationTrackingWorkflow import ConservationTrackingWorkflow
+from conservationTrackingWorkflow import ConservationTrackingWorkflow
 
 debug_testing = False
 

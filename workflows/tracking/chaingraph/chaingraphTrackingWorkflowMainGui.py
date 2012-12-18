@@ -1,5 +1,5 @@
 from ilastik.shell.gui.startShellGui import startShellGui
-from workflows.tracking.chaingraph.chaingraphTrackingWorkflow import ChaingraphTrackingWorkflow
+from chaingraphTrackingWorkflow import ChaingraphTrackingWorkflow
 
 
 debug_testing = False
@@ -28,4 +28,3 @@ if debug_testing:
     
 else:
     startShellGui( ChaingraphTrackingWorkflow )
- 

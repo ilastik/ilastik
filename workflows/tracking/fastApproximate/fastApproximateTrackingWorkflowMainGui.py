@@ -1,5 +1,5 @@
 from ilastik.shell.gui.startShellGui import startShellGui
-from workflows.tracking.fastApproximate.fastApproximateTrackingWorkflow import FastApproximateTrackingWorkflow
+from fastApproximateTrackingWorkflow import FastApproximateTrackingWorkflow
 
 
 debug_testing = False

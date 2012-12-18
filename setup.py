@@ -27,13 +27,7 @@ packages=['ilastik',
           'ilastik.ilastik_logging',
           'ilastik.utility',
           'ilastik.utility.gui',
-          'ilastik.widgets',
-          'workflows',
-          'workflows.tracking',
-          'workflows.tracking.fastApproximate',
-          'workflows.tracking.chaingraph',
-          'workflows.tracking.conservation',
-]
+          'ilastik.widgets']
 
 package_data={'ilastik': ['ilastik-splash.png',
                           'ilastik-splash.xcf'],
