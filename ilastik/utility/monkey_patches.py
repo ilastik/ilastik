@@ -36,7 +36,7 @@ def apply_setting_dict( option_dict ):
     and apply any settings we recognize as options for this module.
     """
     for setting, value in option_dict.items():
-        if setting in monkey_patch_options:
+        if setting in monkey_patch_options and value is not None:
             monkey_patch_options[setting].update_func( value )
 
 OptionAction = namedtuple('OptionInfo', ['help', 'update_func'])

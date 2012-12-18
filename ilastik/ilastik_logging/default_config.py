@@ -79,7 +79,7 @@ def get_default_config(prefix=""):
             "lazyflow.operators.obsolete.operators.OpArrayCache":               { "level":"INFO", "handlers":["console_timestamp","console_warn"], "propagate": False },
             "lazyflow.operators.obsolete.operators.ArrayCacheMemoryMgr":        { "level":"INFO", "handlers":["console_timestamp","console_warn"], "propagate": False },
             "lazyflow.operators.obsolete.vigraOperators":                       { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
-            "lazyflow.operators.obsolete.vigraOperators.OpH5WriterBigDataset":  { "level":"DEBUG", "handlers":["console_timestamp","console_warn"], "propagate": False },
+            "lazyflow.operators.obsolete.vigraOperators.OpH5WriterBigDataset":  { "level":"INFO", "handlers":["console_timestamp","console_warn"], "propagate": False },
             "lazyflow.operators.obsolete.classifierOperators":                  { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
             "ilastik":                              { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },
             "ilastik.clusterOps":                   { "level":"INFO", "handlers":["console","console_warn"], "propagate": False },

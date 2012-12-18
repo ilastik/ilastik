@@ -5,7 +5,7 @@
     "loggers": {
         "py.warnings":                          { "level":"WARN", "propagate": false },
 
-        "__main__":                             { "level":"DEBUG", "propagate": false },
+        "__main__":                             { "level":"INFO", "propagate": false },
         "lazyflow":                             { "level":"INFO", "propagate": false },
         "lazyflow.graph":                       { "level":"INFO", "propagate": false },
         "lazyflow.graph.Slot":                  { "level":"INFO", "propagate": false },
@@ -14,6 +14,7 @@
         "lazyflow.operators.obsolete.operators.OpArrayCache":           { "level":"INFO", "propagate": false },
         "lazyflow.operators.obsolete.operators.ArrayCacheMemoryMgr":    { "level":"DEBUG", "propagate": false },
         "lazyflow.operators.obsolete.vigraOperators":         			{ "level":"INFO", "propagate": false },
+        "lazyflow.operators.obsolete.vigraOperators.OpH5WriterBigDataset":  { "level":"INFO", "propagate": false },
         "lazyflow.operators.obsolete.classifierOperators":    			{ "level":"INFO", "propagate": false },
         "ilastik":                              { "level":"INFO", "propagate": false },
         "ilastik.clusterOps":                   { "level":"DEBUG", "propagate": false },

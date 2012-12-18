@@ -1,6 +1,5 @@
 import os
 import math
-import json
 import numpy
 import subprocess
 from lazyflow.rtype import Roi, SubRegion
@@ -9,17 +8,18 @@ import itertools
 import h5py
 import time
 import threading
+import collections
 from functools import partial
 import tempfile
 import shutil
+import hashlib
 import datetime
-from ilastik.utility import autoEval
+from ilastik.clusterConfig import parseClusterConfigFile
 
 from lazyflow.operators import OpH5WriterBigDataset, OpSubRegion
 
 import logging
 logger = logging.getLogger(__name__)
-
 
 class Timer(object):
     def __init__(self):
@@ -61,8 +61,7 @@ class OpTaskWorker(Operator):
     
     def execute(self, slot, subindex, roi, result):
         configFilePath = self.ConfigFilePath.value
-        with open(configFilePath) as configFile:
-            configDict = { str(k) : str(v) for k,v in json.load( configFile ).items() }
+        config = parseClusterConfigFile( configFilePath )
         
         roiString = self.RoiString.value
         roi = Roi.loads(roiString)
@@ -71,16 +70,22 @@ class OpTaskWorker(Operator):
         statusFileName = STATUS_FILE_NAME_FORMAT.format( self.TaskName.value, str(roituple) )
         outputFileName = OUTPUT_FILE_NAME_FORMAT.format( self.TaskName.value, str(roituple) )
 
-        statusFilePath = os.path.join( configDict['scratch_directory'], statusFileName )
-        outputFilePath = os.path.join( configDict['scratch_directory'], outputFileName )
+        statusFilePath = os.path.join( config.scratch_directory, statusFileName )
+        outputFilePath = os.path.join( config.scratch_directory, outputFileName )
 
-        # Create a temporary file to generate the output
-        tempDir = tempfile.mkdtemp()
-        tmpOutputFile = os.path.join(tempDir, roiString + ".h5")
-        logger.info("Constructing output in temporary file: {}".format( tmpOutputFile ))
+        # By default, write directly to the final output
+        scratchOutputPath = outputFilePath
+        
+        if config.use_node_local_scratch:
+            # Create a temporary file to generate the output
+            # (Temp directory on a local disk may provide faster access)
+            tempDir = tempfile.mkdtemp()
+            tmpOutputFilePath = os.path.join(tempDir, roiString + ".h5")
+            logger.info("Constructing output in temporary file: {}".format( tmpOutputFilePath ))
+            scratchOutputPath = tmpOutputFilePath
         
         # Create the output file in our local scratch area.
-        with h5py.File( tmpOutputFile, 'w' ) as outputFile:
+        with h5py.File( scratchOutputPath, 'w' ) as outputFile:
             assert self.Input.ready()
     
             # Extract sub-region
@@ -106,19 +111,19 @@ class OpTaskWorker(Operator):
                 result[0] = opH5Writer.WriteImage.value
                 logger.info( "Finished task in {} seconds".format( computeTimer.seconds() ) )
         
-        # Now copy the result file to the scratch area to be picked up by the master process
-        with Timer() as copyTimer:
-            logger.info( "Copying {} to {}...".format(tmpOutputFile, outputFilePath) )
-            shutil.copyfile(tmpOutputFile, outputFilePath)
-            logger.info( "Finished copying after {} seconds".format( copyTimer.seconds() ) )
-        
+        if config.use_node_local_scratch:
+            # Copy the temp file to the scratch area to be picked up by the master process
+            with Timer() as copyTimer:
+                logger.info( "Copying {} to {}...".format(tmpOutputFilePath, outputFilePath) )
+                shutil.copyfile(tmpOutputFilePath, outputFilePath)
+                logger.info( "Finished copying after {} seconds".format( copyTimer.seconds() ) )
+                # Delete the tempfile
+                os.remove( tmpOutputFilePath )
+
         # Now create the status file to show that we're finished.
         statusFile = file(statusFilePath, 'w')
         statusFile.write('Yay!')
 
-        # Delete the tempfile
-        os.remove( tmpOutputFile )
-        
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -147,26 +152,35 @@ class OpClusterize(Operator):
         self.ReturnCode.meta.shape = (1,)
     
     def execute(self, slot, subindex, roi, result):
+        # We use fabric for executing remote tasks
+        import fabric.api as fab
+
         success = True
         
         configFilePath = self.ConfigFilePath.value
-        with open(configFilePath) as configFile:
-            self._configDict = { str(k) : str(v) for k,v in json.load( configFile ).items() }
+        self._config = parseClusterConfigFile( configFilePath )
 
         taskInfos = self._prepareTaskInfos()
-        
+
+        @fab.hosts( self._config.task_launch_server )
+        def remoteCommand( cmd ):
+            with fab.cd( self._config.server_working_directory ):
+                fab.run( cmd )
+
         # Spawn each task
         for taskInfo in taskInfos.values():
             logger.info("Launching node task: " + taskInfo.command )
-            # Use a separate thread to spawn the task.
-            # This shouldn't add much overhead, and we won't block if the command that actually spawns the work is blocking.
-            th = threading.Thread( target=partial(subprocess.call, taskInfo.command, shell=True  ) )
-            th.start()
+            fab.execute( remoteCommand, taskInfo.command )            
 
         # Create the destination file if necessary
-        self._prepareDestination( taskInfos )
+        unneeded_rois = self._prepareDestination( taskInfos )
+        
+        # Remove any tasks that we don't need to compute (they were finished in a previous run)
+        for roi in unneeded_rois:
+            logger.info( "No need to run task: {} for roi: {}".format( taskInfos[roi].taskName, roi ) )
+            del taskInfos[roi]
 
-        timeOut = autoEval( self._configDict['task_timeout_secs'], int )
+        timeOut = self._config.task_timeout_secs
         with Timer() as totalTimer:
             # When each task completes, it creates a status file.
             while len(taskInfos) > 0:
@@ -212,7 +226,7 @@ class OpClusterize(Operator):
         taggedShape = self.Input.meta.getTaggedShape()
 
         spaceDims = filter( lambda (key, dim): key in 'xyz' and dim > 1, taggedShape.items() ) 
-        numJobs = autoEval(self._configDict['num_jobs'], int)
+        numJobs = self._config.num_jobs
         numJobsPerSpaceDim = math.pow(numJobs, 1.0/len(spaceDims))
         numJobsPerSpaceDim = int(round(numJobsPerSpaceDim))
 
@@ -238,7 +252,7 @@ class OpClusterize(Operator):
         rois = self._getRoiList()
         logger.info( "Dividing into {} node jobs.".format( len(rois) ) )
                 
-        taskInfos = {}
+        taskInfos = collections.OrderedDict()
         for roiIndex, roi in enumerate(rois):
             roi = ( tuple(roi[0]), tuple(roi[1]) )
             taskInfo = OpClusterize.TaskInfo()
@@ -248,8 +262,8 @@ class OpClusterize(Operator):
             statusFileName = STATUS_FILE_NAME_FORMAT.format( taskName, str(roi) )
             outputFileName = OUTPUT_FILE_NAME_FORMAT.format( taskName, str(roi) )
 
-            statusFilePath = os.path.join( self._configDict['scratch_directory'], statusFileName )
-            outputFilePath = os.path.join( self._configDict['scratch_directory'], outputFileName )
+            statusFilePath = os.path.join( self._config.scratch_directory, statusFileName )
+            outputFilePath = os.path.join( self._config.scratch_directory, outputFileName )
 
             commandArgs = []
             commandArgs.append( "--option_config_file=" + self.ConfigFilePath.value )
@@ -258,12 +272,12 @@ class OpClusterize(Operator):
             commandArgs.append( "--process_name={}".format(taskName)  )
 
             # Check the command format string: We need to know where to put our args...
-            commandFormat = self._configDict['command_format']
-            assert commandFormat.find("{args}") != -1
+            commandFormat = self._config.command_format
+            assert commandFormat.find("{task_args}") != -1
             
             allArgs = " " + " ".join(commandArgs) + " "
             taskInfo.taskName = taskName
-            taskInfo.command = commandFormat.format( args=allArgs, task_name=taskName )
+            taskInfo.command = commandFormat.format( task_args=allArgs, task_name=taskName )
             taskInfo.statusFilePath = statusFilePath
             taskInfo.outputFilePath = outputFilePath
             taskInfos[roi] = taskInfo
@@ -277,6 +291,21 @@ class OpClusterize(Operator):
         return taskInfos
 
     def _prepareDestination(self, taskInfos):
+        """
+        - If the result file doesn't exist yet, create it (and the dataset)
+        - If the result file already exists, return a list of the rois that 
+        are NOT needed (their data already exists in the final output)
+        """
+        allRoiStrings = map( lambda taskInfo: Roi.dumps( taskInfo.subregion ), taskInfos.values() )
+        allRoiStrings = sorted( allRoiStrings )
+        # Create a unique hash for this roi scheme.
+        # If it changes, we can't use any previous data.
+        sha = hashlib.sha1()
+        for roiString in allRoiStrings:
+            sha.update(roiString)
+        roiSchemeHash = sha.hexdigest()
+        
+        alreadyFinishedRois = []
         with h5py.File( self.OutputFilePath.value ) as destinationFile:
             if OpClusterize.FINAL_DATASET_NAME not in destinationFile.keys():
                 dtypeBytes = self._getDtypeBytes()
@@ -305,11 +334,41 @@ class OpClusterize(Operator):
                                                                dtype=self.Input.meta.dtype,
                                                                chunks=chunkShape)
 
-                missingRois = map( lambda taskInfo: Roi.dumps( taskInfo.subregion ), taskInfos.values() )
-                resultDataset.attrs['missingRois'] = missingRois
-    
+                resultDataset.attrs['missingRois'] = allRoiStrings
+                resultDataset.attrs['roiSchemeHash'] = roiSchemeHash
+            else:
+                # The dataset already exists, so find out which tasks we don't need to run.
+                resultDataset = destinationFile[OpClusterize.FINAL_DATASET_NAME]
+
+                assert 'missingRois' in resultDataset.attrs, "Existing output dataset doesn't have expected attribute 'missingRois'."
+                assert 'roiSchemeHash' in resultDataset.attrs, "Existing output dataset doesn't have expected attribute 'roiSchemeHash'."
+                assert resultDataset.shape == self.Input.meta.shape, "Existing output dataset has wrong shape.  Are you re-using an output file for a new dataset?"
+                assert resultDataset.dtype == self.Input.meta.dtype, "Existing output dataset has wrong dtype.  Are you re-using an output file for a new dataset?"
+
+                # It looks like we already started working on this dataset in a previous run.
+                # If we used the same roi break-down as before, we can continue where we left off.
+                previousRoiSchemeHash = resultDataset.attrs['roiSchemeHash']
+
+                if previousRoiSchemeHash != roiSchemeHash:
+                    resultDataset.attrs['missingRois'] = allRoiStrings
+                    resultDataset.attrs['roiSchemeHash'] = roiSchemeHash
+                else:
+                    missingRois = set( resultDataset.attrs['missingRois'] )
+                    for roi, taskInfo in taskInfos.items():
+                        if Roi.dumps( taskInfo.subregion ) not in missingRois:
+                            alreadyFinishedRois.append( roi )
+                
+            return alreadyFinishedRois
 
     def _copyFinishedResults(self, taskInfos):
+        """
+        For each of the taskInfos provided:
+        - Check to see if we have a status file for that task
+        - If so, copy the the data from the task output file into the final output file
+        - Remove the task from final dataset's list of 'missing rois'
+        
+        Return the list of rois that we processed.
+        """
         finished_rois = []
         destinationFile = None
         resultDataset = None
@@ -332,51 +391,53 @@ class OpClusterize(Operator):
                 missingRois = set( resultDataset.attrs['missingRois'] )
 
             roiString = Roi.dumps( taskInfo.subregion )
-            if roiString in missingRois:
-                with Timer() as fileCopyTimer:
-                    # Copy the scratch file to local scratch area before we open it with h5py
-                    tempDir = tempfile.mkdtemp()
-                    roiString = Roi.dumps( taskInfo.subregion )
-                    tmpOutputFilePath = os.path.join(tempDir, roiString + ".h5")
-    
-                    logger.info( "Copying {} to {}...".format(taskInfo.outputFilePath, tmpOutputFilePath) )
-                    shutil.copyfile(taskInfo.outputFilePath, tmpOutputFilePath)
-                    logger.info( "Finished copying after {} seconds".format( fileCopyTimer.seconds() ) )
-    
-                # Open the file
-                with h5py.File( tmpOutputFilePath, 'r' ) as f:
-                    # Check the result
-                    assert 'node_result' in f.keys()
-                    assert numpy.all(f['node_result'].shape == numpy.subtract(roi[1], roi[0]))
-                    assert f['node_result'].dtype == self.Input.meta.dtype
-                    assert f['node_result'].attrs['axistags'] == self.Input.meta.axistags.toJSON()
-        
-                    shape = f['node_result'][:].shape
-    
-                    dtypeBytes = self._getDtypeBytes()
-                    
-                    # Copy the data into our result (which might be an h5py dataset...)
-                    key = taskInfo.subregion.toSlice()
-        
-                    with Timer() as copyTimer:
-                        resultDataset[key] = f['node_result'][:]
-        
-                    totalBytes = dtypeBytes * numpy.prod(shape)
-                    totalMB = totalBytes / (1000*1000)
-        
-                    logger.info( "Copying {} MB hdf5 slice took {} seconds".format(totalMB, copyTimer.seconds() ) )
-                    finished_rois.append(roi)
-    
-                    # Remove the roi from the list of remaining rois
-                    missingRois.remove( Roi.dumps(taskInfo.subregion) )
+            assert roiString in missingRois, "This task didn't need to be executed: it wasn't missing from the result!"
+            with Timer() as fileCopyTimer:
+                # Copy the scratch file to local scratch area before we open it with h5py
+                tempDir = tempfile.mkdtemp()
+                roiString = Roi.dumps( taskInfo.subregion )
+                tmpOutputFilePath = os.path.join(tempDir, roiString + ".h5")
 
-                os.remove(tmpOutputFilePath)
+                logger.info( "Copying {} to {}...".format(taskInfo.outputFilePath, tmpOutputFilePath) )
+                shutil.copyfile(taskInfo.outputFilePath, tmpOutputFilePath)
+                logger.info( "Finished copying after {} seconds".format( fileCopyTimer.seconds() ) )
+
+            # Open the file
+            with h5py.File( tmpOutputFilePath, 'r' ) as f:
+                # Check the result
+                assert 'node_result' in f.keys()
+                assert numpy.all(f['node_result'].shape == numpy.subtract(roi[1], roi[0]))
+                assert f['node_result'].dtype == self.Input.meta.dtype
+                assert f['node_result'].attrs['axistags'] == self.Input.meta.axistags.toJSON()
+    
+                shape = f['node_result'][:].shape
+
+                dtypeBytes = self._getDtypeBytes()
+                
+                # Copy the data into our result (which might be an h5py dataset...)
+                key = taskInfo.subregion.toSlice()
+    
+                with Timer() as copyTimer:
+                    resultDataset[key] = f['node_result'][:]
+    
+                totalBytes = dtypeBytes * numpy.prod(shape)
+                totalMB = totalBytes / (1000*1000)
+    
+                logger.info( "Copying {} MB hdf5 slice took {} seconds".format(totalMB, copyTimer.seconds() ) )
+                finished_rois.append(roi)
+
+                # Remove the roi from the list of remaining rois
+                roiString = Roi.dumps(taskInfo.subregion)
+                missingRois.remove( roiString )
+
+            os.remove(tmpOutputFilePath)
 
         # For now, we close the file after every pass in case something goes horribly wrong...
         if destinationFile is not None:
             # Update the list of rois that are still missing from the output file.
             resultDataset.attrs['missingRois'] = list(missingRois)
             destinationFile.close()
+            destinationFile = None
 
         return finished_rois
 

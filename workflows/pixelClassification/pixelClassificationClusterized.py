@@ -10,7 +10,6 @@ import functools
 import subprocess
 import threading
 import Queue
-import json
 
 # HCI
 from lazyflow.graph import Graph
@@ -22,8 +21,9 @@ import ilastik.utility.monkey_patches
 from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.applets.batchIo.opBatchIo import ExportFormat
-from ilastik.utility import PathComponents, autoEval
+from ilastik.utility import PathComponents
 import ilastik.utility.globals
+from ilastik.clusterConfig import parseClusterConfigFile
 
 import workflows # Load all known workflow modules
 
@@ -85,11 +85,10 @@ def runWorkflow(parsed_args):
 
     # Read the config file
     configFilePath = args.option_config_file
-    with open(configFilePath) as configFile:
-        configDict = { str(k) : str(v) for k,v in json.load( configFile ).items() }
+    config = parseClusterConfigFile( configFilePath )
 
     # Update the monkey_patch settings
-    ilastik.utility.monkey_patches.apply_setting_dict( configDict )
+    ilastik.utility.monkey_patches.apply_setting_dict( config.__dict__ )
 
     # If we've got a process name, re-initialize the logger from scratch
     task_name = "node"
@@ -102,7 +101,7 @@ def runWorkflow(parsed_args):
         raise RuntimeError("Project file '" + args.project + "' does not exist.")
 
     # Instantiate 'shell'
-    shell = HeadlessShell( functools.partial(Workflow.getSubclass(configDict['workflow_type']), appendBatchOperators=False) )
+    shell = HeadlessShell( functools.partial(Workflow.getSubclass(config.workflow_type), appendBatchOperators=False) )
     
     # Load project (auto-import it if necessary)
     logger.info("Opening project: '" + args.project + "'")
@@ -127,9 +126,9 @@ def runWorkflow(parsed_args):
     
             # If we have a way to report task progress (e.g. by updating the job name),
             #  then subscribe to progress signals
-            if 'task_progress_update_command' in configDict:
+            if config.task_progress_update_command is not None:
                 def report_progress( progress ):
-                    cmd = configDict['task_progress_update_command'] + " {}".format( int(progress) )
+                    cmd = config.task_progress_update_command.format( progress=int(progress) )
                     def shell_call(shell_cmd):
                         logger.debug( "Executing progress command: " + cmd )
                         subprocess.call( shell_cmd, shell=True )
@@ -190,7 +189,7 @@ if __name__ == "__main__":
 
         args = []
         args.append( "--process_name=MASTER")
-        args.append( "--option_config_file=/groups/flyem/data/bergs_scratch/options/cluster_options.json")
+        args.append( "--option_config_file=/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik/cluster_options.json")
         args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
         args.append( "--output_file=/home/bergs/clusterstuff/results/GIGACUBE_RESULTS.h5")
         ##args.append( "--workflow_type=PixelClassificationWorkflow")
