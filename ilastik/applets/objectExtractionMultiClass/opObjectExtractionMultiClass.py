@@ -20,84 +20,125 @@ class OpObjectExtractionMultiClass(Operator):
     RegionCenters = OutputSlot(stype=Opaque, rtype=List)
     RegionFeatures = OutputSlot(stype=Opaque, rtype=List)
     ClassMapping = OutputSlot(stype=Opaque, rtype=List)
-    DistanceTransform = OutputSlot()
-    MaximumDistanceTransform = OutputSlot()        # regional maximums of the distance transform    
-    RegionLocalCenters = OutputSlot(stype=Opaque, rtype=List)  
+#    DistanceTransform = OutputSlot()
+#    MaximumDistanceTransform = OutputSlot()        # regional maximums of the distance transform    
+#    RegionLocalCenters = OutputSlot(stype=Opaque, rtype=List)  
     BinaryImage = OutputSlot()
-    
 
+    # channel 0: background channel, i.e. background vs. non-background
+    # channel 2: division channel, i.e. division vs. non-division
+    backgroundChannel = 0
+    divisionChannel = 2
+    
     def __init__(self, parent=None, graph=None):        
         super(OpObjectExtractionMultiClass, self).__init__(parent=parent, graph=graph)
-        
+    
         self._opThresholding = OpThresholding(parent=self,graph=graph)
         self._opThresholding.Threshold.setValue(0.5)
         self._opThresholding.Input.connect(self.Images)
-        self.BinaryImage.connect(self._opThresholding.BinaryImage)
-        
-        # TODO: generalize to m classes
-        self._opSubRegionBgImage = OpSubRegion(parent=self, graph=graph)        
-        self._opSubRegionBgImage.inputs["Input"].connect(self._opThresholding.BinaryImage)
                 
-        self._opSubRegionDivImage = OpSubRegion(parent=self,graph=graph)
-        self._opSubRegionDivImage.inputs["Input"].connect(self._opThresholding.BinaryImage)        
+        self._opObjectExtraction = OpObjectExtraction(parent=self,graph=graph)
+        self._opObjectExtraction.BinaryImage.connect(self._opThresholding.BinaryImage)
+        self._opObjectExtraction.RawImage.connect(self.RawImage)
         
-        self._opObjectExtractionBg = OpObjectExtraction(parent=self,graph=graph)
-        self._opObjectExtractionBg.BinaryImage.connect(self._opSubRegionBgImage.outputs["Output"])    
-        self._opObjectExtractionBg.BackgroundLabel.setValue(1)
+        # set the background label for each channel: label 1 for channel 0, label 0 for channel 2, 
+        # the labelimage of channel 1 will not be computed, set to -1
+        self._opObjectExtraction.BackgroundLabels.setValue([1,-1,0]) 
         
-        self._opObjectExtractionDiv = OpObjectExtraction(parent=self,graph=graph)
-        self._opObjectExtractionDiv.BinaryImage.connect(self._opSubRegionDivImage.outputs["Output"])
-        self._opObjectExtractionDiv.BackgroundLabel.setValue(0)
-        
-        self._opDistanceTransform = OpDistanceTransform3D(parent=self,graph=graph)
-        self._opDistanceTransform.Image.connect(self._opObjectExtractionBg.LabelImage)     
-        
-        self._opRegionalMaximum = OpRegionalMaximum(parent=self,graph=graph)
-        self._opRegionalMaximum.Image.connect(self._opDistanceTransform.DistanceTransformImage)
-        self._opRegionalMaximum.LabelImage.connect(self._opObjectExtractionBg.LabelImage)   
-        
-        self.LabelImage.connect(self._opObjectExtractionBg.LabelImage)
-        self.ObjectCenterImage.connect(self._opObjectExtractionBg.ObjectCenterImage)
-        self.RegionCenters.connect(self._opObjectExtractionBg.RegionCenters)
-        self.RegionFeatures.connect(self._opObjectExtractionBg.RegionFeatures)        
-        
+#        self._opDistanceTransform = OpDistanceTransform3D(parent=self,graph=graph)
+#        self._opDistanceTransform.Image.connect(self._opObjectExtraction.LabelImage)     
+#        
+#        self._opRegionalMaximum = OpRegionalMaximum(parent=self,graph=graph)
+#        self._opRegionalMaximum.Image.connect(self._opDistanceTransform.DistanceTransformImage)
+#        self._opRegionalMaximum.LabelImage.connect(self._opObjectExtraction.LabelImage)   
+                        
         self._opClassExtraction = OpClassExtraction(parent=self,graph=graph)
-        self._opClassExtraction.LabelImageBg.connect(self._opObjectExtractionBg.LabelImage)
-        self._opClassExtraction.LabelImageDiv.connect(self._opObjectExtractionDiv.LabelImage)
-        self._opClassExtraction.RegionFeaturesBg.connect(self._opObjectExtractionBg.RegionFeatures)
-        self._opClassExtraction.RegionFeaturesDiv.connect(self._opObjectExtractionDiv.RegionFeatures)
+        self._opClassExtraction.LabelImage.connect(self._opObjectExtraction.LabelImage)
+        self._opClassExtraction.RegionFeatures.connect(self._opObjectExtraction.RegionFeatures)
+        
+        self._opClassExtraction.BackgroundChannel.setValue(self.backgroundChannel)
+        self._opClassExtraction.DivisionChannel.setValue(self.divisionChannel)
         
         self.ClassMapping.connect(self._opClassExtraction.ClassMapping)        
-        self.DistanceTransform.connect(self._opDistanceTransform.DistanceTransformImage)
-        self.RegionLocalCenters.connect(self._opRegionalMaximum.RegionLocalCenters)
-        self.MaximumDistanceTransform.connect(self._opRegionalMaximum.MaximumImage)
+#        self.DistanceTransform.connect(self._opDistanceTransform.DistanceTransformImage)
+#        self.RegionLocalCenters.connect(self._opRegionalMaximum.RegionLocalCenters)
+#        self.MaximumDistanceTransform.connect(self._opRegionalMaximum.MaximumImage)
 
-    def setupOutputs(self):
-        # TODO: set values to channel 0 (if label 0 == bg)
-        # assumes that background == label 0, assumes t,x,y,z,c        
-        backgroundlabel = 0
-        start = (len(self.Images.meta.shape) - 1) * [0,] + [backgroundlabel,]   
-        stop = list(self.Images.meta.shape[0:-1]) + [backgroundlabel + 1,]                
-        self._opSubRegionBgImage.inputs["Start"].setValue(tuple(start))        
-        self._opSubRegionBgImage.inputs["Stop"].setValue(tuple(stop)) 
+    def setupOutputs(self):       
+        shape = list(self.Images.meta.shape)
+        shape[-1] = 1
+        self.LabelImage.meta.assignFrom(self.RawImage.meta)
+        self.LabelImage.meta.dtype = numpy.uint32
+        self.LabelImage.meta.shape = shape     
         
-        # assumes that division == label 2, assumes t,x,y,z,c
-        divisionlabel = 2
-        start[-1] = divisionlabel        
-        stop[-1] = divisionlabel + 1                
-        self._opSubRegionDivImage.inputs["Start"].setValue(tuple(start))        
-        self._opSubRegionDivImage.inputs["Stop"].setValue(tuple(stop))        
+        self.ObjectCenterImage.meta.assignFrom(self.RawImage.meta)
+        self.ObjectCenterImage.meta.shape = shape
         
-        self.MaximumDistanceTransform.meta.assignFrom(self.DistanceTransform.meta)
-            
-
+        self.RegionCenters.meta.shape = self.Images.meta.shape[0:1]
+        self.RegionCenters.meta.dtype = object
+        
+        self.RegionFeatures.meta.shape = self.Images.meta.shape[0:1]
+        self.RegionFeatures.meta.dtype = object
+        
+        self.ClassMapping.meta.shape = self.Images.meta.shape[0:1]
+        self.ClassMapping.meta.dtype = object
+        
+        self.BinaryImage.meta.assignFrom(self.Images.meta)
+        self.BinaryImage.meta.shape = shape
+        self.BinaryImage.meta.dtype = numpy.uint32
+        
+                
+    def execute(self, slot, subindex, roi, result):
+        bgChannel = self.backgroundChannel        
+   
+        if slot == self.LabelImage:
+            assert(roi.stop[-1] - roi.start[-1] == 1), "more than 1 channel requested"
+            roi.start[-1] = bgChannel
+            roi.stop[-1] = bgChannel+1                   
+            result = self._opClassExtraction.LabelImage.get(roi).wait()
+            return result
+        if slot == self.ObjectCenterImage:
+            assert(roi.stop[-1] - roi.start[-1] == 1), "more than 1 channel requested"
+            roi.start[-1] = bgChannel
+            roi.stop[-1] = bgChannel+1                    
+            result = self._opObjectExtraction.ObjectCenterImage.get(roi).wait()
+            return result
+        if slot == self.BinaryImage:
+            assert(roi.stop[-1] - roi.start[-1] == 1), "more than 1 channel requested"
+            roi.start[-1] = bgChannel
+            roi.stop[-1] = bgChannel+1                   
+            result = self._opThresholding.BinaryImage.get(roi).wait()
+            return result            
+        if slot == self.RegionCenters:
+            feats = self._opObjectExtraction.RegionCenters.get(roi).wait()
+            feats_result = {}
+            for t in roi:
+                feats_at = feats[t]
+                assert(len(feats_at) == self.Images.meta.shape[-1]), "number of channels in feature list differs from number of channels in input"
+                feats_at_wo_channels = feats_at[bgChannel]                
+                feats_result[t] = feats_at_wo_channels
+            result = feats_result
+            return result
+        if slot == self.RegionFeatures:
+            feats = self._opObjectExtraction.RegionFeatures.get(roi).wait()
+            feats_result = {}
+            for t in roi:
+                feats_at = feats[t]
+                assert(len(feats_at) == self.Images.meta.shape[-1]), "number of channels in feature list differs from number of channels in input"
+                feats_at_wo_channels = feats_at[bgChannel]                
+                feats_result[t] = feats_at_wo_channels
+            result = feats_result
+            return result
+        
+        
+        
 class OpClassExtraction(Operator):    
     name = "Class Extraction"
     
-    LabelImageBg = InputSlot()
-    LabelImageDiv = InputSlot()
-    RegionFeaturesBg = InputSlot()
-    RegionFeaturesDiv = InputSlot()
+    LabelImage = InputSlot()    
+    RegionFeatures = InputSlot()
+    BackgroundChannel = InputSlot(stype='opaque') # index of background channel
+    DivisionChannel = InputSlot(stype='opaque')   # index of division channel
     
     ClassMapping = OutputSlot(stype=Opaque, rtype=List)
     
@@ -105,6 +146,9 @@ class OpClassExtraction(Operator):
         super(OpClassExtraction, self).__init__(parent=parent, graph=graph)
         self._cache = {}
     
+    def setupOutputs(self):        
+        self.ClassMapping.meta.shape = self.LabelImage.meta.shape[0:1]
+        self.ClassMapping.meta.dtype = object
     
     def execute(self, slot, subindex, roi, result):
         def extract( labelImageBg, labelImageDiv, regionFeaturesBg, regionFeaturesDiv ):
@@ -129,34 +173,46 @@ class OpClassExtraction(Operator):
                 else:  
                     prob[labelBg] = [1-p, p]  # [ P(non-division), P(division) ]
             return prob
-            
+        
+        bgChannel = self.BackgroundChannel.value
+        divChannel = self.DivisionChannel.value
+          
         probs = {}
         for t in roi:
             print "Class Extraction at " + str(t) + " "
             if t in self._cache:
                 probs_at = self._cache[t]
-            elif t == self.LabelImageBg.meta.shape[0] - 1:
-                rfBg = self.RegionFeaturesBg.get([t]).wait()
+            elif t == self.LabelImage.meta.shape[0] - 1:
+                rfBg = self.RegionFeatures.get([t]).wait()
+                rfBg = rfBg[bgChannel]
                 prob = [[1,0]] * (len(rfBg[0]['Count']) - 1)            
                 probs_at = prob 
                 self._cache[t] = probs_at
             else:
-                troi = SubRegion( self.LabelImageBg, start = [t,] + (len(self.LabelImageBg.meta.shape) - 1) * [0,], stop = [t+1,] + list(self.LabelImageBg.meta.shape[1:]))
-                liBg = self.LabelImageBg.get(troi).wait()
-                liBg = liBg[0,...,0] # assumes t,x,y,z,c
-                rfBg = self.RegionFeaturesBg.get([t]).wait()
-                rfBg = rfBg[t]                
-                liDiv = self.LabelImageDiv.get(troi).wait()
+                tcroi = SubRegion( self.LabelImage, start = [t,] + (len(self.LabelImage.meta.shape) - 2) * [0,] + [bgChannel,], 
+                                  stop = [t+1,] + list(self.LabelImage.meta.shape[1:-1]) + [bgChannel+1,])
+                liBg = self.LabelImage.get(tcroi).wait()
+                liBg = liBg[0,...,0] 
+                rfBg = self.RegionFeatures.get([t]).wait()
+                rfBg = rfBg[t][bgChannel]
+                
+                tcroi = SubRegion( self.LabelImage, start = [t,] + (len(self.LabelImage.meta.shape) - 2) * [0,] + [divChannel,], 
+                                  stop = [t+1,] + list(self.LabelImage.meta.shape[1:-1]) + [divChannel+1,])
+                liDiv = self.LabelImage.get(tcroi).wait()
                 liDiv = liDiv[0,...,0] # assumes t,x,y,z,c
-                rfDiv = self.RegionFeaturesDiv.get([t]).wait()
-                rfDiv = rfDiv[t]
+                rfDiv = self.RegionFeatures.get([t]).wait()
+                rfDiv = rfDiv[t][divChannel]
                 probs_at = extract(liBg, liDiv, rfBg, rfDiv)
                 self._cache[t] = probs_at
             probs[t] = probs_at
 
-        return probs        
-        
+        return probs
+            
 
+    def propagateDirty(self, slot, subindex, roi):
+        self.ClassMapping.setDirty(roi)
+                        
+    
 class OpThresholding(Operator):
     name = "Thresholding"
     
@@ -165,7 +221,7 @@ class OpThresholding(Operator):
     BinaryImage = OutputSlot()
     
     maximum = None
-    def setupOutputs(self):
+    def setupOutputs(self):        
         self.BinaryImage.meta.dtype = numpy.uint8
         self.BinaryImage.meta.shape = self.Input.meta.shape
         self.BinaryImage.meta.axistags = self.Input.meta.axistags
@@ -197,14 +253,15 @@ class OpDistanceTransform3D( Operator ):
         self._processedTimeSteps = []
         self._fixed = True
         
-    def setupOutputs( self ):
+    def setupOutputs( self ):        
         self.DistanceTransformImage.meta.assignFrom( self.Image.meta )
-        self.DistanceTransformImage.meta.dtype = numpy.uint8
-        m = self.DistanceTransformImage.meta   
-             
-        self._mem_h5.create_dataset( 'DistanceTransform', shape=m.shape, dtype=numpy.float, compression=1 )
         self.DistanceTransformComputation.meta.dtype = numpy.float
         self.DistanceTransformComputation.meta.shape = [0]
+            
+        self.DistanceTransformImage.meta.dtype = numpy.uint8
+        
+#        m = self.DistanceTransformImage.meta           
+#        self._mem_h5.create_dataset( 'DistanceTransform', shape=m.shape, dtype=numpy.float, compression=1 )
         
     def __del__( self ):
         self._mem_h5.close()
@@ -220,7 +277,7 @@ class OpDistanceTransform3D( Operator ):
         
         if slot is self.DistanceTransformComputation:
             # assumes t,x,y,z,c           
-            for t in range(roi.start[0],roi.stop[0]):            
+            for t in range(roi.starto[0],roi.stop[0]):            
                 if t not in self._processedTimeSteps:
                     print "Computing Distance Transform Image at " + str(t) + " "
                     sroi = SubRegion(self.Image, start=[t,0,0,0,0], stop=[t+1,] + list(self.Image.meta.shape[1:]))   
@@ -248,18 +305,20 @@ class OpRegionalMaximum( Operator ):
 
     def __init__(self, parent=None, graph=None):
         super(OpRegionalMaximum, self).__init__(parent=parent,graph=graph)
-        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)        
+        self._mem_h5 = h5py.File(str(id(self)), driver='core', backing_store=False)                
         self._processedTimeSteps = []
         self._fixed = True
         self._cache = {}
         
-    def setupOutputs( self ):
+    def setupOutputs( self ):        
         self.MaximumImage.meta.assignFrom( self.Image.meta )
         self.MaximumImage.meta.dtype = numpy.uint8
-        m = self.MaximumImage.meta        
-        self._mem_h5.create_dataset( 'MaximumImage', shape=m.shape, dtype=numpy.float, compression=1 )
         self.MaximumImageComputation.meta.dtype = numpy.float
         self.MaximumImageComputation.meta.shape = [0]
+        
+#        m = self.MaximumImage.meta           
+#        self._mem_h5.create_dataset( 'MaximumImage', shape=m.shape, dtype=numpy.float, compression=1 )
+        
         
     def __del__( self ):
         self._mem_h5.close()

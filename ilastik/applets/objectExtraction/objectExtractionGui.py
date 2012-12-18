@@ -130,9 +130,7 @@ class ObjectExtractionGui( QWidget ):
         """
 
         self.editor = VolumeEditor(self.layerstack)
-
-        #self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
-        #self.editor.setInteractionMode( 'navigation' )
+        
         self.volumeEditorWidget = VolumeEditorWidget()
         self.volumeEditorWidget.init(self.editor)
 
@@ -160,7 +158,7 @@ class ObjectExtractionGui( QWidget ):
         self._drawer.labelImageButton.pressed.connect(self._onLabelImageButtonPressed)
         self._drawer.extractObjectsButton.pressed.connect(self._onExtractObjectsButtonPressed)        
         
-        self._drawer.doAllButton.pressed.connect(self._onDoAllButtonPressed)
+#        self._drawer.doAllButton.pressed.connect(self._onDoAllButtonPressed)
 
 
     def _initViewerControlUi( self ):
@@ -225,9 +223,9 @@ class ObjectExtractionGui( QWidget ):
                 
         print 'Object Extraction: done.'
 
-        
-    def _onDoAllButtonPressed(self):    
-        self._onLabelImageButtonPressed()
-        self._onExtractObjectsButtonPressed()
+#        
+#    def _onDoAllButtonPressed(self):    
+#        self._onLabelImageButtonPressed()
+#        self._onExtractObjectsButtonPressed()
         
         

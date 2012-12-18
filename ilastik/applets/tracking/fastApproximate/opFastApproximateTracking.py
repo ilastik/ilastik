@@ -8,7 +8,7 @@ from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 
 class OpFastApproximateTracking(OpTrackingBase): 
     ClassMapping = InputSlot(stype=Opaque, rtype=List)            
-        
+    
     def track(self,
             time_range,
             x_range,
@@ -29,8 +29,11 @@ class OpFastApproximateTracking(OpTrackingBase):
         for d in distanceFeatures:
             distFeatureVector.append(d)  
             
-        max_traxel_id_at = 0
-        ts, filtered_labels, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale, max_traxel_id_at=max_traxel_id_at)
+        max_traxel_id_at = ctracking.VectorOfInt()
+        ts, filtered_labels, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
+                                                                      size_range, x_scale, y_scale, z_scale, 
+                                                                      max_traxel_id_at=max_traxel_id_at, 
+                                                                      with_div=True)        
         
         if empty_frame:
             print 'cannot track frames with 0 objects, abort.'

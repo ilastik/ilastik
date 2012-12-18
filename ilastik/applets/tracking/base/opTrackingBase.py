@@ -13,7 +13,7 @@ class OpTrackingBase(Operator):
 
     LabelImage = InputSlot()
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)    
-    RegionLocalCenters = InputSlot(stype=Opaque, rtype=List)
+#    RegionLocalCenters = InputSlot(stype=Opaque, rtype=List)
     RawImage = InputSlot()
 
     Output = OutputSlot()
@@ -26,7 +26,7 @@ class OpTrackingBase(Operator):
         self.last_y_range = ()
         self.last_z_range = ()        
     
-    def setupOutputs(self):
+    def setupOutputs(self):        
         self.Output.meta.assignFrom(self.LabelImage.meta)
     
     def execute(self, slot, subindex, roi, result):
@@ -40,7 +40,7 @@ class OpTrackingBase(Operator):
                 result[...] = 0
             return result          
         
-    def propagateDirty(self, inputSlot, subindex, roi):        
+    def propagateDirty(self, inputSlot, subindex, roi):     
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
 
@@ -113,7 +113,10 @@ class OpTrackingBase(Operator):
         self.last_x_range = x_range
         self.last_y_range = y_range
         self.last_z_range = z_range
-        self.Output.setDirty(SubRegion(self.Output))
+        
+        m = self.LabelImage.meta
+        roi = SubRegion(self.Output, start=5*(0,), stop=m.shape)
+        self.Output.setDirty(roi)
         
 
     def _generate_traxelstore(self,
@@ -143,7 +146,7 @@ class OpTrackingBase(Operator):
         print "filling traxelstore"
         ts = ctracking.TraxelStore()
                 
-        max_traxel_id_at = ctracking.VectorOfInt();        
+        max_traxel_id_at = ctracking.VectorOfInt()  
         filtered_labels = {}        
         obj_sizes = []
         total_count = 0

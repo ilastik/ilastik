@@ -54,5 +54,6 @@ class ChaingraphTrackingGui( TrackingGuiBase ):
                     det=det,
                     mdet=mdet,
                     ep_gap=epGap)
-                
+    
+        self._setLayerVisible("Objects", False)
     

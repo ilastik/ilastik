@@ -30,17 +30,21 @@ class FastApproximateTrackingGui( TrackingGuiBase ):
         to_z = self._drawer.to_z.value()        
         from_size = self._drawer.from_size.value()
         to_size = self._drawer.to_size.value()
-        distanceFeatures = []
-        if self._drawer.comCheckBox.isChecked():
-            distanceFeatures.append("com")
-        if self._drawer.volCheckBox.isChecked():
-            distanceFeatures.append("count")
         
+        distanceFeatures = []
+#        if self._drawer.comCheckBox.isChecked():
+#            distanceFeatures.append("com")
+#        if self._drawer.volCheckBox.isChecked():
+#            distanceFeatures.append("count")
+                
         if len(distanceFeatures) == 0:
-            self._drawer.comCheckBox.setChecked(True)
+#            self._drawer.comCheckBox.setChecked(True)
             distanceFeatures.append("com")
+            
         splitterHandling = self._drawer.splitterHandlingBox.isChecked()
-        mergerHandling = self._drawer.mergerHandlingBox.isChecked()
+        
+        mergerHandling = False
+#        mergerHandling = self._drawer.mergerHandlingBox.isChecked()
         
         self.time_range =  range(from_t, to_t + 1)
         
@@ -65,4 +69,5 @@ class FastApproximateTrackingGui( TrackingGuiBase ):
         self._drawer.exportTifButton.setEnabled(True)
         self._drawer.lineageTreeButton.setEnabled(True)
                 
+        self._setLayerVisible("Objects", False)
         

@@ -39,12 +39,15 @@ class FastApproximateTrackingWorkflow( Workflow ):
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
         
         ## Connect operators ##
-        opObjExtraction.Images.connect( opData.Image )
-        opObjExtraction.RawImage.connect( opRawData.Image )
-
+        opObjExtraction.RawImage.connect( opRawData.Image )                
+        opObjExtraction.Images.connect( opData.Image )        
+        
+        opTracking.RawImage.connect( opRawData.Image )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
         opTracking.ClassMapping.connect( opObjExtraction.ClassMapping )
-        opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )
-        opTracking.RawImage.connect( opRawData.Image )
+#        opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )
+
+        
+        
         

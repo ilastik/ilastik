@@ -79,5 +79,7 @@ class ConservationTrackingGui( TrackingGuiBase ):
         self._drawer.exportButton.setEnabled(True)
         self._drawer.exportTifButton.setEnabled(True)
         self._drawer.lineageTreeButton.setEnabled(True)
-                
+        
+        self._setLayerVisible("Objects", False)
+            
             

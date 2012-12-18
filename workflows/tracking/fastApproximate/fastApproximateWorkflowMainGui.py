@@ -28,4 +28,3 @@ if debug_testing:
 
 else:
     startShellGui( FastApproximateTrackingWorkflow )
- 

@@ -50,11 +50,6 @@ class ObjectExtractionMultiClassGui( QWidget ):
         self.mainOperator = topLevelOperatorView        
         self.layerstack = LayerStackModel()
 
-        #self.rawsrc = LazyflowSource( self.mainOperator.RawData )
-        #layerraw = GrayscaleLayer( self.rawsrc )
-        #layerraw.name = "Raw"
-        #self.layerstack.append( layerraw )
-
         self._viewerControlWidget = None
         self._initViewerControlUi()
 
@@ -66,14 +61,18 @@ class ObjectExtractionMultiClassGui( QWidget ):
         self._initViewer()
         
 
-    def _initViewer(self):
+    def _initViewer(self):       
         mainOperator = self.mainOperator        
-                   
+        
+        ct = colortables.create_default_8bit()
         self.binaryimages = LazyflowSource( mainOperator.BinaryImage )
-        layer = GrayscaleLayer( self.binaryimages, range=(0,1), normalize=(0,1) )
+#        layer = GrayscaleLayer( self.binaryimages, range=(0,1), normalize=(0,1) )
+        ct[1] = QColor(0,0,0,0).rgba() # make 1 transparent      
+#        ct[0] = QColor(0,0,0,255).rgba() # make 0 black  
+        layer = ColortableLayer( self.binaryimages, ct )
         layer.name = "Input Image"
         layer.opacity = 0.5
-        layer.visible = False        
+        layer.visible = True        
         self.layerstack.append(layer)
 
         ct = colortables.create_default_16bit()
@@ -82,6 +81,7 @@ class ObjectExtractionMultiClassGui( QWidget ):
         layer = ColortableLayer( self.objectssrc, ct )
         layer.name = "Label Image"
         layer.opacity = 0.5
+        layer.visible = True
         self.layerstack.append(layer)
 
         self.centerimagesrc = LazyflowSource( mainOperator.ObjectCenterImage )
@@ -90,35 +90,35 @@ class ObjectExtractionMultiClassGui( QWidget ):
         layer.visible = False
         self.layerstack.append( layer )
                 
-        self.distanceTransform = LazyflowSource( mainOperator.DistanceTransform )        
-        # FIXME range/normalize: magic numbers
-        layer = GrayscaleLayer( self.distanceTransform, range=(0,100), normalize=(0,5) )
-        layer.name = "Distance Transform Image"
-        layer.visible = False
-        self.layerstack.append(layer)
+#        self.distanceTransform = LazyflowSource( mainOperator.DistanceTransform )        
+#        # FIXME range/normalize: magic numbers
+#        layer = GrayscaleLayer( self.distanceTransform, range=(0,100), normalize=(0,5) )
+#        layer.name = "Distance Transform Image"
+#        layer.visible = False
+#        self.layerstack.append(layer)
         
-        self.maxDistanceTransform = LazyflowSource( mainOperator.MaximumDistanceTransform )          
-        ct = colortables.create_default_8bit()
-        ct[1] = QColor(0,255,0,0).rgb() # make 1 green
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        ct[255] = QColor(255,255,255,0).rgba() # make 255 transparent
-        layer = ColortableLayer( self.maxDistanceTransform, ct )
-        layer.name = "Maximum Distance Image"
-        layer.visible = False
-        self.layerstack.append(layer)
+#        self.maxDistanceTransform = LazyflowSource( mainOperator.MaximumDistanceTransform )          
+#        ct = colortables.create_default_8bit()
+#        ct[1] = QColor(0,255,0,0).rgb() # make 1 green
+#        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+#        ct[255] = QColor(255,255,255,0).rgba() # make 255 transparent
+#        layer = ColortableLayer( self.maxDistanceTransform, ct )
+#        layer.name = "Maximum Distance Image"
+#        layer.visible = False
+#        self.layerstack.append(layer)
 
         ## raw data layer
         self.rawsrc = None        
         self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
         layerraw = GrayscaleLayer( self.rawsrc )
         layerraw.name = "Raw"
+        layerraw.visible = True
         self.layerstack.insert( len(self.layerstack), layerraw )
 
         mainOperator.RawImage.notifyReady( self._onReady )
         mainOperator.RawImage.notifyMetaChanged( self._onMetaChanged )
-        
-        
-        if mainOperator.Images.meta.shape:
+    
+        if mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = mainOperator.LabelImage.meta.shape
         mainOperator.Images.notifyMetaChanged( self._onMetaChanged )
         
@@ -150,8 +150,6 @@ class ObjectExtractionMultiClassGui( QWidget ):
 
         self.editor = VolumeEditor(self.layerstack)
 
-        #self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
-        #self.editor.setInteractionMode( 'navigation' )
         self.volumeEditorWidget = VolumeEditorWidget()
         self.volumeEditorWidget.init(self.editor)
 
@@ -169,7 +167,6 @@ class ObjectExtractionMultiClassGui( QWidget ):
 
         self.editor._lastImageViewFocus = 0
         
-
             
     def _initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
@@ -178,11 +175,11 @@ class ObjectExtractionMultiClassGui( QWidget ):
 
         self._drawer.labelImageButton.pressed.connect(self._onLabelImageButtonPressed)
         self._drawer.extractObjectsButton.pressed.connect(self._onExtractObjectsButtonPressed)
-        self._drawer.mergeSegmentationsButton.pressed.connect(self._onMergeSegmentationsButtonPressed)
-        self._drawer.distanceTransformButton.pressed.connect(self._onDistanceTransformButtonPressed)
-        self._drawer.maximumImageButton.pressed.connect(self._onMaximumImageButtonPressed)
+#        self._drawer.mergeSegmentationsButton.pressed.connect(self._onMergeSegmentationsButtonPressed)
+#        self._drawer.distanceTransformButton.pressed.connect(self._onDistanceTransformButtonPressed)
+#        self._drawer.maximumImageButton.pressed.connect(self._onMaximumImageButtonPressed)
         
-        self._drawer.doAllButton.pressed.connect(self._onDoAllButtonPressed)
+#        self._drawer.doAllButton.pressed.connect(self._onDoAllButtonPressed)
 
 
     def _initViewerControlUi( self ):
@@ -191,26 +188,18 @@ class ObjectExtractionMultiClassGui( QWidget ):
         self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
     def _onLabelImageButtonPressed( self ):
-        m = self.mainOperator.LabelImage.meta
+        m = self.mainOperator._opObjectExtraction.LabelImage.meta
         maxt = m.shape[0] - 1 # the last time frame will be dropped
-        progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt * 2)
+        progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())
         progress.forceShow()
 
-        # LabelImage for background/non-background (channel 0) and division/non-division (channel 2)        
         reqs = []
-        self.mainOperator._opObjectExtractionBg._opLabelImage._fixed = False
-        self.mainOperator._opObjectExtractionDiv._opLabelImage._fixed = False
-
         for t in range(maxt):            
-            reqs.append(self.mainOperator._opObjectExtractionBg._opLabelImage.LabelImageComputation([t]))
+            reqs.append(self.mainOperator._opObjectExtraction._opLabelImage.LabelImageComputation([t]))
             reqs[-1].submit()
-
-            reqs.append(self.mainOperator._opObjectExtractionDiv._opLabelImage.LabelImageComputation([t]))
-            reqs[-1].submit()
-
                         
         for i, req in enumerate(reqs):
             progress.setValue(i)
@@ -219,29 +208,27 @@ class ObjectExtractionMultiClassGui( QWidget ):
             else:
                 req.wait()
                 
-        progress.setValue(maxt * 2)        
+        progress.setValue(maxt)        
         
-        roi = SubRegion(self.mainOperator.LabelImage, start=5*(0,), stop=m.shape)
-        self.mainOperator.LabelImage.setDirty(roi)
+        roi = SubRegion(self.mainOperator._opObjectExtraction.LabelImage, start=5*(0,), stop=m.shape)
+        self.mainOperator._opObjectExtraction.LabelImage.setDirty(roi)
         
         print 'Label Segmentation: done.'
 
 
     def _onExtractObjectsButtonPressed( self ):
-        maxt = self.mainOperator.LabelImage.meta.shape[0] - 1 # the last time frame will be dropped
+        maxt = self.mainOperator._opObjectExtraction.LabelImage.meta.shape[0] - 1 # the last time frame will be dropped
         progress = QProgressDialog("Extracting objects...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())
 
         reqs = []
-        self.mainOperator._opObjectExtractionBg._opRegFeats.fixed = False
-        self.mainOperator._opObjectExtractionDiv._opRegFeats.fixed = False
+        self.mainOperator._opObjectExtraction._opRegFeats.fixed = False
         for t in range(maxt):
-            reqs.append(self.mainOperator._opObjectExtractionBg.RegionFeatures([t]))
+            reqs.append(self.mainOperator._opObjectExtraction.RegionFeatures([t]))
             reqs[-1].submit()
-            reqs.append(self.mainOperator._opObjectExtractionDiv.RegionFeatures([t]))
-            reqs[-1].submit()
+
         for i, req in enumerate(reqs):
             progress.setValue(i)
             if progress.wasCanceled():
@@ -249,18 +236,16 @@ class ObjectExtractionMultiClassGui( QWidget ):
             else:
                 req.wait()
                 
-        self.mainOperator._opObjectExtractionBg._opRegFeats.fixed = True 
-        self.mainOperator._opObjectExtractionDiv._opRegFeats.fixed = True
+        self.mainOperator._opObjectExtraction._opRegFeats.fixed = True 
         progress.setValue(maxt)
-        
-        self.mainOperator._opObjectExtractionBg.ObjectCenterImage.setDirty( SubRegion(self.mainOperator._opObjectExtractionBg.ObjectCenterImage))
-        self.mainOperator._opObjectExtractionDiv.ObjectCenterImage.setDirty( SubRegion(self.mainOperator._opObjectExtractionDiv.ObjectCenterImage))
-                
+                        
         print 'Object Extraction: done.'
+        
+        self._onMergeSegmentationsButtonPressed()
 
 
     def _onMergeSegmentationsButtonPressed(self):
-        m = self.mainOperator.LabelImage.meta
+        m = self.mainOperator._opObjectExtraction.LabelImage.meta
         maxt = m.shape[0] -1 # the last time frame will be dropped
         progress = QProgressDialog("Merging Background and Division Segmentations...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
@@ -286,8 +271,9 @@ class ObjectExtractionMultiClassGui( QWidget ):
         
         print 'Merge Segmentation: done.'
         
+        
     def _onDistanceTransformButtonPressed(self):       
-        m = self.mainOperator.LabelImage.meta
+        m = self.mainOperator._opObjectExtraction.LabelImage.meta
         maxt = m.shape[0] -1 # the last time frame will be dropped
         progress = QProgressDialog("Computing the distance transform...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
@@ -314,8 +300,9 @@ class ObjectExtractionMultiClassGui( QWidget ):
                 
         print "Distance Transform: done."
     
+    
     def _onMaximumImageButtonPressed(self):
-        m = self.mainOperator.LabelImage.meta
+        m = self.mainOperator._opObjectExtraction.LabelImage.meta
         maxt = m.shape[0] -1 # the last time frame will be dropped
         progress = QProgressDialog("Computing maximum distance transform...", "Stop", 0, 2*maxt)
         progress.setWindowModality(Qt.ApplicationModal)
@@ -357,11 +344,7 @@ class ObjectExtractionMultiClassGui( QWidget ):
         print 'Maximum image: done'
         
         
-    def _onDoAllButtonPressed(self):    
-        self._onLabelImageButtonPressed()
-        self._onExtractObjectsButtonPressed()
-        self._onMergeSegmentationsButtonPressed()
-        self._onDistanceTransformButtonPressed()
-        self._onMaximumImageButtonPressed()
-        
-        
+#    def _onDoAllButtonPressed(self):    
+#        self._onLabelImageButtonPressed()
+#        self._onExtractObjectsButtonPressed()
+#        self._onMergeSegmentationsButtonPressed()

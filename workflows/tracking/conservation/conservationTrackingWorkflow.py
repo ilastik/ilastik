@@ -38,13 +38,13 @@ class ConservationTrackingWorkflow( Workflow ):
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)    
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
         
-        ## Connect operators ##
-        opObjExtraction.Images.connect( opData.Image )
+        ## Connect operators ##        
         opObjExtraction.RawImage.connect( opRawData.Image )
+        opObjExtraction.Images.connect( opData.Image )
 
+        opTracking.RawImage.connect( opRawData.Image )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
         opTracking.ClassMapping.connect( opObjExtraction.ClassMapping )
-        opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )
-        opTracking.RawImage.connect( opRawData.Image )
+#        opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )        
     

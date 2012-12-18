@@ -14,32 +14,22 @@ import numpy as np
 import vigra
 from ilastik.applets.tracking.base.trackingUtilities import relabel,write_events
 from volumina.layer import GrayscaleLayer
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-class TrackingGuiBase( QWidget ):
+class TrackingGuiBase( LayerViewerGui ):
     """
     """
     
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
-    ###########################################
-    def centralWidget( self ):
-        return self.volumeEditorWidget        
+    ###########################################        
 
     def appletDrawer( self ):
         return self._drawer
 
-    def menus( self ):
-        return []
-
-    def viewerControlWidget( self ):
-        return self._viewerControlWidget
-
-    def stopAndCleanUp( self ):
-        pass
-        
     def reset( self ):
         print "TrackinGui.reset(): not implemented"
 
@@ -47,33 +37,23 @@ class TrackingGuiBase( QWidget ):
     ###########################################
     ###########################################
     
-    def __init__(self, mainOperator):
+    def __init__(self, topLevelOperatorView):
         """
         """
-        super(TrackingGuiBase, self).__init__()
-        self.mainOperator = mainOperator
-        self.layerstack = LayerStackModel()
+        self.topLevelOperatorView = topLevelOperatorView
+        super(TrackingGuiBase, self).__init__(topLevelOperatorView)
+        self.mainOperator = topLevelOperatorView
 
-        self._viewerControlWidget = None
-        self._initViewerControlUi()
-        
-        self.initColors()
-        
-        self.editor = None
-        self._initEditor()
-
-        self._initAppletDrawerUi()
+        self._initColors()
         
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
-        self._initViewer()
 
 
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.LabelImage:
-            if slot.meta.shape:
-                print slot.meta.shape
+            if slot.meta.shape:                
                 self.editor.dataShape = slot.meta.shape
 
                 maxt = slot.meta.shape[0]
@@ -85,43 +65,74 @@ class TrackingGuiBase( QWidget ):
                 self._drawer.lineageToBox.setRange(0,maxt-2)
                 self._drawer.lineageFromBox.setValue(0)
                 self._drawer.lineageToBox.setValue(maxt-2)
+            
+        if slot is self.mainOperator.RawImage:    
+            if slot.meta.shape and not self.rawsrc:    
+                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+                layerraw = GrayscaleLayer( self.rawsrc )
+                layerraw.name = "Raw"
+                self.layerstack.append( layerraw )
         
+    def _onReady( self, slot ):
+        if slot is self.mainOperator.RawImage:
+            if slot.meta.shape and not self.rawsrc:
+                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+                layerraw = GrayscaleLayer( self.rawsrc )    
+                layerraw.name = "Raw"
+                self.layerstack.append( layerraw )
 
-
-    def _initViewer( self ):
-        mainOperator = self.mainOperator
-
-        self.objectssrc = LazyflowSource( mainOperator.LabelImage )
-#        ct = colortables.create_default_8bit()
-        ct = colortables.create_random_8bit()
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        layer = ColortableLayer( self.objectssrc, ct )
-        layer.name = "Objects"
-        self.layerstack.append(layer)
-
-        ct[255] = QColor(255,255,255,230).rgba() # misdetections
-        self.trackingsrc = LazyflowSource( mainOperator.Output )
-        layer = ColortableLayer( self.trackingsrc, ct )
-        layer.name = "Tracking"
-        self.layerstack.append(layer)
+    
+    def setupLayers( self ):        
+        layers = []
         
-        if "MergerOutput" in mainOperator.outputs:
+        if "MergerOutput" in self.topLevelOperatorView.outputs:
             ct = colortables.create_default_8bit()
             for i in range(7):
                 ct[i] = self.mergerColors[i].rgba()
-            self.mergersrc = LazyflowSource( mainOperator.MergerOutput )
-            layer = ColortableLayer( self.mergersrc, ct )
-            layer.name = "Merger"
-            layer.visible = True
-            self.layerstack.append(layer)        
+            self.mergersrc = LazyflowSource( self.topLevelOperatorView.MergerOutput )
+            mergerLayer = ColortableLayer( self.mergersrc, ct )
+            mergerLayer.name = "Merger"
+            mergerLayer.visible = True
+            layers.append(mergerLayer)     
+            
+            
+        ct = colortables.create_random_8bit()
+        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+        ct[255] = QColor(255,255,255,230).rgba() # misdetections
+        self.trackingsrc = LazyflowSource( self.topLevelOperatorView.Output )
+        trackingLayer = ColortableLayer( self.trackingsrc, ct )
+        trackingLayer.name = "Tracking"
+        trackingLayer.visible = True
+        trackingLayer.opacity = 0.5
+        layers.append(trackingLayer)
+        
+        
+        self.objectssrc = LazyflowSource( self.topLevelOperatorView.LabelImage )
+#        ct = colortables.create_default_8bit()
+        ct = colortables.create_random_8bit()
+        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+        objLayer = ColortableLayer( self.objectssrc, ct )
+        objLayer.name = "Objects"
+        objLayer.opacity = 0.3
+        objLayer.visible = True
+        layers.append(objLayer)
 
-        if mainOperator.LabelImage.meta.shape:
-            self.editor.dataShape = mainOperator.LabelImage.meta.shape
 
-            maxt = mainOperator.LabelImage.meta.shape[0]
-            maxx = mainOperator.LabelImage.meta.shape[1]
-            maxy = mainOperator.LabelImage.meta.shape[2]
-            maxz = mainOperator.LabelImage.meta.shape[3]            
+        ## raw data layer
+        self.rawsrc = None
+        self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+        rawLayer = GrayscaleLayer( self.rawsrc )
+        rawLayer.name = "Raw"        
+        layers.insert( len(layers), rawLayer )   
+        
+        
+        if self.topLevelOperatorView.LabelImage.meta.shape:
+            self.editor.dataShape = self.topLevelOperatorView.LabelImage.meta.shape
+
+            maxt = self.topLevelOperatorView.LabelImage.meta.shape[0]
+            maxx = self.topLevelOperatorView.LabelImage.meta.shape[1]
+            maxy = self.topLevelOperatorView.LabelImage.meta.shape[2]
+            maxz = self.topLevelOperatorView.LabelImage.meta.shape[3]            
             self._drawer.from_time.setRange(0,maxt-1)
             self._drawer.from_time.setValue(0)
             self._drawer.to_time.setRange(0,maxt-2)
@@ -147,15 +158,13 @@ class TrackingGuiBase( QWidget ):
             self._drawer.lineageToBox.setRange(0,maxt-2)
             self._drawer.lineageToBox.setValue(maxt-2)    
         
-        ## raw data layer
-        self.rawsrc = None
-        self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
-        layerraw = GrayscaleLayer( self.rawsrc )
-        layerraw.name = "Raw"
-        self.layerstack.insert( len(self.layerstack), layerraw )   
-    
+        self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
+        self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
+        
+        return layers
 
-    def initColors(self):
+
+    def _initColors(self):
         self.mergerColors = [
                              QColor(0,0,0,0),
                              QColor(1,1,1,0),
@@ -167,34 +176,6 @@ class TrackingGuiBase( QWidget ):
                              QColor(128,128,255,255)
                              ]
         
-
-
-    def _initEditor(self):
-        """
-        Initialize the Volume Editor GUI.
-        """
-
-        self.editor = VolumeEditor(self.layerstack)
-
-        #self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
-        #self.editor.setInteractionMode( 'navigation' )
-        self.volumeEditorWidget = VolumeEditorWidget()
-        self.volumeEditorWidget.init(self.editor)                
-        
-        # The editor's layerstack is in charge of which layer movement buttons are enabled
-        model = self.editor.layerStack
-        model.canMoveSelectedUp.connect(self._viewerControlWidget.UpButton.setEnabled)
-        model.canMoveSelectedDown.connect(self._viewerControlWidget.DownButton.setEnabled)
-        model.canDeleteSelected.connect(self._viewerControlWidget.DeleteButton.setEnabled)
-
-        # Connect our layer movement buttons to the appropriate layerstack actions
-        self._viewerControlWidget.layerWidget.init(model)
-        self._viewerControlWidget.UpButton.clicked.connect(model.moveSelectedUp)
-        self._viewerControlWidget.DownButton.clicked.connect(model.moveSelectedDown)
-        self._viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
-
-        self.editor._lastImageViewFocus = 0
-
     def _labelSetStyleSheet(self, qlabel, qcolor):        
         qlabel.setAutoFillBackground(True)                 
         values = "{r}, {g}, {b}, {a}".format(r = qcolor.red(),
@@ -207,7 +188,7 @@ class TrackingGuiBase( QWidget ):
     def _loadUiFile(self):
         raise NotImplementedError
     
-    def _initAppletDrawerUi(self):        
+    def initAppletDrawerUi(self):        
         self._drawer = self._loadUiFile()
         
         self._drawer.TrackButton.pressed.connect(self._onTrackButtonPressed)
@@ -217,11 +198,6 @@ class TrackingGuiBase( QWidget ):
         self._drawer.lineageFileNameButton.pressed.connect(self._onLineageFileNameButton)
         self._drawer.lineageFileNameEdit.setText(os.getenv('HOME') + '/lineage.png')
 
-
-    def _initViewerControlUi( self ):
-        p = os.path.split(__file__)[0]+'/'
-        if p == "/": p = "."+p
-        self._viewerControlWidget = uic.loadUi(p+"viewerControls.ui")
 
     def _onExportButtonPressed(self):
         directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.getenv('HOME'))      
@@ -315,4 +291,8 @@ class TrackingGuiBase( QWidget ):
             self.mainOperator.MaxValue.setValue(maxVal)
     
     
+    def _setLayerVisible(self, name, visible):
+        for layer in self.layerstack:
+            if layer.name is name:
+                layer.visible = visible
     
