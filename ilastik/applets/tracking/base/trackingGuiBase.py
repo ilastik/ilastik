@@ -1,7 +1,6 @@
-from PyQt4.QtGui import QWidget, QColor, QFileDialog
-from PyQt4 import uic
+from PyQt4.QtGui import QColor, QFileDialog
 
-from volumina.api import LazyflowSource, LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
+from volumina.api import LazyflowSource, ColortableLayer
 import volumina.colortables as colortables
 
 from lazyflow.operators.obsolete.generic import axisTagsToString
@@ -153,10 +152,10 @@ class TrackingGuiBase( LayerViewerGui ):
             self._drawer.to_z.setRange(0,maxz-1)
             self._drawer.to_z.setValue(maxz-1)
             
-            self._drawer.lineageFromBox.setRange(0,maxt-1)
-            self._drawer.lineageFromBox.setValue(0)
-            self._drawer.lineageToBox.setRange(0,maxt-2)
-            self._drawer.lineageToBox.setValue(maxt-2)    
+#            self._drawer.lineageFromBox.setRange(0,maxt-1)
+#            self._drawer.lineageFromBox.setValue(0)
+#            self._drawer.lineageToBox.setRange(0,maxt-2)
+#            self._drawer.lineageToBox.setValue(maxt-2)    
         
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
@@ -194,9 +193,9 @@ class TrackingGuiBase( LayerViewerGui ):
         self._drawer.TrackButton.pressed.connect(self._onTrackButtonPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
-        self._drawer.lineageTreeButton.pressed.connect(self._onLineageTreeButtonPressed)
-        self._drawer.lineageFileNameButton.pressed.connect(self._onLineageFileNameButton)
-        self._drawer.lineageFileNameEdit.setText(os.getenv('HOME') + '/lineage.png')
+#        self._drawer.lineageTreeButton.pressed.connect(self._onLineageTreeButtonPressed)
+#        self._drawer.lineageFileNameButton.pressed.connect(self._onLineageFileNameButton)
+#        self._drawer.lineageFileNameEdit.setText(os.getenv('HOME') + '/lineage.png')
 
 
     def _onExportButtonPressed(self):
