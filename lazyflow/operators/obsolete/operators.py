@@ -20,8 +20,11 @@ from lazyflow.rtype import SubRegion
 import time
 from functools import partial
 import threading
-import psutil
 import gc
+
+import psutil
+if psutil.__version__ < '0.6':
+    raise RuntimeError("lazyflow requires psutil 0.6.  Please upgrade your version of psutil (e.g. easy_install -U psutil)")
 
 try:
     import blist
@@ -270,13 +273,20 @@ class ArrayCacheMemoryMgr(threading.Thread):
 
     def run(self):
         while True:
-            time.sleep(2)      
-            mem_usage = psutil.phymem_usage().percent
-
+            vmem = psutil.virtual_memory()
+            mem_usage = vmem.percent
+            mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
             delta = abs(self._last_usage - mem_usage)
             if delta > 10:
-                self.logger.info("usage = %f%%" % mem_usage)
+                self.logger.info( "usage = {:d} MB ({:02.2f}%)".format(mem_usage_mb, mem_usage) )
                 self._last_usage = mem_usage
+            elif logger.level == logging.DEBUG:
+                cpu_usages = psutil.cpu_percent(interval=1, percpu=True)
+                avg = sum(cpu_usages) / len(cpu_usages)
+                self.logger.debug( "CPU: Avg={}, {}".format( avg, cpu_usages ))
+                self.logger.debug( "RAM: {:d} MB ({:02.2f}%)".format(mem_usage_mb, mem_usage) )
+
+            time.sleep(10)      
 
             if mem_usage > self._max_usage:
                 self.logger.info("freeing memory...")
