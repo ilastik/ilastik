@@ -1134,7 +1134,7 @@ class OpH5WriterBigDataset(Operator):
 
         # Choose a request shape that is a multiple of the chunk shape
         axistags = self.Image.meta.axistags
-        multipliers = { 'x':2, 'y':2, 'z':2, 't':1, 'c':10 }
+        multipliers = { 'x':5, 'y':5, 'z':5, 't':1, 'c':100 } # For most problems, there is little advantage to breaking up the channels.
         multiplier = [multipliers[tag.key] for tag in axistags ]
         shift = chunkShape * numpy.array(multiplier)
         shift=numpy.minimum(shift,shape)
