@@ -1,4 +1,5 @@
-from ilastik.applets.base.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import AppletSerializer,\
+    deleteIfPresent, getOrCreateGroup
 
 class ObjectExtractionSerializer(AppletSerializer):
     """
@@ -11,28 +12,32 @@ class ObjectExtractionSerializer(AppletSerializer):
         op = self.mainOperator.innerOperators[0]
         print "object extraction: serializeToHdf5", topGroup, hdf5File, projectFilePath
         print "object extraction: saving label image"
-        src = op._mem_h5
-        self.deleteIfPresent( topGroup, "LabelImage")
+        src = op._opLabelImage._mem_h5
+        deleteIfPresent( topGroup, "LabelImage")
         src.copy('/LabelImage', topGroup) 
 
-        print "object extraction: saving region centers"
-        self.deleteIfPresent( topGroup, "samples")
-        samples_gr = self.getOrCreateGroup( topGroup, "samples" )
+        print "object extraction: saving region features"
+        deleteIfPresent( topGroup, "samples")
+        samples_gr = getOrCreateGroup( topGroup, "samples" )
         for t in op._opRegFeats._cache.keys():
             t_gr = samples_gr.create_group(str(t))
             t_gr.create_dataset(name="RegionCenter", data=op._opRegFeats._cache[t]['RegionCenter'])
-            t_gr.create_dataset(name="Count", data=op._opRegFeats._cache[t]['Count'])
+            t_gr.create_dataset(name="Count", data=op._opRegFeats._cache[t]['Count'])            
+            
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         print "objectExtraction: deserializeFromHdf5", topGroup, groupVersion, hdf5File, projectFilePath
 
         print "objectExtraction: loading label image"
-        dest = self.mainOperator.innerOperators[0]._mem_h5        
+        dest = self.mainOperator.innerOperators[0]._opLabelImage._mem_h5        
 
-        del dest['LabelImage']
+        try:
+            del dest['LabelImage']
+        except:
+            pass
         topGroup.copy('LabelImage', dest)
 
-        print "objectExtraction: loading region centers"
+        print "objectExtraction: loading region features"
         if "samples" in topGroup.keys():
             cache = {}
 

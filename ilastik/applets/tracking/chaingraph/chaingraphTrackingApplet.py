@@ -1,20 +1,16 @@
 from ilastik.applets.base.standardApplet import StandardApplet
+from ilastik.applets.tracking.chaingraph.opChaingraphTracking import OpChaingraphTracking
+from ilastik.applets.tracking.base.trackingSerializer import TrackingSerializer
+from ilastik.applets.tracking.chaingraph.chaingraphTrackingGui import ChaingraphTrackingGui
 
-from opTracking import OpTracking
-from trackingGui import TrackingGui
-from trackingSerializer import TrackingSerializer
-
-class TrackingApplet( StandardApplet ):
-    """
-    This is a simple thresholding applet
-    """
+class ChaingraphTrackingApplet( StandardApplet ):
     def __init__( self, name="Tracking", workflow=None, projectFileGroupName="Tracking" ):
-        super(TrackingApplet, self).__init__( name=name, workflow=workflow )
+        super(ChaingraphTrackingApplet, self).__init__( name=name, workflow=workflow )        
         self._serializableItems = [ TrackingSerializer(self.topLevelOperator, projectFileGroupName) ]
 
     @property
     def singleLaneOperatorClass( self ):
-        return OpTracking
+        return OpChaingraphTracking
 
     @property
     def broadcastingSlots( self ):
@@ -22,7 +18,7 @@ class TrackingApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass( self ):
-        return TrackingGui
+        return ChaingraphTrackingGui
 
     @property
     def dataSerializers(self):

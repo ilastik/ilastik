@@ -1,22 +1,20 @@
-from PyQt4.QtGui import QWidget, QColor, QVBoxLayout, QProgressDialog
+from PyQt4.QtGui import QWidget, QColor, QProgressDialog
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QString
 
 from lazyflow.rtype import SubRegion
-
 import os
 
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
 
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ConstantSource, \
-                         AlphaModulatedLayer, LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
+                         LayerStackModel, VolumeEditor, VolumeEditorWidget, ColortableLayer
 import volumina.colortables as colortables
 
 
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.tracer import Tracer
 
 
 
@@ -40,10 +38,10 @@ class ObjectExtractionGui( QWidget ):
 
     def viewerControlWidget( self ):
         return self._viewerControlWidget
-
+ 
     def stopAndCleanUp( self ):
         pass
-
+  
     ###########################################
     ###########################################
     
@@ -63,6 +61,7 @@ class ObjectExtractionGui( QWidget ):
         self._initAppletDrawerUi()
         assert(self.appletDrawer() is not None)
         self._initViewer()
+
 
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.BinaryImage:
@@ -87,16 +86,16 @@ class ObjectExtractionGui( QWidget ):
     def _initViewer( self ):
         mainOperator = self.mainOperator
 
-        ct = colortables.create_default_8bit()
-        ct = [QColor(0,0,0,0).rgba(), QColor(0,0,255,255).rgba()]
-        self.binaryimagesrc = LazyflowSource( mainOperator.BinaryImage )
-        #layer = GrayscaleLayer( self.binaryimagesrc, range=(0,1), normalize=(0,1) )
+        ct = [QColor(0,0,0,0).rgba(), QColor(0,0,255,255).rgba()] # blue foreground on transparent background
+        self.binaryimagesrc = LazyflowSource( mainOperator.BinaryImage )        
+        self.binaryimagesrc.setObjectName("Binary LazyflowSrc")
         layer = ColortableLayer( self.binaryimagesrc, ct )
         layer.name = "Binary Image"
         self.layerstack.append(layer)
 
         ct = colortables.create_default_16bit()
         self.objectssrc = LazyflowSource( mainOperator.LabelImage )
+        self.objectssrc.setObjectName("LabelImage LazyflowSrc")
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
         layer = ColortableLayer( self.objectssrc, ct )
         layer.name = "Label Image"
@@ -106,13 +105,13 @@ class ObjectExtractionGui( QWidget ):
         self.centerimagesrc = LazyflowSource( mainOperator.ObjectCenterImage )
         layer = RGBALayer( red=ConstantSource(255), alpha=self.centerimagesrc )
         layer.name = "Object Centers"
+        layer.visible = False
         self.layerstack.append( layer )
-
-
+        
         ## raw data layer
-        self.rawsrc = None
-        #if mainOperator.RawImage.meta.shape:
+        self.rawsrc = None        
         self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
+        self.rawsrc.setObjectName("Raw Lazyflow Src")
         layerraw = GrayscaleLayer( self.rawsrc )
         layerraw.name = "Raw"
         self.layerstack.insert( len(self.layerstack), layerraw )
@@ -120,10 +119,10 @@ class ObjectExtractionGui( QWidget ):
         mainOperator.RawImage.notifyReady( self._onReady )
         mainOperator.RawImage.notifyMetaChanged( self._onMetaChanged )           
 
-
         if mainOperator.BinaryImage.meta.shape:
             self.editor.dataShape = mainOperator.BinaryImage.meta.shape
         mainOperator.BinaryImage.notifyMetaChanged( self._onMetaChanged )
+
  
     def _initEditor(self):
         """
@@ -131,9 +130,7 @@ class ObjectExtractionGui( QWidget ):
         """
 
         self.editor = VolumeEditor(self.layerstack)
-
-        #self.editor.newImageView2DFocus.connect(self.setIconToViewMenu)
-        #self.editor.setInteractionMode( 'navigation' )
+        
         self.volumeEditorWidget = VolumeEditorWidget()
         self.volumeEditorWidget.init(self.editor)
 
@@ -150,6 +147,7 @@ class ObjectExtractionGui( QWidget ):
         self._viewerControlWidget.DeleteButton.clicked.connect(model.deleteSelected)
 
         self.editor._lastImageViewFocus = 0
+        
 
             
     def _initAppletDrawerUi(self):
@@ -158,7 +156,10 @@ class ObjectExtractionGui( QWidget ):
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
 
         self._drawer.labelImageButton.pressed.connect(self._onLabelImageButtonPressed)
-        self._drawer.extractObjectsButton.pressed.connect(self._onExtractObjectsButtonPressed)
+        self._drawer.extractObjectsButton.pressed.connect(self._onExtractObjectsButtonPressed)        
+        
+#        self._drawer.doAllButton.pressed.connect(self._onDoAllButtonPressed)
+
 
     def _initViewerControlUi( self ):
         p = os.path.split(__file__)[0]+'/'
@@ -168,24 +169,35 @@ class ObjectExtractionGui( QWidget ):
     def _onLabelImageButtonPressed( self ):
         m = self.mainOperator.LabelImage.meta
         maxt = m.shape[0]
-        progress = QProgressDialog("Labelling Binary Image...", "Stop", 0, maxt)
+        progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
         progress.setCancelButtonText(QString())
         progress.forceShow()
 
-        for t in range(maxt):
-            progress.setValue(t)
+        self.mainOperator._opLabelImage._fixed = False
+        reqs = []
+        for t in range(maxt):            
+            reqs.append(self.mainOperator._opLabelImage.LabelImageComputation([t]))
+            reqs[-1].submit()            
+
+        for i, req in enumerate(reqs):
+            progress.setValue(i)
             if progress.wasCanceled():
-                break
+                req.cancel()
             else:
-                self.mainOperator.updateLabelImageAt( t )
-        progress.setValue(maxt)                
+                req.wait()
+                
+        progress.setValue(maxt)        
+        
         roi = SubRegion(self.mainOperator.LabelImage, start=5*(0,), stop=m.shape)
         self.mainOperator.LabelImage.setDirty(roi)
+        
+        print 'Label Segmentation: done.'
+
 
     def _onExtractObjectsButtonPressed( self ):
-        maxt = self.mainOperator.LabelImage.meta.shape[0]
+        maxt = self.mainOperator.LabelImage.meta.shape[0] 
         progress = QProgressDialog("Extracting objects...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
@@ -196,6 +208,7 @@ class ObjectExtractionGui( QWidget ):
         for t in range(maxt):
             reqs.append(self.mainOperator.RegionFeatures([t]))
             reqs[-1].submit()
+            
         for i, req in enumerate(reqs):
             progress.setValue(i)
             if progress.wasCanceled():
@@ -203,6 +216,16 @@ class ObjectExtractionGui( QWidget ):
             else:
                 req.wait()
                 
-        self.mainOperator._opRegFeats.fixed = True 
+        self.mainOperator._opRegFeats.fixed = True         
         progress.setValue(maxt)
-        self.mainOperator.ObjectCenterImage.setDirty( SubRegion(self.mainOperator.ObjectCenterImage))
+        
+        self.mainOperator.ObjectCenterImage.setDirty( SubRegion(self.mainOperator.ObjectCenterImage))        
+                
+        print 'Object Extraction: done.'
+
+#        
+#    def _onDoAllButtonPressed(self):    
+#        self._onLabelImageButtonPressed()
+#        self._onExtractObjectsButtonPressed()
+        
+        
