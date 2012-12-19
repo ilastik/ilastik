@@ -2,13 +2,14 @@
 	"workflow_type" : "PixelClassificationWorkflow",
 	"sys_tmp_dir" : "/scratch/bergs",
 	"scratch_directory" : "/home/bergs/clusterstuff/scratch",
-	"num_jobs" : "4**3",
+	"num_jobs" : "2**3",
 	"task_timeout_secs" : "20*60",
 	"use_node_local_scratch" : true,
 	"use_master_local_scratch" : true,
 	"task_progress_update_command" : "./update_job_name {progress} > /dev/null",
 	"task_launch_server" : "login.int.janelia.org",
 	"server_working_directory" : "/home/bergs/clusterstuff/launchdir",
-	"command_format" : "qsub -pe batch 8 -l short=true -N {task_name} -j y -b y -cwd -V '/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik_clusterized {task_args}'"
+	"output_log_directory" : "/home/bergs/clusterstuff/logs/trial5_8jobs",
+	"command_format" : "qsub -pe batch 8 -l short=true -N {task_name} -o {task_output_file} -j y -b y -cwd -V '/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik_clusterized {task_args}'"
 }
 

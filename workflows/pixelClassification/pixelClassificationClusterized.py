@@ -10,6 +10,7 @@ import functools
 import subprocess
 import threading
 import Queue
+import shutil
 
 # HCI
 from lazyflow.graph import Graph
@@ -37,7 +38,7 @@ ilastik.ilastik_logging.startUpdateInterval(10) # 10 second periodic refresh
 logger = logging.getLogger(__name__)
 
 def main(argv):
-    logger.info( "Launching with sys.argv: {}".format(sys.argv) )
+    logger.debug( "Launching with sys.argv: {}".format(sys.argv) )
     parser = getArgParser()
 
     ilastik.utility.monkey_patches.extend_arg_parser(parser)
@@ -87,15 +88,34 @@ def runWorkflow(parsed_args):
     configFilePath = args.option_config_file
     config = parseClusterConfigFile( configFilePath )
 
-    # Update the monkey_patch settings
-    ilastik.utility.monkey_patches.apply_setting_dict( config.__dict__ )
-
     # If we've got a process name, re-initialize the logger from scratch
     task_name = "node"
     if args.process_name is not None:
         task_name = args.process_name
         ilastik.ilastik_logging.default_config.init(args.process_name + ' ')
-    
+
+    rootLogHandler = None
+    if args._node_work_ is None:
+        # This is the master process.
+        # Tee the log to a file for future reference.
+        logDir = config.output_log_directory
+        if not os.path.exists(logDir):
+            os.mkdir(logDir)
+
+        # Copy the config we're using to the output directory
+        shutil.copy(configFilePath, logDir)
+        
+        logFile = os.path.join( logDir, "MASTER.log" )
+        logFileFormatter = logging.Formatter("%(levelname)s %(name)s: %(message)s")
+        rootLogHandler = logging.FileHandler(logFile, 'a')
+        rootLogHandler.setFormatter(logFileFormatter)
+        rootLogger = logging.getLogger()
+        rootLogger.addHandler( rootLogHandler )
+        logger.info( "Launched with sys.argv: {}".format( sys.argv ) )
+
+    # Update the monkey_patch settings
+    ilastik.utility.monkey_patches.apply_setting_dict( config.__dict__ )
+
     # Make sure project file exists.
     if not os.path.exists(args.project):
         raise RuntimeError("Project file '" + args.project + "' does not exist.")
@@ -155,6 +175,7 @@ def runWorkflow(parsed_args):
         logger.info("Cleaning up")
         global stop_background_tasks
         stop_background_tasks = True
+        
         if clusterOperator is not None:
             clusterOperator.cleanUp()
 
@@ -164,6 +185,9 @@ def runWorkflow(parsed_args):
     logger.info("FINISHED with result {}".format(result))
     if not result:
         logger.error( "FAILED TO COMPLETE!" )
+
+    if rootLogHandler is not None:
+        rootLogHandler.close()
         
 if __name__ == "__main__":
 

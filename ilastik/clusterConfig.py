@@ -1,5 +1,6 @@
 import json
 import re
+import os
 
 class Namespace(object):
     pass
@@ -43,6 +44,29 @@ class FormattedField(object):
 
         # TODO: Also validate that all format fields the user provided are known required/optional fields.
         return x
+
+#class AutoDirField(object):
+#    def __init__(self, replaceString):
+#        self._replaceString = replaceString
+#    def __call__(self, x):
+#        x = str(x)
+#        if self._replaceString not in x:
+#            return x
+#        
+#        # Must be /some/dir/<AUTO>, not /some/dir/<AUTO>/plus/otherstuff
+#        replaceIndex = x.index(self._replaceString)
+#        assert replaceIndex + len(self._replaceString) == len(x), "Auto-replaced dir name must appear at the end of the config value."
+#        
+#        baseDir, fileBase = os.path.split( x[0:replaceIndex] )
+#        next_unused_index = 1
+#        for filename in os.listdir(baseDir):
+#            m = re.match("("+ fileBase + ")(\d+)", filename)
+#            if m:
+#                used_index = int(m.groups()[1])
+#                next_unused_index = max( next_unused_index, used_index+1 )
+#
+#        return os.path.join( baseDir, fileBase + "{}".format(next_unused_index)  )
+
 
 class ConfigSchema( object ):
     """
@@ -109,6 +133,7 @@ ClusterConfigFields = \
     "use_master_local_scratch" : bool,
     "task_progress_update_command" : FormattedField( requiredFields=["progress"] ),
     "task_launch_server" : str,
+    "output_log_directory" : str,
     "server_working_directory" : str,
     "command_format" : FormattedField( requiredFields=["task_args"], optionalFields=["task_name"] )
 }
@@ -132,8 +157,9 @@ if __name__ == "__main__":
     "task_timeout_secs" : "20*60",
     "use_node_local_scratch" : true,
     "use_master_local_scratch" : true,
+    "output_log_directory" : "/home/bergs/tmp/trial42",
     "task_progress_update_command" : "./update_job_name {progress}",
-    "command_format" : "qsub -pe batch 4 -l short=true -N {task_name} -j y -b y -cwd -V '/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik_clusterized {args}'"
+    "command_format" : "qsub -pe batch 4 -l short=true -N {task_name} -j y -b y -cwd -V '/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik_clusterized {task_args}'"
 }
 """
     # Create a temporary file
@@ -148,6 +174,6 @@ if __name__ == "__main__":
     assert config.use_node_local_scratch is True
     assert config.task_timeout_secs == 20*60
 
-
+    print config.output_log_directory
     
     

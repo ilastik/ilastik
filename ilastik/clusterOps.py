@@ -162,6 +162,14 @@ class OpClusterize(Operator):
 
         taskInfos = self._prepareTaskInfos()
 
+        # Create the destination file if necessary
+        unneeded_rois = self._prepareDestination( taskInfos )
+        
+        # Remove any tasks that we don't need to compute (they were finished in a previous run)
+        for roi in unneeded_rois:
+            logger.info( "No need to run task: {} for roi: {}".format( taskInfos[roi].taskName, roi ) )
+            del taskInfos[roi]
+
         @fab.hosts( self._config.task_launch_server )
         def remoteCommand( cmd ):
             with fab.cd( self._config.server_working_directory ):
@@ -171,14 +179,6 @@ class OpClusterize(Operator):
         for taskInfo in taskInfos.values():
             logger.info("Launching node task: " + taskInfo.command )
             fab.execute( remoteCommand, taskInfo.command )            
-
-        # Create the destination file if necessary
-        unneeded_rois = self._prepareDestination( taskInfos )
-        
-        # Remove any tasks that we don't need to compute (they were finished in a previous run)
-        for roi in unneeded_rois:
-            logger.info( "No need to run task: {} for roi: {}".format( taskInfos[roi].taskName, roi ) )
-            del taskInfos[roi]
 
         timeOut = self._config.task_timeout_secs
         with Timer() as totalTimer:
@@ -251,7 +251,7 @@ class OpClusterize(Operator):
         # Divide up the workload into large pieces
         rois = self._getRoiList()
         logger.info( "Dividing into {} node jobs.".format( len(rois) ) )
-                
+
         taskInfos = collections.OrderedDict()
         for roiIndex, roi in enumerate(rois):
             roi = ( tuple(roi[0]), tuple(roi[1]) )
@@ -274,10 +274,13 @@ class OpClusterize(Operator):
             # Check the command format string: We need to know where to put our args...
             commandFormat = self._config.command_format
             assert commandFormat.find("{task_args}") != -1
+
+            taskOutputLogFilename = taskName + ".log"
+            taskOutputLogPath = os.path.join( self._config.output_log_directory, taskOutputLogFilename )
             
             allArgs = " " + " ".join(commandArgs) + " "
             taskInfo.taskName = taskName
-            taskInfo.command = commandFormat.format( task_args=allArgs, task_name=taskName )
+            taskInfo.command = commandFormat.format( task_args=allArgs, task_name=taskName, task_output_file=taskOutputLogPath )
             taskInfo.statusFilePath = statusFilePath
             taskInfo.outputFilePath = outputFilePath
             taskInfos[roi] = taskInfo

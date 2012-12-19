@@ -12,7 +12,7 @@
         "lazyflow.operators":                                               { "level":"INFO" },
         "lazyflow.operators.ioOperators":                                   { "level":"INFO" },
         "lazyflow.operators.obsolete.operators.OpArrayCache":               { "level":"INFO" },
-        "lazyflow.operators.obsolete.operators.ArrayCacheMemoryMgr":        { "level":"INFO" },
+        "lazyflow.operators.obsolete.operators.ArrayCacheMemoryMgr":        { "level":"DEBUG" },
         "lazyflow.operators.obsolete.vigraOperators":                       { "level":"INFO" },
         "lazyflow.operators.obsolete.vigraOperators.OpH5WriterBigDataset":  { "level":"INFO" },
         "lazyflow.operators.obsolete.classifierOperators":                  { "level":"INFO" },

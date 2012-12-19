@@ -92,7 +92,7 @@ def get_default_config(prefix=""):
             # Python doesn't provide a trace log level, so we use a workaround.
             # By convention, trace loggers have the same hierarchy as the regular loggers, but are prefixed with 'TRACE' and always emit DEBUG messages
             # To enable trace messages, change one or more of these to use level DEBUG
-            "TRACE":                                                            { "level":"INFO", "handlers":["console_trace","console_warn"] },
+            "TRACE": { "level":"INFO", "handlers":["console_trace","console_warn"] },
             "TRACE.lazyflow.graph.Slot":                                        { "level":"INFO" },
             "TRACE.lazyflow.graph.Operator":                                    { "level":"INFO" },
             "TRACE.lazyflow.graph.OperatorWrapper":                             { "level":"INFO" },
