@@ -21,9 +21,9 @@ class ConservationTrackingGui( TrackingGuiBase ):
         self._drawer = uic.loadUi(localDir+"/drawer.ui")        
         return self._drawer
 
-    def _initAppletDrawerUi(self):
-        super(ConservationTrackingGui, self)._initAppletDrawerUi()
-                
+    def initAppletDrawerUi(self):
+        super(ConservationTrackingGui, self).initAppletDrawerUi()        
+        
         self.mergerLabels = [self._drawer.merg1,
                              self._drawer.merg2,
                              self._drawer.merg3,

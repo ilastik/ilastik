@@ -39,11 +39,12 @@ class TrackingGuiBase( LayerViewerGui ):
     def __init__(self, topLevelOperatorView):
         """
         """
+        self._initColors()
+        
         self.topLevelOperatorView = topLevelOperatorView
         super(TrackingGuiBase, self).__init__(topLevelOperatorView)
+        
         self.mainOperator = topLevelOperatorView
-
-        self._initColors()
         
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape

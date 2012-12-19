@@ -15,7 +15,7 @@ class OpConservationTracking(OpTrackingBase):
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
     
     def execute(self, slot, subindex, roi, result):
-        super(OpConservationTracking, self).execute(slot, subindex, roi, result)
+        result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
         
         if slot is self.MergerOutput:
             result = self.LabelImage.get(roi).wait()
@@ -24,7 +24,8 @@ class OpConservationTracking(OpTrackingBase):
                 result[0,...,0] = relabelMergers(result[0,...,0], self.mergers[t])
             else:
                 result[...] = 0
-            return result    
+            
+        return result     
 
     def track(self,
             time_range,
