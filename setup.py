@@ -18,10 +18,7 @@ packages=['ilastik',
           'ilastik.applets.tracking',
           'ilastik.applets.tracking.base',
           'ilastik.applets.tracking.chaingraph',
-<<<<<<< HEAD
           'ilastik.applets.tracking.conservation',
-=======
->>>>>>> master
           'ilastik.applets.tracking.fastApproximate',
           'ilastik.applets.vigraWatershedViewer',
           'ilastik.shell',
@@ -48,10 +45,7 @@ package_data={'ilastik': ['ilastik-splash.png',
           'ilastik.applets.tracking': ['*.ui'],          
           'ilastik.applets.tracking.base': ['*.ui'],
           'ilastik.applets.tracking.chaingraph': ['*.ui'],
-<<<<<<< HEAD
           'ilastik.applets.tracking.conservation': ['*.ui'],
-=======
->>>>>>> master
           'ilastik.applets.tracking.fastApproximate': ['*.ui'],
           'ilastik.applets.vigraWatershedViewer': ['*.ui'],
           'ilastik.shell.gui': ['ui/*.ui', '*.qss'],
