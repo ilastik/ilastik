@@ -11,7 +11,7 @@ class OpLabelImage( Operator ):
     BinaryImage = InputSlot()
     # List of background label in the order of channels of the binary image; -1 if the label image 
     # should not be computed for that channel
-    BackgroundLabels = InputSlot( stype=Opaque, rtype=List )
+    BackgroundLabels = InputSlot( )
     
     LabelImage = OutputSlot()
     # Pull the following output slot to compute the label image.
