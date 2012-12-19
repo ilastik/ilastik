@@ -55,11 +55,9 @@ class OpLabelImage( Operator ):
                         print "Calculating LabelImage at t=" + str(t) + ", c=" + str(c) + " "                    
                         sroi = SubRegion(self.BinaryImage, start=[t,0,0,0,c], 
                                          stop=[t+1,] + list(self.BinaryImage.meta.shape[1:-1]) + [c+1,])
-                        print 'sroi = ', sroi                    
                         a = self.BinaryImage.get(sroi).wait()        
                         a = numpy.array(a[0,...,0],dtype=numpy.uint8)
-                        backgroundLabel = self.BackgroundLabels.value[c]
-                        print 'backgroundLabel = ' +str(backgroundLabel)
+                        backgroundLabel = self.BackgroundLabels.value[c]                        
                         if backgroundLabel != -1:
                             self._mem_h5['LabelImage'][t,...,c] = vigra.analysis.labelVolumeWithBackground( a, background_value = backgroundLabel )                     
                     self._processedTimeSteps.append(t)
