@@ -168,7 +168,7 @@ class ObjectExtractionGui( QWidget ):
 
     def _onLabelImageButtonPressed( self ):
         m = self.mainOperator.LabelImage.meta
-        maxt = m.shape[0] - 1 # the last time frame will be dropped
+        maxt = m.shape[0]
         progress = QProgressDialog("Labeling Binary Images...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
@@ -197,7 +197,7 @@ class ObjectExtractionGui( QWidget ):
 
 
     def _onExtractObjectsButtonPressed( self ):
-        maxt = self.mainOperator.LabelImage.meta.shape[0] - 1 # the last time frame will be dropped
+        maxt = self.mainOperator.LabelImage.meta.shape[0] 
         progress = QProgressDialog("Extracting objects...", "Stop", 0, maxt)
         progress.setWindowModality(Qt.ApplicationModal)
         progress.setMinimumDuration(0)
