@@ -40,7 +40,7 @@ class FormattedField(object):
         for f in self._requiredFields:
             fieldRegex = re.compile('{[^}]*' + f +  '}')
             if fieldRegex.search(x) is None:
-                raise ConfigSchema.ParsingError( "Format string is missing field: {{{f}}}".format(f=f) )
+                raise ConfigSchema.ParsingError( "Format string is missing required field: {{{f}}}".format(f=f) )
 
         # TODO: Also validate that all format fields the user provided are known required/optional fields.
         return x
@@ -113,6 +113,10 @@ class ConfigSchema( object ):
         return namespace
     
     def _transformValue(self, fieldType, val):
+        # config file is allowed to contain null values, in which case the value is set to None
+        if val is None:
+            return None
+
         # Check special error cases
         if fieldType is bool and not isinstance(val, bool):
             raise ConfigSchema.ParsingError( "Expected bool, got {}".format( type(val) ) )
@@ -131,11 +135,14 @@ ClusterConfigFields = \
     "task_timeout_secs" : AutoEval(int),
     "use_node_local_scratch" : bool,
     "use_master_local_scratch" : bool,
+    "node_output_compression_cmd" :   FormattedField( requiredFields=["compressed_file", "uncompressed_file"]),
+    "node_output_decompression_cmd" : FormattedField( requiredFields=["compressed_file", "uncompressed_file"]),
     "task_progress_update_command" : FormattedField( requiredFields=["progress"] ),
     "task_launch_server" : str,
     "output_log_directory" : str,
     "server_working_directory" : str,
-    "command_format" : FormattedField( requiredFields=["task_args"], optionalFields=["task_name"] )
+    "command_format" : FormattedField( requiredFields=["task_args"], optionalFields=["task_name"] ),
+    "debug_option_use_previous_node_files" : bool
 }
 
 def parseClusterConfigFile( configFilePath ):

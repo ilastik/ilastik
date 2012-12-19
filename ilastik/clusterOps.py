@@ -114,9 +114,21 @@ class OpTaskWorker(Operator):
         if config.use_node_local_scratch:
             # Copy the temp file to the scratch area to be picked up by the master process
             with Timer() as copyTimer:
-                logger.info( "Copying {} to {}...".format(tmpOutputFilePath, outputFilePath) )
-                shutil.copyfile(tmpOutputFilePath, outputFilePath)
-                logger.info( "Finished copying after {} seconds".format( copyTimer.seconds() ) )
+                if config.node_output_compression_cmd is not None:
+                    if config.node_output_decompression_cmd is None:
+                        raise RuntimeError("Can't use node output compression becuase you didn't specify a decompression command.")
+                    # Copy and compress in one step.
+                    compress_cmd = config.node_output_compression_cmd.format( uncompressed_file=tmpOutputFilePath, compressed_file=outputFilePath )
+                    logger.info( "Compressing with command: " + compress_cmd )
+                    retcode = subprocess.call( compress_cmd, shell=True )
+                    if retcode == 0:
+                        logger.info( "Finished compressing after {} seconds".format( copyTimer.seconds() ) )
+                    else:
+                        logger.error( "Compression command returned non-zero code: {}".format(retcode) )                    
+                else:
+                    logger.info( "Copying {} to {}...".format(tmpOutputFilePath, outputFilePath) )
+                    shutil.copyfile(tmpOutputFilePath, outputFilePath)
+                    logger.info( "Finished copying after {} seconds".format( copyTimer.seconds() ) )
                 # Delete the tempfile
                 os.remove( tmpOutputFilePath )
 
@@ -146,25 +158,50 @@ class OpClusterize(Operator):
         statusFilePath = None
         outputFilePath = None
         subregion = None
+        _debugSkipLaunch = None
         
     def setupOutputs(self):
         self.ReturnCode.meta.dtype = bool
         self.ReturnCode.meta.shape = (1,)
     
+    def _validateConfig(self):
+        if not self._config.use_master_local_scratch:
+            assert self._config.node_output_compression_cmd is None, "Can't use node dataset compression unless master local scratch is also used."
+    
     def execute(self, slot, subindex, roi, result):
         # We use fabric for executing remote tasks
+        # Import it here because it isn't required that the nodes can use it.
         import fabric.api as fab
 
         success = True
         
+        dtypeBytes = self._getDtypeBytes()
+        totalBytes = dtypeBytes * numpy.prod(self.Input.meta.shape)
+        totalMB = totalBytes / (1000*1000)
+        logger.info( "Clusterizing computation of {} MB dataset, outputting to {}".format(totalMB, self.OutputFilePath.value) )
+
         configFilePath = self.ConfigFilePath.value
         self._config = parseClusterConfigFile( configFilePath )
+
+        self._validateConfig()
 
         taskInfos = self._prepareTaskInfos()
 
         # Create the destination file if necessary
         unneeded_rois = self._prepareDestination( taskInfos )
-        
+
+        # If files are still hanging around from the last run, delete them.
+        for taskInfo in taskInfos.values():
+            if (  os.path.exists( taskInfo.statusFilePath )
+              and self._config.debug_option_use_previous_node_files ):
+                taskInfo._debugSkipLaunch = True
+            else:
+                if os.path.exists( taskInfo.outputFilePath ):
+                    os.remove( taskInfo.outputFilePath )
+                if os.path.exists( taskInfo.statusFilePath ):
+                    os.remove( taskInfo.statusFilePath )
+                taskInfo._debugSkipLaunch = False
+
         # Remove any tasks that we don't need to compute (they were finished in a previous run)
         for roi in unneeded_rois:
             logger.info( "No need to run task: {} for roi: {}".format( taskInfos[roi].taskName, roi ) )
@@ -177,8 +214,9 @@ class OpClusterize(Operator):
 
         # Spawn each task
         for taskInfo in taskInfos.values():
-            logger.info("Launching node task: " + taskInfo.command )
-            fab.execute( remoteCommand, taskInfo.command )            
+            if not taskInfo._debugSkipLaunch:
+                logger.info("Launching node task: " + taskInfo.command )
+                fab.execute( remoteCommand, taskInfo.command )
 
         timeOut = self._config.task_timeout_secs
         with Timer() as totalTimer:
@@ -212,9 +250,9 @@ class OpClusterize(Operator):
                     del taskInfos[roi]
 
         if success:
-            logger.info( "SUCCESS after {} seconds.".format( totalTimer.seconds() ) )
+            logger.info( "SUCCESS: Completed {} MB in {} seconds.".format( totalMB, totalTimer.seconds() ) )
         else:
-            logger.info( "FAILED after {} seconds.".format( totalTimer.seconds() ) )
+            logger.info( "FAILED: After {} seconds.".format( totalTimer.seconds() ) )
 
         result[0] = success
         return result
@@ -284,12 +322,6 @@ class OpClusterize(Operator):
             taskInfo.statusFilePath = statusFilePath
             taskInfo.outputFilePath = outputFilePath
             taskInfos[roi] = taskInfo
-
-            # If files are still hanging around from the last run, delete them.
-            if os.path.exists( statusFilePath ):
-                os.remove( statusFilePath )
-            if os.path.exists( outputFilePath ):
-                os.remove( outputFilePath )
 
         return taskInfos
 
@@ -383,8 +415,8 @@ class OpClusterize(Operator):
                 continue
 
             logger.info( "Found status file: {}".format( taskInfo.statusFilePath ) )
-            if not os.path.exists( taskInfo.outputFilePath ):
-                raise RuntimeError( "Error: Could not locate output file from spawned task: " + taskInfo.outputFilePath )
+#            if not os.path.exists( taskInfo.outputFilePath ):
+#                raise RuntimeError( "Error: Could not locate output file from spawned task: " + taskInfo.outputFilePath )
 
             # Open the destination file if necessary
             if destinationFile is None:
@@ -395,18 +427,34 @@ class OpClusterize(Operator):
 
             roiString = Roi.dumps( taskInfo.subregion )
             assert roiString in missingRois, "This task didn't need to be executed: it wasn't missing from the result!"
-            with Timer() as fileCopyTimer:
-                # Copy the scratch file to local scratch area before we open it with h5py
-                tempDir = tempfile.mkdtemp()
-                roiString = Roi.dumps( taskInfo.subregion )
-                tmpOutputFilePath = os.path.join(tempDir, roiString + ".h5")
+            
+            nodeOutputFilePath = taskInfo.outputFilePath
 
-                logger.info( "Copying {} to {}...".format(taskInfo.outputFilePath, tmpOutputFilePath) )
-                shutil.copyfile(taskInfo.outputFilePath, tmpOutputFilePath)
-                logger.info( "Finished copying after {} seconds".format( fileCopyTimer.seconds() ) )
+            # Optionally copy to local tmpdir before copying the node dataset.
+            if self._config.use_master_local_scratch:
+                with Timer() as fileCopyTimer:
+                    # Copy the scratch file to local scratch area before we open it with h5py
+                    tempDir = tempfile.mkdtemp()
+                    roiString = Roi.dumps( taskInfo.subregion )
+                    tmpOutputFilePath = os.path.join(tempDir, roiString + ".h5")
+
+                    # Optionally decompress as we copy    
+                    if self._config.node_output_compression_cmd is not None:
+                        decompress_cmd = self._config.node_output_decompression_cmd.format( uncompressed_file=tmpOutputFilePath, compressed_file=taskInfo.outputFilePath )
+                        logger.info( "Decompressing with command: " + decompress_cmd )
+                        retcode = subprocess.call( decompress_cmd, shell=True )
+                        if retcode == 0:
+                            logger.info( "Finished decompressing after {} seconds".format( fileCopyTimer.seconds() ) )
+                        else:
+                            logger.error( "Decompression command returned non-zero code: {}".format(retcode) )                    
+                    else:
+                        logger.info( "Copying {} to {}...".format(taskInfo.outputFilePath, tmpOutputFilePath) )
+                        shutil.copyfile(taskInfo.outputFilePath, tmpOutputFilePath)
+                        logger.info( "Finished copying after {} seconds".format( fileCopyTimer.seconds() ) )
+                nodeOutputFilePath = tmpOutputFilePath
 
             # Open the file
-            with h5py.File( tmpOutputFilePath, 'r' ) as f:
+            with h5py.File( nodeOutputFilePath, 'r' ) as f:
                 # Check the result
                 assert 'node_result' in f.keys()
                 assert numpy.all(f['node_result'].shape == numpy.subtract(roi[1], roi[0]))
@@ -433,7 +481,8 @@ class OpClusterize(Operator):
                 roiString = Roi.dumps(taskInfo.subregion)
                 missingRois.remove( roiString )
 
-            os.remove(tmpOutputFilePath)
+            if self._config.use_master_local_scratch:
+                os.remove(tmpOutputFilePath)
 
         # For now, we close the file after every pass in case something goes horribly wrong...
         if destinationFile is not None:
