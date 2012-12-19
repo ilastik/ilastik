@@ -21,8 +21,10 @@ class ObjectExtractionSerializer(AppletSerializer):
         samples_gr = getOrCreateGroup( topGroup, "samples" )
         for t in op._opRegFeats._cache.keys():
             t_gr = samples_gr.create_group(str(t))
-            t_gr.create_dataset(name="RegionCenter", data=op._opRegFeats._cache[t]['RegionCenter'])
-            t_gr.create_dataset(name="Count", data=op._opRegFeats._cache[t]['Count'])            
+            for ch in range(len(op._opRegFeats._cache[t])):            
+                ch_gr = t_gr.create_group(str(ch))
+                ch_gr.create_dataset(name="RegionCenter", data=op._opRegFeats._cache[t][ch]['RegionCenter'])
+                ch_gr.create_dataset(name="Count", data=op._opRegFeats._cache[t][ch]['Count'])            
             
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
@@ -30,23 +32,26 @@ class ObjectExtractionSerializer(AppletSerializer):
 
         print "objectExtraction: loading label image"
         dest = self.mainOperator.innerOperators[0]._opLabelImage._mem_h5        
-
-        try:
+        if 'LabelImage' in topGroup.keys():            
             del dest['LabelImage']
-        except:
-            pass
-        topGroup.copy('LabelImage', dest)
+            topGroup.copy('LabelImage', dest)            
+            self.mainOperator.innerOperators[0]._opLabelImage._fixed = False        
+            self.mainOperator.innerOperators[0]._opLabelImage._processedTimeSteps = range(topGroup['LabelImage'].shape[0])            
+
 
         print "objectExtraction: loading region features"
-        if "samples" in topGroup.keys():
-            cache = {}
+        if "samples" in topGroup.keys():            
 
+            cache = {}
             for t in topGroup["samples"].keys():
-                cache[int(t)] = dict()
-                if 'RegionCenter' in topGroup["samples"][t].keys():
-                    cache[int(t)]['RegionCenter'] = topGroup["samples"][t]['RegionCenter'].value
-                if 'Count' in topGroup["samples"][t].keys():                    
-                    cache[int(t)]['Count'] = topGroup["samples"][t]['Count'].value                
+                cache[int(t)] = []
+                for ch in sorted(topGroup["samples"][t].keys()):
+                    feat = dict()                            
+                    if 'RegionCenter' in topGroup["samples"][t][ch].keys():
+                        feat['RegionCenter'] = topGroup["samples"][t][ch]['RegionCenter'].value
+                    if 'Count' in topGroup["samples"][t][ch].keys():                    
+                        feat['Count'] = topGroup["samples"][t][ch]['Count'].value                    
+                    cache[int(t)].append(feat)                    
             self.mainOperator.innerOperators[0]._opRegFeats._cache = cache
 
     def isDirty(self):

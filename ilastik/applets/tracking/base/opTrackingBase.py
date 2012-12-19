@@ -135,7 +135,7 @@ class OpTrackingBase(Operator):
         
         print "generating traxels"
         print "fetching region features and division probabilities"
-        feats = self.ObjectFeatures(time_range).wait()
+        feats = self.ObjectFeatures(time_range).wait()        
         
         if with_div:
             divProbs = self.ClassMapping(time_range).wait()
@@ -152,11 +152,11 @@ class OpTrackingBase(Operator):
         total_count = 0
         empty_frame = False
         for t in feats.keys():
-            rc = feats[t]['RegionCenter']
+            rc = feats[t][0]['RegionCenter']
             if rc.size:
                 rc = rc[1:, ...]
 
-            ct = feats[t]['Count']
+            ct = feats[t][0]['Count']
             if ct.size:
                 ct = ct[1:, ...]
             

@@ -115,8 +115,8 @@ class OpObjectExtractionMultiClass(Operator):
             for t in roi:
                 feats_at = feats[t]
                 assert(len(feats_at) == self.Images.meta.shape[-1]), "number of channels in feature list differs from number of channels in input"
-                feats_at_wo_channels = feats_at[bgChannel]                
-                feats_result[t] = feats_at_wo_channels
+                feats_at_one_channel = feats_at[bgChannel]                
+                feats_result[t] = [feats_at_one_channel]
             result = feats_result
             return result
         if slot == self.RegionFeatures:
@@ -125,8 +125,8 @@ class OpObjectExtractionMultiClass(Operator):
             for t in roi:
                 feats_at = feats[t]
                 assert(len(feats_at) == self.Images.meta.shape[-1]), "number of channels in feature list differs from number of channels in input"
-                feats_at_wo_channels = feats_at[bgChannel]                
-                feats_result[t] = feats_at_wo_channels
+                feats_at_one_channel = feats_at[bgChannel]                
+                feats_result[t] = [feats_at_one_channel]
             result = feats_result
             return result
         
