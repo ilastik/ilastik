@@ -9,59 +9,16 @@ import h5py
 import time
 import warnings
 import collections
-import functools
 import tempfile
 import shutil
 import hashlib
-import datetime
 from ilastik.clusterConfig import parseClusterConfigFile
+from ilastik.utility.timer import Timer, timed
 
 from lazyflow.operators import OpH5WriterBigDataset, OpSubRegion
 
 import logging
 logger = logging.getLogger(__name__)
-
-class Timer(object):
-    def __init__(self):
-        self.startTime = None
-        self.stopTime = None
-    
-    def __enter__(self):
-        self.startTime = datetime.datetime.now()
-        return self
-    
-    def __exit__(self, *args):
-        self.stopTime = datetime.datetime.now()
-    
-    def seconds(self):
-        assert self.startTime is not None, "Timer hasn't started yet!"
-        if self.stopTime is None:
-            return (datetime.datetime.now() - self.startTime).seconds
-        else:
-            return (self.stopTime - self.startTime).seconds
-
-def timed(func):
-    """
-    Decorator.
-    A Timer is created for the given function, and it is reset every time the function is called.
-    The timer is created as an attribute on the function itself called prev_run_timer.
-    Example:
-    
-    @timed
-    def do_stuff(): pass
-    
-    do_stuff()
-    print "Last run of do_stuff() took", do_stuff.prev_run_timer.seconds(), "seconds to run"    
-    """
-    prev_run_timer = Timer()
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        with prev_run_timer:
-            return func(*args, **kwargs)    
-
-    wrapper.prev_run_timer = prev_run_timer
-    wrapper.__wrapped__ = func # Emulate python 3 behavior of @functools.wraps
-    return wrapper
 
 STATUS_FILE_NAME_FORMAT = "{} status {}.txt"
 OUTPUT_FILE_NAME_FORMAT = "{} output {}.h5"
