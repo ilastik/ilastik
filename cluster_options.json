@@ -11,7 +11,7 @@
 	"task_progress_update_command" : "./update_job_name {progress} > /dev/null",
 	"task_launch_server" : "login.int.janelia.org",
 	"server_working_directory" : "/home/bergs/clusterstuff/launchdir",
-	"output_log_directory" : "/home/bergs/clusterstuff/logs/giga_trial7_8jobs_nocompress_with_node_caching_no_master_caching",
+	"output_log_directory" : "/home/bergs/clusterstuff/logs/giga_trial8_8jobs_nocompress_with_node_caching_no_master_caching_BIG_CHUNKS",
 	"command_format" : "qsub -pe batch 8 -l short=true -N {task_name} -o {task_output_file} -j y -b y -cwd -V '/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik_clusterized {task_args}'",
 	"debug_option_use_previous_node_files" : false
 }

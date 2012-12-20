@@ -7,7 +7,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 import itertools
 import h5py
 import time
-import threading
+import warnings
 import collections
 import functools
 import tempfile
@@ -41,6 +41,18 @@ class Timer(object):
             return (self.stopTime - self.startTime).seconds
 
 def timed(func):
+    """
+    Decorator.
+    A Timer is created for the given function, and it is reset every time the function is called.
+    The timer is created as an attribute on the function itself called prev_run_timer.
+    Example:
+    
+    @timed
+    def do_stuff(): pass
+    
+    do_stuff()
+    print "Last run of do_stuff() took", do_stuff.prev_run_timer.seconds(), "seconds to run"    
+    """
     prev_run_timer = Timer()
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -359,9 +371,10 @@ class OpClusterize(Operator):
             if OpClusterize.FINAL_DATASET_NAME not in destinationFile.keys():
                 dtypeBytes = self._getDtypeBytes()
     
+                warnings.warn("FIXME: This chunkshape needs to be configurable and also needs to match OpH5WriterBigDataset!")
                 taggedShape = self.Input.meta.getTaggedShape()
                 numChannels = taggedShape['c']
-                cubeDim = math.pow( 300000 / (numChannels * dtypeBytes), (1/3.0) )
+                cubeDim = math.pow( 10*1000*1000 / (numChannels * dtypeBytes), (1/3.0) )
                 cubeDim = int(cubeDim)
         
                 chunkDims = {}
@@ -371,8 +384,8 @@ class OpClusterize(Operator):
                 chunkDims['z'] = cubeDim
                 chunkDims['c'] = numChannels
                 
-                # h5py guide to chunking says chunks of 300k or less "work best"
-                assert chunkDims['x'] * chunkDims['y'] * chunkDims['z'] * numChannels * dtypeBytes  <= 300000
+                ### h5py guide to chunking says chunks of 300k or less "work best"
+                ##assert chunkDims['x'] * chunkDims['y'] * chunkDims['z'] * numChannels * dtypeBytes  <= 300000
         
                 chunkShape = map( lambda (key, dim): min(chunkDims[key], dim),
                                   taggedShape.items() )
