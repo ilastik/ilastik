@@ -222,9 +222,6 @@ class OpPixelFeaturesPresmoothed(Operator):
                         #  you must make a new feature (with a new feature ID) and
                         #  leave this feature here to preserve backwards compatibility
                         oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
-                        #FIXME, FIXME, FIXME
-                        #sigma1 = [x*0.5 for x in self.newScales[j]]
-                        #oparray[i][j].inputs["outerScale"].setValue(sigma1)
                         oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
                         featureNameArray[i].append("Structure Tensor Eigenvalues (s=" + str(self.scales[j]) + ")")
 
@@ -250,9 +247,6 @@ class OpPixelFeaturesPresmoothed(Operator):
                         #  feature (with a new feature ID) and leave this feature here
                         #  to preserve backwards compatibility
                         oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])
-                        #FIXME, FIXME, FIXME
-                        #sigma1 = [x*0.66 for x in self.newScales[j]]
-                        #oparray[i][j].inputs["sigma1"].setValue(sigma1)
                         oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
                         featureNameArray[i].append("Difference of Gaussians (s=" + str(self.scales[j]) + ")")
 
@@ -557,6 +551,492 @@ class OpPixelFeaturesPresmoothed(Operator):
                     except:
                         sourceArraysForSigmas[i] = None
 
+###################################################3
+class OpPixelFeaturesInterpPresmoothed(Operator):
+    name="OpPixelFeaturesPresmoothed"
+    category = "Vigra filter"
+
+    inputSlots = [InputSlot("Input"),
+                  InputSlot("Matrix"),
+                  InputSlot("Scales"),
+                  InputSlot("FeatureIds"),
+                  InputSlot("InterpolationScaleZ")] # The selection of features to compute
+
+    outputSlots = [OutputSlot("Output"),        # The entire block of features as a single image (many channels)
+                   OutputSlot("Features", level=1)] # Each feature image listed separately, with feature name provided in metadata
+
+    # Specify a default set & order for the features we compute
+    DefaultFeatureIds = [ 'GaussianSmoothing',
+                          'LaplacianOfGaussian',
+                          'StructureTensorEigenvalues',
+                          'HessianOfGaussianEigenvalues',
+                          'GaussianGradientMagnitude',
+                          'DifferenceOfGaussians' ]
+
+    def __init__(self, *args, **kwargs):
+        Operator.__init__(self, *args, **kwargs)
+        self.source = OpArrayPiper(parent=self)
+        self.source.inputs["Input"].connect(self.inputs["Input"])
+
+        self.stacker = OpMultiArrayStacker(parent=self)
+
+        self.multi = Op50ToMulti(parent=self)
+
+        self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
+
+        # Give our feature IDs input a default value (connected out of the box, but can be changed)
+        self.inputs["FeatureIds"].setValue( self.DefaultFeatureIds )
+
+    def setupOutputs(self):
+        if self.inputs["Scales"].connected() and self.inputs["Matrix"].connected():
+
+            self.stacker.inputs["Images"].disconnect()
+            self.scales = self.inputs["Scales"].value
+            self.matrix = self.inputs["Matrix"].value
+
+            if not isinstance(self.matrix, numpy.ndarray):
+                raise RuntimeError("OpPixelFeatures: Please input a numpy.ndarray as 'Matrix'")
+
+            dimCol = len(self.scales)
+            dimRow = len(self.inputs["FeatureIds"].value)
+
+            assert dimRow== self.matrix.shape[0], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)
+            assert dimCol== self.matrix.shape[1], "Please check the matrix or the scales they are not the same (scales = %r, matrix.shape = %r)" % (self.scales, self.matrix.shape)
+
+            featureNameArray =[]
+            oparray = []
+            for j in range(dimRow):
+                oparray.append([])
+                featureNameArray.append([])
+
+            self.newScales = []
+            #FIXME, FIXME, FIXME: remove this, just a test
+            '''
+            for j in range(dimCol):
+                destSigma = 1.0
+                if self.scales[j] > destSigma:
+                    self.newScales.append((destSigma, destSigma, destSigma))
+                else:
+                    self.newScales.append((self.scales[j], self.scales[j], min(1, 0.2*self.scales[j])ifconfig))
+                #self.newScales.append((self.scales[j], self.scales[j], 0.2*self.scales[j]))
+            '''
+            
+            for j in range(dimCol):
+                destSigma = 1.0
+                if self.scales[j] > destSigma:
+                    self.newScales.append(destSigma)
+                else:
+                    self.newScales.append(self.scales[j])
+
+                logger.debug("Replacing scale %f with new scale %f" %(self.scales[j], self.newScales[j]))
+            
+            for i, featureId in enumerate(self.inputs["FeatureIds"].value):
+                if featureId == 'GaussianSmoothing':
+                    for j in range(dimCol):
+                        oparray[i].append(OpGaussianSmoothing(self))
+                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                        oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
+                        featureNameArray[i].append("Gaussian Smoothing (s=" + str(self.scales[j]) + ")")
+
+                elif featureId == 'LaplacianOfGaussian':
+                    for j in range(dimCol):
+                        oparray[i].append(OpLaplacianOfGaussian(self))
+                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                        oparray[i][j].inputs["scale"].setValue(self.newScales[j])
+                        featureNameArray[i].append("Laplacian of Gaussian (s=" + str(self.scales[j]) + ")")
+
+                elif featureId == 'StructureTensorEigenvalues':
+                    for j in range(dimCol):
+                        oparray[i].append(OpStructureTensorEigenvalues(self))
+                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                        # Note: If you need to change the inner or outer scale,
+                        #  you must make a new feature (with a new feature ID) and
+                        #  leave this feature here to preserve backwards compatibility
+                        oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
+                        #FIXME, FIXME, FIXME
+                        #sigma1 = [x*0.5 for x in self.newScales[j]]
+                        #oparray[i][j].inputs["outerScale"].setValue(sigma1)
+                        oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
+                        featureNameArray[i].append("Structure Tensor Eigenvalues (s=" + str(self.scales[j]) + ")")
+
+                elif featureId == 'HessianOfGaussianEigenvalues':
+                    for j in range(dimCol):
+                        oparray[i].append(OpHessianOfGaussianEigenvalues(self))
+                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                        oparray[i][j].inputs["scale"].setValue(self.newScales[j])
+                        featureNameArray[i].append("Hessian of Gaussian Eigenvalues (s=" + str(self.scales[j]) + ")")
+
+                elif featureId == 'GaussianGradientMagnitude':
+                    for j in range(dimCol):
+                        oparray[i].append(OpGaussianGradientMagnitude(self))
+                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                        oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
+                        featureNameArray[i].append("Gaussian Gradient Magnitude (s=" + str(self.scales[j]) + ")")
+
+                elif featureId == 'DifferenceOfGaussians':
+                    for j in range(dimCol):
+                        oparray[i].append(OpDifferenceOfGaussians(self))
+                        oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
+                        # Note: If you need to change sigma0 or sigma1, you must make a new
+                        #  feature (with a new feature ID) and leave this feature here
+                        #  to preserve backwards compatibility
+                        oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])
+                        #FIXME, FIXME, FIXME
+                        #sigma1 = [x*0.66 for x in self.newScales[j]]
+                        #oparray[i][j].inputs["sigma1"].setValue(sigma1)
+                        oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
+                        featureNameArray[i].append("Difference of Gaussians (s=" + str(self.scales[j]) + ")")
+
+            #disconnecting all Operators
+            for islot in self.multi.inputs.values():
+                islot.disconnect()
+
+            channelCount = 0
+            featureCount = 0
+            self.Features.resize( 0 )
+            self.featureOutputChannels = []
+            #connect individual operators
+            for i in range(dimRow):
+                for j in range(dimCol):
+                    if self.matrix[i,j]:
+                        # Feature names are provided via metadata
+                        oparray[i][j].outputs["Output"].meta.description = featureNameArray[i][j]
+                        self.multi.inputs["Input%02d" %(i*dimCol+j)].connect(oparray[i][j].outputs["Output"])
+                        logger.debug("connected  Input%02d of self.multi" %(i*dimCol+j))
+
+                        # Prepare the individual features
+                        featureCount += 1
+                        self.Features.resize( featureCount )
+
+                        featureMeta = oparray[i][j].outputs["Output"].meta
+                        featureChannels = featureMeta.shape[ featureMeta.axistags.index('c') ]
+                        self.Features[featureCount-1].meta.assignFrom( featureMeta )
+                        self.featureOutputChannels.append( (channelCount, channelCount + featureChannels) )
+                        channelCount += featureChannels
+            
+            #additional connection with FakeOperator
+            if (self.matrix==0).all():
+                fakeOp = OpGaussianSmoothing(parent=self)
+                fakeOp.inputs["Input"].connect(self.source.outputs["Output"])
+                fakeOp.inputs["sigma"].setValue(10)
+                self.multi.inputs["Input%02d" %(i*dimCol+j+1)].connect(fakeOp.outputs["Output"])
+                self.multi.inputs["Input%02d" %(i*dimCol+j+1)].disconnect()
+                stackerShape = list(self.Input.meta.shape)
+                stackerShape[ self.Input.meta.axistags.index('c') ] = 0
+                self.stacker.Output.meta.shape = tuple(stackerShape)
+                self.stacker.Output.meta.axistags = self.Input.meta.axistags
+            else:
+                self.stacker.inputs["AxisFlag"].setValue('c')
+                self.stacker.inputs["AxisIndex"].setValue(self.source.outputs["Output"].meta.axistags.index('c'))
+                self.stacker.inputs["Images"].connect(self.multi.outputs["Outputs"])
+    
+                self.maxSigma = 0
+                #determine maximum sigma
+                for i in range(dimRow):
+                    for j in range(dimCol):
+                        val=self.matrix[i,j]
+                        if val:
+                            self.maxSigma = max(self.scales[j],self.maxSigma)
+    
+                self.featureOps = oparray
+
+            # Output meta is a modified copy of the input meta
+            self.Output.meta.assignFrom(self.Input.meta)
+            self.Output.meta.dtype = numpy.float32
+            self.Output.meta.axistags = self.stacker.Output.meta.axistags
+            self.Output.meta.shape = self.stacker.Output.meta.shape
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        if inputSlot == self.Input:
+            channelAxis = self.Input.meta.axistags.index('c')
+            numChannels = self.Input.meta.shape[channelAxis]
+            dirtyChannels = roi.stop[channelAxis] - roi.start[channelAxis]
+            
+            # If all the input channels were dirty, the dirty output region is a contiguous block
+            if dirtyChannels == numChannels:
+                dirtyKey = roiToSlice(roi.start, roi.stop)
+                dirtyKey[channelAxis] = slice(None)
+                dirtyRoi = sliceToRoi(dirtyKey, self.Output.meta.shape)
+                self.Output.setDirty(dirtyRoi[0], dirtyRoi[1])
+            else:
+                # Only some input channels were dirty, 
+                #  so we must mark each dirty output region separately.
+                numFeatures = self.Output.meta.shape[channelAxis] / numChannels
+                for featureIndex in range(numFeatures):
+                    startChannel = numChannels*featureIndex + roi.start[channelAxis]
+                    stopChannel = startChannel + roi.stop[channelAxis]
+                    dirtyRoi = copy.copy(roi)
+                    dirtyRoi.start[channelAxis] = startChannel
+                    dirtyRoi.stop[channelAxis] = stopChannel
+                    self.Output.setDirty(dirtyRoi)
+
+        elif (inputSlot == self.Matrix
+              or inputSlot == self.Scales 
+              or inputSlot == self.FeatureIds
+              or inputSlot == self.InterpolationScaleZ):
+            self.Output.setDirty(slice(None))
+        else:
+            assert False, "Unknown dirty input slot."
+            
+
+    def execute(self, slot, subindex, rroi, result):
+        assert slot == self.Features or slot == self.Output
+        if slot == self.Features:
+            key = roiToSlice(rroi.start, rroi.stop)
+            index = subindex[0]
+            subslot = self.Features[index]
+            key = list(key)
+            channelIndex = self.Input.meta.axistags.index('c')
+            
+            # Translate channel slice to the correct location for the output slot.
+            key[channelIndex] = slice(self.featureOutputChannels[index][0] + key[channelIndex].start,
+                                      self.featureOutputChannels[index][0] + key[channelIndex].stop)
+            rroi = SubRegion(subslot, pslice=key)
+    
+            # Get output slot region for this channel
+            return self.execute(self.Output, (), rroi, result)
+        elif slot == self.outputs["Output"]:
+            key = rroi.toSlice()
+            cnt = 0
+            written = 0
+            assert (rroi.stop<=self.outputs["Output"].meta.shape).all()
+            flag = 'c'
+            channelAxis=self.inputs["Input"].meta.axistags.index('c')
+            axisindex = channelAxis
+            oldkey = list(key)
+            oldkey.pop(axisindex)
+
+            inShape  = self.inputs["Input"].meta.shape
+            shape = self.outputs["Output"].meta.shape
+            axistags = self.inputs["Input"].meta.axistags
+
+            result = result.view(vigra.VigraArray)
+            result.axistags = copy.copy(axistags)
+
+            hasTimeAxis = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Time)
+            timeAxis=self.inputs["Input"].meta.axistags.index('t')
+
+            subkey = popFlagsFromTheKey(key,axistags,'c')
+            subshape=popFlagsFromTheKey(shape,axistags,'c')
+            at2 = copy.copy(axistags)
+            at2.dropChannelAxis()
+            subshape=popFlagsFromTheKey(subshape,at2,'t')
+            subkey = popFlagsFromTheKey(subkey,at2,'t')
+
+            oldstart, oldstop = roi.sliceToRoi(key, shape)
+
+            start, stop = roi.sliceToRoi(subkey,subkey)
+            maxSigma = max(0.7,self.maxSigma)
+
+            # The region of the smoothed image we need to give to the feature filter (in terms of INPUT coordinates)
+            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, window = 2)
+            #print "vigOpSourceStart", vigOpSourceStart
+            vigOpOffset = start - vigOpSourceStart
+            
+            
+            # The region of the input that we need to give to the smoothing operator (in terms of INPUT coordinates)
+            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, window = 3.5)
+
+            # Translate coordinates (now in terms of smoothed image coordinates)
+            vigOpSourceStart = roi.TinyVector(vigOpSourceStart - newStart)
+            vigOpSourceStop = roi.TinyVector(vigOpSourceStop - newStart)
+
+            readKey = roi.roiToSlice(newStart, newStop)
+
+            writeNewStart = start - newStart
+            writeNewStop = writeNewStart +  stop - start
+
+            treadKey=list(readKey)
+
+            if hasTimeAxis:
+                if timeAxis < channelAxis:
+                    treadKey.insert(timeAxis, key[timeAxis])
+                else:
+                    treadKey.insert(timeAxis-1, key[timeAxis])
+            if  self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
+                treadKey =  popFlagsFromTheKey(treadKey,axistags,'c')
+            else:
+                treadKey.insert(channelAxis, slice(None,None,None))
+
+            treadKey=tuple(treadKey)
+            req = self.inputs["Input"][treadKey].allocate()
+            sourceArray = req.wait()
+            
+            req.result = None
+            req.destination = None
+            if sourceArray.dtype != numpy.float32:
+                sourceArrayF = sourceArray.astype(numpy.float32)
+                sourceArray.resize((1,), refcheck = False)
+                del sourceArray
+                sourceArray = sourceArrayF
+            sourceArrayV = sourceArray.view(vigra.VigraArray)
+            sourceArrayV.axistags =  copy.copy(axistags)
+            
+            ########## new stuff #####################
+            zaxis = axistags.index('z')
+            scaleZ = self.InterpolationScaleZ.value
+            newRangeZ = scaleZ*(sourceArrayV.shape[zaxis]-1)+1
+            interpShape = list(sourceArrayV.shape)
+            interpShape[zaxis] = numpy.long(newRangeZ)
+            interpShape = popFlagsFromTheKey(interpShape, axistags, 'c')
+            interpShape = popFlagsFromTheKey(interpShape, at2, 't')
+            #print sourceArrayV.shape, sourceArrayV.dtype, interpShape
+            #FIXME: this won't work with multichannel data. Don't care for now.
+            sourceArrayVInterp = vigra.sampling.resizeVolumeSplineInterpolation(sourceArrayV.squeeze(), shape=interpShape)
+            #print "interpolated array shape:", sourceArrayVInterp.shape
+            sourceArrayVInterp.resize(sourceArrayVInterp.shape+(1,))
+            sourceArrayVInterp.axistags = copy.copy(axistags)
+
+            #print "interpolated array:", sourceArrayVInterp[0, 0, 10, 0]
+
+            dimCol = len(self.scales)
+            dimRow = self.matrix.shape[0]
+
+
+            sourceArraysForSigmas = [None]*dimCol
+
+            #connect individual operators
+            for j in range(dimCol):
+                hasScale = False
+                for i in range(dimRow):
+                    if self.matrix[i,j]:
+                        hasScale = True
+                if not hasScale:
+                    continue
+                destSigma = 1.0
+                if self.scales[j] > destSigma:
+                    tempSigma = math.sqrt(self.scales[j]**2 - destSigma**2)
+                else:
+                    destSigma = 0.0
+                    tempSigma = self.scales[j]
+                vigOpSourceShape = list(vigOpSourceStop - vigOpSourceStart)
+                if hasTimeAxis:
+
+                    if timeAxis < channelAxis:
+                        vigOpSourceShape.insert(timeAxis, ( oldstop - oldstart)[timeAxis])
+                    else:
+                        vigOpSourceShape.insert(timeAxis-1, ( oldstop - oldstart)[timeAxis])
+                    vigOpSourceShape.insert(channelAxis, inShape[channelAxis])
+
+                    sourceArraysForSigmas[j] = numpy.ndarray(tuple(vigOpSourceShape),numpy.float32)
+                    for i,vsa in enumerate(sourceArrayV.timeIter()):
+                        droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
+                        tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),timeAxis, i)
+                        sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = 3.5 )
+                else:
+                    #change the z to the new value
+                    #print "old value:", vigOpSourceStart[zaxis], vigOpSourceStop[zaxis]
+                    newzstart = vigOpSourceStart[zaxis]*scaleZ
+                    newzstop = vigOpSourceStop[zaxis]*scaleZ
+                    #vigOpSourceStart[zaxis]=newzstart
+                    #vigOpSourceStop[zaxis]=newzstop-1
+                    newVigStart = [int(x) for x in vigOpSourceStart]
+                    newVigStop = [int(x) for x in vigOpSourceStop]
+                    #newVigStart = numpy.array(vigOpSourceStart).astype(int)
+                    #newVigStop = numpy.array(vigOpSourceStop).astype(int)
+                    newVigStart[zaxis]*=scaleZ
+                    newVigStop[zaxis]=min(newVigStop[zaxis]*scaleZ-1, sourceArrayVInterp.shape[zaxis])
+                    droi = (tuple(newVigStart), tuple(newVigStop))
+                    #droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
+                    #print "smoothing with roi:", droi, "an array of shape:", sourceArrayVInterp.shape
+                    
+                    #print droi, sourceArray.shape, tempSigma,self.scales[j]
+                    
+                    sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayVInterp, sigma = tempSigma, roi = droi, window_size = 3.5)
+                    #print "smoothed an array to get something of size", sourceArraysForSigmas[j].shape
+                    #print "here is the smoothed thing", sourceArraysForSigmas[j][0, 0, :, 0]
+                    
+                    #sourceArrayForSigma = sourceArrayForSigma.view(numpy.ndarray)
+
+            del sourceArrayV
+            del sourceArrayVInterp
+            try:
+                sourceArray.resize((1,), refcheck = False)
+            except ValueError:
+                # Sometimes this fails, but that's okay.
+                logger.debug("Failed to free array memory.")                
+            del sourceArray
+
+            
+            closures = []
+
+            #connect individual operators
+            for i in range(dimRow):
+                for j in range(dimCol):
+                    val=self.matrix[i,j]
+                    if val:
+                        vop= self.featureOps[i][j]
+                        oslot = vop.outputs["Output"]
+                        req = None
+                        inTagKeys = [ax.key for ax in oslot.meta.axistags]
+                        if flag in inTagKeys:
+                            slices = oslot.meta.shape[axisindex]
+                            if cnt + slices >= rroi.start[axisindex] and rroi.start[axisindex]-cnt<slices and rroi.start[axisindex]+written<rroi.stop[axisindex]:
+                                begin = 0
+                                if cnt < rroi.start[axisindex]:
+                                    begin = rroi.start[axisindex] - cnt
+                                end = slices
+                                if cnt + end > rroi.stop[axisindex]:
+                                    end -= cnt + end - rroi.stop[axisindex]
+                                    
+                                #call feature computation per slice, only for the original data slices
+                                nz = scaleZ*(oldkey[zaxis].stop-oldkey[zaxis].start)
+                                for iz in range(0, nz, scaleZ):
+                                    #print iz
+                                    #key_ = copy.copy(oldkey)
+                                    key_ = list(oldkey)
+                                    key_.insert(axisindex, slice(begin, end, None))
+                                    offset = vigOpOffset[zaxis]*scaleZ
+                                    zStart, zStop = roi.extendSlice(iz+offset, iz+offset+1, sourceArraysForSigmas[j].shape[zaxis], 0.7, window = 2)
+                                    #print "new zstart, zstop", zStart, zStop
+                                    
+                                    zslice = slice(iz+vigOpSourceStart[zaxis], iz+vigOpSourceStart[zaxis]+1, None)
+                                    key_[zaxis] = zslice
+                                    
+                                    sourceKey = []
+                                    sourceKey.insert(axistags.index('x'), slice(None, None, None))
+                                    sourceKey.insert(axistags.index('y'), slice(None, None, None))
+                                    sourceKey.insert(zaxis, slice(zStart, zStop, None))
+                                    reskey = [slice(None, None, None) for x in range(len(result.shape))]
+                                    reskey[axisindex] = slice(written, written+end-begin, None)
+                                    reskey[zaxis] = slice(iz/scaleZ, iz/scaleZ+1, None)
+                                    destArea = result[tuple(reskey)]
+                                    roi_ = SubRegion(self.Input, pslice=key_)
+                                    #print "passing to filter:", sourceArraysForSigmas[j][0, 0, zStart:zStop, 0]                                
+                                    closure = partial(oslot.operator.execute, oslot, (), roi_, destArea, sourceArray = sourceArraysForSigmas[j][sourceKey])
+                                    closures.append(closure)
+                                    
+                                written += end - begin
+                            cnt += slices
+                        else:
+                            if cnt>=rroi.start[axisindex] and rroi.start[axisindex] + written < rroi.stop[axisindex]:
+                                reskey = copy.copy(oldkey)
+                                reskey.insert(axisindex, written)
+                                #print "key: ", key, "reskey: ", reskey, "oldkey: ", oldkey
+                                #print "result: ", result.shape, "inslot:", inSlot.shape
+
+                                destArea = result[tuple(reskey)]
+                                logger.debug(oldkey, destArea.shape, sourceArraysForSigmas[j].shape)
+                                oldroi = SubRegion(self.Input, pslice=oldkey)
+                                closure = partial(oslot.operator.execute, oslot, (), oldroi, destArea, sourceArray = sourceArraysForSigmas[j])
+                                closures.append(closure)
+
+                                written += 1
+                            cnt += 1
+            pool = Pool()
+            for c in closures:
+                r = pool.request(c)
+            pool.wait()
+            pool.clean()
+
+            for i in range(len(sourceArraysForSigmas)):
+                if sourceArraysForSigmas[i] is not None:
+                    try:
+                        sourceArraysForSigmas[i].resize((1,))
+                    except:
+                        sourceArraysForSigmas[i] = None
+
+
 
 def getAllExceptAxis(ndim,index,slicer):
     res= [slice(None, None, None)] * ndim
@@ -581,6 +1061,9 @@ class OpBaseVigraFilter(OpArrayPiper):
     def execute(self, slot, subindex, rroi, result, sourceArray=None):
         assert len(subindex) == self.Output.level == 0
         key = roiToSlice(rroi.start, rroi.stop)
+
+        #print "inside execute of baseVigraFilter", rroi, result.shape, sourceArray.shape
+        #print sourceArray[0, 0, :, 0]
 
         kwparams = {}
         for islot in self.inputs.values():
@@ -610,6 +1093,7 @@ class OpBaseVigraFilter(OpArrayPiper):
         channelAxis=self.inputs["Input"].meta.axistags.index('c')
         hasTimeAxis = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Time)
         timeAxis=self.inputs["Input"].meta.axistags.index('t')
+        zAxis = self.inputs["Input"].meta.axistags.index('z')
 
         subkey = popFlagsFromTheKey(key,axistags,'c')
         subshape=popFlagsFromTheKey(shape,axistags,'c')
@@ -619,9 +1103,13 @@ class OpBaseVigraFilter(OpArrayPiper):
         subkey = popFlagsFromTheKey(subkey,at2,'t')
 
         oldstart, oldstop = roi.sliceToRoi(key, shape)
-
+        
         start, stop = roi.sliceToRoi(subkey,subkey)
-        newStart, newStop = roi.extendSlice(start, stop, subshape, largestSigma, window = windowSize)
+        if sourceArray is not None:
+            subshape[zAxis]=sourceArray.shape[zAxis]
+        #newStart, newStop = roi.extendSlice(start, stop, subshape, largestSigma, window = windowSize)
+        newStart, newStop = roi.extendSlice(start, stop, subshape, 0.7, window = windowSize)
+        
         readKey = roi.roiToSlice(newStart, newStop)
 
         writeNewStart = start - newStart
@@ -639,6 +1127,8 @@ class OpBaseVigraFilter(OpArrayPiper):
         else:
             writeKey.insert(channelAxis, slice(None,None,None))
         writeKey = tuple(writeKey)
+
+        #print writeKey
 
         channelsPerChannel = self.resultingChannels()
 
@@ -732,6 +1222,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                         except Exception, e:
                             print "EXCEPT 2.1", self.name, image.shape, vroi, kwparams
                             traceback.print_exc(e)
+                            import sys
                             sys.exit(1)
                     else:
                         try:
