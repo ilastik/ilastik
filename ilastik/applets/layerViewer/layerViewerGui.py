@@ -18,7 +18,7 @@ from ilastik.utility.gui import ThreadRouter, threadRouted
 
 from volumina.adaptors import Op5ifyer
 
-from volumina.clickReportingInterpreter import ClickReportingInterpreter
+from volumina.interpreter import ClickReportingInterpreter
 
 import logging
 logger = logging.getLogger(__name__)
