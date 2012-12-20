@@ -10,6 +10,7 @@ import hashlib
 import glob
 import pickle
 import functools
+import tempfile
 
 # Third-party
 import h5py
@@ -57,12 +58,16 @@ def getArgParser():
     parser.add_argument('--batch_output_suffix', default='_prediction', help='Suffix for batch output filenames (before extension).')
     parser.add_argument('--batch_output_dataset_name', default='/volume/prediction', help='HDF5 internal dataset path')
     parser.add_argument('--assume_old_ilp_axes', action='store_true', help='When importing 0.5 project files, assume axes are in the wrong order and need to be transposed.')
-    parser.add_argument('--stack_volume_cache_dir', default='/tmp', help='The preprocessing step converts image stacks to hdf5 volumes.  The volumes will be saved to this directory.')
+    parser.add_argument('--stack_volume_cache_dir', help='The preprocessing step converts image stacks to hdf5 volumes.  The volumes will be saved to this directory.', required=False)
     parser.add_argument('batch_inputs', nargs='*', help='List of input files to process. Supported filenames: .h5, .npy, or globstring for stacks (e.g. *.png)')
     return parser
 
 def runWorkflow(parsed_args):
     args = parsed_args
+    
+    # Use a temporary cache dir
+    if args.stack_volume_cache_dir is None:
+        args.stack_volume_cache_dir = tempfile.tempdir
     
     # Make sure project file exists.
     if not os.path.exists(args.project):
