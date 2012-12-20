@@ -4,15 +4,15 @@
 	"scratch_directory" : "/home/bergs/clusterstuff/scratch",
 	"num_jobs" : "2**3",
 	"task_timeout_secs" : "20*60",
-	"##use_node_local_scratch" : true,
+	"use_node_local_scratch" : true,
 	"##use_master_local_scratch" : true,
 	"##node_output_compression_cmd" : "gzip -1 --to-stdout \"{uncompressed_file}\" > \"{compressed_file}.gz\"",
 	"##node_output_decompression_cmd" : "gzip -d --to-stdout \"{compressed_file}.gz\" > \"{uncompressed_file}\"",
 	"task_progress_update_command" : "./update_job_name {progress} > /dev/null",
 	"task_launch_server" : "login.int.janelia.org",
 	"server_working_directory" : "/home/bergs/clusterstuff/launchdir",
-	"output_log_directory" : "/home/bergs/clusterstuff/logs/giga_trial6_8jobs_nocompress_no_local_caching",
+	"output_log_directory" : "/home/bergs/clusterstuff/logs/giga_trial7_8jobs_nocompress_with_node_caching_no_master_caching",
 	"command_format" : "qsub -pe batch 8 -l short=true -N {task_name} -o {task_output_file} -j y -b y -cwd -V '/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik_clusterized {task_args}'",
-	"debug_option_use_previous_node_files" : true
+	"debug_option_use_previous_node_files" : false
 }
 

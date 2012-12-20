@@ -9,7 +9,7 @@ import h5py
 import time
 import threading
 import collections
-from functools import partial
+import functools
 import tempfile
 import shutil
 import hashlib
@@ -39,6 +39,17 @@ class Timer(object):
             return (datetime.datetime.now() - self.startTime).seconds
         else:
             return (self.stopTime - self.startTime).seconds
+
+def timed(func):
+    prev_run_timer = Timer()
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with prev_run_timer:
+            return func(*args, **kwargs)    
+
+    wrapper.prev_run_timer = prev_run_timer
+    wrapper.__wrapped__ = func # Emulate python 3 behavior of @functools.wraps
+    return wrapper
 
 STATUS_FILE_NAME_FORMAT = "{} status {}.txt"
 OUTPUT_FILE_NAME_FORMAT = "{} output {}.h5"
@@ -219,6 +230,7 @@ class OpClusterize(Operator):
                 fab.execute( remoteCommand, taskInfo.command )
 
         timeOut = self._config.task_timeout_secs
+        serialStepSeconds = 0
         with Timer() as totalTimer:
             # When each task completes, it creates a status file.
             while len(taskInfos) > 0:
@@ -234,6 +246,7 @@ class OpClusterize(Operator):
     
                 # Figure out which results have finished already and copy their results into the final output file
                 finished_rois = self._copyFinishedResults( taskInfos )
+                serialStepSeconds += self._copyFinishedResults.prev_run_timer.seconds()
     
                 # Remove the finished tasks from the list we're polling for
                 for roi in finished_rois:
@@ -250,7 +263,8 @@ class OpClusterize(Operator):
                     del taskInfos[roi]
 
         if success:
-            logger.info( "SUCCESS: Completed {} MB in {} seconds.".format( totalMB, totalTimer.seconds() ) )
+            logger.info( "SUCCESS: Completed {} MB in {} total seconds.".format( totalMB, totalTimer.seconds() ) )
+            logger.info( "Reassembly took a total of {} seconds".format( serialStepSeconds ) )
         else:
             logger.info( "FAILED: After {} seconds.".format( totalTimer.seconds() ) )
 
@@ -395,6 +409,7 @@ class OpClusterize(Operator):
                 
             return alreadyFinishedRois
 
+    @timed
     def _copyFinishedResults(self, taskInfos):
         """
         For each of the taskInfos provided:
