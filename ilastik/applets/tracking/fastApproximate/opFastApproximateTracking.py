@@ -2,7 +2,7 @@ from lazyflow.graph import InputSlot
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 
-import ctracking
+import pgmlink
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 
 
@@ -25,11 +25,11 @@ class OpFastApproximateTracking(OpTrackingBase):
             splitterHandling=True,
             mergerHandling=True):
         
-        distFeatureVector = ctracking.VectorOfString();
+        distFeatureVector = pgmlink.VectorOfString();
         for d in distanceFeatures:
             distFeatureVector.append(d)  
             
-        max_traxel_id_at = ctracking.VectorOfInt()
+        max_traxel_id_at = pgmlink.VectorOfInt()
         ts, filtered_labels, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       max_traxel_id_at=max_traxel_id_at, 
@@ -39,7 +39,7 @@ class OpFastApproximateTracking(OpTrackingBase):
             print 'cannot track frames with 0 objects, abort.'
             return
     
-        tracker = ctracking.NNTracking(float(divDist), 
+        tracker = pgmlink.NNTracking(float(divDist), 
                                        float(movDist), 
                                        distFeatureVector, 
                                        float(divThreshold), 
