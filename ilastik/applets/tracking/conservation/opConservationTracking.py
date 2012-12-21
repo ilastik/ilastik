@@ -39,7 +39,10 @@ class OpConservationTracking(OpTrackingBase):
             maxDist=30,     
             maxObj=2,       
             divThreshold=0.5,
-            avgSize=0
+            avgSize=0,
+            fixedDetections=False,
+            withAppearance=True,
+            withDisappearance=True
             ):
         
         median_obj_size = [0]
@@ -64,9 +67,12 @@ class OpConservationTracking(OpTrackingBase):
                                          True,   # size_dependent_detection_prob
                                          0,       # forbidden_cost
                                          True,    # with_constraints
-                                         False,   # fixed_detections
-                                         float(ep_gap),
-                                         float(median_obj_size[0]))
+                                         fixedDetections,   # fixed_detections
+                                         float(ep_gap), # ep_gap
+                                         float(median_obj_size[0]), # median_object_size
+                                         withAppearance,
+                                         withDisappearance
+                                         )
         
         self.events = tracker(ts)
         

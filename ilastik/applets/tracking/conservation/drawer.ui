@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>715</height>
+    <height>796</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -124,6 +124,30 @@
         </widget>
        </item>
       </layout>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="appBox">
+       <property name="text">
+        <string>With Appearance</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="disappBox">
+       <property name="text">
+        <string>With Disappearance</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="fixDetectionsBox">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Fix Detections</string>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="TrackButton">

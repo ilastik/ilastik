@@ -36,11 +36,19 @@ class ConservationTrackingGui( TrackingGuiBase ):
         
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
-
+        self._drawer.appBox.stateChanged.connect(self._onAppDisappBoxChanged)
+        self._drawer.disappBox.stateChanged.connect(self._onAppDisappBoxChanged)
+        self._onAppDisappBoxChanged()
 
     def _onMaxObjectsBoxChanged(self):
         self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
     
+    def _onAppDisappBoxChanged(self):
+        if self._drawer.appBox.isChecked() or self._drawer.disappBox.isChecked():
+            self._drawer.fixDetectionsBox.setEnabled(True)
+        else:
+            self._drawer.fixDetectionsBox.setChecked(False)
+            self._drawer.fixDetectionsBox.setEnabled(False)
         
     def _onTrackButtonPressed( self ):        
         maxDist = self._drawer.maxDistBox.value()
@@ -61,6 +69,10 @@ class ConservationTrackingGui( TrackingGuiBase ):
         self.time_range =  range(from_t, to_t + 1)
         avgSize = self._drawer.avgSizeBox.value()
         
+        withAppearance = self._drawer.appBox.isChecked()
+        withDisappearance = self._drawer.disappBox.isChecked()
+        fixedDetections = self._drawer.fixDetectionsBox.isChecked()
+        
         self.mainOperator.track(
             time_range = self.time_range,
             x_range = (from_x, to_x + 1),
@@ -73,7 +85,10 @@ class ConservationTrackingGui( TrackingGuiBase ):
             maxDist=maxDist,         
             maxObj = maxObj,               
             divThreshold=divThreshold,
-            avgSize=avgSize
+            avgSize=avgSize,
+            fixedDetections=fixedDetections,
+            withAppearance=withAppearance,
+            withDisappearance=withDisappearance
             )
         
         self._drawer.exportButton.setEnabled(True)
