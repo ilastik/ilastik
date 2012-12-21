@@ -1,8 +1,10 @@
 import tempfile
 import urllib2
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+import numpy
+import h5py
 import vigra
-from lazyflow.jsonConfig import JsonConfigSchema
+from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.jsonConfig import JsonConfigSchema, AutoEval, FormattedField
 
 RESTfulVolumeDescriptionFields = \
 {
@@ -37,7 +39,7 @@ class OpRESTfulVolumeReader(Operator):
 
     def setupOutputs(self):
         # Read the dataset description file
-        descriptionFields = self._configSchema( self.DescriptionFilePath.value )
+        descriptionFields = self._configSchema.parseConfigFile( self.DescriptionFilePath.value )
 
         assert descriptionFields.format == "hdf5", "Only hdf5 RESTful volumes are supported so far."
         
@@ -56,7 +58,9 @@ class OpRESTfulVolumeReader(Operator):
         self._axes = axes
         axistags = vigra.defaultAxistags(self._axes)
         
+        self._urlFormat = descriptionFields.url_format
         self._origin_offset = numpy.array(descriptionFields.origin_offset)
+        self._hdf5_dataset = descriptionFields.hdf5_dataset
 
         self.Output.meta.shape = outputShape
         self.Output.meta.dtype = descriptionFields.dtype
@@ -80,17 +84,16 @@ class OpRESTfulVolumeReader(Operator):
 
         # Open the url
         url = self._urlFormat.format( **RESTArgs )
-        hdf5FileBytes = urllib2.urlopen( url, timeout=10 )
+        hdf5RawFileObject = urllib2.urlopen( url, timeout=10 )
 
         # Write the data from the url out to disk (in a temporary file)
-        hdf5RawHandle, hdf5FilePath = tempfile.mkstemp()
-        rawFileToWrite = os.fdopen( hdf5RawHandle )
-        rawFileToWrite.write( hdf5FileBytes )
-        rawFileToWrite.close()
+        hdf5FilePath = os.path.join(tempfile.mkdtemp(), 'cube.h5')
+        with open(hdf5FilePath, 'w') as rawFileToWrite:
+            rawFileToWrite.write( hdf5RawFileObject.read() )
 
         # Open the file we just created using h5py
         with h5py.File( hdf5FilePath, 'r' ) as hdf5File:
-            result[...] = hdf5File[self._hdf5_dataset]        
+            result[...] = hdf5File[self._hdf5_dataset]
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -105,7 +108,7 @@ if __name__ == "__main__":
     "axes" : "zxy",
     "shape" : [1239, 135424, 119808],
     "dtype" : "numpy.uint8",
-    "offset_address" : [2917, 0, 0],
+    "origin_offset" : [2917, 0, 0],
     "url_format" : "http://openconnecto.me/emca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
     "hdf5_dataset" : "cube"
 }
@@ -125,10 +128,11 @@ if __name__ == "__main__":
     data = op.Output[0:100, 50000:50200, 50000:50200].wait()
     assert data.shape == ( 100, 200, 200 )
 
+    outputDataFilePath = os.path.join(tempfile.mkdtemp(), 'testOutput.h5')
+    with h5py.File( outputDataFilePath, 'w' ) as outputDataFile:
+        outputDataFile.create_dataset('volume', data=data)
 
-
-
-
+    print "Wrote data to {}".format(outputDataFilePath)
 
 
 
