@@ -1,3 +1,4 @@
+import os
 import tempfile
 import urllib2
 import numpy
@@ -5,6 +6,9 @@ import h5py
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.jsonConfig import JsonConfigSchema, AutoEval, FormattedField
+
+import logging
+logger = logging.getLogger(__name__)
 
 RESTfulVolumeDescriptionFields = \
 {
@@ -81,6 +85,7 @@ class OpRESTfulVolumeReader(Operator):
 
         # Open the url
         url = self._urlFormat.format( **RESTArgs )
+        logger.debug( "Downloading region {}..{}: {}".format(roi.start, roi.stop, url) )
         hdf5RawFileObject = urllib2.urlopen( url, timeout=10 )
 
         # Write the data from the url out to disk (in a temporary file)
@@ -102,31 +107,47 @@ class OpRESTfulVolumeReader(Operator):
         self.Output.setDirty( slice(None) )
 
 if __name__ == "__main__":
-    testConfig = """
+    testConfig0 = """
 {
     "name" : "Bock11-level0",
     "format" : "hdf5",
-    "axes" : "zxy",
-    "shape" : [1239, 135424, 119808],
+    "axes" : "zyx",
+    "##NOTE":"The first z-slice of the bock dataset is 2917, so the origin_offset must be at least 2917",
+    "origin_offset" : [2917, 50000, 50000],
+    "###shape" : [1239, 135424, 119808],
+    "shape" : [1239, 10000, 10000],
     "dtype" : "numpy.uint8",
-    "origin_offset" : [2917, 0, 0],
     "url_format" : "http://openconnecto.me/emca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
     "hdf5_dataset" : "cube"
 }
 """
 
-    import os
+    testConfig4 = """
+{
+    "name" : "Bock11-level4",
+    "format" : "hdf5",
+    "axes" : "zyx",
+    "##NOTE":"The first z-slice of the bock dataset is 2917, so the origin_offset must be at least 2917",
+    "origin_offset" : [2917, 0, 0],
+    "shape" : [1239, 8704, 7680],
+    "dtype" : "numpy.uint8",
+    "url_format" : "http://openconnecto.me/emca/bock11/hdf5/4/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
+    "hdf5_dataset" : "cube"
+}
+"""
+
     from lazyflow.graph import Graph
     
     descriptionFilePath = os.path.join(tempfile.mkdtemp(), 'desc.json')
     with open(descriptionFilePath, 'w') as descFile:
-        descFile.write( testConfig )
+        descFile.write( testConfig4 )
     
     graph = Graph()
     op = OpRESTfulVolumeReader(graph=graph)
     op.DescriptionFilePath.setValue( descriptionFilePath )
     
-    data = op.Output[0:100, 50000:50200, 50000:50200].wait()
+    #data = op.Output[0:100, 50000:50200, 50000:50200].wait()
+    data = op.Output[0:100, 4000:4200, 4000:4200].wait()
     
     # We expect a channel dimension to be added automatically...
     assert data.shape == ( 100, 200, 200, 1 )
