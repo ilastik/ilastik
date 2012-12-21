@@ -41,34 +41,31 @@ class OpRESTfulVolumeReader(Operator):
         # Read the dataset description file
         descriptionFields = self._configSchema.parseConfigFile( self.DescriptionFilePath.value )
 
-        assert descriptionFields.format == "hdf5", "Only hdf5 RESTful volumes are supported so far."
-        
-        outputShape = tuple( descriptionFields.shape )
-        axes = descriptionFields.axes
+        # Check for errors in the description file
+        axes = descriptionFields.axes 
         assert False not in map(lambda a: a in 'txyzc', axes), "Unknown axis type.  Known axes: txyzc  Your axes:".format(axes)
+        assert descriptionFields.format == "hdf5", "Only hdf5 RESTful volumes are supported so far."
+        assert descriptionFields.hdf5_dataset is not None, "RESTful volume description file must specify the hdf5_dataset name"
 
-        self._datasetName = descriptionFields.hdf5_dataset
-        assert self._datasetName is not None, "RESTful volume description file must specify the hdf5_dataset name"
-
-#        # If the dataset has no channel axis, add one.
-#        if 'c' not in axes:
-#            outputShape += (1,)
-#            axes += 'c'
-
-        self._axes = axes
-        axistags = vigra.defaultAxistags(self._axes)
-        
+        # Save description file members
+        self._axes = descriptionFields.axes
         self._urlFormat = descriptionFields.url_format
         self._origin_offset = numpy.array(descriptionFields.origin_offset)
         self._hdf5_dataset = descriptionFields.hdf5_dataset
 
+        outputShape = tuple( descriptionFields.shape )
+
+        # If the dataset has no channel axis, add one.
+        if 'c' not in axes:
+            outputShape += (1,)
+            self._axes += 'c'
+            self._origin_offset = numpy.array( list(self._origin_offset) + [0] )
+
         self.Output.meta.shape = outputShape
         self.Output.meta.dtype = descriptionFields.dtype
-        self.Output.meta.axistags = axistags
+        self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
 
     def execute(self, slot, subindex, roi, result):
-
-        
         accessStart = numpy.array(roi.start)
         accessStart += self._origin_offset
         accessStop = numpy.array(roi.stop)
@@ -93,7 +90,11 @@ class OpRESTfulVolumeReader(Operator):
 
         # Open the file we just created using h5py
         with h5py.File( hdf5FilePath, 'r' ) as hdf5File:
-            result[...] = hdf5File[self._hdf5_dataset]
+            dataset = hdf5File[self._hdf5_dataset]
+            if len(result.shape) > len(dataset.shape):
+                result[...,0] = dataset[...]
+            else:
+                result[...] = dataset[...]
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -126,7 +127,9 @@ if __name__ == "__main__":
     op.DescriptionFilePath.setValue( descriptionFilePath )
     
     data = op.Output[0:100, 50000:50200, 50000:50200].wait()
-    assert data.shape == ( 100, 200, 200 )
+    
+    # We expect a channel dimension to be added automatically...
+    assert data.shape == ( 100, 200, 200, 1 )
 
     outputDataFilePath = os.path.join(tempfile.mkdtemp(), 'testOutput.h5')
     with h5py.File( outputDataFilePath, 'w' ) as outputDataFile:
