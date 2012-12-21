@@ -27,7 +27,7 @@ class OpChaingraphTracking(OpTrackingBase):
             min_angle = 0,
             ep_gap = 0.2):
 
-        tracker = pgmlink.MrfTracking(rf_fn,
+        tracker = pgmlink.ChaingraphTracking(rf_fn,
                                         app,
                                         dis,
                                         det,
