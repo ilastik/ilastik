@@ -1,4 +1,4 @@
-import ctracking
+import pgmlink
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 
 
@@ -27,7 +27,7 @@ class OpChaingraphTracking(OpTrackingBase):
             min_angle = 0,
             ep_gap = 0.2):
 
-        tracker = ctracking.MrfTracking(rf_fn,
+        tracker = pgmlink.MrfTracking(rf_fn,
                                         app,
                                         dis,
                                         det,

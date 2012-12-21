@@ -3,7 +3,7 @@ from lazyflow.rtype import SubRegion, List
 from lazyflow.stype import Opaque
 
 import numpy as np
-import ctracking
+import pgmlink
 from ilastik.applets.tracking.base.trackingUtilities import relabel
 
 
@@ -61,15 +61,15 @@ class OpTrackingBase(Operator):
             mov = []
             merger = []            
             for event in events_at:
-                if event.type == ctracking.EventType.Appearance:
+                if event.type == pgmlink.EventType.Appearance:
                     app.append((event.traxel_ids[0], event.energy))
-                if event.type == ctracking.EventType.Disappearance:
+                if event.type == pgmlink.EventType.Disappearance:
                     dis.append((event.traxel_ids[0], event.energy))
-                if event.type == ctracking.EventType.Division:
+                if event.type == pgmlink.EventType.Division:
                     div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
-                if event.type == ctracking.EventType.Move:
+                if event.type == pgmlink.EventType.Move:
                     mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
-                if event.type == ctracking.EventType.Merger:
+                if event.type == pgmlink.EventType.Merger:
                     merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))                              
 
             print len(dis), "dis at", i + time_range[0]
@@ -144,9 +144,9 @@ class OpTrackingBase(Operator):
             localCenters = self.RegionLocalCenters(time_range).wait()
         
         print "filling traxelstore"
-        ts = ctracking.TraxelStore()
+        ts = pgmlink.TraxelStore()
                 
-        max_traxel_id_at = ctracking.VectorOfInt()  
+        max_traxel_id_at = pgmlink.VectorOfInt()  
         filtered_labels = {}        
         obj_sizes = []
         total_count = 0
@@ -174,7 +174,7 @@ class OpTrackingBase(Operator):
                     continue
                 else:
                     count += 1
-                tr = ctracking.Traxel()
+                tr = pgmlink.Traxel()
                 tr.set_x_scale(x_scale)
                 tr.set_y_scale(y_scale)
                 tr.set_z_scale(z_scale)

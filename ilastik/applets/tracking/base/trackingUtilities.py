@@ -1,7 +1,7 @@
 import h5py
 import numpy as np
 import os.path as path
-import ctracking
+import pgmlink
 
 
 def relabel(volume, replace):
@@ -42,15 +42,15 @@ def write_events(self, events, directory, t, labelImage):
         merger = []
         print "-- Writing results to " + path.basename(fn)
         for event in events:
-            if event.type == ctracking.EventType.Appearance:
+            if event.type == pgmlink.EventType.Appearance:
                 app.append((event.traxel_ids[0], event.energy))
-            if event.type == ctracking.EventType.Disappearance:
+            if event.type == pgmlink.EventType.Disappearance:
                 dis.append((event.traxel_ids[0], event.energy))
-            if event.type == ctracking.EventType.Division:
+            if event.type == pgmlink.EventType.Division:
                 div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
-            if event.type == ctracking.EventType.Move:
+            if event.type == pgmlink.EventType.Move:
                 mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
-            if event.type == ctracking.EventType.Merger:
+            if event.type == pgmlink.EventType.Merger:
                 merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
     
         # convert to ndarray for better indexing
@@ -129,7 +129,7 @@ class LineageTrees():
         
         # add all nodes which appear in the first frame
         for event in self.mainOperator.innerOperators[0].events[from_t]:
-            if event.type != ctracking.EventType.Appearance:
+            if event.type != pgmlink.EventType.Appearance:
                 label = event.traxel_ids[0]
                 appNode = tree.add_child(name=self.getNodeName(0, label), dist=distanceFromRoot )
                 nodeMap[str(self.getNodeName(0, label))] = appNode
@@ -147,7 +147,7 @@ class LineageTrees():
         for t, events_at in enumerate(self.mainOperator.innerOperators[0].events[from_t:to_t+1]):
             t = t+1            
             for event in events_at:
-                if event.type == ctracking.EventType.Appearance and withAppearing:
+                if event.type == pgmlink.EventType.Appearance and withAppearing:
                     label = event.traxel_ids[0]
                     appNode = tree.add_child(name=self.getNodeName(t, label), dist=distanceFromRoot + t)
                     nodeMap[str(self.getNodeName(t, label))] = appNode
@@ -161,7 +161,7 @@ class LineageTrees():
                     name = AttrFace("name")
                     name.fsize = 6
 
-                elif event.type == ctracking.EventType.Disappearance:
+                elif event.type == pgmlink.EventType.Disappearance:
                     label = event.traxel_ids[0]
                     if str(self.getNodeName(t-1,str(label))) not in nodeMap.keys():
                         continue
@@ -175,7 +175,7 @@ class LineageTrees():
                     del nodeMap[str(self.getNodeName(t-1,str(label)))]
                     del branchSize[str(self.getNodeName(t-1,str(label)))]
                     
-                elif event.type == ctracking.EventType.Division:
+                elif event.type == pgmlink.EventType.Division:
                     labelOld = event.traxel_ids[0]
                     labelNew1 = event.traxel_ids[1]
                     labelNew2 = event.traxel_ids[2]                    
@@ -192,7 +192,7 @@ class LineageTrees():
                     branchSize[str(self.getNodeName(t,str(labelNew1)))] = 1
                     branchSize[str(self.getNodeName(t,str(labelNew2)))] = 1                    
                     
-                elif event.type == ctracking.EventType.Move:
+                elif event.type == pgmlink.EventType.Move:
                     labelOld = event.traxel_ids[0]
                     labelNew = event.traxel_ids[1]
                     if str(self.getNodeName(t-1,str(labelOld))) not in nodeMap.keys():
