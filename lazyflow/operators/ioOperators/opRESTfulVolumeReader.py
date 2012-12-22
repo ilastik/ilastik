@@ -90,6 +90,7 @@ class OpRESTfulVolumeReader(Operator):
 
         # Write the data from the url out to disk (in a temporary file)
         hdf5FilePath = os.path.join(tempfile.mkdtemp(), 'cube.h5')
+        logger.debug( "Saving temporary file: {}".format( hdf5FilePath ) )
         with open(hdf5FilePath, 'w') as rawFileToWrite:
             rawFileToWrite.write( hdf5RawFileObject.read() )
 
@@ -97,6 +98,7 @@ class OpRESTfulVolumeReader(Operator):
         with h5py.File( hdf5FilePath, 'r' ) as hdf5File:
             dataset = hdf5File[self._hdf5_dataset]
             if len(result.shape) > len(dataset.shape):
+                # We appended a channel axis to Output, but the dataset doesn't have that.
                 result[...,0] = dataset[...]
             else:
                 result[...] = dataset[...]
@@ -137,6 +139,10 @@ if __name__ == "__main__":
 """
 
     from lazyflow.graph import Graph
+
+    import sys    
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.StreamHandler(sys.stdout))
     
     descriptionFilePath = os.path.join(tempfile.mkdtemp(), 'desc.json')
     with open(descriptionFilePath, 'w') as descFile:
