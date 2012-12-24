@@ -189,6 +189,13 @@ def sliceToRoi(s, shape, extendSingleton = True):
     return TinyVector(start), TinyVector(stop)
 
 
+def getIntersection( roiA, roiB ):    
+    start = numpy.maximum( roiA[0], roiB[0] )    
+    stop = numpy.minimum( roiA[1], roiB[1] )
+
+    assert numpy.prod(stop - start) > 0, "Rois do not intersect!"    
+    return (start, stop)
+
 rTsl1 = lambda x,y:slice(x.__int__(),y.__int__())
 def roiToSlice(start, stop, hardBind=False):
     """Args:
