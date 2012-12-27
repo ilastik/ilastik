@@ -1,9 +1,12 @@
-from ilastik.utility.jsonConfig import JsonConfigSchema, AutoEval, FormattedField
+from lazyflow.jsonConfig import JsonConfigSchema, AutoEval, FormattedField
 
 #: Schema for all cluster config options
 #: (Doesn't specify which are required and which aren't.)
 ClusterConfigFields = \
 {
+    "_schema_name" : "cluster-execution-configuration",
+    "_schema_version" : 1.0,
+
     "workflow_type" : str,
     "sys_tmp_dir" : str,
     "scratch_directory" : str,
@@ -33,6 +36,9 @@ def parseClusterConfigFile( configFilePath ):
 if __name__ == "__main__":
     testConfig = """
 {
+    "_schema_name" : "cluster-execution-configuration",
+    "_schema_version" : 1.0,
+
     "workflow_type" : "PixelClassificationWorkflow",
     "sys_tmp_dir" : "/scratch/bergs",
     "scratch_directory" : "/home/bergs/clusterstuff/scratch",

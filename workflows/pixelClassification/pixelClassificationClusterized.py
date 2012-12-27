@@ -51,7 +51,7 @@ def getArgParser():
     parser.add_argument('--process_name', default="MASTER", help='A name for this process (for logging purposes)', required=False)
     parser.add_argument('--option_config_file', help='A json file with various settings', required=True)
     parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
-    parser.add_argument('--output_file', help='The file to create', required=False)
+    parser.add_argument('--output_description_file', help='The JSON file that describes the output dataset', required=False)
     parser.add_argument('--_node_work_', help='Internal use only', required=False)
 
     return parser
@@ -129,6 +129,7 @@ def runWorkflow(parsed_args):
             opClusterTaskWorker.TaskName.setValue( task_name )
             opClusterTaskWorker.RoiString.setValue( args._node_work_ )
             opClusterTaskWorker.ConfigFilePath.setValue( args.option_config_file )
+            opClusterTaskWorker.OutputFilesetDescription.setValue( args.output_description_file )
     
             # If we have a way to report task progress (e.g. by updating the job name),
             #  then subscribe to progress signals
@@ -148,7 +149,7 @@ def runWorkflow(parsed_args):
             opClusterizeMaster = OperatorWrapper( OpClusterize, graph=finalOutputSlot.graph )
             opClusterizeMaster.Input.connect( workflow.finalOutputSlot )
             opClusterizeMaster.ProjectFilePath.setValue( args.project )
-            opClusterizeMaster.OutputFilePath.setValue( args.output_file )
+            opClusterizeMaster.OutputDatasetDescription.setValue( args.output_description_file )
             opClusterizeMaster.ConfigFilePath.setValue( args.option_config_file )
 
             resultSlot = opClusterizeMaster.ReturnCode
@@ -194,13 +195,13 @@ if __name__ == "__main__":
         args.append( "--process_name=MASTER")
         args.append( "--option_config_file=/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik/cluster_options.json")
 
-#        # SMALL TEST
-#        args.append("--project=/groups/flyem/data/bergs_scratch/project_files/synapse_small.ilp")
-#        args.append( "--output_file=/home/bergs/clusterstuff/results/SYNAPSE_SMALL_RESULTS.h5")
+        # SMALL TEST
+        args.append("--project=/groups/flyem/data/bergs_scratch/project_files/synapse_small.ilp")
+        args.append( "--output_description_file=/home/bergs/clusterstuff/results/synapse_small_results/dataset_description.json")
 
-        # BIGGER TEST
-        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
-        args.append( "--output_file=/home/bergs/clusterstuff/results/GIGACUBE_RESULTS.h5")
+#        # BIGGER TEST
+#        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
+#        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_results/dataset_description.json")
 
         s = ""
         for arg in args:
