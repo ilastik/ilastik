@@ -1,5 +1,6 @@
 import os
 import sys
+import copy
 import tempfile
 import shutil
 import collections
@@ -28,7 +29,18 @@ class TestJsonConfigNamespace(object):
         assert n.a == "A"
         assert n.b == "B"
         assert n.c == "C"
+    
+    def testCopy(self):
+        n = Namespace()
+        n.a = "A"
+        n.b = "B"
+        n.c = "C"
 
+        n2 = copy.deepcopy(n)
+        assert n == n2
+        assert id(n) != id(n2)
+        assert id(n.__dict__) != id(n2.__dict__)
+        
 class TestJsonConfig(object):
     
     TestSchema = \
