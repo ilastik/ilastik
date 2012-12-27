@@ -2,8 +2,6 @@ import json
 import re
 import collections
 
-import numpy # We import numpy here so that it can be used in AutoEval fields.
-
 class Namespace(object):
     """
     Provides the same functionality as:
@@ -61,6 +59,9 @@ class AutoEval(object):
             self._t = lambda x:x
         
     def __call__(self, x):
+        import numpy # We import numpy here so that eval() understands names like "numpy.uint8" and "uint8"
+        from numpy import *
+
         if type(x) is self._t:
             return x
         if type(x) is str or type(x) is unicode and self._t is not str:
@@ -172,9 +173,10 @@ class JsonConfigSchema( object ):
         but check it for errors first by parsing each field with the schema.
         """
         # Check for errors by parsing the fields
-        namespace = self._getNamespace(configNamespace.__dict__)
+        tmp = self._getNamespace(configNamespace.__dict__)
+
         with open(configFilePath, 'w') as configFile:
-            json.dump( namespace.__dict__, configFile, indent=4 )
+            json.dump( configNamespace.__dict__, configFile, indent=4 )
 
     def _getNamespace(self, configDict):
         namespace = Namespace()
