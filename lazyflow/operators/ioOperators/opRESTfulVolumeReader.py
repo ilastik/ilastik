@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 RESTfulVolumeDescriptionFields = \
 {
+    "_schema_name" : "RESTful-volume-description",
+    "_schema_version" : 1.0,
     "name" : str,
     "format" : str,
     "axes" : str,
@@ -111,6 +113,9 @@ class OpRESTfulVolumeReader(Operator):
 if __name__ == "__main__":
     testConfig0 = """
 {
+    "_schema_name" : "RESTful-volume-description",
+    "_schema_version" : 1.0,
+
     "name" : "Bock11-level0",
     "format" : "hdf5",
     "axes" : "zyx",
@@ -126,6 +131,9 @@ if __name__ == "__main__":
 
     testConfig4 = """
 {
+    "_schema_name" : "RESTful-volume-description",
+    "_schema_version" : 1.0,
+
     "name" : "Bock11-level4",
     "format" : "hdf5",
     "axes" : "zyx",

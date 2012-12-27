@@ -33,6 +33,9 @@ class TestJsonConfig(object):
     
     TestSchema = \
     {
+        "_schema_name" : "test-schema",
+        "_schema_version" : 1.1,
+
         "string_setting" : str,
         "int_setting" : int,
         "auto_int_setting" : AutoEval(int),
@@ -46,6 +49,9 @@ class TestJsonConfig(object):
         testConfig = \
         """
         {
+            "_schema_name" : "test-schema",
+            "_schema_version" : 1.0,
+
             "string_setting" : "This is a sentence.",
             "int_setting" : 42,
             "auto_int_setting" : "7*6",

@@ -18,6 +18,8 @@ class BlockwiseFileset(object):
     # Description config file schema:
     DescriptionFields = \
     {
+        "_schema_name" : "blockwise-fileset-description",
+        "_schema_version" : 1.0,
         "name" : str,
         "format" : str,
         "axes" : str,
@@ -25,7 +27,7 @@ class BlockwiseFileset(object):
         "dtype" : AutoEval(),
         "block_shape" : list,
         "block_file_name_format" : FormattedField( requiredFields=["roiString"] )
-    }    
+    }
     DescriptionSchema = JsonConfigSchema( DescriptionFields )
 
     @classmethod
