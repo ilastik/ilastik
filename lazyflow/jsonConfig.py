@@ -1,10 +1,33 @@
 import json
 import re
+import collections
 
 import numpy # We import numpy here so that it can be used in AutoEval fields.
 
 class Namespace(object):
-    pass
+    """
+    Provides the same functionality as:
+    
+    .. code_block:: python
+    
+        class Namespace(object):
+            pass
+
+    except that ``self.__dict__`` is replaced with an instance of collections.OrderedDict
+        
+    """
+    def __init__(self):
+        super(Namespace, self).__setattr__( '_items', collections.OrderedDict() )
+    
+    def __getattr__(self, key):
+        return super(Namespace, self).__getattribute__('_items')[key]
+    
+    def __setattr__(self, key, val):
+        self._items[key] = val
+    
+    @property
+    def __dict__(self):
+        return self._items
 
 class AutoEval(object):
     """
@@ -91,7 +114,9 @@ class JsonConfigSchema( object ):
     def parseConfigFile(self, configFilePath):
         with open(configFilePath) as configFile:
             try:
-                configDict = { str(k) : v for k,v in json.load( configFile ).items() }
+                jsonDict = json.load( configFile, object_pairs_hook=collections.OrderedDict )
+                assert isinstance(jsonDict, collections.OrderedDict)
+                configDict = collections.OrderedDict( (str(k) , v) for k,v in jsonDict.items() )
             except:
                 import sys
                 sys.stderr.write( "File '{}' is not valid json.  See stdout for exception details.".format(configFilePath) )
@@ -102,12 +127,18 @@ class JsonConfigSchema( object ):
             except JsonConfigSchema.ParsingError, e:
                 raise JsonConfigSchema.ParsingError( "Error parsing config file '{f}':\n{msg}".format( f=configFilePath, msg=e.args[0] ) )
 
+    def writeConfigFile(self, configFilePath, configNamespace):
+        """
+        Simply write the given object to a json file as a dict, 
+        but check it for errors first by parsing each field with the schema.
+        """
+        # Check for errors by parsing the fields
+        namespace = self._getNamespace(configNamespace.__dict__)
+        with open(configFilePath, 'w') as configFile:
+            json.dump( namespace.__dict__, configFile, indent=4 )
+
     def _getNamespace(self, configDict):
         namespace = Namespace()
-        # All config fields are None by default
-        for key in self._fields.keys():
-            setattr(namespace, key, None)
-        
         # Keys that the user gave us are 
         for key, value in configDict.items():
             if key in self._fields.keys():
@@ -118,6 +149,12 @@ class JsonConfigSchema( object ):
                     raise JsonConfigSchema.ParsingError( "Error parsing config field '{f}':\n{msg}".format( f=key, msg=e.args[0] ) )
                 else:
                     setattr( namespace, key, finalValue )
+
+        # All other config fields are None by default
+        for key in self._fields.keys():
+            if key not in namespace.__dict__.keys():
+                setattr(namespace, key, None)
+        
         return namespace
     
     def _transformValue(self, fieldType, val):
@@ -131,4 +168,9 @@ class JsonConfigSchema( object ):
         
         # Other special types will error check when they construct.
         return fieldType( val )
+    
+
+
+
+
 
