@@ -157,12 +157,14 @@ class BlockwiseFileset(object):
         if status == BlockwiseFileset.BLOCK_AVAILABLE:
             # touch the status file.
             open( statusFilePath, 'w' ).close()
-        elif not os.path.exists( statusFilePath ):
+        elif os.path.exists( statusFilePath ):
             # Remove the status file
             os.remove( statusFilePath )
 
     def getEntireBlockRoi(self, block_start):
-        assert (numpy.mod( block_start, self.description.block_shape ) == 0), "Invalid block_start.  Must be a multiple of the block shape!"
+        assert (numpy.mod( block_start, self.description.block_shape ) == 0).all(), "Invalid block_start.  Must be a multiple of the block shape!"
+
+        entire_dataset_roi = ([0] *len(self.description.shape), self.description.shape)
         block_shape = numpy.array( self.description.block_shape )
         entire_block_roi = ( block_start, block_start + block_shape )
         entire_block_roi = getIntersection( entire_block_roi, entire_dataset_roi )
