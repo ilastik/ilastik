@@ -60,7 +60,7 @@ class AutoEval(object):
         
     def __call__(self, x):
         import numpy # We import numpy here so that eval() understands names like "numpy.uint8" and "uint8"
-        from numpy import *
+        from numpy import uint8, uint16, uint32, uint64, int8, int16, int32, int64, float32, float64
 
         if type(x) is self._t:
             return x
@@ -117,6 +117,7 @@ class FormattedField(object):
 
 class NumpyJsonEncoder( json.JSONEncoder ):
     def default(self, o):
+        import numpy
         if isinstance(o, numpy.integer):
             return int(o)
         if isinstance(o, numpy.floating):
