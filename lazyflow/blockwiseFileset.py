@@ -7,6 +7,13 @@ from lazyflow.jsonConfig import AutoEval, FormattedField, JsonConfigSchema
 from lazyflow.roi import getIntersection, roiToSlice
 from lazyflow.pathHelpers import PathComponents, getPathVariants
 
+try:
+    import vigra
+    _use_vigra = True
+except:
+    _use_vigra = False
+
+
 class BlockwiseFileset(object):
     """
     This class handles writing and reading a 'blockwise file set'.
@@ -23,11 +30,13 @@ class BlockwiseFileset(object):
         "name" : str,
         "format" : str,
         "axes" : str,
-        "shape" : tuple,
+        "shape" : list,
         "dtype" : AutoEval(),
+        "chunks" : list, # Optional.  If null, no chunking.
         "block_shape" : list,
         "block_file_name_format" : FormattedField( requiredFields=["roiString"] ),
-        "dataset_root_dir" : str # Abs path or relative to the description file itself. Defaults to "." if left blank.
+        "dataset_root_dir" : str, # Abs path or relative to the description file itself. Defaults to "." if left blank.
+        "hash_id" : str # Not user-defined (clients may use this)
     }
     DescriptionSchema = JsonConfigSchema( DescriptionFields )
 
@@ -152,6 +161,13 @@ class BlockwiseFileset(object):
             # Remove the status file
             os.remove( statusFilePath )
 
+    def getEntireBlockRoi(self, block_start):
+        assert (numpy.mod( block_start, self.description.block_shape ) == 0), "Invalid block_start.  Must be a multiple of the block shape!"
+        block_shape = numpy.array( self.description.block_shape )
+        entire_block_roi = ( block_start, block_start + block_shape )
+        entire_block_roi = getIntersection( entire_block_roi, entire_dataset_roi )
+        return entire_block_roi
+
     def _transferData( self, roi, array_data, read ):
         """
         Read or write data from/to the fileset.
@@ -170,8 +186,7 @@ class BlockwiseFileset(object):
         
         # TODO: Parallelize this loop
         for block_start in block_starts:
-            entire_block_roi = ( block_start, block_start + block_shape )
-            entire_block_roi = getIntersection( entire_block_roi, entire_dataset_roi ) # Roi of this whole block within the whole dataset
+            entire_block_roi = self.getEntireBlockRoi(block_start) # Roi of this whole block within the whole dataset
             transfer_block_roi = getIntersection( entire_block_roi, roi ) # Roi of data needed from this block within the whole dataset
             block_relative_roi = ( transfer_block_roi[0] - block_start, transfer_block_roi[1] - block_start ) # Roi of needed data from this block, relative to the block itself
             array_data_roi = (transfer_block_roi[0] - roi[0], transfer_block_roi[1] - roi[0]) # Roi of data needed from this block within array_data
@@ -227,7 +242,15 @@ class BlockwiseFileset(object):
             # Write the block data file
             with h5py.File(hdf5FilePath) as hdf5File:
                 if path_parts.internalPath not in hdf5File:
-                    hdf5File.create_dataset( path_parts.internalPath, shape=( entire_block_roi[1] - entire_block_roi[0] ), dtype=self.description.dtype )
+                    chunks = self.description.chunks
+                    if chunks is not None:
+                        chunks = tuple(chunks)
+                    dataset = hdf5File.create_dataset( path_parts.internalPath,
+                                             shape=( entire_block_roi[1] - entire_block_roi[0] ),
+                                             dtype=self.description.dtype,
+                                             chunks=chunks )
+                    if _use_vigra:
+                        dataset.attrs['axistags'] = vigra.defaultAxistags( self.description.axes ).toJSON()
                 hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ] = array_data[...]
 
             # Create the statusfile
