@@ -28,6 +28,10 @@ class BlockwiseFileset(object):
     }    
     DescriptionSchema = JsonConfigSchema( DescriptionFields )
 
+    @classmethod
+    def createDescriptionFile(cls, descriptionFilePath, descriptionFields):
+        BlockwiseFileset.DescriptionSchema.writeConfigFile( descriptionFilePath, descriptionFields )
+
     def __init__( self, descriptionFilePath, mode='r' ):
         """
         Constructor.
