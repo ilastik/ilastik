@@ -23,6 +23,9 @@ class TestOpBlockwiseFilesetReader(object):
         testConfig = \
         """
         {
+            "_schema_name" : "blockwise-fileset-description",
+            "_schema_version" : 1.0,
+
             "name" : "synapse_small",
             "format" : "hdf5",
             "axes" : "txyzc",
