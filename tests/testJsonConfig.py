@@ -1,6 +1,7 @@
 import os
 import sys
 import tempfile
+import shutil
 import collections
 from lazyflow.jsonConfig import Namespace, JsonConfigSchema, AutoEval, FormattedField
 
@@ -58,6 +59,10 @@ class TestJsonConfig(object):
         logger.debug("Using config file: " + cls.configpath)
         with open(cls.configpath, 'w') as f:
             f.write(testConfig)
+    
+    @classmethod
+    def teardownClass(cls):
+        shutil.rmtree(cls.tempDir)
     
     def testRead(self):
         configFields = JsonConfigSchema( TestJsonConfig.TestSchema ).parseConfigFile( TestJsonConfig.configpath )
