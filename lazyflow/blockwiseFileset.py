@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 from lazyflow.jsonConfig import AutoEval, FormattedField, JsonConfigSchema
 from lazyflow.roi import getIntersection, roiToSlice
-from lazyflow.pathHelpers import PathComponents
+from lazyflow.pathHelpers import PathComponents, getPathVariants
 
 class BlockwiseFileset(object):
     """
@@ -26,23 +26,28 @@ class BlockwiseFileset(object):
         "shape" : tuple,
         "dtype" : AutoEval(),
         "block_shape" : list,
-        "block_file_name_format" : FormattedField( requiredFields=["roiString"] )
+        "block_file_name_format" : FormattedField( requiredFields=["roiString"] ),
+        "dataset_root_dir" : str # Abs path or relative to the description file itself. Defaults to "." if left blank.
     }
     DescriptionSchema = JsonConfigSchema( DescriptionFields )
 
     @classmethod
-    def createDescriptionFile(cls, descriptionFilePath, descriptionFields):
+    def readDescription(cls, descriptionFilePath):
+        return BlockwiseFileset.DescriptionSchema.parseConfigFile( descriptionFilePath )
+
+    @classmethod
+    def writeDescription(cls, descriptionFilePath, descriptionFields):
         BlockwiseFileset.DescriptionSchema.writeConfigFile( descriptionFilePath, descriptionFields )
 
     def __init__( self, descriptionFilePath, mode='r' ):
         """
         Constructor.
-        :param descriptionFilePath: The path to the .json file that describes the dataset.  Must be located in the top-most directory of the fileset.
+        :param descriptionFilePath: The path to the .json file that describes the dataset.
         :param mode: Set to 'r' if the fileset should be read-only.
         """
         self.mode = mode
         self.descriptionFilePath = descriptionFilePath
-        self.description = BlockwiseFileset.DescriptionSchema.parseConfigFile( descriptionFilePath )
+        self.description = BlockwiseFileset.readDescription( descriptionFilePath )
         
         assert self.description.format == "hdf5", "Only hdf5 blockwise filesets are supported so far."
 
@@ -67,6 +72,85 @@ class BlockwiseFileset(object):
         """
         assert self.mode != 'r'        
         self._transferData(roi, data, read=False)
+
+    def getDatasetDirectory( self, blockstart ):
+        """
+        Return the directory that contains the block that starts at the given coordinates.
+        """
+        blockFilePath = self.description.dataset_root_dir
+        descriptionFileDir = os.path.split(self.descriptionFilePath)[0]
+        if blockFilePath is None:
+            blockFilePath = descriptionFileDir
+        else:
+            absPath, relPath = getPathVariants( blockFilePath, descriptionFileDir )
+            blockFilePath = absPath
+
+        for axis, start in zip(self.description.axes, blockstart):
+            blockFilePath = os.path.join( blockFilePath, "{}_{:08d}".format( axis, start ) )
+        return blockFilePath
+
+    @staticmethod
+    def getIntersectingBlocks( blockshape, roi ):
+        """
+        Returns the start coordinate of each block that the given roi intersects.
+        For example:
+    
+        >>> getIntersectingBlocks( (10, 20), [(15, 25),(23, 40)] )
+        array([[10, 20],
+               [20, 20]])
+    
+        >>> getIntersectingBlocks( (10, 20), [(15, 25),(23, 41)] )
+        array([[10, 20],
+               [10, 40],
+               [20, 20],
+               [20, 40]]) 
+    
+        """
+        assert len(blockshape) == len(roi[0]) == len(roi[1]), "blockshape and roi are mismatched."
+        roistart = numpy.array( roi[0] )
+        roistop = numpy.array( roi[1] )
+        blockshape = numpy.array( blockshape )
+        
+        block_index_map_start = roistart / blockshape
+        block_index_map_stop = ( roistop + (blockshape - 1) ) / blockshape # Add (blockshape-1) first as a faster alternative to ceil() 
+        block_index_map_shape = block_index_map_stop - block_index_map_start
+        
+        num_axes = len(blockshape)
+        block_indices = numpy.indices( block_index_map_shape )
+        block_indices = numpy.rollaxis( block_indices, 0, num_axes+1 )
+        block_indices += block_index_map_start
+    
+        indices_shape = block_indices.shape
+        indices_list = numpy.reshape( block_indices, (numpy.prod(indices_shape[0:-1]), indices_shape[-1]) )
+    
+        # Multiply by blockshape to get the list of start coordinates
+        return (indices_list * blockshape)
+
+    BLOCK_NOT_AVAILABLE = 0
+    BLOCK_AVAILABLE = 1
+    def getBlockStatus(self, blockstart):
+        """
+        Check a block's status.
+        (Just because a block file exists doesn't mean that it has valid data.)
+        """
+        blockDir = self.getDatasetDirectory(blockstart)
+        statusFilePath = os.path.join(blockDir, "STATUS.txt")
+
+        if not os.path.exists( statusFilePath ):
+            return BlockwiseFileset.BLOCK_NOT_AVAILABLE
+        else:
+            return BlockwiseFileset.BLOCK_AVAILABLE
+
+    def setBlockStatus(self, blockstart, status):
+        blockDir = self.getDatasetDirectory( blockstart )
+        statusFilePath = os.path.join(blockDir, "STATUS.txt")
+        
+        if status == BlockwiseFileset.BLOCK_AVAILABLE:
+            # touch the status file.
+            open( statusFilePath, 'w' ).close()
+        elif not os.path.exists( statusFilePath ):
+            # Remove the status file
+            os.remove( statusFilePath )
 
     def _transferData( self, roi, array_data, read ):
         """
@@ -108,67 +192,45 @@ class BlockwiseFileset(object):
         datasetPath = os.path.join( datasetDir, datasetFilename )
 
         if self.description.format == "hdf5":
-            # For the hdf5 format, the full path format INCLUDES the dataset name, e.g. /path/to/myfile.h5/volume/data
-            path_parts = PathComponents( datasetPath )
-            hdf5FilePath = path_parts.externalPath
-            if read:
-                with h5py.File(hdf5FilePath, 'r') as hdf5File:
-                    try:
-                        array_data[...] = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
-                    except:
-                        assert False
-            else:
-                if not os.path.exists( datasetDir ):
-                    os.makedirs( datasetDir )
-                with h5py.File(hdf5FilePath) as hdf5File:
-                    if path_parts.internalPath not in hdf5File:
-                        hdf5File.create_dataset( path_parts.internalPath, shape=( entire_block_roi[1] - entire_block_roi[0] ), dtype=self.description.dtype )
-                    hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ] = array_data[...]
+            self._transferBlockDataHdf5( entire_block_roi, block_relative_roi, array_data, read, datasetPath )
         else:
             assert False, "Unknown format"        
 
-    @staticmethod
-    def getIntersectingBlocks( blockshape, roi ):
+    def _transferBlockDataHdf5(self, entire_block_roi, block_relative_roi, array_data, read, datasetPath ):
         """
-        Returns the start coordinate of each block that the given roi intersects.
-        For example:
-    
-        >>> getIntersectingBlocks( (10, 20), [(15, 25),(23, 40)] )
-        array([[10, 20],
-               [20, 20]])
-    
-        >>> getIntersectingBlocks( (10, 20), [(15, 25),(23, 41)] )
-        array([[10, 20],
-               [10, 40],
-               [20, 20],
-               [20, 40]]) 
-    
+        Transfer a block of data to/from an hdf5 dataset.
+        See _transferBlockData() for details.
         """
-        assert len(blockshape) == len(roi[0]) == len(roi[1]), "blockshape and roi are mismatched."
-        roistart = numpy.array( roi[0] )
-        roistop = numpy.array( roi[1] )
-        blockshape = numpy.array( blockshape )
-        
-        block_index_map_start = roistart / blockshape
-        block_index_map_stop = ( roistop + (blockshape - 1) ) / blockshape # Add (blockshape-1) first as a faster alternative to ceil() 
-        block_index_map_shape = block_index_map_stop - block_index_map_start
-        
-        num_axes = len(blockshape)
-        block_indices = numpy.indices( block_index_map_shape )
-        block_indices = numpy.rollaxis( block_indices, 0, num_axes+1 )
-        block_indices += block_index_map_start
-    
-        indices_shape = block_indices.shape
-        indices_list = numpy.reshape( block_indices, (numpy.prod(indices_shape[0:-1]), indices_shape[-1]) )
-    
-        # Multiply by blockshape to get the list of start coordinates
-        return (indices_list * blockshape)
+        # For the hdf5 format, the full path format INCLUDES the dataset name, e.g. /path/to/myfile.h5/volume/data
+        path_parts = PathComponents( datasetPath )
+        datasetDir = path_parts.externalDirectory
+        hdf5FilePath = path_parts.externalPath
+        statusFilePath = os.path.join(datasetDir, "STATUS.txt")
+        if read:
+            # Check for problems before reading.
+            if self.getBlockStatus( entire_block_roi[0] ) is not BlockwiseFileset.BLOCK_AVAILABLE:
+                raise RuntimeError( "Can't read block: Data isn't available or isn't ready.".format( hdf5FilePath ) )
+            with h5py.File(hdf5FilePath, 'r') as hdf5File:
+                try:
+                    array_data[...] = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
+                except:
+                    assert False
+        else:
+            # Create the directory
+            if not os.path.exists( datasetDir ):
+                os.makedirs( datasetDir )
 
-    def getDatasetDirectory( self, blockstart ):
-        """
-        Return the directory that contains the block that starts at the given coordinates.
-        """
-        blockFilePath = os.path.split(self.descriptionFilePath)[0]
-        for axis, start in zip(self.description.axes, blockstart):
-            blockFilePath = os.path.join( blockFilePath, "{}_{:08d}".format( axis, start ) )
-        return blockFilePath
+            # Delete previous status file (if present)
+            if os.path.exists( statusFilePath ):
+                os.remove( statusFilePath )
+
+            # Write the block data file
+            with h5py.File(hdf5FilePath) as hdf5File:
+                if path_parts.internalPath not in hdf5File:
+                    hdf5File.create_dataset( path_parts.internalPath, shape=( entire_block_roi[1] - entire_block_roi[0] ), dtype=self.description.dtype )
+                hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ] = array_data[...]
+
+            # Create the statusfile
+            with file( os.path.join(datasetDir, "STATUS.txt"), 'w' ) as statusFile:
+                statusFile.write("READY")
+
