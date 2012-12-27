@@ -115,6 +115,16 @@ class FormattedField(object):
 #
 #        return os.path.join( baseDir, fileBase + "{}".format(next_unused_index)  )
 
+class NumpyJsonEncoder( json.JSONEncoder ):
+    def default(self, o):
+        if isinstance(o, numpy.integer):
+            return int(o)
+        if isinstance(o, numpy.floating):
+            return float(o)
+        if isinstance(o, numpy.ndarray):
+            assert len(o.shape) == 1, "No support for encoding multi-dimensional arrays in json."
+            return list(o)
+        return super( NumpyJsonEncoder, self ).default(o)
 
 class JsonConfigSchema( object ):
     """
@@ -176,7 +186,7 @@ class JsonConfigSchema( object ):
         tmp = self._getNamespace(configNamespace.__dict__)
 
         with open(configFilePath, 'w') as configFile:
-            json.dump( configNamespace.__dict__, configFile, indent=4 )
+            json.dump( configNamespace.__dict__, configFile, indent=4, cls=NumpyJsonEncoder )
 
     def _getNamespace(self, configDict):
         namespace = Namespace()
