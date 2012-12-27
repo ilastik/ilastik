@@ -20,7 +20,10 @@ class Namespace(object):
         super(Namespace, self).__setattr__( '_items', collections.OrderedDict() )
     
     def __getattr__(self, key):
-        return super(Namespace, self).__getattribute__('_items')[key]
+        items = super(Namespace, self).__getattribute__('_items')
+        if key in items:
+            return items[key]
+        return super(Namespace, self).__getattribute__(key)
     
     def __setattr__(self, key, val):
         self._items[key] = val
@@ -28,6 +31,19 @@ class Namespace(object):
     @property
     def __dict__(self):
         return self._items
+
+    def __setstate__(self, state):
+        """
+        Implemented to support copy.copy()
+        """
+        super(Namespace, self).__setattr__( '_items', collections.OrderedDict() )
+        self._items.update( state )
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+    
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 class AutoEval(object):
     """
