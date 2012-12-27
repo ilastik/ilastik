@@ -5,4 +5,3 @@ from multiLaneOperator import MultiLaneOperatorABC
 from operatorSubView import OperatorSubView
 from opMultiLaneWrapper import OpMultiLaneWrapper
 import timer
-import jsonConfig

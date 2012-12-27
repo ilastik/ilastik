@@ -76,6 +76,7 @@ def get_default_config(prefix=""):
             "lazyflow.graph.Slot":                                              { "level":"INFO" },
             "lazyflow.operators":                                               { "level":"INFO" },
             "lazyflow.operators.ioOperators":                                   { "level":"INFO" },
+            "lazyflow.operators.ioOperators.opRESTfulVolumeReader":             { "level":"INFO" },
             "lazyflow.operators.obsolete.operators.OpArrayCache":               { "level":"INFO" },
             "lazyflow.operators.obsolete.operators.ArrayCacheMemoryMgr":        { "level":"INFO" },
             "lazyflow.operators.obsolete.vigraOperators":                       { "level":"INFO" },

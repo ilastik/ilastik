@@ -11,6 +11,7 @@
         "lazyflow.graph.Slot":                                              { "level":"INFO" },
         "lazyflow.operators":                                               { "level":"INFO" },
         "lazyflow.operators.ioOperators":                                   { "level":"INFO" },
+        "lazyflow.operators.ioOperators.opRESTfulVolumeReader":             { "level":"DEBUG" },
         "lazyflow.operators.obsolete.operators.OpArrayCache":               { "level":"INFO" },
         "lazyflow.operators.obsolete.operators.ArrayCacheMemoryMgr":        { "level":"DEBUG" },
         "lazyflow.operators.obsolete.vigraOperators":                       { "level":"INFO" },
