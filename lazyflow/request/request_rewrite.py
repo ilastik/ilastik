@@ -265,11 +265,6 @@ class Request( object ):
         self._sig_failed = SimpleSignal()
         
         self._sig_execution_complete = SimpleSignal()
-
-        # Public access to signals:
-        self.notify_finished = partial( self._locked_notify_finished, self._lock, True )
-        self.notify_cancelled = partial( self._locked_notify_cancelled, self._lock )
-        self.notify_failed = partial( self._locked_notify_failed, self._lock )
         
         # FIXME: Can't auto-submit here because the writeInto() function gets called AFTER request construction.
         #self.submit()
@@ -321,15 +316,16 @@ class Request( object ):
                 self._sig_failed( self.exception )
             else:
                 self._sig_finished(self.result)
+
+            # Unconditionally signal (internal use only)
+            with self._lock:
+                self.execution_complete = True
+                self._sig_execution_complete()
+
         finally:
             # Notify non-request-based threads
             self.finished_event.set()
 
-        # Unconditionally signal (internal use only)
-        with self._lock:
-            self.execution_complete = True
-            self._sig_execution_complete()
-    
     def submit(self):
         """
         If this request isn't started yet, schedule it to be started.
@@ -472,24 +468,14 @@ class Request( object ):
             if len(self.blocking_requests) == 0:
                 self._wake_up()
 
-    class FakeLock(object):
-        """Stand-in object that looks like a Lock, but does nothing."""
-        def donothing(self, *args):
-            pass
-        __enter__ = donothing
-        __exit__  = donothing
-        acquire   = donothing
-        release   = donothing
-    
-    def _locked_notify_finished(self, lockable, autosubmit, fn):
+    def notify_finished(self, fn):
         """
         Register a callback function to be called when this request is finished.
         If we're already finished, call it now.
         """
-        if autosubmit:
-            self.submit()
+        self.submit()
         
-        with lockable:
+        with self._lock:
             finished = self.finished
             if not finished:
                 # Call when we eventually finish
@@ -499,19 +485,12 @@ class Request( object ):
             # Call immediately
             fn(self.result)
 
-    def _notify_finished_unlocked(self, autosubmit, fn):
-        """
-        Same as notify_finished, but doesn't obtain the lock.
-        Lock must be held before calling.
-        """
-        self._locked_notify_finished(Request.FakeLock(), autosubmit, fn)
-
-    def _locked_notify_cancelled(self, lockable, fn):
+    def notify_cancelled(self, fn):
         """
         Register a callback function to be called when this request is finished due to cancellation.
         If we're already finished and cancelled, call it now.
         """
-        with lockable:
+        with self._lock:
             finished = self.finished
             cancelled = self.cancelled
             if not finished:
@@ -522,21 +501,14 @@ class Request( object ):
             # Call immediately
             fn()
 
-    def _notify_cancelled_unlocked(self, fn):
-        """
-        Same as notify_cancelled, but doesn't obtain the lock.
-        Lock must be held before calling.
-        """
-        self._locked_notify_cancelled(Request.FakeLock(), fn)
-        
-    def _locked_notify_failed(self, lockable, fn):
+    def notify_failed(self, fn):
         """
         Register a callback function to be called when this request is finished due to failure (an exception was thrown).
         If we're already failed, call it now.
         
         This function obtains the lock.
         """
-        with lockable:
+        with self._lock:
             finished = self.finished
             failed = self.exception is not None
             if not finished:
@@ -547,16 +519,6 @@ class Request( object ):
             # Call immediately
             fn(self.exception)
 
-    def _notify_failed_unlocked(self, fn):
-        """
-        Register a callback function to be called when this request is finished due to failure (an exception was thrown).
-        If we're already finished and cancelled, call it now.
-        
-        This version does NOT obtain the lock.  It should be owned already by the calling function.
-        """
-        self._locked_notify_failed(Request.FakeLock(), fn)
-    
-    
     def cancel(self):
         # We can only be cancelled if: 
         # (1) There are no foreign threads blocking for us (flagged via self.uncancellable) AND
