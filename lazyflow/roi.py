@@ -188,6 +188,10 @@ def sliceToRoi(s, shape, extendSingleton = True):
         stop = map(sTrl3,start,stop)
     return TinyVector(start), TinyVector(stop)
 
+def roiFromShape(shape):
+    start = TinyVector([0] * len(shape))
+    stop = TinyVector(shape)
+    return ( start, stop )
 
 def getIntersection( roiA, roiB ):    
     start = numpy.maximum( roiA[0], roiB[0] )    
@@ -236,3 +240,61 @@ def block_view(A, block= (3, 3)):
     shape= (A.shape[0]/ block[0], A.shape[1]/ block[1])+ block
     strides= (block[0]* A.strides[0], block[1]* A.strides[1])+ A.strides
     return ast(A, shape= shape, strides= strides)
+
+def getIntersectingBlocks( blockshape, roi ):
+    """
+    Returns the start coordinate of each block that the given roi intersects.
+    For example:
+
+    >>> getIntersectingBlocks( (10, 20), [(15, 25),(23, 40)] )
+    array([[10, 20],
+           [20, 20]])
+
+    >>> getIntersectingBlocks( (10, 20), [(15, 25),(23, 41)] )
+    array([[10, 20],
+           [10, 40],
+           [20, 20],
+           [20, 40]])
+
+    """
+    assert len(blockshape) == len(roi[0]) == len(roi[1]), "blockshape and roi are mismatched."
+    roistart = TinyVector( roi[0] )
+    roistop = TinyVector( roi[1] )
+    blockshape = TinyVector( blockshape )
+    
+    block_index_map_start = roistart / blockshape
+    block_index_map_stop = ( roistop + (blockshape - 1) ) / blockshape # Add (blockshape-1) first as a faster alternative to ceil() 
+    block_index_map_shape = block_index_map_stop - block_index_map_start
+    
+    num_axes = len(blockshape)
+    block_indices = numpy.indices( block_index_map_shape )
+    block_indices = numpy.rollaxis( block_indices, 0, num_axes+1 )
+    block_indices += block_index_map_start
+
+    indices_shape = block_indices.shape
+    indices_list = numpy.reshape( block_indices, (numpy.prod(indices_shape[0:-1]), indices_shape[-1]) )
+
+    # Multiply by blockshape to get the list of start coordinates
+    return (indices_list * blockshape)
+
+def getBlockBounds(dataset_shape, block_shape, block_start):
+    """
+    Given a block start coordinate and block shape, return a roi for 
+    the whole block, clipped to fit within the given dataset shape.
+    
+    >>> getBlockBounds( [35,35,35], [10,10,10], [10,20,30] )
+    (array([10, 20, 30]), array([20, 30, 35]))
+    """
+    assert (numpy.mod( block_start, block_shape ) == 0).all(), "Invalid block_start.  Must be a multiple of the block shape!"
+
+    entire_dataset_roi = roiFromShape( dataset_shape )
+    block_shape = TinyVector( block_shape )
+    block_bounds = ( block_start, block_start + block_shape )
+    
+    # Clip to dataset bounds
+    block_bounds = getIntersection( block_bounds, entire_dataset_roi )
+    return block_bounds
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

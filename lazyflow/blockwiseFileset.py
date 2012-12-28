@@ -6,6 +6,7 @@ logger = logging.getLogger(__name__)
 from lazyflow.jsonConfig import AutoEval, FormattedField, JsonConfigSchema
 from lazyflow.roi import getIntersection, roiToSlice
 from lazyflow.pathHelpers import PathComponents, getPathVariants
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds
 
 try:
     import vigra
@@ -98,43 +99,6 @@ class BlockwiseFileset(object):
             blockFilePath = os.path.join( blockFilePath, "{}_{:08d}".format( axis, start ) )
         return blockFilePath
 
-    @staticmethod
-    def getIntersectingBlocks( blockshape, roi ):
-        """
-        Returns the start coordinate of each block that the given roi intersects.
-        For example:
-    
-        >>> getIntersectingBlocks( (10, 20), [(15, 25),(23, 40)] )
-        array([[10, 20],
-               [20, 20]])
-    
-        >>> getIntersectingBlocks( (10, 20), [(15, 25),(23, 41)] )
-        array([[10, 20],
-               [10, 40],
-               [20, 20],
-               [20, 40]]) 
-    
-        """
-        assert len(blockshape) == len(roi[0]) == len(roi[1]), "blockshape and roi are mismatched."
-        roistart = numpy.array( roi[0] )
-        roistop = numpy.array( roi[1] )
-        blockshape = numpy.array( blockshape )
-        
-        block_index_map_start = roistart / blockshape
-        block_index_map_stop = ( roistop + (blockshape - 1) ) / blockshape # Add (blockshape-1) first as a faster alternative to ceil() 
-        block_index_map_shape = block_index_map_stop - block_index_map_start
-        
-        num_axes = len(blockshape)
-        block_indices = numpy.indices( block_index_map_shape )
-        block_indices = numpy.rollaxis( block_indices, 0, num_axes+1 )
-        block_indices += block_index_map_start
-    
-        indices_shape = block_indices.shape
-        indices_list = numpy.reshape( block_indices, (numpy.prod(indices_shape[0:-1]), indices_shape[-1]) )
-    
-        # Multiply by blockshape to get the list of start coordinates
-        return (indices_list * blockshape)
-
     BLOCK_NOT_AVAILABLE = 0
     BLOCK_AVAILABLE = 1
     def getBlockStatus(self, blockstart):
@@ -162,13 +126,7 @@ class BlockwiseFileset(object):
             os.remove( statusFilePath )
 
     def getEntireBlockRoi(self, block_start):
-        assert (numpy.mod( block_start, self.description.block_shape ) == 0).all(), "Invalid block_start.  Must be a multiple of the block shape!"
-
-        entire_dataset_roi = ([0] *len(self.description.shape), self.description.shape)
-        block_shape = numpy.array( self.description.block_shape )
-        entire_block_roi = ( block_start, block_start + block_shape )
-        entire_block_roi = getIntersection( entire_block_roi, entire_dataset_roi )
-        return entire_block_roi
+        return getBlockBounds( self.description.shape, self.description.block_shape, block_start )
 
     def _transferData( self, roi, array_data, read ):
         """
@@ -183,8 +141,7 @@ class BlockwiseFileset(object):
         clipped_roi = getIntersection( roi, entire_dataset_roi )
         assert (numpy.array(clipped_roi) == numpy.array(roi)).all(), "Roi {} does not fit within dataset bounds: {}".format(roi, self.description.shape)
         
-        block_shape = numpy.array( self.description.block_shape )
-        block_starts = BlockwiseFileset.getIntersectingBlocks(self.description.block_shape, roi)
+        block_starts = getIntersectingBlocks(self.description.block_shape, roi)
         
         # TODO: Parallelize this loop
         for block_start in block_starts:

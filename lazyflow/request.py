@@ -377,13 +377,15 @@ class Pool(object):
         """
         generate a request object which is added to the pool.
 
-        returns the generaded request.
+        returns the generated request.
         """
         if not self.running and not self.finished:
             req = Request(func, **kwargs)
             self.requests.append(req)
             self.must_finish += 1
-        return req
+            return req
+        else:
+            assert False
 
     def add(self, req):
         """
@@ -394,6 +396,8 @@ class Pool(object):
         if not self.running and not self.finished and not req in self.requests:
             self.requests.append(req)
             self.must_finish += 1
+        else:
+            assert False
         return req
 
     def submit(self):
