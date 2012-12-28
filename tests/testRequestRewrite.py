@@ -440,6 +440,34 @@ class TestRequest(object):
         for r in requests:
             r.wait()
     
+    
+    def test_callbacks_before_wait_returns(self):
+        """
+        If the user adds callbacks to the request via notify_finished() BEFORE the request is submitted,
+        then wait() should block for the completion of all those callbacks before returning.
+        Any callbacks added AFTER the request has already been submitted are NOT guaranteed 
+        to be executed before wait() returns, but they will still be executed.
+        """
+        def someQuickWork():
+            return 42
+
+        callback_results = []
+        def slowCallback(n, result):
+            time.sleep(0.5)
+            callback_results.append(n)
+        
+        req = Request( someQuickWork )
+        req.notify_finished( partial(slowCallback, 1) )
+        req.notify_finished( partial(slowCallback, 2) )
+        req.notify_finished( partial(slowCallback, 3) )
+
+        result = req.wait()
+        assert result == 42
+        assert callback_results == [1,2,3], "wait() returned before callbacks were complete!"
+        
+        req.notify_finished( partial(slowCallback, 4) )
+        assert callback_results == [1,2,3,4], "Callback on already-finished request wasn't executed."
+    
     @traceLogged(traceLogger)
     def testRequestLock(self):
         """
