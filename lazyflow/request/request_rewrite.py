@@ -224,6 +224,16 @@ class Request( object ):
         """
         pass
 
+    class CircularWaitException(Exception):
+        """
+        This exception is thrown if a request calls wait() on itself.
+        Currently, this only catches the most basic case.
+        No attempt is made to detect indirect cycles
+        (e.g. if req.wait() is called from within a req's own child.),
+        so don't rely on it to catch tricky deadlocks due to indirect self-waiting.
+        """
+        pass
+
     def __init__(self, fn):
         """
         Constructor.
@@ -418,6 +428,15 @@ class Request( object ):
         # Before we suspend the current request, check to see if it's been cancelled since it last blocked
         if current_request.cancelled:
             raise Request.CancellationException()
+
+        if current_request == self:
+            # It's usually nonsense for a request to wait for itself,
+            #  but we allow it if the request is already "finished"
+            # (which can happen if the request is calling wait() from within a notify_finished callback)
+            if self.finished:
+                return
+            else:
+                raise Request.CircularWaitException()
 
         with self._lock:
             # If the current request isn't cancelled but we are,

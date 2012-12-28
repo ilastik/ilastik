@@ -65,10 +65,10 @@ class TestRequest(object):
     @traceLogged(traceLogger)
     def test_callWaitDuringCallback(self):
         """
-        When using request.notify_finished(...) to handle request completions, the handler should be allowed to call request.wait() on the request that it's handling.
+        When using request.notify_finished(...) to handle request completions, 
+        the handler should be allowed to call request.wait() on the request that it's handling.
         """
         def handler(req, result):
-            return
             req.wait()
             
         def workFn():
