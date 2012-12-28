@@ -238,6 +238,7 @@ class Request( object ):
         self.cancelled = False
         self.uncancellable = False
         self.finished = False
+        self.execution_complete = False
         self.finished_event = threading.Event()
         self.exception = None
 
@@ -262,6 +263,8 @@ class Request( object ):
         self._sig_finished = SimpleSignal()
         self._sig_cancelled = SimpleSignal()
         self._sig_failed = SimpleSignal()
+        
+        self._sig_execution_complete = SimpleSignal()
 
         # Public access to signals:
         self.notify_finished = partial( self._locked_notify_finished, self._lock, True )
@@ -306,7 +309,9 @@ class Request( object ):
                 # Save it so we can raise it in any requests that are waiting for us.
                 self.exception = ex
 
-        self.finished = True
+        # Guarantee that self.finished doesn't change while wait() owns self._lock
+        with self._lock:
+            self.finished = True
 
         try:
             # Notify callbacks (one or the other, not both)
@@ -319,6 +324,11 @@ class Request( object ):
         finally:
             # Notify non-request-based threads
             self.finished_event.set()
+
+        # Unconditionally signal (internal use only)
+        with self._lock:
+            self.execution_complete = True
+            self._sig_execution_complete()
     
     def submit(self):
         """
@@ -356,9 +366,9 @@ class Request( object ):
         # If there's no need to wait, just return immediately.
         # This avoids some function calls and locks.
         # (If we didn't do this, the code below would still do the right thing.)
-        # Note that this is only possible because self.finished is set to True 
+        # Note that this is only possible because self.execution_complete is set to True 
         #  AFTER self.cancelled and self.exception have their final values.  See execute().
-        if self.finished and not self.cancelled and self.exception is None:
+        if self.execution_complete and not self.cancelled and self.exception is None:
             return self.result
         
         # Identify the request that is waiting for us (the current context)
@@ -412,7 +422,7 @@ class Request( object ):
                     raise self.exception
 
                 direct_execute_needed = not self.started
-                suspend_needed = self.started and not self.finished
+                suspend_needed = self.started and not self.execution_complete
                 if direct_execute_needed or suspend_needed:
                     current_request.blocking_requests.add(self)
                     self.pending_requests.add(current_request)
@@ -425,12 +435,8 @@ class Request( object ):
                 elif suspend_needed:
                     # This request is already started in some other greenlet.
                     # We must suspend the current greenlet while we wait for this request to complete.
-                    # Here, we set up the callbacks so we'll wake up once this request is complete.
-                    # No matter what, we need to be notified when this request stops.
-                    # (Exactly one of these callback signals will fire.)
-                    self._notify_finished_unlocked( False, partial(current_request._handle_finished_request, self) )
-                    self._notify_cancelled_unlocked( partial(current_request._handle_finished_request, self) )
-                    self._notify_failed_unlocked( partial(current_request._handle_finished_request, self) )
+                    # Here, we set up a callback so we'll wake up once this request is complete.
+                    self._sig_execution_complete.subscribe( partial(current_request._handle_finished_request, self) )
 
             if suspend_needed:
                 current_request._suspend()
