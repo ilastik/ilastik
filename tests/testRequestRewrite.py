@@ -468,6 +468,22 @@ class TestRequest(object):
         req.notify_finished( partial(slowCallback, 4) )
         assert callback_results == [1,2,3,4], "Callback on already-finished request wasn't executed."
     
+    def test_request_timeout(self):
+        """
+        Test the timeout feature when calling wait() from a foreign thread.
+        See wait() for details.
+        """
+        def slowWorkload():
+            time.sleep( 10.0 )
+        
+        req = Request( slowWorkload )
+        try:
+            req.wait(0.5)
+        except Request.TimeoutException:
+            pass
+        else:
+            assert False, "Expected to get Request.TimeoutException"
+    
     @traceLogged(traceLogger)
     def testRequestLock(self):
         """

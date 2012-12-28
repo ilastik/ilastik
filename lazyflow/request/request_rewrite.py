@@ -204,12 +204,12 @@ class Request( object ):
     
     class CancellationException(Exception):
         """
-        This is thrown when the whole request has been cancelled.
+        This is raised when the whole request has been cancelled.
         If you catch this exception from within a request, clean up and return immediately.
         If you have nothing to clean up, you are not required to handle this exception.
         
         Implementation details:
-        This exception is thrown when the cancel flag is checked in the wait() function:
+        This exception is raised when the cancel flag is checked in the wait() function:
             - immediately before the request is suspended OR
             - immediately after the request is woken up from suspension
         """
@@ -217,7 +217,7 @@ class Request( object ):
 
     class InvalidRequestException(Exception):
         """
-        This is thrown when calling wait on a request that has already been cancelled,
+        This is raised when calling wait on a request that has already been cancelled,
         which can only happen if the request you're waiting for was spawned elsewhere 
         (i.e. you are waiting for someone else's request to avoid duplicate work).
         When this occurs, you will typically want to restart the request yourself.
@@ -226,11 +226,18 @@ class Request( object ):
 
     class CircularWaitException(Exception):
         """
-        This exception is thrown if a request calls wait() on itself.
+        This exception is raised if a request calls wait() on itself.
         Currently, this only catches the most basic case.
         No attempt is made to detect indirect cycles
         (e.g. if req.wait() is called from within a req's own child.),
         so don't rely on it to catch tricky deadlocks due to indirect self-waiting.
+        """
+        pass
+    
+    class TimeoutException(Exception):
+        """
+        This is raised if a call to wait() times out in the context of a foreign thread.
+        See ``Request.wait()`` for details.
         """
         pass
 
@@ -364,9 +371,14 @@ class Request( object ):
         # Switch back to the worker that we're currently running in.
         self.greenlet.parent.switch()
         
-    def wait(self):
+    def wait(self, timeout=None):
         """
         Start this request if necessary, then wait for it to complete.  Return the request's result.
+        :param timeout: If running within a request, this parameter must be None.
+                        If running within the context of a foreign (non-request) thread, 
+                        a timeout may be specified in seconds (floating-point).
+                        If the request does not complete within the timeout period, 
+                        then a Request.TimeoutException is raised.
         """        
         # Quick shortcut:
         # If there's no need to wait, just return immediately.
@@ -382,14 +394,15 @@ class Request( object ):
 
         if current_request is None:
             # 'None' means that this thread is not one of the request worker threads.
-            self._wait_within_foreign_thread()
+            self._wait_within_foreign_thread( timeout )
         else:
+            assert timeout is None, "The timeout parameter may only be used when wait() is called from a foreign thread."
             self._wait_within_request( current_request )
 
         assert self.finished
         return self.result
 
-    def _wait_within_foreign_thread(self):
+    def _wait_within_foreign_thread(self, timeout):
         """
         This is the implementation of wait() when executed from a foreign (non-worker) thread.
         Here, we rely on an ordinary threading.Event primitive: ``self.finished_event``
@@ -398,7 +411,7 @@ class Request( object ):
         self.uncancellable = True
 
         with self._lock:
-            direct_execute_needed = not self.started
+            direct_execute_needed = not self.started and (timeout is None)
             if direct_execute_needed:
                 # This request hasn't been started yet
                 # We can execute it directly in the current thread instead of submitting it to the request thread pool (big optimization).
@@ -411,7 +424,9 @@ class Request( object ):
             self.submit()
 
         # This is a non-worker thread, so just block the old-fashioned way
-        self.finished_event.wait()
+        completed = self.finished_event.wait(timeout)
+        if not completed:
+            raise Request.TimeoutException()
         
         # It turns out this request was already cancelled.
         if self.cancelled:
@@ -533,7 +548,7 @@ class Request( object ):
 
     def notify_failed(self, fn):
         """
-        Register a callback function to be called when this request is finished due to failure (an exception was thrown).
+        Register a callback function to be called when this request is finished due to failure (an exception was raised).
         If we're already failed, call it now.
         
         This function obtains the lock.
