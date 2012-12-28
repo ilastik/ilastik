@@ -371,91 +371,102 @@ class Request( object ):
         current_request = Request.current_request()
 
         if current_request is None:
-            # Don't allow this request to be cancelled, since a real thread is waiting for it.
-            self.uncancellable = True
+            # 'None' means that this thread is not one of the request worker threads.
+            self._wait_within_foreign_thread()
+        else:
+            self._wait_within_request( current_request )
 
-            with self._lock:
-                direct_execute_needed = not self.started
-                if direct_execute_needed:
-                    # This request hasn't been started yet
-                    # We can execute it directly in the current greenlet instead of creating a new greenlet (big optimization)
-                    # Mark it as 'started' so that no other greenlet can claim it
-                    self.started = True
+        assert self.finished
+        return self.result
 
+    def _wait_within_foreign_thread(self):
+        """
+        This is the implementation of wait() when executed from a foreign (non-worker) thread.
+        Here, we rely on an ordinary threading.Event primitive: ``self.finished_event``
+        """
+        # Don't allow this request to be cancelled, since a real thread is waiting for it.
+        self.uncancellable = True
+
+        with self._lock:
+            direct_execute_needed = not self.started
             if direct_execute_needed:
-                self.execute()
-            else:
-                self.submit()
+                # This request hasn't been started yet
+                # We can execute it directly in the current thread instead of submitting it to the request thread pool (big optimization).
+                # Mark it as 'started' so that no other greenlet can claim it
+                self.started = True
 
-            # This is a non-worker thread, so just block the old-fashioned way
-            self.finished_event.wait()
-            
-            # It turns out this request was already cancelled.
+        if direct_execute_needed:
+            self.execute()
+        else:
+            self.submit()
+
+        # This is a non-worker thread, so just block the old-fashioned way
+        self.finished_event.wait()
+        
+        # It turns out this request was already cancelled.
+        if self.cancelled:
+            raise Request.InvalidRequestException()
+        
+        if self.exception is not None:
+            raise self.exception
+
+    def _wait_within_request(self, current_request):
+        """
+        This is the implementation of wait() when executed from another request.
+        If we have to wait, suspend the current request instead of blocking the whole worker thread.
+        """
+        # Before we suspend the current request, check to see if it's been cancelled since it last blocked
+        if current_request.cancelled:
+            raise Request.CancellationException()
+
+        with self._lock:
+            # If the current request isn't cancelled but we are,
+            # then the current request is trying to wait for a request (i.e. self) that was spawned elsewhere and already cancelled.
+            # If they really want it, they'll have to spawn it themselves.
             if self.cancelled:
                 raise Request.InvalidRequestException()
             
             if self.exception is not None:
-                raise self.exception
-            
-        else:
-            # We're running in the context of a request.
-            # If we have to wait, suspend the current request instead of blocking the thread.
-
-            # Before we suspend the current request, check to see if it's been cancelled since it last blocked
-            if current_request.cancelled:
-                raise Request.CancellationException()
-
-            with self._lock:
-                # If the current request isn't cancelled but we are,
-                # then the current request is trying to wait for a request (i.e. self) that was spawned elsewhere and already cancelled.
-                # If they really want it, they'll have to spawn it themselves.
-                if self.cancelled:
-                    raise Request.InvalidRequestException()
-                
-                if self.exception is not None:
-                    # This request was already started and already failed.
-                    # Simply raise the exception back to the current request.
-                    raise self.exception
-
-                direct_execute_needed = not self.started
-                suspend_needed = self.started and not self.execution_complete
-                if direct_execute_needed or suspend_needed:
-                    current_request.blocking_requests.add(self)
-                    self.pending_requests.add(current_request)
-                
-                if direct_execute_needed:
-                    # This request hasn't been started yet
-                    # We can execute it directly in the current greenlet instead of creating a new greenlet (big optimization)
-                    # Mark it as 'started' so that no other greenlet can claim it
-                    self.started = True
-                elif suspend_needed:
-                    # This request is already started in some other greenlet.
-                    # We must suspend the current greenlet while we wait for this request to complete.
-                    # Here, we set up a callback so we'll wake up once this request is complete.
-                    self._sig_execution_complete.subscribe( partial(current_request._handle_finished_request, self) )
-
-            if suspend_needed:
-                current_request._suspend()
-            elif direct_execute_needed:
-                # Optimization: Don't start a new greenlet.  Directly run this request in the current greenlet.
-                self.greenlet = current_request.greenlet
-                self.greenlet.owning_requests.append(self)
-                self.assigned_worker = current_request.assigned_worker
-                self.execute()
-                assert self.greenlet.owning_requests.pop() == self
-                current_request.blocking_requests.remove(self)
-
-            # Now we're back (no longer suspended)
-            # Was the current request cancelled while it was waiting for us?
-            if current_request.cancelled:
-                raise Request.CancellationException()
-            
-            # Are we back because we failed?
-            if self.exception is not None:
+                # This request was already started and already failed.
+                # Simply raise the exception back to the current request.
                 raise self.exception
 
-        assert self.finished
-        return self.result
+            direct_execute_needed = not self.started
+            suspend_needed = self.started and not self.execution_complete
+            if direct_execute_needed or suspend_needed:
+                current_request.blocking_requests.add(self)
+                self.pending_requests.add(current_request)
+            
+            if direct_execute_needed:
+                # This request hasn't been started yet
+                # We can execute it directly in the current greenlet instead of creating a new greenlet (big optimization)
+                # Mark it as 'started' so that no other greenlet can claim it
+                self.started = True
+            elif suspend_needed:
+                # This request is already started in some other greenlet.
+                # We must suspend the current greenlet while we wait for this request to complete.
+                # Here, we set up a callback so we'll wake up once this request is complete.
+                self._sig_execution_complete.subscribe( partial(current_request._handle_finished_request, self) )
+
+        if suspend_needed:
+            current_request._suspend()
+        elif direct_execute_needed:
+            # Optimization: Don't start a new greenlet.  Directly run this request in the current greenlet.
+            self.greenlet = current_request.greenlet
+            self.greenlet.owning_requests.append(self)
+            self.assigned_worker = current_request.assigned_worker
+            self.execute()
+            assert self.greenlet.owning_requests.pop() == self
+            current_request.blocking_requests.remove(self)
+
+        # Now we're back (no longer suspended)
+        # Was the current request cancelled while it was waiting for us?
+        if current_request.cancelled:
+            raise Request.CancellationException()
+        
+        # Are we back because we failed?
+        if self.exception is not None:
+            raise self.exception
 
     def _handle_finished_request(self, request, *args):
         """
