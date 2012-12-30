@@ -19,6 +19,8 @@ from lazyflow.blockwiseFileset import BlockwiseFileset
 
 from lazyflow.operators import OpH5WriterBigDataset, OpSubRegion
 
+from lazyflow.bigRequestStreamer import BigRequestStreamer
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -57,12 +59,13 @@ class OpTaskWorker(Operator):
         assert (blockwiseFileset.getEntireBlockRoi( roi.start )[1] == roi.stop).all(), "Each task must execute exactly one full block.  ({},{}) is not a valid block roi.".format( roi.start, roi.stop )
         assert self.Input.ready()
 
+        # Convert the task subrequest shape dict into a shape for this dataset (and axisordering)
+        subrequest_shape = map( lambda tag: config.task_subrequest_shape[tag.key], self.Input.meta.axistags )
+
         with Timer() as computeTimer:
-            # FIXME: This will do the whole thing at once, which requires a lot of RAM.
-            # It should really be streamed like the OpH5WriterBigDataset does.
-            # Also, implement a progress signal!
-            #opH5Writer.progressSignal.subscribe( self.progressSignal )
-            blockwiseFileset.writeData( (roi.start, roi.stop), self.Input(roi.start, roi.stop).wait() )
+            streamer = BigRequestStreamer(self.Input, (roi.start, roi.stop), subrequest_shape )
+            streamer.progressSignal.subscribe( self.progressSignal )
+            streamer.resultSignal.subscribe( blockwiseFileset.writeData )
         logger.info( "Finished task in {} seconds".format( computeTimer.seconds() ) )
 
         result[0] = True

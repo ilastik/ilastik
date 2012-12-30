@@ -6,6 +6,7 @@
 	"sys_tmp_dir" : "/scratch/bergs",
 	"scratch_directory" : "/home/bergs/clusterstuff/scratch",
 	"num_jobs" : "2**3",
+	"task_subrequest_shape" : { 't':1, 'x':512, 'y':512, 'z':512, 'c':100},
 	"task_timeout_secs" : "20*60",
 	"##use_node_local_scratch" : true,
 	"##use_master_local_scratch" : true,
