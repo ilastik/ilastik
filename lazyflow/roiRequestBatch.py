@@ -11,26 +11,31 @@ class RoiRequestBatch( object ):
     """
     A simple utility for requesting a list of rois from an output slot.
     The number of rois requested in parallel is throttled by the batch size given to the constructor.
-    The result of each requested roi is provided to the user's given callback.
+    The result of each requested roi is provided as a signal, which the user should subscribe() to.
     """
-    def __init__( self, outputSlot, resultCallback, roiIterator, totalVolume, batchSize=10 ):
+    def __init__( self, outputSlot, roiIterator, totalVolume=None, batchSize=10 ):
         """
         Constructor.
         :param outputSlot: The slot to request data from.
-        
+        :param roiIterator: An iterator providing new rois.
+        :param totalVolume: The total volume to be processed.  Used to provide the progress reporting signal.  If not provided, then no intermediate progress will be signaled.
+        :param batchSize: The maximum number of requests to launch in parallel.
         """
+        #: Results signal. Signature: ``f(roi, result)``.  Guaranteed not to be called from multiple threads in parallel.
+        self.resultSignal = OrderedSignal()
+        #: Progress Signal Signature: ``f(progress_percent)``
+        self.progressSignal = OrderedSignal()
+
         assert isinstance(outputSlot.stype, lazyflow.stype.ArrayLike), "Only Array-like slots supported." # Because progress reporting depends on the roi shape
         self._outputSlot = outputSlot
         self._roiIter = roiIterator
-        self._resultCallback = resultCallback
         self._batchSize = batchSize
         self._activeRequests = collections.deque()
-        
-        # Progress reporting members
+
+        # Progress bookkeeping
         self._totalVolume = totalVolume
         self._processedVolume = 0
-        self.progressSignal = OrderedSignal() # Public
-
+    
     def start(self):
         # Starting...
         self.progressSignal( 0 )
@@ -54,13 +59,14 @@ class RoiRequestBatch( object ):
             # Replace with new work
             self._activateNewRequest()
             
-            # Call the user with the result
-            self._resultCallback(roi, next_request.result)
+            # Signal the user with the result
+            self.resultSignal(roi, next_request.result)
 
-            # Report progress
-            self._processedVolume += numpy.prod( roi[1] - roi[0] )
-            progress =  100 * self._processedVolume / self._totalVolume
-            self.progressSignal( progress )
+            # Report progress (if possible)
+            if self._totalVolume is not None:
+                self._processedVolume += numpy.prod( roi[1] - roi[0] )
+                progress =  100 * self._processedVolume / self._totalVolume
+                self.progressSignal( progress )
 
             # Get next request to wait for
             roi, next_request = self._popOldestActiveRequest()
