@@ -36,11 +36,26 @@ class TestRoiRequestBatch(object):
             logger.debug( "Got result for {}".format(roi) )
             resultslock.release()
             resultsCount[0] += 1
+
+        progressList = []
+        def handleProgress( progress ):
+            progressList.append( progress )
+            logger.debug( "Progress update: {}".format(progress) )
         
         batch = RoiRequestBatch(op.Output, roiList, handleResult, batchSize=10)
+        batch.progressSignal.subscribe( handleProgress )
+        
         batch.start()
         logger.debug( "Got {} results".format( resultsCount[0] ) )
         assert (results == inputData).all()
+
+        # Progress reporting MUST start with 0 and end with 100        
+        assert progressList[0] == 0, "Invalid progress reporting."
+        assert progressList[-1] == 100, "Invalid progress reporting."
+        
+        # There should be some intermediate progress reporting, but exactly how much is unspecified.
+        assert len(progressList) >= 10
+        
         logger.debug( "FINISHED" )
 
 if __name__ == "__main__":

@@ -3,6 +3,8 @@ import threading
 import collections
 import numpy
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds
+from lazyflow.graph import OrderedSignal
+import itertools
 
 class RoiRequestBatch( object ):
     """
@@ -13,17 +15,23 @@ class RoiRequestBatch( object ):
     def __init__(self, outputSlot, roiList, resultCallback, batchSize=10):
         self._outputSlot = outputSlot
         self._roiList = collections.deque( roiList )
+        self._numRois = len( roiList )
         self._resultCallback = resultCallback
         self._batchSize = min( batchSize, len(roiList) )
         self._activeRequests = collections.deque()
         self._callbackLock = threading.Lock()
+        self._roiCount = itertools.count()
+
+        # Public member for progress reporting
+        self.progressSignal = OrderedSignal()
 
     def start(self):
+        self.progressSignal( 0 )
         # Start with a batch of N requests
         for _ in range(self._batchSize):
             self._activateNewRequest()
 
-        # Wait for each request in turn.  
+        # Wait for each request in FIFO order.  
         # When each is finished, pull it off the "active requests" queue and replace it with a new request until there are none left.
         #
         # NOTE: This is extremely non-optimal.
@@ -36,7 +44,12 @@ class RoiRequestBatch( object ):
             next_request.wait()
             self._activateNewRequest()
             self._resultCallback(roi, next_request.result)
+            count = self._roiCount.next()
+            progress =  100 * count / self._numRois
+            self.progressSignal( progress )
             roi, next_request = self._popOldestActiveRequest()
+
+        self.progressSignal( 100 )
 
     def _popOldestActiveRequest(self):
         """
