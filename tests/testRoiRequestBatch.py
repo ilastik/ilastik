@@ -47,7 +47,7 @@ class TestRoiRequestBatch(object):
         batch.resultSignal.subscribe( handleResult )
         batch.progressSignal.subscribe( handleProgress )
         
-        batch.start()
+        batch.execute()
         logger.debug( "Got {} results".format( resultsCount[0] ) )
         assert (results == inputData).all()
 

@@ -36,7 +36,7 @@ class RoiRequestBatch( object ):
         self._totalVolume = totalVolume
         self._processedVolume = 0
     
-    def start(self):
+    def execute(self):
         # Starting...
         self.progressSignal( 0 )
 
