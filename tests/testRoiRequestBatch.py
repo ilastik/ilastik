@@ -5,7 +5,7 @@ from lazyflow.graph import Graph
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice
 from lazyflow.operators import OpArrayPiper
 
-from lazyflow.requestDataStreamer import RoiRequestBatch
+from lazyflow.roiRequestBatch import RoiRequestBatch
 
 import logging
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ class TestRoiRequestBatch(object):
         
         batch = RoiRequestBatch(op.Output, roiList, handleResult, batchSize=10)
         batch.start()
-        print "Got {} results".format( resultsCount[0] )
+        logger.debug( "Got {} results".format( resultsCount[0] ) )
         assert (results == inputData).all()
         logger.debug( "FINISHED" )
 
