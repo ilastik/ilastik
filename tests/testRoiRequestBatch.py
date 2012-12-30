@@ -42,7 +42,8 @@ class TestRoiRequestBatch(object):
             progressList.append( progress )
             logger.debug( "Progress update: {}".format(progress) )
         
-        batch = RoiRequestBatch(op.Output, roiList, handleResult, batchSize=10)
+        totalVolume = numpy.prod( inputData.shape )
+        batch = RoiRequestBatch(op.Output, handleResult, roiList.__iter__(), totalVolume, batchSize=10)
         batch.progressSignal.subscribe( handleProgress )
         
         batch.start()

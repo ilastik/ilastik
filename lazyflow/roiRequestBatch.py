@@ -5,6 +5,7 @@ import numpy
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds
 from lazyflow.graph import OrderedSignal
 import itertools
+import lazyflow.stype
 
 class RoiRequestBatch( object ):
     """
@@ -12,21 +13,28 @@ class RoiRequestBatch( object ):
     The number of rois requested in parallel is throttled by the batch size given to the constructor.
     The result of each requested roi is provided to the user's given callback.
     """
-    def __init__(self, outputSlot, roiList, resultCallback, batchSize=10):
+    def __init__( self, outputSlot, resultCallback, roiIterator, totalVolume, batchSize=10 ):
+        """
+        Constructor.
+        :param outputSlot: The slot to request data from.
+        
+        """
+        assert isinstance(outputSlot.stype, lazyflow.stype.ArrayLike), "Only Array-like slots supported." # Because progress reporting depends on the roi shape
         self._outputSlot = outputSlot
-        self._roiList = collections.deque( roiList )
-        self._numRois = len( roiList )
+        self._roiIter = roiIterator
         self._resultCallback = resultCallback
-        self._batchSize = min( batchSize, len(roiList) )
+        self._batchSize = batchSize
         self._activeRequests = collections.deque()
-        self._callbackLock = threading.Lock()
-        self._roiCount = itertools.count()
-
-        # Public member for progress reporting
-        self.progressSignal = OrderedSignal()
+        
+        # Progress reporting members
+        self._totalVolume = totalVolume
+        self._processedVolume = 0
+        self.progressSignal = OrderedSignal() # Public
 
     def start(self):
+        # Starting...
         self.progressSignal( 0 )
+
         # Start with a batch of N requests
         for _ in range(self._batchSize):
             self._activateNewRequest()
@@ -42,13 +50,22 @@ class RoiRequestBatch( object ):
         roi, next_request = self._popOldestActiveRequest()
         while next_request is not None:
             next_request.wait()
+
+            # Replace with new work
             self._activateNewRequest()
+            
+            # Call the user with the result
             self._resultCallback(roi, next_request.result)
-            count = self._roiCount.next()
-            progress =  100 * count / self._numRois
+
+            # Report progress
+            self._processedVolume += numpy.prod( roi[1] - roi[0] )
+            progress =  100 * self._processedVolume / self._totalVolume
             self.progressSignal( progress )
+
+            # Get next request to wait for
             roi, next_request = self._popOldestActiveRequest()
 
+        # All finished
         self.progressSignal( 100 )
 
     def _popOldestActiveRequest(self):
@@ -65,8 +82,11 @@ class RoiRequestBatch( object ):
         """
         Creates and activates a new request if there are more rois to process.  Otherwise, does nothing.
         """
-        if len(self._roiList) > 0:
-            roi = self._roiList.popleft()
+        try:
+            roi = self._roiIter.next()
+        except StopIteration:
+            pass
+        else:
             req = self._outputSlot( roi[0], roi[1] )
             self._activeRequests.append( (roi, req) )
             req.submit()
