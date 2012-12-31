@@ -1,4 +1,6 @@
 import os
+import threading
+import collections
 import numpy
 import h5py
 import logging
@@ -14,13 +16,16 @@ try:
 except:
     _use_vigra = False
 
-
 class BlockwiseFileset(object):
     """
     This class handles writing and reading a 'blockwise file set'.
     A 'blockwise file set' is a directory with a particular structure, which contains the entire dataset broken up into blocks.
     Important parameters (e.g. shape, dtype, blockshape) are specified in a json file, which must match the schema given by BlockwiseFileset.DescriptionFields.
     The parent directory of the description file is considered to be the top-most directory in the blockwise dataset hierarchy.
+    
+    Simultaneous reads are threadsafe.
+    NOT threadsafe for reading and writing simultaneously (or writing and writing).
+    NOT threadsafe for closing.  Do not call close() while reading or writing.
     """
     
     # Description config file schema:
@@ -35,7 +40,7 @@ class BlockwiseFileset(object):
         "dtype" : AutoEval(),
         "chunks" : list, # Optional.  If null, no chunking.
         "block_shape" : list,
-        "block_file_name_format" : FormattedField( requiredFields=["roiString"] ),
+        "block_file_name_format" : FormattedField( requiredFields=["roiString"] ), # For hdf5, include dataset name, e.g. myfile_block{roiString}.h5/volume/data
         "dataset_root_dir" : str, # Abs path or relative to the description file itself. Defaults to "." if left blank.
         "hash_id" : str # Not user-defined (clients may use this)
     }
@@ -55,11 +60,25 @@ class BlockwiseFileset(object):
         :param descriptionFilePath: The path to the .json file that describes the dataset.
         :param mode: Set to 'r' if the fileset should be read-only.
         """
+        assert mode == 'r' or mode == 'a', "Valid modes are 'r' or 'a', not '{}'".format(mode)
         self.mode = mode
         self.descriptionFilePath = descriptionFilePath
         self.description = BlockwiseFileset.readDescription( descriptionFilePath )
-        
         assert self.description.format == "hdf5", "Only hdf5 blockwise filesets are supported so far."
+        
+        self._lock = threading.Lock()
+        self._openBlockFiles = {}
+        self._closed = False
+
+    def close(self):
+        with self._lock:
+            assert not self._closed
+            paths = self._openBlockFiles.keys()
+            for path in paths:
+                blockFile = self._openBlockFiles[path].blockFile
+                blockFile.close()
+            self._closed = True
+            
 
     def readData(self, roi, out_array=None):
         """
@@ -115,6 +134,9 @@ class BlockwiseFileset(object):
             return BlockwiseFileset.BLOCK_AVAILABLE
 
     def setBlockStatus(self, blockstart, status):
+        """
+        Set a block status on disk.  We use a simple convention: If the status file exists, the block is available.  Otherwise, it ain't.
+        """
         blockDir = self.getDatasetDirectory( blockstart )
         statusFilePath = os.path.join(blockDir, "STATUS.txt")
         
@@ -136,7 +158,6 @@ class BlockwiseFileset(object):
         :param read: If True, read data from the fileset into ``array_data``.  Otherwise, write data from ``array_data`` into the fileset on disk.
         :type read: bool
         """
-
         entire_dataset_roi = ([0] *len(self.description.shape), self.description.shape)
         clipped_roi = getIntersection( roi, entire_dataset_roi )
         assert (numpy.array(clipped_roi) == numpy.array(roi)).all(), "Roi {} does not fit within dataset bounds: {}".format(roi, self.description.shape)
@@ -180,39 +201,60 @@ class BlockwiseFileset(object):
         datasetDir = path_parts.externalDirectory
         hdf5FilePath = path_parts.externalPath
         statusFilePath = os.path.join(datasetDir, "STATUS.txt")
+
+        block_start = entire_block_roi[0]
         if read:
             # Check for problems before reading.
-            if self.getBlockStatus( entire_block_roi[0] ) is not BlockwiseFileset.BLOCK_AVAILABLE:
+            if self.getBlockStatus( block_start ) is not BlockwiseFileset.BLOCK_AVAILABLE:
                 raise RuntimeError( "Can't read block: Data isn't available or isn't ready.".format( hdf5FilePath ) )
-            with h5py.File(hdf5FilePath, 'r') as hdf5File:
-                try:
-                    array_data[...] = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
-                except:
-                    assert False
+
+            hdf5File = _getOpenBlockfile( hdf5FilePath )
+            try:
+                array_data[...] = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
+            except:
+                assert False
         else:
             # Create the directory
             if not os.path.exists( datasetDir ):
                 os.makedirs( datasetDir )
 
-            # Delete previous status file (if present)
-            if os.path.exists( statusFilePath ):
-                os.remove( statusFilePath )
+            # Clear the block status.
+            # The CALLER is responsible for setting it again.
+            self.setBlockStatus( blockstart, BlockwiseFileset.BLOCK_NOT_AVAILABLE )
 
             # Write the block data file
-            with h5py.File(hdf5FilePath) as hdf5File:
-                if path_parts.internalPath not in hdf5File:
-                    chunks = self.description.chunks
-                    if chunks is not None:
-                        chunks = tuple(chunks)
-                    dataset = hdf5File.create_dataset( path_parts.internalPath,
-                                             shape=( entire_block_roi[1] - entire_block_roi[0] ),
-                                             dtype=self.description.dtype,
-                                             chunks=chunks )
-                    if _use_vigra:
-                        dataset.attrs['axistags'] = vigra.defaultAxistags( self.description.axes ).toJSON()
-                hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ] = array_data[...]
+            hdf5File = _getOpenBlockfile( hdf5FilePath )
+            if path_parts.internalPath not in hdf5File:
+                chunks = self.description.chunks
+                if chunks is not None:
+                    chunks = tuple(chunks)
+                dataset = hdf5File.create_dataset( path_parts.internalPath,
+                                         shape=( entire_block_roi[1] - entire_block_roi[0] ),
+                                         dtype=self.description.dtype,
+                                         chunks=chunks )
+                if _use_vigra:
+                    dataset.attrs['axistags'] = vigra.defaultAxistags( self.description.axes ).toJSON()
+            hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ] = array_data[...]
 
-            # Create the statusfile
-            with file( os.path.join(datasetDir, "STATUS.txt"), 'w' ) as statusFile:
-                statusFile.write("READY")
+    def _getOpenBlockfile(self, blockFilePath):
+        # Try once without locking
+        if blockFilePath in self._openBlockFiles:
+            return self._openBlockFiles[ blockFilePath ].blockFile
+
+        # Obtain the lock and try again
+        with self._lock:
+            if blockFilePath not in self._openBlockFiles.keys():
+                self._openBlockFiles[ blockFilePath ] = h5py.File( blockFilePath, self.mode )
+            return self._openBlockFiles[ blockFilePath ]
+
+
+
+
+
+
+
+
+
+
+
 
