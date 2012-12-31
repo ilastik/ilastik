@@ -25,7 +25,7 @@ class BigRequestStreamer(object):
                 block_start = block_iter.next()
                 yield getBlockBounds( self._outputSlot.meta.shape, minBlockShape, block_start )
         
-        self._requestBatch = RoiRequestBatch( self._outputSlot, roiGen(), totalVolume, 10 )
+        self._requestBatch = RoiRequestBatch( self._outputSlot, roiGen(), totalVolume, 2 )
 
     @property
     def progressSignal(self):
