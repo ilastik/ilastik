@@ -188,25 +188,35 @@ if __name__ == "__main__":
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    # DEBUG ARGS
-    if True and len(sys.argv) == 1:
+    #debug = None
+    #debug = 'Master'
+    debug = 'Node'
 
+    # Task debug args
+    if debug == 'Node' and len(sys.argv) == 1:
+        args = []
+        args.append( "--option_config_file=/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik/cluster_options.json" )
+        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp" )
+        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 510, 510, 510, 0], [1, 1020, 1020, 1020, 4])' )
+        args.append( "--process_name=JOB07" )
+        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_predictions/dataset_description.json" )
+
+        sys.argv += args
+
+    # Master debug args
+    if debug == 'Master' and len(sys.argv) == 1:
         args = []
         args.append( "--process_name=MASTER")
         args.append( "--option_config_file=/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik/cluster_options.json")
 
-        # SMALL TEST
-        args.append("--project=/groups/flyem/data/bergs_scratch/project_files/synapse_small.ilp")
-        args.append( "--output_description_file=/home/bergs/clusterstuff/results/synapse_small_results/dataset_description.json")
+#        # SMALL TEST
+#        args.append("--project=/groups/flyem/data/bergs_scratch/project_files/synapse_small.ilp")
+#        args.append( "--output_description_file=/home/bergs/clusterstuff/results/synapse_small_results/dataset_description.json")
 
-#        # BIGGER TEST
-#        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
-#        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_results/dataset_description.json")
+        # BIGGER TEST
+        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
+        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_predictions/dataset_description.json")
 
-        s = ""
-        for arg in args:
-            s += arg + " "
-        
         sys.argv += args
 
     # MAIN
