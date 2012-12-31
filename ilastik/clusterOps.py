@@ -63,9 +63,15 @@ class OpTaskWorker(Operator):
         subrequest_shape = map( lambda tag: config.task_subrequest_shape[tag.key], self.Input.meta.axistags )
 
         with Timer() as computeTimer:
+            # Stream the data out to disk.
             streamer = BigRequestStreamer(self.Input, (roi.start, roi.stop), subrequest_shape )
             streamer.progressSignal.subscribe( self.progressSignal )
             streamer.resultSignal.subscribe( blockwiseFileset.writeData )
+            streamer.execute()
+
+            # Now the block is ready.  Update the status.
+            blockwiseFileset.setBlockStatus( roi.start, BlockwiseFileset.BLOCK_AVAILABLE )
+
         logger.info( "Finished task in {} seconds".format( computeTimer.seconds() ) )
 
         result[0] = True
