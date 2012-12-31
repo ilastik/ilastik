@@ -99,7 +99,7 @@ class BlockwiseFileset(object):
         :param roi: The region of interest to write the data to.  Must be a tuple of iterables: (start, stop).
         :param data: The data to write.  Must be the correct size for the given roi.
         """
-        assert self.mode != 'r'        
+        assert self.mode != 'r'
         self._transferData(roi, data, read=False)
 
     def getDatasetDirectory( self, blockstart ):
@@ -208,7 +208,7 @@ class BlockwiseFileset(object):
             if self.getBlockStatus( block_start ) is not BlockwiseFileset.BLOCK_AVAILABLE:
                 raise RuntimeError( "Can't read block: Data isn't available or isn't ready.".format( hdf5FilePath ) )
 
-            hdf5File = _getOpenBlockfile( hdf5FilePath )
+            hdf5File = self._getOpenBlockfile( hdf5FilePath )
             try:
                 array_data[...] = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
             except:
@@ -220,10 +220,10 @@ class BlockwiseFileset(object):
 
             # Clear the block status.
             # The CALLER is responsible for setting it again.
-            self.setBlockStatus( blockstart, BlockwiseFileset.BLOCK_NOT_AVAILABLE )
+            self.setBlockStatus( block_start, BlockwiseFileset.BLOCK_NOT_AVAILABLE )
 
             # Write the block data file
-            hdf5File = _getOpenBlockfile( hdf5FilePath )
+            hdf5File = self._getOpenBlockfile( hdf5FilePath )
             if path_parts.internalPath not in hdf5File:
                 chunks = self.description.chunks
                 if chunks is not None:
@@ -239,7 +239,7 @@ class BlockwiseFileset(object):
     def _getOpenBlockfile(self, blockFilePath):
         # Try once without locking
         if blockFilePath in self._openBlockFiles:
-            return self._openBlockFiles[ blockFilePath ].blockFile
+            return self._openBlockFiles[ blockFilePath ]
 
         # Obtain the lock and try again
         with self._lock:
