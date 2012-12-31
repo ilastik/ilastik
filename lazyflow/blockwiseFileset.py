@@ -182,7 +182,8 @@ class BlockwiseFileset(object):
         :param read: If True, read data from the block into ``array_data``.  Otherwise, write data from ``array_data`` into the block on disk.
         :type read: bool
         """
-        datasetFilename = self.description.block_file_name_format.format( roiString=str(entire_block_roi) )
+        roiString = "{}".format( (list(entire_block_roi[0]), list(entire_block_roi[1]) ) )
+        datasetFilename = self.description.block_file_name_format.format( roiString=roiString )
         datasetDir = self.getDatasetDirectory( entire_block_roi[0] )
         datasetPath = os.path.join( datasetDir, datasetFilename )
 
@@ -200,7 +201,8 @@ class BlockwiseFileset(object):
         path_parts = PathComponents( datasetPath )
         datasetDir = path_parts.externalDirectory
         hdf5FilePath = path_parts.externalPath
-        statusFilePath = os.path.join(datasetDir, "STATUS.txt")
+        if len(path_parts.internalPath) == 0:
+            raise RuntimeError("Your hdf5 block filename format MUST specify an internal path, e.g. block{roiString}.h5/volume/blockdata")
 
         block_start = entire_block_roi[0]
         if read:
