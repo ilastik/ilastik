@@ -5,25 +5,9 @@ import numpy
 import h5py
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.jsonConfig import JsonConfigSchema, AutoEval, FormattedField
-
+from lazyflow.RESTfulVolumeDescription import parseRESTfulVolumeDescriptionFile
 import logging
 logger = logging.getLogger(__name__)
-
-RESTfulVolumeDescriptionFields = \
-{
-    "_schema_name" : "RESTful-volume-description",
-    "_schema_version" : 1.0,
-    "name" : str,
-    "format" : str,
-    "axes" : str,
-    "shape" : list,
-    "dtype" : AutoEval(),
-    "origin_offset" : list,
-    "url_format" : FormattedField( requiredFields=["x_start", "x_stop", "y_start", "y_stop", "z_start", "z_stop"], 
-                                   optionalFields=["t_start", "t_stop", "c_start", "c_stop"] ),
-    "hdf5_dataset" : str
-}
 
 class OpRESTfulVolumeReader(Operator):
     """
@@ -37,7 +21,6 @@ class OpRESTfulVolumeReader(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpRESTfulVolumeReader, self).__init__(*args, **kwargs)
-        self._configSchema = JsonConfigSchema( RESTfulVolumeDescriptionFields )
         self._origin_offset = None
         self._urlFormat = None
         self._axes = None
@@ -45,7 +28,7 @@ class OpRESTfulVolumeReader(Operator):
 
     def setupOutputs(self):
         # Read the dataset description file
-        descriptionFields = self._configSchema.parseConfigFile( self.DescriptionFilePath.value )
+        descriptionFields = parseRESTfulVolumeDescriptionFile( self.DescriptionFilePath.value )
 
         # Check for errors in the description file
         axes = descriptionFields.axes 
