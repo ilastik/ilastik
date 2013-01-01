@@ -38,7 +38,7 @@ class BlockwiseFileset(object):
         "axes" : str,
         "shape" : list,
         "dtype" : AutoEval(),
-        "chunks" : list, # Optional.  If null, no chunking.
+        "chunks" : list, # Optional.  If null, no chunking. Only used when writing data.
         "block_shape" : list,
         "block_file_name_format" : FormattedField( requiredFields=["roiString"] ), # For hdf5, include dataset name, e.g. myfile_block{roiString}.h5/volume/data
         "dataset_root_dir" : str, # Abs path or relative to the description file itself. Defaults to "." if left blank.
@@ -53,6 +53,10 @@ class BlockwiseFileset(object):
     @classmethod
     def writeDescription(cls, descriptionFilePath, descriptionFields):
         BlockwiseFileset.DescriptionSchema.writeConfigFile( descriptionFilePath, descriptionFields )
+
+    class BlockNotReadyError(Exception):
+        def __init__(self, block_start):
+            self.block_start = block_start
 
     def __init__( self, descriptionFilePath, mode='r' ):
         """
@@ -208,7 +212,7 @@ class BlockwiseFileset(object):
         if read:
             # Check for problems before reading.
             if self.getBlockStatus( block_start ) is not BlockwiseFileset.BLOCK_AVAILABLE:
-                raise RuntimeError( "Can't read block: Data isn't available or isn't ready.".format( hdf5FilePath ) )
+                raise BlockwiseFileset.BlockNotReadyError( block_start )
 
             hdf5File = self._getOpenBlockfile( hdf5FilePath )
             try:
