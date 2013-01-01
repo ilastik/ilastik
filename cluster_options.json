@@ -21,6 +21,7 @@
 
 	"command_format" : "python /home/bergs/workspace/ilastik/workflows/pixelClassification/pixelClassificationClusterized.py {task_args}",
 	"task_launch_server" : "bergs-ws1",
+	"task_progress_update_command" : "echo {progress}",
 
 	"debug_option_use_previous_node_files" : false
 }
