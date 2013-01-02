@@ -25,7 +25,7 @@ class PathComponents(object):
         self.extension = None
         #: Example: ``/with/internal/dataset``
         self.internalPath = None
-        #: Example: ``/dataset``
+        #: Example: ``dataset``
         self.internalDatasetName = None
         #: Example: ``/some/path/to/file.h5/with/internal``
         self.internalDirectory = None
