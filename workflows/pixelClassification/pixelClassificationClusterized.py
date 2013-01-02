@@ -189,8 +189,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     #debug = None
-    #debug = 'Master'
-    debug = 'Node'
+    debug = 'Master'
+    #debug = 'Node'
 
     # Task debug args
     if debug == 'Node' and len(sys.argv) == 1:
@@ -207,15 +207,21 @@ if __name__ == "__main__":
     if debug == 'Master' and len(sys.argv) == 1:
         args = []
         args.append( "--process_name=MASTER")
-        args.append( "--option_config_file=/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik/cluster_options.json")
 
 #        # SMALL TEST
+#        args.append( "--option_config_file=/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik/cluster_options.json")
 #        args.append("--project=/groups/flyem/data/bergs_scratch/project_files/synapse_small.ilp")
 #        args.append( "--output_description_file=/home/bergs/clusterstuff/results/synapse_small_results/dataset_description.json")
 
-        # BIGGER TEST
-        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
-        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_predictions/dataset_description.json")
+#        # BIGGER TEST
+#        args.append( "--option_config_file=/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik/cluster_options.json")
+#        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
+#        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_predictions/dataset_description.json")
+
+        # RESTful TEST
+        args.append( "--option_config_file=/home/bergs/bock11_250_cubes/bock11_cluster_options.json")
+        args.append( "--project=/home/bergs/bock11_250_cubes/project.ilp")
+        args.append( "--output_description_file=/home/bergs/bock11_250_cubes/results/results_description.json")
 
         sys.argv += args
 
