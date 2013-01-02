@@ -2,7 +2,8 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpImageReader, OpBlockedArrayCache
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
-from lazyflow.operators.ioOperators import OpStackLoader, OpRESTfulVolumeReader
+from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader
+from lazyflow.jsonConfig import JsonConfigSchema
 
 import h5py
 import vigra
@@ -18,9 +19,9 @@ class OpInputDataReader(Operator):
 
     h5Exts = ['h5', 'hdf5']
     npyExts = ['npy']
-    restfulExts = ['json']
+    blockwiseExts = ['json']
     vigraImpexExts = vigra.impex.listExtensions().split()
-    SupportedExtensions = h5Exts + npyExts + vigraImpexExts + restfulExts
+    SupportedExtensions = h5Exts + npyExts + vigraImpexExts + blockwiseExts
 
     # FilePath is inspected to determine data type.
     # For hdf5 files, append the internal path to the filepath,
@@ -74,7 +75,8 @@ class OpInputDataReader(Operator):
         openFuncs = [ self._attemptOpenAsStack,
                       self._attemptOpenAsHdf5,
                       self._attemptOpenAsNpy,
-                      self._attemptOpenAsRESTfulVolume,
+                      self._attemptOpenAsBlockwiseFileset,
+                      self._attemptOpenAsRESTfulBlockwiseFileset,
                       self._attemptOpenWithVigraImpex ]
 
         # Try every method of opening the file until one works.
@@ -143,15 +145,33 @@ class OpInputDataReader(Operator):
             npyReader.FileName.setValue(filePath)
             return (npyReader, npyReader.Output)
 
-    def _attemptOpenAsRESTfulVolume(self, filePath):
+    def _attemptOpenAsBlockwiseFileset(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
         fileExtension = fileExtension.lstrip('.') # Remove leading dot
-        if fileExtension in OpInputDataReader.restfulExts:
-            volumeReader = OpRESTfulVolumeReader(parent=self)
-            volumeReader.DescriptionFilePath.setValue( filePath )
-            return volumeReader, volumeReader.Output
-        else:
-            return (None, None)
+
+        if fileExtension in OpInputDataReader.blockwiseExts:
+            opReader = OpBlockwiseFilesetReader(parent=self)
+            try:
+                # This will raise a SchemaError if this is the wrong type of json config.
+                opReader.DescriptionFilePath.setValue( filePath )
+                return (opReader, opReader.Output)
+            except JsonConfigSchema.SchemaError:
+                opReader.cleanUp()
+        return (None, None)
+
+    def _attemptOpenAsRESTfulBlockwiseFileset(self, filePath):
+        fileExtension = os.path.splitext(filePath)[1].lower()
+        fileExtension = fileExtension.lstrip('.') # Remove leading dot
+
+        if fileExtension in OpInputDataReader.blockwiseExts:
+            opReader = OpRESTfulBlockwiseFilesetReader(parent=self)
+            try:
+                # This will raise a SchemaError if this is the wrong type of json config.
+                opReader.DescriptionFilePath.setValue( filePath )
+                return (opReader, opReader.Output)
+            except JsonConfigSchema.SchemaError:
+                opReader.cleanUp()
+        return (None, None)
 
     def _attemptOpenWithVigraImpex(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
