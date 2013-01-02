@@ -1,11 +1,10 @@
 import os
+import copy
 import tempfile
-import urllib2
-import numpy
 import h5py
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.RESTfulVolumeDescription import parseRESTfulVolumeDescriptionFile
+from lazyflow.RESTfulVolume import RESTfulVolume
 import logging
 logger = logging.getLogger(__name__)
 
@@ -21,67 +20,41 @@ class OpRESTfulVolumeReader(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpRESTfulVolumeReader, self).__init__(*args, **kwargs)
-        self._origin_offset = None
-        self._urlFormat = None
         self._axes = None
-        self._hdf5_dataset = None
+        self._volumeObject = None
 
     def setupOutputs(self):
-        # Read the dataset description file
-        descriptionFields = parseRESTfulVolumeDescriptionFile( self.DescriptionFilePath.value )
+        # Create a RESTfulVolume object to read the description file and do the downloads.
+        self._volumeObject = RESTfulVolume( self.DescriptionFilePath.value )
 
-        # Check for errors in the description file
-        axes = descriptionFields.axes 
-        assert False not in map(lambda a: a in 'txyzc', axes), "Unknown axis type.  Known axes: txyzc  Your axes:".format(axes)
-        assert descriptionFields.format == "hdf5", "Only hdf5 RESTful volumes are supported so far."
-        assert descriptionFields.hdf5_dataset is not None, "RESTful volume description file must specify the hdf5_dataset name"
-
-        # Save description file members
-        self._axes = descriptionFields.axes
-        self._urlFormat = descriptionFields.url_format
-        self._origin_offset = numpy.array(descriptionFields.origin_offset)
-        self._hdf5_dataset = descriptionFields.hdf5_dataset
-
-        outputShape = tuple( descriptionFields.shape )
+        self._axes = self._volumeObject.description.axes 
+        outputShape = tuple( self._volumeObject.description.shape )
 
         # If the dataset has no channel axis, add one.
-        if 'c' not in axes:
+        if 'c' not in self._axes:
             outputShape += (1,)
             self._axes += 'c'
-            self._origin_offset = numpy.array( list(self._origin_offset) + [0] )
 
         self.Output.meta.shape = outputShape
-        self.Output.meta.dtype = descriptionFields.dtype
+        self.Output.meta.dtype = self._volumeObject.description.dtype
         self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
 
     def execute(self, slot, subindex, roi, result):
-        accessStart = numpy.array(roi.start)
-        accessStart += self._origin_offset
-        accessStop = numpy.array(roi.stop)
-        accessStop += self._origin_offset
+        roi = copy.copy(roi)
 
-        axistags = self.Output.meta.axistags
-        RESTArgs = {}
-        for axisindex, tag in enumerate(axistags):
-            startKey = '{}_start'.format(tag.key)
-            stopKey = '{}_stop'.format(tag.key)
-            RESTArgs[startKey] = accessStart[ axisindex ]
-            RESTArgs[stopKey] = accessStop[ axisindex ]
-
-        # Open the url
-        url = self._urlFormat.format( **RESTArgs )
-        logger.debug( "Downloading region {}..{}: {}".format(roi.start, roi.stop, url) )
-        hdf5RawFileObject = urllib2.urlopen( url, timeout=10 )
+        # If we are artificially adding a channel index, remove it from the roi for the download.
+        if len(self.Output.meta.shape) > len(self._volumeObject.description.shape):
+            roi.start.pop( self.Output.meta.axistags.index('c') )
+            roi.stop.pop( self.Output.meta.axistags.index('c') )
 
         # Write the data from the url out to disk (in a temporary file)
         hdf5FilePath = os.path.join(tempfile.mkdtemp(), 'cube.h5')
-        logger.debug( "Saving temporary file: {}".format( hdf5FilePath ) )
-        with open(hdf5FilePath, 'w') as rawFileToWrite:
-            rawFileToWrite.write( hdf5RawFileObject.read() )
+        hdf5DatasetPath = hdf5FilePath + self._volumeObject.description.hdf5_dataset
+        self._volumeObject.downloadSubVolume( (roi.start, roi.stop), hdf5DatasetPath )
 
         # Open the file we just created using h5py
         with h5py.File( hdf5FilePath, 'r' ) as hdf5File:
-            dataset = hdf5File[self._hdf5_dataset]
+            dataset = hdf5File[self._volumeObject.description.hdf5_dataset]
             if len(result.shape) > len(dataset.shape):
                 # We appended a channel axis to Output, but the dataset doesn't have that.
                 result[...,0] = dataset[...]
@@ -92,69 +65,6 @@ class OpRESTfulVolumeReader(Operator):
     def propagateDirty(self, slot, subindex, roi):
         assert slot == self.DescriptionFilePath, "Unknown input slot."
         self.Output.setDirty( slice(None) )
-
-if __name__ == "__main__":
-    testConfig0 = """
-{
-    "_schema_name" : "RESTful-volume-description",
-    "_schema_version" : 1.0,
-
-    "name" : "Bock11-level0",
-    "format" : "hdf5",
-    "axes" : "zyx",
-    "##NOTE":"The first z-slice of the bock dataset is 2917, so the origin_offset must be at least 2917",
-    "origin_offset" : [2917, 50000, 50000],
-    "###shape" : [1239, 135424, 119808],
-    "shape" : [1239, 10000, 10000],
-    "dtype" : "numpy.uint8",
-    "url_format" : "http://openconnecto.me/emca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
-    "hdf5_dataset" : "cube"
-}
-"""
-
-    testConfig4 = """
-{
-    "_schema_name" : "RESTful-volume-description",
-    "_schema_version" : 1.0,
-
-    "name" : "Bock11-level4",
-    "format" : "hdf5",
-    "axes" : "zyx",
-    "##NOTE":"The first z-slice of the bock dataset is 2917, so the origin_offset must be at least 2917",
-    "origin_offset" : [2917, 0, 0],
-    "shape" : [1239, 8704, 7680],
-    "dtype" : "numpy.uint8",
-    "url_format" : "http://openconnecto.me/emca/bock11/hdf5/4/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
-    "hdf5_dataset" : "cube"
-}
-"""
-
-    from lazyflow.graph import Graph
-
-    import sys    
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(logging.StreamHandler(sys.stdout))
-    
-    descriptionFilePath = os.path.join(tempfile.mkdtemp(), 'desc.json')
-    with open(descriptionFilePath, 'w') as descFile:
-        descFile.write( testConfig4 )
-    
-    graph = Graph()
-    op = OpRESTfulVolumeReader(graph=graph)
-    op.DescriptionFilePath.setValue( descriptionFilePath )
-    
-    #data = op.Output[0:100, 50000:50200, 50000:50200].wait()
-    data = op.Output[0:100, 4000:4200, 4000:4200].wait()
-    
-    # We expect a channel dimension to be added automatically...
-    assert data.shape == ( 100, 200, 200, 1 )
-
-    outputDataFilePath = os.path.join(tempfile.mkdtemp(), 'testOutput.h5')
-    with h5py.File( outputDataFilePath, 'w' ) as outputDataFile:
-        outputDataFile.create_dataset('volume', data=data)
-
-    print "Wrote data to {}".format(outputDataFilePath)
-
 
 
 
