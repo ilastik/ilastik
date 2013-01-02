@@ -1,10 +1,10 @@
 import os
 import threading
-import collections
 import numpy
 import h5py
 import logging
 logger = logging.getLogger(__name__)
+
 from lazyflow.jsonConfig import AutoEval, FormattedField, JsonConfigSchema
 from lazyflow.roi import getIntersection, roiToSlice
 from lazyflow.pathHelpers import PathComponents, getPathVariants
@@ -33,6 +33,7 @@ class BlockwiseFileset(object):
     {
         "_schema_name" : "blockwise-fileset-description",
         "_schema_version" : 1.0,
+
         "name" : str,
         "format" : str,
         "axes" : str,
@@ -58,16 +59,24 @@ class BlockwiseFileset(object):
         def __init__(self, block_start):
             self.block_start = block_start
 
-    def __init__( self, descriptionFilePath, mode='r' ):
+    def __init__( self, descriptionFilePath, mode='r', preparsedDescription=None ):
         """
         Constructor.
         :param descriptionFilePath: The path to the .json file that describes the dataset.
         :param mode: Set to 'r' if the fileset should be read-only.
+        :param preparsedDescription: (Optional) Provide pre-parsed description fields, in which case the provided description file will not be parsed.
         """
         assert mode == 'r' or mode == 'a', "Valid modes are 'r' or 'a', not '{}'".format(mode)
         self.mode = mode
+        
+        assert descriptionFilePath is not None, "Must provide a path to the description file, even if you are providing pre-parsed fields. (Path is used to find block directory)."
         self.descriptionFilePath = descriptionFilePath
-        self.description = BlockwiseFileset.readDescription( descriptionFilePath )
+        
+        if preparsedDescription is not None:
+            self.description = preparsedDescription
+        else:
+            self.description = BlockwiseFileset.readDescription( descriptionFilePath )
+
         assert self.description.format == "hdf5", "Only hdf5 blockwise filesets are supported so far."
         
         self._lock = threading.Lock()

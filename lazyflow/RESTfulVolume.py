@@ -14,6 +14,7 @@ class RESTfulVolume(object):
     {
         "_schema_name" : "RESTful-volume-description",
         "_schema_version" : 1.0,
+
         "name" : str,
         "format" : str,
         "axes" : str,
@@ -34,9 +35,13 @@ class RESTfulVolume(object):
     def writeDescription(cls, descriptionFilePath, descriptionFields):
         RESTfulVolume.DescriptionSchema.writeConfigFile( descriptionFilePath, descriptionFields )
 
-    def __init__( self, descriptionFilePath ):
-        self.descriptionFilePath = descriptionFilePath
-        self.description = RESTfulVolume.readDescription( descriptionFilePath )
+    def __init__( self, descriptionFilePath=None, preparsedDescription=None ):
+        if preparsedDescription is not None:
+            assert descriptionFilePath is None, "Can't provide BOTH description file and pre-parsed description fields."
+            self.description = preparsedDescription
+        else:
+            assert descriptionFilePath is not None, "Must provide either a description file or pre-parsed description fields"
+            self.description = RESTfulVolume.readDescription( descriptionFilePath )
 
         # Check for errors        
         assert False not in map(lambda a: a in 'txyzc', self.description.axes), "Unknown axis type.  Known axes: txyzc  Your axes:".format(self.description.axes)

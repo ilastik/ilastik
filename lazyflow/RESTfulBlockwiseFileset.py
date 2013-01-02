@@ -8,12 +8,41 @@ from lazyflow.blockwiseFileset import BlockwiseFileset
 from lazyflow.RESTfulVolume import RESTfulVolume
 from lazyflow.roi import getIntersectingBlocks
 from lazyflow.fileLock import FileLock
+from lazyflow.jsonConfig import JsonConfigSchema
 
 class RESTfulBlockwiseFileset(BlockwiseFileset):
     
-    def __init__(self, localDescriptionPath, remoteDescriptionPath):
-        super( RESTfulBlockwiseFileset, self ).__init__( localDescriptionPath, 'r' )
-        self._remoteVolume = RESTfulVolume( remoteDescriptionPath )
+    DescriptionFields = \
+    {
+        "_schema_name" : "RESTful-blockwise-fileset-description",
+        "_schema_version" : 1.0,
+
+        # Description of the RESTful Volume
+        "remote_description" : JsonConfigSchema( RESTfulVolume.DescriptionFields ),
+        
+        # Description of the local block layout
+        "local_description" : JsonConfigSchema( BlockwiseFileset.DescriptionFields )
+    }
+    DescriptionSchema = JsonConfigSchema( DescriptionFields )
+    
+    @classmethod
+    def readDescription(cls, descriptionFilePath):
+        return RESTfulBlockwiseFileset.DescriptionSchema.parseConfigFile( descriptionFilePath )
+
+    @classmethod
+    def writeDescription(cls, descriptionFilePath, descriptionFields):
+        RESTfulBlockwiseFileset.DescriptionSchema.writeConfigFile( descriptionFilePath, descriptionFields )
+
+    
+    def __init__(self, compositeDescriptionPath ):
+        # Parse the description file, which contains sub-configs for the blockwise description and RESTful description
+        self.compositeDescription = RESTfulBlockwiseFileset.readDescription( compositeDescriptionPath )
+
+        self.localDescription = self.compositeDescription.local_description
+        self.remoteDescription = self.compositeDescription.remote_description
+
+        super( RESTfulBlockwiseFileset, self ).__init__( compositeDescriptionPath, 'r', preparsedDescription=self.localDescription )
+        self._remoteVolume = RESTfulVolume( preparsedDescription=self.remoteDescription )
         
         if not self.description.block_file_name_format.endswith( self._remoteVolume.description.hdf5_dataset ):
             msg = "Your RESTful volume description file must specify an hdf5 internal dataset name that matches the one in your Blockwise Fileset description file!"

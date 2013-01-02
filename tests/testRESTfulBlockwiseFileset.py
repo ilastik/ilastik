@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler( logging.StreamHandler( sys.stdout ) )
 logger.setLevel(logging.INFO)
-logger.setLevel(logging.DEBUG)
+#logger.setLevel(logging.DEBUG)
 
 from lazyflow.blockwiseFileset import BlockwiseFileset
 from lazyflow.RESTfulBlockwiseFileset import RESTfulBlockwiseFileset
@@ -22,7 +22,7 @@ class TestRESTFullBlockwiseFilset(object):
         cls.tempDir = tempfile.mkdtemp()
         logger.debug("Working in {}".format( cls.tempDir ))
 
-        # Create the two description files
+        # Create the two sub-descriptions
         Bock11VolumeDescription = """
         {
             "_schema_name" : "RESTful-volume-description",
@@ -40,10 +40,6 @@ class TestRESTFullBlockwiseFilset(object):
             "hdf5_dataset" : "/cube"
         }
         """
-        # Create the RESTful volume description file.
-        cls.remoteDescriptionPath = os.path.join(cls.tempDir, 'bock11.json')
-        with open(cls.remoteDescriptionPath, 'w') as descFile:
-            descFile.write( Bock11VolumeDescription )
 
         blockwiseFilesetDescription = \
         """
@@ -60,10 +56,23 @@ class TestRESTFullBlockwiseFilset(object):
             "block_file_name_format" : "block-{roiString}.h5/cube"
         }
         """
-        # Create the blockwise fileset description file
-        cls.localDescriptionPath = os.path.join(cls.tempDir, "blockwise_description.json")
-        with open(cls.localDescriptionPath, 'w') as f:
-            f.write(blockwiseFilesetDescription)
+        
+        # Combine them into the composite description (see RESTfulBlockwiseFileset.DescriptionFields)
+        compositeDescription = \
+        """
+        {{
+            "_schema_name" : "RESTful-blockwise-fileset-description",
+            "_schema_version" : 1.0,
+
+            "remote_description" : {remote_description},
+            "local_description" : {local_description}        
+        }}
+        """.format( remote_description=Bock11VolumeDescription, local_description=blockwiseFilesetDescription )
+        
+        # Create the description file
+        cls.descriptionFilePath = os.path.join(cls.tempDir, "description.json")
+        with open(cls.descriptionFilePath, 'w') as f:
+            f.write(compositeDescription)
 
     @classmethod
     def teardownClass(cls):
@@ -72,7 +81,7 @@ class TestRESTFullBlockwiseFilset(object):
             shutil.rmtree(cls.tempDir)
         
     def test_1_SingleDownload(self):
-        volume = RESTfulBlockwiseFileset( self.localDescriptionPath, self.remoteDescriptionPath )
+        volume = RESTfulBlockwiseFileset( self.descriptionFilePath )
 
         slicing = numpy.s_[0:20, 0:20, 0:20]
         roi = sliceToRoi(slicing, volume.description.shape)        
@@ -82,7 +91,7 @@ class TestRESTFullBlockwiseFilset(object):
         assert volume.getBlockStatus( ([0,0,0]) ) == BlockwiseFileset.BLOCK_AVAILABLE
 
     def test_2_MultiDownload(self):
-        volume = RESTfulBlockwiseFileset( self.localDescriptionPath, self.remoteDescriptionPath )
+        volume = RESTfulBlockwiseFileset( self.descriptionFilePath )
 
         slicing = numpy.s_[0:25, 10:30, 0:20]
         roi = sliceToRoi(slicing, volume.description.shape)        
@@ -98,7 +107,7 @@ class TestRESTFullBlockwiseFilset(object):
         """
         If we remove the url format, we shouln't have any trouble accessing files that have already been downloaded.
         """
-        volume = RESTfulBlockwiseFileset( self.localDescriptionPath, self.remoteDescriptionPath )
+        volume = RESTfulBlockwiseFileset( self.descriptionFilePath )
         url_format = volume._remoteVolume.description.url_format
         volume._remoteVolume.description.url_format = ""
         
