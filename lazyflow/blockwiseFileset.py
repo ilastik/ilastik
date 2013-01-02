@@ -273,7 +273,11 @@ class BlockwiseFileset(object):
         # Obtain the lock and try again
         with self._lock:
             if blockFilePath not in self._openBlockFiles.keys():
-                self._openBlockFiles[ blockFilePath ] = h5py.File( blockFilePath, self.mode )
+                try:
+                    self._openBlockFiles[ blockFilePath ] = h5py.File( blockFilePath, self.mode )
+                except:
+                    logger.error( "Couldn't open {}".format(blockFilePath) )
+                    raise
             return self._openBlockFiles[ blockFilePath ]
 
 
