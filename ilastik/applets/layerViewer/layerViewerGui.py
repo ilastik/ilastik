@@ -59,7 +59,7 @@ class LayerViewerGui(QMainWindow):
         return self
 
     def appletDrawer(self):
-        return QWidget(self)
+        return self._drawer
 
     def menus( self ):
         return [self.menuView] # From the .ui file
@@ -136,7 +136,9 @@ class LayerViewerGui(QMainWindow):
         self._initEditor()
         self.__viewerControlWidget = None
         self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
-        self.initAppletDrawerUi() # Default implementation loads a blank drawer.
+
+        self._drawer = QWidget( self )
+        self.initAppletDrawerUi() # Default implementation loads a blank drawer from drawer.ui.
         
     def _after_init(self):
         self._initialized = True
