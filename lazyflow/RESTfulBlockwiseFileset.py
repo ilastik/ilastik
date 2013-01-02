@@ -125,9 +125,11 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
         :param entire_block_roi: The roi for the block to download.
         :param blockFilePathComponents: A lazyflow.pathHelpers.PathComponents object describing the location of the block dataset file. 
         """
-        self._remoteVolume.downloadSubVolume( entire_block_roi, blockFilePathComponents.totalPath() )
-        self.setBlockStatus(entire_block_roi[0], BlockwiseFileset.BLOCK_AVAILABLE)
-        fileLock.release()
+        try:
+            self._remoteVolume.downloadSubVolume( entire_block_roi, blockFilePathComponents.totalPath() )
+            self.setBlockStatus(entire_block_roi[0], BlockwiseFileset.BLOCK_AVAILABLE)
+        finally:
+            fileLock.release()
 
 
 

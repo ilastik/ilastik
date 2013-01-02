@@ -1,6 +1,7 @@
-import os
+import sys
 import urllib2
 import numpy
+import shutil
 
 from lazyflow.pathHelpers import PathComponents
 from lazyflow.jsonConfig import JsonConfigSchema, AutoEval, FormattedField
@@ -67,8 +68,15 @@ class RESTfulVolume(object):
 
         # Open the url
         url = self.description.url_format.format( **RESTArgs )
-        logger.debug( "Downloading region {}..{}: {}".format(roi[0], roi[1], url) )
-        hdf5RawFileObject = urllib2.urlopen( url, timeout=10 )
+        logger.info( "Downloading region {}..{}: {}".format(roi[0], roi[1], url) )
+
+        try:
+            # This merely opens the url (but does not download it).
+            # Still, we need a long timeout because this seems to take a long time for big files.
+            hdf5RawFileObject = urllib2.urlopen( url, timeout=300 )
+        except:
+            logger.error( "Failed to open url: {}\n".format(url) )
+            raise
 
         pathComponents = PathComponents(outputDatasetPath)
 
@@ -78,10 +86,15 @@ class RESTfulVolume(object):
             raise RuntimeError("The RESTful volume format uses internal dataset name '{}', but you seem to be expecting '{}'.".format( self.description.hdf5_dataset, pathComponents.internalPath ) )
 
         # Write the data from the url out to disk
-        logger.debug( "Saving RESTful subvolume to file: {}".format( pathComponents.externalPath ) )
+        logger.info( "Saving RESTful subvolume to file: {}".format( pathComponents.externalPath ) )
         with open(pathComponents.externalPath, 'w') as rawFileToWrite:
-            rawFileToWrite.write( hdf5RawFileObject.read() )
-    
+            # This is where the data is actually downloaded.
+            # Limit memory usage here: Use shutil instead of the write/read combo commented out below.
+            # Download in 20MB bursts
+            shutil.copyfileobj( hdf5RawFileObject, rawFileToWrite, length=20*1024*1024 )
+            # rawFileToWrite.write( hdf5RawFileObject.read() ) # <--Memory-hog
+        logger.info( "Finished saving file: {}".format( pathComponents.externalPath ) )
+
 if __name__ == "__main__":
     testParameters0 = """
 {
