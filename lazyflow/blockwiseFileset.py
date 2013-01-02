@@ -88,7 +88,7 @@ class BlockwiseFileset(object):
             assert not self._closed
             paths = self._openBlockFiles.keys()
             for path in paths:
-                blockFile = self._openBlockFiles[path].blockFile
+                blockFile = self._openBlockFiles[path]
                 blockFile.close()
             self._closed = True
             
