@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import numpy
 from lazyflow.graph import Graph
+from lazyflow.roi import getIntersectingBlocks
 from lazyflow.blockwiseFileset import BlockwiseFileset
 from lazyflow.operators.ioOperators import OpBlockwiseFilesetReader
 
@@ -43,12 +44,16 @@ class TestOpBlockwiseFilesetReader(object):
             f.write(testConfig)
         
         logger.debug( "Creating random test data..." )
-        bfs = BlockwiseFileset( self.configpath, 'w' )
+        bfs = BlockwiseFileset( self.configpath, 'a' )
         dataShape = tuple(bfs.description.shape)
         self.data = numpy.random.randint( 255, size=dataShape ).astype(numpy.uint8)
         
         logger.debug( "Writing test data..." )
-        bfs.writeData( ([0,0,0,0,0], dataShape), self.data )
+        datasetRoi = ([0,0,0,0,0], dataShape)
+        bfs.writeData( datasetRoi, self.data )
+        block_starts = getIntersectingBlocks(bfs.description.block_shape, datasetRoi)
+        for block_start in block_starts:
+            bfs.setBlockStatus(block_start, BlockwiseFileset.BLOCK_AVAILABLE)        
 
     def tearDown(self):
         shutil.rmtree(self.tempDir)
@@ -59,7 +64,8 @@ class TestOpBlockwiseFilesetReader(object):
         op.DescriptionFilePath.setValue( self.configpath )
         
         slice1 = numpy.s_[ :, 20:150, 20:150, 20:100, : ]
-        assert (op.Output[ slice1 ].wait() == self.data[slice1]).all()
+        readData = op.Output[ slice1 ].wait()
+        assert (readData == self.data[slice1]).all()
 
 if __name__ == "__main__":
     import sys

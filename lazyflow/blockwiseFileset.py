@@ -233,10 +233,7 @@ class BlockwiseFileset(object):
                 raise BlockwiseFileset.BlockNotReadyError( block_start )
 
             hdf5File = self._getOpenBlockfile( hdf5FilePath )
-            try:
-                array_data[...] = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
-            except:
-                assert False
+            array_data[...] = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
         else:
             # Create the directory
             if not os.path.exists( datasetDir ):
