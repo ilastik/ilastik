@@ -138,6 +138,9 @@ class JsonConfigSchema( object ):
     class ParsingError(Exception):
         pass
     
+    class SchemaError(ParsingError):
+        pass
+    
     def __init__(self, fields, requiredSchemaName=None, requiredSchemaVersion=None):
         self._fields = dict(fields)
         assert '_schema_name' in fields.keys(), "JsonConfig Schema must have a field called '_schema_name'"
@@ -162,7 +165,7 @@ class JsonConfigSchema( object ):
             try:
                 namespace = self._getNamespace(jsonDict)
             except JsonConfigSchema.ParsingError, e:
-                raise JsonConfigSchema.ParsingError( "Error parsing config file '{f}':\n{msg}".format( f=configFilePath, msg=e.args[0] ) )
+                raise type(e)( "Error parsing config file '{f}':\n{msg}".format( f=configFilePath, msg=e.args[0] ) )
 
         return namespace
 
@@ -181,7 +184,7 @@ class JsonConfigSchema( object ):
         try:
             namespace = self._getNamespace(x)
         except JsonConfigSchema.ParsingError, e:
-            raise JsonConfigSchema.ParsingError( "Couldn't parse sub-config:\n{msg}".format( msg=e.args[0] ) )
+            raise type(e)( "Couldn't parse sub-config:\n{msg}".format( msg=e.args[0] ) )
         return namespace
 
     def _getNamespace(self, jsonDict):
@@ -199,7 +202,7 @@ class JsonConfigSchema( object ):
                 try:
                     finalValue = self._transformValue( fieldType, value )
                 except JsonConfigSchema.ParsingError, e:
-                    raise JsonConfigSchema.ParsingError( "Error parsing config field '{f}':\n{msg}".format( f=key, msg=e.args[0] ) )
+                    raise type(e)( "Error parsing config field '{f}':\n{msg}".format( f=key, msg=e.args[0] ) )
                 else:
                     setattr( namespace, key, finalValue )
 
@@ -211,13 +214,13 @@ class JsonConfigSchema( object ):
         # Check for schema errors
         if namespace._schema_name != self._requiredSchemaName:
             msg = "File schema '{}' does not match required schema '{}'".format( namespace._schema_name, self._requiredSchemaName )
-            raise JsonConfigSchema.ParsingError( msg )
+            raise JsonConfigSchema.SchemaError( msg )
 
         # Schema versions with the same integer (not fraction) are considered backwards compatible.
         if namespace._schema_version > self._expectedSchemaVersion \
         or int(namespace._schema_version) < int(self._expectedSchemaVersion):
             msg = "File schema version '{}' is not compatible with expected schema version '{}'".format( namespace._schema_version, self._expectedSchemaVersion )
-            raise JsonConfigSchema.ParsingError( msg )
+            raise JsonConfigSchema.SchemaError( msg )
                     
         return namespace
     
