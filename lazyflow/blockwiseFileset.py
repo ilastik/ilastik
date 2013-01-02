@@ -175,6 +175,14 @@ class BlockwiseFileset(object):
     def getEntireBlockRoi(self, block_start):
         return getBlockBounds( self.description.shape, self.description.block_shape, block_start )
 
+    def getAllBlockRois(self):
+        entire_dataset_roi = ([0] *len(self.description.shape), self.description.shape)
+        block_starts = getIntersectingBlocks(self.description.block_shape, entire_dataset_roi)
+        rois = []
+        for block_start in block_starts:
+            rois.append(self.getEntireBlockRoi(block_start))
+        return rois
+
     def _transferData( self, roi, array_data, read ):
         """
         Read or write data from/to the fileset.
