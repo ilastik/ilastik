@@ -16,6 +16,7 @@ import hashlib
 from ilastik.clusterConfig import parseClusterConfigFile
 from ilastik.utility.timer import Timer, timed
 from lazyflow.blockwiseFileset import BlockwiseFileset
+from lazyflow.roi import getIntersectingBlocks
 
 from lazyflow.operators import OpH5WriterBigDataset, OpSubRegion
 
@@ -49,33 +50,36 @@ class OpTaskWorker(Operator):
         
         blockwiseFileset = BlockwiseFileset( self.OutputFilesetDescription.value, 'a' )
         
-        roiString = self.RoiString.value
-        roi = Roi.loads(roiString)
-        logger.info( "Executing for roi: {}".format(roi) )
+        try:
+            roiString = self.RoiString.value
+            roi = Roi.loads(roiString)
+            logger.info( "Executing for roi: {}".format(roi) )
+    
+            if config.use_node_local_scratch:
+                assert False, "FIXME."
+    
+            assert (blockwiseFileset.getEntireBlockRoi( roi.start )[1] == roi.stop).all(), "Each task must execute exactly one full block.  ({},{}) is not a valid block roi.".format( roi.start, roi.stop )
+            assert self.Input.ready()
+    
+            # Convert the task subrequest shape dict into a shape for this dataset (and axisordering)
+            subrequest_shape = map( lambda tag: config.task_subrequest_shape[tag.key], self.Input.meta.axistags )
+    
+            with Timer() as computeTimer:
+                # Stream the data out to disk.
+                streamer = BigRequestStreamer(self.Input, (roi.start, roi.stop), subrequest_shape )
+                streamer.progressSignal.subscribe( self.progressSignal )
+                streamer.resultSignal.subscribe( blockwiseFileset.writeData )
+                streamer.execute()
+    
+                # Now the block is ready.  Update the status.
+                blockwiseFileset.setBlockStatus( roi.start, BlockwiseFileset.BLOCK_AVAILABLE )
+    
+            logger.info( "Finished task in {} seconds".format( computeTimer.seconds() ) )
+            result[0] = True
+            return result
 
-        if config.use_node_local_scratch:
-            assert False, "FIXME."
-
-        assert (blockwiseFileset.getEntireBlockRoi( roi.start )[1] == roi.stop).all(), "Each task must execute exactly one full block.  ({},{}) is not a valid block roi.".format( roi.start, roi.stop )
-        assert self.Input.ready()
-
-        # Convert the task subrequest shape dict into a shape for this dataset (and axisordering)
-        subrequest_shape = map( lambda tag: config.task_subrequest_shape[tag.key], self.Input.meta.axistags )
-
-        with Timer() as computeTimer:
-            # Stream the data out to disk.
-            streamer = BigRequestStreamer(self.Input, (roi.start, roi.stop), subrequest_shape )
-            streamer.progressSignal.subscribe( self.progressSignal )
-            streamer.resultSignal.subscribe( blockwiseFileset.writeData )
-            streamer.execute()
-
-            # Now the block is ready.  Update the status.
-            blockwiseFileset.setBlockStatus( roi.start, BlockwiseFileset.BLOCK_AVAILABLE )
-
-        logger.info( "Finished task in {} seconds".format( computeTimer.seconds() ) )
-
-        result[0] = True
-        return result
+        finally:
+            blockwiseFileset.close()
 
     def propagateDirty(self, slot, subindex, roi):
         self.ReturnCode.setDirty( slice(None) )
@@ -122,76 +126,76 @@ class OpClusterize(Operator):
 
         self._validateConfig()
 
-        roiList = self._getRoiList()
-        taskInfos = self._prepareTaskInfos(roiList)
-
         # Create the destination file if necessary
-        blockwiseFileset = self._prepareDestination( taskInfos )
+        blockwiseFileset, taskInfos = self._prepareDestination()
 
-        # Figure out which work doens't need to be recomputed (if any)
-        unneeded_rois = []
-        for roi in taskInfos.keys():
-            if blockwiseFileset.getBlockStatus == BlockwiseFileset.BLOCK_AVAILABLE:
-                unneeded_rois.append( roi )
-
-        # Remove any tasks that we don't need to compute (they were finished in a previous run)
-        for roi in unneeded_rois:
-            logger.info( "No need to run task: {} for roi: {}".format( taskInfos[roi].taskName, roi ) )
-            del taskInfos[roi]
-
-        @fab.hosts( self._config.task_launch_server )
-        def remoteCommand( cmd ):
-            with fab.cd( self._config.server_working_directory ):
-                fab.run( cmd )
-
-        # Spawn each task
-        for taskInfo in taskInfos.values():
-            logger.info("Launching node task: " + taskInfo.command )
-            fab.execute( remoteCommand, taskInfo.command )
-
-        timeOut = self._config.task_timeout_secs
-        serialStepSeconds = 0
-        with Timer() as totalTimer:
-            # When each task completes, it creates a status file.
-            while len(taskInfos) > 0:
-                # TODO: Maybe replace this naive polling system with an asynchronous 
-                #         file status via select.epoll or something like that.
-                if totalTimer.seconds() >= timeOut:
-                    logger.error("Timing out after {} seconds, even though {} tasks haven't finished yet.".format( totalTimer.seconds(), len(taskInfos) ) )
-                    success = False
-                    break
-                time.sleep(15.0)
+        try:
+            # Figure out which work doens't need to be recomputed (if any)
+            unneeded_rois = []
+            for roi in taskInfos.keys():
+                if blockwiseFileset.getBlockStatus == BlockwiseFileset.BLOCK_AVAILABLE:
+                    unneeded_rois.append( roi )
     
-                logger.debug("Time: {} seconds. Checking {} remaining tasks....".format(totalTimer.seconds(), len(taskInfos)))
+            # Remove any tasks that we don't need to compute (they were finished in a previous run)
+            for roi in unneeded_rois:
+                logger.info( "No need to run task: {} for roi: {}".format( taskInfos[roi].taskName, roi ) )
+                del taskInfos[roi]
     
-                # Locate finished blocks
-                finished_rois = self._determineCompletedBlocks( blockwiseFileset, taskInfos )
-#                # Figure out which results have finished already and copy their results into the final output file
-#                finished_rois = self._copyFinishedResults( taskInfos )
-#                serialStepSeconds += self._copyFinishedResults.prev_run_timer.seconds()
+            @fab.hosts( self._config.task_launch_server )
+            def remoteCommand( cmd ):
+                with fab.cd( self._config.server_working_directory ):
+                    fab.run( cmd )
     
-                # Remove the finished tasks from the list we're polling for
-                for roi in finished_rois:
-                    del taskInfos[roi]
-                
-                # Handle failured tasks
-                failed_rois = self._checkForFailures( taskInfos )
-                if len(failed_rois) > 0:
-                    success = False
+            # Spawn each task
+            for taskInfo in taskInfos.values():
+                logger.info("Launching node task: " + taskInfo.command )
+                fab.execute( remoteCommand, taskInfo.command )
     
-                # Remove the failed tasks from the list we're polling for
-                for roi in failed_rois:
-                    logger.error( "Giving up on failed task: {} for roi: {}".format( taskInfos[roi].taskName, roi ) )
-                    del taskInfos[roi]
-
-        if success:
-            logger.info( "SUCCESS: Completed {} MB in {} total seconds.".format( totalMB, totalTimer.seconds() ) )
-            logger.info( "Reassembly took a total of {} seconds".format( serialStepSeconds ) )
-        else:
-            logger.info( "FAILED: After {} seconds.".format( totalTimer.seconds() ) )
-
-        result[0] = success
-        return result
+            timeOut = self._config.task_timeout_secs
+            serialStepSeconds = 0
+            with Timer() as totalTimer:
+                # When each task completes, it creates a status file.
+                while len(taskInfos) > 0:
+                    # TODO: Maybe replace this naive polling system with an asynchronous 
+                    #         file status via select.epoll or something like that.
+                    if totalTimer.seconds() >= timeOut:
+                        logger.error("Timing out after {} seconds, even though {} tasks haven't finished yet.".format( totalTimer.seconds(), len(taskInfos) ) )
+                        success = False
+                        break
+                    time.sleep(15.0)
+        
+                    logger.debug("Time: {} seconds. Checking {} remaining tasks....".format(totalTimer.seconds(), len(taskInfos)))
+        
+                    # Locate finished blocks
+                    finished_rois = self._determineCompletedBlocks( blockwiseFileset, taskInfos )
+    #                # Figure out which results have finished already and copy their results into the final output file
+    #                finished_rois = self._copyFinishedResults( taskInfos )
+    #                serialStepSeconds += self._copyFinishedResults.prev_run_timer.seconds()
+        
+                    # Remove the finished tasks from the list we're polling for
+                    for roi in finished_rois:
+                        del taskInfos[roi]
+                    
+                    # Handle failured tasks
+                    failed_rois = self._checkForFailures( taskInfos )
+                    if len(failed_rois) > 0:
+                        success = False
+        
+                    # Remove the failed tasks from the list we're polling for
+                    for roi in failed_rois:
+                        logger.error( "Giving up on failed task: {} for roi: {}".format( taskInfos[roi].taskName, roi ) )
+                        del taskInfos[roi]
+    
+            if success:
+                logger.info( "SUCCESS: Completed {} MB in {} total seconds.".format( totalMB, totalTimer.seconds() ) )
+                logger.info( "Reassembly took a total of {} seconds".format( serialStepSeconds ) )
+            else:
+                logger.info( "FAILED: After {} seconds.".format( totalTimer.seconds() ) )
+    
+            result[0] = success
+            return result
+        finally:
+            blockwiseFileset.close()
     
     def _getRoiList(self):
         inputShape = self.Input.meta.shape
@@ -261,7 +265,7 @@ class OpClusterize(Operator):
 
         return taskInfos
 
-    def _prepareDestination(self, taskInfos):
+    def _prepareDestination(self):
         """
         - If the result file doesn't exist yet, create it (and the dataset)
         - If the result file already exists, return a list of the rois that 
@@ -273,20 +277,20 @@ class OpClusterize(Operator):
         # Modify description fields as needed
         datasetDescription.axes = reduce(lambda axes,t: axes + t.key, self.Input.meta.axistags, "")
         datasetDescription.shape = list(self.Input.meta.shape)
-        datasetDescription.block_shape = list( self._getBlockShape() )
         if datasetDescription.dtype != self.Input.meta.dtype:
             dtype = self.Input.meta.dtype
             if type(dtype) is numpy.dtype:
                 dtype = dtype.type
             datasetDescription.dtype = dtype().__class__.__name__
 
-        # Create a unique hash for this roi scheme.
+        assert originalDescription.block_shape is not None
+
+        # Create a unique hash for this blocking scheme.
         # If it changes, we can't use any previous data.
-        allRoiStrings = map( lambda taskInfo: Roi.dumps( taskInfo.subregion ), taskInfos.values() )
-        allRoiStrings = sorted( allRoiStrings )
         sha = hashlib.sha1()
-        for roiString in allRoiStrings:
-            sha.update(roiString)
+        sha.update( str( tuple( datasetDescription.block_shape) ) )
+        sha.update( datasetDescription.axes )
+        sha.update( datasetDescription.block_file_name_format )
 
         datasetDescription.hash_id = sha.hexdigest()
 
@@ -294,8 +298,9 @@ class OpClusterize(Operator):
             BlockwiseFileset.writeDescription(self.OutputDatasetDescription.value, datasetDescription)
 
         # Now open the dataset
-        alreadyFinishedRois = []
         blockwiseFileset = BlockwiseFileset( self.OutputDatasetDescription.value )
+        
+        taskInfos = self._prepareTaskInfos( blockwiseFileset.getAllBlockRois() )
         
         if blockwiseFileset.description.hash_id != originalDescription.hash_id:
             # Something about our blocking scheme changed.
@@ -304,7 +309,7 @@ class OpClusterize(Operator):
             for roi in taskInfos.keys():
                 blockwiseFileset.setBlockStatus( roi[0], BlockwiseFileset.BLOCK_NOT_AVAILABLE )
 
-        return blockwiseFileset
+        return blockwiseFileset, taskInfos
 
     def _determineCompletedBlocks(self, blockwiseFileset, taskInfos):
         finished_rois = []
