@@ -127,6 +127,8 @@ class JsonConfigEncoder( json.JSONEncoder ):
             return list(o)
         if isinstance(o, Namespace):
             return(o.__dict__)
+        if isinstance(o, type):
+            return o.__name__
         return super( JsonConfigEncoder, self ).default(o)
 
 class JsonConfigSchema( object ):
