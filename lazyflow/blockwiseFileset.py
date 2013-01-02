@@ -122,6 +122,18 @@ class BlockwiseFileset(object):
             blockFilePath = os.path.join( blockFilePath, "{}_{:08d}".format( axis, start ) )
         return blockFilePath
 
+    def getDatasetPathComponents(self, block_start):
+        """
+        Return a PathComponents object for the block file that corresponds to the given block start coordinate.
+        """
+        entire_block_roi = self.getEntireBlockRoi(block_start)
+        roiString = "{}".format( (list(entire_block_roi[0]), list(entire_block_roi[1]) ) )
+        datasetFilename = self.description.block_file_name_format.format( roiString=roiString )
+        datasetDir = self.getDatasetDirectory( entire_block_roi[0] )
+        datasetPath = os.path.join( datasetDir, datasetFilename )
+
+        return PathComponents( datasetPath )
+
     BLOCK_NOT_AVAILABLE = 0
     BLOCK_AVAILABLE = 1
     def getBlockStatus(self, blockstart):
@@ -186,23 +198,20 @@ class BlockwiseFileset(object):
         :param read: If True, read data from the block into ``array_data``.  Otherwise, write data from ``array_data`` into the block on disk.
         :type read: bool
         """
-        roiString = "{}".format( (list(entire_block_roi[0]), list(entire_block_roi[1]) ) )
-        datasetFilename = self.description.block_file_name_format.format( roiString=roiString )
-        datasetDir = self.getDatasetDirectory( entire_block_roi[0] )
-        datasetPath = os.path.join( datasetDir, datasetFilename )
+        datasetPathComponents = self.getDatasetPathComponents(entire_block_roi[0])
 
         if self.description.format == "hdf5":
-            self._transferBlockDataHdf5( entire_block_roi, block_relative_roi, array_data, read, datasetPath )
+            self._transferBlockDataHdf5( entire_block_roi, block_relative_roi, array_data, read, datasetPathComponents )
         else:
             assert False, "Unknown format"        
 
-    def _transferBlockDataHdf5(self, entire_block_roi, block_relative_roi, array_data, read, datasetPath ):
+    def _transferBlockDataHdf5(self, entire_block_roi, block_relative_roi, array_data, read, datasetPathComponents ):
         """
         Transfer a block of data to/from an hdf5 dataset.
         See _transferBlockData() for details.
         """
         # For the hdf5 format, the full path format INCLUDES the dataset name, e.g. /path/to/myfile.h5/volume/data
-        path_parts = PathComponents( datasetPath )
+        path_parts = datasetPathComponents
         datasetDir = path_parts.externalDirectory
         hdf5FilePath = path_parts.externalPath
         if len(path_parts.internalPath) == 0:

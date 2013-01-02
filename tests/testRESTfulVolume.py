@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 import tempfile
 import numpy
 import h5py
@@ -73,6 +74,8 @@ class TestRESTfulVolume(object):
         with h5py.File(outputFile, 'r') as hdf5File:
             data = hdf5File['cube']
             assert data.shape == ( 25, 50, 75 )
+
+        shutil.rmtree(tempDir)
             
 if __name__ == "__main__":
     import sys
