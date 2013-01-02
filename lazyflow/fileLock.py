@@ -9,9 +9,10 @@ Modifications in this version:
  - Fixed a bug that caused the original code to be NON-threadsafe when the same FileLock instance was shared by multiple threads in one process.
    (The original was safe for multiple processes, but not multiple threads in a single process.  This version is safe for both cases.)
  - Mimic threading.Lock interface:
-   - Added blocking parameter to `acquire()` method
-   - `__enter__` always calls `acquire()`, and therefore blocks if `acquire()` was called previously.
-   - `__exit__` always calls `release()`.  It is therefore a bug to call `release()` from within a context manager. 
+   - Added blocking parameter to ``acquire()`` method
+   - ``__enter__`` always calls ``acquire()``, and therefore blocks if ``acquire()`` was called previously.
+   - ``__exit__`` always calls ``release()``.  It is therefore a bug to call ``release()`` from within a context manager.
+   - Added ``locked()`` function. 
 """
 
 import os
@@ -36,6 +37,8 @@ class FileLock(object):
         self.timeout = timeout
         self.delay = delay
  
+    def locked(self):
+        return self.is_locked
  
     def acquire(self, blocking=True):
         """ Acquire the lock, if possible. If the lock is in use, and `blocking` is False, return False.
