@@ -43,6 +43,15 @@ class TestJsonConfigNamespace(object):
         
 class TestJsonConfig(object):
     
+    SubConfigSchema = \
+    {
+        "_schema_name" : "sub-schema",
+        "_schema_version" : 1.1,
+        
+        "sub_settingA" : str,
+        "sub_settingB" : str
+    }
+    
     TestSchema = \
     {
         "_schema_name" : "test-schema",
@@ -53,7 +62,9 @@ class TestJsonConfig(object):
         "auto_int_setting" : AutoEval(int),
         "another_auto_int_setting" : AutoEval(int),
         "bool_setting" : bool,
-        "formatted_setting" : FormattedField( requiredFields=["user_name", "user_home_town"])
+        "formatted_setting" : FormattedField( requiredFields=["user_name", "user_home_town"]),
+        
+        "subconfig" : JsonConfigSchema(SubConfigSchema)
     }
     
     @classmethod
@@ -69,7 +80,15 @@ class TestJsonConfig(object):
             "auto_int_setting" : "7*6",
             "another_auto_int_setting" : 43,
             "bool_setting" : true,
-            "formatted_setting" : "Greetings, {user_name} from {user_home_town}!"
+            "formatted_setting" : "Greetings, {user_name} from {user_home_town}!",
+            
+            "subconfig" :   {
+                                "_schema_name" : "sub-schema",
+                                "_schema_version" : 1.0,
+                                
+                                "sub_settingA" : "yes",
+                                "sub_settingB" : "no"
+                            }
         }
         """
         cls.tempDir = tempfile.mkdtemp()
@@ -80,7 +99,9 @@ class TestJsonConfig(object):
     
     @classmethod
     def teardownClass(cls):
-        shutil.rmtree(cls.tempDir)
+        # If the user is debugging, don't delete the test files.
+        if logger.level > logging.DEBUG:
+            shutil.rmtree(cls.tempDir)
     
     def testRead(self):
         configFields = JsonConfigSchema( TestJsonConfig.TestSchema ).parseConfigFile( TestJsonConfig.configpath )
@@ -91,6 +112,10 @@ class TestJsonConfig(object):
         assert configFields.another_auto_int_setting == 43
         assert configFields.bool_setting is True
         assert configFields.formatted_setting.format( user_name="Stuart", user_home_town="Washington, DC" ) == "Greetings, Stuart from Washington, DC!"
+        
+        # Check sub-config settings
+        assert configFields.subconfig.sub_settingA == "yes"
+        assert configFields.subconfig.sub_settingB == "no"
 
     def testWrite(self):
         configFields = JsonConfigSchema( TestJsonConfig.TestSchema ).parseConfigFile( TestJsonConfig.configpath )
