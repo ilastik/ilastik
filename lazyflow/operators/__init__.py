@@ -23,6 +23,7 @@ except:
     from opFilterLabels import OpFilterLabels
     from opColorizeLabels import OpColorizeLabels
     from opObjectFeatures import OpObjectFeatures
+    from adaptors import Op5ifyer
 
     ops = itersubclasses(Operator)
     logger.debug("Loading default Operators...")
