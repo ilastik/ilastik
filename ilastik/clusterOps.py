@@ -44,7 +44,7 @@ class OpTaskWorker(Operator):
         self.ReturnCode.meta.dtype = bool
         self.ReturnCode.meta.shape = (1,)
     
-    def execute(self, slot, subindex, roi, result):
+    def execute(self, slot, subindex, ignored_roi, result):
         configFilePath = self.ConfigFilePath.value
         config = parseClusterConfigFile( configFilePath )
         
