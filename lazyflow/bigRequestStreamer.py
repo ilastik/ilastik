@@ -2,6 +2,9 @@ import numpy
 from lazyflow.roiRequestBatch import RoiRequestBatch
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds
 
+import logging
+logger = logging.getLogger(__name__)
+
 class BigRequestStreamer(object):
     """
     Execute a big request by breaking it up into smaller requests.
@@ -31,12 +34,13 @@ class BigRequestStreamer(object):
 
                 # Use offset blocking
                 offset_block_start = block_start - self._bigRoi[0]
-                offset_data_shape = self._outputSlot.meta.shape - self._bigRoi[0]
+                offset_data_shape = self._bigRoi[1] - self._bigRoi[0]
                 offset_block_bounds = getBlockBounds( offset_data_shape, minBlockShape, offset_block_start )
                 
                 # Un-offset
                 block_bounds = ( offset_block_bounds[0] + self._bigRoi[0],
                                  offset_block_bounds[1] + self._bigRoi[0] )
+                logger.debug( "Requesting Roi: {}".format( block_bounds ) )
                 yield block_bounds
         
         self._requestBatch = RoiRequestBatch( self._outputSlot, roiGen(), totalVolume, 2 )
