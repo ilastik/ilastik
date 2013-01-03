@@ -14,6 +14,7 @@ class ThreadRouter(QObject):
         
         :param parent: The parent object, which whose thread will be used for all :py:func:`@threadRouted<threadRouted>` functions.
         """
+        assert parent is not None, "Can't use ThreadRouter without a parent QObject."
         QObject.__init__(self, parent=parent)
         self.ident = threading.current_thread().ident
         self.routeToParent.connect( self.handleRoutedFunc, Qt.BlockingQueuedConnection )

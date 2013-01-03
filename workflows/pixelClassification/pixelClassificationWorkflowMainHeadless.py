@@ -35,9 +35,10 @@ logger = logging.getLogger(__name__)
 
 def main(argv):
     parser = getArgParser()
-    parsed_args = parser.parse_args(argv[1:])
 
-    ilastik.utility.monkey_patches.init_with_args(parsed_args)
+    ilastik.utility.monkey_patches.extend_arg_parser(parser)
+    parsed_args = parser.parse_args(argv[1:])
+    ilastik.utility.monkey_patches.apply_setting_dict( parsed_args.__dict__ )
 
     try:
         runWorkflow(parsed_args)
@@ -55,7 +56,6 @@ def getArgParser():
     parser.add_argument('--batch_export_dir', default='', help='A directory to save batch outputs. (Default saves with input files)')
     parser.add_argument('--batch_output_suffix', default='_prediction', help='Suffix for batch output filenames (before extension).')
     parser.add_argument('--batch_output_dataset_name', default='/volume/prediction', help='HDF5 internal dataset path')
-    parser.add_argument('--sys_tmp_dir', help='Override the default directory for temporary file storage.')
     parser.add_argument('--assume_old_ilp_axes', action='store_true', help='When importing 0.5 project files, assume axes are in the wrong order and need to be transposed.')
     parser.add_argument('--stack_volume_cache_dir', default='/tmp', help='The preprocessing step converts image stacks to hdf5 volumes.  The volumes will be saved to this directory.')
     parser.add_argument('batch_inputs', nargs='*', help='List of input files to process. Supported filenames: .h5, .npy, or globstring for stacks (e.g. *.png)')
@@ -254,24 +254,36 @@ if __name__ == "__main__":
     # DEBUG ARGS
     if False:
         args = ""
-        #args += " --project=/home/bergs/tinyfib/boundary_training/pred.ilp"
         args += " --project=/home/bergs/tinyfib/boundary_training/pred_imported.ilp"
         args += " --batch_output_dataset_name=/volume/pred_volume"
         args += " --batch_export_dir=/home/bergs/tmp"
-#        args += " /home/bergs/tinyfib/initial_segmentation/version1.h5/volume/data"
         args += " /magnetic/small_seq/111211_subset_PSC_final_export_scaled_1k_00*.png"
+
+        print args
+        sys.argv += args.split()
+
+    if False:
+        args = ""
+        args += " --project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp"
+        args += " --batch_output_dataset_name=/volume/pred_volume"
+        args += " --batch_export_dir=/home/bergs/tmp"
+        args += " /groups/flyem/data/bergs_scratch/input_data/gigacube.h5/volume/data"
+
+        print args
+        sys.argv += args.split()
+
+        #args += " --project=/home/bergs/tinyfib/boundary_training/pred.ilp"
+        #args += " /home/bergs/tinyfib/initial_segmentation/version1.h5/volume/data"
 
         #args = "--project=/groups/flyem/proj/cluster/tbar_detect_files/best.ilp --batch_export_dir=/home/bergs/tmp /groups/flyem/proj/cluster/tbar_detect_files/grayscale.h5"
         #args = "--project=/groups/flyem/proj/cluster/tbar_detect_files/best.ilp" # --batch_export_dir=/home/bergs/tmp /groups/flyem/proj/cluster/tbar_detect_files/grayscale.h5"
 
-        print args
 
         #args += " --project=/home/bergs/Downloads/synapse_detection_training1.ilp"
         #args = " --project=/home/bergs/synapse_small.ilp"
         #args += " --generate_project_predictions"
         #args += " /home/bergs/synapse_small.npy"
 
-        sys.argv += args.split()
 
     #make the program quit on Ctrl+C
     import signal

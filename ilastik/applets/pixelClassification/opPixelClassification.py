@@ -28,7 +28,7 @@ class OpPixelClassification( Operator ):
 
     PredictionsFromDisk = InputSlot(optional=True, level=1)
 
-    PredictionProbabilities = OutputSlot(level=1) # Classification predictions
+    PredictionProbabilities = OutputSlot(level=1) # Classification predictions (via feature cache for interactive speed)
 
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
@@ -38,7 +38,9 @@ class OpPixelClassification( Operator ):
     NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
     Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
 
-    CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via a cache)
+    CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via feature cache AND prediction cache)
+
+    HeadlessPredictionProbabilities = OutputSlot(level=1) # Classification predictions ( via no image caches (except for the classifier itself )
 
     UncertaintyEstimate = OutputSlot(level=1)
 
@@ -135,6 +137,16 @@ class OpPixelClassification( Operator ):
         self.PredictionProbabilities.connect(self.predict.PMaps)
         self.CachedPredictionProbabilities.connect(self.precomputed_predictions.Output)
         self.Classifier.connect( self.classifier_cache.Output )
+
+        
+        # CACHELESS FLOW (Don't pass through feature cache)
+        #  This is terrible for interactive labeling, but fast for command-line predictions.
+        self.cacheless_predict = OperatorWrapper( OpPredictRandomForest, parent=self, graph=self.graph )
+        self.cacheless_predict.inputs['Classifier'].connect(self.classifier_cache.outputs['Output']) 
+        self.cacheless_predict.inputs['Image'].connect(self.FeatureImages) # <--- Not from cache
+        self.cacheless_predict.inputs['LabelsCount'].connect(self.opMaxLabel.Output)
+
+        self.HeadlessPredictionProbabilities.connect(self.cacheless_predict.PMaps)
         
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):

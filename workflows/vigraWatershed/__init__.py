@@ -1,2 +1,3 @@
+from vigraWatershedWorkflow import VigraWatershedWorkflow
 
 

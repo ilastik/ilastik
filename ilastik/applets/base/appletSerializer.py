@@ -373,7 +373,7 @@ class SerialClassifierSlot(SerialSlot):
             group.copy(cacheFile[self.name], self.name)
 
         os.remove(cachePath)
-        os.removedirs(tmpDir)
+        os.rmdir(tmpDir)
 
     def deserialize(self, group):
         """
@@ -397,7 +397,7 @@ class SerialClassifierSlot(SerialSlot):
             forests.append(vigra.learning.RandomForest(cachePath, targetname))
 
         os.remove(cachePath)
-        os.removedirs(tmpDir)
+        os.rmdir(tmpDir)
 
         # Now force the classifier into our classifier cache. The
         # downstream operators (e.g. the prediction operator) can
