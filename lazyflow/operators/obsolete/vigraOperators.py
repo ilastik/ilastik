@@ -1004,6 +1004,10 @@ class OpH5WriterBigDataset(Operator):
 
     outputSlots = [OutputSlot("WriteImage")]
 
+    loggingName = __name__ + ".OpH5WriterBigDataset"
+    logger = logging.getLogger(loggingName)
+    traceLogger = logging.getLogger("TRACE." + loggingName)
+
     def __init__(self, *args, **kwargs):
         super(OpH5WriterBigDataset, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
@@ -1064,9 +1068,10 @@ class OpH5WriterBigDataset(Operator):
         self.d=g.create_dataset(datasetName,
                                 shape=dataShape,
                                 dtype=dtype,
-                                chunks=self.chunkShape,
-                                compression='gzip',
-                                compression_opts=4)
+                                chunks=self.chunkShape
+                                #compression='gzip',
+                                #compression_opts=4
+                                )
 
         if 'drange' in self.Image.meta:
             self.d.attrs['drange'] = self.Image.meta.drange
@@ -1079,6 +1084,8 @@ class OpH5WriterBigDataset(Operator):
         numSlicings = len(slicings)
         imSlot = self.inputs["Image"]
 
+        self.logger.debug( "Dividing work into {} pieces".format( len(slicings) ) )
+
         # Throttle: Only allow 10 outstanding requests at a time.
         # Otherwise, the whole set of requests can be outstanding and use up ridiculous amounts of memory.        
         activeRequests = deque()
@@ -1087,7 +1094,7 @@ class OpH5WriterBigDataset(Operator):
         for i in range( min(10, len(slicings)) ):
             s = slicings.pop()
             activeSlicings.append(s)
-            logger.debug( "Creating request for slicing {}".format(s) )
+            self.logger.debug( "Creating request for slicing {}".format(s) )
             activeRequests.append( self.inputs["Image"][s] )
         
         counter = 0
@@ -1108,7 +1115,7 @@ class OpH5WriterBigDataset(Operator):
             # Since requests finish in an arbitrary order (but we always block for them in the same order),
             # this progress feedback will not be smooth.  It's the best we can do for now.
             self.progressSignal( 100*counter/numSlicings )
-            logger.debug( "request {} out of {} executed".format( counter, numSlicings ) )
+            self.logger.debug( "request {} out of {} executed".format( counter, numSlicings ) )
             counter += 1
 
         # Save the axistags as a dataset attribute
@@ -1127,7 +1134,7 @@ class OpH5WriterBigDataset(Operator):
 
         # Choose a request shape that is a multiple of the chunk shape
         axistags = self.Image.meta.axistags
-        multipliers = { 'x':2, 'y':2, 'z':2, 't':1, 'c':10 }
+        multipliers = { 'x':5, 'y':5, 'z':5, 't':1, 'c':100 } # For most problems, there is little advantage to breaking up the channels.
         multiplier = [multipliers[tag.key] for tag in axistags ]
         shift = chunkShape * numpy.array(multiplier)
         shift=numpy.minimum(shift,shape)
