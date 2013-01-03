@@ -34,7 +34,7 @@ class BigRequestStreamer(object):
 
                 # Use offset blocking
                 offset_block_start = block_start - self._bigRoi[0]
-                offset_data_shape = self._bigRoi[1] - self._bigRoi[0]
+                offset_data_shape = numpy.subtract(self._bigRoi[1], self._bigRoi[0])
                 offset_block_bounds = getBlockBounds( offset_data_shape, minBlockShape, offset_block_start )
                 
                 # Un-offset
