@@ -1,1 +1,1 @@
-from pixelClassificationWorkflow import PixelClassificationWorkflow
+from autocontextClassificationWorkflow import AutocontextClassificationWorkflow
