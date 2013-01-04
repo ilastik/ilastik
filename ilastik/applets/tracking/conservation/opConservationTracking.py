@@ -74,7 +74,10 @@ class OpConservationTracking(OpTrackingBase):
                                          withDisappearance
                                          )
         
-        self.events = tracker(ts)
+        try:
+            self.events = tracker(ts)
+        except:
+            raise Exception, 'tracking terminated unsucessfully.'
         
         self._setLabel2Color(self.events, time_range, filtered_labels, x_range, y_range, z_range)
         

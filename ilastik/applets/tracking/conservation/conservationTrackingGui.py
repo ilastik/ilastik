@@ -1,4 +1,4 @@
-from PyQt4 import uic
+from PyQt4 import uic, QtGui
 import os
 import logging
 from ilastik.applets.tracking.base.trackingGuiBase import TrackingGuiBase
@@ -73,23 +73,27 @@ class ConservationTrackingGui( TrackingGuiBase ):
         withDisappearance = self._drawer.disappBox.isChecked()
         fixedDetections = self._drawer.fixDetectionsBox.isChecked()
         
-        self.mainOperator.track(
-            time_range = self.time_range,
-            x_range = (from_x, to_x + 1),
-            y_range = (from_y, to_y + 1),
-            z_range = (from_z, to_z + 1),
-            size_range = (from_size, to_size + 1),
-            x_scale = self._drawer.x_scale.value(),
-            y_scale = self._drawer.y_scale.value(),
-            z_scale = self._drawer.z_scale.value(),
-            maxDist=maxDist,         
-            maxObj = maxObj,               
-            divThreshold=divThreshold,
-            avgSize=avgSize,
-            fixedDetections=fixedDetections,
-            withAppearance=withAppearance,
-            withDisappearance=withDisappearance
-            )
+        try:
+            self.mainOperator.track(
+                time_range = self.time_range,
+                x_range = (from_x, to_x + 1),
+                y_range = (from_y, to_y + 1),
+                z_range = (from_z, to_z + 1),
+                size_range = (from_size, to_size + 1),
+                x_scale = self._drawer.x_scale.value(),
+                y_scale = self._drawer.y_scale.value(),
+                z_scale = self._drawer.z_scale.value(),
+                maxDist=maxDist,         
+                maxObj = maxObj,               
+                divThreshold=divThreshold,
+                avgSize=avgSize,
+                fixedDetections=fixedDetections,
+                withAppearance=withAppearance,
+                withDisappearance=withDisappearance
+                )
+        except:
+            QtGui.QMessageBox.critical(self, "Error", "Tracking was not successful.", QtGui.QMessageBox.Ok)                        
+            return
         
         self._drawer.exportButton.setEnabled(True)
         self._drawer.exportTifButton.setEnabled(True)
