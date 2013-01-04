@@ -2,7 +2,7 @@ import os
 import numpy
 from PyQt4.QtGui import QApplication
 from volumina.layer import AlphaModulatedLayer
-from workflows.pixelClassification import PixelClassificationWorkflow
+from workflow.autocontextClassificationWorkflow import AutocontextClassificationWorkflow
 from tests.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
@@ -16,7 +16,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     
     @classmethod
     def workflowClass(cls):
-        return PixelClassificationWorkflow
+        return AutocontextClassificationWorkflow
 
     PROJECT_FILE = os.path.split(__file__)[0] + '/test_project.ilp'
     #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
@@ -31,7 +31,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         else:
             cls.using_random_data = True
             cls.SAMPLE_DATA = os.path.split(__file__)[0] + '/random_data.npy'
-            data = numpy.random.random((1,200,200,50,1))
+            data = numpy.random.random((200,200,50,1))
             data *= 256
             numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
 
@@ -182,7 +182,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 
             # Save the project
-            self.shell.onSaveProjectActionTriggered()
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
