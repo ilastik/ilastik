@@ -1106,9 +1106,10 @@ class OpBaseVigraFilter(OpArrayPiper):
         
         start, stop = roi.sliceToRoi(subkey,subkey)
         if sourceArray is not None and zAxis<len(axistags):
-            #it has to be 2, we already dropped t and c, so if there is z at all, it's third
-            #if you did some weird axis permutations and it doesn't work, it's your own fault
-            subshape[2]=sourceArray.shape[zAxis]
+            if timeAxis>zAxis:
+                subshape[at2.index('z')]=sourceArray.shape[zAxis]
+            else:
+                subshape[at2.index('z')-1]=sourceArray.shape[zAxis]
         #newStart, newStop = roi.extendSlice(start, stop, subshape, largestSigma, window = windowSize)
         newStart, newStop = roi.extendSlice(start, stop, subshape, 0.7, window = windowSize)
         
