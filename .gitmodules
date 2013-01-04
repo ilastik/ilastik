@@ -1,6 +1,6 @@
-[submodule "ilastik-0.6"]
-	path = ilastik-0.6
-	url = git://github.com/ilastik/ilastik-0.6
+[submodule "ilastik"]
+	path = ilastik
+	url = git://github.com/ilastik/ilastik
 [submodule "volumina"]
 	path = volumina
 	url = git://github.com/ilastik/volumina
