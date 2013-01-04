@@ -286,6 +286,8 @@ class AutocontextClassificationSerializer(AppletSerializer):
                 # Instead, we'll copy the classfier data to a temporary file and give it to vigra.
                 for i, cache in enumerate(self.mainOperator.classifier_caches):
                     fullpath = "Classifiers/Classifier%d"%i
+                    if fullpath not in topGroup:
+                        break
                     classifierGroup = topGroup[fullpath]
                     tmpDir = tempfile.mkdtemp()
                     cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5')
@@ -297,8 +299,8 @@ class AutocontextClassificationSerializer(AppletSerializer):
                         forests.append( vigra.learning.RandomForest(cachePath, str('ClassifierForests/' + name)) )
     
                     os.remove(cachePath)
-                    os.removedirs(tmpDir)
-                    
+                    os.rmdir(tmpDir)
+
                     # Now force the classifier into our classifier cache.
                     # The downstream operators (e.g. the prediction operator) can use the classifier without inducing it to be re-trained.
                     # (This assumes that the classifier we are loading is consistent with the images and labels that we just loaded.
