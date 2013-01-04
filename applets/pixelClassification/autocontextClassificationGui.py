@@ -171,7 +171,7 @@ class AutocontextClassificationGui(LabelingGui):
         layers = []
         # Add each of the predictions
         for channel, predictionSlot in enumerate(predictionChannels):
-            if predictionSlot.ready():
+            if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
