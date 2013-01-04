@@ -100,7 +100,7 @@ class AutocontextClassificationWorkflow(Workflow):
         opBatchFeatures.InputImage.connect( opBatchInputs.Image )
         opBatchPredictor.FeatureImage.connect( opBatchFeatures.OutputImage )
         opBatchResults.ImageToExport.connect( opBatchPredictor.PredictionProbabilities )
-        opBatchResults.SelectedSlices.setValue([30])
+        #opBatchResults.SelectedSlices.setValue([26, 27, 28])
         #opBatchResults.ImageToExport2.connect( opBatchPredictor.PixelOnlyPredictions )
         
         ## Create applets
