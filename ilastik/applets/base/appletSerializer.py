@@ -13,7 +13,7 @@ import numpy
 #######################
 
 def getOrCreateGroup(parentGroup, groupName):
-    """Returns parentGorup[groupName], creating first it if
+    """Returns parentGroup[groupName], creating first it if
     necessary.
 
     """
@@ -23,7 +23,7 @@ def getOrCreateGroup(parentGroup, groupName):
         return parentGroup.create_group(groupName)
 
 def deleteIfPresent(parentGroup, name):
-    """Deletes parentGorup[groupName], if it exists."""
+    """Deletes parentGroup[name], if it exists."""
     try:
         del parentGroup[name]
     except KeyError:
