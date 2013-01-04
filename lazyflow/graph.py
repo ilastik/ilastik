@@ -208,7 +208,7 @@ class Slot(object):
     def graph(self):
         return self.operator.graph
 
-    def __init__( self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
+    def __init__( self, name="", operator=None, stype=ArrayLike, rtype=rtype.SubRegion, value=None, optional=False, level=0, nonlane=False ):
         """
         Constructor of the Slot class.
 
@@ -239,7 +239,8 @@ class Slot(object):
         self._subSlots = []           # if level > 0, this holds the sub-Input/Output slots
         self._stypeType = stype       # the slot type class
         self.stype = stype(self)      # the slot type instance
-
+        self.nonlane = nonlane        # For multislot, this flag protects it from being considered lane-indexed
+        
         self._sig_changed = OrderedSignal()
         self._sig_ready = OrderedSignal()
         self._sig_unready = OrderedSignal()
@@ -1008,9 +1009,9 @@ class Slot(object):
         if level is None:
             level = self.level
         if self._type == "input":
-            s = InputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
+            s = InputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level, nonlane=self.nonlane)
         elif self._type == "output":
-            s = OutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level)
+            s = OutputSlot(self.name, operator, stype = self._stypeType, rtype = self.rtype, value = self._defaultValue, optional = self._optional, level = level, nonlane=self.nonlane)
         return s
 
     def _changed(self):
@@ -1155,8 +1156,8 @@ class InputSlot(Slot):
     to directly provide a value as input (i.e. .setValue(value) call)
     """
 
-    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype=rtype.SubRegion, value = None, optional = False, level = 0):
-        super(InputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, value = value, optional = optional, level = level)
+    def __init__(self, *args, **kwargs):
+        super(InputSlot, self).__init__(*args, **kwargs)
         self._type = "input"
         # configure operator in case of slot change
         self.notifyResized(self._configureOperator)
@@ -1178,8 +1179,8 @@ class OutputSlot(Slot):
     """
 
 
-    def __init__(self, name = "", operator = None, stype = ArrayLike, rtype = rtype.SubRegion, value = None, optional = False, level = 0):
-        super(OutputSlot, self).__init__(name = name, operator = operator, stype = stype, rtype=rtype, level = level)
+    def __init__(self, *args, **kwargs):
+        super(OutputSlot, self).__init__(*args, **kwargs)
         self._type = "output"
  
     def execute(self, slot, subindex, roi, result):
