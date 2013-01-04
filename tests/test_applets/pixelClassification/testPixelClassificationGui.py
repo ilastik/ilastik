@@ -182,7 +182,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 
             # Save the project
-            self.shell.onSaveProjectActionTriggered()
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)

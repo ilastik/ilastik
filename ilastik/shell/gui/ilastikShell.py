@@ -846,6 +846,8 @@ class IlastikShell( QMainWindow ):
         
         saveThread = threading.Thread( target=save )
         saveThread.start()
+        
+        return saveThread # Return the thread so non-gui users (e.g. unit tests) can join it if they want to.
 
     def onSaveProjectAsActionTriggered(self):
         logger.debug("SaveAs Project action triggered")
