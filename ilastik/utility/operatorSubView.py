@@ -41,7 +41,7 @@ class OperatorSubView(object):
 
         self.inputs = InputDict(self)
         for slot in op.inputs.values():
-            if slot.level >= 1:
+            if slot.level >= 1 and not slot.nonlane:
                 self.inputs[slot.name] = slot[index]
             else:
                 self.inputs[slot.name] = slot
@@ -52,7 +52,7 @@ class OperatorSubView(object):
                 
         self.outputs = OutputDict(self)
         for slot in op.outputs.values():
-            if slot.level >= 1:
+            if slot.level >= 1 and not slot.nonlane:
                 self.outputs[slot.name] = slot[index]
             else:
                 self.outputs[slot.name] = slot
