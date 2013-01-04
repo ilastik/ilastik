@@ -53,6 +53,7 @@ class OpTrackingBase(Operator):
         # handle start time offsets
         for i in range(time_range[0]):
             label2color.append({})
+            mergers.append({})
 
         for i, events_at in enumerate(self.events):
             dis = []
