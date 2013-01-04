@@ -106,7 +106,7 @@ class OpTrackingBase(Operator):
             fl_at = filtered_labels[t]
             for l in fl_at:
                 assert(l not in label2color[int(t)])
-                label2color[int(t)][l] = 255                
+                label2color[int(t)][l] = 0  
 
         self.label2color = label2color
         self.mergers = mergers
