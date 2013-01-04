@@ -74,8 +74,8 @@ class OpAutocontextClassification( Operator ):
         
         # Create internal operators
         # Explicitly wrapped:
-        self.opInputShapeReader = OperatorWrapper( OpShapeReader, parent=self, graph=self.graph )
-        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray, parent=self, graph=self.graph  )
+        self.opInputShapeReader = OperatorWrapper( OpShapeReader, parent=self )
+        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray, parent=self  )
 
         self.predictors = []
         self.prediction_caches = []
@@ -85,9 +85,9 @@ class OpAutocontextClassification( Operator ):
         niter = self.AutocontextIterations.value
         
         for i in range(niter):
-            predict = OperatorWrapper( OpPredictRandomForest, parent=self, graph= self.graph )
-            prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph ) 
-            prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
+            predict = OperatorWrapper( OpPredictRandomForest, parent=self )
+            prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self ) 
+            prediction_cache_gui = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self )
             
             self.predictors.append(predict)
             self.prediction_caches.append(prediction_cache)
@@ -95,18 +95,18 @@ class OpAutocontextClassification( Operator ):
         
         #We only display the last prediction layer
          
-        self.precomputed_predictions = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph)
-        self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph)
+        self.precomputed_predictions = OperatorWrapper( OpPrecomputedInput, parent=self)
+        self.precomputed_predictions_gui = OperatorWrapper( OpPrecomputedInput, parent=self)
         
         #Display pixel-only predictions to compare
-        self.precomputed_predictions_pixel = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph)
-        self.precomputed_predictions_pixel_gui = OperatorWrapper( OpPrecomputedInput, parent=self, graph=self.graph) 
+        self.precomputed_predictions_pixel = OperatorWrapper( OpPrecomputedInput, parent=self)
+        self.precomputed_predictions_pixel_gui = OperatorWrapper( OpPrecomputedInput, parent=self) 
 
         # NOT wrapped
-        self.opMaxLabel = OpMaxValue(graph=self.graph)
+        self.opMaxLabel = OpMaxValue(parent=self)
         self.trainers = []
         for i in range(niter):
-            opTrain = OpTrainRandomForestBlocked( graph=self.graph )
+            opTrain = OpTrainRandomForestBlocked( parent=self )
             self.trainers.append(opTrain)
 
         # Set up label cache shape input
@@ -135,13 +135,13 @@ class OpAutocontextClassification( Operator ):
         for i in range(niter-1):
             features = createAutocontextFeatureOperators(self, True)
             self.autocontextFeatures.append(features)
-            opMulti = OperatorWrapper( Op50ToMulti, parent=self, graph = self.graph)
+            opMulti = OperatorWrapper( Op50ToMulti, parent=self)
             self.autocontextFeaturesMulti.append(opMulti)
-            opStacker = OperatorWrapper( OpMultiArrayStacker, parent=self, graph = self.graph)
+            opStacker = OperatorWrapper( OpMultiArrayStacker, parent=self)
             opStacker.inputs["AxisFlag"].setValue("c")
             opStacker.inputs["AxisIndex"].setValue(3)
             self.featureStackers.append(opStacker)
-            autocontext_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
+            autocontext_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self )
             self.autocontext_caches.append(autocontext_cache)
         
         # connect the features to predictors
@@ -183,7 +183,7 @@ class OpAutocontextClassification( Operator ):
         
         for i in range(niter):
             self.classifiers.append(self.trainers[i].outputs['Classifier'])
-            cache = OpValueCache(graph = self.graph)
+            cache = OpValueCache(parent=self)
             cache.inputs["Input"].connect(self.trainers[i].outputs['Classifier'])
             self.classifier_caches.append(cache)
         
@@ -227,7 +227,7 @@ class OpAutocontextClassification( Operator ):
         self.CachedPredictionProbabilities.connect(self.precomputed_predictions.Output)
         self.CachedPixelPredictionProbabilities.connect(self.precomputed_predictions_pixel.Output)
         
-        self.multi = Op50ToMulti(graph = self.graph)
+        self.multi = Op50ToMulti(parent=self)
         for i in range(niter):
             self.multi.inputs["Input%.2d"%i].connect(self.classifier_caches[i].outputs["Output"])
         
@@ -408,9 +408,9 @@ def createAutocontextFeatureOperators(oper, wrap):
         #FIXME: just to test, create some array pipers
         ops = []
         if wrap is True:
-            ops.append(OperatorWrapper(OpContextVariance, parent=oper, graph=oper.graph))
+            ops.append(OperatorWrapper(OpContextVariance, parent=oper))
         else:
-            ops.append(OpContextVariance(graph=oper.graph))
+            ops.append(OpContextVariance(parent=oper))
         
         #Radii from last year
         ops[0].inputs["Radii"].setValue([[1, 1, 1], [3, 3, 1], [5, 5, 1], [7, 7, 2], [10, 10, 2], \
