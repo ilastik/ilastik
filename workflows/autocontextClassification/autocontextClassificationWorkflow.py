@@ -13,9 +13,9 @@ from lazyflow.graph import Graph, Operator, OperatorWrapper
 from lazyflow.operators import OpPredictRandomForest, OpAttributeSelector
 
 #from context.applets.featureSelection import FeatureSelectionAutocontextApplet
-from context.applets.pixelClassification import AutocontextClassificationApplet
-from context.applets.pixelClassification.opAutocontextBatch import OpAutocontextBatch
-from context.applets.pixelClassification.opBatchIoSelective import OpBatchIoSelective
+from ilastik.applets.autocontextClassification import AutocontextClassificationApplet
+from ilastik.applets.autocontextClassification.opAutocontextBatch import OpAutocontextBatch
+from ilastik.applets.autocontextClassification.opBatchIoSelective import OpBatchIoSelective
 
 class AutocontextClassificationWorkflow(Workflow):
     

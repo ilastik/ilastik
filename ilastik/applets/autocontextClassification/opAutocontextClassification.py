@@ -6,7 +6,6 @@ from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainR
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, Op50ToMulti, OpArrayPiper, OpMultiArrayStacker
 
-import context                           
 from context.operators.contextVariance import OpContextVariance
                                
 class OpAutocontextClassification( Operator ):
