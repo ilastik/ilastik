@@ -1,3 +1,4 @@
 import pixelClassification
 import vigraWatershed
+import autocontextClassification
 #import carving

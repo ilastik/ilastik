@@ -2,7 +2,7 @@ import os
 import numpy
 from PyQt4.QtGui import QApplication
 from volumina.layer import AlphaModulatedLayer
-from workflow.autocontextClassificationWorkflow import AutocontextClassificationWorkflow
+from workflows.autocontextClassification.autocontextClassificationWorkflow import AutocontextClassificationWorkflow
 from tests.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
