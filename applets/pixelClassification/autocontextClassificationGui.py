@@ -7,8 +7,8 @@ from functools import partial
 
 # Third-party
 import numpy
+from PyQt4 import uic
 from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox
 from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon
 
 # HCI
@@ -21,10 +21,6 @@ from ilastik.utility import bind
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling import LabelingGui
 from ilastik.applets.base.applet import ShellRequest, ControlCommand
-
-# Loggers
-logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -40,6 +36,7 @@ class AutocontextClassificationGui(LabelingGui):
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
+
     def centralWidget( self ):
         return self
 
@@ -101,7 +98,45 @@ class AutocontextClassificationGui(LabelingGui):
 #            self.render = False
 
     @traceLogged(traceLogger)
-    def setupLayers(self, currentImageIndex):
+    def initViewerControlUi(self):
+        """
+        This overrides the base class: LayerViewerGui.initViewerControlUi()
+        """
+        localDir = os.path.split(__file__)[0]
+        self._viewerControlUi = uic.loadUi( os.path.join( localDir, "viewerControls.ui" ) )
+
+        # Connect checkboxes
+        def nextCheckState(checkbox):
+            checkbox.setChecked( not checkbox.isChecked() )
+        self._viewerControlUi.checkShowPredictions.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowPredictions)
+        self._viewerControlUi.checkShowSegmentation.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowSegmentation)
+
+        self._viewerControlUi.checkShowPredictions.clicked.connect( self.handleShowPredictionsClicked )
+        self._viewerControlUi.checkShowSegmentation.clicked.connect( self.handleShowSegmentationClicked )
+
+        self._viewerControlUi.liveUpdateButton.setEnabled(True)
+        self._viewerControlUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
+        self._viewerControlUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self._viewerControlUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
+
+        self._viewerControlUi.pauseUpdateButton.setEnabled(True)
+        self._viewerControlUi.pauseUpdateButton.setIcon( QIcon(ilastikIcons.Pause) )
+        self._viewerControlUi.pauseUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+
+        # The editor's layerstack is in charge of which layer movement buttons are enabled
+        model = self.editor.layerStack
+        model.canMoveSelectedUp.connect(self._viewerControlUi.UpButton.setEnabled)
+        model.canMoveSelectedDown.connect(self._viewerControlUi.DownButton.setEnabled)
+        model.canDeleteSelected.connect(self._viewerControlUi.DeleteButton.setEnabled)
+
+        # Connect our layer movement buttons to the appropriate layerstack actions
+        self._viewerControlUi.layerWidget.init(model)
+        self._viewerControlUi.UpButton.clicked.connect(model.moveSelectedUp)
+        self._viewerControlUi.DownButton.clicked.connect(model.moveSelectedDown)
+        self._viewerControlUi.DeleteButton.clicked.connect(model.deleteSelected)
+
+    @traceLogged(traceLogger)
+    def setupLayers(self):
         """
         Called by our base class when one of our data slots has changed.
         This function creates a layer for each slot we want displayed in the volume editor.
@@ -109,9 +144,9 @@ class AutocontextClassificationGui(LabelingGui):
         # Base class provides the label layer.
         layers = super(AutocontextClassificationGui, self).setupLayers()
         
-        pixel_pred_layers = self.setupPredictionLayers(self.pipeline.PixelOnlyPredictionChannels, "")
+        pixel_pred_layers = self.setupPredictionLayers(self.topLevelOperatorView.PixelOnlyPredictionChannels, "")
         layers.extend(pixel_pred_layers)
-        pred_layers = self.setupPredictionLayers(self.pipeline.PredictionProbabilityChannels, "auto")
+        pred_layers = self.setupPredictionLayers(self.topLevelOperatorView.PredictionProbabilityChannels, "auto")
         layers.extend(pred_layers)
 
 
@@ -144,7 +179,7 @@ class AutocontextClassificationGui(LabelingGui):
                                                     range=(0.0, 1.0),
                                                     normalize=(0.0, 1.0) )
                 predictLayer.opacity = 0.25
-                predictLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+                predictLayer.visible = self._viewerControlUi.liveUpdateButton.isChecked()
                 predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
                 def setLayerColor(c):
