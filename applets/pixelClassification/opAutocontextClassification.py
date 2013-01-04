@@ -45,11 +45,17 @@ class OpAutocontextClassification( Operator ):
     LabelImages = OutputSlot(level=1) # Labels from the user
     NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
     
-    Classifiers = OutputSlot(level=1) # Holds the chain. Level is set to 1, because it's connected to a OpMulti 
+    # Holds the chain. Level is set to 1, because it's connected to a OpMulti 
+    # Unlike all of our other output multi-slots, the classifiers output is not specific to a single lane.
+    # It is shared by all lanes.  The OperatorSubView class respects the magic 'nonlane' meta attribute for this case.
+    Classifiers = OutputSlot(level=1, nonlane=True)
 
     CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via a cache)
     CachedPixelPredictionProbabilities = OutputSlot(level=1)
     
+    # GUI-only (not part of the pipeline, but saved to the project)
+    LabelNames = OutputSlot()
+    LabelColors = OutputSlot()
     
     def __init__( self, *args, **kwargs ):
         """
@@ -57,7 +63,11 @@ class OpAutocontextClassification( Operator ):
         """
         super(OpAutocontextClassification, self).__init__(*args, **kwargs)
 
+        # Our internal graph needs to be built (or re-built) when the number of iterations is set.
         self.AutocontextIterations.notifyDirty(self.setupOperators)
+
+        self.LabelNames.setValue( [] ) # Default
+        self.LabelColors.setValue( [] ) # Default
 
     def setupOperators(self, *args, **kwargs):
         self.FreezePredictions.setValue(True) # Default
@@ -222,7 +232,7 @@ class OpAutocontextClassification( Operator ):
             self.multi.inputs["Input%.2d"%i].connect(self.classifier_caches[i].outputs["Output"])
         
         self.Classifiers.connect( self.multi.outputs["Outputs"] )
-        
+
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
                 self.LabelImages.resize(0)
