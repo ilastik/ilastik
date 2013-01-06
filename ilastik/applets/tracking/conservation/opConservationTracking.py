@@ -43,7 +43,8 @@ class OpConservationTracking(OpTrackingBase):
             fixedDetections=False,
             withAppearance=True,
             withDisappearance=True,
-            withTracklets=False
+            withTracklets=False,
+            sizeDependent=True
             ):
         
         median_obj_size = [0]
@@ -65,7 +66,7 @@ class OpConservationTracking(OpTrackingBase):
                                          float(maxDist),
                                          float(divThreshold),
                                          "none",  # detection_rf_filename
-                                         True,   # size_dependent_detection_prob
+                                         sizeDependent,   # size_dependent_detection_prob
                                          0,       # forbidden_cost
                                          True,    # with_constraints
                                          fixedDetections,   # fixed_detections

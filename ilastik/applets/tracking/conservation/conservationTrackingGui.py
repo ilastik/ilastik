@@ -67,12 +67,13 @@ class ConservationTrackingGui( TrackingGuiBase ):
         to_size = self._drawer.to_size.value()     
         
         self.time_range =  range(from_t, to_t + 1)
-        avgSize = self._drawer.avgSizeBox.value()
+        avgSize = [self._drawer.avgSizeBox.value()]
         
         withAppearance = self._drawer.appBox.isChecked()
         withDisappearance = self._drawer.disappBox.isChecked()
         fixedDetections = self._drawer.fixDetectionsBox.isChecked()
         withTracklets = self._drawer.trackletsBox.isChecked()
+        sizeDependent = self._drawer.sizeDepBox.isChecked()
         
         try:
             self.mainOperator.track(
@@ -91,7 +92,8 @@ class ConservationTrackingGui( TrackingGuiBase ):
                 fixedDetections=fixedDetections,
                 withAppearance=withAppearance,
                 withDisappearance=withDisappearance,
-                withTracklets=withTracklets
+                withTracklets=withTracklets,
+                sizeDependent=sizeDependent
                 )
         except Exception as e:
             QtGui.QMessageBox.critical(self, "Error", "Error: " + str(e), QtGui.QMessageBox.Ok)                        
