@@ -72,6 +72,7 @@ class ConservationTrackingGui( TrackingGuiBase ):
         withAppearance = self._drawer.appBox.isChecked()
         withDisappearance = self._drawer.disappBox.isChecked()
         fixedDetections = self._drawer.fixDetectionsBox.isChecked()
+        withTracklets = self._drawer.trackletsBox.isChecked()
         
         try:
             self.mainOperator.track(
@@ -89,10 +90,11 @@ class ConservationTrackingGui( TrackingGuiBase ):
                 avgSize=avgSize,
                 fixedDetections=fixedDetections,
                 withAppearance=withAppearance,
-                withDisappearance=withDisappearance
+                withDisappearance=withDisappearance,
+                withTracklets=withTracklets
                 )
-        except:
-            QtGui.QMessageBox.critical(self, "Error", "Tracking was not successful.", QtGui.QMessageBox.Ok)                        
+        except Exception as e:
+            QtGui.QMessageBox.critical(self, "Error", "Error: " + str(e), QtGui.QMessageBox.Ok)                        
             return
         
         self._drawer.exportButton.setEnabled(True)

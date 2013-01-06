@@ -42,7 +42,8 @@ class OpConservationTracking(OpTrackingBase):
             avgSize=0,
             fixedDetections=False,
             withAppearance=True,
-            withDisappearance=True
+            withDisappearance=True,
+            withTracklets=False
             ):
         
         median_obj_size = [0]
@@ -53,8 +54,8 @@ class OpConservationTracking(OpTrackingBase):
                                                                       with_div=True)
         
         if empty_frame:
-            print 'cannot track frames with 0 objects, abort.'
-            return            
+            raise Exception, 'cannot track frames with 0 objects, abort.'
+              
         
         if avgSize > 0:
             median_obj_size = avgSize
@@ -71,7 +72,8 @@ class OpConservationTracking(OpTrackingBase):
                                          float(ep_gap), # ep_gap
                                          float(median_obj_size[0]), # median_object_size
                                          withAppearance,
-                                         withDisappearance
+                                         withDisappearance,
+                                         withTracklets
                                          )
         
         try:
