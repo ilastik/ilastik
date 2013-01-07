@@ -6,9 +6,7 @@ class TestOpMaxValue(object):
     
         op = OpMaxValue(graph=Graph())
 
-        assert op.Output.value == 0
-        
-        op.Inputs.setValues([0,1,2,3,4])    
+        op.Inputs.setValues([0,1,2,3,4])
         assert op.Output.value == 4
     
         got_dirty = [False]

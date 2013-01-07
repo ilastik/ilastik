@@ -14,7 +14,8 @@ from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
 
 @atexit.register
 def quitApp():
-    qApp.quit()
+    if qApp is not None:
+        qApp.quit()
 
 def run_shell_nosetest(filename):
     """
