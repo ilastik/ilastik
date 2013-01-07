@@ -173,7 +173,6 @@ class TestSerializer(unittest.TestCase):
         ss = self.serializer.TestSerialListSlot
         self._testList(slot, ss, [], [1, 2, 3])
 
-
     def testList10(self):
         slot = self.operator.TestListSlot
         ss = self.serializer.TestSerialListSlot
