@@ -37,3 +37,4 @@ notifications:
 branches:
     only:
       - master
+ 
