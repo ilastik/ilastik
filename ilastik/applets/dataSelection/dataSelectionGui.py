@@ -229,13 +229,31 @@ class DataSelectionGui(QMainWindow):
                                                          defaultDirectory,
                                                          options=QFileDialog.Options(QFileDialog.DontUseNativeDialog | QFileDialog.ShowDirsOnly))
 
-        # If the user didn't cancel        
+        # If the user didn't cancel
         if not directoryName.isNull():
             PreferencesManager().set('DataSelection', 'recent stack directory', str(directoryName))
             globString = self.getGlobString( str(directoryName) )                
             if globString is not None:
                 self.importStackFromGlobString( globString )
 
+    def getGlobString(self, directory):
+        exts = vigra.impex.listExtensions().split()
+        for ext in exts:
+            fullGlob = directory + '/*.' + ext
+            filenames = glob.glob(fullGlob)
+
+            if len(filenames) == 1:
+                QMessageBox.warning(self, "Invalid selection", 'Cannot create stack: There is only one image file in the selected directory.  If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume), please use the "Add File" button.' )
+                return None
+
+            if len(filenames) > 0:
+                # Be helpful: find the longest globstring we can
+                prefix = os.path.commonprefix(filenames)
+                return prefix + '*.' + ext
+        
+        # Couldn't find an image file in the directory...
+        return None
+        
     def handleAddStackFilesButtonClicked(self):
         """
         The user clicked the "Import Stack Files" button.
@@ -250,6 +268,10 @@ class DataSelectionGui(QMainWindow):
         # Launch the "Open File" dialog
         fileNames = self.getImageFileNamesToOpen(defaultDirectory)
 
+        if len(fileNames) == 1:
+            QMessageBox.warning(self, "Invalid selection", 'Cannot create stack: You only selected one file.  If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume), please use the "Add File" button.' )
+            return
+
         # If the user didn't cancel        
         if len(fileNames) > 0:
             PreferencesManager().set('DataSelection', 'recent stack image', fileNames[0])
@@ -262,8 +284,8 @@ class DataSelectionGui(QMainWindow):
         Launch an "Open File" dialog to ask the user for one or more image files.
         """
         extensions = OpDataSelection.SupportedExtensions
-        filter = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
-        dlg = QFileDialog( self, "Select Images", defaultDirectory, filter )
+        filt = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
+        dlg = QFileDialog( self, "Select Images", defaultDirectory, filt )
         dlg.setOption( QFileDialog.HideNameFilterDetails, False )
         dlg.setOption( QFileDialog.DontUseNativeDialog, False )
         dlg.setViewMode( QFileDialog.Detail )
@@ -297,20 +319,6 @@ class DataSelectionGui(QMainWindow):
         importThread = threading.Thread( target=importStack )
         importThread.start()
 
-
-    def getGlobString(self, directory):
-        exts = vigra.impex.listExtensions().split()
-        for ext in exts:
-            fullGlob = directory + '/*.' + ext
-            filenames = glob.glob(fullGlob)
-            if len(filenames) > 0:
-                # Be helpful: find the longest globstring we can
-                prefix = os.path.commonprefix(filenames)
-                return prefix + '*.' + ext
-        
-        # Couldn't find an image file in the directory...
-        return None
-        
 
     def addFileNames(self, fileNames):
         """
