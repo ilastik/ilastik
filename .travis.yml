@@ -30,6 +30,7 @@ before_script:
    - "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH"
    - "export PYTHONPATH=/tmp/volumina:/tmp/widgets:/tmp/lazyflow:$PYTHONPATH"
 script:
+   - cp tests/nose_single.py .
    - ./tests/testeach.sh
 notifications:
   email:
