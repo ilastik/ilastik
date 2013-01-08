@@ -9,7 +9,7 @@ install:
    - sudo apt-get install -y libfftw3-dev
    - sudo apt-get install -y libhdf5-serial-dev
    - sudo apt-get install -y cmake
-   - sudo apt-get install python-qt4 python-qt4-dev python-sip python-sip-dev
+   - sudo apt-get install -y python-qt4 python-qt4-dev python-sip python-sip-dev
    - ln -s /usr/lib/python2.7/dist-packages/PyQt4/ $VIRTUAL_ENV/lib/python2.7/site-packages/
    - ln -s /usr/lib/python2.7/dist-packages/sip.so $VIRTUAL_ENV/lib/python2.7/site-packages/
    - ln -s /usr/lib/python2.7/dist-packages/sipdistutils.py $VIRTUAL_ENV/lib/python2.7/site-packages/
