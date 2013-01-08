@@ -37,10 +37,15 @@ class BlockwiseFileset(object):
         "name" : str,
         "format" : str,
         "axes" : str,
-        "shape" : list,
+        "shape" : list, # This is the shape of the VIEW
         "dtype" : AutoEval(),
         "chunks" : list, # Optional.  If null, no chunking. Only used when writing data.
         "block_shape" : list,
+        "view_origin" : list, # Optional.  Defaults to zeros.  All requests will be translated before the data is accessed.
+                                # For example, if the offset is [100, 200, 300], then a request for roi([0,0,0],[2,2,2]) 
+                                #  will pull from the dataset on disk as though the request was ([100,200,300],[102,202,302]).
+                                # It is an error to specify an view_origin that is not a multiple of the block_shape.
+        "view_shape" : list, # Optional.  Defaults to (shape - view_origin) Limits the shape of the provided data.
         "block_file_name_format" : FormattedField( requiredFields=["roiString"] ), # For hdf5, include dataset name, e.g. myfile_block{roiString}.h5/volume/data
         "dataset_root_dir" : str, # Abs path or relative to the description file itself. Defaults to "." if left blank.
         "hash_id" : str # Not user-defined (clients may use this)
@@ -78,6 +83,15 @@ class BlockwiseFileset(object):
             self.description = BlockwiseFileset.readDescription( descriptionFilePath )
 
         assert self.description.format == "hdf5", "Only hdf5 blockwise filesets are supported so far."
+        
+        if self.description.view_origin is None:
+            self.description.view_origin = (0,) * len(self.description.shape)
+        assert (numpy.mod( self.description.view_origin, self.description.block_shape ) == 0).all(), "view_origin is not compatible with block_shape.  Must be a multiple!"
+
+        if self.description.view_shape is None:
+            self.description.view_shape = numpy.subtract( self.description.shape, self.description.view_origin )
+        view_roi = (self.description.view_origin, numpy.add(self.description.view_origin, self.description.view_shape))
+        assert (numpy.subtract( self.description.shape, view_roi[1] ) >= 0).all(), "View ROI must not exceed on-disk shape."
         
         self._lock = threading.Lock()
         self._openBlockFiles = {}
@@ -119,6 +133,9 @@ class BlockwiseFileset(object):
         """
         Return the directory that contains the block that starts at the given coordinates.
         """
+        # Offset if necessary
+        if self.description.view_origin is not None:
+            blockstart = numpy.add( blockstart, self.description.view_origin )
         blockFilePath = self.description.dataset_root_dir
         descriptionFileDir = os.path.split(self.descriptionFilePath)[0]
         if blockFilePath is None:
@@ -131,14 +148,21 @@ class BlockwiseFileset(object):
             blockFilePath = os.path.join( blockFilePath, "{}_{:08d}".format( axis, start ) )
         return blockFilePath
 
+    def _getBlockFileName(self, block_start):
+        # Translate to find disk block start
+        block_start = numpy.add( self.description.view_origin, block_start )
+        # Get true (disk) block bounds (i.e. use on-disk shape, not view_shape)
+        entire_block_roi = getBlockBounds( self.description.shape, self.description.block_shape, block_start )
+        roiString = "{}".format( (list(entire_block_roi[0]), list(entire_block_roi[1]) ) )
+        datasetFilename = self.description.block_file_name_format.format( roiString=roiString )
+        return datasetFilename
+
     def getDatasetPathComponents(self, block_start):
         """
         Return a PathComponents object for the block file that corresponds to the given block start coordinate.
         """
-        entire_block_roi = self.getEntireBlockRoi(block_start)
-        roiString = "{}".format( (list(entire_block_roi[0]), list(entire_block_roi[1]) ) )
-        datasetFilename = self.description.block_file_name_format.format( roiString=roiString )
-        datasetDir = self.getDatasetDirectory( entire_block_roi[0] )
+        datasetFilename = self._getBlockFileName(block_start)
+        datasetDir = self.getDatasetDirectory( block_start )
         datasetPath = os.path.join( datasetDir, datasetFilename )
 
         return PathComponents( datasetPath )
@@ -173,10 +197,10 @@ class BlockwiseFileset(object):
             os.remove( statusFilePath )
 
     def getEntireBlockRoi(self, block_start):
-        return getBlockBounds( self.description.shape, self.description.block_shape, block_start )
+        return getBlockBounds( self.description.view_shape, self.description.block_shape, block_start )
 
     def getAllBlockRois(self):
-        entire_dataset_roi = ([0] *len(self.description.shape), self.description.shape)
+        entire_dataset_roi = ([0]*len(self.description.view_shape), self.description.view_shape)
         block_starts = getIntersectingBlocks(self.description.block_shape, entire_dataset_roi)
         rois = []
         for block_start in block_starts:
@@ -191,9 +215,9 @@ class BlockwiseFileset(object):
         :param read: If True, read data from the fileset into ``array_data``.  Otherwise, write data from ``array_data`` into the fileset on disk.
         :type read: bool
         """
-        entire_dataset_roi = ([0] *len(self.description.shape), self.description.shape)
+        entire_dataset_roi = ([0] *len(self.description.view_shape), self.description.view_shape)
         clipped_roi = getIntersection( roi, entire_dataset_roi )
-        assert (numpy.array(clipped_roi) == numpy.array(roi)).all(), "Roi {} does not fit within dataset bounds: {}".format(roi, self.description.shape)
+        assert (numpy.array(clipped_roi) == numpy.array(roi)).all(), "Roi {} does not fit within dataset bounds: {}".format(roi, self.description.view_shape)
         
         block_starts = getIntersectingBlocks(self.description.block_shape, roi)
         

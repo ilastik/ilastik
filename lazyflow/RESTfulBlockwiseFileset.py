@@ -54,7 +54,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
             raise RuntimeError( "Your local blockwise volume shape must be smaller in all dimensions than the remote volume shape.")
 
     def readData(self, roi, out_array=None):
-        assert (numpy.array(roi[1]) <= numpy.array(self.description.shape)).all(), "Requested roi '{}' is out of dataset bounds '{}'".format(roi, self.description.shape) 
+        assert (numpy.array(roi[1]) <= numpy.array(self.description.view_shape)).all(), "Requested roi '{}' is out of dataset bounds '{}'".format(roi, self.description.view_shape) 
         # Before reading the data, check each of the needed blocks and download them first
         block_starts = getIntersectingBlocks(self.description.block_shape, roi)
 

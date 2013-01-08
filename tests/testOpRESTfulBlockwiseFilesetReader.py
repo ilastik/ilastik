@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 logger.setLevel(logging.INFO)
-#logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 
 class TestOpBlockwiseFilesetReader(object):
     
@@ -81,14 +81,44 @@ class TestOpBlockwiseFilesetReader(object):
             shutil.rmtree(cls.tempDir)
         
 
-    def testRead(self):
+    def test_1_Read(self):
+        graph = Graph()
+        op = OpRESTfulBlockwiseFilesetReader(graph=graph)
+        op.DescriptionFilePath.setValue( self.descriptionFilePath )
+
+        logger.debug("test_1_Read(): Reading data")        
+        slice1 = numpy.s_[ 0:21, 5:27, 10:33 ]
+        readData = op.Output[ slice1 ].wait()
+        assert readData.shape == (21, 22, 23)
+        
+    def test_2_ReadTranslated(self):
+        # Start by reading some data
         graph = Graph()
         op = OpRESTfulBlockwiseFilesetReader(graph=graph)
         op.DescriptionFilePath.setValue( self.descriptionFilePath )
         
-        slice1 = numpy.s_[ 0:21, 5:27, 10:33 ]
+        logger.debug("test_2_Read(): Reading data")        
+        slice1 = numpy.s_[ 20:30, 30:40, 40:50 ]
         readData = op.Output[ slice1 ].wait()
-        assert readData.shape == (21, 22, 23)
+        assert readData.shape == (10, 10, 10)
+
+        logger.debug("test_2_Read(): Creating translated description")        
+        # Create a copy of the original description, but specify a translated (and smaller) view
+        desc = BlockwiseFileset.readDescription(self.descriptionFilePath)
+        desc.view_origin = [20, 30, 40]
+        offsetConfigPath = self.descriptionFilePath + '_offset'
+        BlockwiseFileset.writeDescription(offsetConfigPath, desc)
+
+        # Read the same data as before using the translated view (offset our roi)
+        opTranslated = OpRESTfulBlockwiseFilesetReader(graph=graph)
+        opTranslated.DescriptionFilePath.setValue( offsetConfigPath )
+        
+        logger.debug("test_2_Read(): Reading translated data")        
+        sliceTranslated = numpy.s_[ 0:10, 0:10, 0:10 ]
+        translatedReadData = op.Output[ sliceTranslated ].wait()
+        assert translatedReadData.shape == (10, 10, 10)
+        assert (translatedReadData == readData).all(), "Data doesn't match!"
+        
 
 if __name__ == "__main__":
     import sys

@@ -113,6 +113,36 @@ class TestBlockwiseFileset(object):
             random_data = numpy.random.random( roiShape )
             self.bfs.writeData( roi, random_data )
 
+    def test_6_TestView(self):
+        """
+        Load some of the dataset again; this time with an offset view
+        """
+        # Create a copy of the original description, but specify a translated (and smaller) view
+        desc = BlockwiseFileset.readDescription(self.configpath)
+        desc.view_origin = [0, 300, 200, 100, 0]
+        desc.view_shape = [1, 50, 50, 50, 1]
+        offsetConfigPath = self.configpath + '_offset'
+        BlockwiseFileset.writeDescription(offsetConfigPath, desc)
+        
+        # Open the fileset using the special description file
+        bfs = BlockwiseFileset( offsetConfigPath, 'r' )
+        assert bfs.description.view_origin == desc.view_origin
+        assert bfs.description.view_shape == desc.view_shape
+        
+        # Read some data
+        logger.debug( "Reading data..." )
+        disk_slicing = numpy.s_[:, 300:350, 200:250, 100:150, :]
+        view_slicing = numpy.s_[:, 0:50, 0:50, 0:50, :]
+        roi = sliceToRoi( view_slicing, self.dataShape )
+        roiShape = roi[1] - roi[0]
+        read_data = numpy.zeros( tuple(roiShape), dtype=numpy.uint8 )
+        
+        bfs.readData( roi, read_data )
+        
+        # The data we read should match the correct part of the original dataset.
+        logger.debug( "Checking data..." )
+        assert self.data[disk_slicing].shape == read_data.shape
+        assert (self.data[disk_slicing] == read_data).all(), "Data didn't match."
 
 if __name__ == "__main__":
     import sys
