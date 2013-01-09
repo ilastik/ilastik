@@ -95,9 +95,11 @@ class OpDataSelection(Operator):
             providerSlot = opReader.Output
             self._opReaders.append(opReader)
 
-        # If there is no channel axis, use an Op5ifyer to provide one.
+        # If there is no channel axis, use an Op5ifyer to append one.
         if providerSlot.meta.axistags.index('c') >= len( providerSlot.meta.axistags ):
             op5 = Op5ifyer( parent=self )
+            providerKeys = "".join( providerSlot.meta.getTaggedShape().keys() )
+            op5.order.setValue(providerKeys + 'c')
             op5.input.connect( providerSlot )
             providerSlot = op5.output
             self._opReaders.append( op5 )
