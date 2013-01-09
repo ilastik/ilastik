@@ -30,11 +30,11 @@ class OpAutocontextBatch( Operator ):
         #niter = len(self.Classifiers)
         niter = self.AutocontextIterations.value
         for i in range(niter):
-            #predict = OperatorWrapper(OpPredictRandomForest, parent=self, graph=self.graph)
-            predict = OpPredictRandomForest(graph=self.graph)
+            #predict = OperatorWrapper(OpPredictRandomForest, parent=self, parent=self)
+            predict = OpPredictRandomForest(parent=self)
             self.predictors.append(predict)
-            #prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph ) 
-            prediction_cache = OpSlicedBlockedArrayCache( graph=self.graph ) 
+            #prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, parent=self ) 
+            prediction_cache = OpSlicedBlockedArrayCache( parent=self ) 
             self.prediction_caches.append(prediction_cache)
         
         # Setup autocontext features
@@ -46,13 +46,13 @@ class OpAutocontextBatch( Operator ):
         for i in range(niter-1):
             features = createAutocontextFeatureOperators(self, False)
             self.autocontextFeatures.append(features)
-            opMulti = Op50ToMulti(graph = self.graph)
+            opMulti = Op50ToMulti(parent=self)
             self.autocontextFeaturesMulti.append(opMulti)
-            opStacker = OpMultiArrayStacker(graph = self.graph)
+            opStacker = OpMultiArrayStacker(parent=self)
             opStacker.inputs["AxisFlag"].setValue("c")
             opStacker.inputs["AxisIndex"].setValue(3)
             self.featureStackers.append(opStacker)
-            autocontext_cache = OpSlicedBlockedArrayCache(graph=self.graph )
+            autocontext_cache = OpSlicedBlockedArrayCache(parent=self )
             self.autocontext_caches.append(autocontext_cache)
         
         # connect the features to predictors
