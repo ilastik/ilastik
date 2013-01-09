@@ -1,6 +1,7 @@
 import json
 import re
 import collections
+import numpy # We import numpy here so that eval() understands names like "numpy.uint8"
 
 class Namespace(object):
     """
@@ -38,8 +39,19 @@ class Namespace(object):
         self._items.update( state )
 
     def __eq__(self, other):
-        return self.__dict__ == other.__dict__
-    
+        """
+        Compare two Namespace objects, with special treatment of numpy arrays to make sure they are compared correctly.
+        """
+        eq = True
+        for (k1,v1),(k2,v2) in zip( self.__dict__.items(), other.__dict__.items() ):
+            eq &= (k1 == k2)
+            if eq:
+                if isinstance(v1, numpy.ndarray) or isinstance(v2, numpy.ndarray):
+                    eq &= (v1 == v2).all()
+                else:
+                    eq &= (v1 == v1)
+        return eq
+
     def __ne__(self, other):
         return not self.__eq__(other)
 
@@ -59,7 +71,7 @@ class AutoEval(object):
             self._t = lambda x:x
         
     def __call__(self, x):
-        import numpy # We import numpy here so that eval() understands names like "numpy.uint8" and "uint8"
+        # Support these special type names without the need for a numpy prefix.
         from numpy import uint8, uint16, uint32, uint64, int8, int16, int32, int64, float32, float64
 
         if type(x) is self._t:
