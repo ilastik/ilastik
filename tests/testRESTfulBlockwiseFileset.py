@@ -33,11 +33,10 @@ class TestRESTFullBlockwiseFilset(object):
             "axes" : "zyx",
             "##NOTE":"The first z-slice of the bock dataset is 2917, so the origin_offset must be at least 2917",
             "origin_offset" : [2917, 50000, 50000],
-            "###shape" : [1239, 135424, 119808],
-            "shape" : [1239, 10000, 10000],
+            "bounds" : [4156, 135424, 119808],
             "dtype" : "numpy.uint8",
             "url_format" : "http://openconnecto.me/emca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
-            "hdf5_dataset" : "/cube"
+            "hdf5_dataset" : "cube"
         }
         """
 

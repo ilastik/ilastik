@@ -37,15 +37,15 @@ class BlockwiseFileset(object):
         "name" : str,
         "format" : str,
         "axes" : str,
-        "shape" : list, # This is the shape of the VIEW
+        "shape" : AutoEval(numpy.array), # This is the shape of the VIEW
         "dtype" : AutoEval(),
-        "chunks" : list, # Optional.  If null, no chunking. Only used when writing data.
-        "block_shape" : list,
-        "view_origin" : list, # Optional.  Defaults to zeros.  All requests will be translated before the data is accessed.
+        "chunks" : AutoEval(numpy.array), # Optional.  If null, no chunking. Only used when writing data.
+        "block_shape" : AutoEval(numpy.array),
+        "view_origin" : AutoEval(numpy.array), # Optional.  Defaults to zeros.  All requests will be translated before the data is accessed.
                                 # For example, if the offset is [100, 200, 300], then a request for roi([0,0,0],[2,2,2]) 
                                 #  will pull from the dataset on disk as though the request was ([100,200,300],[102,202,302]).
                                 # It is an error to specify an view_origin that is not a multiple of the block_shape.
-        "view_shape" : list, # Optional.  Defaults to (shape - view_origin) Limits the shape of the provided data.
+        "view_shape" : AutoEval(numpy.array), # Optional.  Defaults to (shape - view_origin) Limits the shape of the provided data.
         "block_file_name_format" : FormattedField( requiredFields=["roiString"] ), # For hdf5, include dataset name, e.g. myfile_block{roiString}.h5/volume/data
         "dataset_root_dir" : str, # Abs path or relative to the description file itself. Defaults to "." if left blank.
         "hash_id" : str # Not user-defined (clients may use this)

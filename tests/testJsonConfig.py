@@ -4,6 +4,7 @@ import copy
 import tempfile
 import shutil
 import collections
+import numpy
 from lazyflow.jsonConfig import Namespace, JsonConfigSchema, AutoEval, FormattedField
 
 import logging
@@ -14,7 +15,10 @@ logger.setLevel(logging.INFO)
 #logger.setLevel(logging.DEBUG)
 
 class TestJsonConfigNamespace(object):
-    
+    """
+    A basic test for the JsonConfigNamespace class, which always provides __dict__ as an OrderedDict.
+    It should also support == and != and copy.copy().
+    """
     def test(self):
         n = Namespace()
         n.a = "A"
@@ -63,6 +67,8 @@ class TestJsonConfig(object):
         "another_auto_int_setting" : AutoEval(int),
         "bool_setting" : bool,
         "formatted_setting" : FormattedField( requiredFields=["user_name", "user_home_town"]),
+        "array_setting" : numpy.array,
+        "array_from_string_setting" : AutoEval(numpy.array),
         
         "subconfig" : JsonConfigSchema(SubConfigSchema)
     }
@@ -81,6 +87,8 @@ class TestJsonConfig(object):
             "another_auto_int_setting" : 43,
             "bool_setting" : true,
             "formatted_setting" : "Greetings, {user_name} from {user_home_town}!",
+            "array_setting" : [1,2,3,4],
+            "array_from_string_setting" : "[1, 1*2, 1*3, 1*4]",
             
             "subconfig" :   {
                                 "_schema_name" : "sub-schema",
@@ -113,6 +121,11 @@ class TestJsonConfig(object):
         assert configFields.bool_setting is True
         assert configFields.formatted_setting.format( user_name="Stuart", user_home_town="Washington, DC" ) == "Greetings, Stuart from Washington, DC!"
         
+        assert isinstance(configFields.array_setting, numpy.ndarray)
+        assert (configFields.array_setting == [1,2,3,4]).all()
+        assert isinstance(configFields.array_from_string_setting, numpy.ndarray)
+        assert (configFields.array_from_string_setting == [1,2,3,4]).all()
+        
         # Check sub-config settings
         assert configFields.subconfig.sub_settingA == "yes"
         assert configFields.subconfig.sub_settingB == "no"
@@ -129,7 +142,7 @@ class TestJsonConfig(object):
         
         # Read it back.
         newConfigFields = JsonConfigSchema( TestJsonConfig.TestSchema ).parseConfigFile( newConfigFilePath )
-        assert newConfigFields.__dict__ == configFields.__dict__, "Config field content was not preserved after writing/reading"
+        assert newConfigFields == configFields, "Config field content was not preserved after writing/reading"
         assert configFields.__dict__.items() == configFields.__dict__.items(), "Config field ORDER was not preserved after writing/reading"
 
 if __name__ == "__main__":

@@ -19,9 +19,10 @@ class RESTfulVolume(object):
         "name" : str,
         "format" : str,
         "axes" : str,
-        "shape" : list,
         "dtype" : AutoEval(),
-        "origin_offset" : list,
+        "bounds" : AutoEval(numpy.array),
+        "shape" : AutoEval(numpy.array), # Provided for you. Computed as bounds - origin_offset
+        "origin_offset" : AutoEval(numpy.array),
         "url_format" : FormattedField( requiredFields=["x_start", "x_stop", "y_start", "y_stop", "z_start", "z_stop"], 
                                        optionalFields=["t_start", "t_stop", "c_start", "c_stop"] ),
         "hdf5_dataset" : str
@@ -30,7 +31,17 @@ class RESTfulVolume(object):
 
     @classmethod
     def readDescription(cls, descriptionFilePath):
-        return RESTfulVolume.DescriptionSchema.parseConfigFile( descriptionFilePath )
+        # Read file
+        description = RESTfulVolume.DescriptionSchema.parseConfigFile( descriptionFilePath )
+        cls.updateDescription(description)
+        return description
+
+    @classmethod
+    def updateDescription(cls, description):        
+        # Augment with default parameters.
+        if description.origin_offset is None:
+            description.origin_offset = numpy.array( [0]*len(description.bounds) )
+        description.shape = description.bounds - description.origin_offset
 
     @classmethod
     def writeDescription(cls, descriptionFilePath, descriptionFields):

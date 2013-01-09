@@ -27,7 +27,9 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
     
     @classmethod
     def readDescription(cls, descriptionFilePath):
-        return RESTfulBlockwiseFileset.DescriptionSchema.parseConfigFile( descriptionFilePath )
+        description = RESTfulBlockwiseFileset.DescriptionSchema.parseConfigFile( descriptionFilePath )
+        RESTfulVolume.updateDescription(description.remote_description)
+        return description        
 
     @classmethod
     def writeDescription(cls, descriptionFilePath, descriptionFields):

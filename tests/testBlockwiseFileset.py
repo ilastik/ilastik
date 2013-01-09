@@ -126,8 +126,8 @@ class TestBlockwiseFileset(object):
         
         # Open the fileset using the special description file
         bfs = BlockwiseFileset( offsetConfigPath, 'r' )
-        assert bfs.description.view_origin == desc.view_origin
-        assert bfs.description.view_shape == desc.view_shape
+        assert (bfs.description.view_origin == desc.view_origin).all()
+        assert (bfs.description.view_shape == desc.view_shape).all()
         
         # Read some data
         logger.debug( "Reading data..." )
