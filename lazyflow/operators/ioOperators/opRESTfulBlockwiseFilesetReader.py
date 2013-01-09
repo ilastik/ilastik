@@ -23,13 +23,13 @@ class OpRESTfulBlockwiseFilesetReader(Operator):
         self._blockwiseFileset = RESTfulBlockwiseFileset( self.DescriptionFilePath.value )
 
         # Check for errors in the description file
-        descriptionFields = self._blockwiseFileset.description
-        axes = descriptionFields.axes
+        localDescription = self._blockwiseFileset.compositeDescription.local_description
+        axes = localDescription.axes
         assert False not in map(lambda a: a in 'txyzc', axes), "Unknown axis type.  Known axes: txyzc  Your axes:".format(axes)
 
-        self.Output.meta.shape = descriptionFields.shape
-        self.Output.meta.dtype = descriptionFields.dtype
-        self.Output.meta.axistags = vigra.defaultAxistags(descriptionFields.axes)
+        self.Output.meta.shape = localDescription.view_shape
+        self.Output.meta.dtype = localDescription.dtype
+        self.Output.meta.axistags = vigra.defaultAxistags(localDescription.axes)
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot"

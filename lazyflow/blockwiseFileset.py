@@ -92,6 +92,10 @@ class BlockwiseFileset(object):
             self.description.view_shape = numpy.subtract( self.description.shape, self.description.view_origin )
         view_roi = (self.description.view_origin, numpy.add(self.description.view_origin, self.description.view_shape))
         assert (numpy.subtract( self.description.shape, view_roi[1] ) >= 0).all(), "View ROI must not exceed on-disk shape."
+
+        if self.description.dataset_root_dir is None:
+            # Default to same directory as the description file
+            self.description.dataset_root_dir = "."
         
         self._lock = threading.Lock()
         self._openBlockFiles = {}
@@ -133,16 +137,11 @@ class BlockwiseFileset(object):
         """
         Return the directory that contains the block that starts at the given coordinates.
         """
-        # Offset if necessary
-        if self.description.view_origin is not None:
-            blockstart = numpy.add( blockstart, self.description.view_origin )
-        blockFilePath = self.description.dataset_root_dir
+        # Add the view origin to find the on-disk block coordinates
+        blockstart = numpy.add( blockstart, self.description.view_origin )
         descriptionFileDir = os.path.split(self.descriptionFilePath)[0]
-        if blockFilePath is None:
-            blockFilePath = descriptionFileDir
-        else:
-            absPath, relPath = getPathVariants( blockFilePath, descriptionFileDir )
-            blockFilePath = absPath
+        absPath, relPath = getPathVariants( self.description.dataset_root_dir, descriptionFileDir )
+        blockFilePath = absPath
 
         for axis, start in zip(self.description.axes, blockstart):
             blockFilePath = os.path.join( blockFilePath, "{}_{:08d}".format( axis, start ) )

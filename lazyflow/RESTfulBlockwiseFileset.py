@@ -29,13 +29,12 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
     def readDescription(cls, descriptionFilePath):
         description = RESTfulBlockwiseFileset.DescriptionSchema.parseConfigFile( descriptionFilePath )
         RESTfulVolume.updateDescription(description.remote_description)
-        return description        
+        return description
 
     @classmethod
     def writeDescription(cls, descriptionFilePath, descriptionFields):
         RESTfulBlockwiseFileset.DescriptionSchema.writeConfigFile( descriptionFilePath, descriptionFields )
 
-    
     def __init__(self, compositeDescriptionPath ):
         # Parse the description file, which contains sub-configs for the blockwise description and RESTful description
         self.compositeDescription = RESTfulBlockwiseFileset.readDescription( compositeDescriptionPath )
@@ -46,22 +45,23 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
         super( RESTfulBlockwiseFileset, self ).__init__( compositeDescriptionPath, 'r', preparsedDescription=self.localDescription )
         self._remoteVolume = RESTfulVolume( preparsedDescription=self.remoteDescription )
         
-        if not self.description.block_file_name_format.endswith( self._remoteVolume.description.hdf5_dataset ):
+        if not self.localDescription.block_file_name_format.endswith( self.remoteDescription.hdf5_dataset ):
             msg = "Your RESTful volume description file must specify an hdf5 internal dataset name that matches the one in your Blockwise Fileset description file!"
-            msg += "RESTful volume dataset name is '{}', but blockwise fileset format is '{}'".format( self._remoteVolume.description.hdf5_dataset, self.description.block_file_name_format )
+            msg += "RESTful volume dataset name is '{}', but blockwise fileset format is '{}'".format( self.remoteDescription.hdf5_dataset, self.localDescription.block_file_name_format )
             raise RuntimeError(msg)
-        if self.description.axes != self._remoteVolume.description.axes:
-            raise RuntimeError( "Your RESTful volume's axes must match the blockwise dataset axes. ('{}' does not match '{}')".format( self._remoteVolume.description.axes, self.description.axes ) )
-        if ( numpy.array(self.description.shape) > numpy.array(self._remoteVolume.description.shape) ).any():
+        if self.localDescription.axes != self.remoteDescription.axes:
+            raise RuntimeError( "Your RESTful volume's axes must match the blockwise dataset axes. ('{}' does not match '{}')".format( self.remoteDescription.axes, self.localDescription.axes ) )
+        if ( numpy.array(self.localDescription.shape) > numpy.array(self.remoteDescription.shape) ).any():
             raise RuntimeError( "Your local blockwise volume shape must be smaller in all dimensions than the remote volume shape.")
 
     def readData(self, roi, out_array=None):
-        assert (numpy.array(roi[1]) <= numpy.array(self.description.view_shape)).all(), "Requested roi '{}' is out of dataset bounds '{}'".format(roi, self.description.view_shape) 
+        assert (numpy.array(roi[1]) <= numpy.array(self.localDescription.view_shape)).all(), "Requested roi '{}' is out of dataset bounds '{}'".format(roi, self.localDescription.view_shape) 
         # Before reading the data, check each of the needed blocks and download them first
-        block_starts = getIntersectingBlocks(self.description.block_shape, roi)
+        block_starts = getIntersectingBlocks(self.localDescription.block_shape, roi)
 
         missing_blocks = []
         for block_start in block_starts:
+            # Offset to get the global (non-view) coordinates of the block.
             if self.getBlockStatus(block_start) == BlockwiseFileset.BLOCK_NOT_AVAILABLE:
                 missing_blocks.append( block_start )
 
@@ -128,7 +128,13 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
         :param blockFilePathComponents: A lazyflow.pathHelpers.PathComponents object describing the location of the block dataset file. 
         """
         try:
-            self._remoteVolume.downloadSubVolume( entire_block_roi, blockFilePathComponents.totalPath() )
+            # The blockFilePath has already been offset to accomodate any view offset, but the roi has not.
+            # Offset the roi coordinates before requesting them from the remote volume.
+            translated_roi = []
+            translated_roi.append( numpy.add( entire_block_roi[0], self.description.view_origin ) )
+            translated_roi.append( numpy.add( entire_block_roi[1], self.description.view_origin ) )
+
+            self._remoteVolume.downloadSubVolume( translated_roi, blockFilePathComponents.totalPath() )
             self.setBlockStatus(entire_block_roi[0], BlockwiseFileset.BLOCK_AVAILABLE)
         finally:
             fileLock.release()

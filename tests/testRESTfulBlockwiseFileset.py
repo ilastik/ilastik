@@ -52,7 +52,8 @@ class TestRESTFullBlockwiseFilset(object):
             "shape" : [40,40,40],
             "dtype" : "numpy.uint8",
             "block_shape" : [20, 20, 20],
-            "block_file_name_format" : "block-{roiString}.h5/cube"
+            "block_file_name_format" : "block-{roiString}.h5/cube",
+            "dataset_root_dir" : "blocks"
         }
         """
         
@@ -72,6 +73,15 @@ class TestRESTFullBlockwiseFilset(object):
         cls.descriptionFilePath = os.path.join(cls.tempDir, "description.json")
         with open(cls.descriptionFilePath, 'w') as f:
             f.write(compositeDescription)
+
+        # Create a new fileset that views the same data and stores it the 
+        #  same way locally, but this time we'll use an offset 'view'
+        # Start with a copy of the non-offset description
+        offsetDescription = RESTfulBlockwiseFileset.readDescription(cls.descriptionFilePath)
+        offsetDescription.local_description.view_origin = numpy.array([0,20,0])
+        offsetDescription.local_description.dataset_root_dir = "offset_blocks"
+        cls.descriptionFilePath_offset = os.path.join(cls.tempDir, "description_offset.json")
+        RESTfulBlockwiseFileset.writeDescription(cls.descriptionFilePath_offset, offsetDescription)
 
     @classmethod
     def teardownClass(cls):
@@ -102,29 +112,26 @@ class TestRESTFullBlockwiseFilset(object):
         assert volume.getBlockStatus( ([20,20,0]) ) == BlockwiseFileset.BLOCK_AVAILABLE
         assert volume.getBlockStatus( ([0,20,0]) ) == BlockwiseFileset.BLOCK_AVAILABLE
 
-    def test_3_UseCachedFiles(self):
-        """
-        If we remove the url format, we shouln't have any trouble accessing files that have already been downloaded.
-        """
+    def test_4_OffsetDownload(self):
         volume = RESTfulBlockwiseFileset( self.descriptionFilePath )
-        url_format = volume._remoteVolume.description.url_format
-        volume._remoteVolume.description.url_format = ""
+
+        slicing = numpy.s_[20:40, 20:40, 20:40]
+        roi = sliceToRoi(slicing, volume.description.shape)        
+        data = volume.readData( roi )
+        assert data.shape == (20,20,20)
+        assert volume.getBlockStatus( ([20,20,20]) ) == BlockwiseFileset.BLOCK_AVAILABLE
+
+        offsetVolume = RESTfulBlockwiseFileset( self.descriptionFilePath_offset )
+        offsetSlicing = numpy.s_[20:40, 0:20, 20:40] # Note middle slice is offset (see view_origin in setupClass)
+        offsetRoi = sliceToRoi(offsetSlicing, offsetVolume.description.shape)        
+        offsetData = offsetVolume.readData( offsetRoi )
+        assert offsetData.shape == (20,20,20)
+        assert offsetVolume.getBlockStatus( ([20,0,20]) ) == BlockwiseFileset.BLOCK_AVAILABLE
         
-        try:
-            slicing = numpy.s_[0:25, 10:30, 0:20]
-            roi = sliceToRoi(slicing, volume.description.shape)        
-            data = volume.readData( roi )
-            assert data.shape == (25,20,20)
-    
-            assert volume.getBlockStatus( ([0,0,0]) ) == BlockwiseFileset.BLOCK_AVAILABLE
-            assert volume.getBlockStatus( ([20,0,0]) ) == BlockwiseFileset.BLOCK_AVAILABLE
-            assert volume.getBlockStatus( ([20,20,0]) ) == BlockwiseFileset.BLOCK_AVAILABLE
-            assert volume.getBlockStatus( ([0,20,0]) ) == BlockwiseFileset.BLOCK_AVAILABLE
-
-        finally:
-            # Restore the correct url format
-            volume._remoteVolume.description.url_format = url_format
-
+        # Data should be the same
+        assert (offsetData == data).all()
+        
+            
 if __name__ == "__main__":
     import sys
     import nose
