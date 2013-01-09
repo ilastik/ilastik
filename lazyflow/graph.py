@@ -1368,7 +1368,7 @@ class Operator(object):
     # continue initialization, when user overrides __init__
     def _after_init(self):
         #provide simple default name for lazy users
-        if self.name == "":
+        if self.name == Operator.name:
             self.name = type(self).__name__
         assert self.graph is not None, "Operator %r: self.graph is None, the parent  (%r) given to the operator must have a valid .graph attribute! " % (self, self._parent)
         # check for slot uniqueness
