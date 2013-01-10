@@ -253,15 +253,26 @@ class OpClusterize(Operator):
         datasetDescription = copy.deepcopy(originalDescription)
 
         # Modify description fields as needed
+        # -- axes
         datasetDescription.axes = "".join( self.Input.meta.getTaggedShape().keys() )
+        # -- shape
         datasetDescription.shape = list(self.Input.meta.shape)
+        # -- block_shape
+        assert originalDescription.block_shape is not None
+        originalBlockDims = collections.OrderedDict( zip( originalDescription.axes, originalDescription.block_shape ) )
+        datasetDescription.block_shape = map( lambda a: originalBlockDims[a], datasetDescription.axes )
+        datasetDescription.block_shape = map( min, zip( datasetDescription.block_shape, self.Input.meta.shape ) )
+        # -- chunks
+        if originalDescription.chunks is not None:
+            originalChunkDims = collections.OrderedDict( zip( originalDescription.axes, originalDescription.chunks ) )
+            datasetDescription.chunks = map( lambda a: originalChunkDims[a], datasetDescription.axes )
+            datasetDescription.chunks = map( min, zip( datasetDescription.chunks, self.Input.meta.shape ) )
+        # -- dtype
         if datasetDescription.dtype != self.Input.meta.dtype:
             dtype = self.Input.meta.dtype
             if type(dtype) is numpy.dtype:
                 dtype = dtype.type
             datasetDescription.dtype = dtype().__class__.__name__
-
-        assert originalDescription.block_shape is not None
 
         # Create a unique hash for this blocking scheme.
         # If it changes, we can't use any previous data.
