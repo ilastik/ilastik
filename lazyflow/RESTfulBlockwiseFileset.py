@@ -10,6 +10,9 @@ from lazyflow.roi import getIntersectingBlocks
 from lazyflow.fileLock import FileLock
 from lazyflow.jsonConfig import JsonConfigSchema
 
+import logging
+logger = logging.getLogger(__name__)
+
 class RESTfulBlockwiseFileset(BlockwiseFileset):
     
     DescriptionFields = \
@@ -45,14 +48,18 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
         super( RESTfulBlockwiseFileset, self ).__init__( compositeDescriptionPath, 'r', preparsedDescription=self.localDescription )
         self._remoteVolume = RESTfulVolume( preparsedDescription=self.remoteDescription )
         
-        if not self.localDescription.block_file_name_format.endswith( self.remoteDescription.hdf5_dataset ):
-            msg = "Your RESTful volume description file must specify an hdf5 internal dataset name that matches the one in your Blockwise Fileset description file!"
-            msg += "RESTful volume dataset name is '{}', but blockwise fileset format is '{}'".format( self.remoteDescription.hdf5_dataset, self.localDescription.block_file_name_format )
-            raise RuntimeError(msg)
-        if self.localDescription.axes != self.remoteDescription.axes:
-            raise RuntimeError( "Your RESTful volume's axes must match the blockwise dataset axes. ('{}' does not match '{}')".format( self.remoteDescription.axes, self.localDescription.axes ) )
-        if ( numpy.array(self.localDescription.shape) > numpy.array(self.remoteDescription.shape) ).any():
-            raise RuntimeError( "Your local blockwise volume shape must be smaller in all dimensions than the remote volume shape.")
+        try:
+            if not self.localDescription.block_file_name_format.endswith( self.remoteDescription.hdf5_dataset ):
+                msg = "Your RESTful volume description file must specify an hdf5 internal dataset name that matches the one in your Blockwise Fileset description file!"
+                msg += "RESTful volume dataset name is '{}', but blockwise fileset format is '{}'".format( self.remoteDescription.hdf5_dataset, self.localDescription.block_file_name_format )
+                raise RuntimeError(msg)
+            if self.localDescription.axes != self.remoteDescription.axes:
+                raise RuntimeError( "Your RESTful volume's axes must match the blockwise dataset axes. ('{}' does not match '{}')".format( self.remoteDescription.axes, self.localDescription.axes ) )
+            if ( numpy.array(self.localDescription.shape) > numpy.array(self.remoteDescription.shape) ).any():
+                raise RuntimeError( "Your local blockwise volume shape must be smaller in all dimensions than the remote volume shape.")
+        except:
+            logger.error("Error loading dataset from {}".format( compositeDescriptionPath ))
+            raise
 
     def readData(self, roi, out_array=None):
         assert (numpy.array(roi[1]) <= numpy.array(self.localDescription.view_shape)).all(), "Requested roi '{}' is out of dataset bounds '{}'".format(roi, self.localDescription.view_shape) 
