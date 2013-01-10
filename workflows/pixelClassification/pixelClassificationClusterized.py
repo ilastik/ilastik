@@ -18,6 +18,8 @@ import ilastik.utility.monkey_patches
 from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.clusterConfig import parseClusterConfigFile
 
+from ilastik.utility.pathHelpers import getPathVariants
+
 import workflows # Load all known workflow modules
 
 from ilastik.clusterOps import OpClusterize, OpTaskWorker
@@ -84,14 +86,16 @@ def runWorkflow(parsed_args):
     if args._node_work_ is None:
         # This is the master process.
         # Tee the log to a file for future reference.
-        logDir = config.output_log_directory
-        if not os.path.exists(logDir):
-            os.mkdir(logDir)
+
+        # Output log directory might be a relative path (relative to config file)
+        absLogDir, relLogDir = getPathVariants(config.output_log_directory, os.path.split( configFilePath )[0] )
+        if not os.path.exists(absLogDir):
+            os.mkdir(absLogDir)
 
         # Copy the config we're using to the output directory
-        shutil.copy(configFilePath, logDir)
+        shutil.copy(configFilePath, absLogDir)
         
-        logFile = os.path.join( logDir, "MASTER.log" )
+        logFile = os.path.join( absLogDir, "MASTER.log" )
         logFileFormatter = logging.Formatter("%(levelname)s %(name)s: %(message)s")
         rootLogHandler = logging.FileHandler(logFile, 'a')
         rootLogHandler.setFormatter(logFileFormatter)
@@ -114,18 +118,17 @@ def runWorkflow(parsed_args):
     shell.openProjectPath(args.project)
 
     workflow = shell.projectManager.workflow
-    
-    assert workflow.finalOutputSlot is not None
-        
+            
     # Attach cluster operators
     resultSlot = None
-    finalOutputSlot = workflow.finalOutputSlot
+    finalOutputSlot = workflow.getHeadlessOutputSlot( config.output_slot_id )
+    assert finalOutputSlot is not None
     clusterOperator = None
     try:
         if args._node_work_ is not None:
             # We're doing node work
             opClusterTaskWorker = OperatorWrapper( OpTaskWorker, graph=finalOutputSlot.graph )
-            opClusterTaskWorker.Input.connect( workflow.finalOutputSlot )
+            opClusterTaskWorker.Input.connect( finalOutputSlot )
             opClusterTaskWorker.TaskName.setValue( task_name )
             opClusterTaskWorker.RoiString.setValue( args._node_work_ )
             opClusterTaskWorker.ConfigFilePath.setValue( args.option_config_file )
@@ -147,7 +150,7 @@ def runWorkflow(parsed_args):
         else:
             # We're the master
             opClusterizeMaster = OperatorWrapper( OpClusterize, graph=finalOutputSlot.graph )
-            opClusterizeMaster.Input.connect( workflow.finalOutputSlot )
+            opClusterizeMaster.Input.connect( finalOutputSlot )
             opClusterizeMaster.ProjectFilePath.setValue( args.project )
             opClusterizeMaster.OutputDatasetDescription.setValue( args.output_description_file )
             opClusterizeMaster.ConfigFilePath.setValue( args.option_config_file )
@@ -157,7 +160,7 @@ def runWorkflow(parsed_args):
         
         # Get the result
         logger.info("Starting task")
-        result = resultSlot[0].value
+        result = resultSlot[0].value # FIXME: The image index is hard-coded here.
     finally:
         logger.info("Cleaning up")
         global stop_background_tasks
@@ -219,9 +222,9 @@ if __name__ == "__main__":
 #        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_predictions/dataset_description.json")
 
         # RESTful TEST
-        args.append( "--option_config_file=/home/bergs/bock11_250_cubes/bock11_cluster_options.json")
-        args.append( "--project=/home/bergs/bock11_250_cubes/project.ilp")
-        args.append( "--output_description_file=/home/bergs/bock11_250_cubes/results/results_description.json")
+        args.append( "--option_config_file=/home/bergs/bock11_cluster_trials/bock11-256_cluster_options.json")
+        args.append( "--project=/home/bergs/bock11_cluster_trials/bock11-256.ilp")
+        args.append( "--output_description_file=/home/bergs/bock11_cluster_trials/results/results_description.json")
 
         sys.argv += args
 

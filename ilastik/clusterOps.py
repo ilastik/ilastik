@@ -18,6 +18,8 @@ from ilastik.utility.timer import Timer, timed
 from lazyflow.blockwiseFileset import BlockwiseFileset
 from lazyflow.roi import getIntersectingBlocks
 
+from ilastik.utility.pathHelpers import getPathVariants
+
 from lazyflow.operators import OpH5WriterBigDataset, OpSubRegion
 
 from lazyflow.bigRequestStreamer import BigRequestStreamer
@@ -196,38 +198,6 @@ class OpClusterize(Operator):
             return result
         finally:
             blockwiseFileset.close()
-    
-    def _getRoiList(self):
-        inputShape = self.Input.meta.shape
-        blockShape = self._getBlockShape()
-        
-        rois = []
-        for indices in itertools.product( *[ range(0, stop, step) for stop,step in zip(inputShape, blockShape) ] ):
-            start=numpy.asarray(indices)
-            stop=numpy.minimum( start+blockShape, inputShape )
-            rois.append( (start, stop) )
-
-        return rois
-
-    def _getBlockShape(self):
-        # Use a dumb means of computing task shapes for now.
-        # Find the dimension of the data in xyz, and block it up that way.
-        taggedShape = self.Input.meta.getTaggedShape()
-
-        spaceDims = filter( lambda (key, dim): key in 'xyz' and dim > 1, taggedShape.items() ) 
-        numJobs = self._config.num_jobs
-        numJobsPerSpaceDim = math.pow(numJobs, 1.0/len(spaceDims))
-        numJobsPerSpaceDim = int(round(numJobsPerSpaceDim))
-
-        roiShape = []
-        for key, dim in taggedShape.items():
-            if key in [key for key, value in spaceDims]:
-                roiShape.append(dim / numJobsPerSpaceDim)
-            else:
-                roiShape.append(dim)
-
-        roiShape = numpy.array(roiShape)
-        return roiShape
 
     def _prepareTaskInfos(self, roiList):
         # Divide up the workload into large pieces
@@ -254,8 +224,10 @@ class OpClusterize(Operator):
             commandFormat = self._config.command_format
             assert commandFormat.find("{task_args}") != -1
 
+            # Output log directory might be a relative path (relative to config file)
+            absLogDir, relLogDir = getPathVariants(self._config.output_log_directory, os.path.split( self.ConfigFilePath.value )[0] )
             taskOutputLogFilename = taskName + ".log"
-            taskOutputLogPath = os.path.join( self._config.output_log_directory, taskOutputLogFilename )
+            taskOutputLogPath = os.path.join( absLogDir, taskOutputLogFilename )
             
             allArgs = " " + " ".join(commandArgs) + " "
             taskInfo.taskName = taskName

@@ -8,9 +8,10 @@ ClusterConfigFields = \
     "_schema_version" : 1.0,
 
     "workflow_type" : str,
+    "output_slot_id" : str,
+
     "sys_tmp_dir" : str,
     "scratch_directory" : str,
-    "num_jobs" : AutoEval(int),
     "task_subrequest_shape" : dict,
     "task_timeout_secs" : AutoEval(int),
     "use_node_local_scratch" : bool,

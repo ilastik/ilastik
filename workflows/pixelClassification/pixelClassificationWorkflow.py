@@ -107,7 +107,13 @@ class PixelClassificationWorkflow(Workflow):
         opBatchPredictor.Image.connect( opBatchFeatures.OutputImage )
         opBatchResults.ImageToExport.connect( opBatchPredictor.PMaps )
 
+        self.opBatchPredictor = opBatchPredictor
 
-    @property
-    def finalOutputSlot(self):
-        return self.pcApplet.topLevelOperator.HeadlessPredictionProbabilities
+    def getHeadlessOutputSlot(self, slotId):
+        if slotId == "Predictions":
+            return self.pcApplet.topLevelOperator.HeadlessPredictionProbabilities
+        if slotId == "Batch_Predictions":
+            return self.opBatchPredictor.PMaps
+        
+        raise Exception("Unknown headless output slot")
+    
