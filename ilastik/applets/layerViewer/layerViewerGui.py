@@ -86,13 +86,15 @@ class LayerViewerGui(QMainWindow):
     ###########################################
 
     @traceLogged(traceLogger)
-    def __init__(self, topLevelOperatorView, additionalMonitoredSlots=[]):
+    def __init__(self, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False):
         """
         Constructor.  **All** slots of the provided *topLevelOperatorView* will be monitored for changes.
         Changes include slot resize events, and slot ready/unready status changes.
         When a change is detected, the `setupLayers()` function is called, and the result is used to update the list of layers shown in the central widget.
 
         :param topLevelOperatorView: The top-level operator for the applet this GUI belongs to.
+        :param additionalMonitoredSlots: Optional.  Can be used to add additional slots to the set of viewable layers (all slots from the top-level operator are already monitored).
+        :param centralWidgetOnly: If True, provide only a central widget without drawer or viewer controls.
         """
         super(LayerViewerGui, self).__init__()
 
@@ -135,10 +137,10 @@ class LayerViewerGui(QMainWindow):
         self._initCentralUic()
         self._initEditor()
         self.__viewerControlWidget = None
-        self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
-
-        self._drawer = QWidget( self )
-        self.initAppletDrawerUi() # Default implementation loads a blank drawer from drawer.ui.
+        if not centralWidgetOnly:
+            self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
+            self._drawer = QWidget( self )
+            self.initAppletDrawerUi() # Default implementation loads a blank drawer from drawer.ui.
         
     def _after_init(self):
         self._initialized = True
@@ -153,7 +155,7 @@ class LayerViewerGui(QMainWindow):
         layers = []
         for multiLayerSlot in self.observedSlots:
             for j, slot in enumerate(multiLayerSlot):
-                if slot.ready():
+                if slot.ready() and slot.meta.axistags is not None:
                     layer = self.createStandardLayerFromSlot(slot)
                     layer.name = multiLayerSlot.name + " " + str(j)
                     layers.append(layer)

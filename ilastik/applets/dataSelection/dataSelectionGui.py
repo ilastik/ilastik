@@ -78,7 +78,10 @@ class DataSelectionGui(QMainWindow):
         pass # This applet doesn't care which image is currently selected.  It always lists all inputs.
 
     def stopAndCleanUp(self):
-        pass
+        for editor in self.volumeEditors.values():
+            self.viewerStack.removeWidget( editor )
+            editor.stopAndCleanUp()
+        self.volumeEditors.clear()
 
     def imageLaneAdded(self, laneIndex):
         # We assume that there's nothing to do here because THIS GUI initiated the lane addition
@@ -87,12 +90,11 @@ class DataSelectionGui(QMainWindow):
                 import warnings
                 warnings.warn("DataSelectionGui.imageLaneAdded(): length of dataset multislot out of sync with laneindex [%s != %s + 1]" % (len(self.topLevelOperator.Dataset), laneIndex))
 
-
     def imageLaneRemoved(self, laneIndex, finalLength):
         # We assume that there's nothing to do here because THIS GUI initiated the lane removal
         if self.guiMode != GuiMode.Batch:
             assert len(self.topLevelOperator.Dataset) == finalLength
-    
+
         
     ###########################################
     ###########################################
@@ -143,7 +145,10 @@ class DataSelectionGui(QMainWindow):
                     
                     # Remove the viewer for this dataset
                     imageSlot = self.topLevelOperator.Image[index]
-                    self.viewerStack.removeWidget( self.volumeEditors[imageSlot][0] )
+                    if imageSlot in self.volumeEditors.keys():
+                        editor = self.volumeEditors[imageSlot]
+                        self.viewerStack.removeWidget( editor )
+                        editor.stopAndCleanUp()
     
             self.topLevelOperator.Dataset.notifyRemove( bind( handleDatasetRemoved ) )
         
@@ -176,6 +181,7 @@ class DataSelectionGui(QMainWindow):
         """
         self.initFileTableWidget()
         self.initViewerStack()
+        self.splitter.setSizes([150, 850])
     
     def initFileTableWidget(self):
         # Load the ui file into this class (find it in our own directory)
@@ -430,6 +436,10 @@ class DataSelectionGui(QMainWindow):
             # Update the operator, in case we need to select a new internal path based on the updated combo options
             # (Won't have any effect if nothing changed this time around.)
             self.updateFilePath(row)
+            
+            selectedRanges = self.fileInfoTableWidget.selectedRanges()
+            if len(selectedRanges) == 0:
+                self.fileInfoTableWidget.selectRow(0)
     
     def handleAllowLabelsCheckbox(self, slot, checked):
         """
@@ -684,30 +694,16 @@ class DataSelectionGui(QMainWindow):
         
         # Create if necessary
         if imageSlot not in self.volumeEditors.keys():
-            layer = LayerViewerGui.createStandardLayerFromSlot(imageSlot)
-            layerstack = LayerStackModel()
-            layerstack.insert( 0, layer )
+            layerViewer = LayerViewerGui( self.topLevelOperator.getLane(row) )
 
-            volumeEditor = VolumeEditor( layerstack )
-            volumeEditorWidget = VolumeEditorWidget(parent=self)
-            volumeEditorWidget.init(volumeEditor)
-
-            if imageSlot.ready() and imageSlot.meta.axistags is not None:
-                # Use an Op5ifyer adapter to transpose the shape for us.
-                op5 = Op5ifyer( graph=imageSlot.graph )
-                op5.input.connect( imageSlot )
-                dataShape = op5.output.meta.shape
-                volumeEditor.dataShape = dataShape
-
-                # We just needed the operator to determine the transposed shape.
-                # Disconnect it so it can be garbage collected.
-                op5.input.disconnect()
+            # Maximize the x-y view by default.
+            layerViewer.volumeEditorWidget.quadview.ensureMaximized(2)
             
-            self.volumeEditors[imageSlot] = (volumeEditorWidget, layerstack)
-            self.viewerStack.addWidget( volumeEditorWidget )
+            self.volumeEditors[imageSlot] = layerViewer
+            self.viewerStack.addWidget( layerViewer )
 
         # Show the right one
-        self.viewerStack.setCurrentWidget( self.volumeEditors[imageSlot][0] )
+        self.viewerStack.setCurrentWidget( self.volumeEditors[imageSlot] )
 
 
 
