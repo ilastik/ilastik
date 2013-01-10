@@ -46,10 +46,12 @@ class Namespace(object):
         for (k1,v1),(k2,v2) in zip( self.__dict__.items(), other.__dict__.items() ):
             eq &= (k1 == k2)
             if eq:
-                if isinstance(v1, numpy.ndarray) or isinstance(v2, numpy.ndarray):
-                    eq &= (v1 == v2).all()
+                b = (v1 == v2)
+                if isinstance(b, numpy.ndarray):
+                    eq &= b.all()
                 else:
-                    eq &= (v1 == v1)
+                    assert isinstance(b, bool)
+                    eq &= b
         return eq
 
     def __ne__(self, other):
