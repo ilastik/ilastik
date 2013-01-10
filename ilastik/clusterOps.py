@@ -52,6 +52,12 @@ class OpTaskWorker(Operator):
         
         blockwiseFileset = BlockwiseFileset( self.OutputFilesetDescription.value, 'a' )
         
+        # Check axis compatibility
+        inputAxes = self.Input.meta.getTaggedShape().keys()
+        outputAxes = list(blockwiseFileset.description.axes)
+        assert set(inputAxes) == set(outputAxes), \
+            "Output dataset has the wrong set of axes.  Input axes: {}, Output axes: {}".format( "".join(inputAxes), "".join(outputAxes) )
+        
         try:
             roiString = self.RoiString.value
             roi = Roi.loads(roiString)
@@ -247,7 +253,7 @@ class OpClusterize(Operator):
         datasetDescription = copy.copy(originalDescription)
 
         # Modify description fields as needed
-        datasetDescription.axes = reduce(lambda axes,t: axes + t.key, self.Input.meta.axistags, "")
+        datasetDescription.axes = "".join( self.Input.meta.getTaggedShape().keys() )
         datasetDescription.shape = list(self.Input.meta.shape)
         if datasetDescription.dtype != self.Input.meta.dtype:
             dtype = self.Input.meta.dtype
@@ -267,7 +273,11 @@ class OpClusterize(Operator):
         datasetDescription.hash_id = sha.hexdigest()
 
         if datasetDescription != originalDescription:
-            BlockwiseFileset.writeDescription(self.OutputDatasetDescription.value, datasetDescription)
+            descriptionFilePath = self.OutputDatasetDescription.value
+            logger.info( "Overwriting dataset description: {}".format( descriptionFilePath ) )
+            BlockwiseFileset.writeDescription(descriptionFilePath, datasetDescription)
+            with open( descriptionFilePath, 'r' ) as f:
+                logger.info( f.read() )
 
         # Now open the dataset
         blockwiseFileset = BlockwiseFileset( self.OutputDatasetDescription.value )
