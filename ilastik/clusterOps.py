@@ -250,7 +250,7 @@ class OpClusterize(Operator):
         are NOT needed (their data already exists in the final output)
         """
         originalDescription = BlockwiseFileset.readDescription(self.OutputDatasetDescription.value)
-        datasetDescription = copy.copy(originalDescription)
+        datasetDescription = copy.deepcopy(originalDescription)
 
         # Modify description fields as needed
         datasetDescription.axes = "".join( self.Input.meta.getTaggedShape().keys() )
