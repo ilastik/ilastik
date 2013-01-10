@@ -1,87 +1,265 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Form</class>
- <widget class="QWidget" name="Form">
+ <class>AppletCentralWidget</class>
+ <widget class="QMainWindow" name="AppletCentralWidget">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>892</width>
-    <height>806</height>
+    <width>1339</width>
+    <height>907</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>Ilastik Classification Workflow</string>
   </property>
-  <widget class="QWidget" name="outerLayout">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>781</width>
-     <height>531</height>
-    </rect>
-   </property>
-   <layout class="QHBoxLayout" name="horizontalLayout">
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout_3">
+    <property name="margin">
+     <number>0</number>
+    </property>
     <item>
-     <widget class="QTableWidget" name="fileInfoTableWidget">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
       </property>
-      <property name="toolTip">
-       <string/>
-      </property>
-      <property name="styleSheet">
-       <string notr="true"/>
-      </property>
-      <attribute name="horizontalHeaderCascadingSectionResizes">
-       <bool>false</bool>
-      </attribute>
-      <attribute name="horizontalHeaderStretchLastSection">
-       <bool>false</bool>
-      </attribute>
-      <attribute name="verticalHeaderCascadingSectionResizes">
-       <bool>false</bool>
-      </attribute>
-      <attribute name="verticalHeaderStretchLastSection">
-       <bool>false</bool>
-      </attribute>
-      <column>
-       <property name="text">
-        <string>Name</string>
-       </property>
-      </column>
-      <column>
-       <property name="text">
-        <string>Location</string>
+      <widget class="QTableWidget" name="fileInfoTableWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
        </property>
        <property name="toolTip">
-        <string>Where the data is located on your hard disk.</string>
+        <string/>
        </property>
-      </column>
-      <column>
-       <property name="text">
-        <string>Internal Path</string>
+       <property name="styleSheet">
+        <string notr="true"/>
        </property>
-       <property name="toolTip">
-        <string>For file formats that may contain more than one dataset (e.g. hdf5), this is the dataset's ID within the file.</string>
-       </property>
-      </column>
-      <column>
-       <property name="text">
-        <string>Labels Allowed</string>
-       </property>
-       <property name="toolTip">
-        <string>If checked, the user is allowed to label this image in subsequent training applets.</string>
-       </property>
-      </column>
+       <attribute name="horizontalHeaderCascadingSectionResizes">
+        <bool>false</bool>
+       </attribute>
+       <attribute name="horizontalHeaderStretchLastSection">
+        <bool>false</bool>
+       </attribute>
+       <attribute name="verticalHeaderCascadingSectionResizes">
+        <bool>false</bool>
+       </attribute>
+       <attribute name="verticalHeaderStretchLastSection">
+        <bool>false</bool>
+       </attribute>
+       <column>
+        <property name="text">
+         <string>Name</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Location</string>
+        </property>
+        <property name="toolTip">
+         <string>Where the data is located on your hard disk.</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Internal Path</string>
+        </property>
+        <property name="toolTip">
+         <string>For file formats that may contain more than one dataset (e.g. hdf5), this is the dataset's ID within the file.</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>Labels Allowed</string>
+        </property>
+        <property name="toolTip">
+         <string>If checked, the user is allowed to label this image in subsequent training applets.</string>
+        </property>
+       </column>
+      </widget>
+      <widget class="QStackedWidget" name="viewerStack">
+       <widget class="QWidget" name="page"/>
+       <widget class="QWidget" name="page_2"/>
+      </widget>
      </widget>
     </item>
    </layout>
   </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionOpenFile">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/document-open.png</normaloff>icons/document-open.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Open File</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
+  </action>
+  <action name="actionFitToScreen">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/view-fullscreen.png</normaloff>icons/view-fullscreen.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Zoom to &amp;fit</string>
+   </property>
+   <property name="toolTip">
+    <string>Fit all</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/process-stop.png</normaloff>icons/process-stop.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Quit</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
+  </action>
+  <action name="actionShowDebugPatches">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Show Debug Patches</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+D</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionToggleAllHuds">
+   <property name="text">
+    <string>Toggle huds</string>
+   </property>
+   <property name="toolTip">
+    <string>Hide or show all huds</string>
+   </property>
+  </action>
+  <action name="actionOnly_for_current_view">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Only for selected view</string>
+   </property>
+   <property name="font">
+    <font>
+     <weight>75</weight>
+     <italic>true</italic>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
+  </action>
+  <action name="actionFor_all_axis">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>For all axis</string>
+   </property>
+   <property name="font">
+    <font>
+     <weight>75</weight>
+     <italic>true</italic>
+     <bold>true</bold>
+     <strikeout>false</strikeout>
+    </font>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::TextHeuristicRole</enum>
+   </property>
+  </action>
+  <action name="actionToggleSelectedHud">
+   <property name="text">
+    <string>Toggle hud</string>
+   </property>
+   <property name="toolTip">
+    <string>toggle selected hud</string>
+   </property>
+   <property name="shortcut">
+    <string>H</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetShortcut</enum>
+   </property>
+  </action>
+  <action name="actionCenterAllImages">
+   <property name="text">
+    <string>Center Images</string>
+   </property>
+  </action>
+  <action name="actionCenterImage">
+   <property name="text">
+    <string>Center Image</string>
+   </property>
+   <property name="shortcut">
+    <string>C</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetShortcut</enum>
+   </property>
+  </action>
+  <action name="actionFitImage">
+   <property name="text">
+    <string>Fit image</string>
+   </property>
+   <property name="toolTip">
+    <string>fit image into view</string>
+   </property>
+   <property name="shortcut">
+    <string>F</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::ApplicationShortcut</enum>
+   </property>
+  </action>
+  <action name="actionReset_zoom">
+   <property name="text">
+    <string>Reset zoom</string>
+   </property>
+   <property name="toolTip">
+    <string>reset zoom</string>
+   </property>
+   <property name="shortcut">
+    <string>W</string>
+   </property>
+  </action>
+  <action name="actionRubberBandZoom">
+   <property name="text">
+    <string>Rubber band zoom</string>
+   </property>
+   <property name="toolTip">
+    <string>Zoom selected area</string>
+   </property>
+   <property name="shortcut">
+    <string>R</string>
+   </property>
+  </action>
+  <action name="actionOpenStack">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/document-open.png</normaloff>icons/document-open.png</iconset>
+   </property>
+   <property name="text">
+    <string>Open &amp;Stack</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

@@ -181,8 +181,8 @@ class LayerViewerGui(QMainWindow):
         # TODO
         assert False
 
-    @traceLogged(traceLogger)
-    def createStandardLayerFromSlot(self, slot, lastChannelIsAlpha=False):
+    @classmethod
+    def createStandardLayerFromSlot(cls, slot, lastChannelIsAlpha=False):
         """
         Convenience function.
         Generates a volumina layer using the given slot.

@@ -12,11 +12,17 @@ import threading
 import h5py
 
 from volumina.utility import PreferencesManager
+from volumina.volumeEditor import VolumeEditor
+from volumina.volumeEditorWidget import VolumeEditorWidget
+from volumina.api import LayerStackModel
+from volumina.adaptors import Op5ifyer
 
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.utility.pathHelpers import getPathVariants
+
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from ilastik.applets.base.applet import ControlCommand
 
@@ -130,9 +136,14 @@ class DataSelectionGui(QMainWindow):
         
             def handleDatasetRemoved( multislot, index, finalLength ):
                 assert multislot == self.topLevelOperator.Dataset
+                dataset = multislot[index]
                 if self.fileInfoTableWidget.rowCount() > finalLength:
-                    # Simply remove the row we don't need any more
+                    # Remove the row we don't need any more
                     self.fileInfoTableWidget.removeRow( index )
+                    
+                    # Remove the viewer for this dataset
+                    imageSlot = self.topLevelOperator.Image[index]
+                    self.viewerStack.removeWidget( self.volumeEditors[imageSlot][0] )
     
             self.topLevelOperator.Dataset.notifyRemove( bind( handleDatasetRemoved ) )
         
@@ -163,33 +174,39 @@ class DataSelectionGui(QMainWindow):
         """
         Load the GUI from the ui file into this class and connect it with event handlers.
         """
-        with Tracer(traceLogger):
-            # Load the ui file into this class (find it in our own directory)
-            localDir = os.path.split(__file__)[0]+'/'
-            uic.loadUi(localDir+"/dataSelection.ui", self)
+        self.initFileTableWidget()
+        self.initViewerStack()
     
-            self.fileInfoTableWidget.resizeRowsToContents()
-            self.fileInfoTableWidget.resizeColumnsToContents()
-            self.fileInfoTableWidget.setAlternatingRowColors(True)
-            self.fileInfoTableWidget.setShowGrid(False)
-            self.fileInfoTableWidget.horizontalHeader().setResizeMode(Column.Name, QHeaderView.Interactive)
-            self.fileInfoTableWidget.horizontalHeader().setResizeMode(Column.Location, QHeaderView.Interactive)
-            self.fileInfoTableWidget.horizontalHeader().setResizeMode(Column.InternalID, QHeaderView.Interactive)
-            
-            self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.Name, 200)
-            self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.Location, 300)
-            self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.InternalID, 200)
-    
-            if self.guiMode == GuiMode.Batch:
-                # It doesn't make sense to provide a labeling option in batch mode
-                self.fileInfoTableWidget.removeColumn( Column.LabelsAllowed )
-                self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.LabelsAllowed, 150)
-                self.fileInfoTableWidget.horizontalHeader().setResizeMode(Column.LabelsAllowed, QHeaderView.Fixed)
-            
-            self.fileInfoTableWidget.verticalHeader().hide()
-    
-            # Set up handlers
-            self.fileInfoTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
+    def initFileTableWidget(self):
+        # Load the ui file into this class (find it in our own directory)
+        localDir = os.path.split(__file__)[0]+'/'
+        uic.loadUi(localDir+"/dataSelection.ui", self)
+
+        self.fileInfoTableWidget.resizeRowsToContents()
+        self.fileInfoTableWidget.resizeColumnsToContents()
+        self.fileInfoTableWidget.setAlternatingRowColors(True)
+        self.fileInfoTableWidget.setShowGrid(False)
+        self.fileInfoTableWidget.horizontalHeader().setResizeMode(Column.Name, QHeaderView.Interactive)
+        self.fileInfoTableWidget.horizontalHeader().setResizeMode(Column.Location, QHeaderView.Interactive)
+        self.fileInfoTableWidget.horizontalHeader().setResizeMode(Column.InternalID, QHeaderView.Interactive)
+        
+        self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.Name, 200)
+        self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.Location, 300)
+        self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.InternalID, 200)
+
+        if self.guiMode == GuiMode.Batch:
+            # It doesn't make sense to provide a labeling option in batch mode
+            self.fileInfoTableWidget.removeColumn( Column.LabelsAllowed )
+            self.fileInfoTableWidget.horizontalHeader().resizeSection(Column.LabelsAllowed, 150)
+            self.fileInfoTableWidget.horizontalHeader().setResizeMode(Column.LabelsAllowed, QHeaderView.Fixed)
+        
+        self.fileInfoTableWidget.verticalHeader().hide()
+
+        # Set up handlers
+        self.fileInfoTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
+
+    def initViewerStack(self):
+        self.volumeEditors = {}
         
     def handleAddFileButtonClicked(self):
         """
@@ -639,25 +656,58 @@ class DataSelectionGui(QMainWindow):
         """
         Any time the user selects a new item, select the whole row.
         """
-        with Tracer(traceLogger):
-            # Figure out which dataset to remove
-            selectedItemRows = set()
-            selectedRanges = self.fileInfoTableWidget.selectedRanges()
-            for rng in selectedRanges:
-                for row in range(rng.topRow(), rng.bottomRow()+1):
-                    selectedItemRows.add(row)
-            
-            # Disconnect from selection change notifications while we do this
-            self.fileInfoTableWidget.itemSelectionChanged.disconnect(self.handleTableSelectionChange)
-            for row in selectedItemRows:
-                self.fileInfoTableWidget.selectRow(row)
-                
-            # Reconnect now that we're finished
-            self.fileInfoTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
+        self.selectEntireRow()
+        self.showSelectedDataset()
     
+    def selectEntireRow(self):
+        selectedItemRows = set()
+        selectedRanges = self.fileInfoTableWidget.selectedRanges()
+        for rng in selectedRanges:
+            for row in range(rng.topRow(), rng.bottomRow()+1):
+                selectedItemRows.add(row)
+        
+        # Disconnect from selection change notifications while we do this
+        self.fileInfoTableWidget.itemSelectionChanged.disconnect(self.handleTableSelectionChange)
+        for row in selectedItemRows:
+            self.fileInfoTableWidget.selectRow(row)
+            
+        # Reconnect now that we're finished
+        self.fileInfoTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
+    
+    def showSelectedDataset(self):
+        # Get the selected row and corresponding slot value
+        selectedRanges = self.fileInfoTableWidget.selectedRanges()
+        if len(selectedRanges) == 0:
+            return
+        row = selectedRanges[0].topRow()
+        imageSlot = self.topLevelOperator.Image[row]
+        
+        # Create if necessary
+        if imageSlot not in self.volumeEditors.keys():
+            layer = LayerViewerGui.createStandardLayerFromSlot(imageSlot)
+            layerstack = LayerStackModel()
+            layerstack.insert( 0, layer )
 
+            volumeEditor = VolumeEditor( layerstack )
+            volumeEditorWidget = VolumeEditorWidget(parent=self)
+            volumeEditorWidget.init(volumeEditor)
 
+            if imageSlot.ready() and imageSlot.meta.axistags is not None:
+                # Use an Op5ifyer adapter to transpose the shape for us.
+                op5 = Op5ifyer( graph=imageSlot.graph )
+                op5.input.connect( imageSlot )
+                dataShape = op5.output.meta.shape
+                volumeEditor.dataShape = dataShape
 
+                # We just needed the operator to determine the transposed shape.
+                # Disconnect it so it can be garbage collected.
+                op5.input.disconnect()
+            
+            self.volumeEditors[imageSlot] = (volumeEditorWidget, layerstack)
+            self.viewerStack.addWidget( volumeEditorWidget )
+
+        # Show the right one
+        self.viewerStack.setCurrentWidget( self.volumeEditors[imageSlot][0] )
 
 
 
