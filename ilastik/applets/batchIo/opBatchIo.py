@@ -35,6 +35,7 @@ class OpBatchIo(Operator):
     ExportDirectory = InputSlot(stype='filestring', value='') # A separate directory to export to.  If '', then exports to the input data's directory
     Format = InputSlot(stype='int', value=ExportFormat.H5)                 # The export format
     Suffix = InputSlot(stype='string', value='_results')              # Appended to the file name (before the extension)
+    WorkingDirectory = InputSlot(stype='filestring')
     
     InternalPath = InputSlot(stype='string', optional=True) # Hdf5 internal path
 
@@ -71,7 +72,7 @@ class OpBatchIo(Operator):
         # Create the output data path
         formatId = self.Format.value
         ext = SupportedFormats[formatId].extension
-        inputPathComponents = PathComponents(self.DatasetPath.value)
+        inputPathComponents = PathComponents(self.DatasetPath.value, self.WorkingDirectory.value)
         
         # If no export directory was given, use the original input data's directory
         if self.ExportDirectory.value == '':
@@ -80,7 +81,7 @@ class OpBatchIo(Operator):
             outputPath = self.ExportDirectory.value
             
         if self.OutputFileNameBase.ready():
-            filenameBase = PathComponents(self.OutputFileNameBase.value).filenameBase
+            filenameBase = PathComponents(self.OutputFileNameBase.value, self.WorkingDirectory.value).filenameBase
         else:
             filenameBase = inputPathComponents.filenameBase
         outputPath = os.path.join(outputPath, filenameBase + self.Suffix.value + ext) 
@@ -125,7 +126,7 @@ class OpBatchIo(Operator):
             
             # Export H5
             if exportFormat == ExportFormat.H5:
-                pathComp = PathComponents(self.OutputDataPath.value)
+                pathComp = PathComponents(self.OutputDataPath.value, self.WorkingDirectory.value)
 
                 # Ensure the directory exists
                 if not os.path.exists(pathComp.externalDirectory):

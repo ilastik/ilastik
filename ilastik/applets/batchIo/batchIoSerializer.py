@@ -39,6 +39,7 @@ class BatchIoSerializer(AppletSerializer):
     Serializes the user's input data selections to an ilastik v0.6 project file.
     """
     def __init__(self, operator, projectFileGroupName):
+        self.topLevelOperator = operator
         slots = [
             SerialSlot(operator.ExportDirectory, default=''),
             SerialSlot(operator.Format, default=ExportFormat.H5),
@@ -50,3 +51,20 @@ class BatchIoSerializer(AppletSerializer):
 
         super(BatchIoSerializer, self).__init__(projectFileGroupName,
                                                 slots=slots)
+
+    def initWithoutTopGroup(self, hdf5File, projectFilePath):
+        # The 'working directory' for the purpose of constructing absolute 
+        #  paths from relative paths is the project file's directory.
+        projectDir = os.path.split(projectFilePath)[0]
+        self.topLevelOperator.WorkingDirectory.setValue( projectDir )
+
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+        """
+        Additional deserialization.
+        Deserialize the slots that weren't listed above and thus weren't deserialized in the base class.
+        """
+        # The 'working directory' for the purpose of constructing absolute 
+        #  paths from relative paths is the project file's directory.
+        self.initWithoutTopGroup(hdf5File, projectFilePath)
+
+        
