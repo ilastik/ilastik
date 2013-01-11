@@ -1,99 +1,167 @@
 import os
+import copy
 import h5py
 import logging
 logger = logging.getLogger(__name__)
 
 import traceback
 
-from ilastik.versionManager import VersionManager
+import ilastik
+from ilastik import isVersionCompatible
 
 class ProjectManager(object):
+    """
+    This class manages creating, opening, importing, saving, and closing project files.
+    It instantiates a workflow object and loads its applets with the settings from the 
+    project file by using the applets' serializer objects.
     
+    To open a project file, instantiate a ProjectManager object.
+    To close the project file, delete the ProjectManager object.
+    
+    Once the project manager has been instantiated, clients can access its ``workflow``
+    member for direct access to its applets and their top-level operators.
+    """
+
+    #########################
+    ## Error types
+    #########################    
+
     class ProjectVersionError(RuntimeError):
+        """
+        Raised if an attempt is made to open a project file that was generated with an old version of ilastik.
+        """
         def __init__(self, projectVersion, expectedVersion):
             RuntimeError.__init__(self, "Incompatible project version: {} (Expected: {})".format(projectVersion, expectedVersion) )
             self.projectVersion = projectVersion
             self.expectedVersion = expectedVersion
     
     class FileMissingError(RuntimeError):
-        pass
-    
-    def __init__(self):
-        self.currentProjectFile = None
-        self.currentProjectPath = None
-        self._applets = []
-
-    def addApplet(self, app):
-        self._applets.append(app)
-
-    def createBlankProjectFile(self, projectFilePath):
         """
+        Raised if an attempt is made to open a project file that can't be found on disk.
+        """
+        pass
+
+    class SaveError(RuntimeError):
+        """
+        Raised if saving the project results in an error of some kind.
+        The project file will be in an UNKNOWN and potentially inconsistent state!
+        """
+        pass
+
+    #########################
+    ## Class methods
+    #########################    
+    
+    @classmethod
+    def createBlankProjectFile(cls, projectFilePath):
+        """
+        Class method.
         Create a new ilp file at the given path and initialize it with a project version.
+        If a file already existed at that location, it will be overwritten with a blank project.
         """
         # Create the blank project file
         h5File = h5py.File(projectFilePath, "w")
-        h5File.create_dataset("ilastikVersion", data=VersionManager.CurrentIlastikVersion)
+        h5File.create_dataset("ilastikVersion", data=ilastik.__version__)
         
-        return h5File        
+        return h5File
 
-    def openProjectFile(self, projectFilePath):
+    @classmethod
+    def openProjectFile(cls, projectFilePath):
+        """
+        Class method.
+        Attempt to open the given path to an existing project file.
+        If it doesn't exist, raise a ``ProjectManager.FileMissingError``.
+        If its version is outdated, raise a ``ProjectManager.ProjectVersionError.``
+        """
         logger.info("Opening Project: " + projectFilePath)
 
         if not os.path.exists(projectFilePath):
             raise ProjectManager.FileMissingError()
 
         # Open the file as an HDF5 file
-        hdf5File = h5py.File(projectFilePath)
+        try:
+            hdf5File = h5py.File(projectFilePath)
+            readOnly = False
+        except IOError:
+            # Maybe the project is read-only
+            hdf5File = h5py.File(projectFilePath, 'r')
+            readOnly = True
 
-        projectVersion = 0.5
+        projectVersion = "0.5"
         if "ilastikVersion" in hdf5File.keys():
             projectVersion = hdf5File["ilastikVersion"].value
 
-        if projectVersion < VersionManager.CurrentIlastikVersion:
-            # Must use importProject() for old project files.
-            raise ProjectManager.ProjectVersionError(projectVersion, VersionManager.CurrentIlastikVersion)
+        # FIXME: version comparison
+        if not isVersionCompatible(projectVersion):
+            # Must use _importProject() for old project files.
+            raise ProjectManager.ProjectVersionError(projectVersion, ilastik.__version__)
         
-        return hdf5File
+        return (hdf5File, readOnly)
 
-    def loadProject(self, hdf5File, projectFilePath):
+    #########################
+    ## Public methods
+    #########################    
+
+    def __init__(self, workflowClass, hdf5File, projectFilePath, readOnly, importFromPath=None, headless=False):
         """
-        Load the data from the given hdf5File (which should already be open).
+        Constructor.
+        
+        :param workflowClass: A subclass of ilastik.workflow.Workflow (the class, not an instance).
+        :param hdf5File: An already-open h5py.File, usually created via ``ProjectManager.createBlankProjectFile``
+        :param projectFilePath: The path to the file represented in the ``hdf5File`` parameter.
+        :param readOnly: Set to True if the project file should NOT be modified.
+        :param importFromPath: If the project should be overwritten using data imported from a different project, set this parameter to the other project's filepath.
         """
-        self.closeCurrentProject()
+        # Instantiate the workflow.
+        self.workflow = workflowClass(headless=headless)
 
-        assert self.currentProjectFile is None
+        self.currentProjectFile = None
+        self.currentProjectPath = None
+        self.currentProjectIsReadOnly = False
 
-        # Minor GUI nicety: Pre-activate the progress signals for all applets so
-        #  the progress manager treats these tasks as a group instead of several sequential jobs.
-        for aplt in self._applets:
-            aplt.progressSignal.emit(0)
+        if importFromPath is None:
+            # Normal load        
+            self._loadProject(hdf5File, projectFilePath, readOnly)
+        else:
+            assert not readOnly, "Can't import into a read-only file."
+            self._importProject(importFromPath, hdf5File, projectFilePath)
 
-        # Save this as the current project
-        self.currentProjectFile = hdf5File
-        self.currentProjectPath = projectFilePath
+    def __del__(self):
+        """
+        Destructor.  Closes the project file.
+        """
         try:
-            # Applet serializable items are given the whole file (root group)
-            for aplt in self._applets:
-                for item in aplt.dataSerializers:
-                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
-        except Exception, e:
-            logger.error("Project Open Action failed due to the following exception:")
+            self._closeCurrentProject()
+        except Exception,e:
             traceback.print_exc()
-            
-            logger.error("Aborting Project Open Action")
-            self.closeCurrentProject()
-
             raise e
-        finally:
-            for aplt in self._applets:
-                aplt.progressSignal.emit(100)
+
+
+    def getDirtyAppletNames(self):
+        """
+        Check the serializers for every applet in the workflow.
+        If a serializer declares itself to be dirty (i.e. it is-out-of-sync with the applet's operator),
+        then the applet's name is appended to the resulting list.
+        """
+        if self.currentProjectFile is None:
+            return []
+
+        dirtyAppletNames = []
+        for applet in self._applets:
+            for item in applet.dataSerializers:
+                if item.isDirty():
+                    dirtyAppletNames.append(applet.name)
+        return dirtyAppletNames
 
     def saveProject(self):
+        """
+        Update the project file with the state of the current workflow settings.
+        Must not be called if the project file was opened in read-only mode.
+        """
         logger.debug("Save Project triggered")
-
         assert self.currentProjectFile != None
         assert self.currentProjectPath != None
+        assert not self.currentProjectIsReadOnly, "Can't save a read-only project"
 
         # Minor GUI nicety: Pre-activate the progress signals for dirty applets so
         #  the progress manager treats these tasks as a group instead of several sequential jobs.
@@ -108,9 +176,10 @@ class ProjectManager(object):
                     assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
                     if item.isDirty():
                         item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
-        except:
+        except Exception, err:
             logger.error("Project Save Action failed due to the following exception:")
             traceback.print_exc()
+            raise ProjectManager.SaveError( str(err) )
         finally:
             # Flush any changes we made to disk, but don't close the file.
             self.currentProjectFile.flush()
@@ -120,19 +189,136 @@ class ProjectManager(object):
 
     def saveProjectSnapshot(self, snapshotPath):
         """
-        Save the project, then save a copy of it to a different file.
-        The current project REMAINS OPEN.
+        Copy the project file as it is, then serialize any dirty state into the copy.
+        Original serializers and project file should not be touched.
         """
-        # First save the project
+        with h5py.File(snapshotPath, 'w') as snapshotFile:
+            # Minor GUI nicety: Pre-activate the progress signals for dirty applets so
+            #  the progress manager treats these tasks as a group instead of several sequential jobs.
+            for aplt in self._applets:
+                for ser in aplt.dataSerializers:
+                    if ser.isDirty():
+                        aplt.progressSignal.emit(0)
+
+            # Start by copying the current project state into the file
+            # This should be faster than serializing everything from scratch
+            for key in self.currentProjectFile.keys():
+                snapshotFile.copy(self.currentProjectFile[key], key)
+
+            try:
+                # Applet serializable items are given the whole file (root group) for now
+                for aplt in self._applets:
+                    for item in aplt.dataSerializers:
+                        assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
+
+                        if item.isDirty():
+                            # Use a COPY of the serializer, so the original serializer doesn't forget it's dirty state
+                            itemCopy = copy.copy(item)
+                            itemCopy.serializeToHdf5(snapshotFile, snapshotPath)
+            except Exception, err:
+                logger.error("Project Save Snapshot Action failed due to the following exception:")
+                traceback.print_exc()
+                raise ProjectManager.SaveError(str(err))
+            finally:
+                # Flush any changes we made to disk, but don't close the file.
+                snapshotFile.flush()
+                
+                for applet in self._applets:
+                    applet.progressSignal.emit(100)
+                    
+    def saveProjectAs(self, newPath):
+        """
+        Implement "Save As"
+        Equivalent to the following steps (but done without closing the current project file):
+
+        1) rename Old.ilp -> New.ilp
+        2) touch Old.ilp
+        3) copycontents New.ilp -> Old.ilp
+        4) Save current applet state to current project (New.ilp)
+        
+        Postconditions: - Original project state is saved to a new file with the original name.
+                        - Current project file is still open, but has a new name.
+                        - Current project file has been saved (it is in sync with the applet states)
+        """
+        # If our project is read-only, we can't be efficient.
+        # We have to take a snapshot, then close our current project and open the snapshot
+        if self.currentProjectIsReadOnly:
+            self._takeSnapshotAndLoadIt(newPath)
+            return
+
+        oldPath = self.currentProjectPath
+        try:
+            os.rename( oldPath, newPath )
+        except OSError, err:
+            msg = 'Could not rename your project file to:\n'
+            msg += newPath + '\n'
+            msg += 'One common cause for this is that the new location is on a different disk.\n'
+            msg += 'Please try "Take Snapshot" instead.'
+            msg += '(Error was: ' + str(err) + ')'
+            logger.error(msg)
+            raise ProjectManager.SaveError(msg)
+
+        # The file has been renamed
+        self.currentProjectPath = newPath
+
+        # Copy the contents of the current project file to a newly-created file (with the old name)        
+        with h5py.File(oldPath, 'w') as oldFile:
+            for key in self.currentProjectFile.keys():
+                oldFile.copy(self.currentProjectFile[key], key)
+
+        # Save the current project state
         self.saveProject()
+        
+    #########################
+    ## Private methods
+    #########################    
 
-        f = h5py.File(snapshotPath, 'w')
-        # Copy the entire contents of the file
-        for key in self.currentProjectFile.keys():
-            f.copy(self.currentProjectFile[key], key)
-        f.close()
+    @property
+    def _applets(self):
+        return self.workflow.applets
 
-    def importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
+    def _loadProject(self, hdf5File, projectFilePath, readOnly):
+        """
+        Load the data from the given hdf5File (which should already be open).
+        """
+        assert self.currentProjectFile is None
+
+        # Minor GUI nicety: Pre-activate the progress signals for all applets so
+        #  the progress manager treats these tasks as a group instead of several sequential jobs.
+        for aplt in self._applets:
+            aplt.progressSignal.emit(0)
+
+        # Save this as the current project
+        self.currentProjectFile = hdf5File
+        self.currentProjectPath = projectFilePath
+        self.currentProjectIsReadOnly = readOnly
+        try:
+            # Applet serializable items are given the whole file (root group)
+            for aplt in self._applets:
+                for item in aplt.dataSerializers:
+                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
+                    item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
+        except Exception, e:
+            logger.error("Project could not be loaded due to the following exception:")
+            traceback.print_exc()
+            logger.error("Aborting Project Open Action")
+            self._closeCurrentProject()
+
+            raise e
+        finally:
+            for aplt in self._applets:
+                aplt.progressSignal.emit(100)
+
+    def _takeSnapshotAndLoadIt(self, newPath):
+        """
+        This is effectively a "save as", but is slower because the operators are totally re-loaded.
+        All caches, etc. will be lost.
+        """
+        self.saveProjectSnapshot( newPath )
+        hdf5File, readOnly = ProjectManager.openProjectFile( newPath )
+        self._loadProject(hdf5File, newPath, readOnly)
+
+    def _importProject(self, importedFilePath, newProjectFile, newProjectFilePath):
         """
         Load the data from a project and save it to a different project file.
         
@@ -143,50 +329,38 @@ class ProjectManager(object):
         importedFilePath = os.path.abspath(importedFilePath)
         
         # Open and load the original project file
-        importedFile = h5py.File(importedFilePath, 'r')
-        self.loadProject(importedFile, importedFilePath)
+        try:
+            importedFile = h5py.File(importedFilePath, 'r')
+        except:
+            logger.error("Error opening file: " + importedFilePath)
+            raise
+
+        # Load the imported project into the workflow state
+        self._loadProject(importedFile, importedFilePath, True)
         
         # Export the current workflow state to the new file.
         # (Somewhat hacky: We temporarily swap the new file object as our current one during the save.)
         origProjectFile = self.currentProjectFile
         self.currentProjectFile = newProjectFile
         self.currentProjectPath = newProjectFilePath
+        self.currentProjectIsReadOnly = False
         self.saveProject()
         self.currentProjectFile = origProjectFile
 
         # Close the original project
-        self.closeCurrentProject()
+        self._closeCurrentProject()
 
-        # Reload the workflow from the new file
-        self.loadProject(newProjectFile, newProjectFilePath)
+        # Discard the old workflow and make a new one
+        self.workflow = self.workflow.__class__()
 
-    def closeCurrentProject(self):
-        self.unloadAllApplets()
+        # Load the new file.
+        self._loadProject(newProjectFile, newProjectFilePath, False)
+
+    def _closeCurrentProject(self):
+        self.workflow.cleanUp()
+        self.workflow = None
         if self.currentProjectFile is not None:
             self.currentProjectFile.close()
             self.currentProjectFile = None
-
-    def unloadAllApplets(self):
-        """
-        Unload all applets into a blank state.
-        """
-        for applet in self._applets:
-            # Unload the project data
-            for item in applet.dataSerializers:
-                item.unload()
-
-    def isProjectDataDirty(self):
-        """
-        Check all serializable items in our workflow if they have any unsaved data.
-        """
-        if self.currentProjectFile is None:
-            return False
-
-        unSavedDataExists = False
-        for applet in self._applets:
-            for item in applet.dataSerializers:
-                if unSavedDataExists:
-                    break
-                else:
-                    unSavedDataExists = item.isDirty()
-        return unSavedDataExists
+            self.currentProjectPath = None
+            self.currentProjectIsReadOnly = False

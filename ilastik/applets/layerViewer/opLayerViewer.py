@@ -1,16 +1,11 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpMultiArrayMerger, OpPixelOperator
-
-from lazyflow.operators import OpVigraWatershed, OpColorizeLabels, OpVigraLabelVolume, OpFilterLabels
-
-import numpy
-import vigra
-from functools import partial
-import random
-import logging
-
 class OpLayerViewer(Operator):
+    """
+    This is the default top-level operator for the layer-viewer class.
+    Note that applets based on the LayerViewer applet (and the LayerViewerGui) do NOT need to use this operator.
+    Any operator will work with the LayerViewerGui base class.
+    """
     name = "OpLayerViewer"
     category = "top-level"
 

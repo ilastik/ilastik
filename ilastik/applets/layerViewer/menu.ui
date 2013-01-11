@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>1339</width>
-     <height>22</height>
+     <height>29</height>
     </rect>
    </property>
    <property name="nativeMenuBar">
@@ -32,13 +32,16 @@
     </property>
     <addaction name="actionFitToScreen"/>
     <addaction name="actionToggleAllHuds"/>
+    <addaction name="actionResetAllAxes"/>
     <addaction name="actionCenterAllImages"/>
     <addaction name="actionShowDebugPatches"/>
     <addaction name="actionSetCacheSize"/>
+    <addaction name="actionUsePrefetching"/>
     <addaction name="separator"/>
     <addaction name="actionOnly_for_current_view"/>
     <addaction name="actionFitImage"/>
     <addaction name="actionToggleSelectedHud"/>
+    <addaction name="actionResetAxes"/>
     <addaction name="actionCenterImage"/>
     <addaction name="actionReset_zoom"/>
     <addaction name="actionRubberBandZoom"/>
@@ -221,6 +224,43 @@
   <action name="actionSetCacheSize">
    <property name="text">
     <string>Set Layer Cache Size</string>
+   </property>
+  </action>
+  <action name="actionResetAllAxes">
+   <property name="text">
+    <string>Reset all axes</string>
+   </property>
+  </action>
+  <action name="actionResetAxes">
+   <property name="text">
+    <string>Reset axes</string>
+   </property>
+  </action>
+  <action name="actonPrefetchingDisabled">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Disabled</string>
+   </property>
+  </action>
+  <action name="action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Enabled</string>
+   </property>
+  </action>
+  <action name="actionUsePrefetching">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Use Prefetching</string>
    </property>
   </action>
  </widget>

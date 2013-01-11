@@ -25,6 +25,8 @@ def updateFromConfigFile():
         updates = json.load(f)
         logging.config.dictConfig(updates)
     except:
+        import traceback
+        traceback.print_exc()
         logging.error("Failed to load logging config file: " + configFilePath)
 
 class NoWarnFilter(logging.Filter):

@@ -1,0 +1,141 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Advanced Workflow Design &mdash; ilastik 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
+    <link rel="next" title="Applet Library" href="applet_library.html" />
+    <link rel="prev" title="Applet Library" href="applet_library.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="applet_library.html" title="Applet Library"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="applet_library.html" title="Applet Library"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="advanced-workflow-design">
+<span id="workflow-design"></span><h1>Advanced Workflow Design<a class="headerlink" href="#advanced-workflow-design" title="Permalink to this headline">¶</a></h1>
+<p>The most important component of a GUI based on the ilastik framework is the workflow of operators that pass data between applets.
+To design advanced multi-image workflows, you need to have a solid grasp of lazyflow operators and connections.</p>
+<p>Before we begin, make sure you know how to write lazyflow operators, and how to combine them into composite operators with OperatorWrapper.
+Details can be found in the lazyflow documentation.</p>
+<div class="section" id="visualizing-multi-image-workflows">
+<h2>Visualizing Multi-Image-Workflows<a class="headerlink" href="#visualizing-multi-image-workflows" title="Permalink to this headline">¶</a></h2>
+<p>In the ilastik framework, each applet has a single &#8216;top-level&#8217; operator.  Any changes to the computation parameters (e.g. from user input) must be propagated exclusively via operator slots.
+The applet GUI should be a thin layer of code that simply configures the applet&#8217;s top-level operator and displays the operator&#8217;s current state.</p>
+<p>The ilastik-shell is designed to handle computation pipelines that handle multiple <em>image lanes</em> at once.  For that reason, it is always expected that applets pass their results via multi-slots (i.e. slots of level &gt;= 1).
+The multi-slot is always indexed by the image lane index.  As an example, here&#8217;s the diagram for the ThresholdMasking example workflow, shown with two image lanes loaded:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/ThresholdMaskingWorkflow_low_detail.svg"><img alt="Wrapped OpThreshold with shared ThresholdLevel" src="_images/ThresholdMaskingWorkflow_low_detail.svg" /></a>
+</div>
+<p>There are two applets in this workflow: DataSelection and ThresholdMasking.  Notice that the top-level operator for
+the DataSelection applet passes its output as a list of images (i.e. a slot of level=1) to the next applet in the workflow.</p>
+<p>Notice that these operators were implemented as simple single-image operators, which simplifies their implementation.  Under the hood, <tt class="docutils literal"><span class="pre">StandardApplet</span></tt> uses an <tt class="docutils literal"><span class="pre">OperatorWrapper</span></tt> to achieve the multi-image functionality.
+The figure above omits the internal operators.  Here&#8217;s a more detailed figure:</p>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/ThresholdMaskingWorkflow_with_internal_ops.svg"><img alt="Wrapped OpThreshold with shared ThresholdLevel" src="_images/ThresholdMaskingWorkflow_with_internal_ops.svg" /></a>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Advanced Workflow Design</a><ul>
+<li><a class="reference internal" href="#visualizing-multi-image-workflows">Visualizing Multi-Image-Workflows</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="applet_library.html"
+                        title="previous chapter">Applet Library</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="applet_library.html"
+                        title="next chapter">Applet Library</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/workflow_design.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="applet_library.html" title="Applet Library"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="applet_library.html" title="Applet Library"
+             >previous</a> |</li>
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

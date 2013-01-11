@@ -1,37 +1,40 @@
+import sys
 import nose
 import threading
 import platform
 import traceback
+import atexit
 from functools import partial
-from ilastik.shell.gui.startShellGui import startShellGui
+from ilastik.shell.gui.startShellGui import launchShell
+from ilastik.utility.gui.threadRouter import ThreadRouter
+from tests.helpers.mainThreadHelpers import wait_for_main_func, run_in_main_thread
 
-from PyQt4.QtCore import Qt, QEvent, QPoint
-from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap
+from PyQt4.QtCore import Qt, QEvent, QPoint, QTimer
+from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
+
+@atexit.register
+def quitApp():
+    if qApp is not None:
+        qApp.quit()
 
 def run_shell_nosetest(filename):
     """
-    Special helper function for starting shell GUI tests from main (NOT from nosetests).
-    On linux, simply runs the test like any other nose test.
-    On Mac, starts nose in a separate thread and executes the GUI in the main thread.
+    Launch nosetests from a separate thread, and pause this thread while the test runs the GUI in it.
     """
+    # This only works from the main thread.
+    assert threading.current_thread() == threading.enumerate()[0]
+
     def run_nose():
         import sys
         sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
         sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
         nose.run(defaultTest=filename)
 
-    # On darwin, we must run nose in a separate thread and let the gui run in the main thread.
-    # (This means we can't run this test using the nose command line tool.)
-    if "Darwin" in platform.platform():
-        noseThread = threading.Thread(target=run_nose)
-        noseThread.start()
+    noseThread = threading.Thread(target=run_nose)
+    noseThread.start()
 
-        from tests.helpers.mainThreadHelpers import wait_for_main_func
-        wait_for_main_func()
-        noseThread.join()
-    else:
-        # Linux: Run this test like usual (as if we're running from the command line)
-        run_nose()
+    wait_for_main_func()
+    noseThread.join()
 
 class ShellGuiTestCaseBase(object):
     """
@@ -42,7 +45,8 @@ class ShellGuiTestCaseBase(object):
     - Subclasses must specify the workflow they are testing by overriding the workflowClass() classmethod. 
     - Subclasses may access the shell and workflow via the shell and workflow class members.
     """
-    
+    mainThreadEvent = threading.Event()
+
     @classmethod
     def setupClass(cls):
         """
@@ -50,33 +54,44 @@ class ShellGuiTestCaseBase(object):
         """
         init_complete = threading.Event()
         
-        def initTest(shell, workflow):
+        def initTest(shell):
             cls.shell = shell
-            cls.workflow = workflow
             init_complete.set()
 
-        # This partial starts up the gui.
-        startGui = partial(startShellGui, cls.workflowClass(), initTest)
+        appCreationEvent = threading.Event()
+        def createApp():
+            # Create the application in the current thread.
+            # The current thread is now the application main thread.
+            assert threading.current_thread() == threading.enumerate()[0], "Error: app must be created in the main thread."
+            ShellGuiTestCaseBase.app = QApplication([])
+            app = ShellGuiTestCaseBase.app
+            
+            # Don't auto-quit the app when the window closes.  We want to re-use it for the next test.
+            app.setQuitOnLastWindowClosed(False)
+            
+            # Create a threadRouter object that allows us to send work to the app from other threads.
+            ShellGuiTestCaseBase.threadRouter = ThreadRouter(app)
+            
+            # Set the appCreationEvent so the tests can proceed after the app's event loop has started 
+            QTimer.singleShot(0, appCreationEvent.set )
 
-        # If nose was run from the main thread, start the gui in a separate thread.
+            # Start the event loop
+            app.exec_()
+        
+        # If nose was run from the main thread, exit now.
         # If nose is running in a non-main thread, we assume the main thread is available to launch the gui.
-        # This is a workaround for Mac OS, in which the gui MUST be started from the main thread 
-        #  (which means we've got to run nose from a separate thread.)
         if threading.current_thread() == threading.enumerate()[0]:
-            if "Darwin" in platform.platform():
-                # On Mac, we can't run the gui in a non-main thread.
-                raise nose.SkipTest
-            else:
-                # Start the gui in a separate thread.  Workflow is provided by our subclass.
-                cls.guiThread = threading.Thread( target=startGui )
-                cls.guiThread.start()
+            # Don't run GUI tests in the main thread.
+            sys.stderr.write( "NOSE WAS RUN FROM THE MAIN THREAD.  SKIPPING GUI TEST\n" )
+            raise nose.SkipTest
         else:
-                # We're currently running in a non-main thread.
-                # Start the gui IN THE MAIN THREAD.  Workflow is provided by our subclass.
-                from tests.helpers.mainThreadHelpers import run_in_main_thread
-                run_in_main_thread( startGui )
-                cls.guiThread = None
+            # We're currently running in a non-main thread.
+            # Start the gui IN THE MAIN THREAD.  Workflow is provided by our subclass.
+            run_in_main_thread( createApp )
+            appCreationEvent.wait()
 
+        # Use the thread router to launch the shell in the app thread
+        ShellGuiTestCaseBase.threadRouter.routeToParent.emit( partial(launchShell, cls.workflowClass(), initTest ) )
         init_complete.wait()
 
     @classmethod
@@ -84,18 +99,15 @@ class ShellGuiTestCaseBase(object):
         """
         Force the shell to quit (without a save prompt), and wait for the app to exit.
         """
-        def teardown_impl():
-            cls.shell.onQuitActionTriggered(True)
-        cls.shell.thunkEventHandler.post(teardown_impl)
-
         # Make sure the app has finished quitting before continuing        
+        def teardown_impl():
+            cls.shell.onQuitActionTriggered(force=True, quitApp=False)
+
+        # Wait for the shell to really be finish shutting down before we finish the test
         finished = threading.Event()
+        cls.shell.thunkEventHandler.post(teardown_impl)
         cls.shell.thunkEventHandler.post(finished.set)
         finished.wait()
-        
-        if cls.guiThread is not None:
-            cls.guiThread.join()
-        
 
     @classmethod
     def exec_in_shell(cls, func):
@@ -135,8 +147,6 @@ class ShellGuiTestCaseBase(object):
         """
         raise NotImplementedError
 
-
-    
     ###
     ### Convenience functions for subclasses to use during testing.
     ###
@@ -189,28 +199,31 @@ class ShellGuiTestCaseBase(object):
         startPoint = QPoint(*start) + centerPoint
         endPoint = QPoint(*end) + centerPoint
 
+        # Note: Due to the implementation of volumina.EventSwitch.eventFilter(), 
+        #       mouse events intended for the ImageView MUST go through the viewport.
+
         # Move to start
         move = QMouseEvent( QEvent.MouseMove, startPoint, Qt.NoButton, Qt.NoButton, Qt.NoModifier )
-        QApplication.postEvent(imgView, move )
+        QApplication.postEvent(imgView.viewport(), move )
 
         # Press left button
         press = QMouseEvent( QEvent.MouseButtonPress, startPoint, Qt.LeftButton, Qt.NoButton, Qt.NoModifier )
-        QApplication.postEvent(imgView, press )
+        QApplication.postEvent(imgView.viewport(), press )
 
         # Move to end in several steps
         numSteps = 10
         for i in range(numSteps):
             nextPoint = startPoint + (endPoint - startPoint) * ( float(i) / numSteps )
             move = QMouseEvent( QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, Qt.NoModifier )
-            QApplication.postEvent(imgView, move )
+            QApplication.postEvent(imgView.viewport(), move )
 
         # Move to end
         move = QMouseEvent( QEvent.MouseMove, endPoint, Qt.NoButton, Qt.NoButton, Qt.NoModifier )
-        QApplication.postEvent(imgView, move )
+        QApplication.postEvent(imgView.viewport(), move )
 
         # Release left button
         release = QMouseEvent( QEvent.MouseButtonRelease, endPoint, Qt.LeftButton, Qt.NoButton, Qt.NoModifier )
-        QApplication.postEvent(imgView, release )
+        QApplication.postEvent(imgView.viewport(), release )
 
         # Wait for the gui to catch up
         QApplication.processEvents()

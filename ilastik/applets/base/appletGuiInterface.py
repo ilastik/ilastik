@@ -13,30 +13,34 @@ class AppletGuiInterface():
 
     __metaclass__ = ABCMeta
 
+    def __init__(self, topLevelOperatorView):
+        pass
+
     @abstractmethod
     def centralWidget( self ):
         """
-        Return the widget that will be displayed in the main viewer area.
+        Abstract method.  Return the widget that will be displayed in the main viewer area.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def appletDrawers(self):
+    def appletDrawer(self):
         """
-        Return a list of (drawer title, drawer widget) pairs for this applet.
+        Abstract method.  Return the drawer widget for this applet.
         """
         raise NotImplementedError
     
     @abstractmethod
     def menus( self ):
         """
-        Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.
+        Abstract method.  Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.
         """
         raise NotImplementedError
 
     @abstractmethod
     def viewerControlWidget(self):
         """
+        Abstract method.
         Return the widget that controls how the content of the central widget is displayed.
         Typically this consists of a layer list control.
         """
@@ -45,16 +49,38 @@ class AppletGuiInterface():
     @abstractmethod
     def setImageIndex(self, imageIndex):
         """
+        Abstract method.
         Called by the shell when the user has switched the input image he wants to view.
         The GUI should respond by updating the content of the central widget.
+        Note: Single-image GUIs do not need to provide this function.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def laneAdded(self, laneIndex):
+        """
+        Abstract method.
+        Called when a new image lane has been added to the workflow, and the GUI should respond appropriately.
+        Note: The default GUI provided by StandardApplet overrides this for you. 
         """
         raise NotImplementedError
 
     @abstractmethod    
-    def reset(self):
+    def laneRemoved(self, laneIndex, finalLength):
         """
-        Called by the shell when the current project has been unloaded.
-        The GUI should reset itself to its initial state, whatever that is.
+        Abstract method.
+        Called when a new image lane is about to be removed from the workflow, and the GUI should respond appropriately.
+        The GUI should clean up any resourecs it owns.
+        Note: The default GUI provided by StandardApplet overrides this for you. 
+        """
+        raise NotImplementedError
+
+    @abstractmethod    
+    def stopAndCleanUp(self):
+        """
+        Abstract method.
+        Called when the GUI is about to be destroyed.
+        The gui should stop updating all data views and should clean up any resources it created (e.g. orphan operators).
         """
         raise NotImplementedError
 

@@ -1,0 +1,31 @@
+{
+	"###":"Ilastik config schema",
+	"_schema_name" : "cluster-execution-configuration",
+	"_schema_version" : 1.0,
+
+	"###":"Workload Selection",
+	"workflow_type" : "PixelClassificationWorkflow",
+	"output_slot_id" : "Predictions",
+
+	"###":"Performance Setttings",
+	"sys_tmp_dir" : "/scratch/bergs",
+	"scratch_directory" : "/home/bergs/clusterstuff/scratch",
+	"task_subrequest_shape" : { "t":1, "x":256, "y":256, "z":32, "c":100},
+	"task_timeout_secs" : "20*60",
+
+	"###":"Logging Settings",
+	"output_log_directory" : "/home/bergs/bock11_results/logs/trial1",
+	
+	"###":"JANELIA CLUSTER CONFIGURATION",		
+	"command_format" : "qsub -pe batch 8 -l short=true -N {task_name} -o {task_output_file} -j y -b y -cwd -V '/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik_clusterized {task_args}'",
+	"task_launch_server" : "login.int.janelia.org",
+	"task_progress_update_command" : "./update_job_name {progress} > /dev/null",
+	"server_working_directory" : "/home/bergs/clusterstuff/launchdir",
+
+	"###":"LOCAL DEBUGGING CONFIGURATION",	
+	"##command_format" : "python /home/bergs/workspace/ilastik/workflows/pixelClassification/pixelClassificationClusterized.py {task_args}",
+	"##task_launch_server" : "bergs-ws1",
+	"##task_progress_update_command" : "echo {progress}",
+	"##server_working_directory" : "/home/bergs/clusterstuff/launchdir",
+}
+

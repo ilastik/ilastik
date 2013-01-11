@@ -1,0 +1,40 @@
+{
+    "_schema_name" : "RESTful-blockwise-fileset-description",
+    "_schema_version" : 1.0,
+
+    "remote_description" : 
+    {
+        "_schema_name" : "RESTful-volume-description",
+        "_schema_version" : 1.0,
+    
+        "name" : "Bock11-level0",
+        "format" : "hdf5",
+        "axes" : "zyx",
+        "## NOTE 1": "The first z-slice of the bock dataset is 2917, so the origin_offset must be at least 2917",
+        "## NOTE 2": "The website says that the data goes up to plane 4156, but it actually errors out past 4150",
+        "origin_offset" : [2917, 0, 0],
+        "bounds" : [4150, 135424, 119808],
+        "dtype" : "numpy.uint8",
+        "url_format" : "http://openconnecto.me/emca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
+        "hdf5_dataset" : "cube"
+    },
+
+    "local_description" :
+    {
+        "_schema_name" : "blockwise-fileset-description",
+        "_schema_version" : 1.0,
+
+        "name" : "bock11-blocks",
+        "format" : "hdf5",
+        "axes" : "zyx",
+        "shape" : "[ 4150-2917, 135424, 119808 ]",
+        "dtype" : "numpy.uint8",
+        "block_shape" : [256, 256, 256],
+        "block_file_name_format" : "block-{roiString}.h5/cube",
+        "dataset_root_dir" : "blocks-256"
+
+	"## NOTE":"These optional parameters tell ilastik to view only a portion of the on-disk dataset."
+        "view_origin" : "[0, 50*1024, 50*1024]",
+        "view_shape" : "[4150-2917, 10*256, 10*256]",
+    }
+}

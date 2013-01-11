@@ -12,17 +12,45 @@ class TestOpBatchIo(object):
     def setUp(self):
         self.testDataFileName = 'NpyTestData.npy'
         
-        # Start by writing some test data to disk.
-        self.testData = numpy.random.random((1,10,10,10,1))
-        numpy.save(self.testDataFileName, self.testData)
-
     def tearDown(self):
         try:
             os.remove(self.testDataFileName)
         except:
             pass
     
-    def testBasic(self):
+    def testBasic5d(self):
+        # Start by writing some test data to disk.
+        self.testData = numpy.random.random((1,10,10,10,2))
+        self.expectedDataShape = (1,10,10,10,2)
+        numpy.save(self.testDataFileName, self.testData)
+        
+        self.basicImpl()
+
+    def testBasic4d(self):
+        # Start by writing some 4D test data to disk.
+        self.testData = numpy.random.random((10,10,10,2))
+        self.expectedDataShape = (10,10,10,2)
+        numpy.save(self.testDataFileName, self.testData)
+
+        self.basicImpl()
+        
+    def testBasic3d(self):
+        # Start by writing some 4D test data to disk.
+        self.testData = numpy.random.random((10,10,10))
+        self.expectedDataShape = (10,10,10,1)
+        numpy.save(self.testDataFileName, self.testData)
+
+        self.basicImpl()
+        
+    def testBasic2d(self):
+        # Start by writing some 4D test data to disk.
+        self.testData = numpy.random.random((10,10))
+        numpy.save(self.testDataFileName, self.testData)
+        self.expectedDataShape = (10,10,1)
+
+        self.basicImpl()
+        
+    def basicImpl(self):
         cwd = os.getcwd()
         info = DatasetInfo()
         info.filePath = os.path.join(cwd, 'NpyTestData.npy')
@@ -41,6 +69,7 @@ class TestOpBatchIo(object):
         opBatchIo.Suffix.setValue( '_smoothed' )
         opBatchIo.Format.setValue( ExportFormat.H5 )
         opBatchIo.DatasetPath.setValue( info.filePath )
+        opBatchIo.WorkingDirectory.setValue( cwd )
         
         internalPath = 'path/to/data'
         opBatchIo.InternalPath.setValue( internalPath )
@@ -63,16 +92,20 @@ class TestOpBatchIo(object):
         smoothedPath = os.path.join(cwd, 'NpyTestData_smoothed.h5')
         with h5py.File(smoothedPath, 'r') as f:
             assert internalPath in f
-            assert f[internalPath].shape == self.testData.shape
+            assert f[internalPath].shape == self.expectedDataShape
         try:
             os.remove(smoothedPath)
         except:
             pass
-        
+
     def testCreateExportDirectory(self):
         """
         Test that the batch operator can create the export directory if it doesn't exist yet.
         """
+        # Start by writing some test data to disk.
+        self.testData = numpy.random.random((1,10,10,10,1))
+        numpy.save(self.testDataFileName, self.testData)
+
         cwd = os.getcwd()
         info = DatasetInfo()
         info.filePath = os.path.join(cwd, 'NpyTestData.npy')
@@ -92,6 +125,7 @@ class TestOpBatchIo(object):
         opBatchIo.Suffix.setValue( '_smoothed' )
         opBatchIo.Format.setValue( ExportFormat.H5 )
         opBatchIo.DatasetPath.setValue( info.filePath )
+        opBatchIo.WorkingDirectory.setValue( cwd )
         
         internalPath = 'path/to/data'
         opBatchIo.InternalPath.setValue( internalPath )

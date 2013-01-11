@@ -1,15 +1,14 @@
-from ilastik.applets.base.applet import Applet
+from ilastik.applets.base.standardApplet import StandardApplet
 from opPixelClassification import OpPixelClassification
 from pixelClassificationSerializer import PixelClassificationSerializer, Ilastik05ImportDeserializer
 
-class PixelClassificationApplet( Applet ):
+class PixelClassificationApplet( StandardApplet ):
     """
     Implements the pixel classification "applet", which allows the ilastik shell to use it.
     """
-    def __init__( self, graph, projectFileGroupName ):
-        Applet.__init__( self, "Pixel Classification" )
-
-        self._topLevelOperator = OpPixelClassification( graph )
+    def __init__( self, workflow, projectFileGroupName ):
+        self._topLevelOperator = OpPixelClassification( parent=workflow )
+        super(PixelClassificationApplet, self).__init__( "Training" )
 
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.
@@ -36,9 +35,7 @@ class PixelClassificationApplet( Applet ):
     def dataSerializers(self):
         return self._serializableItems
 
-    @property
-    def gui(self):
-        if self._gui is None:
-            from pixelClassificationGui import PixelClassificationGui
-            self._gui = PixelClassificationGui( self._topLevelOperator, self.guiControlSignal, self.shellRequestSignal, self.predictionSerializer )        
-        return self._gui
+    def createSingleLaneGui(self, imageLaneIndex):
+        from pixelClassificationGui import PixelClassificationGui
+        singleImageOperator = self.topLevelOperator.getLane(imageLaneIndex)
+        return PixelClassificationGui( singleImageOperator, self.shellRequestSignal, self.guiControlSignal, self.predictionSerializer )        

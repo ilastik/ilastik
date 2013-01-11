@@ -9,34 +9,34 @@ class HeadlessShell(object):
     For now, this class is just a stand-in for the GUI shell (used when running from the command line).
     """
     
-    def __init__(self):
-        self._applets = []
-        self.projectManager = ProjectManager()
-        self.currentImageIndex = -1
+    def __init__(self, workflowClass):
+        self._workflowClass = workflowClass
+        self.projectManager = None
 
-    def addApplet(self, aplt):
-        self._applets.append(aplt)
-        self.projectManager.addApplet(aplt)
-    
-    def changeCurrentInputImageIndex(self, newImageIndex):
-        if newImageIndex != self.currentImageIndex:
-            # Alert each central widget and viewer control widget that the image selection changed
-            for i in range( len(self._applets) ):
-                self._applets[i].gui.setImageIndex(newImageIndex)
-                
-            self.currentImageIndex = newImageIndex
+    @property
+    def workflow(self):
+        return self.projectManager.workflow
 
     def openProjectPath(self, projectFilePath):
         try:
-            hdf5File = self.projectManager.openProjectFile(projectFilePath)
-            self.projectManager.loadProject(hdf5File, projectFilePath)
+            # Open the project file
+            hdf5File, readOnly = ProjectManager.openProjectFile(projectFilePath)
+            
+            # Create our project manager
+            # This instantiates the workflow and applies all settings from the project.
+            self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, headless=True )
+
         except ProjectManager.ProjectVersionError:
             # Couldn't open project.  Try importing it.
             oldProjectFilePath = projectFilePath
             name, ext = os.path.splitext(oldProjectFilePath)
-            projectFilePath = name + "_imported" + ext
     
+            # Create a brand new project file.
+            projectFilePath = name + "_imported" + ext
             logger.info("Importing project as '" + projectFilePath + "'")
-            projectFile = self.projectManager.createBlankProjectFile(projectFilePath)
-            self.projectManager.importProject(oldProjectFilePath, projectFile, projectFilePath)
+            hdf5File = ProjectManager.createBlankProjectFile(projectFilePath)
+
+            # Create the project manager.
+            # Here, we provide an additional parameter: the path of the project we're importing from. 
+            self.projectManager = ProjectManager( self._workflowClass, hdf5File, projectFilePath, readOnly, importFromPath=oldProjectFilePath, headless=True )
 

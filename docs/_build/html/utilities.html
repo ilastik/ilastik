@@ -1,0 +1,373 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Utility Classes &mdash; ilastik 0.6.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="ilastik 0.6.0 documentation" href="index.html" />
+    <link rel="next" title="Appendix: Development Dependencies" href="dependencies.html" />
+    <link rel="prev" title="Project Manager" href="projectManager.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="dependencies.html" title="Appendix: Development Dependencies"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="projectManager.html" title="Project Manager"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="utility-classes">
+<h1>Utility Classes<a class="headerlink" href="#utility-classes" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="ilastik.utility.bind">
+<em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">bind</tt><big>(</big><em>f</em>, <em>*args</em><big>)</big><a class="headerlink" href="#ilastik.utility.bind" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inspired by boost::bind (C++).
+Behaves like functools.partial, but discards any extra parameters it gets when called.
+Also, bind objects can be compared for equality.</p>
+<dl class="method">
+<dt id="ilastik.utility.bind.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>f</em>, <em>*args</em><big>)</big><a class="headerlink" href="#ilastik.utility.bind.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a callable for the partial invocation of f using the specified args.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.utility.bind.__call__">
+<tt class="descname">__call__</tt><big>(</big><em>*args</em><big>)</big><a class="headerlink" href="#ilastik.utility.bind.__call__" title="Permalink to this definition">¶</a></dt>
+<dd><p>When execute the callback.  If more args are provided than the callback accepts, silently discard the extra args.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.utility.SimpleSignal">
+<em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">SimpleSignal</tt><a class="headerlink" href="#ilastik.utility.SimpleSignal" title="Permalink to this definition">¶</a></dt>
+<dd><p>A simple python-only signal class for implementing the observer pattern.
+For familarity, mimics a SUBSET of the pyqt signal interface.  Not threadsafe.
+No fine-grained unsubcribe mechanism.</p>
+<dl class="method">
+<dt id="ilastik.utility.SimpleSignal.connect">
+<tt class="descname">connect</tt><big>(</big><em>callable</em><big>)</big><a class="headerlink" href="#ilastik.utility.SimpleSignal.connect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a subscriber.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.utility.SimpleSignal.emit">
+<tt class="descname">emit</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#ilastik.utility.SimpleSignal.emit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fire the signal with the given arguments.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.utility.SimpleSignal.disconnectAll">
+<tt class="descname">disconnectAll</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.utility.SimpleSignal.disconnectAll" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove all subscribers.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.utility.PathComponents">
+<em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">PathComponents</tt><big>(</big><em>totalPath</em>, <em>cwd=None</em><big>)</big><a class="headerlink" href="#ilastik.utility.PathComponents" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides a convenient access to path components of a combined external/internal path to a dataset.</p>
+<dl class="method">
+<dt id="ilastik.utility.PathComponents.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>totalPath</em>, <em>cwd=None</em><big>)</big><a class="headerlink" href="#ilastik.utility.PathComponents.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the path components.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>totalPath</strong> &#8211; The entire path to the dataset, including any internal path (e.g. the path to an hdf5 dataset).
+For example, <tt class="docutils literal"><span class="pre">totalPath='/some/path/to/file.h5/with/internal/dataset'</span></tt></li>
+<li><strong>cwd</strong> &#8211; If provided, relative paths will be converted to absolute paths using this arg as the working directory.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.utility.PathComponents.extension">
+<tt class="descname">extension</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.extension" title="Permalink to this definition">¶</a></dt>
+<dd><p>Example: <tt class="docutils literal"><span class="pre">.h5</span></tt></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.utility.PathComponents.externalPath">
+<tt class="descname">externalPath</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.externalPath" title="Permalink to this definition">¶</a></dt>
+<dd><p>Example: <tt class="docutils literal"><span class="pre">/some/path/to/file.h5</span></tt></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.utility.PathComponents.internalPath">
+<tt class="descname">internalPath</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.internalPath" title="Permalink to this definition">¶</a></dt>
+<dd><p>Example: <tt class="docutils literal"><span class="pre">/with/internal/dataset</span></tt></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.utility.PathComponents.internalDatasetName">
+<tt class="descname">internalDatasetName</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.internalDatasetName" title="Permalink to this definition">¶</a></dt>
+<dd><p>Example: <tt class="docutils literal"><span class="pre">/dataset</span></tt></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.utility.PathComponents.internalDirectory">
+<tt class="descname">internalDirectory</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.internalDirectory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Example: <tt class="docutils literal"><span class="pre">/some/path/to/file.h5/with/internal</span></tt></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.utility.PathComponents.externalDirectory">
+<tt class="descname">externalDirectory</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.externalDirectory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Example: <tt class="docutils literal"><span class="pre">/some/path/to</span></tt></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.utility.PathComponents.filename">
+<tt class="descname">filename</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.filename" title="Permalink to this definition">¶</a></dt>
+<dd><p>Example: <tt class="docutils literal"><span class="pre">file.h5</span></tt></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.utility.PathComponents.filenameBase">
+<tt class="descname">filenameBase</tt><em class="property"> = None</em><a class="headerlink" href="#ilastik.utility.PathComponents.filenameBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Example: <tt class="docutils literal"><span class="pre">file</span></tt></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.utility.PathComponents.totalPath">
+<tt class="descname">totalPath</tt><big>(</big><big>)</big><a class="headerlink" href="#ilastik.utility.PathComponents.totalPath" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the (reconstructed) totalPath to the dataset.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.utility.OperatorSubView">
+<em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">OperatorSubView</tt><big>(</big><em>op</em>, <em>index</em><big>)</big><a class="headerlink" href="#ilastik.utility.OperatorSubView" title="Permalink to this definition">¶</a></dt>
+<dd><p>An adapter class that makes a specific lane of a multi-image operator look like a single image operator.</p>
+<p>If the adapted operator is an OperatorWrapper, then the view provides all of the members of the inner 
+operator at the specified index, except that the slot members will refer to the OperatorWrapper&#8217;s 
+slots (i.e. the OUTER slots).</p>
+<p>If the adapted operator is NOT an OperatorWrapper, then the view provides all the members of the adapted operator,
+except that ALL MULTISLOT members will be replaced with a reference to the subslot for the specified index.
+Non-multislot members will not be replaced.</p>
+<dl class="method">
+<dt id="ilastik.utility.OperatorSubView.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>op</em>, <em>index</em><big>)</big><a class="headerlink" href="#ilastik.utility.OperatorSubView.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.  Creates a view of the given operator for the specified index.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>op</strong> &#8211; The operator to view.</li>
+<li><strong>index</strong> &#8211; The index of this subview.  All multislots of the original 
+operator will be replaced with the corresponding subslot at this index.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.utility.MultiLaneOperatorABC">
+<em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">MultiLaneOperatorABC</tt><a class="headerlink" href="#ilastik.utility.MultiLaneOperatorABC" title="Permalink to this definition">¶</a></dt>
+<dd><p>This abstract base class specifies the interface to which all top-level applet operators must adhere.
+The distinguishing characteristic of a top-level operator is the fact that they must be capable of 
+supporting multiple images via multi-slots that are indexed by image lane number.</p>
+<p>Image lanes of the top-level operator are added, removed, and accessed via the <tt class="docutils literal"><span class="pre">addLane</span></tt>, <tt class="docutils literal"><span class="pre">removeLane</span></tt>, and <tt class="docutils literal"><span class="pre">getLane</span></tt> functions.</p>
+<p>Note: Most applets can simply inherit from the <tt class="docutils literal"><span class="pre">StandardApplet</span></tt> base class, 
+which will automatically adapt single-lane top-level operators to satisfy this interface.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.utility.OpMultiLaneWrapper">
+<em class="property">class </em><tt class="descclassname">ilastik.utility.</tt><tt class="descname">OpMultiLaneWrapper</tt><big>(</big><em>operatorClass</em>, <em>operator_args=None</em>, <em>operator_kwargs=None</em>, <em>parent=None</em>, <em>graph=None</em>, <em>promotedSlotNames=None</em>, <em>broadcastingSlotNames=None</em><big>)</big><a class="headerlink" href="#ilastik.utility.OpMultiLaneWrapper" title="Permalink to this definition">¶</a></dt>
+<dd><p>An extension of the OperatorWrapper that provides the functions needed to satisfy MultiLaneOperatorABC.
+See <tt class="docutils literal"><span class="pre">OperatorWrapper</span></tt> class documentation for details on that class.</p>
+</dd></dl>
+
+<div class="section" id="gui-utilities">
+<h2>GUI Utilities<a class="headerlink" href="#gui-utilities" title="Permalink to this headline">¶</a></h2>
+<p>QT can be finicky about calling certain functions from non-GUI threads.
+These two utility classes provide mechanisms for forcing code to be called from within the GUI thread.</p>
+<dl class="class">
+<dt id="ilastik.utility.gui.ThunkEventHandler">
+<em class="property">class </em><tt class="descclassname">ilastik.utility.gui.</tt><tt class="descname">ThunkEventHandler</tt><big>(</big><em>parent</em><big>)</big><a class="headerlink" href="#ilastik.utility.gui.ThunkEventHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>GUI objects can instantiate an instance of this class and then start using it to 
+post <tt class="docutils literal"><span class="pre">ThunkEvents</span></tt>, which execute a given callable in the GUI event loop.
+The callable will NOT be called synchronously.  It will be called when the QT 
+event system eventually passes the event to the GUI object&#8217;s event filters.</p>
+<p>In the following example, C.setText() can be called from ANY thread safely.
+The widget&#8217;s text will ONLY be updated in the main thread.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">C</span><span class="p">(</span><span class="n">QObject</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
+        <span class="n">QObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thunkEventHandler</span> <span class="o">=</span> <span class="n">ThunkEventHandler</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+ 
+ 
+    <span class="k">def</span> <span class="nf">setCaption</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thunkEventHandler</span><span class="o">.</span><span class="n">post</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">mywidget</span><span class="o">.</span><span class="n">setText</span><span class="p">,</span> <span class="n">text</span> <span class="p">)</span>    
+</pre></div>
+</div>
+<dl class="method">
+<dt id="ilastik.utility.gui.ThunkEventHandler.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>parent</em><big>)</big><a class="headerlink" href="#ilastik.utility.gui.ThunkEventHandler.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a ThunkEventHandler that installs itself in the event loop for <tt class="docutils literal"><span class="pre">parent</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.utility.gui.ThunkEventHandler.post">
+<tt class="descname">post</tt><big>(</big><em>func</em>, <em>*args</em><big>)</big><a class="headerlink" href="#ilastik.utility.gui.ThunkEventHandler.post" title="Permalink to this definition">¶</a></dt>
+<dd><p>Post an event to the GUI event system that will eventually execute the given function with the given arguments.
+This is implemented using <tt class="docutils literal"><span class="pre">QApplication.post()</span></tt></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.utility.gui.ThunkEventHandler.send">
+<tt class="descname">send</tt><big>(</big><em>func</em>, <em>*args</em><big>)</big><a class="headerlink" href="#ilastik.utility.gui.ThunkEventHandler.send" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send an event to the GUI event system that will eventually execute the given function with the given arguments.
+Note that this is done using <tt class="docutils literal"><span class="pre">QApplication.send()</span></tt>, which may not be what you wanted.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="ilastik.utility.gui.threadRouted">
+<tt class="descclassname">ilastik.utility.gui.</tt><tt class="descname">threadRouted</tt><big>(</big><em>func</em><big>)</big><a class="headerlink" href="#ilastik.utility.gui.threadRouted" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator that routes calls to the given member function into the object&#8217;s parent thread.
+If a member function <tt class="docutils literal"><span class="pre">f</span></tt> is decorated with <tt class="docutils literal"><span class="pre">&#64;threadRouted</span></tt>, all calls to <tt class="docutils literal"><span class="pre">f</span></tt> will execute in the GUI thread.
+The calling thread will block while <tt class="docutils literal"><span class="pre">f</span></tt> is executing, so the call will appear synchronous.
+This mechanism is slow, and should only be used for functions that MUST execute in the GUI thread.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Objects that use the &#64;threadRouted decorator MUST have a <a class="reference internal" href="#ilastik.utility.gui.ThreadRouter" title="ilastik.utility.gui.ThreadRouter"><tt class="xref py py-class docutils literal"><span class="pre">ThreadRouter</span></tt></a> member called <tt class="docutils literal"><span class="pre">self.threadRouter</span></tt></p>
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.utility.gui.ThreadRouter">
+<em class="property">class </em><tt class="descclassname">ilastik.utility.gui.</tt><tt class="descname">ThreadRouter</tt><big>(</big><em>parent</em><big>)</big><a class="headerlink" href="#ilastik.utility.gui.ThreadRouter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an instance of this class called &#8216;threadRouter&#8217; to enable the <a class="reference internal" href="#ilastik.utility.gui.threadRouted" title="ilastik.utility.gui.threadRouted"><tt class="xref py py-func docutils literal"><span class="pre">&#64;threadRouted</span></tt></a> decorator for methods of your object.</p>
+<dl class="method">
+<dt id="ilastik.utility.gui.ThreadRouter.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>parent</em><big>)</big><a class="headerlink" href="#ilastik.utility.gui.ThreadRouter.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a threadRouter object.  You must call it <tt class="docutils literal"><span class="pre">self.threadRouter</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>parent</strong> &#8211; The parent object, which whose thread will be used for all <a class="reference internal" href="#ilastik.utility.gui.threadRouted" title="ilastik.utility.gui.threadRouted"><tt class="xref py py-func docutils literal"><span class="pre">&#64;threadRouted</span></tt></a> functions.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Utility Classes</a><ul>
+<li><a class="reference internal" href="#gui-utilities">GUI Utilities</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="projectManager.html"
+                        title="previous chapter">Project Manager</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="dependencies.html"
+                        title="next chapter">Appendix: Development Dependencies</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/utilities.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="dependencies.html" title="Appendix: Development Dependencies"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="projectManager.html" title="Project Manager"
+             >previous</a> |</li>
+        <li><a href="index.html">ilastik 0.6.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,160 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.applets.base.multiLaneOperator &mdash; ilastik v0.6.0 documentation</title>
+    <link rel="stylesheet" href="../../../../static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '0.6.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../static/doctools.js"></script>
+    <link rel="top" title="ilastik v0.6.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for ilastik.applets.base.multiLaneOperator</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">ilastik.utility.operatorSubView</span> <span class="kn">import</span> <span class="n">OperatorSubView</span>
+
+<span class="k">def</span> <span class="nf">_has_attribute</span><span class="p">(</span> <span class="n">cls</span><span class="p">,</span> <span class="n">attr</span> <span class="p">):</span>
+    <span class="k">return</span> <span class="bp">True</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">attr</span> <span class="ow">in</span> <span class="n">B</span><span class="o">.</span><span class="n">__dict__</span> <span class="k">for</span> <span class="n">B</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">__mro__</span><span class="p">)</span> <span class="k">else</span> <span class="bp">False</span>
+
+<span class="k">class</span> <span class="nc">MultiLaneOperatorABC</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="MultiLaneOperatorABC"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.multiLaneOperator.MultiLaneOperatorABC">[docs]</a><span class="sd">    This abstract base class specifies the interface to which all top-level applet operators must adhere.</span>
+<span class="sd">    The distinguishing characteristic of a top-level operator is the fact that they must be capable of </span>
+<span class="sd">    supporting multiple images via multi-slots that are indexed by image lane number</span>
+<span class="sd">    Image lanes of the top-level operator are added, removed, and accessed via the ``addLane``, ``removeLane``, and ``getLane`` functions.</span>
+<span class="sd">    Note: Most applets can simply inherit from the ``StandardApplet`` base class, </span>
+<span class="sd">    which will automatically adapt single-lane top-level operators to satisfy this interface. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">ABCMeta</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">addLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="MultiLaneOperatorABC.addLane"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.multiLaneOperator.MultiLaneOperatorABC.addLane">[docs]</a><span class="sd">        Add an image lane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">removeLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span></div>
+        <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="MultiLaneOperatorABC.removeLane"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.multiLaneOperator.MultiLaneOperatorABC.removeLane">[docs]</a><span class="sd">        Remove an image lane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">getLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span></div>
+        <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="MultiLaneOperatorABC.getLane"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.multiLaneOperator.MultiLaneOperatorABC.getLane">[docs]</a><span class="sd">        Get an object that exposes the relevant slots for the specific lane.</span>
+<span class="sd">        The object may be an operator, or may merely be an operator-like &quot;view&quot; object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+    
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">__subclasshook__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">C</span><span class="p">):</span></div>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This function allows us to compare objects to the MultiLaneOperator interface</span>
+<span class="sd">        even if they don&#39;t happen to inherit from this base class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">cls</span> <span class="ow">is</span> <span class="n">MultiLaneOperatorABC</span><span class="p">:</span>
+            <span class="n">retval</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="n">retval</span> <span class="o">&amp;=</span> <span class="n">_has_attribute</span><span class="p">(</span> <span class="n">cls</span><span class="p">,</span> <span class="s">&#39;addLane&#39;</span> <span class="p">)</span>
+            <span class="n">retval</span> <span class="o">&amp;=</span> <span class="n">_has_attribute</span><span class="p">(</span> <span class="n">cls</span><span class="p">,</span> <span class="s">&#39;removeLane&#39;</span> <span class="p">)</span>
+            <span class="n">retval</span> <span class="o">&amp;=</span> <span class="n">_has_attribute</span><span class="p">(</span> <span class="n">cls</span><span class="p">,</span> <span class="s">&#39;getLane&#39;</span> <span class="p">)</span>
+            <span class="k">return</span> <span class="n">retval</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+<span class="k">class</span> <span class="nc">OpAutoMultiLane</span><span class="p">(</span> <span class="n">OperatorWrapper</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span></div>
+<span class="sd">    An extension of the OperatorWrapper that provides the functions needed to satisfy MultiLaneOperatorABC.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">addLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add an image lane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">innerOperators</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">numLanes</span> <span class="o">==</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="s">&quot;Image lanes must be appended.&quot;</span>        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_insertInnerOperator</span><span class="p">(</span><span class="n">numLanes</span><span class="p">,</span> <span class="n">numLanes</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">removeLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove an image lane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">innerOperators</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_removeInnerOperator</span><span class="p">(</span><span class="n">laneIndex</span><span class="p">,</span> <span class="n">numLanes</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">OperatorSubView</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="../../../../index.html">ilastik v0.6.0 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+    </div>
+  </body>
+</html>

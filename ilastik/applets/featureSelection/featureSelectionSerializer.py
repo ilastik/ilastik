@@ -1,6 +1,7 @@
 import numpy
 
-from ilastik.applets.base.appletSerializer import AppletSerializer
+from ilastik.applets.base.appletSerializer import \
+    AppletSerializer, deleteIfPresent
 
 from ilastik.utility import bind
 
@@ -14,36 +15,34 @@ class FeatureSelectionSerializer(AppletSerializer):
     """
     Serializes the user's pixel feature selections to an ilastik v0.6 project file.
     """
-    SerializerVersion = 0.1
-    
-    def __init__(self, mainOperator, projectFileGroupName):
-        super( FeatureSelectionSerializer, self ).__init__( projectFileGroupName, self.SerializerVersion )
-        self.mainOperator = mainOperator    
+    def __init__(self, topLevelOperator, projectFileGroupName):
+        super( FeatureSelectionSerializer, self ).__init__( projectFileGroupName)
+        self.topLevelOperator = topLevelOperator    
         self._dirty = False
 
         def handleDirty():
             self._dirty = True
-        self.mainOperator.Scales.notifyDirty( bind(handleDirty) )
-        self.mainOperator.FeatureIds.notifyDirty( bind(handleDirty) )
-        self.mainOperator.SelectionMatrix.notifyDirty( bind(handleDirty) )
+        self.topLevelOperator.Scales.notifyDirty( bind(handleDirty) )
+        self.topLevelOperator.FeatureIds.notifyDirty( bind(handleDirty) )
+        self.topLevelOperator.SelectionMatrix.notifyDirty( bind(handleDirty) )
     
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         with Tracer(traceLogger):
             # Can't store anything without both scales and features
-            if not self.mainOperator.Scales.ready() \
-            or not self.mainOperator.FeatureIds.ready():
+            if not self.topLevelOperator.Scales.ready() \
+            or not self.topLevelOperator.FeatureIds.ready():
                 return
         
             # Delete previous entries if they exist
-            self.deleteIfPresent(topGroup, 'Scales')
-            self.deleteIfPresent(topGroup, 'FeatureIds')
-            self.deleteIfPresent(topGroup, 'SelectionMatrix')
+            deleteIfPresent(topGroup, 'Scales')
+            deleteIfPresent(topGroup, 'FeatureIds')
+            deleteIfPresent(topGroup, 'SelectionMatrix')
             
             # Store the new values (as numpy arrays)
-            topGroup.create_dataset('Scales', data=self.mainOperator.Scales.value)
-            topGroup.create_dataset('FeatureIds', data=self.mainOperator.FeatureIds.value)
-            if self.mainOperator.SelectionMatrix.ready():
-                topGroup.create_dataset('SelectionMatrix', data=self.mainOperator.SelectionMatrix.value)
+            topGroup.create_dataset('Scales', data=self.topLevelOperator.Scales.value)
+            topGroup.create_dataset('FeatureIds', data=self.topLevelOperator.FeatureIds.value)
+            if self.topLevelOperator.SelectionMatrix.ready():
+                topGroup.create_dataset('SelectionMatrix', data=self.topLevelOperator.SelectionMatrix.value)
             self._dirty = False
 
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
@@ -51,22 +50,40 @@ class FeatureSelectionSerializer(AppletSerializer):
             try:
                 scales = topGroup['Scales'].value
                 featureIds = topGroup['FeatureIds'].value
+                
+                scales = list( map(lambda x: float(x), scales) )
+                featureIds = list( map(lambda s: str(s), featureIds) )
             except KeyError:
                 pass
             else:
-                self.mainOperator.Scales.setValue(scales)
-                self.mainOperator.FeatureIds.setValue(featureIds)
+                self.topLevelOperator.Scales.setValue(scales)
+
+                # If the main operator already has a feature ordering (provided by the GUI),
+                # then don't overwrite it.  We'll re-order the matrix to match the existing ordering.
+                if not self.topLevelOperator.FeatureIds.ready():
+                    self.topLevelOperator.FeatureIds.setValue(featureIds)
             
                 # If the matrix isn't there, just return
                 try:
-                    selectionMatrix = topGroup['SelectionMatrix'].value                
+                    savedMatrix = topGroup['SelectionMatrix'].value                
                     # Check matrix dimensions
-                    assert selectionMatrix.shape[0] == len(featureIds)
-                    assert selectionMatrix.shape[1] == len(scales)
+                    assert savedMatrix.shape[0] == len(featureIds), "Invalid project data: feature selection matrix dimensions don't make sense"
+                    assert savedMatrix.shape[1] == len(scales), "Invalid project data: feature selection matrix dimensions don't make sense"
                 except KeyError:
                     pass
                 else:
-                    self.mainOperator.SelectionMatrix.setValue(selectionMatrix)
+                    # If the feature order has changed since this project was last saved,
+                    #  then we need to re-order the features.
+                    # The 'new' order is provided by the operator
+                    newFeatureOrder = list(self.topLevelOperator.FeatureIds.value)
+
+                    newMatrixShape = ( len(newFeatureOrder), len(scales) )
+                    newMatrix = numpy.zeros(newMatrixShape, dtype=bool)
+                    for oldFeatureIndex, featureId in enumerate(featureIds):
+                        newFeatureIndex = newFeatureOrder.index(featureId)
+                        newMatrix[newFeatureIndex] = savedMatrix[oldFeatureIndex]
+
+                    self.topLevelOperator.SelectionMatrix.setValue(newMatrix)
     
             self._dirty = False
 
@@ -78,18 +95,15 @@ class FeatureSelectionSerializer(AppletSerializer):
 
     def unload(self):
         with Tracer(traceLogger):
-            self.mainOperator.Scales.disconnect()
-            self.mainOperator.FeatureIds.disconnect()
-            self.mainOperator.SelectionMatrix.disconnect()
+            self.topLevelOperator.SelectionMatrix.disconnect()
 
 class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
     """
     Deserializes the user's pixel feature selections from an ilastik v0.5 project file.
     """
-    SerializerVersion = 0.1
-    def __init__(self, mainOperator):
-        super( Ilastik05FeatureSelectionDeserializer, self ).__init__( '', self.SerializerVersion )
-        self.mainOperator = mainOperator
+    def __init__(self, topLevelOperator):
+        super( Ilastik05FeatureSelectionDeserializer, self ).__init__( '' )
+        self.topLevelOperator = topLevelOperator
     
     def serializeToHdf5(self, hdf5File, filePath):
         # This class is only for DEserialization
@@ -113,8 +127,11 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
                            'GaussianGradientMagnitude',
                            'DifferenceOfGaussians' ]
     
-            self.mainOperator.Scales.setValue(ScalesList)
-            self.mainOperator.FeatureIds.setValue(FeatureIds)
+            self.topLevelOperator.Scales.setValue(ScalesList)
+            # If the main operator already has a feature ordering (provided by the GUI),
+            # then don't overwrite it.  We'll re-order the matrix to match the existing ordering.
+            if not self.topLevelOperator.FeatureIds.ready():
+                self.topLevelOperator.FeatureIds.setValue(FeatureIds)
     
             # Create a feature selection matrix of the correct shape (all false by default)
             pipeLineSelectedFeatureMatrix = numpy.array(numpy.zeros((6,7)), dtype=bool)
@@ -138,20 +155,23 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
                 
                 # Here's how features map to the old "feature groups"
                 # (Note: Nothing maps to the orientation group.)
-                featureToGroup = { 0 : 0,  # Gaussian Smoothing -> Color
-                                   1 : 1,  # Laplacian of Gaussian -> Edge
-                                   2 : 3,  # Structure Tensor Eigenvalues -> Texture
-                                   3 : 3,  # Eigenvalues of Hessian of Gaussian -> Texture
-                                   4 : 1,  # Gradient Magnitude of Gaussian -> Edge
-                                   5 : 1 } # Difference of Gaussians -> Edge
+                featureToGroup = { 'GaussianSmoothing'              : 0,  # Gaussian Smoothing -> Color
+                                   'LaplacianOfGaussian'            : 1,  # Laplacian of Gaussian -> Edge
+                                   'StructureTensorEigenvalues'     : 3,  # Structure Tensor Eigenvalues -> Texture
+                                   'HessianOfGaussianEigenvalues'   : 3,  # Eigenvalues of Hessian of Gaussian -> Texture
+                                   'GaussianGradientMagnitude'      : 1,  # Gradient Magnitude of Gaussian -> Edge
+                                   'DifferenceOfGaussians'          : 1 } # Difference of Gaussians -> Edge
     
+
+                newFeatureIds = self.topLevelOperator.FeatureIds.value
                 # For each feature, determine which group's settings to take
-                for featureIndex, featureGroupIndex in featureToGroup.items():
+                for featureId, featureGroupIndex in featureToGroup.items():
+                    newRow = newFeatureIds.index(featureId)
                     # Copy the whole row of selections from the feature group
-                    pipeLineSelectedFeatureMatrix[featureIndex] = userFriendlyFeatureMatrix[featureGroupIndex]
+                    pipeLineSelectedFeatureMatrix[newRow] = userFriendlyFeatureMatrix[featureGroupIndex]
             
             # Finally, update the pipeline with the feature selections
-            self.mainOperator.SelectionMatrix.setValue( pipeLineSelectedFeatureMatrix )
+            self.topLevelOperator.SelectionMatrix.setValue( pipeLineSelectedFeatureMatrix )
 
     def isDirty(self):
         """ Return true if the current state of this item 
@@ -161,9 +181,7 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
 
     def unload(self):
         with Tracer(traceLogger):
-            self.mainOperator.Scales.disconnect()
-            self.mainOperator.FeatureIds.disconnect()
-            self.mainOperator.SelectionMatrix.disconnect()
+            self.topLevelOperator.SelectionMatrix.disconnect()
 
 
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):

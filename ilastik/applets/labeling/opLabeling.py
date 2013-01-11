@@ -1,106 +1,183 @@
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
-
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedSparseLabelArray
+from ilastik.utility.operatorSubView import OperatorSubView
+from ilastik.utility import OpMultiLaneWrapper
 
-class OpLabeling( Operator ):
+class OpLabelingTopLevel( Operator ):
     """
-    Top-level operator for the labeling base class.
+    Top-level operator for the labelingApplet base class.
+    Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.
     """
-    name="OpLabeling"
-    category = "Top-level"
+    name = "OpLabelingTopLevel"
+
+    # Input slots
+    InputImages = InputSlot(level=1) #: Original input data.
+    LabelInputs = InputSlot(level=1) #: Input for providing label data from an external source
     
-    # Graph inputs
-    
-    InputImages = InputSlot(level=1) # Original input data.
-    LabelsAllowedFlags = InputSlot(stype='bool', level=1) # Specifies which images are permitted to be labeled 
+    LabelsAllowedFlags = InputSlot(level=1, stype='bool') #: Specifies which images are permitted to be labeled 
+    LabelEraserValue = InputSlot(value=255) #: The label value that signifies the 'eraser', i.e. voxels to clear labels from
+    LabelDelete = InputSlot() #: When this input is set to a value, all labels of that value are deleted from the operator's data.
 
-    LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
-    LabelEraserValue = InputSlot()
-    LabelDelete = InputSlot()
+    # Output slots
+    LabelImages = OutputSlot(level=1) #: Stored labels from the user
+    NonzeroLabelBlocks = OutputSlot(level=1) #: A list if slices that contain non-zero label values
 
-    MaxLabelValue = OutputSlot()
-    LabelImages = OutputSlot(level=1) # Labels from the user
-    NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
+    MaxLabelValue = OutputSlot() #: The highest label value currently stored in the array of labels
 
-    def __init__( self, *args, **kwargs ):
-        """
-        Instantiate all internal operators and connect them together.
-        """
-        super(OpLabeling, self).__init__( *args, **kwargs )
+    def __init__(self, blockDims = None, *args, **kwargs):
+        super( OpLabelingTopLevel, self ).__init__( *args, **kwargs )
 
-        # Create internal operators
-        self.opInputShapeReader = OperatorWrapper( OpShapeReader(graph=self.graph) )
-        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray( graph=self.graph ) )
+        # Use a wrapper to create a labeling operator for each image lane
+        self.opLabelLane = OpMultiLaneWrapper( OpLabelingSingleLane, operator_kwargs={'blockDims' : blockDims}, parent=self )
 
-        # NOT wrapped
-        self.opMaxLabel = OpMaxValue(graph=self.graph)
-
-        # Set up label cache shape input
-        self.opInputShapeReader.Input.connect( self.InputImages )
-        self.opLabelArray.inputs["shape"].connect( self.opInputShapeReader.OutputShape )
-
-        # Set up other label cache inputs
+        # Special connection: Label Input must get its metadata (shape, axistags) from the main input image.
         self.LabelInputs.connect( self.InputImages )
-        self.opLabelArray.Input.connect( self.LabelInputs )
-        self.opLabelArray.eraser.connect(self.LabelEraserValue)
-        self.LabelEraserValue.setValue(255)
-                
+
+        # Connect external inputs -> internal inputs
+        self.opLabelLane.InputImage.connect( self.InputImages )
+        self.opLabelLane.LabelInput.connect( self.LabelInputs )
+        self.opLabelLane.LabelsAllowedFlag.connect( self.LabelsAllowedFlags )
+        self.opLabelLane.LabelEraserValue.connect( self.LabelEraserValue )
+        self.opLabelLane.LabelDelete.connect( self.LabelDelete )
+
         # Initialize the delete input to -1, which means "no label".
         # Now changing this input to a positive value will cause label deletions.
         # (The deleteLabel input is monitored for changes.)
-        self.opLabelArray.deleteLabel.connect(self.LabelDelete)
         self.LabelDelete.setValue(-1)
-        
-        # Find the highest label in all the label images
-        self.opMaxLabel.Inputs.connect( self.opLabelArray.outputs['maxLabel'] )
 
-        # Connect our internal outputs to our external outputs
-        self.LabelImages.connect(self.opLabelArray.Output)
+        # Connect internal outputs -> external outputs
+        self.LabelImages.connect( self.opLabelLane.LabelImage )
+        self.NonzeroLabelBlocks.connect( self.opLabelLane.NonzeroLabelBlocks )
+
+        # Use an OpMaxValue to find the highest label in all the label image lanes
+        self.opMaxLabel = OpMaxValue( parent=self )
+        self.opMaxLabel.Inputs.connect( self.opLabelLane.MaxLabelValue )
         self.MaxLabelValue.connect( self.opMaxLabel.Output )
-        self.NonzeroLabelBlocks.connect(self.opLabelArray.nonzeroBlocks)
-        
-        def inputResizeHandler( slot, oldsize, newsize ):
-            if ( newsize == 0 ):
-                self.LabelImages.resize(0)
-                self.NonzeroLabelBlocks.resize(0)
-        self.InputImages.notifyResized( inputResizeHandler )
-
-        # Check to make sure the non-wrapped operators stayed that way.
-        assert self.opMaxLabel.Inputs.operator == self.opMaxLabel
-        
-        def handleNewInputImage( multislot, index, *args ):
-            def handleInputReady(slot):
-                self.setupCaches( multislot.index(slot) )
-            multislot[index].notifyReady(handleInputReady)
-                
-        self.InputImages.notifyInserted( handleNewInputImage )
-
-    def setupCaches(self, imageIndex):
-        numImages = len(self.InputImages)
-        inputSlot = self.InputImages[imageIndex]
-        self.LabelInputs.resize(numImages)
-
-        # Special case: We have to set up the shape of our label *input* according to our image input shape
-        shapeList = list(self.InputImages[imageIndex].meta.shape)
-        try:
-            channelIndex = self.InputImages[imageIndex].meta.axistags.index('c')
-            shapeList[channelIndex] = 1
-        except:
-            pass
-        self.LabelInputs[imageIndex].meta.shape = tuple(shapeList)
-        self.LabelInputs[imageIndex].meta.axistags = inputSlot.meta.axistags
-
-        # Set the blockshapes for each input image separately, depending on which axistags it has.
-        axisOrder = [ tag.key for tag in inputSlot.meta.axistags ]
-        
-        ## Label Array blocks
-        blockDims = { 't' : 1, 'x' : 32, 'y' : 32, 'z' : 32, 'c' : 1 }
-        blockShape = tuple( blockDims[k] for k in axisOrder )
-        self.opLabelArray.blockShape.setValue( blockShape )
 
     def propagateDirty(self, slot, subindex, roi):
         # Nothing to do here: All outputs are directly connected to 
         #  internal operators that handle their own dirty propagation.
+        pass
+
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs that support __setitem__
+        #   are directly connected to internal operators.
+        pass
+
+    ###
+    # MultiLaneOperatorABC
+    ###
+
+    def addLane(self, laneIndex):
+        """
+        Add an image lane.
+        """
+        numLanes = len(self.InputImages)
+        assert laneIndex == numLanes, "Lanes must be appended"
+
+        # Just resize one of our multi-inputs.
+        # The others will resize automatically
+        self.InputImages.resize(numLanes+1)
+
+    def removeLane(self, laneIndex, finalLength):
+        """
+        Remove an image lane.
+        """
+        numLanes = len(self.InputImages)
+        self.InputImages.removeSlot(laneIndex, numLanes-1)
+
+    def getLane(self, laneIndex):
+        return OperatorSubView(self, laneIndex)
+
+class OpLabelingSingleLane( Operator ):
+    """
+    This is a single-lane operator that can be used with the labeling applet gui.
+    It is basically a wrapper around the ``OpBlockedSparseLabelArray`` (lazyflow), 
+    with the 'shape' and 'blockshape' input slots taken care of for you.
+    """
+    name="OpLabelingSingleLane"
+
+    # Input slots
+    InputImage = InputSlot() #: Original input data.
+    LabelInput = InputSlot(optional = True) #: Input for providing label data from an external source
+    
+    LabelsAllowedFlag = InputSlot(stype='bool') #: Specifies which images are permitted to be labeled 
+    LabelEraserValue = InputSlot(value=255) #: The label value that signifies the 'eraser', i.e. voxels to clear labels from
+    LabelDelete = InputSlot() #: When this input is set to a value, all labels of that value are deleted from the operator's data.
+
+    # Output slots
+    LabelImage = OutputSlot() #: Stored labels from the user
+    NonzeroLabelBlocks = OutputSlot() #: A list if slices that contain non-zero label values
+
+    MaxLabelValue = OutputSlot()
+
+    def __init__(self, blockDims = None, *args, **kwargs):
+        """
+        Instantiate all internal operators and connect them together.
+        """
+        super(OpLabelingSingleLane, self).__init__( *args, **kwargs )
+
+        # Configuration options
+        if blockDims is None:
+            blockDims = { 't' : 1, 'x' : 32, 'y' : 32, 'z' : 32, 'c' : 1 } 
+        assert isinstance(blockDims, dict)
+        self._blockDims = blockDims
+
+        # Create internal operators
+        self.opInputShapeReader = OpShapeReader( parent=self )
+        self.opLabelArray = OpBlockedSparseLabelArray( parent=self )
+
+        # Set up label cache shape input
+        self.opInputShapeReader.Input.connect( self.InputImage )
+        # Note: 'shape' is a (poorly named) INPUT SLOT here
+        self.opLabelArray.shape.connect( self.opInputShapeReader.OutputShape )
+
+        # Set up other label cache inputs
+        self.opLabelArray.Input.connect( self.LabelInput )
+        self.opLabelArray.eraser.connect(self.LabelEraserValue)                
+        self.opLabelArray.deleteLabel.connect(self.LabelDelete)
+        
+        # Connect our internal outputs to our external outputs
+        self.LabelImage.connect( self.opLabelArray.Output )
+        self.NonzeroLabelBlocks.connect( self.opLabelArray.nonzeroBlocks )
+        self.MaxLabelValue.connect( self.opLabelArray.maxLabel )
+        
+    def setupOutputs(self):
+        self.setupInputMeta()
+        self.setupCache(self._blockDims)
+
+    def setupInputMeta(self):
+        # Special case: We have to set up the shape of our label *input* according to our image input shape
+        shapeList = list(self.InputImage.meta.shape)
+        try:
+            # If present, LabelInput channel dim must be 1
+            channelIndex = self.InputImage.meta.axistags.index('c')
+            shapeList[channelIndex] = 1
+        except IndexError:
+            pass
+        self.LabelInput.meta.shape = tuple(shapeList)
+        self.LabelInput.meta.axistags = self.InputImage.meta.axistags
+
+    def setupCache(self, blockDims):
+        # Set the blockshapes for each input image separately, depending on which axistags it has.
+        axisOrder = map(lambda tag: tag.key, self.InputImage.meta.axistags )
+        
+        ## Label Array blocks
+        blockShape = tuple( blockDims[k] for k in axisOrder )
+        self.opLabelArray.blockShape.setValue( blockShape )
+
+    def cleanUp(self):
+        self.LabelInput.disconnect()
+        super( OpLabelingSingleLane, self ).cleanUp()
+
+    def propagateDirty(self, slot, subindex, roi):
+        # Nothing to do here: All outputs are directly connected to 
+        #  internal operators that handle their own dirty propagation.
+        pass
+
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs that support __setitem__
+        #   are directly connected to internal operators.
         pass
 
 class OpShapeReader(Operator):

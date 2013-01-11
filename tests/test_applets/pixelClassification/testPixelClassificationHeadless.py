@@ -3,10 +3,12 @@ import numpy
 import h5py
 import unittest
 import tempfile
+import functools
 
 from ilastik.utility.slicingtools import sl, slicing2shape
 from workflows.pixelClassification import PixelClassificationWorkflow
-from ilastik.shell.headless.startShellHeadless import startShellHeadless
+from ilastik.shell.projectManager import ProjectManager
+from ilastik.shell.headless.headlessShell import HeadlessShell
 
 import workflows.pixelClassification.pixelClassificationWorkflowMainHeadless as pcMainHeadless
 
@@ -48,12 +50,14 @@ class TestPixelClassificationHeadless(unittest.TestCase):
     @classmethod
     def create_new_tst_project(cls):
         # Instantiate 'shell'
-        shell, workflow = startShellHeadless( PixelClassificationWorkflow )
+        shell = HeadlessShell( PixelClassificationWorkflow )
         
         # Create a blank project file and load it.
         newProjectFilePath = cls.PROJECT_FILE
-        newProjectFile = shell.projectManager.createBlankProjectFile(newProjectFilePath)
-        shell.projectManager.loadProject(newProjectFile, newProjectFilePath)
+        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
+        newProjectFile.close()
+        shell.openProjectPath(newProjectFilePath)
+        workflow = shell.workflow
         
         # Add a file
         from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
@@ -62,6 +66,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         opDataSelection = workflow.dataSelectionApplet.topLevelOperator
         opDataSelection.Dataset.resize(1)
         opDataSelection.Dataset[0].setValue(info)
+        
         
         # Set some features
         ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]    
@@ -95,17 +100,17 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         slicing2 = sl[0:1,0:10,10:20,0:1,0:1]
         labels2 = 2 * numpy.ones(slicing2shape(slicing2), dtype=numpy.uint8)
         opPixelClass.LabelInputs[0][slicing2] = labels2
-        
+
         # Save and close
         shell.projectManager.saveProject()
-        shell.projectManager.closeCurrentProject()
-
+        del shell
+        
     def test(self):
         args = "ilastik_headless"
         args += " --project=" + self.PROJECT_FILE
-        args += " " + self.SAMPLE_DATA
         args += " --batch_output_dataset_name=/volume/pred_volume"
         args += " --sys_tmp_dir=/tmp"
+        args += " " + self.SAMPLE_DATA
 
         argv = args.split()
         return_code = pcMainHeadless.main(argv)
@@ -118,12 +123,16 @@ class TestPixelClassificationHeadless(unittest.TestCase):
             assert f["/volume/pred_volume"].shape[:-1] == self.data.shape[:-1] # Assume channel is last axis
             assert f["/volume/pred_volume"].shape[-1] == 2
         
-if __name__ == "__main__":
-    unittest.main()
-
 #if __name__ == "__main__":
-#    import sys
-#    import nose
-#    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-#    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-#    nose.run(defaultTest=__file__)
+#    unittest.main()
+
+if __name__ == "__main__":
+    #make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+    import sys
+    import nose
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)

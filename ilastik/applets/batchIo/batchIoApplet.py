@@ -11,14 +11,9 @@ class BatchIoApplet( Applet ):
     This applet allows the user to select sets of input data, 
     which are provided as outputs in the corresponding top-level applet operator.
     """
-    def __init__( self, graph, title ):
-        super(BatchIoApplet, self).__init__(title)
-
-        self._topLevelOperator = OperatorWrapper( OpBatchIo(graph=graph), promotedSlotNames=set(['DatasetPath', 'ImageToExport']) )
-        
-        # Ensure the operator has no length yet.
-        # FIXME: Why is this necessary??!?! Shouldn't it be zero anyway?
-        self._topLevelOperator.ImageToExport.resize(0)
+    def __init__( self, workflow, title ):
+        self._topLevelOperator = OperatorWrapper( OpBatchIo, parent=workflow, promotedSlotNames=set(['DatasetPath', 'ImageToExport', 'OutputFileNameBase']) )
+        super(BatchIoApplet, self).__init__(title, syncWithImageIndex=False)
 
         self._serializableItems = [ BatchIoSerializer(self._topLevelOperator, title) ]
 
@@ -33,8 +28,7 @@ class BatchIoApplet( Applet ):
     def topLevelOperator(self):
         return self._topLevelOperator
 
-    @property
-    def gui(self):
+    def getMultiLaneGui(self):
         if self._gui is None:
             from batchIoGui import BatchIoGui
             self._gui = BatchIoGui( self._topLevelOperator, self.guiControlSignal, self.progressSignal, self._title )
