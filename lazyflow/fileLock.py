@@ -94,6 +94,13 @@ class FileLock(object):
         """
         if self.is_locked:
             self.release()
+    
+    def purge(self):
+        """
+        For debug purposes only.  Removes the lock file from the hard disk.
+        """
+        if os.path.exists(self.lockfile):
+            self.release()
 
 if __name__ == "__main__":
     import sys
