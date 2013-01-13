@@ -4,6 +4,8 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from ilastik.utility.operatorSubView import OperatorSubView
 
+from ilastik.utility import OpMultiLaneWrapper
+
 from lazyflow.operators import OpBlockedSparseLabelArray, OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpPrecomputedInput, OpPixelOperator
 
@@ -61,8 +63,8 @@ class OpPixelClassification( Operator ):
         
         # Create internal operators
         # Explicitly wrapped:
-        self.opInputShapeReader = OperatorWrapper( OpShapeReader, parent=self, graph=self.graph )
-        self.opLabelArray = OperatorWrapper( OpBlockedSparseLabelArray, parent=self, graph=self.graph )
+        self.opLabelPipeline = OpMultiLaneWrapper( OpLabelPipeline, parent=self )
+
         self.predict = OperatorWrapper( OpPredictRandomForest, parent=self, graph=self.graph )
         self.prediction_cache = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self, graph=self.graph )
         assert len(self.prediction_cache.Input) == 0
@@ -75,31 +77,22 @@ class OpPixelClassification( Operator ):
         self.opMaxLabel = OpMaxValue( parent=self, graph=self.graph)
         self.opTrain = OpTrainRandomForestBlocked( parent=self, graph=self.graph )
 
-        # Set up label cache shape input
-        self.opInputShapeReader.Input.connect( self.InputImages )
-        self.opLabelArray.inputs["shape"].connect( self.opInputShapeReader.OutputShape )
-
         # Set up other label cache inputs
         self.LabelInputs.connect( self.InputImages )
-        self.opLabelArray.inputs["Input"].connect( self.LabelInputs )
-        self.opLabelArray.inputs["eraser"].setValue(100)
+        self.opLabelPipeline.RawImage.connect( self.LabelInputs )
+        self.opLabelPipeline.LabelInput.connect( self.LabelInputs )
                 
-        # Initialize the delete input to -1, which means "no label".
-        # Now changing this input to a positive value will cause label deletions.
-        # (The deleteLabel input is monitored for changes.)
-        self.opLabelArray.inputs["deleteLabel"].setValue(-1)
-        
         # Find the highest label in all the label images
-        self.opMaxLabel.Inputs.connect( self.opLabelArray.outputs['maxLabel'] )
+        self.opMaxLabel.Inputs.connect( self.opLabelPipeline.MaxLabel )
 
         ##
         # training
         ##
         
-        self.opTrain.inputs['Labels'].connect(self.opLabelArray.outputs["Output"])
-        self.opTrain.inputs['Images'].connect(self.CachedFeatureImages)
-        self.opTrain.inputs["nonzeroLabelBlocks"].connect(self.opLabelArray.outputs["nonzeroBlocks"])
-        self.opTrain.inputs['fixClassifier'].setValue(False)
+        self.opTrain.inputs['Labels'].connect( self.opLabelPipeline.Output )
+        self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
+        self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
+        self.opTrain.inputs['fixClassifier'].setValue( False )
 
         # The classifier is cached here to allow serializers to force in a pre-calculated classifier...
         self.classifier_cache = OpValueCache( parent=self, graph=self.graph )
@@ -131,11 +124,11 @@ class OpPixelClassification( Operator ):
         self.precomputed_predictions_gui.PrecomputedInput.connect( self.PredictionsFromDisk )
 
         # Connect our internal outputs to our external outputs
-        self.LabelImages.connect(self.opLabelArray.Output)
+        self.LabelImages.connect( self.opLabelPipeline.Output )
         self.MaxLabelValue.connect( self.opMaxLabel.Output )
-        self.NonzeroLabelBlocks.connect(self.opLabelArray.nonzeroBlocks)
-        self.PredictionProbabilities.connect(self.predict.PMaps)
-        self.CachedPredictionProbabilities.connect(self.precomputed_predictions.Output)
+        self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
+        self.PredictionProbabilities.connect( self.predict.PMaps )
+        self.CachedPredictionProbabilities.connect( self.precomputed_predictions.Output )
         self.Classifier.connect( self.classifier_cache.Output )
 
         
@@ -234,7 +227,7 @@ class OpPixelClassification( Operator ):
         ## Label Array blocks
         blockDims = { 't' : 1, 'x' : 64, 'y' : 64, 'z' : 64, 'c' : 1 }
         blockShape = tuple( blockDims[k] for k in axisOrder )
-        self.opLabelArray.blockShape.setValue( blockShape )
+        self.opLabelPipeline.BlockShape.setValue( blockShape )
 
         ## Pixel Cache blocks
         blockDimsX = { 't' : (1,1),
@@ -294,6 +287,47 @@ class OpPixelClassification( Operator ):
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
 
+class OpLabelPipeline( Operator ):
+    RawImage = InputSlot()
+    LabelInput = InputSlot()
+    BlockShape = InputSlot()
+    
+    Output = OutputSlot()
+    nonzeroBlocks = OutputSlot()
+    MaxLabel = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super( OpLabelPipeline, self ).__init__( *args, **kwargs )
+        self.opInputShapeReader = OpShapeReader( parent=self )
+        self.opInputShapeReader.Input.connect( self.RawImage )
+        
+        self.opLabelArray = OpBlockedSparseLabelArray( parent=self )
+        self.opLabelArray.Input.connect( self.LabelInput )
+        self.opLabelArray.blockShape.connect( self.BlockShape )
+        self.opLabelArray.shape.connect( self.opInputShapeReader.OutputShape )
+        self.opLabelArray.eraser.setValue(100)
+
+        # Initialize the delete input to -1, which means "no label".
+        # Now changing this input to a positive value will cause label deletions.
+        # (The deleteLabel input is monitored for changes.)
+        self.opLabelArray.deleteLabel.setValue(-1)
+
+        # Connect external outputs to their internal sources
+        self.Output.connect( self.opLabelArray.Output )
+        self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
+        self.MaxLabel.connect( self.opLabelArray.maxLabel )
+    
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs that support __setitem__
+        #   are directly connected to internal operators.
+        pass
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
+
+    def propagateDirty(self, slot, subindex, roi):
+        # Our output changes when the input changed shape, not when it becomes dirty.
+        pass
 
 class OpShapeReader(Operator):
     """
@@ -319,6 +353,9 @@ class OpShapeReader(Operator):
             pass
         self.OutputShape.setValue( tuple(shapeList) )
     
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
 
