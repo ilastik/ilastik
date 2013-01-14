@@ -251,7 +251,10 @@ class VigraWatershedViewerGui(LayerViewerGui):
         
         vol_caption = "Refresh Volume: {} megavox".format( totalVolume / float(1000 * 1000) )
         count_caption = "Supervoxel Count: {}".format( totalCount )
-        density_caption = "Density: {} supervox/megavox".format( totalCount * float(1000 * 1000) / totalVolume )
+        if totalVolume != 0:
+            density_caption = "Density: {} supervox/megavox".format( totalCount * float(1000 * 1000) / totalVolume )
+        else:
+            density_caption = ""
         
         # Update the GUI text, but do it in the GUI thread (even if we were called from a worker thread)
         self.thunkEventHandler.post( self._drawer.refreshVolumeLabel.setText,  vol_caption )
