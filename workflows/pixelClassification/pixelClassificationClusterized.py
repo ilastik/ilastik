@@ -212,19 +212,19 @@ if __name__ == "__main__":
         args.append( "--process_name=MASTER")
 
 #        # SMALL TEST
-#        args.append( "--option_config_file=/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik/cluster_options.json")
+#        args.append( "--option_config_file=/groups/flyem/data/bergs_scratch/cluster_options.json")
 #        args.append("--project=/groups/flyem/data/bergs_scratch/project_files/synapse_small.ilp")
 #        args.append( "--output_description_file=/home/bergs/clusterstuff/results/synapse_small_results/dataset_description.json")
 
-#        # BIGGER TEST
-#        args.append( "--option_config_file=/groups/flyem/proj/builds/cluster/src/ilastik-HEAD/ilastik/cluster_options.json")
-#        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
-#        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_predictions/dataset_description.json")
+        # BIGGER TEST
+        args.append( "--option_config_file=/groups/flyem/data/bergs_scratch/cluster_options.json")
+        args.append( "--project=/groups/flyem/data/bergs_scratch/project_files/gigacube.ilp")
+        args.append( "--output_description_file=/home/bergs/clusterstuff/results/gigacube_predictions/dataset_description.json")
 
-        # RESTful TEST
-        args.append( "--option_config_file=/home/bergs/bock11_cluster_trials/bock11-256_cluster_options.json")
-        args.append( "--project=/home/bergs/bock11_cluster_trials/bock11-256.ilp")
-        args.append( "--output_description_file=/home/bergs/bock11_cluster_trials/results/results_description.json")
+#        # RESTful TEST
+#        args.append( "--option_config_file=/home/bergs/bock11_cluster_trials/bock11-256_cluster_options.json")
+#        args.append( "--project=/home/bergs/bock11_cluster_trials/bock11-256.ilp")
+#        args.append( "--output_description_file=/home/bergs/bock11_cluster_trials/results/results_description.json")
 
         sys.argv += args
 
