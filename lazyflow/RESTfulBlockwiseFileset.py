@@ -153,12 +153,15 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
         view_shape = self.localDescription.view_shape
         view_roi = ([0]*len(view_shape), view_shape)
         block_starts = list( getIntersectingBlocks(self.localDescription.block_shape, view_roi) )
+        num_blocks = len(block_starts)
+        logger.debug( "Preparing to download {} blocks".format( num_blocks ) )
         while len(block_starts) > 0:
             batch = []
             for _ in range( max_parallel ):
                 batch.append( block_starts.pop() )
             logger.debug( "Next batch: {}".format(batch) )
             self._waitForBlocks( batch )
+            logger.debug( "Finished {}/{}".format( num_blocks-len(block_starts), num_blocks ) )
 
     def purgeAllLocks(self):
         """
@@ -181,7 +184,7 @@ if __name__ == "__main__":
     logger.addHandler( logging.StreamHandler( sys.stdout ) )
     logger.setLevel( logging.DEBUG )
 
-    vol = RESTfulBlockwiseFileset('/Users/bergs/bock11/bock11-description-256x256x32.json')
+    vol = RESTfulBlockwiseFileset('/home/bergs/bock11/description-256.json')
     vol.purgeAllLocks()
     vol.downloadAllBlocks(10)
 
