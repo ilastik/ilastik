@@ -3,7 +3,7 @@ from PyQt4.QtGui import QColor, QFileDialog
 from volumina.api import LazyflowSource, ColortableLayer
 import volumina.colortables as colortables
 
-from lazyflow.operators.obsolete.generic import axisTagsToString
+from lazyflow.operators.generic import axisTagsToString
 from lazyflow.rtype import SubRegion
 from lazyflow.utility import Tracer
 
