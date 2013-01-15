@@ -38,7 +38,17 @@ class FileLock(object):
         self.delay = delay
  
     def locked(self):
+        """
+        Returns True iff the file is owned by THIS FileLock instance.
+        (Even if this returns false, the file could be owned by another FileLock instance, possibly in a different thread or process).
+        """
         return self.is_locked
+    
+    def available(self):
+        """
+        Returns True iff the file is currently available to be locked.
+        """
+        return not os.path.exists(self.lockfile)
  
     def acquire(self, blocking=True):
         """ Acquire the lock, if possible. If the lock is in use, and `blocking` is False, return False.
@@ -101,7 +111,7 @@ class FileLock(object):
         """
         if os.path.exists(self.lockfile):
             self.release()
-
+    
 if __name__ == "__main__":
     import sys
     import functools
