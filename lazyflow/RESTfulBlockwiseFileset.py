@@ -161,6 +161,12 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
             self._waitForBlocks( batch )
 
     def purgeAllLocks(self):
+        """
+        Clears all .lock files from the local blockwise fileset.
+        This may be necessary if previous processes crashed or were killed while some blocks were downloading.
+        You must ensure that this is NOT called while more than one process (or thread) has access to the fileset.
+        For example, in a master/worker situation, call this only from the master, before the workers have been started.
+        """
         view_shape = self.localDescription.view_shape
         view_roi = ([0]*len(view_shape), view_shape)
         block_starts = list( getIntersectingBlocks(self.localDescription.block_shape, view_roi) )
