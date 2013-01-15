@@ -9,7 +9,7 @@ from lazyflow.operators.imgFilterOperators import OpGaussianSmoothing,\
      OpLaplacianOfGaussian, OpStructureTensorEigenvaluesSummedChannels,\
      OpHessianOfGaussianEigenvalues, OpGaussianGradientMagnitude,\
      OpDifferenceOfGaussians, OpHessianOfGaussian, OpStructureTensorEigenvalues
-from lazyflow.operators.obsolete import vigraOperators
+from lazyflow.operators import vigraOperators
 
 # Change this to view debug output files
 GENERATE_VISUAL_DEBUG_IMAGES = False

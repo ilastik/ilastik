@@ -150,7 +150,7 @@ class TestOpValueCache(object):
 
 #if __name__ == "__main__":
 #    import logging
-#    traceLogger = logging.getLogger("TRACE.lazyflow.operators.obsolete.valueProviders.OpValueCache")
+#    traceLogger = logging.getLogger("TRACE.lazyflow.operators.valueProviders.OpValueCache")
 #    traceLogger.setLevel(logging.DEBUG)
 #    handler = logging.StreamHandler()
 #    handler.setLevel(logging.DEBUG)

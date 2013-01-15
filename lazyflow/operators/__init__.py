@@ -12,11 +12,11 @@ try:
         pass
 except:
     modules = []
-    from obsolete import generic
-    from obsolete import vigraOperators
-    from obsolete import classifierOperators
-    from obsolete import valueProviders
-    from obsolete import operators
+    import generic
+    import vigraOperators
+    import classifierOperators
+    import valueProviders
+    import operators
     
     from opVigraWatershed import OpVigraWatershed
     from opVigraLabelVolume import OpVigraLabelVolume
