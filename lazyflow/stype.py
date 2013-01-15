@@ -1,6 +1,7 @@
 import numpy, vigra
 from roi import roiToSlice, sliceToRoi
 from lazyflow.utility.helpers import warn_deprecated
+import warnings
 
 class SlotType( object ):
     def __init__( self, slot):
@@ -80,14 +81,14 @@ class ArrayLike( SlotType ):
             try:
                 destination[:] = value[sl]
             except TypeError:
-                #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
+                warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
                 destination[:] = value
         else:
             sl = roiToSlice(roi.start, roi.stop)
             try:
                 destination = value[sl]
             except:
-                #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
+                warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
                 destination = [value]
 
             if type(destination) == numpy.ndarray and destination.shape == ():
@@ -96,14 +97,14 @@ class ArrayLike( SlotType ):
                 # e.g. try this:
                 # x = np.int64(5)
                 # assert type(x[()]) == np.ndarray and x[()].shape == ()
-                #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
+                warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
                 destination = [value]
         return destination
 
 
 
     def isCompatible(self, value):
-        warn_deprecated("FIXME here")
+        warnings.warn("ArrayLike.isCompatible: FIXME here")
         return True
 
 

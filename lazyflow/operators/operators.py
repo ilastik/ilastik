@@ -5,7 +5,6 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import sliceToRoi, roiToSlice, block_view, TinyVector
 from Queue import Empty
 from collections import deque
-from lazyflow.h5dumprestore import stringToClass
 import greenlet, threading
 import vigra
 import copy
@@ -367,7 +366,6 @@ class OpArrayCache(OpArrayPiper):
             self._has_fixed_dirty_blocks = False
             self._memory_manager = ArrayCacheMemoryMgr.instance
             self._running = 0
-            #lazyflow.verboseMemory = True
 
     def _memorySize(self):
         if self._cache is not None:
@@ -384,11 +382,9 @@ class OpArrayCache(OpArrayPiper):
                     self._cache.resize((1,), refcheck = refcheck)
                 except ValueError:
                     freed = 0
-                    if lazyflow.verboseMemory:
-                        self.logger.warn("OpArrayCache: freeing failed due to view references")
+                    self.logger.warn("OpArrayCache: freeing failed due to view references")
                 if freed > 0:
-                    if lazyflow.verboseMemory:
-                        self.logger.debug("OpArrayCache: freed cache of shape:{}".format(fshape))
+                    self.logger.debug("OpArrayCache: freed cache of shape:{}".format(fshape))
     
                     self._lock.acquire()
                     self._blockState[:] = OpArrayCache.DIRTY
@@ -408,8 +404,7 @@ class OpArrayCache(OpArrayPiper):
     
             self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) / numpy.array(self._blockShape))
     
-            if lazyflow.verboseMemory:
-                self.logger.debug("Configured OpArrayCache with shape={}, blockShape={}, dirtyShape={}, origBlockShape={}".format(self.shape, self._blockShape, self._dirtyShape, self._origBlockShape))
+            self.logger.debug("Configured OpArrayCache with shape={}, blockShape={}, dirtyShape={}, origBlockShape={}".format(self.shape, self._blockShape, self._dirtyShape, self._origBlockShape))
     
             # if the entry in _dirtyArray differs from _dirtyState
             # the entry is considered dirty
@@ -444,8 +439,7 @@ class OpArrayCache(OpArrayPiper):
 
             if self._cache is None or (self._cache.shape != self.shape):
                 mem = numpy.zeros(self.shape, dtype = self.dtype)
-                if lazyflow.verboseMemory:
-                    self.logger.debug("OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes)
+                self.logger.debug("OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes)
                 self.graph._notifyMemoryAllocation(self, mem.nbytes)
                 if self._blockState is None:
                     self._allocateManagementStructures()
@@ -712,50 +706,6 @@ class OpArrayCache(OpArrayPiper):
             self._blockState[blockKey] = self._dirtyState
             self._blockQuery[blockKey] = None
             self._lock.release()
-
-    def dumpToH5G(self, h5g, patchBoard):
-        h5g.dumpSubObjects({
-                    "graph": self.graph,
-                    "inputs": self.inputs,
-                    "outputs": self.outputs,
-                    "_origBlockShape" : self._origBlockShape,
-                    "_blockShape" : self._blockShape,
-                    "_dirtyShape" : self._dirtyShape,
-                    "_blockState" : self._blockState,
-                    "_dirtyState" : self._dirtyState,
-                    "_cache" : self._cache,
-                    "_lazyAlloc" : self._lazyAlloc,
-                    "_cacheHits" : self._cacheHits,
-                    "_fixed" : self._fixed
-                },patchBoard)
-
-
-    @classmethod
-    def reconstructFromH5G(cls, h5g, patchBoard):
-
-        g = h5g["graph"].reconstructObject(patchBoard)
-
-        op = stringToClass(h5g.attrs["className"])(graph=g)
-
-        patchBoard[h5g.attrs["id"]] = op
-        h5g.reconstructSubObjects(op, {
-                    "inputs": "inputs",
-                    "outputs": "outputs",
-                    "_origBlockShape" : "_origBlockShape",
-                    "_blockShape" : "_blockShape",
-                    "_blockState" : "_blockState",
-                    "_dirtyState" : "_dirtyState",
-                    "_dirtyShape" : "_dirtyShape",
-                    "_cache" : "_cache",
-                    "_lazyAlloc" : "_lazyAlloc",
-                    "_cacheHits" : "_cacheHits",
-                    "_fixed" : "_fixed"
-                },patchBoard)
-
-        setattr(op, "_blockQuery", numpy.ndarray(op._dirtyShape, dtype = object))
-
-        return op
-
 
 if has_blist:
     class OpSparseLabelArray(Operator):
@@ -1043,8 +993,7 @@ if has_blist:
     
                     self._dirtyShape = numpy.ceil(1.0 * numpy.array(self._cacheShape) / numpy.array(self._blockShape))
     
-                    if lazyflow.verboseMemory:
-                        print "Reconfigured Sparse labels with ", self._cacheShape, self._blockShape, self._dirtyShape, self._origBlockShape
+                    self.logger.debug( "Reconfigured Sparse labels with {}, {}, {}, {}".format( self._cacheShape, self._blockShape, self._dirtyShape, self._origBlockShape ) )
                     #FIXME: we don't really need this blockState thing
                     self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
     
@@ -1081,8 +1030,6 @@ if has_blist:
                 blockStop = (1.0 * stop / self._blockShape).ceil()
                 blockKey = roiToSlice(blockStart,blockStop)
                 innerBlocks = self._blockNumbers[blockKey]
-                if lazyflow.verboseRequests:
-                    print "OpBlockedSparseLabelArray %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))
                 for b_ind in innerBlocks.ravel():
                     #which part of the original key does this block fill?
                     offset = self._blockShape*self._flatBlockIndices[b_ind]
@@ -1327,10 +1274,6 @@ class OpBlockedArrayCache(Operator):
         #blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
         blockKey = roiToSlice(blockStart,blockStop)
         innerBlocks = self._blockNumbers[blockKey]
-
-        if lazyflow.verboseRequests:
-            print "OpSparseArrayCache %r: request with key %r for %d inner Blocks " % (self,key, len(innerBlocks.ravel()))
-
 
         requests = []
         for b_ind in innerBlocks.flat:

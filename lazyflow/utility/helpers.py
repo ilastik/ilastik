@@ -1,16 +1,9 @@
 import os,numpy,itertools,copy
-from lazyflow.config import CONFIG
 from lazyflow.roi import TinyVector, roiToSlice
+import warnings
 
 def warn_deprecated( msg ):
-    warn = True
-    if CONFIG.has_option("verbosity", "deprecation_warnings"):
-        warn = CONFIG.getboolean("verbosity", "deprecation_warnings")
-    if warn:
-        import inspect
-        import os.path
-        fi = inspect.getframeinfo(inspect.currentframe().f_back)
-        print "DEPRECATION WARNING: in", os.path.basename(fi.filename), "line", fi.lineno, ":", msg
+    warnings.warn( "DEPRECATION WARNING: " + msg )
 
 # deprecation warning decorator
 def deprecated( fn ):

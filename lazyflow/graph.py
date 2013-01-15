@@ -1639,11 +1639,7 @@ class OperatorWrapper(Operator):
         self.promotedSlotNames = promotedSlotNames
 
         self.innerOperators = []
-        if lazyflow.verboseWrapping:
-            msgLevel = logging.INFO
-        else:
-            msgLevel = logging.DEBUG
-        self.logger.log(msgLevel, "wrapping operator '%s'" % (operatorClass.name))
+        self.logger.log(logging.DEBUG, "wrapping operator '%s'" % (operatorClass.name))
 
         # replicate input slot definitions
         for innerSlot in sorted(operatorClass.inputSlots, key=lambda s: s._global_slot_id):
