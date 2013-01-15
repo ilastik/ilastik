@@ -21,7 +21,7 @@ Contents:
    overview
    advanced
 
-
+   utilities
 
 Indices and tables
 ==================
