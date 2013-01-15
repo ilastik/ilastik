@@ -5,7 +5,7 @@ import tempfile
 import numpy
 from lazyflow.graph import Graph
 from lazyflow.roi import getIntersectingBlocks
-from lazyflow.blockwiseFileset import BlockwiseFileset
+from lazyflow.utility.io import RESTfulBlockwiseFileset
 from lazyflow.operators.ioOperators import OpRESTfulBlockwiseFilesetReader
 
 import logging
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 logger.setLevel(logging.INFO)
-logger.setLevel(logging.DEBUG)
+#logger.setLevel(logging.DEBUG)
 
 class TestOpBlockwiseFilesetReader(object):
     
@@ -31,13 +31,13 @@ class TestOpBlockwiseFilesetReader(object):
             "name" : "Bock11-level0",
             "format" : "hdf5",
             "axes" : "zyx",
-            "##NOTE":"The first z-slice of the bock dataset is 2917, so the view_origin must be at least 2917",
-            "view_origin" : [2917, 50000, 50000],
-            "###shape" : [1239, 135424, 119808],
-            "shape" : [1239, 10000, 10000],
+            "## NOTE 1": "The first z-slice of the bock dataset is 2917, so the origin_offset must be at least 2917",
+            "## NOTE 2": "The website says that the data goes up to plane 4156, but it actually errors out past 4150",
+            "origin_offset" : [2917, 0, 0],
+            "bounds" : [4150, 135424, 119808],
             "dtype" : "numpy.uint8",
             "url_format" : "http://openconnecto.me/emca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
-            "hdf5_dataset" : "/cube"
+            "hdf5_dataset" : "cube"
         }
         """
 
@@ -97,17 +97,17 @@ class TestOpBlockwiseFilesetReader(object):
         op = OpRESTfulBlockwiseFilesetReader(graph=graph)
         op.DescriptionFilePath.setValue( self.descriptionFilePath )
         
-        logger.debug("test_2_Read(): Reading data")        
-        slice1 = numpy.s_[ 20:30, 30:40, 40:50 ]
+        logger.debug("test_2_Read(): Reading data")
+        slice1 = numpy.s_[ 20:30, 30:40, 20:30 ]
         readData = op.Output[ slice1 ].wait()
         assert readData.shape == (10, 10, 10)
 
-        logger.debug("test_2_Read(): Creating translated description")        
+        logger.debug("test_2_Read(): Creating translated description")
         # Create a copy of the original description, but specify a translated (and smaller) view
-        desc = BlockwiseFileset.readDescription(self.descriptionFilePath)
-        desc.view_origin = [20, 30, 40]
+        desc = RESTfulBlockwiseFileset.readDescription(self.descriptionFilePath)
+        desc.view_origin = [20, 30, 20]
         offsetConfigPath = self.descriptionFilePath + '_offset'
-        BlockwiseFileset.writeDescription(offsetConfigPath, desc)
+        RESTfulBlockwiseFileset.writeDescription(offsetConfigPath, desc)
 
         # Read the same data as before using the translated view (offset our roi)
         opTranslated = OpRESTfulBlockwiseFilesetReader(graph=graph)

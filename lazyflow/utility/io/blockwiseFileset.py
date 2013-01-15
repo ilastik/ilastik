@@ -5,9 +5,9 @@ import h5py
 import logging
 logger = logging.getLogger(__name__)
 
-from lazyflow.jsonConfig import AutoEval, FormattedField, JsonConfigSchema
+from lazyflow.utility.jsonConfig import AutoEval, FormattedField, JsonConfigSchema
 from lazyflow.roi import getIntersection, roiToSlice
-from lazyflow.pathHelpers import PathComponents, getPathVariants
+from lazyflow.utility import PathComponents, getPathVariants
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds
 
 try:

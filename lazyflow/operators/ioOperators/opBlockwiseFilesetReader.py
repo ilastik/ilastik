@@ -1,6 +1,6 @@
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.blockwiseFileset import BlockwiseFileset
+from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
 
 import logging
 logger = logging.getLogger(__name__)

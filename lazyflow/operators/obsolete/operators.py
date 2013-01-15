@@ -42,7 +42,7 @@ except:
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
-from lazyflow.tracer import Tracer
+from lazyflow.utility import Tracer
 
 class OpArrayPiper(Operator):
     name = "ArrayPiper"

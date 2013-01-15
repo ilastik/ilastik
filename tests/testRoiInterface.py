@@ -2,7 +2,7 @@ from unittest import TestCase
 import vigra,numpy
 from lazyflow.graph import Graph,Operator,InputSlot,OutputSlot
 from lazyflow.operators import OpArrayPiper
-from lazyflow.helpers import generateRandomRoi
+from lazyflow.utility.helpers import generateRandomRoi
 
 import lazyflow.roi
 

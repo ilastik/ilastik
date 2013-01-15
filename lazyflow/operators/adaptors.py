@@ -7,7 +7,7 @@ data types to this expected format.
 import os
 import os.path as path
 import numpy as np
-from lazyflow.slicingtools import sl, slicing2shape
+from lazyflow.utility.slicingtools import sl, slicing2shape
 import numpy
 
 _has_vigra = True

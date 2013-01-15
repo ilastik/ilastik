@@ -1,6 +1,6 @@
 import vigra, numpy
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
-from lazyflow.helpers import generateRandomKeys
+from lazyflow.utility.helpers import generateRandomKeys
 import glob,os
 from unittest.case import TestCase
 from shutil import rmtree

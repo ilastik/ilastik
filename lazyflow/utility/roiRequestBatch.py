@@ -3,7 +3,7 @@ import threading
 import collections
 import numpy
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds
-from lazyflow.graph import OrderedSignal
+from lazyflow.utility import OrderedSignal
 import itertools
 import lazyflow.stype
 

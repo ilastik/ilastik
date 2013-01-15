@@ -1,5 +1,5 @@
 from lazyflow.graph import Operator,InputSlot,OutputSlot
-from lazyflow.helpers import newIterator
+from lazyflow.utility.helpers import newIterator
 from lazyflow.operators.obsolete.generic import OpMultiArrayStacker
 from lazyflow.operators.obsolete.vigraOperators import Op50ToMulti
 from lazyflow.rtype import SubRegion

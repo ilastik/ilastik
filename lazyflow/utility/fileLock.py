@@ -19,10 +19,10 @@ import os
 import time
 import errno
  
-class FileLockException(Exception):
-    pass
- 
 class FileLock(object):
+    class FileLockException(Exception):
+        pass
+ 
     """ A file locking mechanism that has context-manager support so 
         you can use it in a with statement. This should be relatively cross
         compatible as it doesn't rely on msvcrt or fcntl for the locking.
@@ -67,7 +67,7 @@ class FileLock(object):
                 if e.errno != errno.EEXIST:
                     raise 
                 if self.timeout is not None and (time.time() - start_time) >= self.timeout:
-                    raise FileLockException("Timeout occurred.")
+                    raise FileLock.FileLockException("Timeout occurred.")
                 if not blocking:
                     return False
                 time.sleep(self.delay)

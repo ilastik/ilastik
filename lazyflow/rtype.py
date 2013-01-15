@@ -1,7 +1,7 @@
 from roi import sliceToRoi, roiToSlice
 import vigra,numpy,copy
 from lazyflow.roi import TinyVector
-from lazyflow import slicingtools
+from lazyflow.utility import slicingtools
 import cPickle as pickle
 
 class RoiMeta(type):

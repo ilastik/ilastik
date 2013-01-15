@@ -3,7 +3,7 @@ from lazyflow.operators import OpImageReader, OpBlockedArrayCache
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader
-from lazyflow.jsonConfig import JsonConfigSchema
+from lazyflow.utility.jsonConfig import JsonConfigSchema
 
 import h5py
 import vigra

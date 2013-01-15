@@ -2,7 +2,7 @@ import numpy
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpVigraWatershed
-from lazyflow.slicingtools import sl, slicing2shape
+from lazyflow.utility.slicingtools import sl, slicing2shape
 
 class TestOpVigraWatershed(object):
 

@@ -5,7 +5,7 @@ import tempfile
 import shutil
 import collections
 import numpy
-from lazyflow.jsonConfig import Namespace, JsonConfigSchema, AutoEval, FormattedField
+from lazyflow.utility.jsonConfig import Namespace, JsonConfigSchema, AutoEval, FormattedField
 
 import logging
 logger = logging.getLogger(__name__)

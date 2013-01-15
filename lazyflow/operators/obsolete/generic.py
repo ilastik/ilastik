@@ -7,7 +7,7 @@ import vigra
 import copy
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
-from lazyflow.tracer import Tracer
+from lazyflow.utility import Tracer
 
 def axisTagObjectFromFlag(flag):
 

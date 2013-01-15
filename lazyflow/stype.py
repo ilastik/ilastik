@@ -1,6 +1,6 @@
 import numpy, vigra
 from roi import roiToSlice, sliceToRoi
-from helpers import warn_deprecated
+from lazyflow.utility.helpers import warn_deprecated
 
 class SlotType( object ):
     def __init__( self, slot):

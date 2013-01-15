@@ -4,11 +4,11 @@ import errno
 import functools
 import threading
 import numpy
-from lazyflow.blockwiseFileset import BlockwiseFileset
-from lazyflow.RESTfulVolume import RESTfulVolume
+from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
+from lazyflow.utility.io.RESTfulVolume import RESTfulVolume
 from lazyflow.roi import getIntersectingBlocks
-from lazyflow.fileLock import FileLock
-from lazyflow.jsonConfig import JsonConfigSchema
+from lazyflow.utility import FileLock
+from lazyflow.utility.jsonConfig import JsonConfigSchema
 
 import logging
 logger = logging.getLogger(__name__)
@@ -132,7 +132,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
         Download the data for the given block, then release its file lock.
         :param fileLock: The lock for the file we are about to create.  MUST BE LOCKED already.
         :param entire_block_roi: The roi for the block to download.
-        :param blockFilePathComponents: A lazyflow.pathHelpers.PathComponents object describing the location of the block dataset file. 
+        :param blockFilePathComponents: A lazyflow.utility.PathComponents object describing the location of the block dataset file. 
         """
         try:
             # The blockFilePath has already been offset to accomodate any view offset, but the roi has not.

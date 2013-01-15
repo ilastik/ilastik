@@ -3,7 +3,7 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpBlockedSparseLabelArray
 
-from lazyflow.slicingtools import sl, slicing2shape
+from lazyflow.utility.slicingtools import sl, slicing2shape
 
 class TestOpBlockedSparseLabelArray(object):
     

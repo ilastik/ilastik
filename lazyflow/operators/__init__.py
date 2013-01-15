@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 import lazyflow
 
 from lazyflow.graph import Operator
-from lazyflow.helpers import itersubclasses
+from lazyflow.utility.helpers import itersubclasses
 
 try:
     if modules != None:

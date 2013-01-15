@@ -4,7 +4,7 @@ import tempfile
 import h5py
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.RESTfulVolume import RESTfulVolume
+from lazyflow.utility.io.RESTfulVolume import RESTfulVolume
 import logging
 logger = logging.getLogger(__name__)
 

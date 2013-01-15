@@ -4,7 +4,7 @@ import shutil
 import tempfile
 import random
 import numpy
-from lazyflow.blockwiseFileset import BlockwiseFileset
+from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
 from lazyflow.roi import sliceToRoi, getIntersectingBlocks
 
 import logging

@@ -5,7 +5,7 @@ from lazyflow.graph import Graph
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice
 from lazyflow.operators import OpArrayPiper
 
-from lazyflow.bigRequestStreamer import BigRequestStreamer
+from lazyflow.utility import BigRequestStreamer
 
 import logging
 logger = logging.getLogger(__name__)

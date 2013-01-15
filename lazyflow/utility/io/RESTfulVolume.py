@@ -3,8 +3,8 @@ import urllib2
 import numpy
 import shutil
 
-from lazyflow.pathHelpers import PathComponents
-from lazyflow.jsonConfig import JsonConfigSchema, AutoEval, FormattedField
+from lazyflow.utility import PathComponents
+from lazyflow.utility.jsonConfig import JsonConfigSchema, AutoEval, FormattedField
 
 import logging
 logger = logging.getLogger(__name__)

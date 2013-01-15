@@ -1,5 +1,5 @@
 import numpy
-from lazyflow.roiRequestBatch import RoiRequestBatch
+from lazyflow.utility import RoiRequestBatch
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds
 
 import logging
