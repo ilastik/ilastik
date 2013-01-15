@@ -17,7 +17,7 @@
         "lazyflow.operators.obsolete.vigraOperators":                       { "level":"INFO" },
         "lazyflow.operators.obsolete.vigraOperators.OpH5WriterBigDataset":  { "level":"INFO" },
         "lazyflow.operators.obsolete.classifierOperators":                  { "level":"INFO" },
-        "lazyflow.RESTfulVolume":                                           { "level":"DEBUG" },
+        "lazyflow.utility.io.RESTfulVolume":                                           { "level":"DEBUG" },
         "ilastik":                                                          { "level":"INFO" },
         "ilastik.clusterOps":                                               { "level":"DEBUG" },
         "ilastik.applets":                                                  { "level":"INFO" },

@@ -23,7 +23,7 @@ from volumina.interpreter import ClickReportingInterpreter
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.tracer import traceLogged, Tracer
+from lazyflow.utility import traceLogged, Tracer
 
 class LayerViewerGuiMetaclass(type(QMainWindow)):
     """

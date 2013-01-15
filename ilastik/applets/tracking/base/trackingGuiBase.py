@@ -5,7 +5,7 @@ import volumina.colortables as colortables
 
 from lazyflow.operators.obsolete.generic import axisTagsToString
 from lazyflow.rtype import SubRegion
-from lazyflow.tracer import Tracer
+from lazyflow.utility import Tracer
 
 import logging
 import os

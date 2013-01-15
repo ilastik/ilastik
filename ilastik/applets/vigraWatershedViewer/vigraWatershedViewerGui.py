@@ -20,7 +20,7 @@ from volumina.slicingtools import index2slice
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.tracer import traceLogged
+from lazyflow.utility import traceLogged
 
 class VigraWatershedViewerGui(LayerViewerGui):
     """

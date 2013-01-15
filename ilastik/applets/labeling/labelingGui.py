@@ -12,7 +12,7 @@ from PyQt4.QtCore import QRectF, Qt
 from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence, QWidget
 
 # HCI
-from lazyflow.tracer import traceLogged
+from lazyflow.utility import traceLogged
 from volumina.api import LazyflowSinkSource, ColortableLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 from ilastik.shell.gui.iconMgr import ilastikIcons

@@ -15,14 +15,14 @@ import shutil
 import hashlib
 from ilastik.clusterConfig import parseClusterConfigFile
 from ilastik.utility.timer import Timer, timed
-from lazyflow.blockwiseFileset import BlockwiseFileset
+from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
 from lazyflow.roi import getIntersectingBlocks
 
 from ilastik.utility.pathHelpers import getPathVariants
 
 from lazyflow.operators import OpH5WriterBigDataset, OpSubRegion
 
-from lazyflow.bigRequestStreamer import BigRequestStreamer
+from lazyflow.utility import BigRequestStreamer
 
 import logging
 logger = logging.getLogger(__name__)
