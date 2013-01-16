@@ -3,6 +3,7 @@ import vigra,numpy,copy
 from lazyflow.roi import TinyVector
 from lazyflow.utility import slicingtools
 import cPickle as pickle
+import collections
 
 class RoiMeta(type):
     """
@@ -159,7 +160,10 @@ class SubRegion(Roi):
         if tIndex is not None:
             tStart = self.start[tIndex]
             tStop = self.stop[tIndex]
-        if type(shape == int):
+        if isinstance(shape, collections.Iterable):
+            #add a dummy number for the channel dimension
+            shape = shape+(1,)
+        else:
             tmp = shape
             shape = numpy.zeros(self.dim).astype(int)
             shape[:] = tmp
