@@ -17,10 +17,10 @@ install:
    - ln -s /usr/lib/python2.7/dist-packages/sipconfig_nd.py $VIRTUAL_ENV/lib/python2.7/site-packages/
    - pip install -r requirements/development-stage1.txt --use-mirrors
    - pip install -r requirements/development-stage2.txt --use-mirrors
-   - sudo sh requirements/install_vigra.sh $VIRTUAL_ENV
+   - sudo sh .travis_scripts/install_vigra.sh $VIRTUAL_ENV
    - git clone http://github.com/ilastik/volumina /tmp/volumina
    - git clone http://github.com/ilastik/lazyflow /tmp/lazyflow
-   - sudo sh requirements/build_drtile.sh $VIRTUAL_ENV /tmp/lazyflow
+   - sudo sh .travis_scripts/build_drtile.sh $VIRTUAL_ENV /tmp/lazyflow
    - mkdir ~/.lazyflow
    - echo "[verbosity]" > ~/.lazyflow/config
    - echo "deprecation_warnings = false" >> ~/.lazyflow/config
