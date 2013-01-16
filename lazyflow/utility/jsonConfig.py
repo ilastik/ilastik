@@ -130,6 +130,10 @@ class FormattedField(object):
 #        return os.path.join( baseDir, fileBase + "{}".format(next_unused_index)  )
 
 class JsonConfigEncoder( json.JSONEncoder ):
+    """
+    This special Json encoder standardizes the way that special types are written to JSON format.
+    (e.g. numpy types, Namespace objects)
+    """
     def default(self, o):
         import numpy
         if isinstance(o, numpy.integer):
@@ -170,15 +174,24 @@ class JsonConfigParser( object ):
         self._fields['_schema_version'] = float
 
     def parseConfigFile(self, configFilePath):
+        """
+        Parse the JSON file at the given path into a Namespace object that provides easy access to the config contents.
+        Fields are converted from default JSON types into the types specified by the schema.
+        """
         with open(configFilePath) as configFile:
             try:
-                jsonDict = json.load( configFile, object_pairs_hook=collections.OrderedDict )
+                # Parse the json.
+                # Use a special object_pairs_hook to preserve the user's field order and do some error checking, too.
+                jsonDict = json.load( configFile, object_pairs_hook=self._createOrderedDictWithoutRepeats )
+            except JsonConfigParser.ParsingError:
+                raise
             except:
                 import sys
                 sys.stderr.write( "File '{}' is not valid json.  See stdout for exception details.".format(configFilePath) )
                 raise
 
             try:
+                # Conver the dict we got into a namespace
                 namespace = self._getNamespace(jsonDict)
             except JsonConfigParser.ParsingError, e:
                 raise type(e)( "Error parsing config file '{f}':\n{msg}".format( f=configFilePath, msg=e.args[0] ) )
@@ -197,6 +210,10 @@ class JsonConfigParser( object ):
             json.dump( configNamespace.__dict__, configFile, indent=4, cls=JsonConfigEncoder )
 
     def __call__(self, x):
+        """
+        This converts the given value (a dict) into a Namespace object.
+        By implmenenting __call__ this way, we allow NESTED JsonConfigs.
+        """
         try:
             namespace = self._getNamespace(x)
         except JsonConfigParser.ParsingError, e:
@@ -204,10 +221,14 @@ class JsonConfigParser( object ):
         return namespace
 
     def _getNamespace(self, jsonDict):
+        """
+        Convert the given dict into a Namespace object.
+        Each value is transformed into the type given by the schema fields.
+        """
         if isinstance( jsonDict, Namespace ):
             jsonDict = jsonDict.__dict__
         if not isinstance(jsonDict, collections.OrderedDict):
-            raise JsonConfigParser.ParsingError( "Expected a dict, got a {}".format( type(jsonDict) ) )
+            raise JsonConfigParser.ParsingError( "Expected a collections.OrderedDict, got a {}".format( type(jsonDict) ) )
         configDict = collections.OrderedDict( (str(k) , v) for k,v in jsonDict.items() )
 
         namespace = Namespace()
@@ -241,6 +262,9 @@ class JsonConfigParser( object ):
         return namespace
     
     def _transformValue(self, fieldType, val):
+        """
+        Convert val into the type given by fieldType.  Check for special cases first.
+        """
         # config file is allowed to contain null values, in which case the value is set to None
         if val is None:
             return None
@@ -252,6 +276,21 @@ class JsonConfigParser( object ):
         # Other special types will error check when they construct.
         return fieldType( val )
     
+    def _createOrderedDictWithoutRepeats(self, pairList):
+        """
+        Used as the ``object_pairs_hook`` when parsing a json file.
+        Creates an instance of collections.OrderedDict, but raises an exception 
+        if there are any repeated keys in the list of pairs.
+        We only care about keys that are actually part of the schema.
+        Note: There are some cases where this would do the wrong thing for NESTED schemas, but they are quite pathological.
+        """
+        ordered_dict = collections.OrderedDict()
+        for k,v in pairList:
+            if k in ordered_dict.keys() and k in self._fields.keys():
+                raise JsonConfigParser.ParsingError( "Invalid config: Duplicate entries for key: {}".format(k) )
+            # Insert the item
+            ordered_dict[k] = v
+        return ordered_dict
 
 
 
