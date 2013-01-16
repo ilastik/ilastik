@@ -14,7 +14,21 @@ import logging
 logger = logging.getLogger(__name__)
 
 class RESTfulBlockwiseFileset(BlockwiseFileset):
-    
+    """
+    This class combines the functionality of :py:class:`RESTfulVolume` and :py:class:`BlockwiseFileset`
+    to provide access to a remote dataset (e.g. from http://openconnecto.me), with all downloaded data 
+    cached locally as blocks stored in a directory tree of hdf5 files.
+
+    This class must be constructed with a description of both the remote dataset and the local 
+    storage format, provided in a JSON file with a composite schema specified by 
+    :py:data:`RESTfulBlockwiseFileset.DescriptionFields`.
+
+    .. note:: See the unit tests in ``tests/testRESTfulBlockwiseFileset.py`` for example usage.
+    """
+
+    #: This member specifies the schema of the description file.
+    #: It is merely a composite of two nested schemas: one that describes the remote volume,
+    #: and another that describes the local storage format.  See the source code to see the field names.
     DescriptionFields = \
     {
         "_schema_name" : "RESTful-blockwise-fileset-description",
@@ -30,15 +44,36 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
     
     @classmethod
     def readDescription(cls, descriptionFilePath):
+        """
+        Parse the description file at the given path and return a 
+        :py:class:`jsonConfig.Namespace` object with the description parameters.
+        The file will be parsed according to the schema given by :py:data:`RESTfulBlockwiseFileset.DescriptionFields`.
+        Any optional parameters not provided by the user are filled in automatically.
+        
+        :param descriptionFilePath: The path to the description file to parse.
+        """
         description = RESTfulBlockwiseFileset.DescriptionSchema.parseConfigFile( descriptionFilePath )
         RESTfulVolume.updateDescription(description.remote_description)
         return description
 
     @classmethod
     def writeDescription(cls, descriptionFilePath, descriptionFields):
+        """
+        Write a :py:class:`jsonConfig.Namespace` object to the given path.
+        
+        :param descriptionFilePath: The path to overwrite with the description fields.
+        :param descriptionFields: The fields to write.
+        """
         RESTfulBlockwiseFileset.DescriptionSchema.writeConfigFile( descriptionFilePath, descriptionFields )
 
     def __init__(self, compositeDescriptionPath ):
+        """
+        Constructor.  Uses `readDescription` interally.
+        
+        :param compositeDescriptionPath: The path to a JSON file that describes both the remote 
+                                         volume and local storage structure.  The JSON file schema is specified by 
+                                         :py:data:`RESTfulBlockwiseFileset.DescriptionFields`.
+        """
         # Parse the description file, which contains sub-configs for the blockwise description and RESTful description
         self.compositeDescription = RESTfulBlockwiseFileset.readDescription( compositeDescriptionPath )
 
@@ -62,6 +97,13 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
             raise
 
     def readData(self, roi, out_array=None):
+        """
+        Read data from the fileset.  If any of the requested data is not yet available locally, download it first.
+        
+        :param roi: The region of interest to read from the dataset.  Must be a tuple of iterables: (start, stop).
+        :param out_array: The location to store the read data.  Must be the correct size for the given roi.  If not provided, an array is created for you.
+        :returns: The requested data.  If out_array was provided, returns out_array.
+        """
         assert (numpy.array(roi[1]) <= numpy.array(self.localDescription.view_shape)).all(), "Requested roi '{}' is out of dataset bounds '{}'".format(roi, self.localDescription.view_shape) 
         # Before reading the data, check each of the needed blocks and download them first
         block_starts = getIntersectingBlocks(self.localDescription.block_shape, roi)
@@ -130,6 +172,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
     def _downloadBlock(self, fileLock, entire_block_roi, blockFilePathComponents):
         """
         Download the data for the given block, then release its file lock.
+        
         :param fileLock: The lock for the file we are about to create.  MUST BE LOCKED already.
         :param entire_block_roi: The roi for the block to download.
         :param blockFilePathComponents: A lazyflow.utility.PathComponents object describing the location of the block dataset file. 

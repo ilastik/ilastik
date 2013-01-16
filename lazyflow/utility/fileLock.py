@@ -1,18 +1,21 @@
 """
 Implementation of a simple cross-platform file locking mechanism.
-Modified from code retrieved on 2013-01-01 from http://www.evanfosmark.com/2009/01/cross-platform-file-locking-support-in-python
-Original code was released under the BSD License, as is this modified version.
+This is a modified version of code retrieved on 2013-01-01 from http://www.evanfosmark.com/2009/01/cross-platform-file-locking-support-in-python.
+The original code was released under the BSD License, as is this modified version.
 
 Modifications in this version:
+ - Tweak docstrings for sphinx.
  - Accept an absolute path for the protected file (instead of a file name relative to cwd).
  - Allow timeout to be None.
  - Fixed a bug that caused the original code to be NON-threadsafe when the same FileLock instance was shared by multiple threads in one process.
    (The original was safe for multiple processes, but not multiple threads in a single process.  This version is safe for both cases.)
- - Mimic threading.Lock interface:
-   - Added blocking parameter to ``acquire()`` method
+ - Added ``purge()`` function.
+ - Added ``available()`` function.
+ - Expanded API to mimic ``threading.Lock interface``:
    - ``__enter__`` always calls ``acquire()``, and therefore blocks if ``acquire()`` was called previously.
    - ``__exit__`` always calls ``release()``.  It is therefore a bug to call ``release()`` from within a context manager.
    - Added ``locked()`` function. 
+   - Added blocking parameter to ``acquire()`` method
 """
 
 import os
@@ -20,13 +23,13 @@ import time
 import errno
  
 class FileLock(object):
+    """ A file locking mechanism that has context-manager support so 
+        you can use it in a ``with`` statement. This should be relatively cross
+        compatible as it doesn't rely on ``msvcrt`` or ``fcntl`` for the locking.
+    """
+ 
     class FileLockException(Exception):
         pass
- 
-    """ A file locking mechanism that has context-manager support so 
-        you can use it in a with statement. This should be relatively cross
-        compatible as it doesn't rely on msvcrt or fcntl for the locking.
-    """
  
     def __init__(self, protected_file_path, timeout=None, delay=1):
         """ Prepare the file locker. Specify the file to lock and optionally
@@ -99,7 +102,7 @@ class FileLock(object):
  
  
     def __del__(self):
-        """ Make sure that the FileLock instance doesn't leave a lockfile
+        """ Make sure this ``FileLock`` instance doesn't leave a .lock file
             lying around.
         """
         if self.is_locked:
