@@ -42,6 +42,20 @@ FileLock
 
    .. automethod:: __init__
 
+JSON Config Parsing
+-------------------
+
+.. currentmodule:: lazyflow.utility.jsonConfig
+
+Some lazyflow components rely on a special JSON config file format.  The `JsonConfigParser` class handles parsing such files.
+
+.. autoclass:: JsonConfigParser
+   :members:
+
+   .. automethod:: __init__
+
+.. autoclass:: Namespace
+
 ============
 IO Utilities
 ============

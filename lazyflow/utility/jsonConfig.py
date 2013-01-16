@@ -7,7 +7,7 @@ class Namespace(object):
     """
     Provides the same functionality as:
     
-    .. code_block:: python
+    .. code-block:: python
     
         class Namespace(object):
             pass
@@ -107,28 +107,6 @@ class FormattedField(object):
         # TODO: Also validate that all format fields the user provided are known required/optional fields.
         return x    
 
-#class AutoDirField(object):
-#    def __init__(self, replaceString):
-#        self._replaceString = replaceString
-#    def __call__(self, x):
-#        x = str(x)
-#        if self._replaceString not in x:
-#            return x
-#        
-#        # Must be /some/dir/<AUTO>, not /some/dir/<AUTO>/plus/otherstuff
-#        replaceIndex = x.index(self._replaceString)
-#        assert replaceIndex + len(self._replaceString) == len(x), "Auto-replaced dir name must appear at the end of the config value."
-#        
-#        baseDir, fileBase = os.path.split( x[0:replaceIndex] )
-#        next_unused_index = 1
-#        for filename in os.listdir(baseDir):
-#            m = re.match("("+ fileBase + ")(\d+)", filename)
-#            if m:
-#                used_index = int(m.groups()[1])
-#                next_unused_index = max( next_unused_index, used_index+1 )
-#
-#        return os.path.join( baseDir, fileBase + "{}".format(next_unused_index)  )
-
 class JsonConfigEncoder( json.JSONEncoder ):
     """
     This special Json encoder standardizes the way that special types are written to JSON format.
@@ -154,6 +132,41 @@ class JsonConfigParser( object ):
     Simple config schema for json config files.
     Currently, only a very small set of json is supported.
     The schema fields must be a single non-nested dictionary of name : type (or pseudo-type) pairs.
+    
+    >>> # Specify schema as a dict
+    >>> SchemaFields = {
+    ...
+    ...   "_schema_name" : "example-schema",
+    ...   "_schema_version" : 1.0,
+    ... 
+    ...   "shoe_size" : int,
+    ...   "color" : str
+    ... }
+    >>> 
+    >>> # Write a config file to disk for this example.
+    >>> example_file_str = \\
+    ... \"""
+    ... {
+    ...   "_schema_name" : "example-schema",
+    ...   "_schema_version" : 1.0,
+    ... 
+    ...   "shoe_size" : 12,
+    ...   "color" : "red",
+    ...   "ignored_field" : "Fields that are unrecognized by the schema are ignored."
+    ... }
+    ... \"""
+    >>> with open('/tmp/example_config.json', 'w') as f:
+    ...   f.write(example_file_str)
+    >>> 
+    >>> # Create a parser that understands your schema
+    >>> parser = JsonConfigParser( SchemaFields )
+    >>> 
+    >>> # Parse the config file
+    >>> parsedFields = parser.parseConfigFile('/tmp/example_config.json')
+    >>> print parsedFields.shoe_size
+    12
+    >>> print parsedFields.color
+    red
     """
     class ParsingError(Exception):
         pass
@@ -161,7 +174,7 @@ class JsonConfigParser( object ):
     class SchemaError(ParsingError):
         pass
     
-    def __init__(self, fields, requiredSchemaName=None, requiredSchemaVersion=None):
+    def __init__( self, fields ):
         self._fields = dict(fields)
         assert '_schema_name' in fields.keys(), "JsonConfig Schema must have a field called '_schema_name'"
         assert '_schema_version' in fields.keys(), "JsonConfig Schema must have a field called '_schema_version'"
@@ -175,7 +188,7 @@ class JsonConfigParser( object ):
 
     def parseConfigFile(self, configFilePath):
         """
-        Parse the JSON file at the given path into a Namespace object that provides easy access to the config contents.
+        Parse the JSON file at the given path into a :py:class:`Namespace` object that provides easy access to the config contents.
         Fields are converted from default JSON types into the types specified by the schema.
         """
         with open(configFilePath) as configFile:
@@ -293,6 +306,8 @@ class JsonConfigParser( object ):
         return ordered_dict
 
 
-
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
 
 
