@@ -4,7 +4,7 @@ import numpy
 import shutil
 
 from lazyflow.utility import PathComponents
-from lazyflow.utility.jsonConfig import JsonConfigSchema, AutoEval, FormattedField
+from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval, FormattedField
 
 import logging
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ class RESTfulVolume(object):
                                        optionalFields=["t_start", "t_stop", "c_start", "c_stop"] ),
         "hdf5_dataset" : str
     }
-    DescriptionSchema = JsonConfigSchema( DescriptionFields )
+    DescriptionSchema = JsonConfigParser( DescriptionFields )
 
     @classmethod
     def readDescription(cls, descriptionFilePath):

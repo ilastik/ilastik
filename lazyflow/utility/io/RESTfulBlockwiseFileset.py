@@ -8,7 +8,7 @@ from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
 from lazyflow.utility.io.RESTfulVolume import RESTfulVolume
 from lazyflow.roi import getIntersectingBlocks
 from lazyflow.utility import FileLock
-from lazyflow.utility.jsonConfig import JsonConfigSchema
+from lazyflow.utility.jsonConfig import JsonConfigParser
 
 import logging
 logger = logging.getLogger(__name__)
@@ -35,12 +35,12 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
         "_schema_version" : 1.0,
 
         # Description of the RESTful Volume
-        "remote_description" : JsonConfigSchema( RESTfulVolume.DescriptionFields ),
+        "remote_description" : JsonConfigParser( RESTfulVolume.DescriptionFields ),
         
         # Description of the local block layout
-        "local_description" : JsonConfigSchema( BlockwiseFileset.DescriptionFields )
+        "local_description" : JsonConfigParser( BlockwiseFileset.DescriptionFields )
     }
-    DescriptionSchema = JsonConfigSchema( DescriptionFields )
+    DescriptionSchema = JsonConfigParser( DescriptionFields )
     
     @classmethod
     def readDescription(cls, descriptionFilePath):

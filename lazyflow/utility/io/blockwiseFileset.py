@@ -5,7 +5,7 @@ import h5py
 import logging
 logger = logging.getLogger(__name__)
 
-from lazyflow.utility.jsonConfig import AutoEval, FormattedField, JsonConfigSchema
+from lazyflow.utility.jsonConfig import AutoEval, FormattedField, JsonConfigParser
 from lazyflow.roi import getIntersection, roiToSlice
 from lazyflow.utility import PathComponents, getPathVariants
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds
@@ -53,7 +53,7 @@ class BlockwiseFileset(object):
         "dataset_root_dir" : str, # Abs path or relative to the description file itself. Defaults to "." if left blank.
         "hash_id" : str # Not user-defined (clients may use this)
     }
-    DescriptionSchema = JsonConfigSchema( DescriptionFields )
+    DescriptionSchema = JsonConfigParser( DescriptionFields )
 
     @classmethod
     def readDescription(cls, descriptionFilePath):
