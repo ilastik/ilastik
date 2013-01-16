@@ -1,0 +1,400 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>lazyflow.utility.jsonConfig &mdash; lazyflow v0.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="lazyflow v0.1 documentation" href="../../../index.html" />
+    <link rel="up" title="lazyflow.utility" href="../utility.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">lazyflow v0.1 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../utility.html" accesskey="U">lazyflow.utility</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for lazyflow.utility.jsonConfig</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="c"># We import numpy here so that eval() understands names like &quot;numpy.uint8&quot;</span>
+
+<span class="k">class</span> <span class="nc">Namespace</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Namespace"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.Namespace">[docs]</a><span class="sd">    Provides the same functionality as:</span>
+<span class="sd">    </span>
+<span class="sd">    .. code_block:: python</span>
+<span class="sd">    </span>
+<span class="sd">        class Namespace(object):</span>
+<span class="sd">            pass</span>
+
+<span class="sd">    except that ``self.__dict__`` is replaced with an instance of collections.OrderedDict</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Namespace</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__setattr__</span><span class="p">(</span> <span class="s">&#39;_items&#39;</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span> <span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">items</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">Namespace</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__getattribute__</span><span class="p">(</span><span class="s">&#39;_items&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">items</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">Namespace</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__getattribute__</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_items</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">__dict__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_items</span>
+
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Implemented to support copy.copy()</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Namespace</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__setattr__</span><span class="p">(</span> <span class="s">&#39;_items&#39;</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_items</span><span class="o">.</span><span class="n">update</span><span class="p">(</span> <span class="n">state</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compare two Namespace objects, with special treatment of numpy arrays to make sure they are compared correctly.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">eq</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">k1</span><span class="p">,</span><span class="n">v1</span><span class="p">),(</span><span class="n">k2</span><span class="p">,</span><span class="n">v2</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">other</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="p">):</span>
+            <span class="n">eq</span> <span class="o">&amp;=</span> <span class="p">(</span><span class="n">k1</span> <span class="o">==</span> <span class="n">k2</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">eq</span><span class="p">:</span>
+                <span class="n">b</span> <span class="o">=</span> <span class="p">(</span><span class="n">v1</span> <span class="o">==</span> <span class="n">v2</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                    <span class="n">eq</span> <span class="o">&amp;=</span> <span class="n">b</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+                    <span class="n">eq</span> <span class="o">&amp;=</span> <span class="n">b</span>
+        <span class="k">return</span> <span class="n">eq</span>
+
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">AutoEval</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span></div>
+<span class="sd">    Callable that serves as a pseudo-type.</span>
+<span class="sd">    Converts a value to a specific type, unless the value is a string, in which case it is evaluated first.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If a type t is provided, the value from the config will be converted using t as the constructor.</span>
+<span class="sd">        If t is not provided, the (possibly eval&#39;d) value will be returned &#39;as-is&#39; with no conversion.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_t</span> <span class="o">=</span> <span class="n">t</span>
+        <span class="k">if</span> <span class="n">t</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c"># If no conversion type was provided, we&#39;ll assume that the result of eval() is good enough. </span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_t</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span><span class="n">x</span>
+        
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="c"># Support these special type names without the need for a numpy prefix.</span>
+        <span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">uint8</span><span class="p">,</span> <span class="n">uint16</span><span class="p">,</span> <span class="n">uint32</span><span class="p">,</span> <span class="n">uint64</span><span class="p">,</span> <span class="n">int8</span><span class="p">,</span> <span class="n">int16</span><span class="p">,</span> <span class="n">int32</span><span class="p">,</span> <span class="n">int64</span><span class="p">,</span> <span class="n">float32</span><span class="p">,</span> <span class="n">float64</span>
+
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">_t</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">x</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">str</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">unicode</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_t</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_t</span><span class="p">(</span><span class="nb">eval</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_t</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">FormattedField</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Callable that serves as a pseudo-type for config values that will be used by ilastik as format strings.</span>
+<span class="sd">    Doesn&#39;t actually transform the given value, but does check it for the required format fields.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requiredFields</span><span class="p">,</span> <span class="n">optionalFields</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">requiredFields</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">optionalFields</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_requiredFields</span> <span class="o">=</span> <span class="n">requiredFields</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_optionalFields</span> <span class="o">=</span> <span class="n">optionalFields</span>
+    
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert x to str (no unicode), and check it for the required fields.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_requiredFields</span><span class="p">:</span>
+            <span class="n">fieldRegex</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">&#39;{[^}]*&#39;</span> <span class="o">+</span> <span class="n">f</span> <span class="o">+</span>  <span class="s">&#39;}&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">fieldRegex</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">JsonConfigParser</span><span class="o">.</span><span class="n">ParsingError</span><span class="p">(</span> <span class="s">&quot;Format string is missing required field: {{{f}}}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">f</span><span class="o">=</span><span class="n">f</span><span class="p">)</span> <span class="p">)</span>
+
+        <span class="c"># TODO: Also validate that all format fields the user provided are known required/optional fields.</span>
+        <span class="k">return</span> <span class="n">x</span>    
+
+<span class="k">class</span> <span class="nc">JsonConfigEncoder</span><span class="p">(</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONEncoder</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This special Json encoder standardizes the way that special types are written to JSON format.</span>
+<span class="sd">    (e.g. numpy types, Namespace objects)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">default</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">o</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">numpy</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">integer</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">floating</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&quot;No support for encoding multi-dimensional arrays in json.&quot;</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">Namespace</span><span class="p">):</span>
+            <span class="k">return</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">__dict__</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">o</span><span class="o">.</span><span class="n">__name__</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">(</span> <span class="n">JsonConfigEncoder</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">JsonConfigParser</span><span class="p">(</span> <span class="nb">object</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="JsonConfigParser"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser">[docs]</a><span class="sd">    Simple config schema for json config files.</span>
+<span class="sd">    Currently, only a very small set of json is supported.</span>
+<span class="sd">    The schema fields must be a single non-nested dictionary of name : type (or pseudo-type) pairs.</span>
+<span class="sd">    </span>
+<span class="sd">    &gt;&gt;&gt; # Specify schema as a dict</span>
+<span class="sd">    &gt;&gt;&gt; SchemaFields = {</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...   &quot;_schema_name&quot; : &quot;example-schema&quot;,</span>
+<span class="sd">    ...   &quot;_schema_version&quot; : 1.0,</span>
+<span class="sd">    ... </span>
+<span class="sd">    ...   &quot;shoe_size&quot; : int,</span>
+<span class="sd">    ...   &quot;color&quot; : str</span>
+<span class="sd">    ... }</span>
+<span class="sd">    &gt;&gt;&gt; </span>
+<span class="sd">    &gt;&gt;&gt; # Write a config file to disk for this example.</span>
+<span class="sd">    &gt;&gt;&gt; example_file_str = \\</span>
+<span class="sd">    ... &#39;{\\</span>
+<span class="sd">    ...   &quot;_schema_name&quot; : &quot;example-schema&quot;,\\</span>
+<span class="sd">    ...   &quot;_schema_version&quot; : 1.0,\\</span>
+<span class="sd">    ... \\</span>
+<span class="sd">    ...   &quot;shoe_size&quot; : 12,\\</span>
+<span class="sd">    ...   &quot;color&quot; : &quot;red&quot;,\\</span>
+<span class="sd">    ...   &quot;ignored_field&quot; : &quot;Fields that are unrecognized by the schema are ignored.&quot;\\</span>
+<span class="sd">    ... }&#39;</span>
+<span class="sd">    &gt;&gt;&gt; with open(&#39;/tmp/example_config.json&#39;, &#39;w&#39;) as f:</span>
+<span class="sd">    ...   f.write(example_file_str) </span>
+<span class="sd">    &gt;&gt;&gt;</span>
+<span class="sd">    &gt;&gt;&gt; # Create a parser that understands your schema</span>
+<span class="sd">    &gt;&gt;&gt; parser = JsonConfigParser( SchemaFields )</span>
+<span class="sd">    &gt;&gt;&gt; </span>
+<span class="sd">    &gt;&gt;&gt; # Parse the config file</span>
+<span class="sd">    &gt;&gt;&gt; parsedFields = parser.parseConfigFile(&#39;/tmp/example_config.json&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; print parsedFields.shoe_size</span>
+<span class="sd">    12</span>
+<span class="sd">    &gt;&gt;&gt; print parsedFields.color</span>
+<span class="sd">    red</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">class</span> <span class="nc">ParsingError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+        <span class="k">pass</span>
+    
+    <span class="k">class</span> <span class="nc">SchemaError</span><span class="p">(</span><span class="n">ParsingError</span><span class="p">):</span>
+        <span class="k">pass</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">fields</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
+<div class="viewcode-block" id="JsonConfigParser.__init__"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.__init__">[docs]</a>        <span class="k">assert</span> <span class="s">&#39;_schema_name&#39;</span> <span class="ow">in</span> <span class="n">fields</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="s">&quot;JsonConfig Schema must have a field called &#39;_schema_name&#39;&quot;</span>
+        <span class="k">assert</span> <span class="s">&#39;_schema_version&#39;</span> <span class="ow">in</span> <span class="n">fields</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="s">&quot;JsonConfig Schema must have a field called &#39;_schema_version&#39;&quot;</span>
+
+        <span class="c"># Special case for the required schema fields</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_requiredSchemaName</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="p">[</span><span class="s">&#39;_schema_name&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_expectedSchemaVersion</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="p">[</span><span class="s">&#39;_schema_version&#39;</span><span class="p">]</span>
+    
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="p">[</span><span class="s">&#39;_schema_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="p">[</span><span class="s">&#39;_schema_version&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span>
+
+    <span class="k">def</span> <span class="nf">parseConfigFile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">configFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="JsonConfigParser.parseConfigFile"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.parseConfigFile">[docs]</a><span class="sd">        Parse the JSON file at the given path into a Namespace object that provides easy access to the config contents.</span>
+<span class="sd">        Fields are converted from default JSON types into the types specified by the schema.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">configFilePath</span><span class="p">)</span> <span class="k">as</span> <span class="n">configFile</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c"># Parse the json.</span>
+                <span class="c"># Use a special object_pairs_hook to preserve the user&#39;s field order and do some error checking, too.</span>
+                <span class="n">jsonDict</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span> <span class="n">configFile</span><span class="p">,</span> <span class="n">object_pairs_hook</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_createOrderedDictWithoutRepeats</span> <span class="p">)</span>
+            <span class="k">except</span> <span class="n">JsonConfigParser</span><span class="o">.</span><span class="n">ParsingError</span><span class="p">:</span>
+                <span class="k">raise</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="kn">import</span> <span class="nn">sys</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span> <span class="s">&quot;File &#39;{}&#39; is not valid json.  See stdout for exception details.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">configFilePath</span><span class="p">)</span> <span class="p">)</span>
+                <span class="k">raise</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c"># Conver the dict we got into a namespace</span>
+                <span class="n">namespace</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getNamespace</span><span class="p">(</span><span class="n">jsonDict</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">JsonConfigParser</span><span class="o">.</span><span class="n">ParsingError</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)(</span> <span class="s">&quot;Error parsing config file &#39;{f}&#39;:</span><span class="se">\n</span><span class="s">{msg}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">f</span><span class="o">=</span><span class="n">configFilePath</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">)</span> <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">namespace</span>
+
+    <span class="k">def</span> <span class="nf">writeConfigFile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">configFilePath</span><span class="p">,</span> <span class="n">configNamespace</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="JsonConfigParser.writeConfigFile"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.jsonConfig.JsonConfigParser.writeConfigFile">[docs]</a><span class="sd">        Simply write the given object to a json file as a dict, </span>
+<span class="sd">        but check it for errors first by parsing each field with the schema.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># Check for errors by parsing the fields</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getNamespace</span><span class="p">(</span><span class="n">configNamespace</span><span class="o">.</span><span class="n">__dict__</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">configFilePath</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">configFile</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span> <span class="n">configNamespace</span><span class="o">.</span><span class="n">__dict__</span><span class="p">,</span> <span class="n">configFile</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">cls</span><span class="o">=</span><span class="n">JsonConfigEncoder</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span></div>
+<span class="sd">        This converts the given value (a dict) into a Namespace object.</span>
+<span class="sd">        By implmenenting __call__ this way, we allow NESTED JsonConfigs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">namespace</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getNamespace</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">JsonConfigParser</span><span class="o">.</span><span class="n">ParsingError</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)(</span> <span class="s">&quot;Couldn&#39;t parse sub-config:</span><span class="se">\n</span><span class="s">{msg}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">msg</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">)</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="n">namespace</span>
+
+    <span class="k">def</span> <span class="nf">_getNamespace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jsonDict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert the given dict into a Namespace object.</span>
+<span class="sd">        Each value is transformed into the type given by the schema fields.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span> <span class="n">jsonDict</span><span class="p">,</span> <span class="n">Namespace</span> <span class="p">):</span>
+            <span class="n">jsonDict</span> <span class="o">=</span> <span class="n">jsonDict</span><span class="o">.</span><span class="n">__dict__</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">jsonDict</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">JsonConfigParser</span><span class="o">.</span><span class="n">ParsingError</span><span class="p">(</span> <span class="s">&quot;Expected a collections.OrderedDict, got a {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="nb">type</span><span class="p">(</span><span class="n">jsonDict</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+        <span class="n">configDict</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">(</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">jsonDict</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="p">)</span>
+
+        <span class="n">namespace</span> <span class="o">=</span> <span class="n">Namespace</span><span class="p">()</span>
+        <span class="c"># Keys that the user gave us are </span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">configDict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">fieldType</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">finalValue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transformValue</span><span class="p">(</span> <span class="n">fieldType</span><span class="p">,</span> <span class="n">value</span> <span class="p">)</span>
+                <span class="k">except</span> <span class="n">JsonConfigParser</span><span class="o">.</span><span class="n">ParsingError</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)(</span> <span class="s">&quot;Error parsing config field &#39;{f}&#39;:</span><span class="se">\n</span><span class="s">{msg}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">f</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">)</span> <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">setattr</span><span class="p">(</span> <span class="n">namespace</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">finalValue</span> <span class="p">)</span>
+
+        <span class="c"># All other config fields are None by default</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">namespace</span><span class="o">.</span><span class="n">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">namespace</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+
+        <span class="c"># Check for schema errors</span>
+        <span class="k">if</span> <span class="n">namespace</span><span class="o">.</span><span class="n">_schema_name</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_requiredSchemaName</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s">&quot;File schema &#39;{}&#39; does not match required schema &#39;{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">namespace</span><span class="o">.</span><span class="n">_schema_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_requiredSchemaName</span> <span class="p">)</span>
+            <span class="k">raise</span> <span class="n">JsonConfigParser</span><span class="o">.</span><span class="n">SchemaError</span><span class="p">(</span> <span class="n">msg</span> <span class="p">)</span>
+
+        <span class="c"># Schema versions with the same integer (not fraction) are considered backwards compatible.</span>
+        <span class="k">if</span> <span class="n">namespace</span><span class="o">.</span><span class="n">_schema_version</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_expectedSchemaVersion</span> \
+        <span class="ow">or</span> <span class="nb">int</span><span class="p">(</span><span class="n">namespace</span><span class="o">.</span><span class="n">_schema_version</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_expectedSchemaVersion</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s">&quot;File schema version &#39;{}&#39; is not compatible with expected schema version &#39;{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">namespace</span><span class="o">.</span><span class="n">_schema_version</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_expectedSchemaVersion</span> <span class="p">)</span>
+            <span class="k">raise</span> <span class="n">JsonConfigParser</span><span class="o">.</span><span class="n">SchemaError</span><span class="p">(</span> <span class="n">msg</span> <span class="p">)</span>
+                    
+        <span class="k">return</span> <span class="n">namespace</span>
+    
+    <span class="k">def</span> <span class="nf">_transformValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fieldType</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert val into the type given by fieldType.  Check for special cases first.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># config file is allowed to contain null values, in which case the value is set to None</span>
+        <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+
+        <span class="c"># Check special error cases</span>
+        <span class="k">if</span> <span class="n">fieldType</span> <span class="ow">is</span> <span class="nb">bool</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">JsonConfigParser</span><span class="o">.</span><span class="n">ParsingError</span><span class="p">(</span> <span class="s">&quot;Expected bool, got {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="nb">type</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+        
+        <span class="c"># Other special types will error check when they construct.</span>
+        <span class="k">return</span> <span class="n">fieldType</span><span class="p">(</span> <span class="n">val</span> <span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">_createOrderedDictWithoutRepeats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pairList</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Used as the ``object_pairs_hook`` when parsing a json file.</span>
+<span class="sd">        Creates an instance of collections.OrderedDict, but raises an exception </span>
+<span class="sd">        if there are any repeated keys in the list of pairs.</span>
+<span class="sd">        We only care about keys that are actually part of the schema.</span>
+<span class="sd">        Note: There are some cases where this would do the wrong thing for NESTED schemas, but they are quite pathological.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ordered_dict</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">pairList</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">ordered_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="ow">and</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="n">JsonConfigParser</span><span class="o">.</span><span class="n">ParsingError</span><span class="p">(</span> <span class="s">&quot;Invalid config: Duplicate entries for key: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="p">)</span>
+            <span class="c"># Insert the item</span>
+            <span class="n">ordered_dict</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+        <span class="k">return</span> <span class="n">ordered_dict</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">doctest</span></div>
+    <span class="n">doctest</span><span class="o">.</span><span class="n">testmod</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">lazyflow v0.1 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../utility.html" >lazyflow.utility</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+    </div>
+  </body>
+</html>
