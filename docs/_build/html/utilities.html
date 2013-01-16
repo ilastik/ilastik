@@ -61,7 +61,7 @@
 </ul>
 </li>
 <li><a class="reference internal" href="#io-utilities" id="id7">IO Utilities</a><ul>
-<li><a class="reference internal" href="#blockwisefileset" id="id8">BlockwiseFileset</a></li>
+<li><a class="reference internal" href="#blockwise-data-format" id="id8">Blockwise Data Format</a></li>
 <li><a class="reference internal" href="#remote-volumes" id="id9">Remote Volumes</a></li>
 </ul>
 </li>
@@ -449,8 +449,51 @@ but check it for errors first by parsing each field with the schema.</p>
 <div class="section" id="io-utilities">
 <h1><a class="toc-backref" href="#id7">IO Utilities</a><a class="headerlink" href="#io-utilities" title="Permalink to this headline">¶</a></h1>
 <p>These utilities provide access to special data formats supported by lazyflow.</p>
-<div class="section" id="blockwisefileset">
-<h2><a class="toc-backref" href="#id8">BlockwiseFileset</a><a class="headerlink" href="#blockwisefileset" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="blockwise-data-format">
+<h2><a class="toc-backref" href="#id8">Blockwise Data Format</a><a class="headerlink" href="#blockwise-data-format" title="Permalink to this headline">¶</a></h2>
+<p>For big datasets, lazyflow supports a special input/output format that is based on blocks
+of data stored as hdf5 files in a special directory tree structure.  The dataset is described by a special json file.</p>
+<p>A small example explains the basics.  Consider a dataset with axes x-y-z and
+shape 300x100x100.  Suppose it is stored on disk in blocks of size 100x50x50.
+Let&#8217;s start by inspecting the dataset description file:</p>
+<div class="highlight-bash"><pre>$ ls
+data_description_params.json  my_dataset_blocks
+$
+$ cat data_description_params.json
+{
+    "_schema_name" : "blockwise-fileset-description",
+    "_schema_version" : 1.0,
+
+    "name" : "example_data",
+    "format" : "hdf5",
+    "axes" : "xyz",
+    "shape" : [300,100,100],
+    "dtype" : "numpy.uint8",
+    "block_shape" : [100, 50, 50],
+    "dataset_root_dir" : "./my_dataset_blocks",
+    "block_file_name_format" : "blockFile-{roiString}.h5/volume/data"
+}</pre>
+</div>
+<p>This listing shows how the directory tree is structured:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>ls my_dataset_blocks/*/*/*/*.h5
+my_dataset_blocks/x_00000000/y_00000000/z_00000000/blockFile-<span class="o">([</span>0, 0, 0<span class="o">]</span>, <span class="o">[</span>100, 50, 50<span class="o">])</span>.h5
+my_dataset_blocks/x_00000000/y_00000000/z_00000050/blockFile-<span class="o">([</span>0, 0, 50<span class="o">]</span>, <span class="o">[</span>100, 50, 100<span class="o">])</span>.h5
+my_dataset_blocks/x_00000000/y_00000050/z_00000000/blockFile-<span class="o">([</span>0, 50, 0<span class="o">]</span>, <span class="o">[</span>100, 100, 50<span class="o">])</span>.h5
+my_dataset_blocks/x_00000000/y_00000050/z_00000050/blockFile-<span class="o">([</span>0, 50, 50<span class="o">]</span>, <span class="o">[</span>100, 100, 100<span class="o">])</span>.h5
+my_dataset_blocks/x_00000100/y_00000000/z_00000000/blockFile-<span class="o">([</span>100, 0, 0<span class="o">]</span>, <span class="o">[</span>200, 50, 50<span class="o">])</span>.h5
+my_dataset_blocks/x_00000100/y_00000000/z_00000050/blockFile-<span class="o">([</span>100, 0, 50<span class="o">]</span>, <span class="o">[</span>200, 50, 100<span class="o">])</span>.h5
+my_dataset_blocks/x_00000100/y_00000050/z_00000000/blockFile-<span class="o">([</span>100, 50, 0<span class="o">]</span>, <span class="o">[</span>200, 100, 50<span class="o">])</span>.h5
+my_dataset_blocks/x_00000100/y_00000050/z_00000050/blockFile-<span class="o">([</span>100, 50, 50<span class="o">]</span>, <span class="o">[</span>200, 100, 100<span class="o">])</span>.h5
+my_dataset_blocks/x_00000200/y_00000000/z_00000000/blockFile-<span class="o">([</span>200, 0, 0<span class="o">]</span>, <span class="o">[</span>300, 50, 50<span class="o">])</span>.h5
+my_dataset_blocks/x_00000200/y_00000000/z_00000050/blockFile-<span class="o">([</span>200, 0, 50<span class="o">]</span>, <span class="o">[</span>300, 50, 100<span class="o">])</span>.h5
+my_dataset_blocks/x_00000200/y_00000050/z_00000000/blockFile-<span class="o">([</span>200, 50, 0<span class="o">]</span>, <span class="o">[</span>300, 100, 50<span class="o">])</span>.h5
+my_dataset_blocks/x_00000200/y_00000050/z_00000050/blockFile-<span class="o">([</span>200, 50, 50<span class="o">]</span>, <span class="o">[</span>300, 100, 100<span class="o">])</span>.h5
+</pre></div>
+</div>
+<p>But you shouldn&#8217;t really have to worry too much about how the data is stored.
+The <a class="reference internal" href="#lazyflow.utility.io.BlockwiseFileset" title="lazyflow.utility.io.BlockwiseFileset"><tt class="xref py py-class docutils literal"><span class="pre">BlockwiseFileset</span></tt></a> and <a class="reference internal" href="#lazyflow.utility.io.RESTfulBlockwiseFileset" title="lazyflow.utility.io.RESTfulBlockwiseFileset"><tt class="xref py py-class docutils literal"><span class="pre">RESTfulBlockwiseFileset</span></tt></a> classes
+provide a high-level API for reading and writing such datasets.
+See the documentation of those classes for details.</p>
 <dl class="class">
 <dt id="lazyflow.utility.io.BlockwiseFileset">
 <em class="property">class </em><tt class="descclassname">lazyflow.utility.io.</tt><tt class="descname">BlockwiseFileset</tt><big>(</big><em>descriptionFilePath</em>, <em>mode='r'</em>, <em>preparsedDescription=None</em><big>)</big><a class="headerlink" href="#lazyflow.utility.io.BlockwiseFileset" title="Permalink to this definition">¶</a></dt>
@@ -872,7 +915,7 @@ Any optional parameters not provided by the user are filled in automatically.</p
 </ul>
 </li>
 <li><a class="reference internal" href="#io-utilities">IO Utilities</a><ul>
-<li><a class="reference internal" href="#blockwisefileset">BlockwiseFileset</a></li>
+<li><a class="reference internal" href="#blockwise-data-format">Blockwise Data Format</a></li>
 <li><a class="reference internal" href="#remote-volumes">Remote Volumes</a></li>
 </ul>
 </li>
