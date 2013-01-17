@@ -24,6 +24,56 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
     :py:data:`RESTfulBlockwiseFileset.DescriptionFields`.
 
     .. note:: See the unit tests in ``tests/testRESTfulBlockwiseFileset.py`` for example usage.
+
+    Here's an example description file.
+    
+    .. code-block:: json
+
+        {
+            "_schema_name" : "RESTful-blockwise-fileset-description",
+            "_schema_version" : 1.0,
+        
+            "remote_description" : 
+            {
+                "_schema_name" : "RESTful-volume-description",
+                "_schema_version" : 1.0,
+            
+                "name" : "Bock11-level0",
+                "format" : "hdf5",
+                "axes" : "zyx",
+        
+                "## NOTE": "The origin offset determines how coordinates are translated when converted to a url.",
+                "## NOTE": "The origin_offset for the bock11 dataset must be at least 2917, because for some reason that's where it starts.",
+                "origin_offset" : [2917, 0, 0],
+        
+                "## NOTE": "The website says that the data goes up to plane 4156, but it actually errors out past 4150",
+                "bounds" : [4150, 135424, 119808],
+                "dtype" : "numpy.uint8",
+                "url_format" : "http://openconnecto.me/emca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
+                "hdf5_dataset" : "cube"
+            },
+        
+            "local_description" :
+            {
+                "_schema_name" : "blockwise-fileset-description",
+                "_schema_version" : 1.0,
+        
+                "name" : "bock11-blocks",
+                "format" : "hdf5",
+                "axes" : "zyx",
+                "shape" : "[ 4150-2917, 135424, 119808 ]",
+                "dtype" : "numpy.uint8",
+                "block_shape" : [32, 256, 256],
+                "block_file_name_format" : "block-{roiString}.h5/cube",
+                "dataset_root_dir" : "blocks-256x256x32",
+        
+                "## NOTE":"These optional parameters tell ilastik to view only a portion of the on-disk dataset.",
+                "## NOTE":"view_origin MUST be aligned to a block start corner.",
+                "## NOTE":"view_shape is optional, but recommended because volumina slows down when there are 1000s of tiles.",
+                "view_origin" : "[0, 50*1024, 50*1024]",
+                "view_shape" : "[4150-2917, 10*256, 10*256]"
+            }
+        }
     """
 
     #: This member specifies the schema of the description file.
