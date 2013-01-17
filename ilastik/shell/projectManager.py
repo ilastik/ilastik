@@ -275,7 +275,10 @@ class ProjectManager(object):
 
     @property
     def _applets(self):
-        return self.workflow.applets
+        if self.workflow is not None:
+            return self.workflow.applets
+        else:
+            return []
 
     def _loadProject(self, hdf5File, projectFilePath, readOnly):
         """
@@ -357,7 +360,8 @@ class ProjectManager(object):
         self._loadProject(newProjectFile, newProjectFilePath, False)
 
     def _closeCurrentProject(self):
-        self.workflow.cleanUp()
+        if self.workflow is not None:
+            self.workflow.cleanUp()
         self.workflow = None
         if self.currentProjectFile is not None:
             self.currentProjectFile.close()

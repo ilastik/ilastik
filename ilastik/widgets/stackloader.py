@@ -30,7 +30,7 @@
 import glob
 import os
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators.obsolete.vigraOperators import *
+from lazyflow.operators.vigraOperators import *
 from lazyflow.operators.ioOperators import OpStackLoader
 
 

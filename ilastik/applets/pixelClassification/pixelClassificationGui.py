@@ -12,7 +12,7 @@ from PyQt4.QtCore import Qt, pyqtSlot
 from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon
 
 # HCI
-from lazyflow.tracer import Tracer, traceLogged
+from lazyflow.utility import Tracer, traceLogged
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from volumina.utility import ShortcutManager
 
@@ -61,8 +61,8 @@ class PixelClassificationGui(LabelingGui):
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
         labelSlots.labelOutput = topLevelOperatorView.LabelImages
-        labelSlots.labelEraserValue = topLevelOperatorView.opLabelArray.eraser
-        labelSlots.labelDelete = topLevelOperatorView.opLabelArray.deleteLabel
+        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
+        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
 

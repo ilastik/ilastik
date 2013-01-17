@@ -1,4 +1,4 @@
-from lazyflow.jsonConfig import JsonConfigSchema, AutoEval, FormattedField
+from lazyflow.utility.jsonConfig import JsonConfigSchema, AutoEval, FormattedField
 
 #: Schema for all cluster config options
 #: (Doesn't specify which are required and which aren't.)

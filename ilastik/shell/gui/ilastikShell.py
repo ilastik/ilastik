@@ -22,7 +22,7 @@ import sys
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
-from lazyflow.tracer import Tracer
+from lazyflow.utility import Tracer
 
 import ilastik.ilastik_logging
 

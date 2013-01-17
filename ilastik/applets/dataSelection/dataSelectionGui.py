@@ -31,7 +31,7 @@ import vigra
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
-from lazyflow.tracer import Tracer
+from lazyflow.utility import Tracer
 
 class Column():
     """ Enum for table column positions """
