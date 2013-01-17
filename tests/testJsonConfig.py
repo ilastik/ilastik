@@ -5,7 +5,8 @@ import tempfile
 import shutil
 import collections
 import numpy
-from lazyflow.utility.jsonConfig import Namespace, JsonConfigSchema, AutoEval, FormattedField
+import nose
+from lazyflow.utility.jsonConfig import Namespace, JsonConfigParser, AutoEval, FormattedField
 
 import logging
 logger = logging.getLogger(__name__)
@@ -70,7 +71,7 @@ class TestJsonConfig(object):
         "array_setting" : numpy.array,
         "array_from_string_setting" : AutoEval(numpy.array),
         
-        "subconfig" : JsonConfigSchema(SubConfigSchema)
+        "subconfig" : JsonConfigParser(SubConfigSchema)
     }
     
     @classmethod
@@ -112,7 +113,7 @@ class TestJsonConfig(object):
             shutil.rmtree(cls.tempDir)
     
     def testRead(self):
-        configFields = JsonConfigSchema( TestJsonConfig.TestSchema ).parseConfigFile( TestJsonConfig.configpath )
+        configFields = JsonConfigParser( TestJsonConfig.TestSchema ).parseConfigFile( TestJsonConfig.configpath )
 
         assert configFields.string_setting == "This is a sentence."
         assert configFields.int_setting == 42
@@ -131,19 +132,49 @@ class TestJsonConfig(object):
         assert configFields.subconfig.sub_settingB == "no"
 
     def testWrite(self):
-        configFields = JsonConfigSchema( TestJsonConfig.TestSchema ).parseConfigFile( TestJsonConfig.configpath )
+        configFields = JsonConfigParser( TestJsonConfig.TestSchema ).parseConfigFile( TestJsonConfig.configpath )
         configFields.string_setting = "This is a different sentence."
         configFields.int_setting = 100
         configFields.bool_setting = False
         
         # Write it.
         newConfigFilePath = TestJsonConfig.configpath + "_2"
-        JsonConfigSchema( TestJsonConfig.TestSchema ).writeConfigFile( newConfigFilePath, configFields )
+        JsonConfigParser( TestJsonConfig.TestSchema ).writeConfigFile( newConfigFilePath, configFields )
         
         # Read it back.
-        newConfigFields = JsonConfigSchema( TestJsonConfig.TestSchema ).parseConfigFile( newConfigFilePath )
+        newConfigFields = JsonConfigParser( TestJsonConfig.TestSchema ).parseConfigFile( newConfigFilePath )
         assert newConfigFields == configFields, "Config field content was not preserved after writing/reading"
         assert configFields.__dict__.items() == configFields.__dict__.items(), "Config field ORDER was not preserved after writing/reading"
+
+    @nose.tools.raises( JsonConfigParser.ParsingError )
+    def testExceptionIfRepeatedFields(self):
+        """
+        This test creates a config that has an error: A field has been repeated.
+        We expect to see an exception from the parser telling us that we screwed up.
+        (See decorator above.)
+        """
+
+        testConfig = \
+        """
+        {
+            "_schema_name" : "test-schema",
+            "_schema_version" : 1.0,
+
+            "string_setting" : "First instance",
+            "string_setting" : "Repeated instance"
+        }
+        """
+        tempDir = tempfile.mkdtemp()
+        configpath = os.path.join(tempDir, "config.json")
+        logger.debug("Using config file: " + configpath)
+        with open(configpath, 'w') as f:
+            f.write(testConfig)
+
+        try:
+            configFields = JsonConfigParser( TestJsonConfig.TestSchema ).parseConfigFile( configpath )
+        finally:
+            # Clean up temporary file
+            shutil.rmtree(tempDir)
 
 if __name__ == "__main__":
     import sys

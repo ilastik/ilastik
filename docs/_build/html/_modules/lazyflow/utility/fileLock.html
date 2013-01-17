@@ -1,0 +1,245 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>lazyflow.utility.fileLock &mdash; lazyflow v0.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="lazyflow v0.1 documentation" href="../../../index.html" />
+    <link rel="up" title="lazyflow.utility" href="../utility.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">lazyflow v0.1 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../utility.html" accesskey="U">lazyflow.utility</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for lazyflow.utility.fileLock</h1><pre>
+Modified from code retrieved on 2013-01-01 from http://www.evanfosmark.com/2009/01/cross-platform-file-locking-support-in-python
+Original code was released under the BSD License, as is this modified version.
+
+Modifications in this version:
+ - Accept an absolute path for the protected file (instead of a file name relative to cwd).
+ - Allow timeout to be None.
+ - Fixed a bug that caused the original code to be NON-threadsafe when the same FileLock instance was shared by multiple threads in one process.
+   (The original was safe for multiple processes, but not multiple threads in a single process.  This version is safe for both cases.)
+ - Added ``purge()`` function.
+ - Added ``available()`` function.
+ - Expand API to mimic threading.Lock interface:
+   - ``__enter__`` always calls ``acquire()``, and therefore blocks if ``acquire()`` was called previously.
+   - ``__exit__`` always calls ``release()``.  It is therefore a bug to call ``release()`` from within a context manager.
+   - Added ``locked()`` function. 
+   - Added blocking parameter to ``acquire()`` method
+"""
+
+import os
+import time
+import errno
+ 
+class FileLock(object):
+    """ A file locking mechanism that has context-manager support so 
+<div class="viewcode-block" id="FileLock"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.fileLock.FileLock">[docs]</a>        you can use it in a ``with`` statement. This should be relatively cross
+        compatible as it doesn't rely on ``msvcrt`` or ``fcntl`` for the locking.
+    """
+ 
+    class FileLockException(Exception):
+        pass
+ 
+    def __init__(self, protected_file_path, timeout=None, delay=1):
+        """ Prepare the file locker. Specify the file to lock and optionally
+<div class="viewcode-block" id="FileLock.__init__"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.fileLock.FileLock.__init__">[docs]</a>            the maximum timeout and the delay between each attempt to lock.
+        """
+        self.is_locked = False
+        self.lockfile = protected_file_path + ".lock"
+        self.timeout = timeout
+        self.delay = delay
+ 
+    def locked(self):
+        """</div>
+<div class="viewcode-block" id="FileLock.locked"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.fileLock.FileLock.locked">[docs]</a>        Returns True iff the file is owned by THIS FileLock instance.
+        (Even if this returns false, the file could be owned by another FileLock instance, possibly in a different thread or process).
+        """
+        return self.is_locked
+    
+    def available(self):
+        """</div>
+<div class="viewcode-block" id="FileLock.available"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.fileLock.FileLock.available">[docs]</a>        Returns True iff the file is currently available to be locked.
+        """
+        return not os.path.exists(self.lockfile)
+ 
+    def acquire(self, blocking=True):
+        """ Acquire the lock, if possible. If the lock is in use, and `blocking` is False, return False.</div>
+<div class="viewcode-block" id="FileLock.acquire"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.fileLock.FileLock.acquire">[docs]</a>            Otherwise, check again every `self.delay` seconds until it either gets the lock or
+            exceeds `timeout` number of seconds, in which case it raises an exception.
+        """
+        start_time = time.time()
+        while True:
+            try:
+                # Attempt to create the lockfile.
+                # These flags cause os.open to raise an OSError if the file already exists.
+                self.fd = os.open( self.lockfile, os.O_CREAT | os.O_EXCL | os.O_RDWR )
+                os.close(self.fd)
+                break;
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise 
+                if self.timeout is not None and (time.time() - start_time) &gt;= self.timeout:
+                    raise FileLock.FileLockException("Timeout occurred.")
+                if not blocking:
+                    return False
+                time.sleep(self.delay)
+        self.is_locked = True
+        return True
+ 
+    def release(self):
+        """ Get rid of the lock by deleting the lockfile. </div>
+<div class="viewcode-block" id="FileLock.release"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.fileLock.FileLock.release">[docs]</a>            When working in a `with` statement, this gets automatically 
+            called at the end.
+        """
+        self.is_locked = False
+        os.unlink(self.lockfile)
+
+ 
+    def __enter__(self):
+        """ Activated when used in the with statement. </div>
+            Should automatically acquire a lock to be used in the with block.
+        """
+        self.acquire()
+        return self
+ 
+ 
+    def __exit__(self, type, value, traceback):
+        """ Activated at the end of the with statement.
+            It automatically releases the lock if it isn't locked.
+        """
+        self.release()
+ 
+ 
+    def __del__(self):
+        """ Make sure this ``FileLock`` instance doesn't leave a .lock file
+            lying around.
+        """
+        if self.is_locked:
+            self.release()
+    
+    def purge(self):
+        """
+<div class="viewcode-block" id="FileLock.purge"><a class="viewcode-back" href="../../../utilities.html#lazyflow.utility.fileLock.FileLock.purge">[docs]</a>        For debug purposes only.  Removes the lock file from the hard disk.
+        """
+        if os.path.exists(self.lockfile):
+            self.release()
+    
+if __name__ == "__main__":
+    import sys</div></div>
+    import functools
+    import threading
+    import tempfile
+    temp_dir = tempfile.mkdtemp()
+    protected_filepath = os.path.join( temp_dir, "somefile.txt" )
+    fl = FileLock( protected_filepath )
+
+    def writeLines(line, repeat=10):
+        with fl:
+            for _ in range(repeat):
+                with open( protected_filepath, 'a' ) as f:
+                    f.write( line + "\n" )
+                    f.flush()
+    
+    th1 = threading.Thread(target=functools.partial( writeLines, "1111111111111111111111111111111" ) )
+    th2 = threading.Thread(target=functools.partial( writeLines, "2222222222222222222222222222222" ) )
+    th3 = threading.Thread(target=functools.partial( writeLines, "3333333333333333333333333333333" ) )
+    th4 = threading.Thread(target=functools.partial( writeLines, "4444444444444444444444444444444" ) )
+    
+    th1.start()
+    th2.start()
+    th3.start()
+    th4.start()
+    
+    th1.join()
+    th2.join()
+    th3.join()
+    th4.join()
+    
+    assert not os.path.exists( fl.lockfile ), "The lock file wasn't cleaned up!"
+    
+    # Print the contents of the file.
+    # Please manually inspect the output.  Does it look like the operations were atomic?
+    with open( protected_filepath, 'r' ) as f:
+        sys.stdout.write( f.read() )
+    
+    </pre>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">lazyflow v0.1 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../utility.html" >lazyflow.utility</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.8.
+    </div>
+  </body>
+</html>

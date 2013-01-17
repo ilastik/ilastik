@@ -3,7 +3,7 @@ from lazyflow.operators import OpImageReader, OpBlockedArrayCache
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader
-from lazyflow.utility.jsonConfig import JsonConfigSchema
+from lazyflow.utility.jsonConfig import JsonConfigParser
 
 import h5py
 import vigra
@@ -155,7 +155,7 @@ class OpInputDataReader(Operator):
                 # This will raise a SchemaError if this is the wrong type of json config.
                 opReader.DescriptionFilePath.setValue( filePath )
                 return (opReader, opReader.Output)
-            except JsonConfigSchema.SchemaError:
+            except JsonConfigParser.SchemaError:
                 opReader.cleanUp()
         return (None, None)
 
@@ -169,7 +169,7 @@ class OpInputDataReader(Operator):
                 # This will raise a SchemaError if this is the wrong type of json config.
                 opReader.DescriptionFilePath.setValue( filePath )
                 return (opReader, opReader.Output)
-            except JsonConfigSchema.SchemaError:
+            except JsonConfigParser.SchemaError:
                 opReader.cleanUp()
         return (None, None)
 

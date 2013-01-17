@@ -7,7 +7,7 @@ class Namespace(object):
     """
     Provides the same functionality as:
     
-    .. code_block:: python
+    .. code-block:: python
     
         class Namespace(object):
             pass
@@ -102,34 +102,16 @@ class FormattedField(object):
         for f in self._requiredFields:
             fieldRegex = re.compile('{[^}]*' + f +  '}')
             if fieldRegex.search(x) is None:
-                raise JsonConfigSchema.ParsingError( "Format string is missing required field: {{{f}}}".format(f=f) )
+                raise JsonConfigParser.ParsingError( "Format string is missing required field: {{{f}}}".format(f=f) )
 
         # TODO: Also validate that all format fields the user provided are known required/optional fields.
         return x    
 
-#class AutoDirField(object):
-#    def __init__(self, replaceString):
-#        self._replaceString = replaceString
-#    def __call__(self, x):
-#        x = str(x)
-#        if self._replaceString not in x:
-#            return x
-#        
-#        # Must be /some/dir/<AUTO>, not /some/dir/<AUTO>/plus/otherstuff
-#        replaceIndex = x.index(self._replaceString)
-#        assert replaceIndex + len(self._replaceString) == len(x), "Auto-replaced dir name must appear at the end of the config value."
-#        
-#        baseDir, fileBase = os.path.split( x[0:replaceIndex] )
-#        next_unused_index = 1
-#        for filename in os.listdir(baseDir):
-#            m = re.match("("+ fileBase + ")(\d+)", filename)
-#            if m:
-#                used_index = int(m.groups()[1])
-#                next_unused_index = max( next_unused_index, used_index+1 )
-#
-#        return os.path.join( baseDir, fileBase + "{}".format(next_unused_index)  )
-
 class JsonConfigEncoder( json.JSONEncoder ):
+    """
+    This special Json encoder standardizes the way that special types are written to JSON format.
+    (e.g. numpy types, Namespace objects)
+    """
     def default(self, o):
         import numpy
         if isinstance(o, numpy.integer):
@@ -145,11 +127,46 @@ class JsonConfigEncoder( json.JSONEncoder ):
             return o.__name__
         return super( JsonConfigEncoder, self ).default(o)
 
-class JsonConfigSchema( object ):
+class JsonConfigParser( object ):
     """
     Simple config schema for json config files.
     Currently, only a very small set of json is supported.
     The schema fields must be a single non-nested dictionary of name : type (or pseudo-type) pairs.
+    
+    >>> # Specify schema as a dict
+    >>> SchemaFields = {
+    ...
+    ...   "_schema_name" : "example-schema",
+    ...   "_schema_version" : 1.0,
+    ... 
+    ...   "shoe_size" : int,
+    ...   "color" : str
+    ... }
+    >>> 
+    >>> # Write a config file to disk for this example.
+    >>> example_file_str = \\
+    ... \"""
+    ... {
+    ...   "_schema_name" : "example-schema",
+    ...   "_schema_version" : 1.0,
+    ... 
+    ...   "shoe_size" : 12,
+    ...   "color" : "red",
+    ...   "ignored_field" : "Fields that are unrecognized by the schema are ignored."
+    ... }
+    ... \"""
+    >>> with open('/tmp/example_config.json', 'w') as f:
+    ...   f.write(example_file_str)
+    >>> 
+    >>> # Create a parser that understands your schema
+    >>> parser = JsonConfigParser( SchemaFields )
+    >>> 
+    >>> # Parse the config file
+    >>> parsedFields = parser.parseConfigFile('/tmp/example_config.json')
+    >>> print parsedFields.shoe_size
+    12
+    >>> print parsedFields.color
+    red
     """
     class ParsingError(Exception):
         pass
@@ -157,7 +174,7 @@ class JsonConfigSchema( object ):
     class SchemaError(ParsingError):
         pass
     
-    def __init__(self, fields, requiredSchemaName=None, requiredSchemaVersion=None):
+    def __init__( self, fields ):
         self._fields = dict(fields)
         assert '_schema_name' in fields.keys(), "JsonConfig Schema must have a field called '_schema_name'"
         assert '_schema_version' in fields.keys(), "JsonConfig Schema must have a field called '_schema_version'"
@@ -170,17 +187,26 @@ class JsonConfigSchema( object ):
         self._fields['_schema_version'] = float
 
     def parseConfigFile(self, configFilePath):
+        """
+        Parse the JSON file at the given path into a :py:class:`Namespace` object that provides easy access to the config contents.
+        Fields are converted from default JSON types into the types specified by the schema.
+        """
         with open(configFilePath) as configFile:
             try:
-                jsonDict = json.load( configFile, object_pairs_hook=collections.OrderedDict )
+                # Parse the json.
+                # Use a special object_pairs_hook to preserve the user's field order and do some error checking, too.
+                jsonDict = json.load( configFile, object_pairs_hook=self._createOrderedDictWithoutRepeats )
+            except JsonConfigParser.ParsingError:
+                raise
             except:
                 import sys
                 sys.stderr.write( "File '{}' is not valid json.  See stdout for exception details.".format(configFilePath) )
                 raise
 
             try:
+                # Conver the dict we got into a namespace
                 namespace = self._getNamespace(jsonDict)
-            except JsonConfigSchema.ParsingError, e:
+            except JsonConfigParser.ParsingError, e:
                 raise type(e)( "Error parsing config file '{f}':\n{msg}".format( f=configFilePath, msg=e.args[0] ) )
 
         return namespace
@@ -197,17 +223,25 @@ class JsonConfigSchema( object ):
             json.dump( configNamespace.__dict__, configFile, indent=4, cls=JsonConfigEncoder )
 
     def __call__(self, x):
+        """
+        This converts the given value (a dict) into a Namespace object.
+        By implmenenting __call__ this way, we allow NESTED JsonConfigs.
+        """
         try:
             namespace = self._getNamespace(x)
-        except JsonConfigSchema.ParsingError, e:
+        except JsonConfigParser.ParsingError, e:
             raise type(e)( "Couldn't parse sub-config:\n{msg}".format( msg=e.args[0] ) )
         return namespace
 
     def _getNamespace(self, jsonDict):
+        """
+        Convert the given dict into a Namespace object.
+        Each value is transformed into the type given by the schema fields.
+        """
         if isinstance( jsonDict, Namespace ):
             jsonDict = jsonDict.__dict__
         if not isinstance(jsonDict, collections.OrderedDict):
-            raise JsonConfigSchema.ParsingError( "Expected a dict, got a {}".format( type(jsonDict) ) )
+            raise JsonConfigParser.ParsingError( "Expected a collections.OrderedDict, got a {}".format( type(jsonDict) ) )
         configDict = collections.OrderedDict( (str(k) , v) for k,v in jsonDict.items() )
 
         namespace = Namespace()
@@ -217,7 +251,7 @@ class JsonConfigSchema( object ):
                 fieldType = self._fields[key]
                 try:
                     finalValue = self._transformValue( fieldType, value )
-                except JsonConfigSchema.ParsingError, e:
+                except JsonConfigParser.ParsingError, e:
                     raise type(e)( "Error parsing config field '{f}':\n{msg}".format( f=key, msg=e.args[0] ) )
                 else:
                     setattr( namespace, key, finalValue )
@@ -230,30 +264,50 @@ class JsonConfigSchema( object ):
         # Check for schema errors
         if namespace._schema_name != self._requiredSchemaName:
             msg = "File schema '{}' does not match required schema '{}'".format( namespace._schema_name, self._requiredSchemaName )
-            raise JsonConfigSchema.SchemaError( msg )
+            raise JsonConfigParser.SchemaError( msg )
 
         # Schema versions with the same integer (not fraction) are considered backwards compatible.
         if namespace._schema_version > self._expectedSchemaVersion \
         or int(namespace._schema_version) < int(self._expectedSchemaVersion):
             msg = "File schema version '{}' is not compatible with expected schema version '{}'".format( namespace._schema_version, self._expectedSchemaVersion )
-            raise JsonConfigSchema.SchemaError( msg )
+            raise JsonConfigParser.SchemaError( msg )
                     
         return namespace
     
     def _transformValue(self, fieldType, val):
+        """
+        Convert val into the type given by fieldType.  Check for special cases first.
+        """
         # config file is allowed to contain null values, in which case the value is set to None
         if val is None:
             return None
 
         # Check special error cases
         if fieldType is bool and not isinstance(val, bool):
-            raise JsonConfigSchema.ParsingError( "Expected bool, got {}".format( type(val) ) )
+            raise JsonConfigParser.ParsingError( "Expected bool, got {}".format( type(val) ) )
         
         # Other special types will error check when they construct.
         return fieldType( val )
     
+    def _createOrderedDictWithoutRepeats(self, pairList):
+        """
+        Used as the ``object_pairs_hook`` when parsing a json file.
+        Creates an instance of collections.OrderedDict, but raises an exception 
+        if there are any repeated keys in the list of pairs.
+        We only care about keys that are actually part of the schema.
+        Note: There are some cases where this would do the wrong thing for NESTED schemas, but they are quite pathological.
+        """
+        ordered_dict = collections.OrderedDict()
+        for k,v in pairList:
+            if k in ordered_dict.keys() and k in self._fields.keys():
+                raise JsonConfigParser.ParsingError( "Invalid config: Duplicate entries for key: {}".format(k) )
+            # Insert the item
+            ordered_dict[k] = v
+        return ordered_dict
 
 
-
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
 
 

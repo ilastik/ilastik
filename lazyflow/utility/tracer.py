@@ -4,16 +4,32 @@ import inspect
 class Tracer(object):
     """
     Context manager to simplify function entry/exit logging trace statements.
+    
     Example Usage:
+
+    >>> # Create a TRACE logger
+    >>> import sys, logging
+    >>> traceLogger = logging.getLogger("TRACE.examplemodule1")
+    >>> traceLogger.addHandler( logging.StreamHandler(sys.stdout) )
     
-    def f():
-        with Tracer(logging.getLogger("TRACE." + mymodule)):
-            print "Function f is running..."
+    >>> # Use the context manager
+    >>> def f():
+    ...     with Tracer(traceLogger):
+    ...         print "Function f is running..."
     
-    Example Output:
-        DEBUG TRACE.mymodule:__enter__: f
-        Function f is running...
-        DEBUG TRACE.mymodule:__exit__: f
+    >>> # If TRACE logging isn't enabled, there's no extra output
+    >>> f()
+    Function f is running...
+
+    >>> # Enable TRACE logging to see enter/exit log statements.
+    >>> traceLogger.setLevel(logging.DEBUG)
+    >>> f()
+    (enter) f 
+    Function f is running...
+    (exit) f
+    
+    >>> # Disable TRACE logging by setting the level above DEBUG.
+    >>> traceLogger.setLevel(logging.INFO)
     """
     def __init__(self, logger, level=logging.DEBUG, msg='', determine_caller=True, caller_name=''):
         if type(logger) == str:
@@ -39,7 +55,36 @@ class Tracer(object):
 from functools import wraps
 
 def traceLogged(logger, level=logging.DEBUG, msg='', caller_name=''):
-    """Returns a decorator that logs the entry and exit of its target function."""
+    """
+    Returns a decorator that logs the entry and exit of its target function.
+    Uses the the :py:class:`Tracer` context manager internally.
+
+    Example Usage:
+
+    >>> # Create a TRACE logger
+    >>> import sys, logging
+    >>> traceLogger = logging.getLogger("TRACE.examplemodule2")
+    >>> traceLogger.addHandler( logging.StreamHandler(sys.stdout) )
+
+    >>> # Decorate a function to allow entry/exit trace logging.
+    >>> @traceLogged(traceLogger)
+    ... def f():
+    ...     print "Function f is running..."
+    
+    >>> # If TRACE logging isn't enabled, there's no extra output
+    >>> f()
+    Function f is running...
+
+    >>> # Enable TRACE logging to see enter/exit log statements.
+    >>> traceLogger.setLevel(logging.DEBUG)
+    >>> f()
+    (enter) f 
+    Function f is running...
+    (exit) f
+
+    >>> # Disable TRACE logging by setting the level above DEBUG.
+    >>> traceLogger.setLevel(logging.INFO)
+    """
     def decorator(func):
         """A closure that logs the entry and exit of func using the logger."""
 
@@ -77,3 +122,6 @@ if __name__=='__main__':
     func1()
     func2()
 
+    # Execute doctests
+    import doctest
+    doctest.testmod()
