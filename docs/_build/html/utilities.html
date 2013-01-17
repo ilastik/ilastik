@@ -7,7 +7,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>General Utilities &mdash; lazyflow v0.1 documentation</title>
+    <title>Utilities &mdash; lazyflow v0.1 documentation</title>
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script type="text/javascript">
@@ -47,28 +47,33 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="general-utilities">
-<h1><a class="toc-backref" href="#id1">General Utilities</a><a class="headerlink" href="#general-utilities" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="utilities">
+<h1><a class="toc-backref" href="#id1">Utilities</a><a class="headerlink" href="#utilities" title="Permalink to this headline">¶</a></h1>
 <div class="contents topic" id="contents">
 <p class="topic-title first">Contents</p>
 <ul class="simple">
-<li><a class="reference internal" href="#general-utilities" id="id1">General Utilities</a><ul>
-<li><a class="reference internal" href="#orderedsignal" id="id2">OrderedSignal</a></li>
-<li><a class="reference internal" href="#trace-logging" id="id3">Trace Logging</a></li>
-<li><a class="reference internal" href="#path-manipulation" id="id4">Path Manipulation</a></li>
-<li><a class="reference internal" href="#module-lazyflow.utility.fileLock" id="id5">FileLock</a></li>
-<li><a class="reference internal" href="#json-config-parsing" id="id6">JSON Config Parsing</a></li>
+<li><a class="reference internal" href="#utilities" id="id1">Utilities</a><ul>
+<li><a class="reference internal" href="#general-utilities" id="id2">General Utilities</a><ul>
+<li><a class="reference internal" href="#orderedsignal" id="id3">OrderedSignal</a></li>
+<li><a class="reference internal" href="#trace-logging" id="id4">Trace Logging</a></li>
+<li><a class="reference internal" href="#path-manipulation" id="id5">Path Manipulation</a></li>
+<li><a class="reference internal" href="#module-lazyflow.utility.fileLock" id="id6">FileLock</a></li>
+<li><a class="reference internal" href="#json-config-parsing" id="id7">JSON Config Parsing</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#io-utilities" id="id7">IO Utilities</a><ul>
-<li><a class="reference internal" href="#blockwise-data-format" id="id8">Blockwise Data Format</a></li>
-<li><a class="reference internal" href="#remote-volumes" id="id9">Remote Volumes</a></li>
+<li><a class="reference internal" href="#io-utilities" id="id8">IO Utilities</a><ul>
+<li><a class="reference internal" href="#blockwise-data-format" id="id9">Blockwise Data Format</a></li>
+<li><a class="reference internal" href="#remote-volumes" id="id10">Remote Volumes</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
 </div>
+<div class="section" id="general-utilities">
+<h2><a class="toc-backref" href="#id2">General Utilities</a><a class="headerlink" href="#general-utilities" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="orderedsignal">
-<h2><a class="toc-backref" href="#id2">OrderedSignal</a><a class="headerlink" href="#orderedsignal" title="Permalink to this headline">¶</a></h2>
+<h3><a class="toc-backref" href="#id3">OrderedSignal</a><a class="headerlink" href="#orderedsignal" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt id="lazyflow.utility.OrderedSignal">
 <em class="property">class </em><tt class="descclassname">lazyflow.utility.</tt><tt class="descname">OrderedSignal</tt><a class="headerlink" href="#lazyflow.utility.OrderedSignal" title="Permalink to this definition">¶</a></dt>
@@ -129,7 +134,7 @@ An equivalent <tt class="docutils literal"><span class="pre">ilastik.bind</span>
 
 </div>
 <div class="section" id="trace-logging">
-<h2><a class="toc-backref" href="#id3">Trace Logging</a><a class="headerlink" href="#trace-logging" title="Permalink to this headline">¶</a></h2>
+<h3><a class="toc-backref" href="#id4">Trace Logging</a><a class="headerlink" href="#trace-logging" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt id="lazyflow.utility.Tracer">
 <em class="property">class </em><tt class="descclassname">lazyflow.utility.</tt><tt class="descname">Tracer</tt><big>(</big><em>logger</em>, <em>level=10</em>, <em>msg=''</em>, <em>determine_caller=True</em>, <em>caller_name=''</em><big>)</big><a class="headerlink" href="#lazyflow.utility.Tracer" title="Permalink to this definition">¶</a></dt>
@@ -205,7 +210,7 @@ Uses the the <a class="reference internal" href="#lazyflow.utility.Tracer" title
 
 </div>
 <div class="section" id="path-manipulation">
-<h2><a class="toc-backref" href="#id4">Path Manipulation</a><a class="headerlink" href="#path-manipulation" title="Permalink to this headline">¶</a></h2>
+<h3><a class="toc-backref" href="#id5">Path Manipulation</a><a class="headerlink" href="#path-manipulation" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt id="lazyflow.utility.PathComponents">
 <em class="property">class </em><tt class="descclassname">lazyflow.utility.</tt><tt class="descname">PathComponents</tt><big>(</big><em>totalPath</em>, <em>cwd=None</em><big>)</big><a class="headerlink" href="#lazyflow.utility.PathComponents" title="Permalink to this definition">¶</a></dt>
@@ -294,7 +299,7 @@ and return a tuple of the absolute and relative paths to the file.</p>
 
 </div>
 <div class="section" id="module-lazyflow.utility.fileLock">
-<span id="filelock"></span><h2><a class="toc-backref" href="#id5">FileLock</a><a class="headerlink" href="#module-lazyflow.utility.fileLock" title="Permalink to this headline">¶</a></h2>
+<span id="filelock"></span><h3><a class="toc-backref" href="#id6">FileLock</a><a class="headerlink" href="#module-lazyflow.utility.fileLock" title="Permalink to this headline">¶</a></h3>
 <p>Implementation of a simple cross-platform file locking mechanism.
 This is a modified version of code retrieved on 2013-01-01 from <a class="reference external" href="http://www.evanfosmark.com/2009/01/cross-platform-file-locking-support-in-python">http://www.evanfosmark.com/2009/01/cross-platform-file-locking-support-in-python</a>.
 The original code was released under the BSD License, as is this modified version.</p>
@@ -368,7 +373,7 @@ called at the end.</p>
 
 </div>
 <div class="section" id="json-config-parsing">
-<h2><a class="toc-backref" href="#id6">JSON Config Parsing</a><a class="headerlink" href="#json-config-parsing" title="Permalink to this headline">¶</a></h2>
+<h3><a class="toc-backref" href="#id7">JSON Config Parsing</a><a class="headerlink" href="#json-config-parsing" title="Permalink to this headline">¶</a></h3>
 <p>Some lazyflow components rely on a special JSON config file format.  The <cite>JsonConfigParser</cite> class handles parsing such files.</p>
 <dl class="class">
 <dt id="lazyflow.utility.jsonConfig.JsonConfigParser">
@@ -447,10 +452,10 @@ but check it for errors first by parsing each field with the schema.</p>
 </div>
 </div>
 <div class="section" id="io-utilities">
-<h1><a class="toc-backref" href="#id7">IO Utilities</a><a class="headerlink" href="#io-utilities" title="Permalink to this headline">¶</a></h1>
+<h2><a class="toc-backref" href="#id8">IO Utilities</a><a class="headerlink" href="#io-utilities" title="Permalink to this headline">¶</a></h2>
 <p>These utilities provide access to special data formats supported by lazyflow.</p>
 <div class="section" id="blockwise-data-format">
-<h2><a class="toc-backref" href="#id8">Blockwise Data Format</a><a class="headerlink" href="#blockwise-data-format" title="Permalink to this headline">¶</a></h2>
+<h3><a class="toc-backref" href="#id9">Blockwise Data Format</a><a class="headerlink" href="#blockwise-data-format" title="Permalink to this headline">¶</a></h3>
 <p>For big datasets, lazyflow supports a special input/output format that is based on blocks
 of data stored as hdf5 files in a special directory tree structure.  The dataset is described by a special json file.</p>
 <p>A small example explains the basics.  Consider a dataset with axes x-y-z and
@@ -678,7 +683,7 @@ We use a simple convention: If the status file exists, the block is available.  
 
 </div>
 <div class="section" id="remote-volumes">
-<h2><a class="toc-backref" href="#id9">Remote Volumes</a><a class="headerlink" href="#remote-volumes" title="Permalink to this headline">¶</a></h2>
+<h3><a class="toc-backref" href="#id10">Remote Volumes</a><a class="headerlink" href="#remote-volumes" title="Permalink to this headline">¶</a></h3>
 <dl class="class">
 <dt id="lazyflow.utility.io.RESTfulVolume">
 <em class="property">class </em><tt class="descclassname">lazyflow.utility.io.</tt><tt class="descname">RESTfulVolume</tt><big>(</big><em>descriptionFilePath=None</em>, <em>preparsedDescription=None</em><big>)</big><a class="headerlink" href="#lazyflow.utility.io.RESTfulVolume" title="Permalink to this definition">¶</a></dt>
@@ -897,6 +902,7 @@ Any optional parameters not provided by the user are filled in automatically.</p
 
 </div>
 </div>
+</div>
 
 
           </div>
@@ -906,7 +912,8 @@ Any optional parameters not provided by the user are filled in automatically.</p
         <div class="sphinxsidebarwrapper">
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">General Utilities</a><ul>
+<li><a class="reference internal" href="#">Utilities</a><ul>
+<li><a class="reference internal" href="#general-utilities">General Utilities</a><ul>
 <li><a class="reference internal" href="#orderedsignal">OrderedSignal</a></li>
 <li><a class="reference internal" href="#trace-logging">Trace Logging</a></li>
 <li><a class="reference internal" href="#path-manipulation">Path Manipulation</a></li>
@@ -917,6 +924,8 @@ Any optional parameters not provided by the user are filled in automatically.</p
 <li><a class="reference internal" href="#io-utilities">IO Utilities</a><ul>
 <li><a class="reference internal" href="#blockwise-data-format">Blockwise Data Format</a></li>
 <li><a class="reference internal" href="#remote-volumes">Remote Volumes</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

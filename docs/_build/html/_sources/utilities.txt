@@ -1,9 +1,12 @@
-=================
+=========
+Utilities
+=========
+
+.. contents::
+   :depth: 3
+
 General Utilities
 =================
-
-.. contents:: Contents
-   :depth: 3
 
 .. currentmodule:: lazyflow.utility
 
@@ -56,7 +59,6 @@ Some lazyflow components rely on a special JSON config file format.  The `JsonCo
 
 .. autoclass:: Namespace
 
-============
 IO Utilities
 ============
 
