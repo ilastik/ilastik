@@ -16,10 +16,10 @@ class SimpleSignal(object):
     Simple callback mechanism. Not synchronized.  No unsubscribe function.
     """
     def __init__(self):
-        self.callbacks = set()
+        self.callbacks = []
 
     def subscribe(self, fn):
-        self.callbacks.add(fn)
+        self.callbacks.append(fn)
 
     def __call__(self, *args, **kwargs):
         """Emit the signal."""
@@ -27,7 +27,7 @@ class SimpleSignal(object):
             f(*args, **kwargs)
         
     def clean(self):
-        self.callbacks = set()
+        self.callbacks = []
 
 class Worker(threading.Thread):
     """

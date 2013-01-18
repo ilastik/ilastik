@@ -5,7 +5,7 @@ import numpy
 import h5py
 from functools import partial
 
-from lazyflow.tracer import traceLogged
+from lazyflow.utility.tracer import traceLogged
 
 import threading
 import sys
@@ -463,7 +463,7 @@ class TestRequest(object):
 
         result = req.wait()
         assert result == 42
-        assert callback_results == [1,2,3], "wait() returned before callbacks were complete!"
+        assert callback_results == [1,2,3], "wait() returned before callbacks were complete! Got: {}".format( callback_results )
         
         req.notify_finished( partial(slowCallback, 4) )
         assert callback_results == [1,2,3,4], "Callback on already-finished request wasn't executed."
