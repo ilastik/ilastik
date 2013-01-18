@@ -1,4 +1,4 @@
-from lazyflow.utility.jsonConfig import JsonConfigSchema, AutoEval, FormattedField
+from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval, FormattedField
 
 #: Schema for all cluster config options
 #: (Doesn't specify which are required and which aren't.)
@@ -32,7 +32,7 @@ def parseClusterConfigFile( configFilePath ):
     Returns a Namespace object.
     (Similar to the behavior of argparse.ArgumentParser.parse_args() )
     """
-    schema = JsonConfigSchema( ClusterConfigFields )
+    schema = JsonConfigParser( ClusterConfigFields )
     return schema.parseConfigFile( configFilePath )
 
 if __name__ == "__main__":

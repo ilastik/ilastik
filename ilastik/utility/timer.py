@@ -7,7 +7,7 @@ class Timer(object):
     Takes a START timestamp on __enter__ and takes a STOP timestamp on __exit__.
     Call ``seconds()`` to get the elapsed time so far, or the total time if the timer has already stopped.
     
-    .. note: This class provides WALL timing of long-running tasks, not cpu benchmarking for short tasks.
+    .. note:: This class provides WALL timing of long-running tasks, not cpu benchmarking for short tasks.
     """
     def __init__(self):
         self.startTime = None
