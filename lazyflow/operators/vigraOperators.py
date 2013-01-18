@@ -497,7 +497,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                 logger.debug("Failed to free array memory.")                
             del sourceArray
 
-            
+            print "AAAAAAAAAAAAAAAAAAAAAAAAAAaa"
+            #print sourceArraysForSigmas[2].shape
+            #print sourceArraysForSigmas[2][0:10, 0:10, 98, 0]
             closures = []
 
             #connect individual operators
@@ -965,7 +967,10 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                 logger.debug("Failed to free array memory.")                
             del sourceArray
 
-            
+            print "BBBBBBBBBBBBBBBBBbb"
+            #print sourceArraysForSigmas[2].shape
+            #print sourceArraysForSigmas[2][0:10, 0:10, 98, 0]
+
             closures = []
 
             #connect individual operators
@@ -1070,8 +1075,8 @@ class OpBaseVigraFilter(OpArrayPiper):
         assert len(subindex) == self.Output.level == 0
         key = roiToSlice(rroi.start, rroi.stop)
 
-        #print "inside execute of baseVigraFilter", rroi, result.shape, sourceArray.shape
-        #print sourceArray[0, 0, :, 0]
+        print "inside execute of baseVigraFilter", rroi, result.shape, sourceArray.shape
+        print sourceArray[0, 0, :, 0]
 
         kwparams = {}
         for islot in self.inputs.values():
@@ -1093,8 +1098,10 @@ class OpBaseVigraFilter(OpArrayPiper):
             windowSize = self.window_size
 
         largestSigma = sigma #ensure enough context for the vigra operators
+        
 
         shape = self.outputs["Output"].meta.shape
+        print "largestSigma=", largestSigma, "outputs shape:", shape
 
         axistags = self.inputs["Input"].meta.axistags
         hasChannelAxis = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Channels)
@@ -1113,15 +1120,22 @@ class OpBaseVigraFilter(OpArrayPiper):
         oldstart, oldstop = roi.sliceToRoi(key, shape)
         
         start, stop = roi.sliceToRoi(subkey,subkey)
+        
         if sourceArray is not None and zAxis<len(axistags):
             if timeAxis>zAxis:
                 subshape[at2.index('z')]=sourceArray.shape[zAxis]
             else:
+                #newRangeZ = 2*(shape[zAxis]-1)+1
+                #subshape[at2.index('z')-1]=newRangeZ
                 subshape[at2.index('z')-1]=sourceArray.shape[zAxis]
-        #newStart, newStop = roi.extendSlice(start, stop, subshape, largestSigma, window = windowSize)
-        newStart, newStop = roi.extendSlice(start, stop, subshape, 0.7, window = windowSize)
         
+        #newStart, newStop = roi.extendSlice(start, stop, subshape, largestSigma, window = windowSize)
+        #print "extending start, stop, shape:", start, stop, subshape
+        newStart, newStop = roi.extendSlice(start, stop, subshape, 0.7, window = windowSize)
+        #print "extended, newStart, newStop:", newStart, newStop
+        #newStart = [0, 0, 0]
         readKey = roi.roiToSlice(newStart, newStop)
+        #print "readkey:", readKey
 
         writeNewStart = start - newStart
         writeNewStop = writeNewStart +  stop - start
@@ -1230,6 +1244,9 @@ class OpBaseVigraFilter(OpArrayPiper):
                         vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
                         try:
                             temp = self.vigraFilter(image, roi = vroi, **kwparams)
+                            print 
+                            #print "calling vigra with params:", image, vroi
+                            
                         except Exception, e:
                             print "EXCEPT 2.1", self.name, image.shape, vroi, kwparams
                             traceback.print_exc(e)
