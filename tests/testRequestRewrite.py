@@ -1,4 +1,4 @@
-from lazyflow.request.request_rewrite import Request, RequestLock
+from lazyflow.request.request_rewrite import Request, RequestLock, ThreadPool
 import time
 import random
 import numpy
@@ -536,6 +536,92 @@ class TestRequest(object):
 
         assert l == list(range(100)), "Requests and/or threads finished in the wrong order!"
 
+class TestRequestExceptions(object):
+    """
+    Check for proper behavior when an exception is generated within a request:
+    - The worker thread main loop never sees the exception.
+    - The exception is propagated to ALL threads/requests that were waiting on the failed request.
+    - If a thread/request calls wait() on a request that has already failed, the exception is raised in the caller.
+    - Requests have a signal that fires when the request fails due to an exception.
+    """
+    
+    def testWorkerThreadLoopProtection(self):
+        """
+        The worker threads should not die due to an exception raised within a request.
+        """
+        for worker in ThreadPool().workers:
+            assert worker.is_alive(), "Something is wrong with this test.  All workers should be alive."
+
+        def always_fails():
+            raise Exception()
+        
+        req = Request(always_fails)
+        req.submit()
+
+        try:
+            req.wait()
+        except:
+            pass
+        else:
+            assert False, "Expected to request to raise an Exception!"
+        
+        for worker in ThreadPool().workers:
+            assert worker.is_alive(), "An exception was propagated to a worker run loop!"
+    
+    def testExceptionPropagation(self):
+        """
+        When an exception is generated in a request, the exception should be propagated to all waiting threads.
+        """
+        
+        
+
 if __name__ == "__main__":
     import nose
     nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
