@@ -428,8 +428,8 @@ class Request( object ):
         if not completed:
             raise Request.TimeoutException()
         
-        # It turns out this request was already cancelled.
         if self.cancelled:
+            # It turns out this request was already cancelled.
             raise Request.InvalidRequestException()
         
         if self.exception is not None:
