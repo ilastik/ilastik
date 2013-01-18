@@ -1,3 +1,4 @@
+import sys
 import greenlet
 from collections import deque
 import multiprocessing
@@ -320,6 +321,8 @@ class Request( object ):
                 # The workload raised an exception.
                 # Save it so we can raise it in any requests that are waiting for us.
                 self.exception = ex
+                self.exception_tb = sys.exc_traceback # Documentation warns of circular references here,
+                                                      #  but that should be okay for us.
 
         # Guarantee that self.finished doesn't change while wait() owns self._lock
         with self._lock:
@@ -433,7 +436,7 @@ class Request( object ):
             raise Request.InvalidRequestException()
         
         if self.exception is not None:
-            raise self.exception
+            raise self.exception.__class__, self.exception, self.exception_tb 
 
     def _wait_within_request(self, current_request):
         """
@@ -463,7 +466,7 @@ class Request( object ):
             if self.exception is not None:
                 # This request was already started and already failed.
                 # Simply raise the exception back to the current request.
-                raise self.exception
+                raise self.exception.__class__, self.exception, self.exception_tb 
 
             direct_execute_needed = not self.started
             suspend_needed = self.started and not self.execution_complete
@@ -500,7 +503,7 @@ class Request( object ):
         
         # Are we back because we failed?
         if self.exception is not None:
-            raise self.exception
+            raise self.exception.__class__, self.exception, self.exception_tb 
 
     def _handle_finished_request(self, request, *args):
         """
