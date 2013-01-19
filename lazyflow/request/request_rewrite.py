@@ -695,6 +695,8 @@ class RequestLock(object):
     
     Requests and normal threads can *share* access to a RequestLock.
     That is, they compete equally for access to the lock.
+    
+    Implementation detail:  Depends on the ability to call two *private* Request methods: _suspend() and _wake_up().
     """
     def __init__(self):
         # This member holds the state of this RequestLock
