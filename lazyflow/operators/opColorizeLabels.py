@@ -3,6 +3,7 @@ import copy
 import numpy
 import os
 from functools import partial
+import math
 
 import numpy
 
@@ -98,12 +99,18 @@ class OpColorizeLabels(Operator):
         channellessInput = inputData[dropChannelKey]
 
         # Advanced indexing with colortable applies the relabeling from labels to colors.
-        # If we get an error here, we may need to expand the colortable (currently supports only 2**20 labels.)
+        # If we get an error here, we may need to expand the colortable (currently supports only 2**22 labels.)
         channelSlice = getElement(self.Input.meta.axistags, 'c', fullKey)
+        # channellessInput % self.colortable.shape[0]
+        channellessInput &= self.colortable.shape[0]-1 # Cheaper than mod for 2**X
         return self.colortable[:, channelSlice][channellessInput]
 
     @staticmethod
     def generateColortable(size):
+        lg = math.log(size, 2)
+        # The execute function makes this assumption, so check it.
+        assert lg == math.floor(lg), "Colortable size must be a power of 2."
+        
         # If possible, load the table from disk
         lazyflowSettingsDir = os.path.expanduser('~/.lazyflow')
         cachedColortablePath = os.path.join(lazyflowSettingsDir, 'random_color_table.npy')
