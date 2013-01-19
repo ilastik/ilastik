@@ -6,6 +6,27 @@ import threading
 import atexit
 from functools import partial
 import itertools
+import heapq
+
+class PriorityQueue(object):
+    """
+    Simple threadsafe heap based on the python heapq module.
+    We use method names ``append`` and ``popleft`` to match the interface of collections.deque when used as a FIFO.
+    """
+    def __init__(self):
+        self._heap = []
+        self._lock = threading.Lock()
+
+    def append(self, item):
+        with self._lock:
+            heapq.heappush(self._heap, item)
+    
+    def popleft(self):
+        with self._lock:
+            return heapq.heappop(self._heap)
+    
+    def __len__(self):
+        return len(self._heap)
 
 class RequestGreenlet(greenlet.greenlet):
     def __init__(self, owning_request, fn):
@@ -35,6 +56,10 @@ class Worker(threading.Thread):
     Runs in a loop until stopped.
     The loop pops one request from the threadpool and starts (or resumes) it.
     """
+    
+    #_QueueType = deque
+    _QueueType = PriorityQueue
+    
     def __init__(self, thread_pool, index ):
         name = "Worker #{}".format(index)
         super(Worker, self).__init__( name=name )
@@ -42,7 +67,7 @@ class Worker(threading.Thread):
         self.thread_pool = thread_pool
         self.stopped = False
         self.job_queue_condition = threading.Condition()
-        self.job_queue = deque() # Threadsafe for append/pop
+        self.job_queue = Worker._QueueType()
         
     def run(self):
         """
@@ -145,9 +170,8 @@ class ThreadPool(object):
 
     def __init__(self):
         self.job_condition = threading.Condition()
-        self.immediate_work = deque() # Threadsafe for append and pop
         
-        self.unassigned_requests = deque()
+        self.unassigned_requests = Worker._QueueType()
 
         num_workers = multiprocessing.cpu_count()
         self.workers = self._start_workers( num_workers )
@@ -241,6 +265,8 @@ class Request( object ):
         See ``Request.wait()`` for details.
         """
         pass
+    
+    _root_request_counter = itertools.count()
 
     def __init__(self, fn):
         """
@@ -271,11 +297,15 @@ class Request( object ):
         
         current_request = Request.current_request()
         self.parent_request = current_request
-        # We must ensure that we get the same cancelled status as our parent.
-        if current_request is not None:
+        if current_request is None:
+            self._priority = [ Request._root_request_counter.next() ]
+        else:
             with current_request._lock:
                 current_request.child_requests.add(self)
+                # We must ensure that we get the same cancelled status as our parent.
                 self.cancelled = current_request.cancelled
+                # We acquire the same priority as our parent, plus our own sub-priority
+                self._priority = current_request._priority + [ len(current_request.child_requests) ]
 
         self._lock = threading.Lock() # NOT an RLock, since requests may share threads
         self._sig_finished = SimpleSignal()
@@ -286,6 +316,13 @@ class Request( object ):
         
         # FIXME: Can't auto-submit here because the writeInto() function gets called AFTER request construction.
         #self.submit()
+
+    def __lt__(self, other):
+        """
+        Request comparison is by priority.
+        This allows us to store them in a heap.
+        """
+        return self._priority < other._priority
 
     def clean(self):
         self._sig_cancelled.clean()
