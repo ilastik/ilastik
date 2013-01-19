@@ -157,7 +157,7 @@ class ShellGuiTestCaseBase(object):
         """
         for imgView in views:
             # Wait for the image to be rendered into the view.
-            imgView.scene().joinRendering()
+            imgView.scene().joinRenderingAllTiles()
             imgView.viewport().repaint()
 
         # Let the GUI catch up: Process all events
