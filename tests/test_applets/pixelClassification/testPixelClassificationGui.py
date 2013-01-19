@@ -40,7 +40,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         else:
             cls.using_random_data = True
             cls.SAMPLE_DATA = os.path.split(__file__)[0] + '/random_data.npy'
-            data = numpy.random.random((1,1000,1000,100,1))
+            data = numpy.random.random((1,200,200,50,1))
             data *= 256
             numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
         
@@ -401,12 +401,15 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Make sure the entire slice is visible
             gui.currentGui().menuGui.actionFitToScreen.trigger()
 
-            # Enable interactive mode            
-            assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
-            gui.currentGui()._viewerControlUi.liveUpdateButton.click()
+            with Timer() as timer:
+                # Enable interactive mode            
+                assert gui.currentGui()._viewerControlUi.liveUpdateButton.isChecked() == False
+                gui.currentGui()._viewerControlUi.liveUpdateButton.click()
+    
+                # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
+                self.waitForViews(gui.currentGui().editor.imageViews)
 
-            # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
-            self.waitForViews(gui.currentGui().editor.imageViews)
+            logger.debug("Interactive Mode Rendering Time: {}".format( timer.seconds() ))
 
             # Disable iteractive mode.            
             gui.currentGui()._viewerControlUi.pauseUpdateButton.click()
