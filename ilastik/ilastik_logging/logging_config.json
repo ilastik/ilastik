@@ -12,6 +12,7 @@
         "lazyflow.operators":                                               { "level":"INFO" },
         "lazyflow.operators.ioOperators":                                   { "level":"INFO" },
         "lazyflow.operators.ioOperators.opRESTfulVolumeReader":             { "level":"DEBUG" },
+        "lazyflow.operators.opVigraWatershed":               { "level":"DEBUG" },
         "lazyflow.operators.operators.OpArrayCache":               { "level":"INFO" },
         "lazyflow.operators.operators.ArrayCacheMemoryMgr":        { "level":"DEBUG" },
         "lazyflow.operators.vigraOperators":                       { "level":"INFO" },
@@ -24,6 +25,7 @@
         "ilastik.applets.pixelClassification":                              { "level":"INFO" },
         "ilastik.shell":                                                    { "level":"INFO" },
         "ilastik.widgets":                                                  { "level":"INFO" },
+        "workflows":                                                        { "level":"INFO" },
         "volumina":                                                         { "level":"INFO" },
         "volumina.imageScene2D":                                            { "level":"INFO" },
 

@@ -76,6 +76,7 @@ def get_default_config(prefix=""):
             "lazyflow.graph.Slot":                                              { "level":"INFO" },
             "lazyflow.operators":                                               { "level":"INFO" },
             "lazyflow.operators.ioOperators":                                   { "level":"INFO" },
+            "lazyflow.operators.opVigraWatershed":               { "level":"INFO" },
             "lazyflow.operators.ioOperators.opRESTfulVolumeReader":             { "level":"INFO" },
             "lazyflow.operators.operators.OpArrayCache":               { "level":"INFO" },
             "lazyflow.operators.operators.ArrayCacheMemoryMgr":        { "level":"INFO" },
@@ -89,6 +90,7 @@ def get_default_config(prefix=""):
             "ilastik.applets.pixelClassification":                              { "level":"INFO" },
             "ilastik.shell":                                                    { "level":"INFO" },
             "ilastik.widgets":                                                  { "level":"INFO" },
+            "workflows":                                                        { "level":"INFO" },
             "volumina":                                                         { "level":"INFO" },
             "volumina.imageScene2D":                                            { "level":"INFO" },
             # Python doesn't provide a trace log level, so we use a workaround.
