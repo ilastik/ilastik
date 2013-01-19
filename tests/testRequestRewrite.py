@@ -1,6 +1,7 @@
 from lazyflow.request.request_rewrite import Request, RequestLock, ThreadPool
 import time
 import random
+import nose
 import numpy
 import h5py
 from functools import partial
@@ -24,6 +25,7 @@ class TestRequest(object):
 
     @classmethod
     def setupClass(cls):
+        raise nose.SkipTest
         traceLogger.setLevel(logging.INFO)
 
     @traceLogged(traceLogger)
@@ -571,8 +573,63 @@ class TestRequestExceptions(object):
     def testExceptionPropagation(self):
         """
         When an exception is generated in a request, the exception should be propagated to all waiting threads.
+        Also, the failure signal should fire.
         """
+        class SpecialException(Exception):
+            pass
         
+        def always_fails():
+            time.sleep(0.2)
+            raise SpecialException()
+        
+        req1 = Request(always_fails)
+
+
+        def wait_for_req1():
+            req1.wait()
+        
+        req2 = Request(wait_for_req1)
+        req3 = Request(wait_for_req1)
+
+        signaled_exceptions = []
+        def failure_handler(ex):
+            signaled_exceptions.append(ex)
+            
+        req2.notify_failed( failure_handler )
+        req3.notify_failed( failure_handler )
+
+        caught_exceptions = []        
+        def wait_for_request(req):        
+            try:
+                req.wait()
+            except SpecialException as ex:
+                caught_exceptions.append(ex)
+            except:
+                raise # Got some other exception than the one we expected
+            else:
+                assert "Expected to get an exception.  Didn't get one."
+
+        th2 = threading.Thread( target=partial( wait_for_request, req2 ) )
+        th3 = threading.Thread( target=partial( wait_for_request, req3 ) )
+        
+        th2.start()
+        th3.start()
+        
+        th2.join()
+        th3.join()
+        
+        assert len(caught_exceptions) == 2, "Expected both requests to catch exceptions."
+        assert len(signaled_exceptions) == 2, "Expected both requests to signal failure."
+
+        assert isinstance( caught_exceptions[0], SpecialException ), "Caught exception was of the wrong type."
+        assert caught_exceptions[0] == caught_exceptions[1] == signaled_exceptions[0] == signaled_exceptions[1]
+        
+        # Attempting to wait for a request that has already failed will raise the exception that causes the failure
+        wait_for_request(req2)
+        
+        # Subscribing to notify_failed on a request that's already failed should call the failure handler immediately.
+        req2.notify_failed( failure_handler )
+        assert len(signaled_exceptions) == 3
         
 
 if __name__ == "__main__":
