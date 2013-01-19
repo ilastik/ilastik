@@ -660,7 +660,7 @@ class Slot(object):
 
         def __call__(self, destination=None):
             # store whether the user wants the results in a given destination area
-            destination_given = False if (destination is None) else True
+            destination_given = (destination is not None or self.destination is not None)
 
             if destination is None:
                 destination = self.destination
