@@ -14,10 +14,16 @@ class Timer(object):
         self.stopTime = None
     
     def __enter__(self):
-        self.startTime = datetime.datetime.now()
+        self.start()
         return self
     
     def __exit__(self, *args):
+        self.stop()
+
+    def start(self):
+        self.startTime = datetime.datetime.now()
+
+    def stop(self):
         self.stopTime = datetime.datetime.now()
     
     def seconds(self):
@@ -28,9 +34,11 @@ class Timer(object):
         """
         assert self.startTime is not None, "Timer hasn't started yet!"
         if self.stopTime is None:
-            return (datetime.datetime.now() - self.startTime).seconds
+            now = datetime.datetime.now()
+            timedelta = now - self.startTime
         else:
-            return (self.stopTime - self.startTime).seconds
+            timedelta = self.stopTime - self.startTime
+        return timedelta.seconds + timedelta.microseconds / 1000000.0
 
 def timed(func):
     """
@@ -46,7 +54,7 @@ def timed(func):
        def do_stuff(): pass
        
        do_stuff()
-       print "Last run of do_stuff() took", do_stuff.prev_run_timer.seconds(), "seconds to run"    
+       print "Last run of do_stuff() took", do_stuff.prev_run_timer.seconds(), "seconds to run"
     """
     prev_run_timer = Timer()
     @functools.wraps(func)
