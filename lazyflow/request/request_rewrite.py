@@ -225,6 +225,8 @@ class Request( object ):
         """
         Resume (or start) the request execution.
         This is implemented in __call__ so that it can be used with the ThreadPool, which is designed for general callable tasks.
+        
+        .. note:: DO NOT use ``Request.__call__`` explicitly from your code.  It is called internally or from the ThreadPool.
         """
         self._switch_to()
         
