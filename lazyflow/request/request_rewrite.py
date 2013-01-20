@@ -819,130 +819,62 @@ class RequestLock(object):
     def __exit__(self, *args):
         self.release()
 
-class Pool(object):
+class RequestPool(object):
     """
-    Request pool class for handling many requests jointly
+    Convenience class for submitting a batch of requests and waiting until they are all complete.
+    Requests can not be added to the pool after it has already started.
+    Not threadsafe (don't add requests from more than one thread).
+    """
 
-    THIS CLASS IS NOT THREAD SAFE. I.e. the class should only be
-    accessed from a single thread.
-    """
+    class RequestPoolError(Exception):
+        pass
 
     def __init__(self):
-        self.requests = []
-        self.callbacks_finish = []
+        self._requests = set()
+        self._started = False
 
-        self.running = False
-        self.finished = False
-
-        self.counter = itertools.count()
-        self.count_finished = self.counter.next()
-        self.must_finish = 0
-
-    def request(self, func, **kwargs):
-        """
-        generate a request object which is added to the pool.
-
-        returns the generaded request.
-        """
-        if not self.running and not self.finished:
-            req = Request(func, **kwargs)
-            self.requests.append(req)
-            self.must_finish += 1
-        return req
+    def __len__(self):
+        return len(self._requests)
 
     def add(self, req):
         """
-        add an already existing request object to the pool
-
-        returns the request object.
+        Add a request to the pool.
         """
-        if not self.running and not self.finished and not req in self.requests:
-            self.requests.append(req)
-            self.must_finish += 1
-        return req
+        if self._started:
+            # For now, we forbid this because it would allow some corner cases that we aren't unit-testing yet.
+            # If this exception blocks a desirable use case, then change this behavior and provide a unit test.
+            raise RequestPool.RequestPoolError("Attempted to add a request to a pool that was already started!")
+        self._requests.add(req)
 
     def submit(self):
         """
-        Start processing of the requests
+        Submit all the requests in the pool.
         """
-        if not self.running and not self.finished:
-            self.running = True
-            # catch the case of an empty pool
-            if self.must_finish == 0:
-                self._finalize()
-            for r in self.requests:
-                r.submit()
-                r.onFinish(self._req_finished)
+        if self._started:
+            raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
+        for req in self._requests:
+            req.submit()
 
     def wait(self):
         """
-        Start processing of the requests and blocking wait for their completion.
+        Wait for all requests in the pool to complete.
         """
-        if self.must_finish == 1:
-            self.requests[0].wait()
-            self._finalize()
-        else:
+        if not self._started:
             self.submit()
-            
-            # Just wait for them all
-            for req in self.requests:
-                req.wait()
+        for req in self._requests:
+            req.wait()
 
-#            #print "submitting", self
-#            if not self.finished:
-#                cur_tr = threading.current_thread()
-#                if isinstance(cur_tr, Worker):
-#                    finished_lock = Lock() # special Worker compatible non-blocking lock
-#                else:
-#                    finished_lock = threading.Lock() # normal lock
-#                #print "waiting", self, self.must_finish, self.count_finished
-#                finished_lock.acquire()
-#                self.onFinish(self._release_lock, lock = finished_lock)
-#                finished_lock.acquire()
-#                #print "finished", self
-            
-
-
-    def onFinish(self, func, **kwargs):
+    def request(self, func):
         """
-        Register a callback function which is executed once all requests in the
-        pool are completed.
+        Deprecated method.  Convenience function to construct a request for the given callable and add it to the pool.
         """
-        if not self.finished:
-            self.callbacks_finish.append((func,kwargs)) 
-        else:
-            func(**kwargs)
-
-    def clean(self):
-        """
-        Clean all the requests and the pool.
-        """
-        for r in self.requests:
-            r.clean()
-        self.requests = []
-        self.callbacks_finish = []
+        self.add( Request(func) )
     
-    def _finalize(self):
-        self.running = False
-        self.finished = True
-        callbacks_finish = self.callbacks_finish
-        self.finished_callbacks = []
-        for f, kwargs in callbacks_finish:
-            f(**kwargs)
+    def clean(self):
+        self._requests = set()
 
-    def _req_finished(self, req):
-        self.count_finished = self.counter.next()
-        if self.count_finished >= self.must_finish:
-            self._finalize()
-
-
-    def __len__(self):
-        return self.must_finish
-            
-    def _release_lock(self, lock):
-        lock.release()
-
-
+# BACKWARDS COMPATIBILITY
+Pool = RequestPool
 
 
 
