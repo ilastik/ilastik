@@ -3,6 +3,7 @@ import sys
 import functools
 import itertools
 import threading
+import multiprocessing
 
 # Third-party
 import greenlet
@@ -34,6 +35,9 @@ class SimpleSignal(object):
         self.callbacks = []
 
 class Request( object ):
+    
+    # One thread pool shared by all requests.
+    global_thread_pool = threadPool.ThreadPool( num_workers = multiprocessing.cpu_count() )
     
     class CancellationException(Exception):
         """
@@ -209,7 +213,7 @@ class Request( object ):
         """
         Resume this request's execution (put it back on the worker's job queue).
         """
-        threadPool.global_thread_pool.wake_up(self)
+        Request.global_thread_pool.wake_up(self)
  
     def _switch_to(self):
         """

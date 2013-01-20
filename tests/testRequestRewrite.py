@@ -551,7 +551,7 @@ class TestRequestExceptions(object):
         """
         The worker threads should not die due to an exception raised within a request.
         """
-        for worker in ThreadPool().workers:
+        for worker in Request.global_thread_pool.workers:
             assert worker.is_alive(), "Something is wrong with this test.  All workers should be alive."
 
         def always_fails():
@@ -567,7 +567,7 @@ class TestRequestExceptions(object):
         else:
             assert False, "Expected to request to raise an Exception!"
         
-        for worker in ThreadPool().workers:
+        for worker in Request.global_thread_pool.workers:
             assert worker.is_alive(), "An exception was propagated to a worker run loop!"
     
     def testExceptionPropagation(self):

@@ -3,10 +3,6 @@ import atexit
 import collections
 import heapq
 import threading
-import multiprocessing
-
-# lazyflow
-import lazyflow
 
 class PriorityQueue(object):
     """
@@ -59,10 +55,6 @@ class LifoQueue(object):
     def __len__(self):
         return len(self._deque)
 
-#_QueueType = FifoQueue
-#_QueueType = LifoQueue
-_QueueType = PriorityQueue
-
 class Worker(threading.Thread):
     """
     Runs in a loop until stopped.
@@ -70,14 +62,14 @@ class Worker(threading.Thread):
     """
     
     
-    def __init__(self, thread_pool, index ):
+    def __init__(self, thread_pool, index, queue_type ):
         name = "Worker #{}".format(index)
         super(Worker, self).__init__( name=name )
         self.daemon = True # kill automatically on application exit!
         self.thread_pool = thread_pool
         self.stopped = False
         self.job_queue_condition = threading.Condition()
-        self.job_queue = _QueueType()
+        self.job_queue = queue_type()
         
     def run(self):
         """
@@ -159,17 +151,19 @@ class ThreadPool(object):
     """
     Manages a set of worker threads and dispatches tasks to them.
     """
+
+    #_QueueType = FifoQueue
+    #_QueueType = LifoQueue
+    _QueueType = PriorityQueue
     
-    # Thread pool is unique
-    __metaclass__ = lazyflow.utility.Singleton
-
-    def __init__(self):
+    def __init__(self, num_workers):
         self.job_condition = threading.Condition()
-        self.unassigned_tasks = _QueueType()
+        self.unassigned_tasks = ThreadPool._QueueType()
 
-        num_workers = multiprocessing.cpu_count()
-        #num_workers = (multiprocessing.cpu_count() + 1) / 2
         self.workers = self._start_workers( num_workers )
+
+        # ThreadPools automatically stop upon program exit
+        atexit.register( self.stop )
 
     def wake_up(self, task):
         """
@@ -201,7 +195,7 @@ class ThreadPool(object):
         """
         workers = set()
         for i in range(num_workers):
-            w = Worker(self, i)
+            w = Worker(self, i, queue_type=ThreadPool._QueueType)
             workers.add( w )
             w.start()
         return workers
@@ -213,10 +207,4 @@ class ThreadPool(object):
         for worker in self.workers:
             with worker.job_queue_condition:
                 worker.job_queue_condition.notify()
-
-global_thread_pool = ThreadPool()
-
-@atexit.register
-def stop_thread_pool():
-    global_thread_pool.stop()
 

@@ -8,9 +8,11 @@ class TestThreadPool(object):
     This is a simple test to verify that it can execute regular functions.
     """
     
-    def testBasic(self):
-        assert len(ThreadPool().workers) >= 2, "This test requires at least 2 ThreadPool workers to be active.  Do you only have 1 processor?"
-        
+    @classmethod
+    def setupClass(cls):
+        cls.thread_pool = ThreadPool(num_workers = 2)
+    
+    def testBasic(self):        
         e1 = threading.Event()
         e2 = threading.Event()
         
@@ -21,9 +23,9 @@ class TestThreadPool(object):
             e1.wait()
             e2.set()
         
-        ThreadPool().wake_up( f2 )
+        TestThreadPool.thread_pool.wake_up( f2 )
         time.sleep(0.1)
-        ThreadPool().wake_up( f1 )
+        TestThreadPool.thread_pool.wake_up( f1 )
         
         e2.wait()
         
