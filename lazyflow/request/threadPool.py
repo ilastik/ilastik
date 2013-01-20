@@ -54,6 +54,67 @@ class LifoQueue(object):
     
     def __len__(self):
         return len(self._deque)
+    
+class ThreadPool(object):
+    """
+    Manages a set of worker threads and dispatches tasks to them.
+    """
+
+    #_QueueType = FifoQueue
+    #_QueueType = LifoQueue
+    _QueueType = PriorityQueue
+    
+    def __init__(self, num_workers):
+        self.job_condition = threading.Condition()
+        self.unassigned_tasks = ThreadPool._QueueType()
+
+        self.workers = self._start_workers( num_workers )
+
+        # ThreadPools automatically stop upon program exit
+        atexit.register( self.stop )
+
+    def wake_up(self, task):
+        """
+        Schedule the given task on the worker that is assigned to it.
+        If necessary, first assign a worker to it.
+        """
+        # Once a task has been assigned, it must always be processed in the same worker
+        if hasattr(task, 'assigned_worker') and task.assigned_worker is not None:
+            task.assigned_worker.wake_up( task )
+        else:
+            self.unassigned_tasks.push(task)
+            # Notify all currently waiting workers that there's new work
+            self._notify_all_workers()
+
+    def stop(self):
+        """
+        Stop all threads in the pool, and block for them to complete.
+        Postcondition: All worker threads have stopped.  Unfinished tasks are simply dropped.
+        """
+        for w in self.workers:
+            w.stop()
+        
+        for w in self.workers:
+            w.join()
+    
+    def _start_workers(self, num_workers):
+        """
+        Start a set of workers and return the set.
+        """
+        workers = set()
+        for i in range(num_workers):
+            w = Worker(self, i, queue_type=ThreadPool._QueueType)
+            workers.add( w )
+            w.start()
+        return workers
+
+    def _notify_all_workers(self):
+        """
+        Wake up all worker threads that are currently waiting for work.
+        """
+        for worker in self.workers:
+            with worker.job_queue_condition:
+                worker.job_queue_condition.notify()
 
 class Worker(threading.Thread):
     """
@@ -147,64 +208,3 @@ class Worker(threading.Thread):
             task.assigned_worker = self
             return task
     
-class ThreadPool(object):
-    """
-    Manages a set of worker threads and dispatches tasks to them.
-    """
-
-    #_QueueType = FifoQueue
-    #_QueueType = LifoQueue
-    _QueueType = PriorityQueue
-    
-    def __init__(self, num_workers):
-        self.job_condition = threading.Condition()
-        self.unassigned_tasks = ThreadPool._QueueType()
-
-        self.workers = self._start_workers( num_workers )
-
-        # ThreadPools automatically stop upon program exit
-        atexit.register( self.stop )
-
-    def wake_up(self, task):
-        """
-        Schedule the given task on the worker that is assigned to it.
-        If necessary, first assign a worker to it.
-        """
-        # Once a task has been assigned, it must always be processed in the same worker
-        if hasattr(task, 'assigned_worker') and task.assigned_worker is not None:
-            task.assigned_worker.wake_up( task )
-        else:
-            self.unassigned_tasks.push(task)
-            # Notify all currently waiting workers that there's new work
-            self._notify_all_workers()
-
-    def stop(self):
-        """
-        Stop all threads in the pool, and block for them to complete.
-        Postcondition: All worker threads have stopped.  Unfinished tasks are simply dropped.
-        """
-        for w in self.workers:
-            w.stop()
-        
-        for w in self.workers:
-            w.join()
-    
-    def _start_workers(self, num_workers):
-        """
-        Start a set of workers and return the set.
-        """
-        workers = set()
-        for i in range(num_workers):
-            w = Worker(self, i, queue_type=ThreadPool._QueueType)
-            workers.add( w )
-            w.start()
-        return workers
-
-    def _notify_all_workers(self):
-        """
-        Wake up all worker threads that are currently waiting for work.
-        """
-        for worker in self.workers:
-            with worker.job_queue_condition:
-                worker.job_queue_condition.notify()
-
