@@ -103,7 +103,7 @@ class ThreadPool(object):
         """
         workers = set()
         for i in range(num_workers):
-            w = Worker(self, i, queue_type=queue_type)
+            w = _Worker(self, i, queue_type=queue_type)
             workers.add( w )
             w.start()
         return workers
@@ -116,16 +116,15 @@ class ThreadPool(object):
             with worker.job_queue_condition:
                 worker.job_queue_condition.notify()
 
-class Worker(threading.Thread):
+class _Worker(threading.Thread):
     """
     Runs in a loop until stopped.
     The loop pops one task from the threadpool and executes it.
     """
-    
-    
+
     def __init__(self, thread_pool, index, queue_type ):
         name = "Worker #{}".format(index)
-        super(Worker, self).__init__( name=name )
+        super(_Worker, self).__init__( name=name )
         self.daemon = True # kill automatically on application exit!
         self.thread_pool = thread_pool
         self.stopped = False
