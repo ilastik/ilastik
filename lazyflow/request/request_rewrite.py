@@ -96,7 +96,7 @@ class Request( object ):
 
         # Execution
         self.greenlet = None # Not created until assignment to a worker
-        self.assigned_worker = None
+        self._assigned_worker = None
 
         # Request relationships
         self.pending_requests = set()  # Requests that are waiting for this one
@@ -138,12 +138,17 @@ class Request( object ):
         self._sig_failed.clean()
         self.result = None
         
-    def set_assigned_worker(self, worker):
+    @property
+    def assigned_worker(self):
+        return self._assigned_worker
+    
+    @assigned_worker.setter
+    def assigned_worker(self, worker):
         """
         Assign this request to the given worker thread.  (A request cannot switch between threads.)
         Must be called from the worker thread.
         """
-        self.assigned_worker = worker
+        self._assigned_worker = worker
 
         # Create our greenlet now (so the greenlet has the correct parent, i.e. the worker)
         self.greenlet = RequestGreenlet(self, self.execute)
@@ -206,11 +211,18 @@ class Request( object ):
         """
         threadPool.global_thread_pool.wake_up(self)
  
-    def switch_to(self):
+    def _switch_to(self):
         """
         Switch to this request's greenlet
         """
         self.greenlet.switch()
+
+    def __call__(self):
+        """
+        Resume (or start) the request execution.
+        This is implemented in __call__ so that it can be used with the ThreadPool, which is designed for general callable tasks.
+        """
+        self._switch_to()
         
     def _suspend(self):
         """
@@ -336,7 +348,7 @@ class Request( object ):
             # Optimization: Don't start a new greenlet.  Directly run this request in the current greenlet.
             self.greenlet = current_request.greenlet
             self.greenlet.owning_requests.append(self)
-            self.assigned_worker = current_request.assigned_worker
+            self._assigned_worker = current_request._assigned_worker
             self.execute()
             assert self.greenlet.owning_requests.pop() == self
             current_request.blocking_requests.remove(self)
@@ -492,8 +504,9 @@ class Request( object ):
     def getResult(self):
         return self.result
 
-    def __call__(self):
-        return self.wait()
+# The __call__ method used to be a synonym for wait(), but now it is used by the worker to start/resume the request.
+#    def __call__(self):
+#        return self.wait()
 
 class RequestLock(object):
     """

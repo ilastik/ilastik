@@ -66,7 +66,7 @@ _QueueType = PriorityQueue
 class Worker(threading.Thread):
     """
     Runs in a loop until stopped.
-    The loop pops one request from the threadpool and starts (or resumes) it.
+    The loop pops one task from the threadpool and executes it.
     """
     
     
@@ -81,17 +81,17 @@ class Worker(threading.Thread):
         
     def run(self):
         """
-        Keep executing available jobs (requests) until we're stopped.
+        Keep executing available tasks until we're stopped.
         """
         # Try to get some work.
-        current_request = self._get_next_job()
+        next_task = self._get_next_job()
 
         while not self.stopped:
             # Start (or resume) the work by switching to its greenlet
-            current_request.switch_to()
+            next_task()
 
             # Try to get some work.
-            current_request = self._get_next_job()
+            next_task = self._get_next_job()
 
     def stop(self):
         """
@@ -103,39 +103,37 @@ class Worker(threading.Thread):
         with self.job_queue_condition:
             self.job_queue_condition.notify()
 
-    def wake_up(self, request):
+    def wake_up(self, task):
         """
-        Add this request to the queue of requests that are ready to be processed.
-        The request may or not be started already.
+        Add this task to the queue of tasks that are ready to be processed.
+        The task may or not be started already.
         """
-        assert request.assigned_worker is self
+        assert task.assigned_worker is self
         with self.job_queue_condition:
-            self.job_queue.push(request)
+            self.job_queue.push(task)
             self.job_queue_condition.notify()
 
     def _get_next_job(self):
         """
         Get the next available job to perform.
         If necessary, block until:
-            - a job is available (return the next request) OR
+            - a task is available (return it) OR
             - the worker has been stopped (might return None)
         """
-        next_request = None
-
         # Keep trying until we get a job        
         with self.job_queue_condition:
-            next_request = self._pop_job()
+            next_task = self._pop_job()
 
-            while next_request is None and not self.stopped:
+            while next_task is None and not self.stopped:
                 # Wait for work to become available
                 self.job_queue_condition.wait()
-                next_request = self._pop_job()
+                next_task = self._pop_job()
 
         if not self.stopped:
-            assert next_request is not None
-            assert next_request.assigned_worker is self
+            assert next_task is not None
+            assert next_task.assigned_worker is self
 
-        return next_request
+        return next_task
     
     def _pop_job(self):
         """
@@ -150,16 +148,16 @@ class Worker(threading.Thread):
 
         # Otherwise, try to claim a job from the global unassigned list            
         try:
-            req = self.thread_pool.unassigned_requests.pop()
+            task = self.thread_pool.unassigned_tasks.pop()
         except IndexError:
             return None
         else:
-            req.set_assigned_worker(self)
-            return req
+            task.assigned_worker = self
+            return task
     
 class ThreadPool(object):
     """
-    Manages a set of worker threads and dispatches requests to them.
+    Manages a set of worker threads and dispatches tasks to them.
     """
     
     # Thread pool is unique
@@ -167,29 +165,29 @@ class ThreadPool(object):
 
     def __init__(self):
         self.job_condition = threading.Condition()
-        self.unassigned_requests = _QueueType()
+        self.unassigned_tasks = _QueueType()
 
         num_workers = multiprocessing.cpu_count()
         #num_workers = (multiprocessing.cpu_count() + 1) / 2
         self.workers = self._start_workers( num_workers )
 
-    def wake_up(self, request):
+    def wake_up(self, task):
         """
-        Schedule the given request on the worker that is assigned to it.
+        Schedule the given task on the worker that is assigned to it.
         If necessary, first assign a worker to it.
         """
-        # Once a request has been assigned, it must always be processed in the same worker
-        if request.assigned_worker is not None:
-            request.assigned_worker.wake_up( request )
+        # Once a task has been assigned, it must always be processed in the same worker
+        if hasattr(task, 'assigned_worker') and task.assigned_worker is not None:
+            task.assigned_worker.wake_up( task )
         else:
-            self.unassigned_requests.push(request)
+            self.unassigned_tasks.push(task)
             # Notify all currently waiting workers that there's new work
             self._notify_all_workers()
 
     def stop(self):
         """
         Stop all threads in the pool, and block for them to complete.
-        Postcondition: All worker threads have stopped.  Unfinished requests are simply dropped.
+        Postcondition: All worker threads have stopped.  Unfinished tasks are simply dropped.
         """
         for w in self.workers:
             w.stop()
