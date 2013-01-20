@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 #logger.setLevel(logging.DEBUG)
 # Trace
 traceLogger = logging.getLogger("TRACE." + __name__)
-traceLogger.setLevel(logging.DEBUG)
+#traceLogger.setLevel(logging.DEBUG)
 
 class TestRequest(object):
 
