@@ -2,6 +2,7 @@
 import sys
 import functools
 import itertools
+import collections
 import threading
 import multiprocessing
 
@@ -107,6 +108,7 @@ class Request( object ):
         self.blocking_requests = set() # Requests that this one is waiting for (currently one at most since wait() can only be called on one request at a time)
         self.child_requests = set()    # Requests that were created from within this request (NOT the same as pending_requests)
         
+        self._current_foreign_thread = None
         current_request = Request.current_request()
         self.parent_request = current_request
         if current_request is None:
@@ -284,7 +286,17 @@ class Request( object ):
                 # Mark it as 'started' so that no other greenlet can claim it
                 self.started = True
 
+        if self._current_foreign_thread is not None and self._current_foreign_thread == threading.current_thread():
+            # It's usually nonsense for a request to wait for itself,
+            #  but we allow it if the request is already "finished"
+            # (which can happen if the request is calling wait() from within a notify_finished callback)
+            if self.finished:
+                return
+            else:
+                raise Request.CircularWaitException()
+
         if direct_execute_needed:
+            self._current_foreign_thread = threading.current_thread()
             self.execute()
         else:
             self.submit()
@@ -384,8 +396,6 @@ class Request( object ):
         Register a callback function to be called when this request is finished.
         If we're already finished, call it now.
         """
-        self.submit()
-        
         with self._lock:
             finished = self.finished
             if not finished:
@@ -485,9 +495,7 @@ class Request( object ):
     
     def onFinish(self, fn, **kwargs):
         f = Request.PartialWithAppendedArgs( fn, **kwargs )
-        # Technically, this submits the request, which the old api didn't do,
-        # but the old api never guaranteed when the request would be submitted, anyway...
-        self.notify_finished( f )
+        self.notify_finished( f)
 
     def onCancel(self, fn, *args, **kwargs):
         # Cheating here: The only operator that uses this old api function is OpArrayCache,
@@ -499,6 +507,7 @@ class Request( object ):
     def notify(self, fn, **kwargs):
         f = Request.PartialWithAppendedArgs( fn, **kwargs )
         self.notify_finished( f )
+        self.submit()
 
     def allocate(self, priority = 0):
         return self
@@ -534,7 +543,7 @@ class RequestLock(object):
         
         # This is a list of requests that are currently waiting for the lock.
         # Other waiting threads (i.e. non-request "foreign" threads) are each listed as a single "None" item. 
-        self._pendingRequests = deque()
+        self._pendingRequests = collections.deque()
     
     def acquire(self, blocking=True):
         """

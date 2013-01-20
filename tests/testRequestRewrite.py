@@ -11,22 +11,20 @@ from lazyflow.utility.tracer import traceLogged
 import threading
 import sys
 import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-#handler = logging.StreamHandler(sys.stdout)
-#formatter = logging.Formatter('%(levelname)s %(name)s %(message)s')
-#handler.setFormatter(formatter)
-#logger.addHandler(handler)
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter('%(levelname)s %(name)s %(message)s')
+handler.setFormatter(formatter)
 
+# Root
+logging.getLogger().addHandler( handler )
+# Test
+logger = logging.getLogger(__name__)
+#logger.setLevel(logging.DEBUG)
+# Trace
 traceLogger = logging.getLogger("TRACE." + __name__)
-#traceLogger.addHandler(handler)
+traceLogger.setLevel(logging.DEBUG)
 
 class TestRequest(object):
-
-    @classmethod
-    def setupClass(cls):
-        raise nose.SkipTest
-        traceLogger.setLevel(logging.INFO)
 
     @traceLogged(traceLogger)
     def test_basic(self):
@@ -78,6 +76,7 @@ class TestRequest(object):
         
         req = Request(workFn)
         req.notify_finished( partial(handler, req) )
+        #req.submit()
         req.wait()
     
     @traceLogged(traceLogger)
@@ -142,19 +141,19 @@ class TestRequest(object):
 
         req = Request( partial(someWork, depth=4, force=True) )
 
-        logger.info("Waiting for requests...")
+        logger.debug("Waiting for requests...")
         req.wait()
-        logger.info("root request finished")
+        logger.debug("root request finished")
         
         # Handler should have been called once for each request we fired
         assert handlerCounter[0] == requestCounter[0]
 
-        logger.info("finished testLotsOfSmallRequests")
+        logger.debug("finished testLotsOfSmallRequests")
         
         for r in allRequests:
             assert r.finished
 
-        logger.info("waited for all subrequests")
+        logger.debug("waited for all subrequests")
     
     @traceLogged(traceLogger)
     def test_cancel_basic(self):
@@ -190,6 +189,7 @@ class TestRequest(object):
         
         req = Request( big_workload )
         req.notify_finished( handle_complete )
+        req.submit()
         time.sleep(.5)
         req.cancel()
         
@@ -442,7 +442,7 @@ class TestRequest(object):
         for r in requests:
             r.wait()
     
-    
+    @traceLogged(traceLogger)
     def test_callbacks_before_wait_returns(self):
         """
         If the user adds callbacks to the request via notify_finished() BEFORE the request is submitted,
@@ -455,7 +455,7 @@ class TestRequest(object):
 
         callback_results = []
         def slowCallback(n, result):
-            time.sleep(0.5)
+            time.sleep(0.1)
             callback_results.append(n)
         
         req = Request( someQuickWork )
@@ -468,8 +468,10 @@ class TestRequest(object):
         assert callback_results == [1,2,3], "wait() returned before callbacks were complete! Got: {}".format( callback_results )
         
         req.notify_finished( partial(slowCallback, 4) )
+        req.wait()
         assert callback_results == [1,2,3,4], "Callback on already-finished request wasn't executed."
     
+    @traceLogged(traceLogger)
     def test_request_timeout(self):
         """
         Test the timeout feature when calling wait() from a foreign thread.
@@ -547,6 +549,7 @@ class TestRequestExceptions(object):
     - Requests have a signal that fires when the request fails due to an exception.
     """
     
+    @traceLogged(traceLogger)
     def testWorkerThreadLoopProtection(self):
         """
         The worker threads should not die due to an exception raised within a request.
@@ -570,6 +573,7 @@ class TestRequestExceptions(object):
         for worker in Request.global_thread_pool.workers:
             assert worker.is_alive(), "An exception was propagated to a worker run loop!"
     
+    @traceLogged(traceLogger)
     def testExceptionPropagation(self):
         """
         When an exception is generated in a request, the exception should be propagated to all waiting threads.
