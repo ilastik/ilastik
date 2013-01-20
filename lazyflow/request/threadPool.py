@@ -204,6 +204,7 @@ class _Worker(threading.Thread):
         except IndexError:
             return None
         else:
-            task.assigned_worker = self
+            task.assigned_worker = self # If this fails, then your callable is some built-in that doesn't allow arbitrary  
+                                        #  members (e.g. .assigned_worker) to be "monkey-patched" onto it.  You may have to wrap it in a custom class first.
             return task
     
