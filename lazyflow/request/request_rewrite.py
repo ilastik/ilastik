@@ -1,32 +1,66 @@
+# Built-in
 import sys
-import greenlet
-from collections import deque
-import multiprocessing
-import threading
 import atexit
-from functools import partial
+import functools
 import itertools
+import collections
 import heapq
+import threading
+import multiprocessing
+
+# Third-party
+import greenlet
 
 class PriorityQueue(object):
     """
     Simple threadsafe heap based on the python heapq module.
-    We use method names ``append`` and ``popleft`` to match the interface of collections.deque when used as a FIFO.
     """
     def __init__(self):
         self._heap = []
         self._lock = threading.Lock()
 
-    def append(self, item):
+    def push(self, item):
         with self._lock:
             heapq.heappush(self._heap, item)
     
-    def popleft(self):
+    def pop(self):
         with self._lock:
             return heapq.heappop(self._heap)
     
     def __len__(self):
         return len(self._heap)
+
+class FifoQueue(object):
+    """
+    Simple FIFO queue based on collections.deque.
+    """
+    def __init__(self):
+        self._deque = collections.deque() # Documentation says this is threadsafe for push and pop
+
+    def push(self, item):
+        self._deque.append(item)
+    
+    def pop(self):
+        return self._deque.popleft()
+    
+    def __len__(self):
+        return len(self._deque)
+
+class LifoQueue(object):
+    """
+    Simple LIFO queue based on collections.deque.
+    """
+    def __init__(self):
+        self._deque = collections.deque() # Documentation says this is threadsafe for push and pop
+
+    def push(self, item):
+        self._deque.append(item)
+    
+    def pop(self):
+        return self._deque.pop()
+    
+    def __len__(self):
+        return len(self._deque)
 
 class RequestGreenlet(greenlet.greenlet):
     def __init__(self, owning_request, fn):
@@ -51,14 +85,16 @@ class SimpleSignal(object):
     def clean(self):
         self.callbacks = []
 
+#_QueueType = FifoQueue
+#_QueueType = LifoQueue
+_QueueType = PriorityQueue
+
 class Worker(threading.Thread):
     """
     Runs in a loop until stopped.
     The loop pops one request from the threadpool and starts (or resumes) it.
     """
     
-    #_QueueType = deque
-    _QueueType = PriorityQueue
     
     def __init__(self, thread_pool, index ):
         name = "Worker #{}".format(index)
@@ -67,7 +103,7 @@ class Worker(threading.Thread):
         self.thread_pool = thread_pool
         self.stopped = False
         self.job_queue_condition = threading.Condition()
-        self.job_queue = Worker._QueueType()
+        self.job_queue = _QueueType()
         
     def run(self):
         """
@@ -100,7 +136,7 @@ class Worker(threading.Thread):
         """
         assert request.assigned_worker is self
         with self.job_queue_condition:
-            self.job_queue.append(request)
+            self.job_queue.push(request)
             self.job_queue_condition.notify()
 
     def _get_next_job(self):
@@ -136,11 +172,11 @@ class Worker(threading.Thread):
         """
         # Try our own queue first
         if len(self.job_queue) > 0:
-            return self.job_queue.popleft()
+            return self.job_queue.pop()
 
         # Otherwise, try to claim a job from the global unassigned list            
         try:
-            req = self.thread_pool.unassigned_requests.popleft()
+            req = self.thread_pool.unassigned_requests.pop()
         except IndexError:
             return None
         else:
@@ -170,10 +206,10 @@ class ThreadPool(object):
 
     def __init__(self):
         self.job_condition = threading.Condition()
-        
-        self.unassigned_requests = Worker._QueueType()
+        self.unassigned_requests = _QueueType()
 
         num_workers = multiprocessing.cpu_count()
+        #num_workers = (multiprocessing.cpu_count() + 1) / 2
         self.workers = self._start_workers( num_workers )
 
     def wake_up(self, request):
@@ -185,7 +221,7 @@ class ThreadPool(object):
         if request.assigned_worker is not None:
             request.assigned_worker.wake_up( request )
         else:
-            self.unassigned_requests.append(request)
+            self.unassigned_requests.push(request)
             # Notify all currently waiting workers that there's new work
             self._notify_all_workers()
 
@@ -520,7 +556,7 @@ class Request( object ):
                 # This request is already started in some other greenlet.
                 # We must suspend the current greenlet while we wait for this request to complete.
                 # Here, we set up a callback so we'll wake up once this request is complete.
-                self._sig_execution_complete.subscribe( partial(current_request._handle_finished_request, self) )
+                self._sig_execution_complete.subscribe( functools.partial(current_request._handle_finished_request, self) )
 
         if suspend_needed:
             current_request._suspend()
