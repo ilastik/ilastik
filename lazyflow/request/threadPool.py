@@ -60,15 +60,15 @@ class ThreadPool(object):
     Manages a set of worker threads and dispatches tasks to them.
     """
 
-    #_QueueType = FifoQueue
-    #_QueueType = LifoQueue
-    _QueueType = PriorityQueue
+    #_DefaultQueueType = FifoQueue
+    #_DefaultQueueType = LifoQueue
+    _DefaultQueueType = PriorityQueue
     
-    def __init__(self, num_workers):
+    def __init__(self, num_workers, queue_type=_DefaultQueueType):
         self.job_condition = threading.Condition()
-        self.unassigned_tasks = ThreadPool._QueueType()
+        self.unassigned_tasks = queue_type()
 
-        self.workers = self._start_workers( num_workers )
+        self.workers = self._start_workers( num_workers, queue_type )
 
         # ThreadPools automatically stop upon program exit
         atexit.register( self.stop )
@@ -97,13 +97,13 @@ class ThreadPool(object):
         for w in self.workers:
             w.join()
     
-    def _start_workers(self, num_workers):
+    def _start_workers(self, num_workers, queue_type):
         """
         Start a set of workers and return the set.
         """
         workers = set()
         for i in range(num_workers):
-            w = Worker(self, i, queue_type=ThreadPool._QueueType)
+            w = Worker(self, i, queue_type=queue_type)
             workers.add( w )
             w.start()
         return workers
