@@ -43,7 +43,8 @@ if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".
 import threading
 import logging
 
-from request import Request, Singleton
+from request import Request
+import lazyflow.utility
 import rtype
 from lazyflow.stype import ArrayLike
 from lazyflow.utility import slicingtools
@@ -1828,4 +1829,4 @@ class Graph(object):
 # serves as parent graph for all operators
 # wich are created without parent
 class GlobalGraph(Graph):
-    __metaclass__ = Singleton
+    __metaclass__ = lazyflow.utility.Singleton

@@ -1,6 +1,7 @@
 import helpers
 import jsonConfig
 import slicingtools
+from singleton import Singleton
 from orderedSignal import OrderedSignal
 from fileLock import FileLock
 from tracer import Tracer, traceLogged
