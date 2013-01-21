@@ -44,6 +44,21 @@ class TestInterpolatedFeatures():
                 features[i, j]=True
                 self.selectedFeatures.append(features)
 
+    def aaaVigraStructureTensor(self):
+        roi_small = ((0, 0, 2), (5, 5, 3))
+        roi_full = ((0, 0, 0), (5, 5, 9))
+        import h5py
+        f = h5py.File("/home/anna/data/temptestimage1.h5")
+        data1= numpy.asarray(f["/volume/data"])
+        f2 = h5py.File("/home/anna/data/temptestimage2.h5")
+        data2 = numpy.asarray(f2["/volume/data"])
+        
+        st1 = vigra.filters.structureTensor(data2, innerScale=1., outerScale=0.5, sigma_d=0, step_size=1,\
+                                            window_size=2, roi=roi_small)
+        st2 = vigra.filters.structureTensor(data1, innerScale=1., outerScale=0.5, sigma_d=0, step_size=1,\
+                                            window_size=2, roi=roi_full)
+        assert_array_almost_equal(st1, st2[:, :, 2:3, :], 3)
+    
     def testFeatures(self):
         g = graph.Graph()
         opFeatures = OpPixelFeaturesPresmoothed(graph=g)
@@ -61,25 +76,30 @@ class TestInterpolatedFeatures():
         opFeaturesInterp.InterpolationScaleZ.setValue(self.scaleZ)
         
         for i, imatrix in enumerate(self.selectedFeatures[30:31]):
+        #for i, imatrix in enumerate(self.selectedFeatures):
             opFeatures.Matrix.setValue(imatrix)
             opFeaturesInterp.Matrix.setValue(imatrix)
+            outputInterpData = opFeatures.Output[:].wait()
+            #outputInterpFeatures = opFeaturesInterp.Output[:].wait()
             
             
             
-            for iz in range(self.nz):
+            for iz in range(2,3):
                 #print iz, iz*self.scaleZ
                 try:
-                    outputInterpData = opFeatures.Output[:, :, iz*self.scaleZ:iz*self.scaleZ+1, 0].wait()
-                    outputInterpFeatures = opFeaturesInterp.Output[:, :, iz, 0].wait()
-                    assert_array_almost_equal(outputInterpData, outputInterpFeatures)
+                    outputInterpDataSlice = opFeatures.Output[:, :, iz*self.scaleZ:iz*self.scaleZ+1, :].wait()
+                    #outputInterpFeaturesSlice = opFeaturesInterp.Output[:, :, iz, :].wait()
+                    #assert_array_almost_equal(outputInterpDataSlice, outputInterpFeaturesSlice, 3)
                     #assert_array_almost_equal(outputInterpData[:, :, iz*self.scaleZ, 0], outputInterpFeatures[:, :, iz, 0], 2)
+                    assert_array_almost_equal(outputInterpDataSlice[:, :, 0:1, :], outputInterpData[:, :, iz*self.scaleZ, :], 3)
                 except AssertionError:
                     print "failed for feature:", imatrix, i
                     print "failed for slice:", iz
-                    print "inter data:", outputInterpData[3, 3, 0, 0]
-                    print "inter features:", outputInterpFeatures[3, 3, 0, 0]
+                    print "inter data:", outputInterpData[:, :, iz*self.scaleZ, 0]
+                    print "inter data slice:", outputInterpDataSlice[:, :, 0, 0]
+                    #print "inter features:", outputInterpFeatures[3, 3, 0, 0]
                     raise AssertionError
-
+            
         
 
 if __name__ == "__main__":

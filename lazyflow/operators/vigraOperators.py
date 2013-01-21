@@ -401,7 +401,8 @@ class OpPixelFeaturesPresmoothed(Operator):
             maxSigma = max(0.7,self.maxSigma)
 
             # The region of the smoothed image we need to give to the feature filter (in terms of INPUT coordinates)
-            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, window = 2)
+            #vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, window = 2)
+            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, maxSigma, window = 3.5)
             
             # The region of the input that we need to give to the smoothing operator (in terms of INPUT coordinates)
             newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, window = 3.5)
@@ -498,8 +499,6 @@ class OpPixelFeaturesPresmoothed(Operator):
             del sourceArray
 
             print "AAAAAAAAAAAAAAAAAAAAAAAAAAaa"
-            #print sourceArraysForSigmas[2].shape
-            #print sourceArraysForSigmas[2][0:10, 0:10, 98, 0]
             closures = []
 
             #connect individual operators
@@ -1003,7 +1002,8 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                                     zStart, zStop = roi.extendSlice(iz+offset, iz+offset+1, sourceArraysForSigmas[j].shape[zaxis], 0.7, window = 2)
                                     #print "new zstart, zstop", zStart, zStop
                                     
-                                    zslice = slice(iz+vigOpSourceStart[zaxis], iz+vigOpSourceStart[zaxis]+1, None)
+                                    #zslice = slice(iz+vigOpSourceStart[zaxis], iz+vigOpSourceStart[zaxis]+1, None)
+                                    zslice = slice(iz+offset, iz+offset+1, None)
                                     key_[zaxis] = zslice
                                     
                                     sourceKey = []
@@ -1092,7 +1092,8 @@ class OpBaseVigraFilter(OpArrayPiper):
         elif self.inputs.has_key("innerScale"):
             sigma = self.inputs["innerScale"].value
 
-        windowSize = 4.0
+        #windowSize = 4.0
+        windowSize = 3.5
         if self.supportsWindow:
             kwparams['window_size']=self.window_size
             windowSize = self.window_size
@@ -1129,11 +1130,12 @@ class OpBaseVigraFilter(OpArrayPiper):
                 #subshape[at2.index('z')-1]=newRangeZ
                 subshape[at2.index('z')-1]=sourceArray.shape[zAxis]
         
-        #newStart, newStop = roi.extendSlice(start, stop, subshape, largestSigma, window = windowSize)
+        newStart, newStop = roi.extendSlice(start, stop, subshape, largestSigma, window = windowSize)
         #print "extending start, stop, shape:", start, stop, subshape
-        newStart, newStop = roi.extendSlice(start, stop, subshape, 0.7, window = windowSize)
+        #newStart, newStop = roi.extendSlice(start, stop, subshape, 0.7, window = windowSize)
         #print "extended, newStart, newStop:", newStart, newStop
         #newStart = [0, 0, 0]
+        
         readKey = roi.roiToSlice(newStart, newStop)
         #print "readkey:", readKey
 
@@ -1178,6 +1180,9 @@ class OpBaseVigraFilter(OpArrayPiper):
             else:
                 t = sourceArray[getAllExceptAxis(len(treadKey),channelAxis,slice(i,i+1,None) )]
 
+            if numpy.any((newStop-newStart)!=t.shape[0:-1]):
+                print "hahahahaha", newStop-newStart, t.shape[0:-1]
+                #t=t[readKey]
             t = numpy.require(t, dtype=self.inputDtype)
             t = t.view(vigra.VigraArray)
             t.axistags = copy.copy(axistags)
@@ -1245,8 +1250,13 @@ class OpBaseVigraFilter(OpArrayPiper):
                         try:
                             temp = self.vigraFilter(image, roi = vroi, **kwparams)
                             print 
-                            #print "calling vigra with params:", image, vroi
-                            
+                            print "calling vigra with params:", image.shape, vroi, writeKey
+                            '''
+                            import h5py
+                            tempfile = h5py.File("/home/anna/data/temptestimage2.h5", "w")
+                            tempfile.create_dataset("/volume/data", data=image)
+                            tempfile.close()
+                            '''
                         except Exception, e:
                             print "EXCEPT 2.1", self.name, image.shape, vroi, kwparams
                             traceback.print_exc(e)
