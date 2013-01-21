@@ -15,9 +15,9 @@ class TestInterpolatedFeatures():
                    'HessianOfGaussianEigenvalues' ]
         
         #setup the data
-        self.nx = 5
-        self.ny = 5
-        self.nz = 5
+        self.nx = 50
+        self.ny = 50
+        self.nz = 50
         self.data3d = numpy.zeros((self.nx, self.ny, self.nz, 1), dtype=numpy.float32)
         for i in range(self.data3d.shape[2]):
             self.data3d[:, :, i, 0]=i
@@ -75,8 +75,8 @@ class TestInterpolatedFeatures():
         
         opFeaturesInterp.InterpolationScaleZ.setValue(self.scaleZ)
         
-        for i, imatrix in enumerate(self.selectedFeatures[30:31]):
-        #for i, imatrix in enumerate(self.selectedFeatures):
+        #for i, imatrix in enumerate(self.selectedFeatures[30:31]):
+        for i, imatrix in enumerate(self.selectedFeatures):
             opFeatures.Matrix.setValue(imatrix)
             opFeaturesInterp.Matrix.setValue(imatrix)
             outputInterpData = opFeatures.Output[:].wait()
@@ -84,14 +84,15 @@ class TestInterpolatedFeatures():
             
             
             
-            for iz in range(2,3):
+            for iz in range(self.nz):
+            #for iz in range(2, 3):
                 #print iz, iz*self.scaleZ
                 try:
                     outputInterpDataSlice = opFeatures.Output[:, :, iz*self.scaleZ:iz*self.scaleZ+1, :].wait()
                     #outputInterpFeaturesSlice = opFeaturesInterp.Output[:, :, iz, :].wait()
                     #assert_array_almost_equal(outputInterpDataSlice, outputInterpFeaturesSlice, 3)
                     #assert_array_almost_equal(outputInterpData[:, :, iz*self.scaleZ, 0], outputInterpFeatures[:, :, iz, 0], 2)
-                    assert_array_almost_equal(outputInterpDataSlice[:, :, 0:1, :], outputInterpData[:, :, iz*self.scaleZ, :], 3)
+                    assert_array_almost_equal(outputInterpDataSlice[:, :, 0, :], outputInterpData[:, :, iz*self.scaleZ, :], 3)
                 except AssertionError:
                     print "failed for feature:", imatrix, i
                     print "failed for slice:", iz

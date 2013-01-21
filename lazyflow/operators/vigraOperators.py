@@ -179,16 +179,6 @@ class OpPixelFeaturesPresmoothed(Operator):
                 featureNameArray.append([])
 
             self.newScales = []
-            #FIXME, FIXME, FIXME: remove this, just a test
-            '''
-            for j in range(dimCol):
-                destSigma = 1.0
-                if self.scales[j] > destSigma:
-                    self.newScales.append((destSigma, destSigma, destSigma))
-                else:
-                    self.newScales.append((self.scales[j], self.scales[j], min(1, 0.2*self.scales[j])ifconfig))
-                #self.newScales.append((self.scales[j], self.scales[j], 0.2*self.scales[j]))
-            '''
             
             for j in range(dimCol):
                 destSigma = 1.0
@@ -222,9 +212,6 @@ class OpPixelFeaturesPresmoothed(Operator):
                         #  you must make a new feature (with a new feature ID) and
                         #  leave this feature here to preserve backwards compatibility
                         oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
-                        #FIXME, FIXME, FIXME
-                        #sigma1 = [x*0.5 for x in self.newScales[j]]
-                        #oparray[i][j].inputs["outerScale"].setValue(sigma1)
                         oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
                         featureNameArray[i].append("Structure Tensor Eigenvalues (s=" + str(self.scales[j]) + ")")
 
@@ -250,9 +237,6 @@ class OpPixelFeaturesPresmoothed(Operator):
                         #  feature (with a new feature ID) and leave this feature here
                         #  to preserve backwards compatibility
                         oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])
-                        #FIXME, FIXME, FIXME
-                        #sigma1 = [x*0.66 for x in self.newScales[j]]
-                        #oparray[i][j].inputs["sigma1"].setValue(sigma1)
                         oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
                         featureNameArray[i].append("Difference of Gaussians (s=" + str(self.scales[j]) + ")")
 
@@ -399,17 +383,27 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             start, stop = roi.sliceToRoi(subkey,subkey)
             maxSigma = max(0.7,self.maxSigma)
-
+            #maxSigma = max(1., self.maxSigma)
+            window_size = 3.5
             # The region of the smoothed image we need to give to the feature filter (in terms of INPUT coordinates)
-            #vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, window = 2)
-            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, maxSigma, window = 3.5)
+            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, window_size)
+            #vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, maxSigma, window = 3.5)
+            print "new start new stop, high level:", vigOpSourceStart, vigOpSourceStop
+            print "called with params:", start, stop, subshape, maxSigma, window_size
             
             # The region of the input that we need to give to the smoothing operator (in terms of INPUT coordinates)
             newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, window = 3.5)
 
+            newStartSmoother = roi.TinyVector(start - vigOpSourceStart)
+            newStopSmoother = roi.TinyVector(stop - vigOpSourceStart)
+            roiSmoother = roi.roiToSlice(newStartSmoother, newStopSmoother)
+            print "roi smoother:", roiSmoother
+
             # Translate coordinates (now in terms of smoothed image coordinates)
             vigOpSourceStart = roi.TinyVector(vigOpSourceStart - newStart)
             vigOpSourceStop = roi.TinyVector(vigOpSourceStop - newStart)
+            
+            
 
             readKey = roi.roiToSlice(newStart, newStop)
 
@@ -446,13 +440,8 @@ class OpPixelFeaturesPresmoothed(Operator):
             sourceArrayV = sourceArray.view(vigra.VigraArray)
             sourceArrayV.axistags =  copy.copy(axistags)
 
-
-
-
-
             dimCol = len(self.scales)
             dimRow = self.matrix.shape[0]
-
 
             sourceArraysForSigmas = [None]*dimCol
 
@@ -525,8 +514,14 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 reskey[axisindex] = slice(written, written+end-begin, None)
 
                                 destArea = result[tuple(reskey)]
-                                roi_ = SubRegion(self.Input, pslice=key_)                                
-                                closure = partial(oslot.operator.execute, oslot, (), roi_, destArea, sourceArray = sourceArraysForSigmas[j])
+                                roi_ = SubRegion(self.Input, pslice=key_)
+                                #readjust the roi for the new source array?
+                                roiSmootherList = list(roiSmoother)
+                                
+                                roiSmootherList.insert(axisindex, slice(begin, end, None))
+                                roiSmoother = SubRegion(self.Input, pslice=roiSmootherList)
+                                
+                                closure = partial(oslot.operator.execute, oslot, (), roiSmoother, destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
 
                                 written += end - begin
@@ -1067,7 +1062,8 @@ class OpBaseVigraFilter(OpArrayPiper):
     outputDtype = numpy.float32
     inputDtype = numpy.float32
     supportsOut = True
-    window_size=2
+    window_size_feature = 2
+    window_size_smoother = 3.5
     supportsRoi = False
     supportsWindow = False
 
@@ -1095,14 +1091,14 @@ class OpBaseVigraFilter(OpArrayPiper):
         #windowSize = 4.0
         windowSize = 3.5
         if self.supportsWindow:
-            kwparams['window_size']=self.window_size
-            windowSize = self.window_size
+            kwparams['window_size']=self.window_size_feature
+            windowSize = self.window_size_smoother
 
-        largestSigma = sigma #ensure enough context for the vigra operators
-        
+        #largestSigma = sigma #ensure enough context for the vigra operators
+        largestSigma = max(0.7,sigma)
 
         shape = self.outputs["Output"].meta.shape
-        print "largestSigma=", largestSigma, "outputs shape:", shape
+        #print "largestSigma=", largestSigma, "outputs shape:", shape
 
         axistags = self.inputs["Input"].meta.axistags
         hasChannelAxis = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Channels)
@@ -1131,6 +1127,9 @@ class OpBaseVigraFilter(OpArrayPiper):
                 subshape[at2.index('z')-1]=sourceArray.shape[zAxis]
         
         newStart, newStop = roi.extendSlice(start, stop, subshape, largestSigma, window = windowSize)
+        print "newStart, newStop in base filter:", newStart, newStop
+        print "called with params:", start, stop, subshape, largestSigma, windowSize
+        
         #print "extending start, stop, shape:", start, stop, subshape
         #newStart, newStop = roi.extendSlice(start, stop, subshape, 0.7, window = windowSize)
         #print "extended, newStart, newStop:", newStart, newStop
@@ -1249,8 +1248,8 @@ class OpBaseVigraFilter(OpArrayPiper):
                         vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
                         try:
                             temp = self.vigraFilter(image, roi = vroi, **kwparams)
-                            print 
                             print "calling vigra with params:", image.shape, vroi, writeKey
+                            print
                             '''
                             import h5py
                             tempfile = h5py.File("/home/anna/data/temptestimage2.h5", "w")
