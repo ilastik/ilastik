@@ -75,30 +75,30 @@ class TestInterpolatedFeatures():
         
         opFeaturesInterp.InterpolationScaleZ.setValue(self.scaleZ)
         
-        #for i, imatrix in enumerate(self.selectedFeatures[30:31]):
+        #for i, imatrix in enumerate(self.selectedFeatures[2:3]):
         for i, imatrix in enumerate(self.selectedFeatures):
             opFeatures.Matrix.setValue(imatrix)
             opFeaturesInterp.Matrix.setValue(imatrix)
-            outputInterpData = opFeatures.Output[:].wait()
+            #outputInterpData = opFeatures.Output[:].wait()
             #outputInterpFeatures = opFeaturesInterp.Output[:].wait()
             
             
             
             for iz in range(self.nz):
-            #for iz in range(2, 3):
+            #for iz in range(5, 6):
                 #print iz, iz*self.scaleZ
                 try:
                     outputInterpDataSlice = opFeatures.Output[:, :, iz*self.scaleZ:iz*self.scaleZ+1, :].wait()
-                    #outputInterpFeaturesSlice = opFeaturesInterp.Output[:, :, iz, :].wait()
-                    #assert_array_almost_equal(outputInterpDataSlice, outputInterpFeaturesSlice, 3)
+                    outputInterpFeaturesSlice = opFeaturesInterp.Output[:, :, iz, :].wait()
+                    assert_array_almost_equal(outputInterpDataSlice, outputInterpFeaturesSlice, 1)
                     #assert_array_almost_equal(outputInterpData[:, :, iz*self.scaleZ, 0], outputInterpFeatures[:, :, iz, 0], 2)
-                    assert_array_almost_equal(outputInterpDataSlice[:, :, 0, :], outputInterpData[:, :, iz*self.scaleZ, :], 3)
+                    #assert_array_almost_equal(outputInterpDataSlice[:, :, 0, :], outputInterpData[:, :, iz*self.scaleZ, :], 3)
                 except AssertionError:
                     print "failed for feature:", imatrix, i
                     print "failed for slice:", iz
-                    print "inter data:", outputInterpData[:, :, iz*self.scaleZ, 0]
+                    #print "inter data:", outputInterpData[:, :, iz*self.scaleZ, 0]
                     print "inter data slice:", outputInterpDataSlice[:, :, 0, 0]
-                    #print "inter features:", outputInterpFeatures[3, 3, 0, 0]
+                    print "inter features:", outputInterpFeaturesSlice[:, :, 0, 0]
                     raise AssertionError
             
         
