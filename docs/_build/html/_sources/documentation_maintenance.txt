@@ -34,7 +34,7 @@ Here's a walk-through (output not shown).
 	$ pwd
 	/home/bergs/workspace/lazyflow/docs
 	$ git add -u .
-	$ git commit -m "docs: Added some example code."
+	$ git commit -m "docs: Added instructions for documentation maintenance."
 	$ git push origin master
 	$ cd /tmp
 	$ git clone ssh://git@github.com/ilastik/lazyflow lazyflow-gh-pages
