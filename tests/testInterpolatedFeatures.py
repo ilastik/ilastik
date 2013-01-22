@@ -17,11 +17,11 @@ class TestInterpolatedFeatures():
         #setup the data
         self.nx = 50
         self.ny = 50
-        self.nz = 5
+        self.nz = 50
         self.data3d = numpy.zeros((self.nx, self.ny, self.nz, 1), dtype=numpy.float32)
         for i in range(self.data3d.shape[2]):
             self.data3d[:, :, i, 0]=i
-            
+        
         newRangeZ = self.scaleZ*(self.nz-1)+1
         self.data3dInterp = vigra.sampling.resizeVolumeSplineInterpolation(self.data3d.squeeze(), \
                                                        shape=(self.nx, self.ny, newRangeZ))
@@ -32,6 +32,18 @@ class TestInterpolatedFeatures():
         self.data3d.axistags =  vigra.VigraArray.defaultAxistags(4)
         self.data3dInterp = self.data3dInterp.view(vigra.VigraArray)
         self.data3dInterp.axistags =  vigra.VigraArray.defaultAxistags(4)
+        
+        self.randomData = (numpy.random.random((self.nx, self.ny, self.nz, 1))).astype(numpy.float32)
+        
+        
+        self.randomDataInterp = vigra.sampling.resizeVolumeSplineInterpolation(self.randomData.squeeze(), \
+                                                                               shape = (self.nx, self.ny, newRangeZ))
+        self.randomDataInterp = self.randomDataInterp.reshape(self.randomDataInterp.shape+(1,))
+        
+        self.randomData = self.randomData.view(vigra.VigraArray).astype(numpy.float32)
+        self.randomData.axistags = vigra.defaultAxistags(4)
+        self.randomDataInterp = self.randomDataInterp.view(vigra.VigraArray)
+        self.randomDataInterp.axistags = vigra.defaultAxistags(4)
         
         #setup the feature selection
         rows = 6
@@ -59,13 +71,18 @@ class TestInterpolatedFeatures():
                                             window_size=2, roi=roi_full)
         assert_array_almost_equal(st1, st2[:, :, 2:3, :], 3)
     
-    def testFeatures(self):
+    def test(self):
+        self.runFeatures(self.data3d, self.data3dInterp)
+        #print "TEST ONE DONE"
+        self.runFeatures(self.randomData, self.randomDataInterp)
+    
+    def runFeatures(self, data, dataInterp):
         g = graph.Graph()
         opFeatures = OpPixelFeaturesPresmoothed(graph=g)
         opFeaturesInterp = OpPixelFeaturesInterpPresmoothed(graph=g)
         
-        opFeatures.Input.setValue(self.data3dInterp)
-        opFeaturesInterp.Input.setValue(self.data3d)
+        opFeatures.Input.setValue(dataInterp)
+        opFeaturesInterp.Input.setValue(data)
         
         opFeatures.Scales.setValue(self.scales)
         opFeaturesInterp.Scales.setValue(self.scales)
@@ -75,32 +92,32 @@ class TestInterpolatedFeatures():
         
         opFeaturesInterp.InterpolationScaleZ.setValue(self.scaleZ)
         
-        for i, imatrix in enumerate(self.selectedFeatures[0:1]):
-        #for i, imatrix in enumerate(self.selectedFeatures):
+        #for i, imatrix in enumerate(self.selectedFeatures[0:1]):
+        for i, imatrix in enumerate(self.selectedFeatures):
             opFeatures.Matrix.setValue(imatrix)
             opFeaturesInterp.Matrix.setValue(imatrix)
-            #outputInterpData = opFeatures.Output[:].wait()
+            outputInterpData = opFeatures.Output[:].wait()
             outputInterpFeatures = opFeaturesInterp.Output[:].wait()
             
             print "DONEDONEDONE"
             
             
-            #for iz in range(self.nz):
-            for iz in range(2, 3):
+            for iz in range(self.nz):
+            #for iz in range(2, 3):
                 #print iz, iz*self.scaleZ
                 try:
-                    #outputInterpDataSlice = opFeatures.Output[:, :, iz*self.scaleZ:iz*self.scaleZ+1, :].wait()
+                    outputInterpDataSlice = opFeatures.Output[:, :, iz*self.scaleZ:iz*self.scaleZ+1, :].wait()
                     outputInterpFeaturesSlice = opFeaturesInterp.Output[:, :, iz, :].wait()
-                    #assert_array_almost_equal(outputInterpDataSlice, outputInterpFeaturesSlice, 1)
-                    #assert_array_almost_equal(outputInterpData[:, :, iz*self.scaleZ, 0], outputInterpFeatures[:, :, iz, 0], 1)
+                    assert_array_almost_equal(outputInterpDataSlice, outputInterpFeaturesSlice, 1)
+                    assert_array_almost_equal(outputInterpData[:, :, iz*self.scaleZ, 0], outputInterpFeatures[:, :, iz, 0], 1)
                     #assert_array_almost_equal(outputInterpDataSlice[:, :, 0, :], outputInterpData[:, :, iz*self.scaleZ, :], 3)
-                    assert_array_almost_equal(outputInterpFeatures[:, :, iz, :], outputInterpFeaturesSlice)
+                    assert_array_almost_equal(outputInterpFeatures[:, :, iz, :], outputInterpFeaturesSlice[:, :, 0, :], 1)
                 except AssertionError:
                     print "failed for feature:", imatrix, i
                     print "failed for slice:", iz
-                    #print "inter data:", outputInterpData[:, :, iz*self.scaleZ, 0]
+                    print "inter data:", outputInterpData[:, :, iz*self.scaleZ, 0]
                     print "inter features:", outputInterpFeatures[:, :, iz, 0]
-                    #print "inter data slice:", outputInterpDataSlice[:, :, 0, 0]
+                    print "inter data slice:", outputInterpDataSlice[:, :, 0, 0]
                     print "inter features:", outputInterpFeaturesSlice[:, :, 0, 0]
                     raise AssertionError
             

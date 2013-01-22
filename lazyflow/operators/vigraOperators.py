@@ -392,7 +392,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             print "called with params:", start, stop, subshape, maxSigma, window_size
             
             # The region of the input that we need to give to the smoothing operator (in terms of INPUT coordinates)
-            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, window = 3.5)
+            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, window_size)
             print "extended for smoothing:", newStart, newStop
             
             newStartSmoother = roi.TinyVector(start - vigOpSourceStart)
@@ -1062,12 +1062,14 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                                     newRoi[zaxis] = slice(z, z+1, None)
                                     newRoi = SubRegion(self.Input, pslice=newRoi)
                                     #print "roi smoother:", roiSmoother
-                                    '''
+                                    
+                                    zStart, zStop = roi.extendSlice(z, z+1, sourceArraysForSigmas[j].shape[zaxis], 0.7, window_size)
+                                    print "re-adjusting source range, zStart, zStop:", zStart, zStop
                                     sourceKey = []
                                     sourceKey.insert(axistags.index('x'), slice(None, None, None))
                                     sourceKey.insert(axistags.index('y'), slice(None, None, None))
                                     sourceKey.insert(zaxis, slice(zStart, zStop, None))
-                                    '''
+                                    
                                     reskey = [slice(None, None, None) for x in range(len(result.shape))]
                                     reskey[axisindex] = slice(written, written+end-begin, None)
                                     reskey[zaxis] = slice(iz, iz+1, None)
@@ -1077,7 +1079,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                                     
                                     #print "passing to filter:", sourceArraysForSigmas[j][0, 0, zStart:zStop, 0]                                
                                     #closure = partial(oslot.operator.execute, oslot, (), roi_, destArea, sourceArray = sourceArraysForSigmas[j][sourceKey])
-                                    closure = partial(oslot.operator.execute, oslot, (), newRoi, destArea, sourceArraysForSigmas[j])
+                                    closure = partial(oslot.operator.execute, oslot, (), newRoi, destArea, sourceArraysForSigmas[j][sourceKey])
                                     closures.append(closure)
                                     
                                 written += end - begin
@@ -1192,7 +1194,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                 #subshape[at2.index('z')-1]=newRangeZ
                 subshape[at2.index('z')-1]=sourceArray.shape[zAxis]
         
-        newStart, newStop = roi.extendSlice(start, stop, subshape, largestSigma, window = windowSize)
+        newStart, newStop = roi.extendSlice(start, stop, subshape, 0.7, window = windowSize)
         print "newStart, newStop in base filter:", newStart, newStop
         print "called with params:", start, stop, subshape, largestSigma, windowSize
         
@@ -1314,7 +1316,7 @@ class OpBaseVigraFilter(OpArrayPiper):
                         vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
                         try:
                             temp = self.vigraFilter(image, roi = vroi, **kwparams)
-                            print "calling vigra with params:", image.shape, vroi, writeKey
+                            print "calling vigra with params:", image.shape, vroi, kwparams
                             print
                             '''
                             import h5py
