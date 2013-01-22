@@ -48,8 +48,8 @@ class Request( object ):
         
         Implementation details:
         This exception is raised when the cancel flag is checked in the wait() function:
-            - immediately before the request is suspended OR
-            - immediately after the request is woken up from suspension
+        - immediately before the request is suspended OR
+        - immediately after the request is woken up from suspension
         """
         pass
 
@@ -84,10 +84,12 @@ class Request( object ):
     def __init__(self, fn):
         """
         Constructor.
-        Postconditions: The request has the same cancelled status as its parent
+        Postconditions: The request has the same cancelled status as its parent (the request that is creating this one).
         """
         # Workload
         self.fn = fn
+
+        #: After this request finishes execution, this attribute holds the return value from the workload function.
         self.result = None
 
         # State
@@ -109,7 +111,7 @@ class Request( object ):
         self.child_requests = set()    # Requests that were created from within this request (NOT the same as pending_requests)
         
         self._current_foreign_thread = None
-        current_request = Request.current_request()
+        current_request = Request._current_request()
         self.parent_request = current_request
         if current_request is None:
             self._priority = [ Request._root_request_counter.next() ]
@@ -127,9 +129,6 @@ class Request( object ):
         self._sig_failed = SimpleSignal()
         
         self._sig_execution_complete = SimpleSignal()
-        
-        # FIXME: Can't auto-submit here because the writeInto() function gets called AFTER request construction.
-        #self.submit()
 
     def __lt__(self, other):
         """
@@ -139,6 +138,9 @@ class Request( object ):
         return self._priority < other._priority
 
     def clean(self):
+        """
+        Delete all state from the request, for cleanup purposes.
+        """
         self._sig_cancelled.clean()
         self._sig_finished.clean()
         self._sig_failed.clean()
@@ -146,6 +148,9 @@ class Request( object ):
         
     @property
     def assigned_worker(self):
+        """
+        This member is accessed by the ThreadPool to determine which Worker thread this request belongs to.
+        """
         return self._assigned_worker
     
     @assigned_worker.setter
@@ -157,13 +162,12 @@ class Request( object ):
         self._assigned_worker = worker
 
         # Create our greenlet now (so the greenlet has the correct parent, i.e. the worker)
-        self.greenlet = RequestGreenlet(self, self.execute)
+        self.greenlet = RequestGreenlet(self, self._execute)
 
-    def execute(self):
+    def _execute(self):
         """
         Do the real work of this request.
         """
-
         # Did someone cancel us before we even started?
         if not self.cancelled:
             try:
@@ -242,6 +246,7 @@ class Request( object ):
     def wait(self, timeout=None):
         """
         Start this request if necessary, then wait for it to complete.  Return the request's result.
+        
         :param timeout: If running within a request, this parameter must be None.
                         If running within the context of a foreign (non-request) thread, 
                         a timeout may be specified in seconds (floating-point).
@@ -253,12 +258,12 @@ class Request( object ):
         # This avoids some function calls and locks.
         # (If we didn't do this, the code below would still do the right thing.)
         # Note that this is only possible because self.execution_complete is set to True 
-        #  AFTER self.cancelled and self.exception have their final values.  See execute().
+        #  AFTER self.cancelled and self.exception have their final values.  See _execute().
         if self.execution_complete and not self.cancelled and self.exception is None:
             return self.result
         
         # Identify the request that is waiting for us (the current context)
-        current_request = Request.current_request()
+        current_request = Request._current_request()
 
         if current_request is None:
             # 'None' means that this thread is not one of the request worker threads.
@@ -297,7 +302,7 @@ class Request( object ):
 
         if direct_execute_needed:
             self._current_foreign_thread = threading.current_thread()
-            self.execute()
+            self._execute()
         else:
             self.submit()
 
@@ -367,7 +372,7 @@ class Request( object ):
             self.greenlet = current_request.greenlet
             self.greenlet.owning_requests.append(self)
             self._assigned_worker = current_request._assigned_worker
-            self.execute()
+            self._execute()
             assert self.greenlet.owning_requests.pop() == self
             current_request.blocking_requests.remove(self)
 
@@ -395,6 +400,8 @@ class Request( object ):
         """
         Register a callback function to be called when this request is finished.
         If we're already finished, call it now.
+        
+        :param fn: The callback to be notified.  Signature: fn(result)
         """
         with self._lock:
             finished = self.finished
@@ -410,6 +417,8 @@ class Request( object ):
         """
         Register a callback function to be called when this request is finished due to cancellation.
         If we're already finished and cancelled, call it now.
+        
+        :param fn: The callback to call if the request is cancelled.  Signature: fn()
         """
         with self._lock:
             finished = self.finished
@@ -426,8 +435,8 @@ class Request( object ):
         """
         Register a callback function to be called when this request is finished due to failure (an exception was raised).
         If we're already failed, call it now.
-        
-        This function obtains the lock.
+
+        :param fn: The callback to call if the request fails.  Signature: fn(exception)
         """
         with self._lock:
             finished = self.finished
@@ -441,6 +450,10 @@ class Request( object ):
             fn(self.exception)
 
     def cancel(self):
+        """
+        Attempt to cancel this request and all requests that it spawned.
+        No request will be cancelled if other non-cancelled requests are waiting for its results.
+        """
         # We can only be cancelled if: 
         # (1) There are no foreign threads blocking for us (flagged via self.uncancellable) AND
         # (2) our parent request (if any) is already cancelled AND
@@ -463,7 +476,7 @@ class Request( object ):
                 child.cancel()
     
     @classmethod
-    def current_request(cls):
+    def _current_request(cls):
         """
         Inspect the current greenlet/thread and return the request object associated with it, if any.
         """
@@ -480,7 +493,7 @@ class Request( object ):
     #### Backwards-compatible API support ####
     ##########################################
 
-    class PartialWithAppendedArgs(object):
+    class _PartialWithAppendedArgs(object):
         """
         Like functools.partial, but any kwargs provided are given last when calling the target.
         """
@@ -494,7 +507,7 @@ class Request( object ):
             return self.func( *totalargs, **self.kwargs)
     
     def onFinish(self, fn, **kwargs):
-        f = Request.PartialWithAppendedArgs( fn, **kwargs )
+        f = Request._PartialWithAppendedArgs( fn, **kwargs )
         self.notify_finished( f)
 
     def onCancel(self, fn, *args, **kwargs):
@@ -505,7 +518,7 @@ class Request( object ):
         self.uncancellable = not fn(self, *args, **kwargs)
 
     def notify(self, fn, **kwargs):
-        f = Request.PartialWithAppendedArgs( fn, **kwargs )
+        f = Request._PartialWithAppendedArgs( fn, **kwargs )
         self.notify_finished( f )
         self.submit()
 
@@ -513,7 +526,7 @@ class Request( object ):
         return self
 
     def writeInto(self, destination):
-        self.fn = Request.PartialWithAppendedArgs( self.fn, destination=destination )
+        self.fn = Request._PartialWithAppendedArgs( self.fn, destination=destination )
         return self
 
     def getResult(self):
@@ -553,9 +566,12 @@ class RequestLock(object):
     
     def acquire(self, blocking=True):
         """
+        Acquire the lock.  If `blocking` is True, block until the lock is available.
+        If `blocking` is False, don't wait and return False if the lock couldn't be acquired immediately.
+        
         :param blocking: Same as in threading.Lock 
         """
-        current_request = Request.current_request()
+        current_request = Request._current_request()
         if current_request is None:
             return self._acquire_from_within_thread(blocking)
         else:
@@ -601,6 +617,9 @@ class RequestLock(object):
         return got_it
 
     def release(self):
+        """
+        Release the lock so that another request or thread can acquire it.
+        """
         assert self._modelLock.locked(), "Can't release a RequestLock that isn't already acquired!"
         with self._selfProtectLock:
             if len(self._pendingRequests) == 0:
@@ -633,6 +652,9 @@ class RequestPool(object):
     """
 
     class RequestPoolError(Exception):
+        """
+        Raised if you attempt to use the Pool in a manner that it isn't designed for.
+        """
         pass
 
     def __init__(self):
@@ -644,7 +666,7 @@ class RequestPool(object):
 
     def add(self, req):
         """
-        Add a request to the pool.
+        Add a request to the pool.  The pool must not be submitted yet.  Otherwise, an exception is raised.
         """
         if self._started:
             # For now, we forbid this because it would allow some corner cases that we aren't unit-testing yet.
@@ -654,7 +676,7 @@ class RequestPool(object):
 
     def submit(self):
         """
-        Submit all the requests in the pool.
+        Submit all the requests in the pool.  The pool must not be submitted yet.  Otherwise, an exception is raised.
         """
         if self._started:
             raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
@@ -679,11 +701,14 @@ class RequestPool(object):
     
     def request(self, func):
         """
-        Deprecated method.  Convenience function to construct a request for the given callable and add it to the pool.
+        **Deprecated method**.  Convenience function to construct a request for the given callable and add it to the pool.
         """
         self.add( Request(func) )
     
     def clean(self):
+        """
+        Release our handles to all requests in the pool, for cleanup purposes.
+        """
         self._requests = set()
 
 # BACKWARDS COMPATIBILITY

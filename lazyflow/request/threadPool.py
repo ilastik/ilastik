@@ -65,6 +65,13 @@ class ThreadPool(object):
     _DefaultQueueType = PriorityQueue
     
     def __init__(self, num_workers, queue_type=_DefaultQueueType):
+        """
+        Constructor.  Starts all workers.
+        
+        :param num_workers: The number of worker threads to create.
+        :param queue_type: The type of queue to use for prioritizing tasks.  Possible queue types include :py:class:`PriorityQueue`,
+                           :py:class:`FifoQueue`, and :py:class:`LifoQueue`, or any class with ``push()``, ``pop()``, and ``__len__()`` methods.
+        """
         self.job_condition = threading.Condition()
         self.unassigned_tasks = queue_type()
 
@@ -76,7 +83,7 @@ class ThreadPool(object):
     def wake_up(self, task):
         """
         Schedule the given task on the worker that is assigned to it.
-        If necessary, first assign a worker to it.
+        If it has no assigned worker yet, assign it to the first worker that becomes available.
         """
         # Once a task has been assigned, it must always be processed in the same worker
         if hasattr(task, 'assigned_worker') and task.assigned_worker is not None:
