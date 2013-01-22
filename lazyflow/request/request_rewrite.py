@@ -544,6 +544,12 @@ class RequestLock(object):
         # This is a list of requests that are currently waiting for the lock.
         # Other waiting threads (i.e. non-request "foreign" threads) are each listed as a single "None" item. 
         self._pendingRequests = collections.deque()
+
+    def locked(self):
+        """
+        Return True if lock is currently held by some thread or request.
+        """
+        return self._modelLock.locked()
     
     def acquire(self, blocking=True):
         """
@@ -664,6 +670,13 @@ class RequestPool(object):
         for req in self._requests:
             req.wait()
 
+    def cancel(self):
+        """
+        Cancel all requests in the pool.
+        """
+        for req in self._requests:
+            req.cancel()
+    
     def request(self, func):
         """
         Deprecated method.  Convenience function to construct a request for the given callable and add it to the pool.
