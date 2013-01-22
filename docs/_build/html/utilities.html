@@ -26,7 +26,7 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="lazyflow 0.1 documentation" href="index.html" />
-    <link rel="prev" title="Advanced Concepts" href="advanced.html" /> 
+    <link rel="prev" title="Lazyflow Request Framework" href="request.html" /> 
   </head>
   <body>
     <div class="related">
@@ -39,7 +39,7 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="advanced.html" title="Advanced Concepts"
+          <a href="request.html" title="Lazyflow Request Framework"
              accesskey="P">previous</a> |</li>
         <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
       </ul>
@@ -51,7 +51,7 @@
           <div class="body">
             
   <div class="section" id="utilities">
-<h1><a class="toc-backref" href="#id1">Utilities</a><a class="headerlink" href="#utilities" title="Permalink to this headline">¶</a></h1>
+<span id="lazyflow-utilities"></span><h1><a class="toc-backref" href="#id1">Utilities</a><a class="headerlink" href="#utilities" title="Permalink to this headline">¶</a></h1>
 <div class="contents topic" id="contents">
 <p class="topic-title first">Contents</p>
 <ul class="simple">
@@ -545,7 +545,7 @@ The parent directory of the description file is considered to be the top-most di
 
 <dl class="attribute">
 <dt id="lazyflow.utility.io.BlockwiseFileset.DescriptionFields">
-<tt class="descclassname">BlockwiseFileset.</tt><tt class="descname">DescriptionFields</tt><em class="property"> = {'block_file_name_format': &lt;lazyflow.utility.jsonConfig.FormattedField object at 0x10b338510&gt;, 'format': &lt;type 'str'&gt;, 'dtype': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x10b3383d0&gt;, '_schema_version': 1.0, 'shape': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x10b338390&gt;, 'chunks': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x10b338410&gt;, 'view_origin': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x10b338490&gt;, 'name': &lt;type 'str'&gt;, 'dataset_root_dir': &lt;type 'str'&gt;, 'axes': &lt;type 'str'&gt;, '_schema_name': 'blockwise-fileset-description', 'block_shape': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x10b338450&gt;, 'view_shape': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x10b3384d0&gt;, 'hash_id': &lt;type 'str'&gt;}</em><a class="headerlink" href="#lazyflow.utility.io.BlockwiseFileset.DescriptionFields" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">BlockwiseFileset.</tt><tt class="descname">DescriptionFields</tt><em class="property"> = {'block_file_name_format': &lt;lazyflow.utility.jsonConfig.FormattedField object at 0x106c78410&gt;, 'format': &lt;type 'str'&gt;, 'dtype': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x106c782d0&gt;, '_schema_version': 1.0, 'shape': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x106c78290&gt;, 'chunks': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x106c78310&gt;, 'view_origin': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x106c78390&gt;, 'name': &lt;type 'str'&gt;, 'dataset_root_dir': &lt;type 'str'&gt;, 'axes': &lt;type 'str'&gt;, '_schema_name': 'blockwise-fileset-description', 'block_shape': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x106c78350&gt;, 'view_shape': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x106c783d0&gt;, 'hash_id': &lt;type 'str'&gt;}</em><a class="headerlink" href="#lazyflow.utility.io.BlockwiseFileset.DescriptionFields" title="Permalink to this definition">¶</a></dt>
 <dd><p>These fields describe the schema of the description file.
 See the source code comments for a description of each field.</p>
 </dd></dl>
@@ -725,7 +725,7 @@ case the provided description file will not be parsed.</li>
 
 <dl class="attribute">
 <dt id="lazyflow.utility.io.RESTfulVolume.DescriptionFields">
-<tt class="descname">DescriptionFields</tt><em class="property"> = {'format': &lt;type 'str'&gt;, 'dtype': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x10b338710&gt;, 'hdf5_dataset': &lt;type 'str'&gt;, '_schema_version': 1.0, 'shape': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x10b338790&gt;, 'name': &lt;type 'str'&gt;, 'axes': &lt;type 'str'&gt;, 'bounds': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x10b338750&gt;, '_schema_name': 'RESTful-volume-description', 'origin_offset': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x10b3387d0&gt;, 'url_format': &lt;lazyflow.utility.jsonConfig.FormattedField object at 0x10b338810&gt;}</em><a class="headerlink" href="#lazyflow.utility.io.RESTfulVolume.DescriptionFields" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">DescriptionFields</tt><em class="property"> = {'format': &lt;type 'str'&gt;, 'dtype': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x106c78650&gt;, 'hdf5_dataset': &lt;type 'str'&gt;, '_schema_version': 1.0, 'shape': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x106c786d0&gt;, 'name': &lt;type 'str'&gt;, 'axes': &lt;type 'str'&gt;, 'bounds': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x106c78690&gt;, '_schema_name': 'RESTful-volume-description', 'origin_offset': &lt;lazyflow.utility.jsonConfig.AutoEval object at 0x106c78710&gt;, 'url_format': &lt;lazyflow.utility.jsonConfig.FormattedField object at 0x106c78750&gt;}</em><a class="headerlink" href="#lazyflow.utility.io.RESTfulVolume.DescriptionFields" title="Permalink to this definition">¶</a></dt>
 <dd><p>These fields describe the schema of the description file.
 See the source code comments for a description of each field.</p>
 </dd></dl>
@@ -871,7 +871,7 @@ volume and local storage structure.  The JSON file schema is specified by
 
 <dl class="attribute">
 <dt id="lazyflow.utility.io.RESTfulBlockwiseFileset.DescriptionFields">
-<tt class="descname">DescriptionFields</tt><em class="property"> = {'_schema_version': 1.0, 'local_description': &lt;lazyflow.utility.jsonConfig.JsonConfigParser object at 0x10b338a90&gt;, '_schema_name': 'RESTful-blockwise-fileset-description', 'remote_description': &lt;lazyflow.utility.jsonConfig.JsonConfigParser object at 0x10b338a50&gt;}</em><a class="headerlink" href="#lazyflow.utility.io.RESTfulBlockwiseFileset.DescriptionFields" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">DescriptionFields</tt><em class="property"> = {'_schema_version': 1.0, 'local_description': &lt;lazyflow.utility.jsonConfig.JsonConfigParser object at 0x106c78a10&gt;, '_schema_name': 'RESTful-blockwise-fileset-description', 'remote_description': &lt;lazyflow.utility.jsonConfig.JsonConfigParser object at 0x106c789d0&gt;}</em><a class="headerlink" href="#lazyflow.utility.io.RESTfulBlockwiseFileset.DescriptionFields" title="Permalink to this definition">¶</a></dt>
 <dd><p>This member specifies the schema of the description file.
 It is merely a composite of two nested schemas: one that describes the remote volume,
 and another that describes the local storage format.  See the source code to see the field names.</p>
@@ -981,8 +981,8 @@ Any optional parameters not provided by the user are filled in automatically.</p
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="advanced.html"
-                        title="previous chapter">Advanced Concepts</a></p>
+  <p class="topless"><a href="request.html"
+                        title="previous chapter">Lazyflow Request Framework</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/utilities.txt"
@@ -1015,7 +1015,7 @@ Any optional parameters not provided by the user are filled in automatically.</p
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="advanced.html" title="Advanced Concepts"
+          <a href="request.html" title="Lazyflow Request Framework"
              >previous</a> |</li>
         <li><a href="index.html">lazyflow 0.1 documentation</a> &raquo;</li> 
       </ul>
